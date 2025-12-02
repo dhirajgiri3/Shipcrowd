@@ -1,0 +1,260 @@
+{
+  "info": {
+    "name": "Shipcrowd DTDC",
+    "description": "Comprehensive collection for testing DTDC API integration with Shipcrowd. This collection includes endpoints for shipment creation, tracking, cancellation, and serviceability checks.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "1. Shipment Management",
+      "item": [
+        {
+          "name": "Create Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "api-key",
+                "value": "{{dtdcApiKey}}",
+                "description": "DTDC API key"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"consignments\": [\n        {\n            \"origin_details\": {\n                \"name\": \"{{senderName}}\",\n                \"phone\": \"{{senderPhone}}\",\n                \"alternate_phone\": \"\",\n                \"address_line_1\": \"{{senderAddressLine1}}\",\n                \"address_line_2\": \"{{senderAddressLine2}}\",\n                \"pincode\": \"{{senderPincode}}\",\n                \"city\": \"{{senderCity}}\",\n                \"state\": \"{{senderState}}\"\n            },\n            \"destination_details\": {\n                \"name\": \"{{customerName}}\",\n                \"phone\": \"{{customerPhone}}\",\n                \"alternate_phone\": \"\",\n                \"address_line_1\": \"{{billingAddress}}\",\n                \"address_line_2\": \"\",\n                \"pincode\": \"{{billingPincode}}\",\n                \"city\": \"{{billingCity}}\",\n                \"state\": \"{{billingState}}\"\n            },\n            \"return_details\": {\n                \"name\": \"{{senderName}}\",\n                \"phone\": \"{{senderPhone}}\",\n                \"alternate_phone\": \"\",\n                \"address_line_1\": \"{{senderAddressLine1}}\",\n                \"address_line_2\": \"{{senderAddressLine2}}\",\n                \"pincode\": \"{{senderPincode}}\",\n                \"city\": \"{{senderCity}}\",\n                \"state\": \"{{senderState}}\"\n            },\n            \"customer_code\": \"{{dtdcCustomerCode}}\",\n            \"load_type\": \"{{loadType}}\",\n            \"consignment_type\": \"{{consignmentType}}\",\n            \"dimension_unit\": \"{{dimensionUnit}}\",\n            \"length\": {{packageLength}},\n            \"width\": {{packageBreadth}},\n            \"height\": {{packageHeight}},\n            \"weight_unit\": \"{{weightUnit}}\",\n            \"num_pieces\": {{numPieces}},\n            \"commodity_id\": \"{{commodityId}}\",\n            \"customer_reference_number\": \"{{orderId}}\",\n            \"weight\": {{packageWeight}},\n            \"declared_value\": {{declaredValue}},\n            \"service_type_id\": \"{{serviceTypeId}}\",\n            \"description\": \"{{productDescription}}\",\n            \"reference_number\": \"\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{dtdcBaseUrl}}/shipments",
+              "host": [
+                "{{dtdcBaseUrl}}"
+              ],
+              "path": [
+                "shipments"
+              ]
+            },
+            "description": "Create a new shipment in DTDC"
+          },
+          "response": []
+        },
+        {
+          "name": "Track Shipment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "api-key",
+                "value": "{{dtdcApiKey}}",
+                "description": "DTDC API key"
+              }
+            ],
+            "url": {
+              "raw": "{{dtdcBaseUrl}}/track/{{awbNumber}}",
+              "host": [
+                "{{dtdcBaseUrl}}"
+              ],
+              "path": [
+                "track",
+                "{{awbNumber}}"
+              ]
+            },
+            "description": "Track a shipment using AWB number"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "api-key",
+                "value": "{{dtdcApiKey}}",
+                "description": "DTDC API key"
+              },
+              {
+                "key": "customer-code",
+                "value": "{{dtdcCustomerCode}}",
+                "description": "DTDC customer code"
+              }
+            ],
+            "url": {
+              "raw": "{{dtdcBaseUrl}}/shipments/{{awbNumber}}/cancel",
+              "host": [
+                "{{dtdcBaseUrl}}"
+              ],
+              "path": [
+                "shipments",
+                "{{awbNumber}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancel a shipment using AWB number"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for shipment management in DTDC"
+    },
+    {
+      "name": "2. Serviceability",
+      "item": [
+        {
+          "name": "Check Serviceability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "api-key",
+                "value": "{{dtdcApiKey}}",
+                "description": "DTDC API key"
+              }
+            ],
+            "url": {
+              "raw": "{{dtdcBaseUrl}}/serviceability?origin_pincode={{pickupPincode}}&destination_pincode={{deliveryPincode}}&weight={{packageWeight}}&declared_value={{declaredValue}}&cod_amount={{codAmount}}&service_type_id={{serviceTypeId}}",
+              "host": [
+                "{{dtdcBaseUrl}}"
+              ],
+              "path": [
+                "serviceability"
+              ],
+              "query": [
+                {
+                  "key": "origin_pincode",
+                  "value": "{{pickupPincode}}",
+                  "description": "Origin pincode"
+                },
+                {
+                  "key": "destination_pincode",
+                  "value": "{{deliveryPincode}}",
+                  "description": "Destination pincode"
+                },
+                {
+                  "key": "weight",
+                  "value": "{{packageWeight}}",
+                  "description": "Package weight"
+                },
+                {
+                  "key": "declared_value",
+                  "value": "{{declaredValue}}",
+                  "description": "Declared value of the shipment"
+                },
+                {
+                  "key": "cod_amount",
+                  "value": "{{codAmount}}",
+                  "description": "COD amount (if applicable)"
+                },
+                {
+                  "key": "service_type_id",
+                  "value": "{{serviceTypeId}}",
+                  "description": "Service type ID"
+                }
+              ]
+            },
+            "description": "Check serviceability between two pincodes"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for checking serviceability in DTDC"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set default values for DTDC API testing",
+          "if (!pm.environment.get('dtdcApiKey')) {",
+          "    pm.environment.set('dtdcApiKey', 'your-dtdc-api-key');",
+          "}",
+          "if (!pm.environment.get('dtdcCustomerCode')) {",
+          "    pm.environment.set('dtdcCustomerCode', 'your-dtdc-customer-code');",
+          "}",
+          "if (!pm.environment.get('orderId')) {",
+          "    pm.environment.set('orderId', 'TEST-' + Date.now());",
+          "}",
+          "if (!pm.environment.get('loadType')) {",
+          "    pm.environment.set('loadType', 'NON-DOCUMENT');",
+          "}",
+          "if (!pm.environment.get('consignmentType')) {",
+          "    pm.environment.set('consignmentType', 'FORWARD');",
+          "}",
+          "if (!pm.environment.get('dimensionUnit')) {",
+          "    pm.environment.set('dimensionUnit', 'CM');",
+          "}",
+          "if (!pm.environment.get('weightUnit')) {",
+          "    pm.environment.set('weightUnit', 'KG');",
+          "}",
+          "if (!pm.environment.get('numPieces')) {",
+          "    pm.environment.set('numPieces', 1);",
+          "}",
+          "if (!pm.environment.get('commodityId')) {",
+          "    pm.environment.set('commodityId', 'ELECTRONICS');",
+          "}",
+          "if (!pm.environment.get('serviceTypeId')) {",
+          "    pm.environment.set('serviceTypeId', 'PRIORITY');",
+          "}",
+          "if (!pm.environment.get('declaredValue')) {",
+          "    pm.environment.set('declaredValue', 999);",
+          "}",
+          "if (!pm.environment.get('productDescription')) {",
+          "    pm.environment.set('productDescription', 'Test Product');",
+          "}",
+          "if (!pm.environment.get('senderName')) {",
+          "    pm.environment.set('senderName', 'Sender Name');",
+          "}",
+          "if (!pm.environment.get('senderPhone')) {",
+          "    pm.environment.set('senderPhone', '9876543210');",
+          "}",
+          "if (!pm.environment.get('senderAddressLine1')) {",
+          "    pm.environment.set('senderAddressLine1', '123 Sender Street');",
+          "}",
+          "if (!pm.environment.get('senderAddressLine2')) {",
+          "    pm.environment.set('senderAddressLine2', '');",
+          "}",
+          "if (!pm.environment.get('senderPincode')) {",
+          "    pm.environment.set('senderPincode', '400001');",
+          "}",
+          "if (!pm.environment.get('senderCity')) {",
+          "    pm.environment.set('senderCity', 'Mumbai');",
+          "}",
+          "if (!pm.environment.get('senderState')) {",
+          "    pm.environment.set('senderState', 'Maharashtra');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "awbNumber",
+      "value": "",
+      "type": "string",
+      "description": "AWB number for tracking shipment"
+    },
+    {
+      "key": "codAmount",
+      "value": "0",
+      "type": "string",
+      "description": "COD amount (if applicable)"
+    }
+  ]
+}

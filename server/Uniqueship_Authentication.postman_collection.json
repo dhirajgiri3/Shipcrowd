@@ -1,0 +1,985 @@
+{
+  "info": {
+    "name": "Shipcrowd Authentication",
+    "description": "Comprehensive collection for testing all Shipcrowd authentication features including registration, login, social authentication, session management, and account recovery.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "item": [
+    {
+      "name": "1. User Registration",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\",\n    \"name\": \"{{userName}}\",\n    \"role\": \"{{userRole}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new user in the Shipcrowd system"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"{{verificationToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-email"
+              ]
+            },
+            "description": "Verify user email with the token received via email"
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Verification Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/resend-verification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "resend-verification"
+              ]
+            },
+            "description": "Resend verification email to a registered user"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for user registration and email verification"
+    },
+    {
+      "name": "2. Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.accessToken) {",
+                  "    pm.environment.set('accessToken', jsonData.accessToken);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.id) {",
+                  "    pm.environment.set('userId', jsonData.user.id);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.companyId) {",
+                  "    pm.environment.set('companyId', jsonData.user.companyId);",
+                  "}",
+                  "if (pm.cookies.has('refreshToken')) {",
+                  "    pm.environment.set('refreshToken', pm.cookies.get('refreshToken'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login to get access token"
+          },
+          "response": []
+        },
+        {
+          "name": "Login with Remember Me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.accessToken) {",
+                  "    pm.environment.set('accessToken', jsonData.accessToken);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.id) {",
+                  "    pm.environment.set('userId', jsonData.user.id);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.companyId) {",
+                  "    pm.environment.set('companyId', jsonData.user.companyId);",
+                  "}",
+                  "if (pm.cookies.has('refreshToken')) {",
+                  "    pm.environment.set('refreshToken', pm.cookies.get('refreshToken'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\",\n    \"rememberMe\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login with remember me option enabled"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.accessToken) {",
+                  "    pm.environment.set('accessToken', jsonData.accessToken);",
+                  "}",
+                  "if (pm.cookies.has('refreshToken')) {",
+                  "    pm.environment.set('refreshToken', pm.cookies.get('refreshToken'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Refresh access token using refresh token"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logout and invalidate the current session"
+          },
+          "response": []
+        }
+      ],
+      "description": "Basic authentication endpoints"
+    },
+    {
+      "name": "3. Social Authentication",
+      "item": [
+        {
+          "name": "Google OAuth Login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ]
+            },
+            "description": "Initiate Google OAuth authentication flow"
+          },
+          "response": []
+        },
+        {
+          "name": "Google OAuth Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google/callback?code=test_code&state=test_state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google",
+                "callback"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "test_code"
+                },
+                {
+                  "key": "state",
+                  "value": "test_state"
+                }
+              ]
+            },
+            "description": "Google OAuth callback endpoint (for manual testing only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Social Login (Direct API)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.accessToken) {",
+                  "    pm.environment.set('accessToken', jsonData.accessToken);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.id) {",
+                  "    pm.environment.set('userId', jsonData.user.id);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.companyId) {",
+                  "    pm.environment.set('companyId', jsonData.user.companyId);",
+                  "}",
+                  "if (pm.cookies.has('refreshToken')) {",
+                  "    pm.environment.set('refreshToken', pm.cookies.get('refreshToken'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"provider\": \"{{socialProvider}}\",\n    \"token\": \"{{socialToken}}\",\n    \"email\": \"{{userEmail}}\",\n    \"name\": \"{{userName}}\",\n    \"profilePicture\": \"https://example.com/avatar.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/social-login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "social-login"
+              ]
+            },
+            "description": "Login or register with a social provider (Google, Facebook, Apple)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for social authentication"
+    },
+    {
+      "name": "4. Password Management",
+      "item": [
+        {
+          "name": "Request Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Request a password reset link to be sent to the user's email"
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"{{resetToken}}\",\n    \"password\": \"newPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password",
+                "confirm"
+              ]
+            },
+            "description": "Reset password using the token received via email"
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"currentPassword\": \"{{userPassword}}\",\n    \"newPassword\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Change password for authenticated user"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for password management (reset request, password reset, change password)"
+    },
+    {
+      "name": "5. Email Management",
+      "item": [
+        {
+          "name": "Request Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"newEmail\": \"newemail@example.com\",\n    \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/email/change",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "change"
+              ]
+            },
+            "description": "Request email change"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"{{emailChangeToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/email/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "verify"
+              ]
+            },
+            "description": "Verify email change with token"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/email/cancel-change",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "email",
+                "cancel-change"
+              ]
+            },
+            "description": "Cancel pending email change"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for email management (change, verify, cancel)"
+    },
+    {
+      "name": "6. Account Recovery",
+      "item": [
+        {
+          "name": "Get Security Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/recovery/security-questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "recovery",
+                "security-questions"
+              ]
+            },
+            "description": "Get available security questions for account recovery"
+          },
+          "response": []
+        },
+        {
+          "name": "Set Security Questions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"questions\": [\n        {\n            \"questionId\": \"1\",\n            \"answer\": \"Answer to question 1\"\n        },\n        {\n            \"questionId\": \"2\",\n            \"answer\": \"Answer to question 2\"\n        }\n    ],\n    \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recovery/set-questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "recovery",
+                "set-questions"
+              ]
+            },
+            "description": "Set security questions and answers for account recovery"
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Account Recovery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recovery/initiate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "recovery",
+                "initiate"
+              ]
+            },
+            "description": "Initiate account recovery process"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Security Answers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"{{recoveryToken}}\",\n    \"answers\": [\n        {\n            \"questionId\": \"1\",\n            \"answer\": \"Answer to question 1\"\n        },\n        {\n            \"questionId\": \"2\",\n            \"answer\": \"Answer to question 2\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recovery/verify-answers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "recovery",
+                "verify-answers"
+              ]
+            },
+            "description": "Verify security question answers during account recovery"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Account Recovery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"token\": \"{{recoveryToken}}\",\n    \"newPassword\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recovery/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "recovery",
+                "complete"
+              ]
+            },
+            "description": "Complete account recovery by setting a new password"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for account recovery using security questions"
+    },
+    {
+      "name": "7. User Profile",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profile"
+              ]
+            },
+            "description": "Get the authenticated user's profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Name\",\n    \"profile\": {\n        \"phone\": \"+919876543210\",\n        \"address\": \"123 Main St\",\n        \"city\": \"Mumbai\",\n        \"state\": \"Maharashtra\",\n        \"country\": \"India\",\n        \"postalCode\": \"400001\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profile"
+              ]
+            },
+            "description": "Update the authenticated user's profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Profile Picture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profilePicture",
+                  "type": "file",
+                  "src": "/path/to/profile-picture.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/profile/picture",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profile",
+                "picture"
+              ]
+            },
+            "description": "Upload a profile picture"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for user profile management"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Generate a CSRF token if not already set",
+          "if (!pm.environment.get('csrfToken')) {",
+          "    var uuid = require('uuid');",
+          "    pm.environment.set('csrfToken', uuid.v4());",
+          "}",
+          "",
+          "// Ensure user variables are set with valid test values",
+          "if (!pm.environment.get('userEmail')) {",
+          "    pm.environment.set('userEmail', 'business.cyperstudio@gmail.com');",
+          "}",
+          "if (!pm.environment.get('userPassword')) {",
+          "    pm.environment.set('userPassword', 'Password123!');",
+          "}",
+          "if (!pm.environment.get('userName')) {",
+          "    pm.environment.set('userName', 'Dhiraj Giri');",
+          "}",
+          "if (!pm.environment.get('userRole')) {",
+          "    pm.environment.set('userRole', 'seller');",
+          "}",
+          "",
+          "// Set Origin header to mimic request from frontend",
+          "const clientUrl = pm.environment.get('clientUrl') || 'http://localhost:3000';",
+          "pm.request.headers.add({",
+          "    key: 'Origin',",
+          "    value: clientUrl",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5005",
+      "type": "string",
+      "description": "Base URL for the Shipcrowd API server"
+    }
+  ]
+}

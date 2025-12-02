@@ -1,0 +1,738 @@
+{
+  "info": {
+    "name": "Shipcrowd Notifications",
+    "description": "Comprehensive collection for testing Shipcrowd notification services including Email, SMS, and WhatsApp notifications.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "item": [
+    {
+      "name": "1. Notification Preferences",
+      "item": [
+        {
+          "name": "Get Notification Preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            },
+            "description": "Get user's notification preferences"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Notification Preferences",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": {\n        \"orderUpdates\": true,\n        \"shipmentUpdates\": true,\n        \"accountNotifications\": true,\n        \"marketingEmails\": false\n    },\n    \"sms\": {\n        \"orderUpdates\": true,\n        \"shipmentUpdates\": true,\n        \"accountNotifications\": false,\n        \"marketingMessages\": false\n    },\n    \"whatsapp\": {\n        \"orderUpdates\": true,\n        \"shipmentUpdates\": true,\n        \"accountNotifications\": false\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            },
+            "description": "Update user's notification preferences"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing notification preferences"
+    },
+    {
+      "name": "2. Email Notifications",
+      "item": [
+        {
+          "name": "Send Test Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"subject\": \"Test Email from Shipcrowd\",\n    \"message\": \"This is a test email from Shipcrowd notification system.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/email/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "email",
+                "test"
+              ]
+            },
+            "description": "Send a test email to the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Order Confirmation Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"email\": \"{{userEmail}}\",\n    \"name\": \"{{userName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/email/order-confirmation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "email",
+                "order-confirmation"
+              ]
+            },
+            "description": "Send an order confirmation email"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Shipment Update Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"trackingNumber\": \"{{trackingNumber}}\",\n    \"status\": \"shipped\",\n    \"email\": \"{{userEmail}}\",\n    \"name\": \"{{userName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/email/shipment-update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "email",
+                "shipment-update"
+              ]
+            },
+            "description": "Send a shipment update email"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for email notifications"
+    },
+    {
+      "name": "3. SMS Notifications",
+      "item": [
+        {
+          "name": "Send Test SMS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"message\": \"This is a test SMS from Shipcrowd notification system.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/sms/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "sms",
+                "test"
+              ]
+            },
+            "description": "Send a test SMS to the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Order Confirmation SMS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"name\": \"{{userName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/sms/order-confirmation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "sms",
+                "order-confirmation"
+              ]
+            },
+            "description": "Send an order confirmation SMS"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Shipment Update SMS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"trackingNumber\": \"{{trackingNumber}}\",\n    \"status\": \"shipped\",\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"name\": \"{{userName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/sms/shipment-update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "sms",
+                "shipment-update"
+              ]
+            },
+            "description": "Send a shipment update SMS"
+          },
+          "response": []
+        },
+        {
+          "name": "Send OTP SMS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"purpose\": \"verification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/sms/otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "sms",
+                "otp"
+              ]
+            },
+            "description": "Send an OTP via SMS for verification"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for SMS notifications"
+    },
+    {
+      "name": "4. WhatsApp Notifications",
+      "item": [
+        {
+          "name": "Send WhatsApp Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.success) {",
+                  "    console.log('WhatsApp message sent successfully');",
+                  "    if (jsonData.messageId) {",
+                  "        pm.environment.set('whatsappMessageId', jsonData.messageId);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"message\": \"This is a test WhatsApp message from Shipcrowd.\",\n    \"templateName\": \"general_notification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/whatsapp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "whatsapp",
+                "send"
+              ]
+            },
+            "description": "Send a WhatsApp message using a template"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Order Confirmation WhatsApp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"name\": \"{{userName}}\",\n    \"templateName\": \"order_confirmation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/whatsapp/order-confirmation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "whatsapp",
+                "order-confirmation"
+              ]
+            },
+            "description": "Send an order confirmation via WhatsApp"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Shipment Update WhatsApp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"trackingNumber\": \"{{trackingNumber}}\",\n    \"status\": \"shipped\",\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"name\": \"{{userName}}\",\n    \"templateName\": \"shipment_update\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/whatsapp/shipment-update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "whatsapp",
+                "shipment-update"
+              ]
+            },
+            "description": "Send a shipment update via WhatsApp"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Delivery Confirmation WhatsApp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"orderId\": \"{{orderId}}\",\n    \"trackingNumber\": \"{{trackingNumber}}\",\n    \"phoneNumber\": \"{{testPhoneNumber}}\",\n    \"name\": \"{{userName}}\",\n    \"templateName\": \"delivery_confirmation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/whatsapp/delivery-confirmation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "whatsapp",
+                "delivery-confirmation"
+              ]
+            },
+            "description": "Send a delivery confirmation via WhatsApp"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for WhatsApp notifications"
+    },
+    {
+      "name": "5. Notification History",
+      "item": [
+        {
+          "name": "Get Notification History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "history"
+              ]
+            },
+            "description": "Get user's notification history"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notification Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}"
+              ]
+            },
+            "description": "Get details of a specific notification"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"read\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "description": "Mark a notification as read"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}"
+              ]
+            },
+            "description": "Delete a notification"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing notification history"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Generate a CSRF token if not already set",
+          "if (!pm.environment.get('csrfToken')) {",
+          "    var uuid = require('uuid');",
+          "    pm.environment.set('csrfToken', uuid.v4());",
+          "}",
+          "",
+          "// Ensure user variables are set with valid test values",
+          "if (!pm.environment.get('userEmail')) {",
+          "    pm.environment.set('userEmail', 'business.cyperstudio@gmail.com');",
+          "}",
+          "if (!pm.environment.get('userName')) {",
+          "    pm.environment.set('userName', 'Dhiraj Giri');",
+          "}",
+          "if (!pm.environment.get('testPhoneNumber')) {",
+          "    pm.environment.set('testPhoneNumber', '+919904392992');",
+          "}",
+          "if (!pm.environment.get('orderId')) {",
+          "    pm.environment.set('orderId', 'ORD' + Math.floor(Math.random() * 1000000));",
+          "}",
+          "if (!pm.environment.get('trackingNumber')) {",
+          "    pm.environment.set('trackingNumber', 'AWB' + Math.floor(Math.random() * 1000000));",
+          "}",
+          "",
+          "// Set Origin header to mimic request from frontend",
+          "const clientUrl = pm.environment.get('clientUrl') || 'http://localhost:3000';",
+          "pm.request.headers.add({",
+          "    key: 'Origin',",
+          "    value: clientUrl",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5005",
+      "type": "string",
+      "description": "Base URL for the Shipcrowd API server"
+    },
+    {
+      "key": "testPhoneNumber",
+      "value": "+919569691483",
+      "type": "string",
+      "description": "Phone number for testing SMS notifications"
+    }
+  ]
+}
