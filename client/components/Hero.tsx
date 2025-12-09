@@ -162,7 +162,7 @@ export default function Hero() {
                     </div>
 
                     {/* Right Visual - Interactive Dashboard */}
-                    <div className="relative hidden lg:block h-[540px] w-full -mr-[25%]">
+                    <div className="relative hidden lg:block h-[540px] w-full mr-[25%]">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}

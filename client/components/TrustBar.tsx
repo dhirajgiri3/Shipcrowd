@@ -61,164 +61,123 @@ export default function TrustBar() {
     }
 
     return (
-        <section ref={ref} className="py-20 bg-gradient-to-b from-gray-50 to-white overflow-hidden border-b border-gray-100">
+        <section ref={ref} className="py-20 md:py-24 bg-gradient-to-b from-gray-50 to-white overflow-hidden border-b border-gray-100">
             <div className="container mx-auto px-6 md:px-12 max-w-[1400px]">
-                {/* Unique Header Section */}
+                {/* Minimal Header Section */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={inView ? { opacity: 1 } : {}}
-                    transition={{ duration: 0.8 }}
-                    className="text-center max-w-[1000px] mx-auto mb-16 relative"
+                    transition={{ duration: 0.6 }}
+                    className="text-center max-w-[800px] mx-auto"
                 >
-                    {/* Floating particles */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        {[...Array(12)].map((_, i) => (
-                            <motion.div
-                                key={i}
-                                className="absolute w-1 h-1 bg-primaryBlue/20 rounded-full"
-                                initial={{
-                                    x: Math.random() * 1000,
-                                    y: Math.random() * 200,
-                                    scale: 0
-                                }}
-                                animate={{
-                                    y: [null, -100, -200],
-                                    opacity: [0, 1, 0],
-                                    scale: [0, 1, 0]
-                                }}
-                                transition={{
-                                    duration: 3 + Math.random() * 2,
-                                    repeat: Infinity,
-                                    delay: Math.random() * 2,
-                                    ease: "easeOut"
-                                }}
-                            />
-                        ))}
-                    </div>
-
-                    {/* Badge with pulse effect */}
+                    {/* Minimal Badge */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={inView ? { opacity: 1, scale: 1 } : {}}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                        className="inline-flex items-center gap-2 py-2 px-5 rounded-full bg-gradient-to-r from-primaryBlue/10 via-purple-500/10 to-primaryBlue/10 border border-primaryBlue/20 backdrop-blur-sm mb-6 relative overflow-hidden group"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={inView ? { opacity: 1, y: 0 } : {}}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                        className="inline-flex items-center gap-2.5 mb-6"
                     >
-                        <motion.div
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                            animate={{ x: ['-100%', '200%'] }}
-                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                        />
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primaryBlue opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primaryBlue"></span>
-                        </span>
-                        <span className="text-primaryBlue text-xs font-bold tracking-[0.2em] uppercase relative z-10">
-                            Our Global Logistics Network
+                        <div className="w-1.5 h-1.5 rounded-full bg-primaryBlue" />
+                        <span className="text-charcoal-600 text-sm font-medium tracking-wide">
+                            Trusted Logistics Network
                         </span>
                     </motion.div>
 
-                    {/* Main Title with Split Color Effect */}
-                    <div className="relative">
-                        <motion.h2
-                            className="text-4xl md:text-6xl font-bold mb-6 leading-[1.1]"
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={inView ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.7, delay: 0.3 }}
-                        >
-                            <span className="relative inline-block">
-                                <span className="bg-gradient-to-br from-charcoal-900 via-charcoal-700 to-charcoal-900 bg-clip-text text-transparent">
-                                    Powered by{" "}
-                                </span>
-                            </span>
-                            <br />
-                            <span className="relative inline-block">
-                                {/* Left half - gradient */}
-                                <span className="bg-gradient-to-r from-primaryBlue via-indigo-600 to-purple-600 bg-clip-text text-transparent font-extrabold">
-                                    15+ Global
-                                </span>
-                                {" "}
-                                {/* Right half - solid */}
-                                <span className="text-charcoal-900 font-extrabold relative">
-                                    Carriers
-                                    {/* Underline decoration */}
-                                    <svg
-                                        className="absolute -bottom-2 left-0 w-full h-3"
-                                        viewBox="0 0 200 12"
-                                        preserveAspectRatio="none"
-                                    >
-                                        <motion.path
-                                            d="M0 6 Q 50 0 100 6 T 200 6"
-                                            stroke="url(#carriersGradient)"
-                                            strokeWidth="3"
-                                            fill="none"
-                                            initial={{ pathLength: 0, opacity: 0 }}
-                                            animate={inView ? { pathLength: 1, opacity: 1 } : {}}
-                                            transition={{ duration: 1.5, delay: 0.8 }}
-                                        />
-                                        <defs>
-                                            <linearGradient id="carriersGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                <stop offset="0%" stopColor="#2525FF" stopOpacity="0.3" />
-                                                <stop offset="50%" stopColor="#2525FF" stopOpacity="1" />
-                                                <stop offset="100%" stopColor="#2525FF" stopOpacity="0.3" />
-                                            </linearGradient>
-                                        </defs>
-                                    </svg>
-                                </span>
-                            </span>
-                        </motion.h2>
+                    {/* Clean Title */}
+                    <motion.h2
+                        className="text-5xl md:text-7xl font-bold mb-6 leading-[1.1] tracking-tight"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={inView ? { opacity: 1, y: 0 } : {}}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                    >
+                        <span className="text-charcoal-900">
+                            Powered by
+                        </span>
+                        <br />
+                        <span className="text-primaryBlue relative inline-block">
+                            5+ Global Carriers
+                            {/* Minimal underline */}
+                            <motion.div
+                                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-primaryBlue/20"
+                                initial={{ scaleX: 0 }}
+                                animate={inView ? { scaleX: 1 } : {}}
+                                transition={{ duration: 0.6, delay: 0.5 }}
+                                style={{ transformOrigin: "left" }}
+                            />
+                        </span>
+                    </motion.h2>
 
-                        {/* Subtitle with typing effect feel */}
-                        <motion.p
-                            className="text-lg md:text-xl text-charcoal-600 max-w-2xl mx-auto leading-relaxed font-medium"
-                            initial={{ opacity: 0 }}
-                            animate={inView ? { opacity: 1 } : {}}
-                            transition={{ duration: 0.8, delay: 0.6 }}
-                        >
-                            Seamlessly integrated with the world's{" "}
-                            <span className="text-primaryBlue font-semibold">top courier partners</span>
-                            {" "}to deliver excellence across every mile
-                        </motion.p>
-                    </div>
-
-                    {/* Decorative elements */}
-                    <div className="absolute -top-8 left-1/4 w-20 h-20 bg-primaryBlue/5 rounded-full blur-2xl" />
-                    <div className="absolute -bottom-8 right-1/4 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl" />
+                    {/* Simple Subtitle */}
+                    <motion.p
+                        className="text-lg text-charcoal-500 max-w-2xl mx-auto leading-relaxed"
+                        initial={{ opacity: 0 }}
+                        animate={inView ? { opacity: 1 } : {}}
+                        transition={{ duration: 0.5, delay: 0.4 }}
+                    >
+                        Seamlessly integrated with the world's leading courier partners
+                    </motion.p>
                 </motion.div>
 
                 {/* Circular Orbital Design */}
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={inView ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ duration: 0.8, delay: 0.2 }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
                     className="relative w-full max-w-[1200px] mx-auto"
                 >
                     <svg
                         viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
                         className="w-full h-auto"
-                        style={{ minHeight: "500px" }}
+                        style={{ minHeight: "550px" }}
                     >
-                        {/* Define enhanced gradients for rings */}
+                        {/* Enhanced gradient definitions */}
                         <defs>
-                            {/* Ring gradient with vibrant purple glow */}
-                            <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0" />
-                                <stop offset="25%" stopColor="#A78BFA" stopOpacity="0.4" />
-                                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0.8" />
-                                <stop offset="75%" stopColor="#A78BFA" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+                            {/* Premium ring gradient with blue to purple transition */}
+                            <linearGradient id="ringGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#2525FF" stopOpacity="0" />
+                                <stop offset="20%" stopColor="#4F46E5" stopOpacity="0.5" />
+                                <stop offset="50%" stopColor="#2525FF" stopOpacity="1" />
+                                <stop offset="80%" stopColor="#4F46E5" stopOpacity="0.5" />
+                                <stop offset="100%" stopColor="#2525FF" stopOpacity="0" />
                             </linearGradient>
 
-                            {/* Enhanced background gradient */}
-                            <radialGradient id="bgGradient" cx="50%" cy="100%" r="80%">
-                                <stop offset="0%" stopColor="#EEF2FF" stopOpacity="0.8" />
-                                <stop offset="40%" stopColor="#E0E7FF" stopOpacity="0.5" />
-                                <stop offset="70%" stopColor="#F3F4F6" stopOpacity="0.3" />
+                            {/* Secondary ring gradient */}
+                            <linearGradient id="ringGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#6366F1" stopOpacity="0" />
+                                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="0.4" />
+                                <stop offset="50%" stopColor="#6366F1" stopOpacity="0.8" />
+                                <stop offset="75%" stopColor="#8B5CF6" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
+                            </linearGradient>
+
+                            {/* Tertiary ring gradient */}
+                            <linearGradient id="ringGradient3" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#818CF8" stopOpacity="0" />
+                                <stop offset="30%" stopColor="#A78BFA" stopOpacity="0.35" />
+                                <stop offset="50%" stopColor="#818CF8" stopOpacity="0.6" />
+                                <stop offset="70%" stopColor="#A78BFA" stopOpacity="0.35" />
+                                <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
+                            </linearGradient>
+
+                            {/* Outer ring gradient */}
+                            <linearGradient id="ringGradient4" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#A5B4FC" stopOpacity="0" />
+                                <stop offset="35%" stopColor="#C7D2FE" stopOpacity="0.3" />
+                                <stop offset="50%" stopColor="#A5B4FC" stopOpacity="0.5" />
+                                <stop offset="65%" stopColor="#C7D2FE" stopOpacity="0.3" />
+                                <stop offset="100%" stopColor="#A5B4FC" stopOpacity="0" />
+                            </linearGradient>
+
+                            {/* Refined background gradient */}
+                            <radialGradient id="bgGradient" cx="50%" cy="100%" r="75%">
+                                <stop offset="0%" stopColor="#EEF2FF" stopOpacity="0.6" />
+                                <stop offset="50%" stopColor="#E0E7FF" stopOpacity="0.3" />
                                 <stop offset="100%" stopColor="#F9FAFB" stopOpacity="0" />
                             </radialGradient>
 
-                            {/* Glow filter for rings */}
+                            {/* Subtle glow filter for rings */}
                             <filter id="ringGlow" x="-50%" y="-50%" width="200%" height="200%">
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+                                <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
                                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
                             </filter>
                         </defs>
@@ -228,25 +187,25 @@ export default function TrustBar() {
                             cx={centerX}
                             cy={centerY}
                             rx="500"
-                            ry="400"
+                            ry="380"
                             fill="url(#bgGradient)"
                         />
 
-                        {/* Orbital Rings with glow effect */}
+                        {/* Orbital Rings with enhanced gradients */}
                         {rings.map((ring, index) => (
                             <motion.path
                                 key={index}
                                 d={generateArcPath(ring.radius)}
                                 fill="none"
-                                stroke="url(#ringGradient)"
-                                strokeWidth={ring.strokeWidth * 1.2}
-                                opacity={ring.opacity + 0.1}
+                                stroke={`url(#ringGradient${index + 1})`}
+                                strokeWidth={index === 0 ? 2 : index === 1 ? 1.8 : index === 2 ? 1.5 : 1.2}
+                                strokeLinecap="round"
                                 filter="url(#ringGlow)"
-                                initial={{ pathLength: 0 }}
-                                animate={inView ? { pathLength: 1 } : {}}
+                                initial={{ pathLength: 0, opacity: 0 }}
+                                animate={inView ? { pathLength: 1, opacity: 1 } : {}}
                                 transition={{
                                     duration: 2,
-                                    delay: index * 0.2,
+                                    delay: index * 0.15,
                                     ease: "easeInOut"
                                 }}
                             />
@@ -347,70 +306,67 @@ export default function TrustBar() {
                             )
                         })}
 
-                        {/* Center ShipCrowd Logo - Enhanced */}
+                        {/* Center ShipCrowd Logo - Minimal Design */}
                         <motion.g
-                            initial={{ opacity: 0, scale: 0 }}
+                            initial={{ opacity: 0, scale: 0.8 }}
                             animate={inView ? { opacity: 1, scale: 1 } : {}}
                             transition={{
-                                duration: 0.8,
-                                delay: 1,
-                                type: "spring",
-                                stiffness: 150
+                                duration: 0.6,
+                                delay: 0.8,
+                                ease: "easeOut"
                             }}
                         >
-                            {/* Outer glow ring */}
+                            {/* Subtle outer ring */}
                             <motion.circle
                                 cx={centerX}
                                 cy={centerY}
-                                r="95"
+                                r="92"
                                 fill="none"
-                                stroke="url(#centerGlowGradient)"
-                                strokeWidth="3"
-                                opacity="0.4"
-                                animate={{ scale: [1, 1.05, 1], opacity: [0.4, 0.6, 0.4] }}
-                                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                                stroke="#2525FF"
+                                strokeWidth="1"
+                                opacity="0.15"
+                                animate={{
+                                    r: [92, 95, 92],
+                                    opacity: [0.15, 0.25, 0.15]
+                                }}
+                                transition={{
+                                    duration: 4,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
                             />
 
-                            {/* Main circle with subtle gradient */}
+                            {/* Main clean circle */}
                             <circle
                                 cx={centerX}
                                 cy={centerY}
-                                r="88"
+                                r="85"
                                 fill="white"
-                                stroke="#E0E7FF"
-                                strokeWidth="1.5"
-                                filter="url(#centerShadow)"
-                            />
-
-                            {/* Inner glassmorphism effect */}
-                            <circle
-                                cx={centerX}
-                                cy={centerY}
-                                r="78"
-                                fill="url(#centerGlassGradient)"
-                                opacity="0.8"
+                                stroke="#E5E7EB"
+                                strokeWidth="1"
                             />
 
                             {/* ShipCrowd logo */}
                             <foreignObject
-                                x={centerX - 55}
-                                y={centerY - 55}
-                                width="110"
-                                height="110"
+                                x={centerX - 50}
+                                y={centerY - 50}
+                                width="100"
+                                height="100"
                             >
                                 <div className="w-full h-full flex items-center justify-center">
                                     <motion.img
                                         src="/logos/Shipcrowd-logo.png"
                                         alt="ShipCrowd"
-                                        className="w-full h-full object-contain"
+                                        className="w-[75%] h-[75%] object-contain"
+                                        initial={{ opacity: 0.95 }}
                                         animate={{
-                                            filter: [
-                                                'drop-shadow(0 0 0px rgba(37,37,255,0))',
-                                                'drop-shadow(0 0 8px rgba(37,37,255,0.3))',
-                                                'drop-shadow(0 0 0px rgba(37,37,255,0))'
-                                            ]
+                                            opacity: [0.95, 1, 0.95]
                                         }}
-                                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                        transition={{
+                                            duration: 3,
+                                            repeat: Infinity,
+                                            ease: "easeInOut"
+                                        }}
                                     />
                                 </div>
                             </foreignObject>
