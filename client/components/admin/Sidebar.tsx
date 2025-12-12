@@ -20,7 +20,8 @@ import {
     CreditCard,
     Receipt,
     Ticket,
-    Headphones
+    Headphones,
+    Scale as ScaleIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -28,18 +29,21 @@ import { Button } from '@/components/ui/Button';
 const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { label: 'Sellers', href: '/admin/sellers', icon: Users },
+    { label: 'KYC Analytics', href: '/admin/kyc', icon: Boxes },
     { label: 'Intelligence', href: '/admin/intelligence', icon: Sparkles },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { label: 'Shipments', href: '/admin/shipments', icon: Package },
     { label: 'Warehouses', href: '/admin/warehouses', icon: Building2 },
     { label: 'Returns & NDR', href: '/admin/returns', icon: PackageX },
+    { label: 'Weight Discrepancy', href: '/admin/weight', icon: ScaleIcon },
     { label: 'Courier Partners', href: '/admin/couriers', icon: Truck },
     { label: 'Rate Cards', href: '/admin/ratecards', icon: CreditCard },
     { label: 'Financials', href: '/admin/financials', icon: Wallet },
     { label: 'Billing', href: '/admin/billing', icon: Receipt },
+    { label: 'Profit', href: '/admin/profit', icon: BarChart3 },
+    { label: 'Sales Team', href: '/admin/sales', icon: Users },
     { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
     { label: 'Support Tickets', href: '/admin/support', icon: Headphones },
-    { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Integrations', href: '/admin/integrations', icon: Plug },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];

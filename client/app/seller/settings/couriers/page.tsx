@@ -1,0 +1,264 @@
+"use client";
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import {
+    GripVertical,
+    Truck,
+    Save,
+    RotateCcw,
+    CheckCircle,
+    Star,
+    Zap,
+    Clock,
+    IndianRupee,
+    ToggleLeft,
+    ToggleRight,
+    Info
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+
+// Mock courier priorities
+const mockCouriers = [
+    { id: 'del', name: 'Delhivery', enabled: true, priority: 1, avgDelivery: '4-5 days', rate: 'Low', rating: 4.2 },
+    { id: 'xb', name: 'Xpressbees', enabled: true, priority: 2, avgDelivery: '3-4 days', rate: 'Medium', rating: 4.4 },
+    { id: 'bd', name: 'Bluedart', enabled: true, priority: 3, avgDelivery: '1-2 days', rate: 'High', rating: 4.7 },
+    { id: 'dtdc', name: 'DTDC', enabled: false, priority: 4, avgDelivery: '5-7 days', rate: 'Low', rating: 3.8 },
+    { id: 'ec', name: 'Ecom Express', enabled: true, priority: 5, avgDelivery: '4-6 days', rate: 'Medium', rating: 4.1 },
+    { id: 'ss', name: 'Shadowfax', enabled: false, priority: 6, avgDelivery: '2-3 days', rate: 'Medium', rating: 4.3 },
+];
+
+export default function CourierPriorityPage() {
+    const [couriers, setCouriers] = useState(mockCouriers);
+    const [draggedId, setDraggedId] = useState<string | null>(null);
+    const { addToast } = useToast();
+
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        setDraggedId(id);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent, id: string) => {
+        e.preventDefault();
+        if (draggedId && draggedId !== id) {
+            const newCouriers = [...couriers];
+            const draggedIndex = newCouriers.findIndex(c => c.id === draggedId);
+            const targetIndex = newCouriers.findIndex(c => c.id === id);
+
+            const [draggedItem] = newCouriers.splice(draggedIndex, 1);
+            newCouriers.splice(targetIndex, 0, draggedItem);
+
+            // Update priorities
+            newCouriers.forEach((c, i) => c.priority = i + 1);
+            setCouriers(newCouriers);
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggedId(null);
+    };
+
+    const toggleCourier = (id: string) => {
+        setCouriers(prev => prev.map(c =>
+            c.id === id ? { ...c, enabled: !c.enabled } : c
+        ));
+    };
+
+    const handleSave = () => {
+        addToast('Courier priorities saved successfully!', 'success');
+    };
+
+    const handleReset = () => {
+        setCouriers(mockCouriers);
+        addToast('Priorities reset to default', 'info');
+    };
+
+    const enabledCount = couriers.filter(c => c.enabled).length;
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <Truck className="h-6 w-6 text-[#2525FF]" />
+                        Courier Priority Settings
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Drag to reorder couriers by preference for automatic selection
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleReset}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset
+                    </Button>
+                    <Button onClick={handleSave}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                    </Button>
+                </div>
+            </div>
+
+            {/* Info Banner */}
+            <div className="bg-[#2525FF]/5 border border-[#2525FF]/20 rounded-xl p-4 flex items-start gap-3">
+                <Info className="h-5 w-5 text-[#2525FF] flex-shrink-0 mt-0.5" />
+                <div>
+                    <h3 className="font-medium text-gray-900">How Priority Works</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                        When shipping an order, enabled couriers are checked in priority order.
+                        The first courier that offers the best rate and serviceable pincode is automatically selected.
+                    </p>
+                </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Total Couriers</p>
+                                <p className="text-2xl font-bold text-gray-900">{couriers.length}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
+                                <Truck className="h-5 w-5 text-[#2525FF]" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Enabled</p>
+                                <p className="text-2xl font-bold text-emerald-600">{enabledCount}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Disabled</p>
+                                <p className="text-2xl font-bold text-gray-400">{couriers.length - enabledCount}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                <ToggleLeft className="h-5 w-5 text-gray-400" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Top Choice</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {couriers.filter(c => c.enabled).sort((a, b) => a.priority - b.priority)[0]?.name || 'None'}
+                                </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                <Star className="h-5 w-5 text-amber-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Courier List */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Courier Priority Order</CardTitle>
+                    <CardDescription>Drag and drop to reorder • Higher position = Higher priority</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {couriers.map((courier, index) => (
+                        <div
+                            key={courier.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, courier.id)}
+                            onDragOver={(e) => handleDragOver(e, courier.id)}
+                            onDragEnd={handleDragEnd}
+                            className={cn(
+                                "p-4 rounded-xl border transition-all cursor-grab active:cursor-grabbing",
+                                draggedId === courier.id
+                                    ? "border-[#2525FF] bg-[#2525FF]/5 shadow-lg scale-[1.02]"
+                                    : courier.enabled
+                                        ? "border-gray-200 bg-white hover:border-gray-300"
+                                        : "border-gray-100 bg-gray-50/50 opacity-60"
+                            )}
+                        >
+                            <div className="flex items-center gap-4">
+                                {/* Drag Handle */}
+                                <div className="flex items-center gap-2">
+                                    <GripVertical className="h-5 w-5 text-gray-300" />
+                                    <div className={cn(
+                                        "h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold",
+                                        index === 0 && courier.enabled
+                                            ? "bg-amber-100 text-amber-700"
+                                            : "bg-gray-100 text-gray-500"
+                                    )}>
+                                        {index + 1}
+                                    </div>
+                                </div>
+
+                                {/* Courier Info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold text-gray-900">{courier.name}</h4>
+                                        {index === 0 && courier.enabled && (
+                                            <Badge variant="warning" className="text-xs">
+                                                <Star className="h-3 w-3 mr-1" />
+                                                Top Choice
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            {courier.avgDelivery}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <IndianRupee className="h-3.5 w-3.5" />
+                                            {courier.rate} Rate
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Star className="h-3.5 w-3.5 text-amber-500" />
+                                            {courier.rating}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Toggle */}
+                                <button
+                                    onClick={() => toggleCourier(courier.id)}
+                                    className="flex items-center gap-2"
+                                >
+                                    {courier.enabled ? (
+                                        <>
+                                            <span className="text-sm text-emerald-600 font-medium">Enabled</span>
+                                            <ToggleRight className="h-6 w-6 text-emerald-500" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-sm text-gray-400 font-medium">Disabled</span>
+                                            <ToggleLeft className="h-6 w-6 text-gray-300" />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

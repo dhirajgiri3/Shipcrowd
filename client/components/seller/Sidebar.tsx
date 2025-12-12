@@ -20,7 +20,8 @@ import {
     PackageCheck,
     Shield,
     FileText,
-    Scale as ScaleIcon
+    Scale as ScaleIcon,
+    Banknote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -34,6 +35,7 @@ const navItems = [
     { label: 'Track & Trace', href: '/seller/tracking', icon: Search },
     { label: 'NDR Management', href: '/seller/ndr', icon: PackageX },
     { label: 'Weight Discrepancy', href: '/seller/weight', icon: ScaleIcon },
+    { label: 'COD Remittance', href: '/seller/cod', icon: Banknote },
     { label: 'Rate Calculator', href: '/seller/rates', icon: Calculator },
     { label: 'Wallet & Billing', href: '/seller/financials', icon: Wallet },
     { label: 'Integrations', href: '/seller/integrations', icon: Plug },

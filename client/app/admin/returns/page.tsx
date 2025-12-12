@@ -1,133 +1,315 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { PackageX, AlertTriangle, Phone, RefreshCcw, XCircle } from 'lucide-react';
+import {
+    PackageX,
+    Search,
+    Download,
+    RefreshCw,
+    RotateCcw,
+    AlertTriangle,
+    CheckCircle,
+    Clock,
+    Package,
+    TrendingDown,
+    Filter,
+    Eye
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+import { formatCurrency } from '@/lib/utils';
 
-const mockNDRData = [
-    { awb: 'AWB234567890', customer: 'Priya Sharma', reason: 'Customer Unavailable', attempts: 2, lastAttempt: '2 hours ago', phone: '+91 98765 43210' },
-    { awb: 'AWB345678901', customer: 'Rahul Verma', reason: 'Address Incomplete', attempts: 1, lastAttempt: '5 hours ago', phone: '+91 87654 32109' },
-    { awb: 'AWB456789012', customer: 'Sneha Patel', reason: 'Refused to Accept', attempts: 3, lastAttempt: '1 day ago', phone: '+91 76543 21098' },
-    { awb: 'AWB567890123', customer: 'Amit Kumar', reason: 'Out of Delivery Area', attempts: 1, lastAttempt: '3 hours ago', phone: '+91 65432 10987' },
+// Mock NDR/Returns data
+const mockNDRs = [
+    {
+        id: 'NDR-001',
+        awbNumber: 'DL987654321IN',
+        sellerId: 'SEL-123',
+        sellerName: 'Fashion Hub India',
+        customer: 'Rahul Sharma',
+        city: 'Delhi',
+        reason: 'Customer not available',
+        attempts: 2,
+        status: 'action_pending',
+        courier: 'Delhivery',
+        createdAt: '2024-12-10',
+        amount: 1299,
+    },
+    {
+        id: 'NDR-002',
+        awbNumber: 'XB123456789IN',
+        sellerId: 'SEL-456',
+        sellerName: 'ElectroMart',
+        customer: 'Priya Singh',
+        city: 'Bangalore',
+        reason: 'Address incomplete',
+        attempts: 1,
+        status: 'reattempt',
+        courier: 'Xpressbees',
+        createdAt: '2024-12-11',
+        amount: 2499,
+    },
+    {
+        id: 'NDR-003',
+        awbNumber: 'BD555666777IN',
+        sellerId: 'SEL-789',
+        sellerName: 'Home Decor Plus',
+        customer: 'Amit Kumar',
+        city: 'Mumbai',
+        reason: 'Customer refused',
+        attempts: 1,
+        status: 'rto',
+        courier: 'Bluedart',
+        createdAt: '2024-12-09',
+        amount: 3599,
+    },
+    {
+        id: 'NDR-004',
+        awbNumber: 'DT999888777IN',
+        sellerId: 'SEL-123',
+        sellerName: 'Fashion Hub India',
+        customer: 'Sneha Patel',
+        city: 'Ahmedabad',
+        reason: 'Wrong phone number',
+        attempts: 2,
+        status: 'action_pending',
+        courier: 'DTDC',
+        createdAt: '2024-12-11',
+        amount: 899,
+    },
+    {
+        id: 'NDR-005',
+        awbNumber: 'EC111222333IN',
+        sellerId: 'SEL-456',
+        sellerName: 'ElectroMart',
+        customer: 'Vikram Reddy',
+        city: 'Hyderabad',
+        reason: 'Customer requested reschedule',
+        attempts: 1,
+        status: 'delivered',
+        courier: 'Delhivery',
+        createdAt: '2024-12-08',
+        amount: 1899,
+    },
 ];
 
-export default function ReturnsPage() {
+const statusFilters = [
+    { id: 'all', label: 'All' },
+    { id: 'action_pending', label: 'Action Pending' },
+    { id: 'reattempt', label: 'Reattempt' },
+    { id: 'rto', label: 'RTO' },
+    { id: 'delivered', label: 'Delivered' },
+];
+
+export default function AdminReturnsPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState('all');
+    const [selectedCourier, setSelectedCourier] = useState('All Couriers');
+    const { addToast } = useToast();
+
+    const filteredNDRs = mockNDRs.filter(ndr => {
+        const matchesSearch = ndr.awbNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            ndr.sellerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            ndr.customer.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = selectedStatus === 'all' || ndr.status === selectedStatus;
+        const matchesCourier = selectedCourier === 'All Couriers' || ndr.courier === selectedCourier;
+        return matchesSearch && matchesStatus && matchesCourier;
+    });
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'action_pending':
+                return <Badge variant="warning" className="gap-1"><AlertTriangle className="h-3 w-3" />Action Pending</Badge>;
+            case 'reattempt':
+                return <Badge variant="info" className="gap-1"><RefreshCw className="h-3 w-3" />Reattempt</Badge>;
+            case 'rto':
+                return <Badge variant="destructive" className="gap-1"><RotateCcw className="h-3 w-3" />RTO</Badge>;
+            case 'delivered':
+                return <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" />Delivered</Badge>;
+            default:
+                return <Badge variant="neutral">{status}</Badge>;
+        }
+    };
+
+    const actionPending = mockNDRs.filter(n => n.status === 'action_pending').length;
+    const rtoCount = mockNDRs.filter(n => n.status === 'rto').length;
+    const rtoValue = mockNDRs.filter(n => n.status === 'rto').reduce((sum, n) => sum + n.amount, 0);
+    const couriers = ['All Couriers', ...new Set(mockNDRs.map(n => n.courier))];
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <PackageX className="h-6 w-6 text-amber-600" />
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <PackageX className="h-6 w-6 text-[#2525FF]" />
                         Returns & NDR Management
-                    </h2>
-                    <p className="text-gray-500 text-sm mt-1">Handle non-delivery reports and reverse logistics</p>
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Monitor and manage non-delivery reports across all sellers
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => addToast('Syncing NDRs...', 'info')}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sync
+                    </Button>
+                    <Button variant="outline" onClick={() => addToast('Exporting report...', 'info')}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                    </Button>
                 </div>
             </div>
 
-            {/* 1. NDR Stats */}
-            <div className="grid gap-4 md:grid-cols-4">
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Pending NDRs</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">24</p>
+                                <p className="text-sm text-gray-500">Total NDRs</p>
+                                <p className="text-2xl font-bold text-gray-900">{mockNDRs.length}</p>
                             </div>
-                            <div className="p-3 bg-amber-50 rounded-lg">
-                                <AlertTriangle className="h-6 w-6 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
+                                <PackageX className="h-5 w-5 text-[#2525FF]" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">RTO in Progress</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">12</p>
+                                <p className="text-sm text-gray-500">Action Pending</p>
+                                <p className="text-2xl font-bold text-amber-600">{actionPending}</p>
                             </div>
-                            <div className="p-3 bg-rose-50 rounded-lg">
-                                <RefreshCcw className="h-6 w-6 text-rose-600" />
+                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                <Clock className="h-5 w-5 text-amber-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Delivered After NDR</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">156</p>
+                                <p className="text-sm text-gray-500">RTO Count</p>
+                                <p className="text-2xl font-bold text-rose-600">{rtoCount}</p>
                             </div>
-                            <div className="p-3 bg-emerald-50 rounded-lg">
-                                <PackageX className="h-6 w-6 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                                <RotateCcw className="h-5 w-5 text-rose-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">RTO Rate</p>
-                                <p className="text-2xl font-bold text-gray-900 mt-1">4.2%</p>
+                                <p className="text-sm text-gray-500">RTO Value</p>
+                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(rtoValue)}</p>
                             </div>
-                            <div className="p-3 bg-gray-50 rounded-lg">
-                                <XCircle className="h-6 w-6 text-gray-600" />
+                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                <TrendingDown className="h-5 w-5 text-purple-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* 2. NDR Action Table */}
+            {/* Filters */}
+            <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex-1">
+                    <Input
+                        placeholder="Search by AWB, Seller, or Customer..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        icon={<Search className="h-4 w-4" />}
+                    />
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
+                    {statusFilters.map((filter) => (
+                        <button
+                            key={filter.id}
+                            onClick={() => setSelectedStatus(filter.id)}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
+                                selectedStatus === filter.id
+                                    ? "bg-[#2525FF] text-white"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            )}
+                        >
+                            {filter.label}
+                        </button>
+                    ))}
+                </div>
+                <select
+                    value={selectedCourier}
+                    onChange={(e) => setSelectedCourier(e.target.value)}
+                    className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                >
+                    {couriers.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* NDR Table */}
             <Card>
-                <CardHeader>
-                    <CardTitle>Pending NDR Actions</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 font-medium">AWB</th>
-                                    <th className="px-6 py-3 font-medium">Customer</th>
-                                    <th className="px-6 py-3 font-medium">NDR Reason</th>
-                                    <th className="px-6 py-3 font-medium">Attempts</th>
-                                    <th className="px-6 py-3 font-medium">Last Attempt</th>
-                                    <th className="px-6 py-3 font-medium text-right">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">AWB</th>
+                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
+                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Customer</th>
+                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Reason</th>
+                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Attempts</th>
+                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Courier</th>
+                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {mockNDRData.map((ndr, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 font-mono text-xs text-gray-600">{ndr.awb}</td>
-                                        <td className="px-6 py-4">
-                                            <div>
-                                                <p className="font-medium text-gray-900">{ndr.customer}</p>
-                                                <p className="text-xs text-gray-500">{ndr.phone}</p>
-                                            </div>
+                                {filteredNDRs.map((ndr) => (
+                                    <tr key={ndr.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="p-4">
+                                            <code className="font-mono text-sm font-semibold text-gray-900">{ndr.awbNumber}</code>
+                                            <p className="text-xs text-gray-500 mt-1">{ndr.createdAt}</p>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <Badge variant={
-                                                ndr.reason === 'Refused to Accept' ? 'warning' : 'info'
-                                            }>
-                                                {ndr.reason}
-                                            </Badge>
+                                        <td className="p-4">
+                                            <p className="text-sm font-medium text-gray-900">{ndr.sellerName}</p>
+                                            <p className="text-xs text-gray-500">{ndr.sellerId}</p>
                                         </td>
-                                        <td className="px-6 py-4 font-medium">{ndr.attempts}/3</td>
-                                        <td className="px-6 py-4 text-gray-500">{ndr.lastAttempt}</td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex gap-2 justify-end">
-                                                <Button size="sm" variant="outline" className="text-xs h-8">
-                                                    <RefreshCcw className="h-3 w-3 mr-1" /> Reattempt
-                                                </Button>
-                                                <Button size="sm" variant="outline" className="text-xs h-8">
-                                                    <Phone className="h-3 w-3 mr-1" /> Call
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="text-xs h-8 text-rose-600">
-                                                    <XCircle className="h-3 w-3 mr-1" /> RTO
+                                        <td className="p-4">
+                                            <p className="text-sm text-gray-900">{ndr.customer}</p>
+                                            <p className="text-xs text-gray-500">{ndr.city}</p>
+                                        </td>
+                                        <td className="p-4">
+                                            <p className="text-sm text-gray-900 max-w-[200px] truncate">{ndr.reason}</p>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <span className="text-sm font-medium text-gray-900">{ndr.attempts}/3</span>
+                                        </td>
+                                        <td className="p-4">
+                                            <p className="text-sm text-gray-900">{ndr.courier}</p>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            {getStatusBadge(ndr.status)}
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex justify-end">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => addToast('Opening details...', 'info')}
+                                                >
+                                                    <Eye className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </td>
@@ -138,6 +320,17 @@ export default function ReturnsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Empty State */}
+            {filteredNDRs.length === 0 && (
+                <Card>
+                    <CardContent className="py-12 text-center">
+                        <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900">No NDRs found</h3>
+                        <p className="text-gray-500 mt-1">All shipments are on track!</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
