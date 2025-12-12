@@ -5,16 +5,29 @@ import { MOCK_SHIPMENTS } from '@/lib/mockData';
 import { DataTable } from '@/components/ui/DataTable';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { Search, Eye, FileText, XCircle } from 'lucide-react';
+import {
+    Search,
+    Eye,
+    FileText,
+    Package,
+    Truck,
+    CheckCircle,
+    Clock,
+    AlertTriangle,
+    RotateCcw,
+    XCircle,
+    PackageX
+} from 'lucide-react';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { Badge } from '@/components/ui/Badge';
 import { getCourierLogo } from '@/lib/constants';
 import { FilterBar } from '@/components/admin/FilterBar';
 import { Button } from '@/components/ui/Button';
 import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Shipment } from '@/types/admin';
 import { useToast } from '@/components/ui/Toast';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 
 export default function ShipmentsPage() {
     const [search, setSearch] = useState('');
@@ -180,6 +193,21 @@ export default function ShipmentsPage() {
         }
     ];
 
+    // Status grid configuration
+    const statusGrid = [
+        { id: 'all', label: 'Total', icon: Package, color: 'bg-[#2525FF]/10', textColor: 'text-[#2525FF]' },
+        { id: 'pending', label: 'Pending', icon: Clock, color: 'bg-amber-100', textColor: 'text-amber-600' },
+        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'bg-cyan-100', textColor: 'text-cyan-600' },
+        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'bg-emerald-100', textColor: 'text-emerald-600' },
+        { id: 'ndr', label: 'NDR', icon: AlertTriangle, color: 'bg-orange-100', textColor: 'text-orange-600' },
+        { id: 'rto', label: 'RTO', icon: RotateCcw, color: 'bg-rose-100', textColor: 'text-rose-600' },
+    ];
+
+    const getStatusCount = (status: string) => {
+        if (status === 'all') return MOCK_SHIPMENTS.length;
+        return MOCK_SHIPMENTS.filter(s => s.status === status).length;
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Shipment Detail Modal */}
@@ -189,11 +217,51 @@ export default function ShipmentsPage() {
                 shipment={selectedShipment}
             />
 
+            {/* Header with Date Range Picker */}
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900">Shipments</h2>
-                <Button onClick={() => addToast('Bulk shipment feature coming soon!', 'info')}>
-                    + Create Bulk Shipment
-                </Button>
+                <div className="flex items-center gap-3">
+                    <DateRangePicker />
+                    <Button onClick={() => addToast('Bulk shipment feature coming soon!', 'info')}>
+                        + Create Bulk Shipment
+                    </Button>
+                </div>
+            </div>
+
+            {/* Status Grid Navigation */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {statusGrid.map((status) => {
+                    const count = getStatusCount(status.id);
+                    const isActive = filters.status === status.id;
+                    return (
+                        <button
+                            key={status.id}
+                            onClick={() => setFilters(prev => ({ ...prev, status: status.id }))}
+                            className={cn(
+                                "relative p-4 rounded-xl border transition-all",
+                                isActive
+                                    ? "border-[#2525FF] ring-2 ring-[#2525FF]/20 bg-white"
+                                    : "border-gray-200 bg-white hover:border-gray-300"
+                            )}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "flex items-center justify-center h-10 w-10 rounded-lg",
+                                    status.color
+                                )}>
+                                    <status.icon className={cn("h-5 w-5", status.textColor)} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                                    <p className="text-xs text-gray-500">{status.label}</p>
+                                </div>
+                            </div>
+                            {isActive && (
+                                <div className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2525FF]" />
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             <Card>

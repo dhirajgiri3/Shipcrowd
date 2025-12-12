@@ -56,6 +56,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, cn } from '@/lib/utils';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 
 // --- MOCK DATA ---
 
@@ -317,6 +318,7 @@ export default function AdminDashboardPage() {
                         </span>
                         <span className="text-sm text-emerald-700 font-semibold">Systems Operational</span>
                     </div>
+                    <DateRangePicker />
                     <Button variant="outline" onClick={() => addToast('Refreshing data...', 'info')} className="hover:bg-gray-50">
                         <RefreshCcw className="h-4 w-4 mr-2" />
                         Refresh

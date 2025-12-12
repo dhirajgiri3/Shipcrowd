@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, cn } from '@/lib/utils';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 
 // Mock data
 const sellerData = {
@@ -128,6 +129,7 @@ export default function SellerDashboardPage() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-3">
+                    <DateRangePicker />
                     <Button variant="outline" className="hidden sm:flex" onClick={() => addToast('Syncing stores...', 'info')}>
                         <RefreshCcw className="h-4 w-4 mr-2" />
                         Sync Stores
