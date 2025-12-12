@@ -1,7 +1,7 @@
 import passport from 'passport';
 import { Express } from 'express';
-import { configureGoogleStrategy } from '../services/oauth.service';
-import logger from '../utils/logger';
+import logger from '../shared/logger/winston.logger';
+import { configureGoogleStrategy } from '../core/application/services/auth/oauth.service';
 
 /**
  * Configure Passport authentication strategies

@@ -1,115 +1,144 @@
-import express from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import connectDB from './config/database';
-import logger, { stream, addCorrelationId, getRequestLogger } from './utils/logger';
-import { auditLogMiddleware } from './middleware';
-import { configurePassport } from './config/passport';
-import { initializeScheduler } from './config/scheduler';
-import { globalRateLimiter } from './middleware/rateLimiter';
-import { securityHeaders } from './middleware/securityHeaders';
-import routes from './routes';
+import morgan from 'morgan';
 
-// Load environment variables
+// Load environment variables before other imports
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+// Import configurations
+import connectDB from './config/database';
+import { configurePassport } from './config/passport';
+
+// Import routes
+import v1Routes from './presentation/http/routes/v1';
+
+// Import middleware
+import { securityHeaders } from './presentation/http/middleware/securityHeaders';
+import { globalRateLimiter } from './presentation/http/middleware/rateLimiter';
+
+// Import shared utilities
+import logger from './shared/logger/winston.logger';
 
 // Initialize Express app
-const app = express();
+const app: Express = express();
 const PORT = process.env.PORT || 5005;
 
-// Configure Passport
-configurePassport(app);
+// Trust proxy (for rate limiters behind reverse proxy)
+app.set('trust proxy', 1);
+
+// Apply global rate limiter
+app.use(globalRateLimiter);
 
 // Apply security headers
 app.use(securityHeaders);
 
-// Configure CORS with specific options
-const corsOptions: cors.CorsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? [process.env.CLIENT_URL || 'http://localhost:3000']
-    : true, // In non-production, allow all origins for easier testing
-  credentials: true, // Allow cookies to be sent with requests
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token', 'Origin', 'Accept'],
+// CORS configuration
+const corsOptions = {
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With'],
 };
+app.use(cors(corsOptions));
 
-app.use(cors(corsOptions)); // Enable CORS with options
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
-app.use(cookieParser()); // Parse cookies
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Add correlation ID to requests
-app.use(addCorrelationId);
+// Cookie parser
+app.use(cookieParser());
 
-// Add request logger to each request
-app.use((req, _res, next) => {
-  req.requestLogger = getRequestLogger(req);
-  next();
-});
-
-// HTTP request logging (skip in test environment)
+// HTTP request logging
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined', { stream }));
+    app.use(morgan('combined', {
+        stream: {
+            write: (message: string) => logger.info(message.trim()),
+        },
+    }));
 }
 
-// Apply global rate limiting
-app.use(globalRateLimiter);
+// Configure Passport for OAuth
+configurePassport(app);
 
-// Audit logging (only for authenticated routes)
-// This will be applied to routes that have authentication middleware
-app.use('/api', (req, res, next) => auditLogMiddleware(req as any, res, next));
+// Health check endpoint
+app.get('/health', (req: Request, res: Response) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+    });
+});
 
-// Basic routes
-app.get('/', (req, res) => {
-  req.requestLogger?.info('Home route accessed');
-  res.json({ message: 'Welcome to Shipcrowd API' });
+// Root endpoint
+app.get('/', (req: Request, res: Response) => {
+    res.json({
+        message: 'Welcome to Shipcrowd API',
+        version: '1.0.0',
+        documentation: '/api/v1/docs',
+    });
 });
 
 // API routes
-app.use('/api', routes);
+app.use('/api/v1', v1Routes);
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+// 404 handler
+app.use((req: Request, res: Response) => {
+    res.status(404).json({
+        message: 'Resource not found',
+        path: req.path,
+    });
 });
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  req.requestLogger?.error('Unhandled error', { error: err.message, stack: err.stack });
+// Global error handler
+app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+    logger.error('Unhandled error:', {
+        message: error.message,
+        stack: error.stack,
+        path: req.path,
+        method: req.method,
+    });
 
-  res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal Server Error',
-      ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
-    },
-  });
+    res.status(500).json({
+        message: process.env.NODE_ENV === 'production'
+            ? 'Internal server error'
+            : error.message,
+    });
 });
-
-// Initialize scheduler for background jobs
-initializeScheduler();
 
 // Start server
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
+const startServer = async (): Promise<void> => {
+    try {
+        // Connect to MongoDB
+        await connectDB();
+        logger.info('Database connected successfully');
+
+        // Start listening
+        app.listen(PORT, () => {
+            logger.info(`Server running on port ${PORT}`);
+            logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+            logger.info(`API available at http://localhost:${PORT}/api/v1`);
+        });
+    } catch (error) {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error: Error) => {
+    logger.error('Uncaught Exception:', error);
+    process.exit(1);
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on('unhandledRejection', (reason: any) => {
+    logger.error('Unhandled Rejection:', reason);
+    process.exit(1);
 });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error);
-  // Give the logger time to log the error before exiting
-  setTimeout(() => {
-    process.exit(1);
-  }, 1000);
-});
+// Start the server
+startServer();
 
 export default app;

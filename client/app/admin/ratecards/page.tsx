@@ -1,0 +1,404 @@
+"use client";
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
+import {
+    CreditCard,
+    Plus,
+    Search,
+    Filter,
+    MoreVertical,
+    Edit2,
+    Trash2,
+    Copy,
+    Eye,
+    Truck,
+    Package,
+    TrendingUp,
+    CheckCircle,
+    XCircle,
+    ChevronRight
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+import Link from 'next/link';
+
+// Mock rate cards data
+const mockRateCards = [
+    {
+        id: 'RC-001',
+        name: 'Delhivery Surface - Lite',
+        courier: 'Delhivery',
+        courierLogo: '/logos/couriers/delhivery.png',
+        service: 'Surface',
+        category: 'lite',
+        shipmentType: 'forward',
+        status: 'active',
+        sellersAssigned: 45,
+        baseRate: 35,
+        additionalRate: 12,
+        zones: { zoneA: 35, zoneB: 42, zoneC: 52, zoneD: 65, zoneE: 85 },
+        gst: 18,
+        codPercent: 2.5,
+        codMin: 25,
+        createdAt: '2024-11-15',
+    },
+    {
+        id: 'RC-002',
+        name: 'Xpressbees Air - Pro',
+        courier: 'Xpressbees',
+        courierLogo: '/logos/couriers/xpressbees.png',
+        service: 'Air',
+        category: 'pro',
+        shipmentType: 'forward',
+        status: 'active',
+        sellersAssigned: 28,
+        baseRate: 55,
+        additionalRate: 18,
+        zones: { zoneA: 55, zoneB: 65, zoneC: 78, zoneD: 92, zoneE: 120 },
+        gst: 18,
+        codPercent: 2.0,
+        codMin: 30,
+        createdAt: '2024-11-20',
+    },
+    {
+        id: 'RC-003',
+        name: 'DTDC Surface - Basic',
+        courier: 'DTDC',
+        courierLogo: '/logos/couriers/dtdc.png',
+        service: 'Surface',
+        category: 'basic',
+        shipmentType: 'forward',
+        status: 'inactive',
+        sellersAssigned: 12,
+        baseRate: 32,
+        additionalRate: 10,
+        zones: { zoneA: 32, zoneB: 38, zoneC: 48, zoneD: 58, zoneE: 75 },
+        gst: 18,
+        codPercent: 2.5,
+        codMin: 20,
+        createdAt: '2024-10-05',
+    },
+    {
+        id: 'RC-004',
+        name: 'Bluedart Express - Enterprise',
+        courier: 'Bluedart',
+        courierLogo: '/logos/couriers/bluedart.png',
+        service: 'Express',
+        category: 'enterprise',
+        shipmentType: 'forward',
+        status: 'active',
+        sellersAssigned: 8,
+        baseRate: 85,
+        additionalRate: 28,
+        zones: { zoneA: 85, zoneB: 95, zoneC: 110, zoneD: 125, zoneE: 150 },
+        gst: 18,
+        codPercent: 1.5,
+        codMin: 40,
+        createdAt: '2024-12-01',
+    },
+    {
+        id: 'RC-005',
+        name: 'Delhivery Surface - Reverse',
+        courier: 'Delhivery',
+        courierLogo: '/logos/couriers/delhivery.png',
+        service: 'Surface',
+        category: 'basic',
+        shipmentType: 'reverse',
+        status: 'active',
+        sellersAssigned: 32,
+        baseRate: 42,
+        additionalRate: 15,
+        zones: { zoneA: 42, zoneB: 50, zoneC: 62, zoneD: 75, zoneE: 95 },
+        gst: 18,
+        codPercent: 0,
+        codMin: 0,
+        createdAt: '2024-11-25',
+    },
+];
+
+const categories = ['all', 'lite', 'basic', 'advanced', 'pro', 'enterprise'];
+const couriers = ['All Couriers', 'Delhivery', 'Xpressbees', 'DTDC', 'Bluedart', 'Ecom Express'];
+
+export default function RateCardsPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedCourier, setSelectedCourier] = useState('All Couriers');
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
+    const { addToast } = useToast();
+
+    const filteredRateCards = mockRateCards.filter(card => {
+        const matchesSearch = card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            card.courier.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory === 'all' || card.category === selectedCategory;
+        const matchesCourier = selectedCourier === 'All Couriers' || card.courier === selectedCourier;
+        const matchesStatus = selectedStatus === 'all' || card.status === selectedStatus;
+        return matchesSearch && matchesCategory && matchesCourier && matchesStatus;
+    });
+
+    const getCategoryColor = (category: string) => {
+        const colors: Record<string, string> = {
+            lite: 'bg-gray-100 text-gray-700',
+            basic: 'bg-blue-100 text-blue-700',
+            advanced: 'bg-purple-100 text-purple-700',
+            pro: 'bg-amber-100 text-amber-700',
+            enterprise: 'bg-emerald-100 text-emerald-700',
+        };
+        return colors[category] || 'bg-gray-100 text-gray-700';
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <CreditCard className="h-6 w-6 text-[#2525FF]" />
+                        Rate Cards
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Manage pricing plans for courier services
+                    </p>
+                </div>
+                <Link href="/admin/ratecards/create">
+                    <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Rate Card
+                    </Button>
+                </Link>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Total Rate Cards</p>
+                                <p className="text-2xl font-bold text-gray-900">{mockRateCards.length}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
+                                <CreditCard className="h-5 w-5 text-[#2525FF]" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Active</p>
+                                <p className="text-2xl font-bold text-emerald-600">
+                                    {mockRateCards.filter(c => c.status === 'active').length}
+                                </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Sellers Using</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {mockRateCards.reduce((sum, c) => sum + c.sellersAssigned, 0)}
+                                </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                <TrendingUp className="h-5 w-5 text-purple-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Couriers</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {new Set(mockRateCards.map(c => c.courier)).size}
+                                </p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                <Truck className="h-5 w-5 text-amber-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filters */}
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        {/* Search */}
+                        <div className="flex-1">
+                            <Input
+                                placeholder="Search rate cards..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                icon={<Search className="h-4 w-4" />}
+                            />
+                        </div>
+
+                        {/* Category Filter */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
+                            {categories.map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={cn(
+                                        "px-3 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-all capitalize",
+                                        selectedCategory === cat
+                                            ? "bg-[#2525FF] text-white"
+                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    )}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Courier Filter */}
+                        <select
+                            value={selectedCourier}
+                            onChange={(e) => setSelectedCourier(e.target.value)}
+                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                        >
+                            {couriers.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+
+                        {/* Status Filter */}
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value as any)}
+                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Rate Cards Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredRateCards.map((card) => (
+                    <Card
+                        key={card.id}
+                        className="hover:shadow-lg transition-all cursor-pointer group"
+                        onClick={() => addToast(`Opening ${card.name}...`, 'info')}
+                    >
+                        <CardContent className="p-5">
+                            <div className="space-y-4">
+                                {/* Header */}
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600">
+                                            {card.courier.slice(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900 group-hover:text-[#2525FF] transition-colors">
+                                                {card.name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Badge className={cn("text-xs capitalize", getCategoryColor(card.category))}>
+                                                    {card.category}
+                                                </Badge>
+                                                <Badge variant={card.shipmentType === 'forward' ? 'info' : 'warning'} className="text-xs capitalize">
+                                                    {card.shipmentType}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Badge variant={card.status === 'active' ? 'success' : 'neutral'}>
+                                        {card.status}
+                                    </Badge>
+                                </div>
+
+                                {/* Zone Pricing */}
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                    <p className="text-xs font-medium text-gray-500 mb-2">Zone Pricing (₹ per 500g)</p>
+                                    <div className="grid grid-cols-5 gap-2 text-center">
+                                        {Object.entries(card.zones).map(([zone, price]) => (
+                                            <div key={zone}>
+                                                <p className="text-xs text-gray-400 uppercase">{zone.replace('zone', '')}</p>
+                                                <p className="text-sm font-semibold text-gray-900">₹{price}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Additional Info */}
+                                <div className="grid grid-cols-3 gap-3 text-sm">
+                                    <div>
+                                        <p className="text-xs text-gray-400">Add. Weight</p>
+                                        <p className="font-medium text-gray-900">₹{card.additionalRate}/500g</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400">COD</p>
+                                        <p className="font-medium text-gray-900">{card.codPercent}% / ₹{card.codMin}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400">GST</p>
+                                        <p className="font-medium text-gray-900">{card.gst}%</p>
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                            <Package className="h-3.5 w-3.5" />
+                                            {card.sellersAssigned} sellers
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <Button variant="ghost" size="sm" onClick={(e) => {
+                                            e.stopPropagation();
+                                            addToast('Rate card duplicated!', 'success');
+                                        }}>
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" onClick={(e) => {
+                                            e.stopPropagation();
+                                            addToast('Opening editor...', 'info');
+                                        }}>
+                                            <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* Empty State */}
+            {filteredRateCards.length === 0 && (
+                <Card>
+                    <CardContent className="py-12 text-center">
+                        <CreditCard className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900">No rate cards found</h3>
+                        <p className="text-gray-500 mt-1">Try adjusting your filters or create a new rate card</p>
+                        <Link href="/admin/ratecards/create">
+                            <Button className="mt-4">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Rate Card
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+}

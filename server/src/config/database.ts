@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import logger from "../utils/logger";
+import logger from "../shared/logger/winston.logger";
 
 dotenv.config();
 
@@ -28,7 +28,7 @@ const connectDB = async (): Promise<void> => {
     mongoose.connection.on("disconnected", () => {
       logger.info("MongoDB disconnected");
     });
-  
+
 
     // Handle application termination
     process.on("SIGINT", async () => {

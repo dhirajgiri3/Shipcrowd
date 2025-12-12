@@ -1,13 +1,14 @@
-import Navigation from "@/components/Navigation";
-import Hero from "@/components/Hero";
-import TrustBar from "@/components/TrustBar";
-import ProblemSection from "@/components/ProblemSection";
-import AIShowcase from "@/components/AIShowcase";
-import FeatureEcosystem from "@/components/FeatureEcosystem";
-import HowItWorks from "@/components/HowItWorks";
-import SocialProof from "@/components/SocialProof";
-import Pricing from "@/components/Pricing";
-import Footer from "@/components/Footer";
+import Navigation from "@/src/components/shared/Navigation";
+import Hero from "@/src/components/features/landing/Hero";
+import TrustBar from "@/src/components/features/landing/TrustBar";
+import ProblemSection from "@/src/components/features/landing/ProblemSection";
+import AIShowcase from "@/src/components/features/landing/AIShowcase";
+import FeatureEcosystem from "@/src/components/features/landing/FeatureEcosystem";
+import HowItWorks from "@/src/components/features/landing/HowItWorks";
+import SocialProof from "@/src/components/features/landing/SocialProof";
+import Pricing from "@/src/components/features/landing/Pricing";
+import Footer from "@/src/components/shared/Footer";
+
 
 export default function Home() {
   return (
