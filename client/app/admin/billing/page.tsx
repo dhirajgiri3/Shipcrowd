@@ -149,11 +149,11 @@ export default function BillingPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Receipt className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Receipt className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Billing & Recharges
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Manage seller recharges and manual billing entries
                     </p>
                 </div>
@@ -175,24 +175,11 @@ export default function BillingPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Recharges (Today)</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalRecharges)}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Recharges (Today)</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalRecharges)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <IndianRupee className="h-5 w-5 text-emerald-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Pending</p>
-                                <p className="text-2xl font-bold text-amber-600">{formatCurrency(pendingRecharges)}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
+                                <IndianRupee className="h-5 w-5" style={{ color: 'var(--success)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -201,11 +188,11 @@ export default function BillingPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Failed Transactions</p>
-                                <p className="text-2xl font-bold text-rose-600">{failedRecharges}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{formatCurrency(pendingRecharges)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                                <AlertCircle className="h-5 w-5 text-rose-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                <Clock className="h-5 w-5" style={{ color: 'var(--warning)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -214,13 +201,26 @@ export default function BillingPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Unique Sellers</p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Failed Transactions</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--error)' }}>{failedRecharges}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--error-bg)' }}>
+                                <AlertCircle className="h-5 w-5" style={{ color: 'var(--error)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Unique Sellers</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                                     {new Set(mockRecharges.map(r => r.sellerId)).size}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Users className="h-5 w-5 text-[#2525FF]" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                <Users className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -280,26 +280,24 @@ export default function BillingPage() {
             )}
 
             {/* Tabs */}
-            <div className="flex items-center gap-2 border-b border-gray-200 pb-4">
+            <div className="flex items-center gap-2 border-b pb-4" style={{ borderColor: 'var(--border-subtle)' }}>
                 <button
                     onClick={() => setActiveTab('recharges')}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium rounded-lg transition-all",
-                        activeTab === 'recharges'
-                            ? "bg-[#2525FF] text-white"
-                            : "text-gray-600 hover:bg-gray-100"
-                    )}
+                    className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
+                    style={{
+                        background: activeTab === 'recharges' ? 'var(--primary-blue)' : 'transparent',
+                        color: activeTab === 'recharges' ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                    }}
                 >
                     Seller Recharges
                 </button>
                 <button
                     onClick={() => setActiveTab('manual')}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium rounded-lg transition-all",
-                        activeTab === 'manual'
-                            ? "bg-[#2525FF] text-white"
-                            : "text-gray-600 hover:bg-gray-100"
-                    )}
+                    className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
+                    style={{
+                        background: activeTab === 'manual' ? 'var(--primary-blue)' : 'transparent',
+                        color: activeTab === 'manual' ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                    }}
                 >
                     Manual Entries
                 </button>
@@ -323,12 +321,11 @@ export default function BillingPage() {
                                 <button
                                     key={status}
                                     onClick={() => setSelectedStatus(status)}
-                                    className={cn(
-                                        "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
-                                        selectedStatus === status
-                                            ? "bg-[#2525FF] text-white"
-                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                    )}
+                                    className="px-4 py-2 text-sm font-medium rounded-full transition-all capitalize"
+                                    style={{
+                                        background: selectedStatus === status ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                                        color: selectedStatus === status ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                                    }}
                                 >
                                     {status}
                                 </button>

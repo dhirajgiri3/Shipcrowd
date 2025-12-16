@@ -138,11 +138,11 @@ export default function CourierServicesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Settings className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Settings className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Courier Service Configuration
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Configure and manage individual courier services
                     </p>
                 </div>
@@ -158,24 +158,11 @@ export default function CourierServicesPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Services</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockCourierServices.length}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Services</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{mockCourierServices.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Settings className="h-5 w-5 text-[#2525FF]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Active</p>
-                                <p className="text-2xl font-bold text-emerald-600">{activeServices}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                <Settings className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -184,11 +171,11 @@ export default function CourierServicesPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Air Services</p>
-                                <p className="text-2xl font-bold text-cyan-600">{airServices}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{activeServices}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-cyan-100 flex items-center justify-center">
-                                <Zap className="h-5 w-5 text-cyan-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
+                                <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -197,11 +184,24 @@ export default function CourierServicesPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Surface Services</p>
-                                <p className="text-2xl font-bold text-amber-600">{surfaceServices}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Air Services</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--info)' }}>{airServices}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Truck className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                <Zap className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Surface Services</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{surfaceServices}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                <Truck className="h-5 w-5" style={{ color: 'var(--warning)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -328,12 +328,11 @@ export default function CourierServicesPage() {
                         <button
                             key={courier}
                             onClick={() => setSelectedCourier(courier)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
-                                selectedCourier === courier
-                                    ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            )}
+                            className="px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap"
+                            style={{
+                                background: selectedCourier === courier ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                                color: selectedCourier === courier ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                            }}
                         >
                             {courier}
                         </button>
@@ -346,27 +345,27 @@ export default function CourierServicesPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="border-b" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
                                 <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Service</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Courier</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Type</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Weight Range</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">ETA</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Features</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Service</th>
+                                    <th className="text-left p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Courier</th>
+                                    <th className="text-center p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Type</th>
+                                    <th className="text-center p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Weight Range</th>
+                                    <th className="text-center p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>ETA</th>
+                                    <th className="text-center p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Features</th>
+                                    <th className="text-center p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Status</th>
+                                    <th className="text-right p-4 text-xs font-medium uppercase" style={{ color: 'var(--text-secondary)' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredServices.map((service) => (
                                     <tr key={service.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-4">
-                                            <p className="font-semibold text-gray-900">{service.serviceName}</p>
-                                            <code className="text-xs text-gray-500">{service.serviceCode}</code>
+                                            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{service.serviceName}</p>
+                                            <code className="text-xs" style={{ color: 'var(--text-secondary)' }}>{service.serviceCode}</code>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm text-gray-900">{service.courierName}</p>
+                                            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{service.courierName}</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             <Badge variant={service.serviceType === 'air' ? 'info' : 'warning'}>
@@ -375,12 +374,12 @@ export default function CourierServicesPage() {
                                             </Badge>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <p className="text-sm text-gray-900">{service.minWeight}g - {(service.maxWeight / 1000).toFixed(0)}kg</p>
+                                            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{service.minWeight}g - {(service.maxWeight / 1000).toFixed(0)}kg</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             <div className="flex items-center justify-center gap-1">
-                                                <Clock className="h-3.5 w-3.5 text-gray-400" />
-                                                <span className="text-sm text-gray-900">{service.etaMin}-{service.etaMax} days</span>
+                                                <Clock className="h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
+                                                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{service.etaMin}-{service.etaMax} days</span>
                                             </div>
                                         </td>
                                         <td className="p-4 text-center">
@@ -406,9 +405,9 @@ export default function CourierServicesPage() {
                                                     onClick={() => toggleServiceStatus(service.id)}
                                                 >
                                                     {service.isActive ? (
-                                                        <ToggleRight className="h-4 w-4 text-emerald-500" />
+                                                        <ToggleRight className="h-4 w-4" style={{ color: 'var(--success)' }} />
                                                     ) : (
-                                                        <ToggleLeft className="h-4 w-4 text-gray-400" />
+                                                        <ToggleLeft className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                                                     )}
                                                 </Button>
                                                 <Button
@@ -432,9 +431,9 @@ export default function CourierServicesPage() {
             {filteredServices.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <Settings className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No services found</h3>
-                        <p className="text-gray-500 mt-1">Try adjusting your search or add a new service</p>
+                        <Settings className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No services found</h3>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your search or add a new service</p>
                     </CardContent>
                 </Card>
             )}

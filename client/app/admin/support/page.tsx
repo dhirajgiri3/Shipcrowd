@@ -132,11 +132,11 @@ export default function SupportTicketsPage() {
     const getPriorityBadge = (priority: string) => {
         switch (priority) {
             case 'high':
-                return <Badge className="bg-rose-100 text-rose-700 border-0">High</Badge>;
+                return <Badge style={{ background: 'var(--error-bg)', color: 'var(--error)', border: 'none' }}>High</Badge>;
             case 'medium':
-                return <Badge className="bg-amber-100 text-amber-700 border-0">Medium</Badge>;
+                return <Badge style={{ background: 'var(--warning-bg)', color: 'var(--warning)', border: 'none' }}>Medium</Badge>;
             case 'low':
-                return <Badge className="bg-gray-100 text-gray-600 border-0">Low</Badge>;
+                return <Badge style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: 'none' }}>Low</Badge>;
             default:
                 return null;
         }
@@ -151,11 +151,11 @@ export default function SupportTicketsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <HeadphonesIcon className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <HeadphonesIcon className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Support Tickets
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Manage and respond to seller support requests
                     </p>
                 </div>
@@ -167,24 +167,11 @@ export default function SupportTicketsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Tickets</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockTickets.length}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Tickets</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{mockTickets.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <MessageSquare className="h-5 w-5 text-[#2525FF]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Open</p>
-                                <p className="text-2xl font-bold text-amber-600">{openTickets}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <AlertCircle className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                <MessageSquare className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -193,11 +180,11 @@ export default function SupportTicketsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">In Progress</p>
-                                <p className="text-2xl font-bold text-blue-600">{inProgressTickets}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Open</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{openTickets}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-blue-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                <AlertCircle className="h-5 w-5" style={{ color: 'var(--warning)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -206,11 +193,24 @@ export default function SupportTicketsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">High Priority</p>
-                                <p className="text-2xl font-bold text-rose-600">{highPriorityTickets}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>In Progress</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--info)' }}>{inProgressTickets}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                                <AlertCircle className="h-5 w-5 text-rose-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                <Clock className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>High Priority</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--error)' }}>{highPriorityTickets}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--error-bg)' }}>
+                                <AlertCircle className="h-5 w-5" style={{ color: 'var(--error)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -256,12 +256,11 @@ export default function SupportTicketsPage() {
                                 <button
                                     key={status}
                                     onClick={() => setSelectedStatus(status)}
-                                    className={cn(
-                                        "px-3 py-1.5 text-sm font-medium rounded-full transition-all capitalize whitespace-nowrap",
-                                        selectedStatus === status
-                                            ? "bg-[#2525FF] text-white"
-                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                    )}
+                                    className="px-3 py-1.5 text-sm font-medium rounded-full transition-all capitalize whitespace-nowrap"
+                                    style={{
+                                        background: selectedStatus === status ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                                        color: selectedStatus === status ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                                    }}
                                 >
                                     {status === 'in_progress' ? 'In Progress' : status}
                                 </button>
@@ -419,9 +418,9 @@ export default function SupportTicketsPage() {
             {filteredTickets.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <HeadphonesIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No tickets found</h3>
-                        <p className="text-gray-500 mt-1">Try adjusting your filters</p>
+                        <HeadphonesIcon className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No tickets found</h3>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your filters</p>
                     </CardContent>
                 </Card>
             )}

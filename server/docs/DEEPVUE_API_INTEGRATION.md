@@ -67,7 +67,7 @@ The Shipcrowd API provides the following endpoints for KYC verification:
   ```json
   {
     "pan": "ABCDE1234F",
-    "name": "John Doe" // Optional
+    "name": "Dev Paanchal" // Optional
   }
   ```
 - **Response**:
@@ -76,7 +76,7 @@ The Shipcrowd API provides the following endpoints for KYC verification:
     "message": "PAN verification completed",
     "verified": true,
     "data": {
-      "name": "John Doe",
+      "name": "Dev Paanchal",
       "valid": true,
       "pan": "ABCDE1234F"
     }
@@ -119,7 +119,7 @@ The Shipcrowd API provides the following endpoints for KYC verification:
   {
     "accountNumber": "1234567890",
     "ifsc": "SBIN0000001",
-    "accountHolderName": "John Doe" // Optional
+    "accountHolderName": "Dev Paanchal" // Optional
   }
   ```
 - **Response**:
@@ -128,7 +128,7 @@ The Shipcrowd API provides the following endpoints for KYC verification:
     "message": "Bank account verification completed",
     "verified": true,
     "data": {
-      "accountHolderName": "John Doe",
+      "accountHolderName": "Dev Paanchal",
       "bankName": "State Bank of India"
     }
   }

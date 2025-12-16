@@ -97,8 +97,8 @@ export default function IntelligencePage() {
                             <div key={anomaly.id} className="p-3 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
                                 <div className="flex justify-between items-start mb-1">
                                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${anomaly.severity === 'critical' ? 'bg-rose-100 text-rose-700' :
-                                            anomaly.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                                                'bg-blue-100 text-blue-700'
+                                        anomaly.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-blue-100 text-blue-700'
                                         }`}>
                                         {anomaly.type}
                                     </span>

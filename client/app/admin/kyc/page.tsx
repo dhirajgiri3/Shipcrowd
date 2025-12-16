@@ -150,11 +150,11 @@ export default function KYCAnalyticsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Shield className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Shield className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Seller KYC Analytics
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Monitor and manage seller verification status
                     </p>
                 </div>
@@ -170,24 +170,11 @@ export default function KYCAnalyticsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Sellers</p>
-                                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Sellers</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.total}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Users className="h-5 w-5 text-[#2525FF]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Verified</p>
-                                <p className="text-2xl font-bold text-emerald-600">{stats.verified}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                <Users className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -196,24 +183,11 @@ export default function KYCAnalyticsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Pending</p>
-                                <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Verified</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{stats.verified}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-amber-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Incomplete</p>
-                                <p className="text-2xl font-bold text-cyan-600">{stats.incomplete}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-cyan-100 flex items-center justify-center">
-                                <AlertTriangle className="h-5 w-5 text-cyan-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
+                                <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -222,11 +196,37 @@ export default function KYCAnalyticsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Verification Rate</p>
-                                <p className="text-2xl font-bold text-gray-900">{verificationRate}%</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{stats.pending}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <TrendingUp className="h-5 w-5 text-purple-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                <Clock className="h-5 w-5" style={{ color: 'var(--warning)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Incomplete</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--info)' }}>{stats.incomplete}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Verification Rate</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{verificationRate}%</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                <TrendingUp className="h-5 w-5" style={{ color: 'var(--info)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -248,12 +248,11 @@ export default function KYCAnalyticsPage() {
                         <button
                             key={filter.id}
                             onClick={() => setSelectedStatus(filter.id)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
-                                selectedStatus === filter.id
-                                    ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            )}
+                            className="px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap"
+                            style={{
+                                background: selectedStatus === filter.id ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                                color: selectedStatus === filter.id ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                            }}
                         >
                             {filter.label}
                         </button>
@@ -364,9 +363,9 @@ export default function KYCAnalyticsPage() {
             {filteredData.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <Shield className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No KYC records found</h3>
-                        <p className="text-gray-500 mt-1">Try adjusting your search or filters</p>
+                        <Shield className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No KYC records found</h3>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your search or filters</p>
                     </CardContent>
                 </Card>
             )}

@@ -16,7 +16,7 @@ The Authentication API provides endpoints for user registration, login, token re
   {
     "email": "user@example.com",
     "password": "password123",
-    "name": "John Doe",
+    "name": "Dev Paanchal",
     "role": "seller" // Optional, defaults to "seller"
   }
   ```
@@ -43,7 +43,7 @@ The Authentication API provides endpoints for user registration, login, token re
       "accessToken": "jwt_token",
       "user": {
         "id": "user_id",
-        "name": "John Doe",
+        "name": "Dev Paanchal",
         "email": "user@example.com",
         "role": "seller",
         "companyId": "company_id" // If applicable

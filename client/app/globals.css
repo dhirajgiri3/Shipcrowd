@@ -1,228 +1,396 @@
 @import "tailwindcss";
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ============================================
    SHIPCROWD DESIGN SYSTEM
-   A production-ready design token system using pure CSS custom properties
-   ═══════════════════════════════════════════════════════════════════════════ */
+   Comprehensive • Light Theme • Unified
+   ============================================ */
 
 @theme {
-  /* ─────────────────────────────────────────────────────────────────────────
-     TYPOGRAPHY
-     ───────────────────────────────────────────────────────────────────────── */
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains-mono);
+   /* === TYPOGRAPHY FAMILY === */
+   --font-sans: var(--font-inter);
+   --font-mono: var(--font-jetbrains-mono);
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     BRAND COLORS
-     Primary blue is Shipcrowd's signature color
-     ───────────────────────────────────────────────────────────────────────── */
-  --color-primary: #2525FF;
-  --color-primary-hover: #1e1ecc;
-  --color-primary-active: #1a1ab3;
-  --color-primary-light: #e8e8ff;
-  --color-primary-50: #f0f0ff
+   /* === TYPOGRAPHY SIZES (Semantic Scale) === */
+   --text-display-2xl: 4.5rem;
+   --text-display-2xl--line-height: 1.1;
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     SEMANTIC COLORS (Status-based)
-     ───────────────────────────────────────────────────────────────────────── */
-  --color-success: #10B981;
-  --color-success-light: #d1fae5;
-  --color-success-dark: #059669;
+   --text-display-xl: 3.75rem;
+   --text-display-xl--line-height: 1.1;
 
-  --color-warning: #F59E0B;
-  --color-warning-light: #fef3c7;
-  --color-warning-dark: #d97706;
+   --text-display-lg: 3rem;
+   --text-display-lg--line-height: 1.1;
 
-  --color-error: #EF4444;
-  --color-error-light: #fee2e2;
-  --color-error-dark: #dc2626;
+   --text-title-xl: 2.25rem;
+   --text-title-xl--line-height: 1.2;
 
-  --color-info: #06B6D4;
-  --color-info-light: #cffafe;
-  --color-info-dark: #0891b2;
+   --text-title-lg: 1.875rem;
+   --text-title-lg--line-height: 1.2;
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     NEUTRAL GRAYS (Gray Scale)
-     ───────────────────────────────────────────────────────────────────────── */
-  --color-gray-950: #030712;
-  --color-gray-900: #111827;
-  --color-gray-800: #1F2937;
-  --color-gray-700: #374151;
-  --color-gray-600: #4B5563;
-  --color-gray-500: #6B7280;
-  --color-gray-400: #9CA3AF;
-  --color-gray-300: #D1D5DB;
-  --color-gray-200: #E5E7EB;
-  --color-gray-100: #F3F4F6;
-  --color-gray-50: #F9FAFB;
+   --text-title-md: 1.5rem;
+   --text-title-md--line-height: 1.3;
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     SHADOWS
-     Consistent elevation system
-     ───────────────────────────────────────────────────────────────────────── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  --shadow-primary: 0 4px 14px rgba(37, 37, 255, 0.25);
-  --shadow-primary-lg: 0 8px 32px rgba(37, 37, 255, 0.3);
+   --text-body-lg: 1.125rem;
+   --text-body-lg--line-height: 1.6;
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     BORDER RADIUS
-     ───────────────────────────────────────────────────────────────────────── */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-full: 9999px;
+   --text-body-base: 1rem;
+   --text-body-base--line-height: 1.6;
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     TRANSITIONS
-     ───────────────────────────────────────────────────────────────────────── */
-  --transition-fast: 150ms ease;
-  --transition-base: 200ms ease;
-  --transition-slow: 300ms ease;
+   --text-body-sm: 0.875rem;
+   --text-body-sm--line-height: 1.5;
 
-  /* ─────────────────────────────────────────────────────────────────────────
-     Z-INDEX SCALE
-     ───────────────────────────────────────────────────────────────────────── */
-  --z-dropdown: 50;
-  --z-sticky: 100;
-  --z-modal: 200;
-  --z-toast: 300;
+   --text-caption: 0.75rem;
+   --text-caption--line-height: 1.5;
 
-  /* Legacy support - kept for backward compatibility */
-  --color-primaryBlue: #2525FF;
-  --color-indigo: #4338CA;
-  --color-emerald: #10B981;
-  --color-cyan: #06B6D4;
-  --color-amber: #F59E0B;
-  --color-rose: #EF4444;
+   /* === BRAND COLORS (Tailwind Integration) === */
+   --color-primaryBlue: var(--primary-blue);
+   --color-primaryBlue-deep: var(--primary-blue-deep);
+   --color-primaryBlue-light: var(--primary-blue-light);
+   --color-primaryBlue-soft: var(--primary-blue-soft);
+
+   /* === BRAND SHADOWS === */
+   --shadow-blue: 0 8px 30px rgba(37, 37, 255, 0.3);
+   --shadow-blue-lg: 0 12px 40px rgba(37, 37, 255, 0.4);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ROOT VARIABLES
-   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --background: #ffffff;
-  --foreground: #111827;
-  --card-background: #ffffff;
-  --border-color: #E5E7EB;
+   /* ========================================
+     BRAND COLORS
+     ======================================== */
+   --primary-blue: #2525FF;
+   --primary-blue-deep: #1E1ECC;
+   --primary-blue-light: #4444FF;
+   --primary-blue-soft: #E8E8FF;
+
+   /* ========================================
+     NEUTRAL / GRAY SCALE
+     ======================================== */
+   --white: #FFFFFF;
+   --black: #000000;
+   --gray-25: #FCFCFD;
+   --gray-50: #F9FAFB;
+   --gray-100: #F3F4F6;
+   --gray-200: #E5E7EB;
+   --gray-300: #D1D5DB;
+   --gray-400: #9CA3AF;
+   --gray-500: #6B7280;
+   --gray-600: #4B5563;
+   --gray-700: #374151;
+   --gray-800: #1F2937;
+   --gray-900: #111827;
+   --gray-950: #030712;
+
+   /* ========================================
+     TEXT COLORS
+     ======================================== */
+   --text-primary: #111827;
+   /* Headings, titles */
+   --text-secondary: #4B5563;
+   /* Body text */
+   --text-tertiary: #6B7280;
+   /* Secondary info */
+   --text-muted: #9CA3AF;
+   /* Placeholders, disabled */
+   --text-subtle: #D1D5DB;
+   /* Very light text */
+   --text-inverse: #FFFFFF;
+   /* Text on dark bg */
+   --text-brand: #2525FF;
+   /* Brand-colored text */
+   --text-success: #059669;
+   /* Success messages */
+   --text-warning: #D97706;
+   /* Warning messages */
+   --text-error: #DC2626;
+   /* Error messages */
+
+   /* ========================================
+     BACKGROUND COLORS
+     ======================================== */
+   --bg-primary: #FFFFFF;
+   /* Main background */
+   --bg-secondary: #F9FAFB;
+   /* Cards, sections */
+   --bg-tertiary: #F3F4F6;
+   /* Inputs, subtle areas */
+   --bg-elevated: #FFFFFF;
+   /* Modals, dropdowns */
+   --bg-hover: #F3F4F6;
+   /* Hover states */
+   --bg-active: #E5E7EB;
+   /* Active/pressed states */
+   --bg-selected: #E8E8FF;
+   /* Selected items */
+   --bg-overlay: rgba(0, 0, 0, 0.5);
+
+   /* ========================================
+     BORDER COLORS
+     ======================================== */
+   --border-subtle: #F3F4F6;
+   /* Dividers, separators */
+   --border-default: #E5E7EB;
+   /* Default borders */
+   --border-strong: #D1D5DB;
+   /* Emphasized borders */
+   --border-focus: #2525FF;
+   /* Focus state */
+   --border-error: #EF4444;
+   /* Error state */
+   --border-success: #10B981;
+   /* Success state */
+   --border-hover: #D1D5DB;
+   /* Hover state */
+
+   /* ========================================
+     INTERACTIVE / BUTTON COLORS
+     ======================================== */
+   --btn-primary-bg: #2525FF;
+   --btn-primary-bg-hover: #1E1ECC;
+   --btn-primary-bg-active: #1818A0;
+   --btn-primary-text: #FFFFFF;
+
+   --btn-secondary-bg: #FFFFFF;
+   --btn-secondary-bg-hover: #F9FAFB;
+   --btn-secondary-bg-active: #F3F4F6;
+   --btn-secondary-text: #374151;
+   --btn-secondary-border: #E5E7EB;
+
+   --btn-ghost-bg: transparent;
+   --btn-ghost-bg-hover: #F3F4F6;
+   --btn-ghost-text: #4B5563;
+
+   /* ========================================
+     INPUT / FORM COLORS
+     ======================================== */
+   --input-bg: #F9FAFB;
+   --input-bg-hover: #F3F4F6;
+   --input-bg-focus: #FFFFFF;
+   --input-bg-disabled: #F3F4F6;
+   --input-border: #E5E7EB;
+   --input-border-hover: #D1D5DB;
+   --input-border-focus: #2525FF;
+   --input-border-error: #EF4444;
+   --input-text: #111827;
+   --input-placeholder: #9CA3AF;
+   --input-disabled-text: #9CA3AF;
+
+   /* ========================================
+     STATUS / FEEDBACK COLORS
+     ======================================== */
+   --success: #10B981;
+   --success-light: #34D399;
+   --success-bg: #ECFDF5;
+   --success-border: #A7F3D0;
+
+   --warning: #F59E0B;
+   --warning-light: #FBBF24;
+   --warning-bg: #FFFBEB;
+   --warning-border: #FDE68A;
+
+   --error: #EF4444;
+   --error-light: #F87171;
+   --error-bg: #FEF2F2;
+   --error-border: #FECACA;
+
+   --info: #3B82F6;
+   --info-light: #60A5FA;
+   --info-bg: #EFF6FF;
+   --info-border: #BFDBFE;
+
+   /* ========================================
+     SPACING SCALE (based on 4px)
+     ======================================== */
+   --space-0: 0;
+   --space-1: 0.25rem;
+   /* 4px */
+   --space-2: 0.5rem;
+   /* 8px */
+   --space-3: 0.75rem;
+   /* 12px */
+   --space-4: 1rem;
+   /* 16px */
+   --space-5: 1.25rem;
+   /* 20px */
+   --space-6: 1.5rem;
+   /* 24px */
+   --space-8: 2rem;
+   /* 32px */
+   --space-10: 2.5rem;
+   /* 40px */
+   --space-12: 3rem;
+   /* 48px */
+   --space-16: 4rem;
+   /* 64px */
+   --space-20: 5rem;
+   /* 80px */
+   --space-24: 6rem;
+   /* 96px */
+   --space-32: 8rem;
+   /* 128px */
+
+   /* ========================================
+     BORDER RADIUS
+     ======================================== */
+   --radius-none: 0;
+   --radius-sm: 0.25rem;
+   /* 4px */
+   --radius-md: 0.375rem;
+   /* 6px */
+   --radius-lg: 0.5rem;
+   /* 8px */
+   --radius-xl: 0.75rem;
+   /* 12px */
+   --radius-2xl: 1rem;
+   /* 16px */
+   --radius-3xl: 1.5rem;
+   /* 24px */
+   --radius-full: 9999px;
+
+   /* ========================================
+     SHADOWS / ELEVATION
+     ======================================== */
+   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+   --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+   /* Brand shadows */
+   --shadow-brand-sm: 0 4px 14px rgba(37, 37, 255, 0.2);
+   --shadow-brand: 0 8px 30px rgba(37, 37, 255, 0.3);
+   --shadow-brand-lg: 0 12px 40px rgba(37, 37, 255, 0.4);
+
+   /* ========================================
+     TRANSITIONS / MOTION
+     ======================================== */
+   --duration-fast: 150ms;
+   --duration-base: 200ms;
+   --duration-slow: 300ms;
+   --duration-slower: 500ms;
+
+   --ease-linear: linear;
+   --ease-in: cubic-bezier(0.4, 0, 1, 1);
+   --ease-out: cubic-bezier(0, 0, 0.2, 1);
+   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+   /* ========================================
+     Z-INDEX SCALE
+     ======================================== */
+   --z-base: 0;
+   --z-dropdown: 1000;
+   --z-sticky: 1020;
+   --z-fixed: 1030;
+   --z-modal-backdrop: 1040;
+   --z-modal: 1050;
+   --z-popover: 1060;
+   --z-tooltip: 1070;
+   --z-notification: 1080;
+
+   /* ========================================
+     FOCUS RING
+     ======================================== */
+   --focus-ring-width: 2px;
+   --focus-ring-offset: 2px;
+   --focus-ring-color: rgba(37, 37, 255, 0.25);
+
+   /* ========================================
+     LEGACY SUPPORT
+     ======================================== */
+   --background: #FFFFFF;
+   --foreground: #111827;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ========================================
    BASE STYLES
-   ═══════════════════════════════════════════════════════════════════════════ */
-html {
-  scroll-behavior: smooth;
+   ======================================== */
+
+* {
+   box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+   background: var(--background);
+   color: var(--foreground);
+   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ========================================
    UTILITY CLASSES
-   ═══════════════════════════════════════════════════════════════════════════ */
+   ======================================== */
+
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
 
-  /* Interactive cursor utilities */
-  button,
-  a,
-  [role="button"],
-  .cursor-pointer {
-    cursor: pointer;
-  }
+   /* Cursor */
+   button,
+   a,
+   [role="button"] {
+      cursor: pointer;
+   }
 
-  button:disabled,
-  a:disabled,
-  .disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
+   button:disabled,
+   [disabled] {
+      cursor: not-allowed;
+      opacity: 0.6;
+   }
 
-  /* Focus ring utility */
-  .focus-ring {
-    outline: none;
-  }
+   /* Text Truncation */
+   .line-clamp-1 {
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+   }
 
-  .focus-ring:focus-visible {
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--color-primary);
-  }
+   .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+   }
 
-  /* Card utility */
-  .card {
-    background: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-  }
+   .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+   }
 
-  /* Gradient text */
-  .text-gradient {
-    background: linear-gradient(135deg, var(--color-gray-900) 0%, var(--color-gray-600) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+   /* Text Balance */
+   .text-balance {
+      text-wrap: balance;
+   }
 
-  /* Animation utilities */
-  .animate-fade-in {
-    animation: fadeIn var(--transition-base) ease-out;
-  }
+   /* Safe Area (Mobile) */
+   .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+   }
 
-  .animate-slide-up {
-    animation: slideUp var(--transition-base) ease-out;
-  }
+   .pt-safe {
+      padding-top: env(safe-area-inset-top);
+   }
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
+   /* Focus Ring Utility */
+   .focus-ring {
+      outline: none;
+      box-shadow: 0 0 0 var(--focus-ring-offset) var(--bg-primary),
+         0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) var(--focus-ring-color);
+   }
 
-    to {
-      opacity: 1;
-    }
-  }
+   /* Smooth Transitions */
+   .transition-smooth {
+      transition: all var(--duration-base) var(--ease-spring);
+   }
 
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SCROLLBAR STYLING
-   ═══════════════════════════════════════════════════════════════════════════ */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-gray-100);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-gray-300);
-  border-radius: var(--radius-full);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gray-400);
+   .transition-colors-smooth {
+      transition: color var(--duration-base) var(--ease-out),
+         background-color var(--duration-base) var(--ease-out),
+         border-color var(--duration-base) var(--ease-out);
+   }
 }

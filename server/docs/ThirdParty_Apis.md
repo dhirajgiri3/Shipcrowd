@@ -70,7 +70,7 @@ const verifyPan = async (pan, name) => {
       clientId: 'YOUR_CASHFREE_CLIENT_ID',
       clientSecret: 'YOUR_CASHFREE_CLIENT_SECRET',
       pan: 'ABCDE1234F',
-      name: 'John Doe'
+      name: 'Dev Paanchal'
     })
   });
   return await res.json();
@@ -82,7 +82,7 @@ const verifyPan = async (pan, name) => {
     "message": "PAN details verified successfully",
     "subCode": "200",
     "data": {
-      "name": "JOHN DOE",
+      "name": "Dev Paanchal",
       "pan": "ABCDE1234F",
       "panStatus": "VALID",
       "lastName": "DOE",
@@ -263,7 +263,7 @@ const verifyAadhaarOTP = async (otp, refId) => {
     "subCode": "200",
     "data": {
       "aadhaar_number": "XXXX XXXX 9012",
-      "name": "John Doe",
+      "name": "Dev Paanchal",
       "dob": "01-01-1990",
       "gender": "M",
       "address": {
@@ -484,7 +484,7 @@ const verifyBankAccount = async (accountNumber, ifsc) => {
     "message": "Bank account details verified successfully",
     "data": {
       "accountExists": true,
-      "nameAtBank": "JOHN DOE",
+      "nameAtBank": "Dev Paanchal",
       "amountDeposited": 1,
       "refId": "a1b2c3d4e5f6",
       "bankName": "STATE BANK OF INDIA",
@@ -600,7 +600,7 @@ const verifyUPI = async (upiId) => {
     "message": "UPI ID verified successfully",
     "data": {
       "vpa": "johndoe@okaxis",
-      "name": "JOHN DOE",
+      "name": "Dev Paanchal",
       "isVPAValid": true,
       "accountExists": true,
       "bankName": "AXIS BANK"
@@ -859,7 +859,7 @@ const createPaytmOrder = async (amount, userId, email, phone, name) => {
       userId: 'user123',
       email: 'user@example.com',
       phone: '9876543210',
-      name: 'John Doe'
+      name: 'Dev Paanchal'
     })
   });
   return await res.json();

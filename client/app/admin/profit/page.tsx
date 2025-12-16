@@ -144,11 +144,11 @@ export default function ProfitManagementPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <IndianRupee className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <IndianRupee className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Profit Management
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Import, export, and analyze profit data
                     </p>
                 </div>
@@ -160,12 +160,11 @@ export default function ProfitManagementPage() {
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={cn(
-                            "px-4 py-3 text-sm font-medium border-b-2 transition-all capitalize",
-                            activeTab === tab
-                                ? "border-[#2525FF] text-[#2525FF]"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
-                        )}
+                        className="px-4 py-3 text-sm font-medium border-b-2 transition-all capitalize"
+                        style={{
+                            borderColor: activeTab === tab ? 'var(--primary-blue)' : 'transparent',
+                            color: activeTab === tab ? 'var(--primary-blue)' : 'var(--text-secondary)'
+                        }}
                     >
                         {tab}
                     </button>
@@ -181,24 +180,11 @@ export default function ProfitManagementPage() {
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-gray-500">Total Profit</p>
-                                        <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalProfit)}</p>
+                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Profit</p>
+                                        <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{formatCurrency(totalProfit)}</p>
                                     </div>
-                                    <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                        <TrendingUp className="h-5 w-5 text-emerald-600" />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Total Charged</p>
-                                        <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCharged)}</p>
-                                    </div>
-                                    <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                        <IndianRupee className="h-5 w-5 text-[#2525FF]" />
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
+                                        <TrendingUp className="h-5 w-5" style={{ color: 'var(--success)' }} />
                                     </div>
                                 </div>
                             </CardContent>
@@ -207,11 +193,11 @@ export default function ProfitManagementPage() {
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-gray-500">Shipments</p>
-                                        <p className="text-2xl font-bold text-gray-900">{totalShipments}</p>
+                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Charged</p>
+                                        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalCharged)}</p>
                                     </div>
-                                    <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                        <FileSpreadsheet className="h-5 w-5 text-purple-600" />
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                        <IndianRupee className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                                     </div>
                                 </div>
                             </CardContent>
@@ -220,11 +206,24 @@ export default function ProfitManagementPage() {
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-gray-500">Avg Margin</p>
-                                        <p className="text-2xl font-bold text-gray-900">{avgMargin}%</p>
+                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Shipments</p>
+                                        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{totalShipments}</p>
                                     </div>
-                                    <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                        <TrendingUp className="h-5 w-5 text-amber-600" />
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                        <FileSpreadsheet className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Avg Margin</p>
+                                        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{avgMargin}%</p>
+                                    </div>
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                        <TrendingUp className="h-5 w-5" style={{ color: 'var(--warning)' }} />
                                     </div>
                                 </div>
                             </CardContent>
@@ -277,15 +276,15 @@ export default function ProfitManagementPage() {
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredData.map((row) => (
                                             <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="p-4 text-sm text-gray-900">{row.date}</td>
+                                                <td className="p-4 text-sm" style={{ color: 'var(--text-primary)' }}>{row.date}</td>
                                                 <td className="p-4">
-                                                    <p className="text-sm font-medium text-gray-900">{row.sellerName}</p>
-                                                    <code className="text-xs text-gray-400">{row.sellerId}</code>
+                                                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{row.sellerName}</p>
+                                                    <code className="text-xs" style={{ color: 'var(--text-muted)' }}>{row.sellerId}</code>
                                                 </td>
-                                                <td className="p-4 text-right text-sm text-gray-900">{row.shipments}</td>
-                                                <td className="p-4 text-right text-sm text-gray-500">{formatCurrency(row.shippingCost)}</td>
-                                                <td className="p-4 text-right text-sm text-gray-900">{formatCurrency(row.charged)}</td>
-                                                <td className="p-4 text-right text-sm font-semibold text-emerald-600">{formatCurrency(row.profit)}</td>
+                                                <td className="p-4 text-right text-sm" style={{ color: 'var(--text-primary)' }}>{row.shipments}</td>
+                                                <td className="p-4 text-right text-sm" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.shippingCost)}</td>
+                                                <td className="p-4 text-right text-sm" style={{ color: 'var(--text-primary)' }}>{formatCurrency(row.charged)}</td>
+                                                <td className="p-4 text-right text-sm font-semibold" style={{ color: 'var(--success)' }}>{formatCurrency(row.profit)}</td>
                                                 <td className="p-4 text-right">
                                                     <Badge variant={row.margin >= 15 ? 'success' : row.margin >= 10 ? 'warning' : 'neutral'}>
                                                         {row.margin}%
@@ -318,26 +317,31 @@ export default function ProfitManagementPage() {
                                 onDragLeave={() => setIsDragging(false)}
                                 onDrop={handleDrop}
                                 onClick={() => fileInputRef.current?.click()}
-                                className={cn(
-                                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
-                                    isDragging
-                                        ? "border-[#2525FF] bg-[#2525FF]/5"
+                                className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all"
+                                style={{
+                                    borderColor: isDragging
+                                        ? 'var(--primary-blue)'
                                         : uploadedFile
-                                            ? "border-emerald-300 bg-emerald-50"
-                                            : "border-gray-200 hover:border-gray-300"
-                                )}
+                                            ? 'var(--success)'
+                                            : 'var(--border-subtle)',
+                                    background: isDragging
+                                        ? 'var(--primary-blue-soft)'
+                                        : uploadedFile
+                                            ? 'var(--success-bg)'
+                                            : 'transparent'
+                                }}
                             >
                                 {uploadedFile ? (
                                     <>
-                                        <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-                                        <p className="font-medium text-gray-900">{uploadedFile.name}</p>
-                                        <p className="text-sm text-gray-500 mt-1">Ready to import</p>
+                                        <CheckCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--success)' }} />
+                                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{uploadedFile.name}</p>
+                                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Ready to import</p>
                                     </>
                                 ) : (
                                     <>
-                                        <FileSpreadsheet className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="font-medium text-gray-900">Drop file here or click to upload</p>
-                                        <p className="text-sm text-gray-500 mt-1">Supports CSV and XLSX</p>
+                                        <FileSpreadsheet className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+                                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Drop file here or click to upload</p>
+                                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Supports CSV and XLSX</p>
                                     </>
                                 )}
                             </div>
@@ -362,10 +366,10 @@ export default function ProfitManagementPage() {
                         <CardContent>
                             <div className="space-y-3">
                                 {mockImportHistory.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--bg-secondary)' }}>
                                         <div>
-                                            <p className="font-medium text-gray-900">{item.filename}</p>
-                                            <p className="text-xs text-gray-500">{item.date} • {item.records} records</p>
+                                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.filename}</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.date} • {item.records} records</p>
                                         </div>
                                         <Badge variant={item.status === 'success' ? 'success' : 'warning'}>
                                             {item.status === 'success' ? 'Success' : `${item.errors} errors`}

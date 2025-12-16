@@ -108,7 +108,7 @@ await emailService.sendEmail(
   undefined, // No attachments
   process.env.SENDGRID_WELCOME_TEMPLATE_ID,
   {
-    name: 'John Doe',
+    name: 'Dev Paanchal',
     signup_date: new Date().toLocaleDateString(),
   }
 );

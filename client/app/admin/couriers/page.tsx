@@ -134,11 +134,11 @@ export default function CouriersPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Truck className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Truck className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Courier Partners
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Manage courier integrations and services
                     </p>
                 </div>
@@ -154,24 +154,11 @@ export default function CouriersPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Couriers</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockCouriers.length}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Couriers</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{mockCouriers.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Truck className="h-5 w-5 text-[#2525FF]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Active</p>
-                                <p className="text-2xl font-bold text-emerald-600">{activeCouriers}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                <Truck className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -180,11 +167,11 @@ export default function CouriersPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Shipments</p>
-                                <p className="text-2xl font-bold text-gray-900">{totalShipments.toLocaleString()}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{activeCouriers}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <Package className="h-5 w-5 text-purple-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
+                                <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -193,11 +180,24 @@ export default function CouriersPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Avg. Delivery Rate</p>
-                                <p className="text-2xl font-bold text-gray-900">93.5%</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Shipments</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{totalShipments.toLocaleString()}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Zap className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                <Package className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Avg. Delivery Rate</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>93.5%</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                <Zap className="h-5 w-5" style={{ color: 'var(--warning)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -206,11 +206,11 @@ export default function CouriersPage() {
 
             {/* Add Courier Form */}
             {showAddForm && (
-                <Card className="border-[#2525FF]/20 bg-[#2525FF]/5">
+                <Card style={{ borderColor: 'var(--primary-blue-soft)', background: 'var(--bg-primary)' }}>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg">Add New Courier Partner</CardTitle>
-                            <CardDescription>Configure a new courier integration</CardDescription>
+                            <CardTitle className="text-lg" style={{ color: 'var(--text-primary)' }}>Add New Courier Partner</CardTitle>
+                            <CardDescription style={{ color: 'var(--text-secondary)' }}>Configure a new courier integration</CardDescription>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => setShowAddForm(false)}>
                             <X className="h-4 w-4" />
@@ -293,12 +293,11 @@ export default function CouriersPage() {
                         <button
                             key={status}
                             onClick={() => setSelectedStatus(status)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
-                                selectedStatus === status
-                                    ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            )}
+                            className="px-4 py-2 text-sm font-medium rounded-full transition-all capitalize"
+                            style={{
+                                background: selectedStatus === status ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                                color: selectedStatus === status ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                            }}
                         >
                             {status}
                         </button>
@@ -315,12 +314,12 @@ export default function CouriersPage() {
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 rounded-xl bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600">
+                                        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
                                             {courier.logo}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-gray-900">{courier.name}</h3>
-                                            <code className="text-xs text-gray-500">{courier.code}</code>
+                                            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{courier.name}</h3>
+                                            <code className="text-xs" style={{ color: 'var(--text-secondary)' }}>{courier.code}</code>
                                         </div>
                                     </div>
                                     <Badge variant={courier.status === 'active' ? 'success' : 'neutral'}>
@@ -330,7 +329,7 @@ export default function CouriersPage() {
 
                                 {/* Services */}
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-2">Services</p>
+                                    <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>Services</p>
                                     <div className="flex flex-wrap gap-1">
                                         {courier.services.map((service) => (
                                             <Badge key={service} variant="outline" className="text-xs">
@@ -344,52 +343,52 @@ export default function CouriersPage() {
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <div className="flex items-center gap-2">
                                         {courier.apiIntegrated ? (
-                                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4 text-gray-300" />
+                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                                         )}
-                                        <span className={courier.apiIntegrated ? 'text-gray-700' : 'text-gray-400'}>API</span>
+                                        <span className={courier.apiIntegrated ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.apiIntegrated ? 'var(--text-primary)' : 'var(--text-muted)' }}>API</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {courier.codEnabled ? (
-                                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4 text-gray-300" />
+                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                                         )}
-                                        <span className={courier.codEnabled ? 'text-gray-700' : 'text-gray-400'}>COD</span>
+                                        <span className={courier.codEnabled ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.codEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>COD</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {courier.pickupEnabled ? (
-                                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4 text-gray-300" />
+                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                                         )}
-                                        <span className={courier.pickupEnabled ? 'text-gray-700' : 'text-gray-400'}>Pickup</span>
+                                        <span className={courier.pickupEnabled ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.pickupEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>Pickup</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {courier.trackingEnabled ? (
-                                            <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4 text-gray-300" />
+                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                                         )}
-                                        <span className={courier.trackingEnabled ? 'text-gray-700' : 'text-gray-400'}>Tracking</span>
+                                        <span className={courier.trackingEnabled ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.trackingEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>Tracking</span>
                                     </div>
                                 </div>
 
                                 {/* Stats */}
                                 {courier.status === 'active' && (
-                                    <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-3 gap-2 text-center">
+                                    <div className="rounded-lg p-3 grid grid-cols-3 gap-2 text-center" style={{ background: 'var(--bg-secondary)' }}>
                                         <div>
-                                            <p className="text-xs text-gray-400">Shipments</p>
-                                            <p className="text-sm font-semibold text-gray-900">{courier.totalShipments.toLocaleString()}</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Shipments</p>
+                                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{courier.totalShipments.toLocaleString()}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-400">Avg. TAT</p>
-                                            <p className="text-sm font-semibold text-gray-900">{courier.avgDeliveryTime}</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Avg. TAT</p>
+                                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{courier.avgDeliveryTime}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-400">Success</p>
-                                            <p className="text-sm font-semibold text-emerald-600">{courier.successRate}%</p>
+                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Success</p>
+                                            <p className="text-sm font-semibold" style={{ color: 'var(--success)' }}>{courier.successRate}%</p>
                                         </div>
                                     </div>
                                 )}
@@ -402,9 +401,9 @@ export default function CouriersPage() {
                                         onClick={() => toggleCourierStatus(courier.id, courier.status)}
                                     >
                                         {courier.status === 'active' ? (
-                                            <><ToggleRight className="h-4 w-4 mr-1 text-emerald-500" /> Active</>
+                                            <><ToggleRight className="h-4 w-4 mr-1" style={{ color: 'var(--success)' }} /> Active</>
                                         ) : (
-                                            <><ToggleLeft className="h-4 w-4 mr-1 text-gray-400" /> Inactive</>
+                                            <><ToggleLeft className="h-4 w-4 mr-1" style={{ color: 'var(--text-muted)' }} /> Inactive</>
                                         )}
                                     </Button>
                                     <div className="flex gap-1">
@@ -426,9 +425,9 @@ export default function CouriersPage() {
             {filteredCouriers.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No couriers found</h3>
-                        <p className="text-gray-500 mt-1">Try adjusting your search or add a new courier</p>
+                        <Truck className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No couriers found</h3>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your search or add a new courier</p>
                         <Button className="mt-4" onClick={() => setShowAddForm(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add Courier

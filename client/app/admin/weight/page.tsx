@@ -152,11 +152,11 @@ export default function AdminWeightDiscrepancyPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Scale className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Scale className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
                         Weight Discrepancy Management
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Review and manage weight discrepancy claims from couriers
                     </p>
                 </div>
@@ -178,24 +178,11 @@ export default function AdminWeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Discrepancies</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockDiscrepancies.length}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Discrepancies</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{mockDiscrepancies.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Scale className="h-5 w-5 text-[#2525FF]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Pending Review</p>
-                                <p className="text-2xl font-bold text-amber-600">{totalPending}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
+                                <Scale className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -204,11 +191,11 @@ export default function AdminWeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Chargeable</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalChargeable)}</p>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending Review</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{totalPending}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                                <IndianRupee className="h-5 w-5 text-rose-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
+                                <Clock className="h-5 w-5" style={{ color: 'var(--warning)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -217,13 +204,26 @@ export default function AdminWeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Avg. Difference</p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Chargeable</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalChargeable)}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--error-bg)' }}>
+                                <IndianRupee className="h-5 w-5" style={{ color: 'var(--error)' }} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Avg. Difference</p>
+                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                                     {Math.round(mockDiscrepancies.reduce((sum, d) => sum + d.difference, 0) / mockDiscrepancies.length)}g
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <TrendingUp className="h-5 w-5 text-purple-600" />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
+                                <TrendingUp className="h-5 w-5" style={{ color: 'var(--info)' }} />
                             </div>
                         </div>
                     </CardContent>
@@ -245,12 +245,11 @@ export default function AdminWeightDiscrepancyPage() {
                         <button
                             key={filter.id}
                             onClick={() => setSelectedStatus(filter.id)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
-                                selectedStatus === filter.id
-                                    ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            )}
+                            className="px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap"
+                            style={{
+                                background: selectedStatus === filter.id ? 'var(--primary-blue)' : 'var(--bg-secondary)',
+                                color: selectedStatus === filter.id ? 'var(--text-inverse)' : 'var(--text-secondary)'
+                            }}
                         >
                             {filter.label}
                         </button>
@@ -356,9 +355,9 @@ export default function AdminWeightDiscrepancyPage() {
             {filteredDiscrepancies.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No discrepancies found</h3>
-                        <p className="text-gray-500 mt-1">All weight discrepancies have been resolved</p>
+                        <CheckCircle className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--success)' }} />
+                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No discrepancies found</h3>
+                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>All weight discrepancies have been resolved</p>
                     </CardContent>
                 </Card>
             )}
