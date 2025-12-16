@@ -1,34 +1,73 @@
-import { InputHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, forwardRef, memo, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { Search } from 'lucide-react';
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-    icon?: React.ReactNode;
+/**
+ * Input Component
+ * 
+ * Form input using design system tokens.
+ * Uses CSS custom properties for consistent theming.
+ */
+
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+    icon?: ReactNode;
+    rightIcon?: ReactNode;
+    error?: boolean;
+    size?: 'sm' | 'md' | 'lg';
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-    ({ className, type, icon, ...props }, ref) => {
+const Input = memo(forwardRef<HTMLInputElement, InputProps>(
+    ({ className, type, icon, rightIcon, error, size = 'md', ...props }, ref) => {
         return (
-            <div className="relative">
+            <div className="relative w-full">
+                {/* Left Icon */}
                 {icon && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[--color-gray-400] pointer-events-none">
                         {icon}
                     </div>
                 )}
+
+                {/* Input */}
                 <input
                     type={type}
+                    ref={ref}
                     className={cn(
-                        'flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-400 focus:outline-none focus:border-gray-300 disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
-                        icon ? 'pl-10' : '',
+                        // Base styles using design tokens
+                        'flex w-full bg-white text-[--color-gray-900]',
+                        'rounded-[--radius-lg] border',
+                        'placeholder:text-[--color-gray-400]',
+                        'transition-colors duration-[--transition-fast]',
+                        'focus:outline-none focus:ring-2 focus:ring-offset-0',
+                        'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[--color-gray-50]',
+                        'file:border-0 file:bg-transparent file:text-sm file:font-medium',
+                        // Size variants
+                        {
+                            'h-8 px-3 text-sm': size === 'sm',
+                            'h-10 px-3 text-sm': size === 'md',
+                            'h-12 px-4 text-base': size === 'lg',
+                        },
+                        // Icon padding
+                        icon && 'pl-10',
+                        rightIcon && 'pr-10',
+                        // State variants using design tokens
+                        error
+                            ? 'border-[--color-error] focus:border-[--color-error] focus:ring-[--color-error-light]'
+                            : 'border-[--color-gray-200] focus:border-[--color-primary] focus:ring-[--color-primary-light]',
                         className
                     )}
-                    ref={ref}
                     {...props}
                 />
+
+                {/* Right Icon */}
+                {rightIcon && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[--color-gray-400]">
+                        {rightIcon}
+                    </div>
+                )}
             </div>
         );
     }
-);
+));
+
 Input.displayName = 'Input';
 
 export { Input };

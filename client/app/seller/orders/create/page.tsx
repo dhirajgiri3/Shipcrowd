@@ -18,7 +18,7 @@ import {
     AlertCircle,
     IndianRupee,
     Weight,
-    Ruler3,
+    Ruler,
     Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -348,7 +348,7 @@ export default function CreateOrderPage() {
 
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                <Ruler3 className="h-3.5 w-3.5" />
+                                <Ruler className="h-3.5 w-3.5" />
                                 Dimensions (cm)
                             </label>
                             <div className="grid grid-cols-3 gap-4">

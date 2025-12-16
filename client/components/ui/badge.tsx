@@ -1,36 +1,61 @@
-import { HTMLAttributes, forwardRef } from 'react';
+import { HTMLAttributes, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 
+/**
+ * Badge Component
+ * 
+ * Status indicators using design system CSS custom properties.
+ * Memoized for performance in tables/lists.
+ */
+
 const badgeVariants = cva(
-    'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+    // Base styles using design tokens
+    'inline-flex items-center font-medium rounded-[--radius-full] transition-colors duration-[--transition-fast]',
     {
         variants: {
             variant: {
-                default: 'border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80',
-                secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                destructive: 'border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80',
-                outline: 'text-foreground',
-                success: 'border-transparent bg-emerald-100 text-emerald-700',
-                warning: 'border-transparent bg-amber-100 text-amber-700',
-                info: 'border-transparent bg-cyan-100 text-cyan-700',
-                neutral: 'border-transparent bg-gray-100 text-gray-700',
+                // Semantic variants using design tokens
+                success: 'bg-[--color-success-light] text-[--color-success-dark] border border-[--color-success]/20',
+                warning: 'bg-[--color-warning-light] text-[--color-warning-dark] border border-[--color-warning]/20',
+                error: 'bg-[--color-error-light] text-[--color-error-dark] border border-[--color-error]/20',
+                info: 'bg-[--color-info-light] text-[--color-info-dark] border border-[--color-info]/20',
+                neutral: 'bg-[--color-gray-100] text-[--color-gray-700] border border-[--color-gray-200]',
+
+                // Brand variant
+                primary: 'bg-[--color-primary-light] text-[--color-primary] border border-[--color-primary]/20',
+
+                // Utility variants
+                outline: 'bg-transparent border border-[--color-gray-200] text-[--color-gray-700]',
+                secondary: 'bg-[--color-gray-100] text-[--color-gray-600] border border-transparent',
+
+                // Legacy support
+                default: 'bg-[--color-gray-100] text-[--color-gray-700] border border-[--color-gray-200]',
+                destructive: 'bg-[--color-error-light] text-[--color-error-dark] border border-[--color-error]/20',
+            },
+            size: {
+                sm: 'px-2 py-0.5 text-[10px]',
+                md: 'px-2.5 py-0.5 text-xs',
+                lg: 'px-3 py-1 text-sm',
             },
         },
         defaultVariants: {
-            variant: 'default',
+            variant: 'neutral',
+            size: 'md',
         },
     }
 );
 
 export interface BadgeProps
-    extends HTMLAttributes<HTMLDivElement>,
+    extends HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> { }
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+const Badge = memo(function Badge({ className, variant, size, ...props }: BadgeProps) {
     return (
-        <div className={cn(badgeVariants({ variant }), className)} {...props} />
+        <span className={cn(badgeVariants({ variant, size }), className)} {...props} />
     );
-}
+});
+
+Badge.displayName = 'Badge';
 
 export { Badge, badgeVariants };

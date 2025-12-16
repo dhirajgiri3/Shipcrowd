@@ -1,8 +1,15 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, memo } from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Toast Notification System
+ * 
+ * Context-based toast notifications using design system tokens.
+ * Provides success, error, warning, and info variants.
+ */
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -29,6 +36,7 @@ export function useToast() {
     return context;
 }
 
+// Icon mapping
 const icons = {
     success: CheckCircle,
     error: AlertCircle,
@@ -36,61 +44,92 @@ const icons = {
     info: Info,
 };
 
-const styles = {
-    success: 'bg-white border-emerald-200',
-    error: 'bg-white border-rose-200',
-    warning: 'bg-white border-amber-200',
-    info: 'bg-white border-[#2525FF]/20',
+// Styles using design tokens
+const toastStyles = {
+    success: {
+        container: 'bg-[--card-background] border-[--color-success]/30',
+        icon: 'text-[--color-success] bg-[--color-success-light]',
+        text: 'text-[--color-gray-900]',
+    },
+    error: {
+        container: 'bg-[--card-background] border-[--color-error]/30',
+        icon: 'text-[--color-error] bg-[--color-error-light]',
+        text: 'text-[--color-gray-900]',
+    },
+    warning: {
+        container: 'bg-[--card-background] border-[--color-warning]/30',
+        icon: 'text-[--color-warning] bg-[--color-warning-light]',
+        text: 'text-[--color-gray-900]',
+    },
+    info: {
+        container: 'bg-[--card-background] border-[--color-primary]/20',
+        icon: 'text-[--color-primary] bg-[--color-primary-light]',
+        text: 'text-[--color-gray-900]',
+    },
 };
 
-const iconStyles = {
-    success: 'text-emerald-500 bg-emerald-50',
-    error: 'text-rose-500 bg-rose-50',
-    warning: 'text-amber-500 bg-amber-50',
-    info: 'text-[#2525FF] bg-[#2525FF]/5',
-};
-
-const textStyles = {
-    success: 'text-emerald-900',
-    error: 'text-rose-900',
-    warning: 'text-amber-900',
-    info: 'text-gray-900',
-};
-
-function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) {
+// Memoized toast item component
+const ToastItem = memo(function ToastItem({
+    toast,
+    onRemove
+}: {
+    toast: Toast;
+    onRemove: () => void;
+}) {
     const Icon = icons[toast.type];
+    const styles = toastStyles[toast.type];
 
     return (
         <div
+            role="alert"
             className={cn(
-                "flex items-start gap-3 p-4 rounded-xl border-2 shadow-xl",
+                "flex items-start gap-3 p-4 rounded-[--radius-xl] border-2",
+                "shadow-[--shadow-xl]",
                 "min-w-[320px] max-w-md",
-                "animate-in slide-in-from-bottom-5 fade-in duration-300",
-                styles[toast.type]
+                "animate-slide-up",
+                styles.container
             )}
         >
-            <div className={cn("p-2 rounded-lg flex-shrink-0", iconStyles[toast.type])}>
+            {/* Icon */}
+            <div className={cn(
+                "p-2 rounded-[--radius-lg] flex-shrink-0",
+                styles.icon
+            )}>
                 <Icon className="h-4 w-4" />
             </div>
+
+            {/* Content */}
             <div className="flex-1 min-w-0 pt-0.5">
                 {toast.title && (
-                    <p className={cn("font-semibold text-sm mb-0.5", textStyles[toast.type])}>
+                    <p className={cn("font-semibold text-sm mb-0.5", styles.text)}>
                         {toast.title}
                     </p>
                 )}
-                <p className={cn("text-sm", textStyles[toast.type], !toast.title && "font-medium")}>
+                <p className={cn(
+                    "text-sm",
+                    styles.text,
+                    !toast.title && "font-medium"
+                )}>
                     {toast.message}
                 </p>
             </div>
+
+            {/* Close button */}
             <button
                 onClick={onRemove}
-                className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                className={cn(
+                    "flex-shrink-0 p-1.5 rounded-[--radius-lg]",
+                    "text-[--color-gray-500] hover:text-[--color-gray-900]",
+                    "hover:bg-[--color-gray-100]",
+                    "transition-colors duration-[--transition-fast]"
+                )}
+                aria-label="Dismiss notification"
             >
-                <X className="h-3.5 w-3.5 text-gray-500" />
+                <X className="h-3.5 w-3.5" />
             </button>
         </div>
     );
-}
+});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
@@ -112,8 +151,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
             {children}
+
             {/* Toast Container */}
-            <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none">
+            <div
+                className="fixed bottom-6 right-6 z-[--z-toast] flex flex-col gap-3 pointer-events-none"
+                aria-live="polite"
+            >
                 {toasts.map(toast => (
                     <div key={toast.id} className="pointer-events-auto">
                         <ToastItem

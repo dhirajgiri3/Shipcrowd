@@ -1,21 +1,52 @@
-import { HTMLAttributes, forwardRef } from 'react';
+import { HTMLAttributes, forwardRef, memo } from 'react';
 import { cn } from '@/lib/utils';
 
-const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-    ({ className, ...props }, ref) => (
+/**
+ * Card Components
+ * 
+ * Container components using design system CSS custom properties.
+ * Memoized for performance.
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+    hover?: boolean;
+    padding?: 'none' | 'sm' | 'md' | 'lg';
+}
+
+const Card = memo(forwardRef<HTMLDivElement, CardProps>(
+    ({ className, hover = false, padding, ...props }, ref) => (
         <div
             ref={ref}
             className={cn(
-                'rounded-xl border border-gray-100 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]',
+                // Base styles using design tokens
+                'rounded-[--radius-xl] border border-[--color-gray-200] bg-[--card-background]',
+                'shadow-[--shadow-sm]',
+                // Hover state (optional)
+                hover && 'transition-all duration-[--transition-base] hover:border-[--color-gray-300] hover:shadow-[--shadow-md] hover:-translate-y-0.5',
+                // Padding variants
+                {
+                    'p-0': padding === 'none',
+                    'p-4': padding === 'sm',
+                    'p-6': padding === 'md',
+                    'p-8': padding === 'lg',
+                },
                 className
             )}
             {...props}
         />
     )
-);
+));
 Card.displayName = 'Card';
 
-const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD HEADER
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CardHeader = memo(forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     ({ className, ...props }, ref) => (
         <div
             ref={ref}
@@ -23,32 +54,74 @@ const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
             {...props}
         />
     )
-);
+));
 CardHeader.displayName = 'CardHeader';
 
-const CardTitle = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLHeadingElement>>(
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD TITLE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CardTitle = memo(forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
     ({ className, ...props }, ref) => (
         <h3
             ref={ref}
-            className={cn('font-semibold leading-none tracking-tight text-gray-900', className)}
+            className={cn(
+                'font-semibold leading-none tracking-tight text-[--color-gray-900]',
+                className
+            )}
             {...props}
         />
     )
-);
+));
 CardTitle.displayName = 'CardTitle';
 
-const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-    ({ className, ...props }, ref) => (
-        <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
-    )
-);
-CardContent.displayName = 'CardContent';
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD DESCRIPTION
+// ═══════════════════════════════════════════════════════════════════════════
 
-const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
+const CardDescription = memo(forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
     ({ className, ...props }, ref) => (
-        <p ref={ref} className={cn('text-sm text-gray-500', className)} {...props} />
+        <p
+            ref={ref}
+            className={cn('text-sm text-[--color-gray-500]', className)}
+            {...props}
+        />
     )
-);
+));
 CardDescription.displayName = 'CardDescription';
 
-export { Card, CardHeader, CardTitle, CardContent, CardDescription };
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD CONTENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CardContent = memo(forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+    ({ className, ...props }, ref) => (
+        <div
+            ref={ref}
+            className={cn('p-6 pt-0', className)}
+            {...props}
+        />
+    )
+));
+CardContent.displayName = 'CardContent';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD FOOTER
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CardFooter = memo(forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+    ({ className, ...props }, ref) => (
+        <div
+            ref={ref}
+            className={cn(
+                'flex items-center p-6 pt-0',
+                className
+            )}
+            {...props}
+        />
+    )
+));
+CardFooter.displayName = 'CardFooter';
+
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };
+export type { CardProps };

@@ -1,7 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Modal Component
+ * 
+ * Accessible modal dialog using design system tokens.
+ * Uses portal for proper stacking context.
+ */
 
 interface ModalProps {
     isOpen: boolean;
@@ -9,7 +16,7 @@ interface ModalProps {
     title?: string;
     children: React.ReactNode;
     className?: string;
-    size?: 'sm' | 'md' | 'lg' | 'xl';
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 const sizeClasses = {
@@ -17,9 +24,17 @@ const sizeClasses = {
     md: 'max-w-md',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
+    full: 'max-w-[90vw]',
 };
 
-export function Modal({ isOpen, onClose, title, children, className, size = 'md' }: ModalProps) {
+export const Modal = memo(function Modal({
+    isOpen,
+    onClose,
+    title,
+    children,
+    className,
+    size = 'md'
+}: ModalProps) {
     const overlayRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -41,28 +56,60 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div
+            className={cn(
+                "fixed inset-0 z-[--z-modal] flex items-center justify-center p-4",
+                "bg-black/50 backdrop-blur-sm",
+                "animate-fade-in"
+            )}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? 'modal-title' : undefined}
+        >
+            {/* Backdrop */}
             <div
                 ref={overlayRef}
                 className="absolute inset-0"
                 onClick={onClose}
+                aria-hidden="true"
             />
+
+            {/* Modal Content */}
             <div
                 className={cn(
-                    "relative z-50 w-full bg-white rounded-xl shadow-2xl animate-in zoom-in-95 duration-200",
+                    "relative z-10 w-full",
+                    "bg-[--card-background] rounded-[--radius-xl]",
+                    "shadow-[--shadow-xl]",
+                    "animate-slide-up",
                     sizeClasses[size],
                     className
                 )}
             >
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-[--color-gray-100]">
+                    {title && (
+                        <h3
+                            id="modal-title"
+                            className="text-lg font-semibold text-[--color-gray-900]"
+                        >
+                            {title}
+                        </h3>
+                    )}
                     <button
                         onClick={onClose}
-                        className="rounded-full p-1 hover:bg-gray-100 transition-colors"
+                        className={cn(
+                            "rounded-[--radius-full] p-1.5 ml-auto",
+                            "text-[--color-gray-500] hover:text-[--color-gray-900]",
+                            "hover:bg-[--color-gray-100]",
+                            "transition-colors duration-[--transition-fast]"
+                        )}
+                        aria-label="Close modal"
                     >
-                        <X className="w-5 h-5 text-gray-500" />
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
+
+                {/* Body */}
                 <div className="p-6">
                     {children}
                 </div>
@@ -70,4 +117,4 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
         </div>,
         document.body
     );
-}
+});

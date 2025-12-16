@@ -154,7 +154,7 @@ export default function RatesPage() {
                                     { label: 'COD', value: 'cod' },
                                 ]}
                                 value={formData.paymentMode}
-                                onChange={(val) => setFormData({ ...formData, paymentMode: val })}
+                                onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
                             />
                         </div>
 
