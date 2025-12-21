@@ -6,10 +6,10 @@ import { Badge } from '@/components/ui/Badge';
 import { Plug, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 const mockIntegrations = [
-    { name: 'Shopify', status: 'connected', ordersSync: 12450, lastSync: '2 mins ago', logo: '🛍️' },
-    { name: 'WooCommerce', status: 'connected', ordersSync: 6720, lastSync: '15 mins ago', logo: '🛒' },
-    { name: 'Amazon Seller', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: '📦' },
-    { name: 'Magento', status: 'error', ordersSync: 3240, lastSync: '2 hours ago', logo: '🔌' },
+    { name: 'Shopify', status: 'connected', ordersSync: 12450, lastSync: '2 mins ago', logo: 'https://cdn.worldvectorlogo.com/logos/shopify.svg' },
+    { name: 'WooCommerce', status: 'connected', ordersSync: 6720, lastSync: '15 mins ago', logo: 'https://cdn.worldvectorlogo.com/logos/woocommerce.svg' },
+    { name: 'Amazon Seller', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: 'https://toppng.com/uploads/preview/amazon-logo-vector-1157394522189k5iof9l3.png' },
+    { name: 'Flipkart', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: 'https://cdn.worldvectorlogo.com/logos/flipkart.svg' },
 ];
 
 const mockUsers = [
@@ -42,7 +42,9 @@ export default function IntegrationsPage() {
                         <Card key={idx} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between mb-3">
-                                    <div className="text-4xl">{integration.logo}</div>
+                                    <div className="h-10 w-10 flex items-center justify-center">
+                                        <img src={integration.logo} alt={integration.name} className="h-full w-full object-contain" />
+                                    </div>
                                     <Badge variant={
                                         integration.status === 'connected' ? 'success' :
                                             integration.status === 'error' ? 'warning' : 'neutral'

@@ -866,9 +866,181 @@ Shipcrowd India is a comprehensive shipping aggregator platform that streamlines
 
 ---
 
-## SECTION 11: FRAUD DETECTION & SECURITY
+## SECTION 11: SALES TEAM MANAGEMENT
 
-### 11.1 ADVANCED FRAUD DETECTION
+### 11.1 SALES TEAM MODULE
+**Feature Category:** Business Development  
+**Business Impact:** Efficient sales team management and client acquisition tracking
+
+#### Components:
+- **Salesperson Management**
+  - Salesperson profile creation and management
+  - Role assignment and access control
+  - Performance tracking and monitoring
+  - Commission structure configuration
+  - Territory assignment
+
+- **Client Acquisition Tracking**
+  - Lead management and tracking
+  - Client onboarding workflow
+  - Conversion rate monitoring
+  - Sales pipeline visualization
+  - Follow-up scheduling and reminders
+
+- **Performance Analytics**
+  - Individual salesperson metrics
+  - Team performance comparisons
+  - Revenue attribution tracking
+  - Target vs achievement analysis
+  - Monthly/quarterly performance reports
+
+#### Functions:
+- Salesperson CRUD operations
+- Client assignment and tracking
+- Commission calculation
+- Performance reporting
+- Target management
+
+#### Constraints:
+- Maximum 100 salespeople per organization
+- Commission calculated monthly
+- Performance metrics updated daily
+- Target setting requires approval
+
+---
+
+### 11.2 COMMISSION & INCENTIVE MANAGEMENT
+**Feature Category:** Financial Operations  
+**Business Impact:** Automated commission tracking and payout management
+
+#### Components:
+- **Commission Structure**
+  - Percentage-based commission rules
+  - Tiered commission rates
+  - Revenue milestone bonuses
+  - Custom incentive plans
+  - Override and adjustment capabilities
+
+- **Payout Management**
+  - Automated commission calculation
+  - Monthly payout processing
+  - Commission statement generation
+  - Payment reconciliation
+  - Historical payout tracking
+
+- **Leaderboards & Gamification**
+  - Real-time sales leaderboards
+  - Achievement badges and milestones
+  - Team competitions
+  - Performance rankings
+  - Motivation dashboards
+
+#### Functions:
+- Commission rule configuration
+- Automated payout calculations
+- Statement generation
+- Performance leaderboards
+- Incentive management
+
+#### Constraints:
+- Commission calculated on successful deliveries only
+- Payout processing on 5th of every month
+- Minimum payout threshold: ₹1,000
+- Commission disputes resolved within 7 days
+
+---
+
+## SECTION 12: COUPON & PROMOTIONAL MANAGEMENT
+
+### 12.1 COUPON SYSTEM
+**Feature Category:** Marketing & Customer Acquisition  
+**Business Impact:** Customer acquisition and retention through promotional campaigns
+
+#### Components:
+- **Coupon Creation & Management**
+  - Discount code generation
+  - Percentage or fixed amount discounts
+  - Minimum order value requirements
+  - Maximum discount caps
+  - Expiration date settings
+  - Usage limit configuration
+
+- **Coupon Types**
+  - **First-time user coupons:** Welcome discounts for new customers
+  - **Bulk order coupons:** Incentives for large shipment volumes
+  - **Seasonal promotions:** Festival/holiday special offers
+  - **Referral coupons:** Rewards for customer referrals
+  - **Partner coupons:** Co-branded promotional codes
+  - **Loyalty rewards:** Exclusive discounts for repeat customers
+
+- **Advanced Features**
+  - Auto-apply eligible coupons at checkout
+  - Coupon stacking rules (multiple coupon usage)
+  - User-specific or public coupons
+  - Courier-specific discounts
+  - Category-specific offers
+  - Geographic targeting (city/state-based)
+
+#### Functions:
+- Coupon creation and configuration
+- Discount validation and application
+- Usage tracking and analytics
+- Expiration management
+- Redemption monitoring
+
+#### Constraints:
+- Maximum 50% discount allowed
+- Minimum order value: ₹100
+- Coupons valid for minimum 1 day
+- Usage limit per user enforceable
+- Cannot combine with other platform discounts
+
+---
+
+### 12.2 PROMOTIONAL CAMPAIGN MANAGEMENT
+**Feature Category:** Marketing Operations  
+**Business Impact:** Structured promotional campaigns for business growth
+
+#### Components:
+- **Campaign Planning**
+  - Campaign creation and scheduling
+  - Target audience definition
+  - Budget allocation and tracking
+  - Multi-channel promotion support
+  - A/B testing capabilities
+
+- **Performance Analytics**
+  - Coupon redemption rates
+  - Revenue impact analysis
+  - Customer acquisition cost
+  - ROI calculations
+  - Campaign effectiveness reports
+
+- **Communication Integration**
+  - Email campaign integration
+  - SMS promotion broadcasting
+  - WhatsApp campaign support
+  - In-app notifications
+  - Website banner management
+
+#### Functions:
+- Campaign creation and management
+- Performance monitoring
+- ROI analysis
+- Customer segmentation
+- Multi-channel communication
+
+#### Constraints:
+- Maximum 5 active campaigns simultaneously
+- Campaign duration: 1 day to 90 days
+- Budget tracking updated real-time
+- Performance metrics available within 24 hours
+
+---
+
+## SECTION 13: FRAUD DETECTION & SECURITY
+
+### 13.1 ADVANCED FRAUD DETECTION
 **Feature Category:** Risk Management  
 **Business Impact:** Protection against fraudulent activities
 

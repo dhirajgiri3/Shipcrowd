@@ -29,6 +29,20 @@ const integrations = [
         icon: 'https://cdn.worldvectorlogo.com/logos/woocommerce.svg',
         color: '96588A'
     },
+    {
+        name: 'Amazon',
+        description: 'Sync orders and inventory from Amazon Seller Central',
+        status: 'disconnected',
+        icon: 'https://toppng.com/uploads/preview/amazon-logo-vector-1157394522189k5iof9l3.png',
+        color: 'FF9900'
+    },
+    {
+        name: 'Flipkart',
+        description: 'Connect your Flipkart Seller account to manage orders',
+        status: 'disconnected',
+        icon: 'https://cdn.worldvectorlogo.com/logos/flipkart.svg',
+        color: '2874F0'
+    },
 ];
 
 export default function IntegrationsPage() {
