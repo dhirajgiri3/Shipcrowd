@@ -35,7 +35,7 @@ export default function SettingsPage() {
                             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all
                                 ${activeTab === tab.id
                                     ? 'bg-[#2525FF]/5 text-[#2525FF] border border-[#2525FF]/10'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    : 'text-gray-600 hover:bg-[var(--bg-hover)] hover:text-gray-900'
                                 }`
                             }
                         >
@@ -60,7 +60,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <Button variant="outline" size="sm">Change Avatar</Button>
-                                        <p className="text-xs text-gray-500 mt-2">JPG, GIF or PNG. Max size of 800K</p>
+                                        <p className="text-xs text-[var(--text-muted)] mt-2">JPG, GIF or PNG. Max size of 800K</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -147,12 +147,12 @@ export default function SettingsPage() {
                                 ].map((platform) => (
                                     <div key={platform.name} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 p-1 flex items-center justify-center bg-gray-50 rounded-lg">
+                                            <div className="w-10 h-10 p-1 flex items-center justify-center bg-[var(--bg-secondary)] rounded-lg">
                                                 <img src={platform.icon} className="w-6 h-6 object-contain" alt="" />
                                             </div>
                                             <div>
-                                                <h4 className="font-semibold text-gray-900">{platform.name}</h4>
-                                                <p className="text-xs text-gray-500">Sync orders and inventory</p>
+                                                <h4 className="font-semibold text-[var(--text-primary)]">{platform.name}</h4>
+                                                <p className="text-xs text-[var(--text-muted)]">Sync orders and inventory</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4">
@@ -179,8 +179,8 @@ export default function SettingsPage() {
                                 <div className="p-4 border border-gray-100 rounded-xl">
                                     <div className="flex items-center justify-between mb-2">
                                         <div>
-                                            <p className="font-medium text-gray-900">Production API Key</p>
-                                            <p className="text-xs text-gray-500">Created on Dec 1, 2024</p>
+                                            <p className="font-medium text-[var(--text-primary)]">Production API Key</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Created on Dec 1, 2024</p>
                                         </div>
                                         <Badge variant="success">Active</Badge>
                                     </div>
@@ -207,11 +207,11 @@ export default function SettingsPage() {
                     {!['profile', 'company', 'integrations', 'api'].includes(activeTab) && (
                         <Card>
                             <CardContent className="py-12 flex flex-col items-center justify-center text-center">
-                                <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                                <div className="h-12 w-12 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mb-4">
                                     <Lock className="w-6 h-6 text-gray-400" />
                                 </div>
-                                <h3 className="text-lg font-medium text-gray-900">Settings Section</h3>
-                                <p className="text-gray-500 max-w-sm mt-2">
+                                <h3 className="text-lg font-medium text-[var(--text-primary)]">Settings Section</h3>
+                                <p className="text-[var(--text-muted)] max-w-sm mt-2">
                                     This section is under development. Functionality will be available soon.
                                 </p>
                             </CardContent>

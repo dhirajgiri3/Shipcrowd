@@ -145,11 +145,11 @@ export default function AdminReturnsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <PackageX className="h-6 w-6 text-[#2525FF]" />
                         Returns & NDR Management
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Monitor and manage non-delivery reports across all sellers
                     </p>
                 </div>
@@ -171,8 +171,8 @@ export default function AdminReturnsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total NDRs</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockNDRs.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total NDRs</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockNDRs.length}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <PackageX className="h-5 w-5 text-[#2525FF]" />
@@ -184,7 +184,7 @@ export default function AdminReturnsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Action Pending</p>
+                                <p className="text-sm text-[var(--text-muted)]">Action Pending</p>
                                 <p className="text-2xl font-bold text-amber-600">{actionPending}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
@@ -197,7 +197,7 @@ export default function AdminReturnsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">RTO Count</p>
+                                <p className="text-sm text-[var(--text-muted)]">RTO Count</p>
                                 <p className="text-2xl font-bold text-rose-600">{rtoCount}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
@@ -210,8 +210,8 @@ export default function AdminReturnsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">RTO Value</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(rtoValue)}</p>
+                                <p className="text-sm text-[var(--text-muted)]">RTO Value</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rtoValue)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
                                 <TrendingDown className="h-5 w-5 text-purple-600" />
@@ -240,7 +240,7 @@ export default function AdminReturnsPage() {
                                 "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
                                 selectedStatus === filter.id
                                     ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
                             )}
                         >
                             {filter.label}
@@ -250,7 +250,7 @@ export default function AdminReturnsPage() {
                 <select
                     value={selectedCourier}
                     onChange={(e) => setSelectedCourier(e.target.value)}
-                    className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                    className="h-10 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                 >
                     {couriers.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -263,41 +263,41 @@ export default function AdminReturnsPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">AWB</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Customer</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Reason</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Attempts</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Courier</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Customer</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Reason</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Attempts</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredNDRs.map((ndr) => (
-                                    <tr key={ndr.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={ndr.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
-                                            <code className="font-mono text-sm font-semibold text-gray-900">{ndr.awbNumber}</code>
-                                            <p className="text-xs text-gray-500 mt-1">{ndr.createdAt}</p>
+                                            <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{ndr.awbNumber}</code>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{ndr.createdAt}</p>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm font-medium text-gray-900">{ndr.sellerName}</p>
-                                            <p className="text-xs text-gray-500">{ndr.sellerId}</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{ndr.sellerName}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{ndr.sellerId}</p>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm text-gray-900">{ndr.customer}</p>
-                                            <p className="text-xs text-gray-500">{ndr.city}</p>
+                                            <p className="text-sm text-[var(--text-primary)]">{ndr.customer}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{ndr.city}</p>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm text-gray-900 max-w-[200px] truncate">{ndr.reason}</p>
+                                            <p className="text-sm text-[var(--text-primary)] max-w-[200px] truncate">{ndr.reason}</p>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <span className="text-sm font-medium text-gray-900">{ndr.attempts}/3</span>
+                                            <span className="text-sm font-medium text-[var(--text-primary)]">{ndr.attempts}/3</span>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm text-gray-900">{ndr.courier}</p>
+                                            <p className="text-sm text-[var(--text-primary)]">{ndr.courier}</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             {getStatusBadge(ndr.status)}
@@ -326,8 +326,8 @@ export default function AdminReturnsPage() {
                 <Card>
                     <CardContent className="py-12 text-center">
                         <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No NDRs found</h3>
-                        <p className="text-gray-500 mt-1">All shipments are on track!</p>
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No NDRs found</h3>
+                        <p className="text-[var(--text-muted)] mt-1">All shipments are on track!</p>
                     </CardContent>
                 </Card>
             )}

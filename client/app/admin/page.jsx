@@ -52,7 +52,6 @@ import {
     MessageSquare,
     Wallet
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -171,30 +170,30 @@ const revenueByChannel = [
 
 function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, color = "blue" }) {
     return (
-        <div className="group bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 hover:shadow-md transition-all duration-300">
+        <div className="group bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-6 hover:border-[var(--border-default)] transition-all duration-200 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
                 <div className={cn(
-                    "h-10 w-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110",
-                    color === "blue" ? "bg-blue-50 text-[#2525FF]" :
-                        color === "emerald" ? "bg-emerald-50 text-emerald-600" :
-                            color === "violet" ? "bg-violet-50 text-violet-600" :
-                                "bg-amber-50 text-amber-600"
+                    "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-200 group-hover:scale-110",
+                    color === "blue" ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
+                        color === "emerald" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                            color === "violet" ? "bg-violet-500/10 text-violet-600 dark:text-violet-400" :
+                                "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                 )}>
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-6 w-6" />
                 </div>
                 {trend && (
                     <span className={cn(
-                        "inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold",
-                        trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold",
+                        trend === "up" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                     )}>
                         <TrendingUp className={cn("h-3 w-3 mr-1", trend === "down" && "rotate-180")} />
                         {trendValue}
                     </span>
                 )}
             </div>
-            <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 tracking-tight">{value}</p>
-            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1 group-hover:text-gray-500 transition-colors">
+            <p className="text-sm font-medium text-[var(--text-muted)] mb-2">{title}</p>
+            <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight metric-number">{value}</p>
+            <p className="text-xs text-[var(--text-muted)] mt-3 flex items-center gap-1 group-hover:text-[var(--text-secondary)] transition-colors">
                 {subtext}
                 <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </p>
@@ -207,22 +206,22 @@ function CourierCard({ data }) {
 
     return (
         <div className={cn(
-            "group relative overflow-hidden bg-white border rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
-            isWarning ? "border-amber-200" : "border-gray-200 hover:border-[#2525FF]/30"
+            "group relative overflow-hidden bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-5 transition-all duration-200 hover:border-[var(--border-default)]",
+            isWarning && "border-amber-300 dark:border-amber-500/30"
         )}>
             {/* Top Row */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-gray-50 flex items-center justify-center font-bold text-gray-700 text-sm">
+                    <div className="h-10 w-10 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center font-bold text-[var(--text-primary)] text-sm shadow-sm">
                         {data.logo}
                     </div>
                     <div>
-                        <h3 className="font-semibold text-gray-900">{data.name}</h3>
-                        <p className="text-xs text-gray-500">{data.volume} shipments</p>
+                        <h3 className="font-semibold text-[var(--text-primary)]">{data.name}</h3>
+                        <p className="text-xs text-[var(--text-muted)]">{data.volume} shipments</p>
                     </div>
                 </div>
                 {isWarning && (
-                    <div className="h-8 w-8 rounded-full bg-amber-50 flex items-center justify-center animate-pulse">
+                    <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center animate-pulse">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
                     </div>
                 )}
@@ -231,20 +230,20 @@ function CourierCard({ data }) {
             {/* Metrics */}
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <p className="text-xs text-gray-500 mb-1">Success Rate</p>
+                    <p className="text-xs text-[var(--text-muted)] mb-1">Success Rate</p>
                     <p className={cn(
-                        "text-xl font-bold",
-                        data.sla >= 90 ? "text-emerald-600" :
-                            data.sla >= 80 ? "text-gray-900" : "text-amber-600"
+                        "text-xl font-bold metric-number",
+                        data.sla >= 90 ? "text-emerald-600 dark:text-emerald-400" :
+                            data.sla >= 80 ? "text-[var(--text-primary)]" : "text-amber-600 dark:text-amber-400"
                     )}>
                         {data.sla}%
                     </p>
                 </div>
                 <div>
-                    <p className="text-xs text-gray-500 mb-1">Trend (7d)</p>
+                    <p className="text-xs text-[var(--text-muted)] mb-1">Trend (7d)</p>
                     <p className={cn(
-                        "text-xl font-bold",
-                        data.trend.startsWith('+') ? "text-emerald-600" : "text-rose-500"
+                        "text-xl font-bold metric-number",
+                        data.trend.startsWith('+') ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"
                     )}>
                         {data.trend}
                     </p>
@@ -264,7 +263,7 @@ function CourierCard({ data }) {
                         <Area
                             type="monotone"
                             dataKey="val"
-                            stroke={isWarning ? "#F59E0B" : "#2525FF"}
+                            stroke={isWarning ? "#F59E0B" : "#6B6BFF"}
                             strokeWidth={2}
                             fill={`url(#gradient-${data.name})`}
                         />
@@ -274,13 +273,13 @@ function CourierCard({ data }) {
 
             {/* Actions */}
             <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1 h-8 text-xs font-medium">
+                <button className="flex-1 h-8 px-3 rounded-lg text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200">
                     View Details
-                </Button>
+                </button>
                 {isWarning && (
-                    <Button size="sm" className="flex-1 h-8 text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200">
+                    <button className="flex-1 h-8 px-3 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all duration-200">
                         Investigate
-                    </Button>
+                    </button>
                 )}
             </div>
         </div>
@@ -300,48 +299,51 @@ export default function AdminDashboardPage() {
     return (
         <div className="space-y-8 pb-10">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
                 <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                        <Clock className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-2">
+                        <Clock className="w-4 h-4" />
                         {currentTime.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)]">
                         Platform Command Center
                     </h1>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full shadow-sm">
+                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-full shadow-sm">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        <span className="text-sm text-emerald-700 font-semibold">Systems Operational</span>
+                        <span className="text-sm text-emerald-600 dark:text-emerald-400 font-semibold">Systems Operational</span>
                     </div>
                     <DateRangePicker />
-                    <Button variant="outline" onClick={() => addToast('Refreshing data...', 'info')} className="hover:bg-gray-50">
-                        <RefreshCcw className="h-4 w-4 mr-2" />
+                    <button
+                        onClick={() => addToast('Refreshing data...', 'info')}
+                        className="h-9 px-4 rounded-xl text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center gap-2"
+                    >
+                        <RefreshCcw className="h-4 w-4" />
                         Refresh
-                    </Button>
+                    </button>
                 </div>
             </div>
 
             {/* System Notification Banner */}
             {showSystemAlert && (
-                <div className="relative overflow-hidden rounded-xl bg-gray-900 p-1 shadow-lg animate-in slide-in-from-top-2 fade-in duration-500">
-                    <div className="relative flex items-center justify-between gap-4 rounded-lg bg-gray-800/50 px-4 py-3 text-white backdrop-blur-sm">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 p-px animate-fade-in stagger-1">
+                    <div className="relative flex items-center justify-between gap-4 rounded-xl bg-slate-900/80 px-5 py-4 text-white">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
-                                <Server className="h-4 w-4" />
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                                <Server className="h-5 w-5" />
                             </div>
                             <div>
-                                <p className="font-medium text-sm sm:text-base">System Update Scheduled</p>
-                                <p className="text-xs sm:text-sm text-gray-400">Maintenance scheduled for Dec 15, 02:00 AM - 04:00 AM IST. No downtime expected.</p>
+                                <p className="font-semibold text-sm sm:text-base">System Update Scheduled</p>
+                                <p className="text-xs sm:text-sm text-[var(--text-muted)]">Maintenance scheduled for Dec 15, 02:00 AM - 04:00 AM IST. No downtime expected.</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setShowSystemAlert(false)}
-                            className="rounded-full p-1 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                            className="rounded-full p-1.5 hover:bg-[var(--bg-primary)]/10 transition-all duration-200 text-[var(--text-muted)] hover:text-white"
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -350,47 +352,47 @@ export default function AdminDashboardPage() {
             )}
 
             {/* AI Insights & Quick Actions */}
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-6 animate-fade-in stagger-2">
                 {/* AI Insights Widget - Priority 1 */}
-                <div className="lg:col-span-2 relative overflow-hidden bg-gradient-to-br from-[#2525FF] to-[#1e1ecc] rounded-2xl shadow-lg p-1">
+                <div className="lg:col-span-2 relative overflow-hidden bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] rounded-2xl p-px">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Sparkles className="w-32 h-32" />
+                        <Sparkles className="w-32 h-32 text-white" />
                     </div>
-                    <div className="bg-white/95 backdrop-blur-sm rounded-xl h-full p-6">
+                    <div className="bg-[var(--bg-primary)] rounded-xl h-full p-6">
                         <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center text-[#2525FF]">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)]">
                                     <Sparkles className="h-5 w-5" />
                                 </div>
-                                <h2 className="font-bold text-gray-900 text-lg">AI Smart Insights</h2>
+                                <h2 className="font-bold text-[var(--text-primary)] text-lg">AI Smart Insights</h2>
                             </div>
-                            <Button variant="ghost" size="sm" className="text-[#2525FF] hover:bg-blue-50">
+                            <button className="text-sm font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] transition-colors flex items-center gap-1">
                                 View all
-                                <ArrowUpRight className="h-4 w-4 ml-1" />
-                            </Button>
+                                <ArrowUpRight className="h-4 w-4" />
+                            </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {aiInsights.map((insight) => (
-                                <div key={insight.id} className="group flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-all cursor-pointer">
+                                <div key={insight.id} className="group flex items-start gap-4 p-4 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 cursor-pointer">
                                     <div className={cn(
-                                        "h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors",
-                                        insight.color === 'blue' ? "bg-blue-100 text-blue-600" :
-                                            insight.color === 'amber' ? "bg-amber-100 text-amber-600" :
-                                                "bg-rose-100 text-rose-600"
+                                        "h-10 w-10 shrink-0 rounded-xl flex items-center justify-center transition-colors",
+                                        insight.color === 'blue' ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                                            insight.color === 'amber' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                                                "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                                     )}>
                                         <insight.icon className="h-5 w-5" />
                                     </div>
                                     <div className="flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-semibold text-gray-900">{insight.title}</h3>
-                                            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">{insight.type}</span>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h3 className="font-semibold text-[var(--text-primary)]">{insight.title}</h3>
+                                            <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-widest">{insight.type}</span>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1 leading-relaxed">{insight.description}</p>
+                                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{insight.description}</p>
                                     </div>
-                                    <Button size="sm" variant="outline" className="self-center hidden sm:flex hover:bg-white hover:text-[#2525FF]">
+                                    <button className="self-center hidden sm:flex h-8 px-3 rounded-lg text-xs font-medium bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-all duration-200">
                                         {insight.action}
-                                    </Button>
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -398,24 +400,24 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Quick Actions Panel */}
-                <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
-                    <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-6">
+                    <h2 className="font-bold text-[var(--text-primary)] mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-2 gap-3">
-                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-[#2525FF] hover:text-white transition-all group border border-transparent hover:border-[#2525FF] text-center h-28">
-                            <Users className="h-6 w-6 text-gray-600 group-hover:text-white transition-colors" />
-                            <span className="text-xs font-semibold">Approve Sellers</span>
+                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--primary-blue)] hover:text-white transition-all duration-200 group text-center h-28">
+                            <Users className="h-6 w-6 text-[var(--text-muted)] group-hover:text-white transition-colors" />
+                            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-white transition-colors">Approve Sellers</span>
                         </button>
-                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-emerald-500 hover:text-white transition-all group border border-transparent hover:border-emerald-500 text-center h-28">
-                            <FileText className="h-6 w-6 text-gray-600 group-hover:text-white transition-colors" />
-                            <span className="text-xs font-semibold">Daily Report</span>
+                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-[var(--bg-secondary)] hover:bg-emerald-500 hover:text-white transition-all duration-200 group text-center h-28">
+                            <FileText className="h-6 w-6 text-[var(--text-muted)] group-hover:text-white transition-colors" />
+                            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-white transition-colors">Daily Report</span>
                         </button>
-                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-amber-500 hover:text-white transition-all group border border-transparent hover:border-amber-500 text-center h-28">
-                            <Megaphone className="h-6 w-6 text-gray-600 group-hover:text-white transition-colors" />
-                            <span className="text-xs font-semibold">Broadcast</span>
+                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-[var(--bg-secondary)] hover:bg-amber-500 hover:text-white transition-all duration-200 group text-center h-28">
+                            <Megaphone className="h-6 w-6 text-[var(--text-muted)] group-hover:text-white transition-colors" />
+                            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-white transition-colors">Broadcast</span>
                         </button>
-                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-violet-500 hover:text-white transition-all group border border-transparent hover:border-violet-500 text-center h-28">
-                            <Settings className="h-6 w-6 text-gray-600 group-hover:text-white transition-colors" />
-                            <span className="text-xs font-semibold">Configure API</span>
+                        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-[var(--bg-secondary)] hover:bg-violet-500 hover:text-white transition-all duration-200 group text-center h-28">
+                            <Settings className="h-6 w-6 text-[var(--text-muted)] group-hover:text-white transition-colors" />
+                            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-white transition-colors">Configure API</span>
                         </button>
                     </div>
                 </div>
@@ -462,11 +464,11 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Courier Performance Grid - Redesigned */}
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in stagger-4">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-gray-900">Courier Performance Overview</h2>
-                    <Link href="/admin/couriers" className="text-sm font-medium text-[#2525FF] hover:underline flex items-center">
-                        Manage Couriers <ArrowUpRight className="h-4 w-4 ml-1" />
+                    <h2 className="text-lg font-bold text-[var(--text-primary)]">Courier Performance Overview</h2>
+                    <Link href="/admin/couriers" className="text-sm font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] transition-colors flex items-center gap-1">
+                        Manage Couriers <ArrowUpRight className="h-4 w-4" />
                     </Link>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -477,48 +479,49 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Two Column Layout: Activity Feed & Financials */}
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-6 animate-fade-in stagger-5">
                 {/* Real-time Activity Feed */}
-                <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="lg:col-span-2 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Activity className="h-5 w-5 text-gray-500" />
-                            <h2 className="font-semibold text-gray-900">Live Activity Feed</h2>
+                            <Activity className="h-5 w-5 text-[var(--text-muted)]" />
+                            <h2 className="font-semibold text-[var(--text-primary)]">Live Activity Feed</h2>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-gray-500">
-                            <Filter className="h-4 w-4 mr-2" />
+                        <button className="h-8 px-3 rounded-lg text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center gap-2">
+                            <Filter className="h-4 w-4" />
                             Filter
-                        </Button>
+                        </button>
                     </div>
-                    <div className="divide-y divide-gray-50">
+                    <div className="divider-soft" />
+                    <div className="divide-y divide-[var(--border-subtle)]">
                         {activityFeed.map((activity) => (
-                            <div key={activity.id} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-4">
+                            <div key={activity.id} className="p-4 hover:bg-[var(--bg-hover)] transition-colors flex items-start gap-4">
                                 <div className={cn(
-                                    "h-10 w-10 rounded-full flex items-center justify-center shrink-0 border-2 border-white shadow-sm",
-                                    activity.color === 'blue' ? "bg-blue-100 text-[#2525FF]" :
-                                        activity.color === 'purple' ? "bg-purple-100 text-purple-600" :
-                                            activity.color === 'emerald' ? "bg-emerald-100 text-emerald-600" :
-                                                "bg-indigo-100 text-indigo-600"
+                                    "h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-sm",
+                                    activity.color === 'blue' ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                                        activity.color === 'purple' ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" :
+                                            activity.color === 'emerald' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                                                "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
                                 )}>
                                     <activity.icon className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0 pt-0.5">
-                                    <p className="text-sm text-gray-900">
+                                    <p className="text-sm text-[var(--text-primary)]">
                                         <span className="font-semibold">{activity.user}</span> {activity.action}
                                     </p>
-                                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                    <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1">
                                         <Clock className="h-3 w-3" />
                                         {activity.time}
                                     </p>
                                 </div>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600">
+                                <button className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-all duration-200">
                                     <MoreHorizontal className="h-4 w-4" />
-                                </Button>
+                                </button>
                             </div>
                         ))}
                     </div>
-                    <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
-                        <button className="text-xs font-semibold text-gray-500 hover:text-[#2525FF] transition-colors">
+                    <div className="p-3 bg-[var(--bg-secondary)] text-center">
+                        <button className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--primary-blue)] transition-colors">
                             View All Activity
                         </button>
                     </div>
@@ -526,98 +529,99 @@ export default function AdminDashboardPage() {
 
                 {/* Financial Summary */}
                 <div className="space-y-6">
-                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-                        <h2 className="font-bold text-gray-900 mb-4">Financial Overview</h2>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-6">
+                        <h2 className="font-bold text-[var(--text-primary)] mb-4">Financial Overview</h2>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-xl">
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Total Revenue Today</p>
-                                    <p className="text-lg font-bold text-gray-900">₹45,230</p>
+                                    <p className="text-xs text-[var(--text-muted)] mb-1">Total Revenue Today</p>
+                                    <p className="text-lg font-bold text-[var(--text-primary)] metric-number">₹45,230</p>
                                 </div>
-                                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                    <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-xl">
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Pending Payouts</p>
-                                    <p className="text-lg font-bold text-gray-900">₹1.2L</p>
+                                    <p className="text-xs text-[var(--text-muted)] mb-1">Pending Payouts</p>
+                                    <p className="text-lg font-bold text-[var(--text-primary)] metric-number">₹1.2L</p>
                                 </div>
-                                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                    <Clock className="h-4 w-4 text-amber-600" />
+                                <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                 </div>
                             </div>
-                            <Button className="w-full bg-[#2525FF] hover:bg-[#1e1ecc] mt-2">
+                            <button className="w-full h-10 px-4 rounded-xl text-sm font-medium text-white bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] transition-all duration-200 mt-2">
                                 View Financial Reports
-                            </Button>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-lg p-6 text-white text-center">
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-2xl p-6 text-white text-center">
                         <Building2 className="h-8 w-8 mx-auto mb-3 text-white/80" />
                         <h3 className="font-bold text-lg mb-1">Invite Partner</h3>
-                        <p className="text-sm text-gray-300 mb-4">Onboard a new courier partner or strategic ally.</p>
-                        <Button variant="outline" className="text-black bg-white hover:bg-gray-100 w-full border-transparent">
+                        <p className="text-sm text-[var(--text-muted)] mb-4">Onboard a new courier partner or strategic ally.</p>
+                        <button className="w-full h-10 px-4 rounded-xl text-sm font-medium text-slate-900 bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200">
                             Send Invitation
-                        </Button>
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Top Sellers Table */}
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden animate-fade-in stagger-6">
+                <div className="px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-gray-400" />
-                        <h2 className="font-semibold text-gray-900">Top Performing Sellers</h2>
+                        <TrendingUp className="h-5 w-5 text-[var(--text-muted)]" />
+                        <h2 className="font-semibold text-[var(--text-primary)]">Top Performing Sellers</h2>
                     </div>
-                    <Link href="/admin/sellers" className="text-sm text-[#2525FF] hover:underline font-medium">
+                    <Link href="/admin/sellers" className="text-sm text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] font-medium transition-colors">
                         View All
                     </Link>
                 </div>
+                <div className="divider-soft" />
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50/50">
+                        <thead className="bg-[var(--bg-secondary)]">
                             <tr>
-                                <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rank</th>
-                                <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Seller</th>
-                                <th className="text-right py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Shipments</th>
-                                <th className="text-right py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Revenue</th>
-                                <th className="text-right py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Growth</th>
+                                <th className="text-left py-3 px-6 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Rank</th>
+                                <th className="text-left py-3 px-6 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Seller</th>
+                                <th className="text-right py-3 px-6 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Shipments</th>
+                                <th className="text-right py-3 px-6 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Revenue</th>
+                                <th className="text-right py-3 px-6 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Growth</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-[var(--border-subtle)]">
                             {topSellers.map((seller) => (
-                                <tr key={seller.rank} className="hover:bg-gray-50/50 transition-colors group">
+                                <tr key={seller.rank} className="hover:bg-[var(--bg-hover)] transition-colors group">
                                     <td className="py-4 px-6">
                                         <div className={cn(
-                                            "h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm transition-transform group-hover:scale-110",
-                                            seller.rank === 1 ? "bg-amber-100 text-amber-700" :
-                                                seller.rank === 2 ? "bg-gray-100 text-gray-700" :
-                                                    seller.rank === 3 ? "bg-orange-100 text-orange-700" :
-                                                        "bg-white border border-gray-200 text-gray-500"
+                                            "h-8 w-8 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-transform group-hover:scale-110",
+                                            seller.rank === 1 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                                                seller.rank === 2 ? "bg-slate-500/10 text-slate-600 dark:text-slate-400" :
+                                                    seller.rank === 3 ? "bg-orange-500/10 text-orange-600 dark:text-orange-400" :
+                                                        "bg-[var(--bg-secondary)] text-[var(--text-muted)]"
                                         )}>
                                             {seller.rank}
                                         </div>
                                     </td>
                                     <td className="py-4 px-6">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/5 border border-[#2525FF]/10 flex items-center justify-center text-sm font-bold text-[#2525FF]">
+                                            <div className="h-10 w-10 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-sm font-bold text-[var(--primary-blue)]">
                                                 {seller.avatar}
                                             </div>
-                                            <span className="font-bold text-gray-900">{seller.name}</span>
+                                            <span className="font-bold text-[var(--text-primary)]">{seller.name}</span>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-6 text-right font-medium text-gray-600 tabular-nums">
+                                    <td className="py-4 px-6 text-right font-medium text-[var(--text-secondary)] metric-number">
                                         {seller.volume}
                                     </td>
-                                    <td className="py-4 px-6 text-right font-bold text-gray-900 tabular-nums">
+                                    <td className="py-4 px-6 text-right font-bold text-[var(--text-primary)] metric-number">
                                         {formatCurrency(seller.revenue)}
                                     </td>
                                     <td className="py-4 px-6 text-right">
                                         <span className={cn(
-                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums",
-                                            seller.growth >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"
+                                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold metric-number",
+                                            seller.growth >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-slate-500/10 text-slate-600 dark:text-slate-400"
                                         )}>
                                             {seller.growth >= 0 ? '+' : ''}{seller.growth}%
                                         </span>

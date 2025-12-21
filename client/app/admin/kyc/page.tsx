@@ -265,21 +265,21 @@ export default function KYCAnalyticsPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Documents</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Submitted</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Documents</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Submitted</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredData.map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={item.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
-                                            <p className="font-semibold text-gray-900">{item.name}</p>
-                                            <p className="text-sm text-gray-500">{item.owner} • {item.email}</p>
+                                            <p className="font-semibold text-[var(--text-primary)]">{item.name}</p>
+                                            <p className="text-sm text-[var(--text-muted)]">{item.owner} • {item.email}</p>
                                             <code className="text-xs text-gray-400">{item.id}</code>
                                         </td>
                                         <td className="p-4">

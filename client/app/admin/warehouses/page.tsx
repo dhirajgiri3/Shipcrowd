@@ -48,7 +48,7 @@ export default function WarehousesPage() {
                                         <span className="text-gray-500">Utilization</span>
                                         <span className="font-medium text-gray-900">{Math.round((wh.utilized / wh.capacity) * 100)}%</span>
                                     </div>
-                                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-1.5 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
                                         <div
                                             className={`h-full rounded-full ${(wh.utilized / wh.capacity) > 0.9 ? 'bg-red-500' :
                                                 (wh.utilized / wh.capacity) > 0.7 ? 'bg-amber-500' : 'bg-green-500'
@@ -82,7 +82,7 @@ export default function WarehousesPage() {
                 <CardContent>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100 text-[var(--text-muted)]">
                                 <tr>
                                     <th className="px-6 py-3 font-medium">SKU</th>
                                     <th className="px-6 py-3 font-medium">Product Name</th>
@@ -94,9 +94,9 @@ export default function WarehousesPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {MOCK_INVENTORY.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 font-mono text-xs text-gray-500">{item.sku}</td>
-                                        <td className="px-6 py-4 font-medium text-gray-900">{item.name}</td>
+                                    <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
+                                        <td className="px-6 py-4 font-mono text-xs text-[var(--text-muted)]">{item.sku}</td>
+                                        <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{item.name}</td>
                                         <td className="px-6 py-4 text-gray-600">{item.warehouse}</td>
                                         <td className="px-6 py-4 font-medium">{item.quantity} units</td>
                                         <td className="px-6 py-4">

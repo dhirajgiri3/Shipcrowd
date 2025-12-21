@@ -12,7 +12,7 @@ import Footer from "@/src/components/shared/Footer";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-white selection:bg-primaryBlue/20 selection:text-primaryBlue">
+    <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
       <Navigation />
       <Hero />
       <TrustBar />

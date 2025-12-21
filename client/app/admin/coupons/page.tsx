@@ -201,7 +201,7 @@ export default function CouponsPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Discount Type *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
                                     <option value="percentage">Percentage</option>
                                     <option value="fixed">Fixed Amount</option>
                                 </select>
@@ -288,59 +288,59 @@ export default function CouponsPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Code</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Discount</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Min Recharge</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Usage</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Validity</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Code</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Discount</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Min Recharge</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Usage</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Validity</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredCoupons.map((coupon) => (
-                                    <tr key={coupon.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={coupon.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
-                                                <code className="px-2 py-1 bg-gray-100 rounded text-sm font-mono font-semibold text-gray-900">
+                                                <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-sm font-mono font-semibold text-[var(--text-primary)]">
                                                     {coupon.code}
                                                 </code>
                                                 <button
                                                     onClick={() => copyToClipboard(coupon.code)}
-                                                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                                    className="p-1 hover:bg-[var(--bg-active)] rounded transition-colors"
                                                 >
                                                     <Copy className="h-3.5 w-3.5 text-gray-400" />
                                                 </button>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">{coupon.description}</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{coupon.description}</p>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-1">
                                                 {coupon.type === 'percentage' ? (
                                                     <>
                                                         <Percent className="h-4 w-4 text-[#2525FF]" />
-                                                        <span className="font-medium text-gray-900">{coupon.value}%</span>
+                                                        <span className="font-medium text-[var(--text-primary)]">{coupon.value}%</span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <IndianRupee className="h-4 w-4 text-[#2525FF]" />
-                                                        <span className="font-medium text-gray-900">{coupon.value}</span>
+                                                        <span className="font-medium text-[var(--text-primary)]">{coupon.value}</span>
                                                     </>
                                                 )}
                                             </div>
                                             {coupon.maxDiscount && (
-                                                <p className="text-xs text-gray-500">Max: ₹{coupon.maxDiscount}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">Max: ₹{coupon.maxDiscount}</p>
                                             )}
                                         </td>
                                         <td className="p-4">
-                                            <span className="font-medium text-gray-900">{formatCurrency(coupon.minRecharge)}</span>
+                                            <span className="font-medium text-[var(--text-primary)]">{formatCurrency(coupon.minRecharge)}</span>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <Users className="h-4 w-4 text-gray-400" />
-                                                <span className="text-gray-900">{coupon.usedCount}</span>
+                                                <span className="text-[var(--text-primary)]">{coupon.usedCount}</span>
                                                 {coupon.usageLimit && (
                                                     <span className="text-gray-400">/ {coupon.usageLimit}</span>
                                                 )}

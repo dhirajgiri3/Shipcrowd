@@ -114,11 +114,11 @@ export default function SalesModulePage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Users className="h-6 w-6 text-[#2525FF]" />
                         Sales Team Management
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Manage sales representatives and track performance
                     </p>
                 </div>
@@ -134,8 +134,8 @@ export default function SalesModulePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Team</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockSalespeople.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Team</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockSalespeople.length}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <Users className="h-5 w-5 text-[#2525FF]" />
@@ -147,7 +147,7 @@ export default function SalesModulePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Sellers Onboarded</p>
+                                <p className="text-sm text-[var(--text-muted)]">Sellers Onboarded</p>
                                 <p className="text-2xl font-bold text-emerald-600">{totalSellers}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
@@ -160,8 +160,8 @@ export default function SalesModulePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Revenue</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Revenue</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalRevenue)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
                                 <IndianRupee className="h-5 w-5 text-green-600" />
@@ -173,8 +173,8 @@ export default function SalesModulePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Monthly Target</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalTarget)}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Monthly Target</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalTarget)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
                                 <Target className="h-5 w-5 text-amber-600" />
@@ -186,7 +186,7 @@ export default function SalesModulePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Achievement</p>
+                                <p className="text-sm text-[var(--text-muted)]">Achievement</p>
                                 <p className={cn("text-2xl font-bold", achievementRate >= 100 ? "text-emerald-600" : "text-amber-600")}>{achievementRate}%</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -273,8 +273,8 @@ export default function SalesModulePage() {
                                             {sp.name.split(' ').map(n => n[0]).join('')}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-gray-900">{sp.name}</h3>
-                                            <p className="text-sm text-gray-500">{sp.id}</p>
+                                            <h3 className="font-semibold text-[var(--text-primary)]">{sp.name}</h3>
+                                            <p className="text-sm text-[var(--text-muted)]">{sp.id}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -302,7 +302,7 @@ export default function SalesModulePage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl mb-4">
+                                <div className="grid grid-cols-3 gap-4 p-4 bg-[var(--bg-secondary)] rounded-xl mb-4">
                                     <div className="text-center">
                                         <p className="text-xl font-bold text-gray-900">{sp.sellersOnboarded}</p>
                                         <p className="text-xs text-gray-500">Sellers</p>
@@ -328,7 +328,7 @@ export default function SalesModulePage() {
                                             {targetProgress}%
                                         </span>
                                     </div>
-                                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
                                         <div
                                             className={cn(
                                                 "h-full rounded-full transition-all",

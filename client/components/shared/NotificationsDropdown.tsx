@@ -100,8 +100,8 @@ export function NotificationsDropdown() {
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "relative p-2 rounded-lg transition-all duration-200",
-                    "text-gray-500 hover:text-gray-900 hover:bg-gray-50",
-                    isOpen && "bg-gray-50 text-gray-900"
+                    "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]",
+                    isOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
                 )}
             >
                 <Bell className="h-5 w-5" />
@@ -117,12 +117,12 @@ export function NotificationsDropdown() {
             {/* Dropdown */}
             {isOpen && (
                 <div className={cn(
-                    "absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50",
+                    "absolute right-0 top-full mt-2 w-80 bg-[var(--bg-primary)] rounded-xl shadow-xl border border-[var(--border-subtle)] overflow-hidden z-50",
                     "animate-in fade-in slide-in-from-top-2 duration-150"
                 )}>
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                        <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Notifications</h3>
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllAsRead}
@@ -138,8 +138,8 @@ export function NotificationsDropdown() {
                     <div className="max-h-[320px] overflow-y-auto">
                         {notifications.length === 0 ? (
                             <div className="py-8 text-center">
-                                <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                                <p className="text-sm text-gray-500">No notifications yet</p>
+                                <Bell className="h-8 w-8 text-[var(--border-strong)] mx-auto mb-2" />
+                                <p className="text-sm text-[var(--text-muted)]">No notifications yet</p>
                             </div>
                         ) : (
                             notifications.map((notification) => {
@@ -150,18 +150,18 @@ export function NotificationsDropdown() {
                                         key={notification.id}
                                         onClick={() => markAsRead(notification.id)}
                                         className={cn(
-                                            "flex gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-gray-50 last:border-0",
-                                            notification.read ? "bg-white hover:bg-gray-50" : "bg-[#2525FF]/[0.02] hover:bg-[#2525FF]/[0.04]"
+                                            "flex gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-[var(--border-subtle)] last:border-0",
+                                            notification.read ? "bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)]" : "bg-[#2525FF]/[0.02] hover:bg-[#2525FF]/[0.04]"
                                         )}
                                     >
-                                        <div className="flex-shrink-0 p-2 rounded-lg bg-gray-100 text-gray-600">
+                                        <div className="flex-shrink-0 p-2 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
                                             <Icon className="h-4 w-4" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2">
                                                 <p className={cn(
                                                     "text-sm truncate",
-                                                    notification.read ? "font-medium text-gray-700" : "font-semibold text-gray-900"
+                                                    notification.read ? "font-medium text-[var(--text-secondary)]" : "font-semibold text-[var(--text-primary)]"
                                                 )}>
                                                     {notification.title}
                                                 </p>
@@ -169,10 +169,10 @@ export function NotificationsDropdown() {
                                                     <span className="flex-shrink-0 h-2 w-2 rounded-full bg-[#2525FF]" />
                                                 )}
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                            <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">
                                                 {notification.message}
                                             </p>
-                                            <p className="text-xs text-gray-400 mt-1">
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">
                                                 {notification.time}
                                             </p>
                                         </div>
@@ -183,7 +183,7 @@ export function NotificationsDropdown() {
                     </div>
 
                     {/* Footer */}
-                    <div className="border-t border-gray-100 px-4 py-2.5">
+                    <div className="border-t border-[var(--border-subtle)] px-4 py-2.5">
                         <button
                             onClick={() => setIsOpen(false)}
                             className="w-full text-center text-sm text-[#2525FF] hover:text-[#1e1ecc] font-medium"

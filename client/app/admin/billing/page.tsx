@@ -243,7 +243,7 @@ export default function BillingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Seller *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
                                     <option value="">Select Seller</option>
                                     <option value="slr-123">Fashion Hub India (SLR-123)</option>
                                     <option value="slr-456">ElectroMart (SLR-456)</option>
@@ -252,7 +252,7 @@ export default function BillingPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Type *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
                                     <option value="credit">Credit (Add Money)</option>
                                     <option value="debit">Debit (Deduct Money)</option>
                                 </select>
@@ -338,32 +338,32 @@ export default function BillingPage() {
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                         <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Payment</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Coupon</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Payment</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Coupon</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredRecharges.map((recharge) => (
-                                            <tr key={recharge.id} className="hover:bg-gray-50 transition-colors">
+                                            <tr key={recharge.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                                 <td className="p-4">
-                                                    <p className="font-medium text-gray-900">{recharge.sellerName}</p>
-                                                    <p className="text-xs text-gray-500">{recharge.sellerId}</p>
+                                                    <p className="font-medium text-[var(--text-primary)]">{recharge.sellerName}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{recharge.sellerId}</p>
                                                 </td>
                                                 <td className="p-4">
-                                                    <p className="font-semibold text-gray-900">{formatCurrency(recharge.amount)}</p>
+                                                    <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(recharge.amount)}</p>
                                                     {recharge.discount > 0 && (
                                                         <p className="text-xs text-emerald-600">-{formatCurrency(recharge.discount)} discount</p>
                                                     )}
                                                 </td>
                                                 <td className="p-4">
-                                                    <p className="text-sm text-gray-900">{recharge.paymentMethod}</p>
-                                                    <p className="text-xs text-gray-500 font-mono">{recharge.transactionId}</p>
+                                                    <p className="text-sm text-[var(--text-primary)]">{recharge.paymentMethod}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] font-mono">{recharge.transactionId}</p>
                                                 </td>
                                                 <td className="p-4">
                                                     {recharge.couponUsed ? (
@@ -399,26 +399,26 @@ export default function BillingPage() {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-100">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                     <tr>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Entry ID</th>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Type</th>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Reason</th>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Added By</th>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Entry ID</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Type</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Reason</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Added By</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {mockBillingEntries.map((entry) => (
-                                        <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={entry.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                             <td className="p-4">
                                                 <code className="text-xs font-mono">{entry.id}</code>
                                             </td>
                                             <td className="p-4">
-                                                <p className="font-medium text-gray-900">{entry.sellerName}</p>
-                                                <p className="text-xs text-gray-500">{entry.sellerId}</p>
+                                                <p className="font-medium text-[var(--text-primary)]">{entry.sellerName}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{entry.sellerId}</p>
                                             </td>
                                             <td className="p-4">
                                                 <Badge variant={entry.type === 'manual_credit' ? 'success' : 'warning'}>

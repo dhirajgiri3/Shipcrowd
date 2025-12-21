@@ -58,7 +58,7 @@ export const Modal = memo(function Modal({
     return createPortal(
         <div
             className={cn(
-                "fixed inset-0 z-[--z-modal] flex items-center justify-center p-4",
+                "fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4",
                 "bg-black/50 backdrop-blur-sm",
                 "animate-fade-in"
             )}
@@ -78,19 +78,19 @@ export const Modal = memo(function Modal({
             <div
                 className={cn(
                     "relative z-10 w-full",
-                    "bg-[--card-background] rounded-[--radius-xl]",
-                    "shadow-[--shadow-xl]",
+                    "bg-[var(--bg-primary)] rounded-[var(--radius-xl)]",
+                    "shadow-lg",
                     "animate-slide-up",
                     sizeClasses[size],
                     className
                 )}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-[--color-gray-100]">
+                <div className="flex items-center justify-between p-6 border-b border-[var(--border-subtle)]">
                     {title && (
                         <h3
                             id="modal-title"
-                            className="text-lg font-semibold text-[--color-gray-900]"
+                            className="text-lg font-semibold text-[var(--text-primary)]"
                         >
                             {title}
                         </h3>
@@ -98,10 +98,10 @@ export const Modal = memo(function Modal({
                     <button
                         onClick={onClose}
                         className={cn(
-                            "rounded-[--radius-full] p-1.5 ml-auto",
-                            "text-[--color-gray-500] hover:text-[--color-gray-900]",
-                            "hover:bg-[--color-gray-100]",
-                            "transition-colors duration-[--transition-fast]"
+                            "rounded-[var(--radius-full)] p-1.5 ml-auto",
+                            "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+                            "hover:bg-[var(--bg-hover)]",
+                            "transition-colors duration-[var(--duration-fast)]"
                         )}
                         aria-label="Close modal"
                     >

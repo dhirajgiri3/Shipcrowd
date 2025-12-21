@@ -134,11 +134,11 @@ export default function WeightDiscrepancyPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Scale className="h-6 w-6 text-[#2525FF]" />
                         Weight Discrepancies
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Review and manage weight difference claims
                     </p>
                 </div>
@@ -150,8 +150,8 @@ export default function WeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Discrepancies</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockDiscrepancies.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Discrepancies</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockDiscrepancies.length}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <Scale className="h-5 w-5 text-[#2525FF]" />
@@ -163,7 +163,7 @@ export default function WeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Pending Action</p>
+                                <p className="text-sm text-[var(--text-muted)]">Pending Action</p>
                                 <p className="text-2xl font-bold text-amber-600">{totalPending}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
@@ -176,8 +176,8 @@ export default function WeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Add. Charges</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalAdditionalCharges)}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Add. Charges</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalAdditionalCharges)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
                                 <IndianRupee className="h-5 w-5 text-rose-600" />
@@ -189,7 +189,7 @@ export default function WeightDiscrepancyPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Disputes Won</p>
+                                <p className="text-sm text-[var(--text-muted)]">Disputes Won</p>
                                 <p className="text-2xl font-bold text-emerald-600">67%</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
@@ -231,7 +231,7 @@ export default function WeightDiscrepancyPage() {
                                 "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
                                 selectedStatus === filter.id
                                     ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
                             )}
                         >
                             {filter.label}
@@ -245,39 +245,39 @@ export default function WeightDiscrepancyPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">AWB / Order</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Courier</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Declared</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Charged</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Difference</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Add. Charge</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB / Order</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Declared</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charged</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Difference</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Add. Charge</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredDiscrepancies.map((disc) => (
-                                    <tr key={disc.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={disc.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
-                                            <code className="font-mono font-semibold text-gray-900">{disc.awbNumber}</code>
-                                            <p className="text-xs text-gray-500 mt-1">{disc.orderId}</p>
+                                            <code className="font-mono font-semibold text-[var(--text-primary)]">{disc.awbNumber}</code>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{disc.orderId}</p>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm font-medium text-gray-900">{disc.courier}</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.courier}</p>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <p className="text-sm font-medium text-gray-900">{disc.declaredWeight}g</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.declaredWeight}g</p>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <p className="text-sm font-medium text-gray-900">{disc.chargedWeight}g</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.chargedWeight}g</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             <p className="text-sm font-semibold text-rose-600">+{disc.difference}g</p>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <p className="text-sm font-bold text-gray-900">{formatCurrency(disc.additionalCharge)}</p>
+                                            <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(disc.additionalCharge)}</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             {getStatusBadge(disc.status)}
@@ -305,7 +305,7 @@ export default function WeightDiscrepancyPage() {
                                                 </div>
                                             )}
                                             {disc.status === 'disputed' && (
-                                                <p className="text-xs text-gray-500 text-right">Under review</p>
+                                                <p className="text-xs text-[var(--text-muted)] text-right">Under review</p>
                                             )}
                                             {disc.status === 'resolved' && disc.resolution && (
                                                 <p className="text-xs text-emerald-600 text-right">{disc.resolution}</p>
@@ -324,8 +324,8 @@ export default function WeightDiscrepancyPage() {
                 <Card>
                     <CardContent className="py-12 text-center">
                         <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No discrepancies found</h3>
-                        <p className="text-gray-500 mt-1">All your shipment weights match!</p>
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No discrepancies found</h3>
+                        <p className="text-[var(--text-muted)] mt-1">All your shipment weights match!</p>
                     </CardContent>
                 </Card>
             )}

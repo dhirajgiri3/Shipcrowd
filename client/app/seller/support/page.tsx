@@ -106,19 +106,19 @@ export default function SupportPage() {
             {/* Header with Tabs */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <HelpCircle className="h-6 w-6 text-[#2525FF]" />
                         Help & Support
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">Get help or manage your support tickets</p>
+                    <p className="text-[var(--text-muted)] text-sm mt-1">Get help or manage your support tickets</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="flex bg-gray-100 rounded-lg p-1">
+                    <div className="flex bg-[var(--bg-tertiary)] rounded-lg p-1">
                         <button
                             onClick={() => setActiveTab('help')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                                activeTab === 'help' ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"
+                                activeTab === 'help' ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm" : "text-gray-600"
                             )}
                         >
                             Help Center
@@ -127,7 +127,7 @@ export default function SupportPage() {
                             onClick={() => setActiveTab('tickets')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                                activeTab === 'tickets' ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"
+                                activeTab === 'tickets' ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm" : "text-gray-600"
                             )}
                         >
                             My Tickets
@@ -156,7 +156,7 @@ export default function SupportPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Issue Category *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 transition-colors">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 transition-colors">
                                     <option value="">Select category</option>
                                     <option value="shipment">Shipment Issue</option>
                                     <option value="payment">Payment / COD</option>
@@ -180,14 +180,14 @@ export default function SupportPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Description *</label>
                             <textarea
-                                className="flex min-h-[120px] w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
+                                className="flex min-h-[120px] w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
                                 placeholder="Provide detailed information about your issue..."
                             />
                         </div>
 
                         <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
                             <Paperclip className="h-5 w-5 text-gray-400 mx-auto mb-1" />
-                            <p className="text-sm text-gray-500">Attach files (optional)</p>
+                            <p className="text-sm text-[var(--text-muted)]">Attach files (optional)</p>
                             <p className="text-xs text-gray-400">Max 5MB per file</p>
                         </div>
 
@@ -217,7 +217,7 @@ export default function SupportPage() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     icon={<Search className="h-4 w-4" />}
-                                    className="bg-white"
+                                    className="bg-[var(--bg-primary)]"
                                 />
                             </div>
                         </CardContent>
@@ -230,8 +230,8 @@ export default function SupportPage() {
                                 <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                                     <MessageSquare className="h-6 w-6 text-emerald-600" />
                                 </div>
-                                <h3 className="font-semibold text-gray-900">WhatsApp</h3>
-                                <p className="text-sm text-gray-500 mt-1">Quick chat support</p>
+                                <h3 className="font-semibold text-[var(--text-primary)]">WhatsApp</h3>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Quick chat support</p>
                                 <p className="text-xs text-emerald-600 mt-2">● Online now</p>
                             </CardContent>
                         </Card>
@@ -241,8 +241,8 @@ export default function SupportPage() {
                                 <div className="w-12 h-12 bg-[#2525FF]/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                                     <Phone className="h-6 w-6 text-[#2525FF]" />
                                 </div>
-                                <h3 className="font-semibold text-gray-900">Call Us</h3>
-                                <p className="text-sm text-gray-500 mt-1">+91 1800-XXX-XXXX</p>
+                                <h3 className="font-semibold text-[var(--text-primary)]">Call Us</h3>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">+91 1800-XXX-XXXX</p>
                                 <p className="text-xs text-gray-400 mt-2">Mon-Sat, 9AM-6PM</p>
                             </CardContent>
                         </Card>
@@ -252,8 +252,8 @@ export default function SupportPage() {
                                 <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                                     <Mail className="h-6 w-6 text-amber-600" />
                                 </div>
-                                <h3 className="font-semibold text-gray-900">Email Support</h3>
-                                <p className="text-sm text-gray-500 mt-1">support@shipcrowd.in</p>
+                                <h3 className="font-semibold text-[var(--text-primary)]">Email Support</h3>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">support@shipcrowd.in</p>
                                 <p className="text-xs text-gray-400 mt-2">Response within 24hrs</p>
                             </CardContent>
                         </Card>
@@ -271,12 +271,12 @@ export default function SupportPage() {
                             {faqItems.map((item, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer"
                                     onClick={() => addToast('Opening FAQ article...', 'info')}
                                 >
                                     <div className="flex items-center gap-3">
                                         <FileText className="h-4 w-4 text-gray-400" />
-                                        <span className="text-gray-900">{item.question}</span>
+                                        <span className="text-[var(--text-primary)]">{item.question}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-gray-400">{item.category}</span>
@@ -306,7 +306,7 @@ export default function SupportPage() {
                                     "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
                                     ticketFilter === filter
                                         ? "bg-[#2525FF] text-white"
-                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                        : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
                                 )}
                             >
                                 {filter}
@@ -336,7 +336,7 @@ export default function SupportPage() {
                                             <div className="flex items-center gap-3 text-xs text-gray-500">
                                                 <span>Created: {ticket.createdAt}</span>
                                                 {ticket.awbNumber && (
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded">AWB: {ticket.awbNumber}</span>
+                                                    <span className="bg-[var(--bg-tertiary)] px-2 py-0.5 rounded">AWB: {ticket.awbNumber}</span>
                                                 )}
                                             </div>
                                         </div>

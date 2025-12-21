@@ -16,7 +16,7 @@ export default function AdminLayout({
 
     return (
         <ToastProvider>
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-[var(--bg-secondary)]">
                 {/* Mobile sidebar overlay */}
                 {sidebarOpen && (
                     <div
@@ -33,7 +33,7 @@ export default function AdminLayout({
                     <Sidebar />
                     <button
                         onClick={() => setSidebarOpen(false)}
-                        className="absolute top-4 right-4 p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 z-50"
+                        className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] z-50"
                     >
                         <X className="h-4 w-4" />
                     </button>

@@ -203,8 +203,8 @@ export default function OrdersPage() {
             accessorKey: 'id' as const,
             cell: (row: Order) => (
                 <div>
-                    <p className="font-semibold text-gray-900">{row.id}</p>
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <p className="font-semibold text-[var(--text-primary)]">{row.id}</p>
+                    <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                         <span className={row.store === 'Shopify' ? 'text-green-600' : 'text-purple-600'}>●</span>
                         {row.store}
                     </p>
@@ -216,10 +216,10 @@ export default function OrdersPage() {
             accessorKey: 'seller' as const,
             cell: (row: Order) => (
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-gray-100 rounded">
-                        <Building2 className="h-4 w-4 text-gray-500" />
+                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded">
+                        <Building2 className="h-4 w-4 text-[var(--text-muted)]" />
                     </div>
-                    <span className="font-medium text-gray-900 text-sm">{row.seller}</span>
+                    <span className="font-medium text-[var(--text-primary)] text-sm">{row.seller}</span>
                 </div>
             )
         },
@@ -228,8 +228,8 @@ export default function OrdersPage() {
             accessorKey: 'customer' as const,
             cell: (row: Order) => (
                 <div>
-                    <p className="font-medium text-gray-900">{row.customer.name}</p>
-                    <p className="text-xs text-gray-500">{row.customer.city}</p>
+                    <p className="font-medium text-[var(--text-primary)]">{row.customer.name}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{row.customer.city}</p>
                 </div>
             )
         },
@@ -238,12 +238,12 @@ export default function OrdersPage() {
             accessorKey: 'productName' as const,
             cell: (row: Order) => (
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-gray-100 rounded">
-                        <ShoppingBag className="h-4 w-4 text-gray-500" />
+                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded">
+                        <ShoppingBag className="h-4 w-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
-                        <p className="font-medium text-gray-900 text-sm">{row.productName}</p>
-                        <p className="text-xs text-gray-500">Qty: {row.items}</p>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.productName}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Qty: {row.items}</p>
                     </div>
                 </div>
             )
@@ -253,7 +253,7 @@ export default function OrdersPage() {
             accessorKey: 'amount' as const,
             cell: (row: Order) => (
                 <div>
-                    <p className="font-semibold text-gray-900">{formatCurrency(row.amount)}</p>
+                    <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(row.amount)}</p>
                     <Badge variant={row.paymentMode === 'COD' ? 'warning' : 'success'} className="text-xs mt-0.5">
                         {row.paymentMode}
                     </Badge>
@@ -263,7 +263,7 @@ export default function OrdersPage() {
         {
             header: 'Date',
             accessorKey: 'createdAt' as const,
-            cell: (row: Order) => <span className="text-sm text-gray-500">{formatDate(row.createdAt)}</span>
+            cell: (row: Order) => <span className="text-sm text-[var(--text-muted)]">{formatDate(row.createdAt)}</span>
         },
         {
             header: 'Action',
@@ -290,8 +290,8 @@ export default function OrdersPage() {
                 if (activeTab === 'shipped') {
                     return (
                         <div className="text-sm">
-                            <p className="font-medium text-gray-900">{row.awbNumber}</p>
-                            <p className="text-xs text-gray-500">{row.courier}</p>
+                            <p className="font-medium text-[var(--text-primary)]">{row.awbNumber}</p>
+                            <p className="text-xs text-[var(--text-muted)]">{row.courier}</p>
                         </div>
                     );
                 }
@@ -323,8 +323,8 @@ export default function OrdersPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
-                    <p className="text-gray-500 text-sm mt-0.5">Manage all seller orders and fulfillment</p>
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">Orders</h2>
+                    <p className="text-[var(--text-muted)] text-sm mt-0.5">Manage all seller orders and fulfillment</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => addToast('Syncing orders...', 'info')}>
@@ -352,8 +352,8 @@ export default function OrdersPage() {
                             className={cn(
                                 "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap",
                                 isActive
-                                    ? "bg-[#2525FF]/5 border-[#2525FF] text-[#2525FF]"
-                                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                                    ? "bg-[var(--primary-blue)]/5 border-[var(--primary-blue)] text-[var(--primary-blue)]"
+                                    : "bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
                             )}
                         >
                             <Icon className={cn("h-4 w-4", isActive ? "text-[#2525FF]" : tab.color)} />
@@ -415,7 +415,7 @@ export default function OrdersPage() {
                     {filteredOrders.length === 0 ? (
                         <div className="text-center py-16">
                             <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                            <p className="text-gray-500 font-medium">No orders found</p>
+                            <p className="text-[var(--text-muted)] font-medium">No orders found</p>
                             <p className="text-sm text-gray-400 mt-1">
                                 {search ? 'Try adjusting your search' : 'Orders will appear here when synced'}
                             </p>
@@ -438,11 +438,11 @@ export default function OrdersPage() {
                 {selectedOrderForShip && (
                     <div className="space-y-6">
                         {/* Order Summary */}
-                        <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
-                                    <p className="font-semibold text-gray-900">{selectedOrderForShip.id}</p>
-                                    <p className="text-xs text-gray-500">{selectedOrderForShip.seller}</p>
+                                    <p className="font-semibold text-[var(--text-primary)]">{selectedOrderForShip.id}</p>
+                                    <p className="text-xs text-[var(--text-muted)]">{selectedOrderForShip.seller}</p>
                                 </div>
                                 <Badge variant={selectedOrderForShip.paymentMode === 'COD' ? 'warning' : 'success'}>
                                     {selectedOrderForShip.paymentMode}
@@ -450,12 +450,12 @@ export default function OrdersPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p className="text-gray-500">Customer</p>
+                                    <p className="text-[var(--text-muted)]">Customer</p>
                                     <p className="font-medium">{selectedOrderForShip.customer.name}</p>
-                                    <p className="text-gray-500 text-xs">{selectedOrderForShip.customer.city}</p>
+                                    <p className="text-[var(--text-muted)] text-xs">{selectedOrderForShip.customer.city}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500">Amount</p>
+                                    <p className="text-[var(--text-muted)]">Amount</p>
                                     <p className="font-semibold text-lg">{formatCurrency(selectedOrderForShip.amount)}</p>
                                 </div>
                             </div>
@@ -463,7 +463,7 @@ export default function OrdersPage() {
 
                         {/* Courier Selection */}
                         <div>
-                            <p className="font-medium text-gray-900 mb-3">Select Courier Partner</p>
+                            <p className="font-medium text-[var(--text-primary)] mb-3">Select Courier Partner</p>
                             <div className="space-y-2">
                                 {courierRates.map((courier) => (
                                     <button
@@ -477,16 +477,16 @@ export default function OrdersPage() {
                                         )}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-gray-100 rounded-lg">
+                                            <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg">
                                                 <Truck className="h-5 w-5 text-gray-600" />
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-gray-900">{courier.name}</p>
-                                                <p className="text-xs text-gray-500">ETA: {courier.eta} • ⭐ {courier.rating}</p>
+                                                <p className="font-semibold text-[var(--text-primary)]">{courier.name}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">ETA: {courier.eta} • ⭐ {courier.rating}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-lg text-gray-900">{formatCurrency(courier.rate)}</p>
+                                            <p className="font-bold text-lg text-[var(--text-primary)]">{formatCurrency(courier.rate)}</p>
                                             {courier.rate === Math.min(...courierRates.map(c => c.rate)) && (
                                                 <Badge variant="success" className="text-xs">
                                                     <Zap className="h-3 w-3 mr-0.5" />

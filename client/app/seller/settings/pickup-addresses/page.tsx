@@ -246,7 +246,7 @@ export default function PickupAddressesPage() {
                                 </div>
 
                                 {/* Address */}
-                                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                                <div className="text-sm text-gray-600 bg-[var(--bg-secondary)] rounded-lg p-3">
                                     <p>{address.addressLine1}</p>
                                     {address.addressLine2 && <p>{address.addressLine2}</p>}
                                     <p className="font-medium text-gray-900 mt-1">

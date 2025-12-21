@@ -92,7 +92,7 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="flex min-h-screen bg-white">
+        <div className="flex min-h-screen bg-[var(--bg-primary)]">
             {/* Left Side - Form */}
             <div className="w-full lg:w-[45%] flex flex-col justify-between p-8 md:p-12 lg:p-16 xl:p-24 relative z-10">
                 {/* Logo */}
@@ -307,7 +307,7 @@ export default function SignupPage() {
                                 "Automated Label Generation"
                             ].map((feature, i) => (
                                 <div key={i} className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                                    <div className="w-12 h-12 rounded-xl bg-[var(--bg-primary)]/10 backdrop-blur-md flex items-center justify-center border border-white/20">
                                         <CheckCircle2 className="text-emerald" size={24} />
                                     </div>
                                     <span className="text-lg font-medium">{feature}</span>

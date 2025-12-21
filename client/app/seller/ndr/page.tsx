@@ -162,11 +162,11 @@ export default function NDRManagementPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <PackageX className="h-6 w-6 text-[#2525FF]" />
                         NDR Management
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Manage non-delivery reports and take actions
                     </p>
                 </div>
@@ -186,8 +186,8 @@ export default function NDRManagementPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total NDRs</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockNDRs.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total NDRs</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockNDRs.length}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <PackageX className="h-5 w-5 text-[#2525FF]" />
@@ -199,7 +199,7 @@ export default function NDRManagementPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Action Required</p>
+                                <p className="text-sm text-[var(--text-muted)]">Action Required</p>
                                 <p className="text-2xl font-bold text-rose-600">{actionRequiredCount}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
@@ -212,7 +212,7 @@ export default function NDRManagementPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Reattempt Scheduled</p>
+                                <p className="text-sm text-[var(--text-muted)]">Reattempt Scheduled</p>
                                 <p className="text-2xl font-bold text-cyan-600">
                                     {mockNDRs.filter(n => n.status === 'reattempt_scheduled').length}
                                 </p>
@@ -227,7 +227,7 @@ export default function NDRManagementPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">RTO Initiated</p>
+                                <p className="text-sm text-[var(--text-muted)]">RTO Initiated</p>
                                 <p className="text-2xl font-bold text-amber-600">
                                     {mockNDRs.filter(n => n.status === 'rto_initiated').length}
                                 </p>
@@ -259,7 +259,7 @@ export default function NDRManagementPage() {
                                 "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
                                 selectedStatus === filter.id
                                     ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
                             )}
                         >
                             {filter.label}
@@ -285,7 +285,7 @@ export default function NDRManagementPage() {
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                 <div className="flex-1 space-y-2">
                                     <div className="flex items-center gap-3 flex-wrap">
-                                        <code className="font-mono font-semibold text-gray-900">{ndr.awbNumber}</code>
+                                        <code className="font-mono font-semibold text-[var(--text-primary)]">{ndr.awbNumber}</code>
                                         {getStatusBadge(ndr.status)}
                                         <Badge variant={ndr.paymentMode === 'COD' ? 'warning' : 'success'} className="text-xs">
                                             {ndr.paymentMode}
@@ -313,17 +313,17 @@ export default function NDRManagementPage() {
                                 <div className="flex items-center gap-6">
                                     <div className="text-center">
                                         <p className="text-xs text-gray-400">Attempts</p>
-                                        <p className="text-lg font-bold text-gray-900">{ndr.attempts}/{ndr.maxAttempts}</p>
+                                        <p className="text-lg font-bold text-[var(--text-primary)]">{ndr.attempts}/{ndr.maxAttempts}</p>
                                     </div>
                                     {ndr.codAmount > 0 && (
                                         <div className="text-center">
                                             <p className="text-xs text-gray-400">COD Amount</p>
-                                            <p className="text-lg font-bold text-gray-900">{formatCurrency(ndr.codAmount)}</p>
+                                            <p className="text-lg font-bold text-[var(--text-primary)]">{formatCurrency(ndr.codAmount)}</p>
                                         </div>
                                     )}
                                     <div className="text-center">
                                         <p className="text-xs text-gray-400">Courier</p>
-                                        <p className="text-sm font-medium text-gray-900">{ndr.courier}</p>
+                                        <p className="text-sm font-medium text-[var(--text-primary)]">{ndr.courier}</p>
                                     </div>
                                     {ndr.status === 'action_required' && (
                                         <Button size="sm" className="bg-rose-600 hover:bg-rose-700">
@@ -354,9 +354,9 @@ export default function NDRManagementPage() {
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-sm text-gray-500">NDR Reason</p>
-                                <p className="font-medium text-gray-900">{selectedNDR.reason}</p>
+                            <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
+                                <p className="text-sm text-[var(--text-muted)]">NDR Reason</p>
+                                <p className="font-medium text-[var(--text-primary)]">{selectedNDR.reason}</p>
                                 <p className="text-xs text-gray-400 mt-1">
                                     Last attempt: {selectedNDR.lastAttemptDate} • Attempt {selectedNDR.attempts} of {selectedNDR.maxAttempts}
                                 </p>
@@ -403,7 +403,7 @@ export default function NDRManagementPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Remarks (Optional)</label>
                                 <textarea
-                                    className="flex min-h-[80px] w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-300 resize-none"
+                                    className="flex min-h-[80px] w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 resize-none"
                                     placeholder="Add any additional instructions..."
                                 />
                             </div>
@@ -417,8 +417,8 @@ export default function NDRManagementPage() {
                 <Card>
                     <CardContent className="py-12 text-center">
                         <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">No NDRs found</h3>
-                        <p className="text-gray-500 mt-1">All your deliveries are on track!</p>
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No NDRs found</h3>
+                        <p className="text-[var(--text-muted)] mt-1">All your deliveries are on track!</p>
                     </CardContent>
                 </Card>
             )}

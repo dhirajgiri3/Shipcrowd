@@ -34,7 +34,7 @@ export default function AnalyticsPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-gray-900">Analytics & Reports</h2>
+                <h2 className="text-2xl font-bold text-[var(--text-primary)]">Analytics & Reports</h2>
                 <div className="flex items-center gap-2">
                     <Select
                         options={[
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
                     <CardContent>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100 text-[var(--text-muted)]">
                                     <tr>
                                         <th className="px-6 py-3 font-medium">Date</th>
                                         <th className="px-6 py-3 font-medium">Total Orders</th>
@@ -131,12 +131,12 @@ export default function AnalyticsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {deliveryPerformanceData.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{row.date}</td>
+                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
+                                            <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{row.date}</td>
                                             <td className="px-6 py-4">{row.delivered + row.ndr + row.rto}</td>
                                             <td className="px-6 py-4 text-emerald-600 font-medium">{row.delivered}</td>
                                             <td className="px-6 py-4 text-rose-600 font-medium">{((row.rto / (row.delivered + row.ndr + row.rto)) * 100).toFixed(1)}%</td>
-                                            <td className="px-6 py-4 text-gray-500">2.4 days</td>
+                                            <td className="px-6 py-4 text-[var(--text-muted)]">2.4 days</td>
                                         </tr>
                                     ))}
                                 </tbody>

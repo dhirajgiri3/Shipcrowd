@@ -87,8 +87,8 @@ export default function KycPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Complete Your KYC</h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">Complete Your KYC</h1>
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Verify your identity to start shipping with ShipCrowd
                     </p>
                 </div>
@@ -125,7 +125,7 @@ export default function KycPage() {
                                         <div className="mt-3 text-center">
                                             <p className={cn(
                                                 "text-sm font-medium",
-                                                status === 'current' ? "text-gray-900" : "text-gray-500"
+                                                status === 'current' ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"
                                             )}>
                                                 {step.label}
                                             </p>
@@ -227,7 +227,7 @@ export default function KycPage() {
 
                             {/* Document Upload Section */}
                             <div className="pt-4 border-t border-gray-100">
-                                <h4 className="text-sm font-medium text-gray-900 mb-4">Upload Documents</h4>
+                                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-4">Upload Documents</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
                                         <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
@@ -270,7 +270,7 @@ export default function KycPage() {
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">Company Type *</label>
                                     <select
-                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 transition-colors"
+                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 transition-colors"
                                         value={formData.companyType}
                                         onChange={(e) => handleInputChange('companyType', e.target.value)}
                                     >
@@ -296,7 +296,7 @@ export default function KycPage() {
                             </div>
 
                             <div className="pt-4 border-t border-gray-100">
-                                <h4 className="text-sm font-medium text-gray-900 mb-4">Registered Address</h4>
+                                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-4">Registered Address</h4>
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Address Line 1 *</label>
@@ -426,7 +426,7 @@ export default function KycPage() {
                                         value={formData.bankName}
                                         onChange={(e) => handleInputChange('bankName', e.target.value)}
                                         disabled
-                                        className="bg-gray-50"
+                                        className="bg-[var(--bg-secondary)]"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -436,7 +436,7 @@ export default function KycPage() {
                                         value={formData.branchName}
                                         onChange={(e) => handleInputChange('branchName', e.target.value)}
                                         disabled
-                                        className="bg-gray-50"
+                                        className="bg-[var(--bg-secondary)]"
                                     />
                                 </div>
                             </div>
@@ -467,7 +467,7 @@ export default function KycPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Agreement Preview */}
-                            <div className="bg-gray-50 rounded-lg p-6 max-h-80 overflow-y-auto text-sm text-gray-600 space-y-4">
+                            <div className="bg-[var(--bg-secondary)] rounded-lg p-6 max-h-80 overflow-y-auto text-sm text-gray-600 space-y-4">
                                 <h4 className="font-semibold text-gray-900">ShipCrowd Seller Agreement</h4>
                                 <p>
                                     This Seller Agreement ("Agreement") is entered into between ShipCrowd Technologies Pvt. Ltd.
@@ -531,7 +531,7 @@ export default function KycPage() {
                             {/* Digital Signature */}
                             <div className="pt-4 border-t border-gray-100">
                                 <h4 className="text-sm font-medium text-gray-900 mb-4">Digital Signature</h4>
-                                <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer bg-gray-50">
+                                <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer bg-[var(--bg-secondary)]">
                                     <p className="text-sm text-gray-500">Click to draw your signature or type your name</p>
                                     <p className="text-xs text-gray-400 mt-2">This will serve as your electronic signature</p>
                                 </div>

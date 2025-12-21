@@ -24,26 +24,26 @@ const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
                 className={cn(
                     // Base styles using design tokens
                     'inline-flex items-center justify-center font-medium',
-                    'rounded-[--radius-lg]',
-                    'transition-all duration-[--transition-fast]',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] focus-visible:ring-offset-2',
+                    'rounded-[var(--radius-lg)]',
+                    'transition-all duration-[var(--duration-fast)]',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-2',
                     'disabled:pointer-events-none disabled:opacity-50',
                     // Variant styles using design tokens
                     {
                         // Primary - Brand blue
-                        'bg-[--color-primary] text-white hover:bg-[--color-primary-hover] active:scale-[0.98] shadow-[--shadow-sm] hover:shadow-[--shadow-primary]':
+                        'bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] active:scale-[0.98] shadow-sm hover:shadow-md':
                             variant === 'primary',
                         // Secondary - Subtle gray
-                        'bg-[--color-gray-100] text-[--color-gray-900] hover:bg-[--color-gray-200]':
+                        'bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-active)]':
                             variant === 'secondary',
                         // Outline - Border only
-                        'border border-[--color-gray-200] text-[--color-gray-700] bg-white hover:text-[--color-primary] hover:border-[--color-primary] hover:bg-[--color-primary-50]':
+                        'border border-[var(--border-default)] text-[var(--text-secondary)] bg-[var(--bg-primary)] hover:text-[var(--primary-blue)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]':
                             variant === 'outline',
                         // Ghost - No background
-                        'text-[--color-gray-600] hover:text-[--color-gray-900] hover:bg-[--color-gray-100]':
+                        'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]':
                             variant === 'ghost',
                         // Danger - Red
-                        'bg-[--color-error] text-white hover:bg-[--color-error-dark] active:scale-[0.98]':
+                        'bg-[var(--error)] text-white hover:bg-[var(--error-dark)] active:scale-[0.98]':
                             variant === 'danger',
                     },
                     // Size styles

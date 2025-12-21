@@ -206,7 +206,7 @@ export default function SellersPage() {
             case 'suspended':
                 return { label: 'Suspended', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' };
             default:
-                return { label: status, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+                return { label: status, color: 'text-gray-600', bg: 'bg-[var(--bg-secondary)]', border: 'border-gray-200' };
         }
     };
 
@@ -220,8 +220,8 @@ export default function SellersPage() {
                         {row.avatar}
                     </div>
                     <div>
-                        <p className="font-semibold text-gray-900">{row.companyName}</p>
-                        <p className="text-xs text-gray-500">{row.ownerName} • {row.city}</p>
+                        <p className="font-semibold text-[var(--text-primary)]">{row.companyName}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{row.ownerName} • {row.city}</p>
                     </div>
                 </div>
             )
@@ -257,8 +257,8 @@ export default function SellersPage() {
             accessorKey: 'monthlyVolume' as const,
             cell: (row: Seller) => (
                 <div>
-                    <p className="font-bold text-gray-900 text-lg">{row.monthlyVolume}</p>
-                    <p className="text-xs text-gray-500">shipments</p>
+                    <p className="font-bold text-[var(--text-primary)] text-lg">{row.monthlyVolume}</p>
+                    <p className="text-xs text-[var(--text-muted)]">shipments</p>
                 </div>
             )
         },
@@ -277,7 +277,7 @@ export default function SellersPage() {
                                 {row.successRate}%
                             </span>
                         </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
                             <div
                                 className={cn(
                                     "h-full rounded-full",
@@ -297,7 +297,7 @@ export default function SellersPage() {
                 <span className={cn(
                     "font-semibold",
                     row.walletBalance < 0 ? "text-rose-600" :
-                        row.walletBalance < 5000 ? "text-amber-600" : "text-gray-900"
+                        row.walletBalance < 5000 ? "text-amber-600" : "text-[var(--text-primary)]"
                 )}>
                     {formatCurrency(row.walletBalance)}
                 </span>
@@ -343,8 +343,8 @@ export default function SellersPage() {
                             <Building2 className="h-6 w-6 text-[#2525FF]" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Seller Management</h1>
-                            <p className="text-gray-500 text-sm">Manage all registered sellers on the platform</p>
+                            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Seller Management</h1>
+                            <p className="text-[var(--text-muted)] text-sm">Manage all registered sellers on the platform</p>
                         </div>
                     </div>
                 </div>
@@ -362,58 +362,58 @@ export default function SellersPage() {
 
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-5">
-                <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white p-5">
+                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-[#2525FF]/10">
                             <Users className="h-5 w-5 text-[#2525FF]" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                            <p className="text-xs text-gray-500">Total Sellers</p>
+                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.total}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Total Sellers</p>
                         </div>
                     </div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white p-5">
+                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-emerald-100">
                             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
-                            <p className="text-xs text-gray-500">Active</p>
+                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.active}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Active</p>
                         </div>
                     </div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white p-5">
+                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-amber-100">
                             <Clock className="h-5 w-5 text-amber-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-                            <p className="text-xs text-gray-500">Pending</p>
+                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.pending}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Pending</p>
                         </div>
                     </div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white p-5">
+                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-purple-100">
                             <Package className="h-5 w-5 text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-gray-900">{stats.monthlyVolume.toLocaleString()}</p>
-                            <p className="text-xs text-gray-500">Monthly Shipments</p>
+                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.monthlyVolume.toLocaleString()}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Monthly Shipments</p>
                         </div>
                     </div>
                 </div>
-                <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white p-5">
+                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-green-100">
                             <IndianRupee className="h-5 w-5 text-green-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
-                            <p className="text-xs text-gray-500">Monthly Revenue</p>
+                            <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(stats.totalRevenue)}</p>
+                            <p className="text-xs text-[var(--text-muted)]">Monthly Revenue</p>
                         </div>
                     </div>
                 </div>
@@ -432,13 +432,13 @@ export default function SellersPage() {
                                 "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap",
                                 isActive
                                     ? "bg-[#2525FF] border-[#2525FF] text-white"
-                                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                                    : "bg-[var(--bg-primary)] border-gray-200 text-gray-600 hover:border-gray-300"
                             )}
                         >
                             <span className="font-medium text-sm">{tab.label}</span>
                             <span className={cn(
                                 "px-2 py-0.5 rounded-full text-xs font-medium",
-                                isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                                isActive ? "bg-white/20 text-white" : "bg-[var(--bg-tertiary)] text-gray-600"
                             )}>
                                 {count}
                             </span>
@@ -448,8 +448,8 @@ export default function SellersPage() {
             </div>
 
             {/* Search & Table */}
-            <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
-                <div className="flex items-center gap-3 p-4 border-b border-gray-50">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] overflow-hidden">
+                <div className="flex items-center gap-3 p-4 border-b border-[var(--border-subtle)]">
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -467,11 +467,11 @@ export default function SellersPage() {
 
                 {filteredSellers.length === 0 ? (
                     <div className="text-center py-20">
-                        <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gray-100 mx-auto mb-4">
+                        <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-[var(--bg-tertiary)] mx-auto mb-4">
                             <Building2 className="h-8 w-8 text-gray-400" />
                         </div>
-                        <p className="text-gray-900 font-medium mb-1">No sellers found</p>
-                        <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
+                        <p className="text-[var(--text-primary)] font-medium mb-1">No sellers found</p>
+                        <p className="text-sm text-[var(--text-muted)]">Try adjusting your search or filters</p>
                     </div>
                 ) : (
                     <DataTable columns={columns} data={filteredSellers} />
@@ -492,8 +492,8 @@ export default function SellersPage() {
                                 {selectedSeller.avatar}
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-xl font-bold text-gray-900">{selectedSeller.companyName}</h3>
-                                <p className="text-gray-500">{selectedSeller.ownerName}</p>
+                                <h3 className="text-xl font-bold text-[var(--text-primary)]">{selectedSeller.companyName}</h3>
+                                <p className="text-[var(--text-muted)]">{selectedSeller.ownerName}</p>
                                 <div className="flex items-center gap-2 mt-2">
                                     {(() => {
                                         const config = getStatusConfig(selectedSeller.status);
@@ -517,7 +517,7 @@ export default function SellersPage() {
                         </div>
 
                         {/* Contact */}
-                        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50">
+                        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[var(--bg-secondary)]">
                             <div className="flex items-center gap-3">
                                 <Mail className="h-4 w-4 text-gray-400" />
                                 <span className="text-sm">{selectedSeller.email}</span>
@@ -539,22 +539,22 @@ export default function SellersPage() {
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-4">
                             <div className="text-center p-4 rounded-xl bg-blue-50 border border-blue-100">
-                                <p className="text-2xl font-bold text-gray-900">{selectedSeller.totalShipments.toLocaleString()}</p>
-                                <p className="text-xs text-gray-500">Total Shipments</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{selectedSeller.totalShipments.toLocaleString()}</p>
+                                <p className="text-xs text-[var(--text-muted)]">Total Shipments</p>
                             </div>
                             <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                                <p className="text-2xl font-bold text-gray-900">{selectedSeller.successRate || 'N/A'}%</p>
-                                <p className="text-xs text-gray-500">Success Rate</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{selectedSeller.successRate || 'N/A'}%</p>
+                                <p className="text-xs text-[var(--text-muted)]">Success Rate</p>
                             </div>
                             <div className={cn(
                                 "text-center p-4 rounded-xl border",
                                 selectedSeller.walletBalance < 0
                                     ? "bg-rose-50 border-rose-100"
-                                    : "bg-gray-50 border-gray-100"
+                                    : "bg-[var(--bg-secondary)] border-gray-100"
                             )}>
                                 <p className={cn(
                                     "text-2xl font-bold",
-                                    selectedSeller.walletBalance < 0 ? "text-rose-600" : "text-gray-900"
+                                    selectedSeller.walletBalance < 0 ? "text-rose-600" : "text-[var(--text-primary)]"
                                 )}>
                                     {formatCurrency(selectedSeller.walletBalance)}
                                 </p>

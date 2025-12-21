@@ -21,7 +21,7 @@ const Input = memo(forwardRef<HTMLInputElement, InputProps>(
             <div className="relative w-full">
                 {/* Left Icon */}
                 {icon && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[--color-gray-400] pointer-events-none">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
                         {icon}
                     </div>
                 )}
@@ -32,12 +32,12 @@ const Input = memo(forwardRef<HTMLInputElement, InputProps>(
                     ref={ref}
                     className={cn(
                         // Base styles using design tokens
-                        'flex w-full bg-white text-[--color-gray-900]',
-                        'rounded-[--radius-lg] border',
-                        'placeholder:text-[--color-gray-400]',
-                        'transition-colors duration-[--transition-fast]',
+                        'flex w-full bg-[var(--bg-primary)] text-[var(--text-primary)]',
+                        'rounded-[var(--radius-lg)] border',
+                        'placeholder:text-[var(--text-muted)]',
+                        'transition-colors duration-[var(--duration-fast)]',
                         'focus:outline-none focus:ring-2 focus:ring-offset-0',
-                        'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[--color-gray-50]',
+                        'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[var(--bg-secondary)]',
                         'file:border-0 file:bg-transparent file:text-sm file:font-medium',
                         // Size variants
                         {
@@ -50,8 +50,8 @@ const Input = memo(forwardRef<HTMLInputElement, InputProps>(
                         rightIcon && 'pr-10',
                         // State variants using design tokens
                         error
-                            ? 'border-[--color-error] focus:border-[--color-error] focus:ring-[--color-error-light]'
-                            : 'border-[--color-gray-200] focus:border-[--color-primary] focus:ring-[--color-primary-light]',
+                            ? 'border-[var(--border-error)] focus:border-[var(--border-error)] focus:ring-[var(--error-light)]'
+                            : 'border-[var(--border-default)] focus:border-[var(--border-focus)] focus:ring-[var(--primary-blue-soft)]',
                         className
                     )}
                     {...props}
@@ -59,7 +59,7 @@ const Input = memo(forwardRef<HTMLInputElement, InputProps>(
 
                 {/* Right Icon */}
                 {rightIcon && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[--color-gray-400]">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
                         {rightIcon}
                     </div>
                 )}

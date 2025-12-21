@@ -268,7 +268,7 @@ export default function RateCardsPage() {
                         <select
                             value={selectedCourier}
                             onChange={(e) => setSelectedCourier(e.target.value)}
-                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                            className="h-10 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                         >
                             {couriers.map((c) => (
                                 <option key={c} value={c}>{c}</option>
@@ -279,7 +279,7 @@ export default function RateCardsPage() {
                         <select
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value as any)}
-                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                            className="h-10 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                         >
                             <option value="all">All Status</option>
                             <option value="active">Active</option>
@@ -302,11 +302,11 @@ export default function RateCardsPage() {
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600">
+                                        <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center text-lg font-bold text-gray-600">
                                             {card.courier.slice(0, 2).toUpperCase()}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-gray-900 group-hover:text-[#2525FF] transition-colors">
+                                            <h3 className="font-semibold text-[var(--text-primary)] group-hover:text-[#2525FF] transition-colors">
                                                 {card.name}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1">
@@ -325,13 +325,13 @@ export default function RateCardsPage() {
                                 </div>
 
                                 {/* Zone Pricing */}
-                                <div className="bg-gray-50 rounded-lg p-3">
-                                    <p className="text-xs font-medium text-gray-500 mb-2">Zone Pricing (₹ per 500g)</p>
+                                <div className="bg-[var(--bg-secondary)] rounded-lg p-3">
+                                    <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Zone Pricing (₹ per 500g)</p>
                                     <div className="grid grid-cols-5 gap-2 text-center">
                                         {Object.entries(card.zones).map(([zone, price]) => (
                                             <div key={zone}>
                                                 <p className="text-xs text-gray-400 uppercase">{zone.replace('zone', '')}</p>
-                                                <p className="text-sm font-semibold text-gray-900">₹{price}</p>
+                                                <p className="text-sm font-semibold text-[var(--text-primary)]">₹{price}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -341,21 +341,21 @@ export default function RateCardsPage() {
                                 <div className="grid grid-cols-3 gap-3 text-sm">
                                     <div>
                                         <p className="text-xs text-gray-400">Add. Weight</p>
-                                        <p className="font-medium text-gray-900">₹{card.additionalRate}/500g</p>
+                                        <p className="font-medium text-[var(--text-primary)]">₹{card.additionalRate}/500g</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-400">COD</p>
-                                        <p className="font-medium text-gray-900">{card.codPercent}% / ₹{card.codMin}</p>
+                                        <p className="font-medium text-[var(--text-primary)]">{card.codPercent}% / ₹{card.codMin}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-400">GST</p>
-                                        <p className="font-medium text-gray-900">{card.gst}%</p>
+                                        <p className="font-medium text-[var(--text-primary)]">{card.gst}%</p>
                                     </div>
                                 </div>
 
                                 {/* Footer */}
                                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    <div className="flex items-center gap-4 text-xs text-[var(--text-muted)]">
                                         <span className="flex items-center gap-1">
                                             <Package className="h-3.5 w-3.5" />
                                             {card.sellersAssigned} sellers

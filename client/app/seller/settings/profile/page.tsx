@@ -259,7 +259,7 @@ export default function ProfilePage() {
                                     value={profile.gstin}
                                     onChange={(e) => handleInputChange('gstin', e.target.value)}
                                     disabled
-                                    className="bg-gray-50"
+                                    className="bg-[var(--bg-secondary)]"
                                 />
                                 <p className="text-xs text-gray-400">Contact support to update</p>
                             </div>
@@ -269,7 +269,7 @@ export default function ProfilePage() {
                                     value={profile.pan}
                                     onChange={(e) => handleInputChange('pan', e.target.value)}
                                     disabled
-                                    className="bg-gray-50"
+                                    className="bg-[var(--bg-secondary)]"
                                 />
                                 <p className="text-xs text-gray-400">Contact support to update</p>
                             </div>

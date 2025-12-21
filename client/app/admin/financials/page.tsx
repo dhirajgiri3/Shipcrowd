@@ -51,21 +51,21 @@ export default function FinancialsPage() {
                     <CardContent>
                         <div className="space-y-4">
                             {transactions.map((txn) => (
-                                <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className={`p-2 rounded-full ${txn.type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
                                             {txn.type === 'credit' ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900">{txn.description}</p>
-                                            <p className="text-xs text-gray-500">{txn.date} • {txn.id}</p>
+                                            <p className="font-medium text-[var(--text-primary)]">{txn.description}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{txn.date} • {txn.id}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className={`font-semibold ${txn.type === 'credit' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                                        <p className={`font-semibold ${txn.type === 'credit' ? 'text-emerald-600' : 'text-[var(--text-primary)]'}`}>
                                             {txn.type === 'credit' ? '+' : ''}{formatCurrency(txn.amount)}
                                         </p>
-                                        <p className="text-xs text-gray-500 capitalize">{txn.status}</p>
+                                        <p className="text-xs text-[var(--text-muted)] capitalize">{txn.status}</p>
                                     </div>
                                 </div>
                             ))}
@@ -85,7 +85,7 @@ export default function FinancialsPage() {
                             <IndianRupee className="mr-2 h-5 w-5" /> Withdraw Funds
                         </Button>
                         <div className="pt-4 border-t border-gray-100">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Payment Methods</h4>
+                            <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">Payment Methods</h4>
                             <div className="p-3 border border-gray-200 rounded-lg flex items-center justify-between mb-2">
                                 <span className="text-sm">HDFC Bank **** 8821</span>
                                 <Badge variant="outline">Primary</Badge>

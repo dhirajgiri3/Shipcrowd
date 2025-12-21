@@ -52,11 +52,11 @@ export default function IntegrationsPage() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Plug className="h-6 w-6 text-[#2525FF]" />
                         Integrations
                     </h2>
-                    <p className="text-gray-500 text-sm mt-1">Connect your stores and sync orders automatically</p>
+                    <p className="text-[var(--text-muted)] text-sm mt-1">Connect your stores and sync orders automatically</p>
                 </div>
                 <Badge variant="success" className="text-sm px-3 py-1">
                     {integrations.filter(i => i.status === 'connected').length} Connected
@@ -72,19 +72,19 @@ export default function IntegrationsPage() {
                             <CardContent className="p-6">
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                     <div className="flex items-start gap-4 flex-1">
-                                        <div className="w-14 h-14 p-3 flex items-center justify-center bg-white rounded-xl shadow-sm flex-shrink-0">
+                                        <div className="w-14 h-14 p-3 flex items-center justify-center bg-[var(--bg-primary)] rounded-xl shadow-sm flex-shrink-0">
                                             <img src={integration.icon!} className="w-full h-full object-contain" alt={integration.name} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h4 className="text-lg font-semibold text-gray-900">{integration.name}</h4>
+                                                <h4 className="text-lg font-semibold text-[var(--text-primary)]">{integration.name}</h4>
                                                 <Badge variant="success" className="text-xs">
                                                     <CheckCircle2 className="h-3 w-3 mr-1" />
                                                     Active
                                                 </Badge>
                                             </div>
                                             <p className="text-sm text-gray-600 mb-3">{integration.description}</p>
-                                            <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                                            <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-muted)]">
                                                 <span className="flex items-center gap-1">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                                     Last sync: {integration.lastSync}
@@ -126,11 +126,11 @@ export default function IntegrationsPage() {
                         <Card key={idx} className="hover:shadow-md hover:border-[#2525FF]/20 transition-all group">
                             <CardContent className="p-6">
                                 <div className="flex items-start gap-4">
-                                    <div className="w-14 h-14 p-3 flex items-center justify-center bg-gray-50 rounded-xl group-hover:bg-[#2525FF]/5 transition-colors flex-shrink-0">
+                                    <div className="w-14 h-14 p-3 flex items-center justify-center bg-[var(--bg-secondary)] rounded-xl group-hover:bg-[#2525FF]/5 transition-colors flex-shrink-0">
                                         <img src={integration.icon!} className="w-full h-full object-contain" alt={integration.name} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-lg font-semibold text-gray-900 mb-1">{integration.name}</h4>
+                                        <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-1">{integration.name}</h4>
                                         <p className="text-sm text-gray-600 mb-4">{integration.description}</p>
                                         <Button
                                             variant="outline"
@@ -157,7 +157,7 @@ export default function IntegrationsPage() {
                             <Plug className="h-4 w-4 text-[#2525FF]" />
                         </div>
                         <div>
-                            <h4 className="text-sm font-semibold text-gray-900 mb-1">Need help with integrations?</h4>
+                            <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Need help with integrations?</h4>
                             <p className="text-sm text-gray-600 mb-3">Our team can help you set up and configure your store integrations.</p>
                             <Button variant="outline" size="sm">
                                 Contact Support

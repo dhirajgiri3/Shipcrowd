@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Search, Menu, Truck, Plus, Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
 import { NotificationsDropdown } from '@/components/shared/NotificationsDropdown';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/utils';
 
@@ -58,22 +58,24 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     }, []);
 
     return (
-        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-white px-4 lg:px-6 border-b border-gray-100">
+        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-4 lg:px-6">
             {/* Left Section */}
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9" onClick={onMenuClick}>
-                    <Menu className="h-5 w-5 text-gray-600" />
-                </Button>
-                <h1 className="text-lg font-semibold text-gray-900">{getPageTitle(pathname)}</h1>
+                <button
+                    onClick={onMenuClick}
+                    className="lg:hidden h-9 w-9 rounded-lg flex items-center justify-center hover:bg-[var(--bg-hover)] transition-all duration-200 focus-ring-brand"
+                >
+                    <Menu className="h-5 w-5 text-[var(--text-secondary)]" />
+                </button>
+                <h1 className="text-lg font-semibold text-[var(--text-primary)]">{getPageTitle(pathname)}</h1>
             </div>
 
             {/* Center - Search (Desktop) */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
                 <div className={cn(
-                    "relative w-full transition-all duration-200",
-                    searchFocused && "scale-[1.01]"
+                    "relative w-full transition-all duration-200"
                 )}>
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
                     <input
                         id="global-search-seller"
                         type="text"
@@ -83,61 +85,58 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                         onFocus={() => setSearchFocused(true)}
                         onBlur={() => setSearchFocused(false)}
                         className={cn(
-                            "w-full h-9 pl-9 pr-16 text-sm rounded-lg transition-all duration-200",
-                            "bg-gray-50 text-gray-900 placeholder:text-gray-400",
-                            "border border-gray-200 outline-none",
-                            searchFocused && "bg-white border-gray-300 shadow-sm"
+                            "w-full h-9 pl-9 pr-16 text-sm rounded-xl transition-all duration-200",
+                            "bg-[var(--bg-secondary)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+                            "outline-none",
+                            searchFocused && "bg-[var(--bg-tertiary)] shadow-[0_0_0_3px_rgba(37,37,255,0.1)] dark:shadow-[0_0_0_3px_rgba(107,107,255,0.2)]"
                         )}
                     />
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-0.5 pointer-events-none">
-                        <kbd className="px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 rounded border border-gray-200">⌘K</kbd>
+                        <kbd className="px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-muted)] bg-[var(--bg-tertiary)] rounded">⌘K</kbd>
                     </div>
                 </div>
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
                 {/* Quick Actions */}
                 <div className="hidden lg:flex items-center gap-1">
                     <Tooltip content="Create new shipment">
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        <button
                             onClick={() => window.location.href = '/seller/shipments'}
-                            className="h-9 px-3 text-gray-600 hover:text-[#2525FF] hover:bg-[#2525FF]/5"
+                            className="h-9 px-3 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] transition-all duration-200 flex items-center gap-1.5 focus-ring-brand"
                         >
-                            <Plus className="h-4 w-4 mr-1.5" />
-                            <span className="text-sm">Create</span>
-                        </Button>
+                            <Plus className="h-4 w-4" />
+                            <span>Create</span>
+                        </button>
                     </Tooltip>
 
                     <Tooltip content="Track shipment">
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        <button
                             onClick={() => window.location.href = '/seller/tracking'}
-                            className="h-9 px-3 text-gray-600 hover:text-[#2525FF] hover:bg-[#2525FF]/5"
+                            className="h-9 px-3 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] transition-all duration-200 flex items-center gap-1.5 focus-ring-brand"
                         >
-                            <Truck className="h-4 w-4 mr-1.5" />
-                            <span className="text-sm">Track</span>
-                        </Button>
+                            <Truck className="h-4 w-4" />
+                            <span>Track</span>
+                        </button>
                     </Tooltip>
 
                     <Tooltip content="Manage wallet">
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        <button
                             onClick={() => window.location.href = '/seller/financials'}
-                            className="h-9 px-3 text-gray-600 hover:text-[#2525FF] hover:bg-[#2525FF]/5"
+                            className="h-9 px-3 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] transition-all duration-200 flex items-center gap-1.5 focus-ring-brand"
                         >
-                            <Wallet className="h-4 w-4 mr-1.5" />
-                            <span className="text-sm">Wallet</span>
-                        </Button>
+                            <Wallet className="h-4 w-4" />
+                            <span>Wallet</span>
+                        </button>
                     </Tooltip>
                 </div>
 
                 {/* Divider */}
-                <div className="hidden lg:block h-5 w-px bg-gray-200 mx-2" />
+                <div className="hidden lg:block h-5 w-px bg-[var(--border-default)] mx-1" />
+
+                {/* Theme Toggle */}
+                <ThemeToggle />
 
                 {/* Notifications */}
                 <NotificationsDropdown />

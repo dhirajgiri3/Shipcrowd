@@ -384,7 +384,7 @@ export default function CreateOrderPage() {
                                     <select
                                         value={formData.paymentMode}
                                         onChange={(e) => handleInputChange('paymentMode', e.target.value)}
-                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
                                     >
                                         <option value="prepaid">Prepaid</option>
                                         <option value="cod">Cash on Delivery (COD)</option>
@@ -440,7 +440,7 @@ export default function CreateOrderPage() {
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-600">
+                                        <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center font-bold text-gray-600">
                                             {courier.logo}
                                         </div>
                                         <div>
@@ -471,7 +471,7 @@ export default function CreateOrderPage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {/* Customer */}
-                        <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="bg-[var(--bg-secondary)] rounded-xl p-4">
                             <h4 className="text-sm font-medium text-gray-500 mb-2">Customer Details</h4>
                             <p className="font-semibold text-gray-900">{formData.customerName || 'Not provided'}</p>
                             <p className="text-sm text-gray-600">{formData.customerPhone || 'Not provided'}</p>
@@ -481,7 +481,7 @@ export default function CreateOrderPage() {
                         </div>
 
                         {/* Product */}
-                        <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="bg-[var(--bg-secondary)] rounded-xl p-4">
                             <h4 className="text-sm font-medium text-gray-500 mb-2">Package Details</h4>
                             <p className="font-semibold text-gray-900">{formData.productName || 'Not provided'}</p>
                             <p className="text-sm text-gray-600">Weight: {formData.weight}g • Qty: {formData.quantity}</p>
@@ -492,7 +492,7 @@ export default function CreateOrderPage() {
 
                         {/* Payment & Courier */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 rounded-xl p-4">
+                            <div className="bg-[var(--bg-secondary)] rounded-xl p-4">
                                 <h4 className="text-sm font-medium text-gray-500 mb-2">Payment</h4>
                                 <Badge variant={formData.paymentMode === 'cod' ? 'warning' : 'success'} className="uppercase">
                                     {formData.paymentMode}
@@ -501,7 +501,7 @@ export default function CreateOrderPage() {
                                     {formatCurrency(Number(formData.invoiceValue) || 0)}
                                 </p>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4">
+                            <div className="bg-[var(--bg-secondary)] rounded-xl p-4">
                                 <h4 className="text-sm font-medium text-gray-500 mb-2">Courier</h4>
                                 {selectedCourierData ? (
                                     <>

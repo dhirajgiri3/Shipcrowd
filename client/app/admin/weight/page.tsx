@@ -258,7 +258,7 @@ export default function AdminWeightDiscrepancyPage() {
                 <select
                     value={selectedCourier}
                     onChange={(e) => setSelectedCourier(e.target.value)}
-                    className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                    className="h-10 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                 >
                     {couriers.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -271,44 +271,44 @@ export default function AdminWeightDiscrepancyPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">AWB</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
-                                    <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Courier</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Declared</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Actual</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Diff</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Charge</th>
-                                    <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Declared</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actual</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Diff</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charge</th>
+                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredDiscrepancies.map((disc) => (
-                                    <tr key={disc.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={disc.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
-                                            <code className="font-mono text-sm font-semibold text-gray-900">{disc.awbNumber}</code>
-                                            <p className="text-xs text-gray-500 mt-1">{disc.createdAt}</p>
+                                            <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{disc.awbNumber}</code>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{disc.createdAt}</p>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm font-medium text-gray-900">{disc.sellerName}</p>
-                                            <p className="text-xs text-gray-500">{disc.sellerId}</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.sellerName}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{disc.sellerId}</p>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm text-gray-900">{disc.courier}</p>
+                                            <p className="text-sm text-[var(--text-primary)]">{disc.courier}</p>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <p className="text-sm font-medium text-gray-900">{disc.declaredWeight}g</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.declaredWeight}g</p>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <p className="text-sm font-medium text-gray-900">{disc.actualWeight}g</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.actualWeight}g</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             <p className="text-sm font-semibold text-rose-600">+{disc.difference}g</p>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <p className="text-sm font-bold text-gray-900">{formatCurrency(disc.additionalCharge)}</p>
+                                            <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(disc.additionalCharge)}</p>
                                         </td>
                                         <td className="p-4 text-center">
                                             {getStatusBadge(disc.status)}
@@ -340,7 +340,7 @@ export default function AdminWeightDiscrepancyPage() {
                                                 <p className="text-xs text-emerald-600 text-right">Charged to seller</p>
                                             )}
                                             {disc.status === 'rejected' && (
-                                                <p className="text-xs text-gray-500 text-right">No charge</p>
+                                                <p className="text-xs text-[var(--text-muted)] text-right">No charge</p>
                                             )}
                                         </td>
                                     </tr>

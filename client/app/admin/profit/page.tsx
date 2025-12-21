@@ -262,20 +262,20 @@ export default function ProfitManagementPage() {
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                         <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Seller</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Shipments</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Cost</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Charged</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Profit</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Margin</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Cost</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charged</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Profit</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Margin</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredData.map((row) => (
-                                            <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                                            <tr key={row.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                                 <td className="p-4 text-sm" style={{ color: 'var(--text-primary)' }}>{row.date}</td>
                                                 <td className="p-4">
                                                     <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{row.sellerName}</p>
@@ -403,7 +403,7 @@ export default function ProfitManagementPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Seller (Optional)</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)]">
                                     <option value="">All Sellers</option>
                                     <option value="SEL-001">TechGadgets Inc.</option>
                                     <option value="SEL-002">Fashion Hub</option>

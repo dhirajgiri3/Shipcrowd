@@ -108,11 +108,11 @@ export default function RateCardAssignmentPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <CreditCard className="h-6 w-6 text-[#2525FF]" />
                         Rate Card Assignment
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Assign rate cards to sellers for shipping calculations
                     </p>
                 </div>
@@ -124,8 +124,8 @@ export default function RateCardAssignmentPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Rate Cards</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockRateCards.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Rate Cards</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockRateCards.length}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <CreditCard className="h-5 w-5 text-[#2525FF]" />
@@ -137,8 +137,8 @@ export default function RateCardAssignmentPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Sellers</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockSellers.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Sellers</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockSellers.length}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
                                 <Users className="h-5 w-5 text-emerald-600" />
@@ -150,7 +150,7 @@ export default function RateCardAssignmentPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Unassigned Sellers</p>
+                                <p className="text-sm text-[var(--text-muted)]">Unassigned Sellers</p>
                                 <p className="text-2xl font-bold text-amber-600">
                                     {mockSellers.filter(s => !assignments.find(a => a.sellerId === s.id)).length}
                                 </p>
@@ -196,8 +196,8 @@ export default function RateCardAssignmentPage() {
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h4 className="font-semibold text-gray-900">{seller.name}</h4>
-                                                <p className="text-sm text-gray-500">{seller.city}</p>
+                                                <h4 className="font-semibold text-[var(--text-primary)]">{seller.name}</h4>
+                                                <p className="text-sm text-[var(--text-muted)]">{seller.city}</p>
                                             </div>
                                             <div className="text-right">
                                                 <Badge variant={assignedCount > 0 ? 'success' : 'warning'}>
@@ -265,8 +265,8 @@ export default function RateCardAssignmentPage() {
                                                             {isAssigned && <CheckCircle className="h-3 w-3 text-white" />}
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-semibold text-gray-900">{card.name}</h4>
-                                                            <p className="text-sm text-gray-500">{card.courier} • {card.type}</p>
+                                                            <h4 className="font-semibold text-[var(--text-primary)]">{card.name}</h4>
+                                                            <p className="text-sm text-[var(--text-muted)]">{card.courier} • {card.type}</p>
                                                         </div>
                                                     </div>
                                                     <Badge variant={card.isActive ? 'success' : 'neutral'}>
@@ -281,8 +281,8 @@ export default function RateCardAssignmentPage() {
                         ) : (
                             <div className="py-12 text-center">
                                 <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900">No Seller Selected</h3>
-                                <p className="text-gray-500 mt-1">Select a seller from the left to manage assignments</p>
+                                <h3 className="text-lg font-medium text-[var(--text-primary)]">No Seller Selected</h3>
+                                <p className="text-[var(--text-muted)] mt-1">Select a seller from the left to manage assignments</p>
                             </div>
                         )}
                     </CardContent>

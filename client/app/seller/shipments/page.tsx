@@ -55,8 +55,8 @@ export default function ShipmentsPage() {
                 width: 'w-48',
                 cell: (row: Shipment) => (
                     <div>
-                        <div className="font-medium text-gray-900">{row.awb}</div>
-                        <div className="text-xs text-gray-500">{row.orderNumber}</div>
+                        <div className="font-medium text-[var(--text-primary)]">{row.awb}</div>
+                        <div className="text-xs text-[var(--text-muted)]">{row.orderNumber}</div>
                     </div>
                 )
             },
@@ -65,8 +65,8 @@ export default function ShipmentsPage() {
                 accessorKey: 'customer',
                 cell: (row: Shipment) => (
                     <div>
-                        <div className="font-medium text-gray-900">{row.customer.name}</div>
-                        <div className="text-xs text-gray-500">{row.customer.phone}</div>
+                        <div className="font-medium text-[var(--text-primary)]">{row.customer.name}</div>
+                        <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
                     </div>
                 )
             },
@@ -75,8 +75,8 @@ export default function ShipmentsPage() {
                 accessorKey: 'origin',
                 cell: (row: Shipment) => (
                     <div className="max-w-[150px]">
-                        <div className="text-xs text-gray-500 truncate" title={row.origin.city}>{row.origin.city} →</div>
-                        <div className="font-medium text-gray-900 truncate" title={row.destination.city}>{row.destination.city}</div>
+                        <div className="text-xs text-[var(--text-muted)] truncate" title={row.origin.city}>{row.origin.city} →</div>
+                        <div className="font-medium text-[var(--text-primary)] truncate" title={row.destination.city}>{row.destination.city}</div>
                     </div>
                 )
             },
@@ -107,7 +107,7 @@ export default function ShipmentsPage() {
                 accessorKey: 'codAmount',
                 cell: (row: Shipment) => (
                     <div>
-                        <div className="font-medium text-gray-900">{formatCurrency(row.codAmount)}</div>
+                        <div className="font-medium text-[var(--text-primary)]">{formatCurrency(row.codAmount)}</div>
                         <Badge variant="secondary" className="text-[10px] py-0 h-4">{row.paymentMode.toUpperCase()}</Badge>
                     </div>
                 )
@@ -132,7 +132,7 @@ export default function ShipmentsPage() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-gray-900"
+                            className="h-8 w-8 text-gray-400 hover:text-[var(--text-primary)]"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 addToast('Generating label...', 'info');
@@ -198,7 +198,7 @@ export default function ShipmentsPage() {
             />
 
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">Shipments</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Shipments</h2>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={() => addToast('Bulk import coming soon!', 'info')}>
                         <Upload className="h-4 w-4 mr-2" />

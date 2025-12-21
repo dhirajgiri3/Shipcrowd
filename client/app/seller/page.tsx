@@ -124,7 +124,7 @@ export default function SellerDashboardPage() {
                         <Clock className="w-3.5 h-3.5" />
                         {currentTime.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
                     </div>
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">
                         {getGreeting()}, {sellerData.name} 👋
                     </h1>
                 </div>
@@ -145,10 +145,10 @@ export default function SellerDashboardPage() {
 
             {/* Smart Notification Banner */}
             {showBanner && (
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#2525FF] to-[#6B5BFF] p-1 shadow-lg animate-in slide-in-from-top-2 fade-in duration-500">
-                    <div className="relative flex items-center justify-between gap-4 rounded-lg bg-white/10 px-4 py-3 text-white backdrop-blur-sm">
+                <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#2525FF] to-[#6B5BFF] p-px animate-in slide-in-from-top-2 fade-in duration-500">
+                    <div className="relative flex items-center justify-between gap-4 rounded-[11px] bg-[var(--primary-blue)] px-4 py-3 text-white">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--bg-primary)]/20">
                                 <Megaphone className="h-4 w-4" />
                             </div>
                             <div>
@@ -157,12 +157,12 @@ export default function SellerDashboardPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button size="sm" variant="ghost" className="hidden sm:flex text-white hover:bg-white/10 hover:text-white h-8">
+                            <Button size="sm" variant="ghost" className="hidden sm:flex text-white hover:bg-[var(--bg-primary)]/10 hover:text-white h-8">
                                 Enable Now
                             </Button>
                             <button
                                 onClick={() => setShowBanner(false)}
-                                className="rounded-full p-1 hover:bg-white/20 transition-colors"
+                                className="rounded-full p-1 hover:bg-[var(--bg-primary)]/20 transition-colors"
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -172,7 +172,7 @@ export default function SellerDashboardPage() {
             )}
 
             {/* Hero Insight Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-100 p-6 sm:p-8 shadow-sm">
+            <div className="relative overflow-hidden rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6 sm:p-8">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                     <Sparkles className="w-64 h-64 text-[#2525FF]" />
                 </div>
@@ -182,22 +182,22 @@ export default function SellerDashboardPage() {
                             <Zap className="w-3 h-3 fill-current" />
                             Daily Insight
                         </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                        <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-2">
                             Ready to crush your goals? 🚀
                         </h2>
-                        <p className="text-gray-500 leading-relaxed">
-                            You have <span className="font-bold text-gray-900">{sellerData.ordersToShip} orders</span> pending shipment.
+                        <p className="text-[var(--text-muted)] leading-relaxed">
+                            You have <span className="font-bold text-[var(--text-primary)]">{sellerData.ordersToShip} orders</span> pending shipment.
                             Processing them before 6 PM usually results in a <span className="font-semibold text-emerald-600">faster delivery time</span>.
                         </p>
                     </div>
                     <div className="flex gap-4">
-                        <div className="text-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-100">
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Success Rate</p>
-                            <p className="text-xl font-bold text-emerald-600">96.4%</p>
+                        <div className="text-center px-4 py-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-subtle)]">
+                            <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider">Success Rate</p>
+                            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">96.4%</p>
                         </div>
-                        <div className="text-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-100">
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Avg. Time</p>
-                            <p className="text-xl font-bold text-[#2525FF]">2.4 Days</p>
+                        <div className="text-center px-4 py-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-subtle)]">
+                            <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider">Avg. Time</p>
+                            <p className="text-xl font-bold text-[var(--primary-blue)]">2.4 Days</p>
                         </div>
                     </div>
                 </div>
@@ -207,7 +207,7 @@ export default function SellerDashboardPage() {
             <div className="grid gap-4 md:grid-cols-4">
                 {/* Wallet */}
                 <Link href="/seller/financials" className="block h-full">
-                    <div className="group h-full relative bg-white border border-gray-200 rounded-xl p-5 transition-all duration-200 hover:border-[#2525FF]/50 hover:shadow-md hover:-translate-y-0.5">
+                    <div className="group h-full relative bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-5 transition-all duration-200 hover:border-[var(--primary-blue)] hover:border-opacity-50">
                         <div className="flex items-center justify-between mb-4">
                             <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#2525FF] group-hover:scale-110 transition-transform">
                                 <Wallet className="h-5 w-5" />
@@ -219,8 +219,8 @@ export default function SellerDashboardPage() {
                                 </span>
                             )}
                         </div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Wallet Balance</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
+                        <p className="text-sm font-medium text-[var(--text-muted)] mb-1">Wallet Balance</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">
                             {formatCurrency(sellerData.walletBalance)}
                         </p>
                         <div className="flex items-center text-sm font-medium text-[#2525FF]">
@@ -232,14 +232,14 @@ export default function SellerDashboardPage() {
 
                 {/* Orders to Ship */}
                 <Link href="/seller/orders?tab=new" className="block h-full">
-                    <div className="group h-full relative bg-white border border-gray-200 rounded-xl p-5 transition-all duration-200 hover:border-[#2525FF]/50 hover:shadow-md hover:-translate-y-0.5">
+                    <div className="group h-full relative bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-5 transition-all duration-200 hover:border-[var(--primary-blue)] hover:border-opacity-50">
                         <div className="flex items-center justify-between mb-4">
                             <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
                                 <Package className="h-5 w-5" />
                             </div>
                         </div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Orders to Ship</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">{sellerData.ordersToShip}</p>
+                        <p className="text-sm font-medium text-[var(--text-muted)] mb-1">Orders to Ship</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{sellerData.ordersToShip}</p>
                         <div className="flex items-center text-sm font-medium text-emerald-600">
                             Ship now
                             <ArrowUpRight className="h-4 w-4 ml-1 opacity-100 sm:opacity-0 sm:-translate-x-2 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 transition-all" />
@@ -249,14 +249,14 @@ export default function SellerDashboardPage() {
 
                 {/* In Transit */}
                 <Link href="/seller/shipments" className="block h-full">
-                    <div className="group h-full relative bg-white border border-gray-200 rounded-xl p-5 transition-all duration-200 hover:border-[#2525FF]/50 hover:shadow-md hover:-translate-y-0.5">
+                    <div className="group h-full relative bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-5 transition-all duration-200 hover:border-[var(--primary-blue)] hover:border-opacity-50">
                         <div className="flex items-center justify-between mb-4">
                             <div className="h-10 w-10 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600 group-hover:scale-110 transition-transform">
                                 <Truck className="h-5 w-5" />
                             </div>
                         </div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">In Transit</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">{sellerData.inTransit}</p>
+                        <p className="text-sm font-medium text-[var(--text-muted)] mb-1">In Transit</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{sellerData.inTransit}</p>
                         <div className="flex items-center text-sm font-medium text-violet-600">
                             Track all
                             <ArrowUpRight className="h-4 w-4 ml-1 opacity-100 sm:opacity-0 sm:-translate-x-2 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 transition-all" />
@@ -266,7 +266,7 @@ export default function SellerDashboardPage() {
 
                 {/* NDRs */}
                 <Link href="/seller/ndr" className="block h-full">
-                    <div className="group h-full relative bg-white border border-gray-200 rounded-xl p-5 transition-all duration-200 hover:border-rose-300 hover:shadow-md hover:-translate-y-0.5 hover:bg-rose-50/10">
+                    <div className="group h-full relative bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-5 transition-all duration-200 hover:border-rose-300">
                         <div className="flex items-center justify-between mb-4">
                             <div className="h-10 w-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform">
                                 <AlertTriangle className="h-5 w-5" />
@@ -277,8 +277,8 @@ export default function SellerDashboardPage() {
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Failed Deliveries</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">{sellerData.ndrsToResolve}</p>
+                        <p className="text-sm font-medium text-[var(--text-muted)] mb-1">Failed Deliveries</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{sellerData.ndrsToResolve}</p>
                         <div className="flex items-center text-sm font-medium text-rose-600">
                             Resolve now
                             <ArrowUpRight className="h-4 w-4 ml-1 opacity-100 sm:opacity-0 sm:-translate-x-2 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 transition-all" />
@@ -289,15 +289,15 @@ export default function SellerDashboardPage() {
 
             {/* Pending Actions Section - COLORFUL & PLAYFUL */}
             {pendingActions.length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
                         <div className="flex items-center gap-2">
                             <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
-                            <h2 className="font-semibold text-gray-900">Pending Actions</h2>
-                            <Badge variant="neutral" className="ml-2 bg-white text-gray-500">{pendingActions.length}</Badge>
+                            <h2 className="font-semibold text-[var(--text-primary)]">Pending Actions</h2>
+                            <Badge variant="neutral" className="ml-2 bg-[var(--bg-primary)] text-[var(--text-muted)]">{pendingActions.length}</Badge>
                         </div>
                     </div>
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-[var(--border-subtle)]">
                         {pendingActions.map((action) => {
                             const Icon = action.icon;
                             // Dynamic styles based on urgency/color
@@ -341,8 +341,8 @@ export default function SellerDashboardPage() {
                                             <Icon className="h-6 w-6" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-gray-900 group-hover:text-[#2525FF] transition-colors">{action.title}</p>
-                                            <p className="text-sm text-gray-500 mt-0.5">{action.subtitle}</p>
+                                            <p className="font-semibold text-[var(--text-primary)] group-hover:text-[#2525FF] transition-colors">{action.title}</p>
+                                            <p className="text-sm text-[var(--text-muted)] mt-0.5">{action.subtitle}</p>
                                         </div>
                                         <Button
                                             variant="ghost"
@@ -362,11 +362,11 @@ export default function SellerDashboardPage() {
             {/* Two Column Layout */}
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Performance */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <TrendingUp className="h-5 w-5 text-gray-400" />
-                            <h2 className="font-semibold text-gray-900">This Week's Performance</h2>
+                            <h2 className="font-semibold text-[var(--text-primary)]">This Week's Performance</h2>
                         </div>
                         <Badge variant="success" className="gap-1 pl-1.5">
                             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -375,28 +375,28 @@ export default function SellerDashboardPage() {
                     </div>
                     <div className="p-6">
                         <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div className="text-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                                <p className="text-3xl font-bold text-gray-900 tracking-tight">{sellerData.weekStats.orders}</p>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Total Orders</p>
+                            <div className="text-center p-4 bg-[var(--bg-secondary)] rounded-xl hover:bg-[var(--bg-tertiary)] transition-colors">
+                                <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{sellerData.weekStats.orders}</p>
+                                <p className="text-sm font-medium text-[var(--text-muted)] mt-1">Total Orders</p>
                             </div>
                             <div className="text-center p-4 bg-blue-50/50 rounded-xl hover:bg-blue-50 transition-colors">
                                 <p className="text-3xl font-bold text-[#2525FF] tracking-tight">{sellerData.weekStats.shipped}</p>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Shipped</p>
+                                <p className="text-sm font-medium text-[var(--text-muted)] mt-1">Shipped</p>
                             </div>
                             <div className="text-center p-4 bg-emerald-50/50 rounded-xl hover:bg-emerald-50 transition-colors">
                                 <p className="text-3xl font-bold text-emerald-600 tracking-tight">{sellerData.weekStats.delivered}</p>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Delivered</p>
+                                <p className="text-sm font-medium text-[var(--text-muted)] mt-1">Delivered</p>
                             </div>
                             <div className="text-center p-4 bg-rose-50/50 rounded-xl hover:bg-rose-50 transition-colors">
                                 <p className="text-3xl font-bold text-rose-600 tracking-tight">{sellerData.weekStats.rto}</p>
-                                <p className="text-sm font-medium text-gray-500 mt-1">RTO</p>
+                                <p className="text-sm font-medium text-[var(--text-muted)] mt-1">RTO</p>
                             </div>
                         </div>
 
-                        <div className="space-y-2 bg-gray-50 p-4 rounded-xl">
+                        <div className="space-y-2 bg-[var(--bg-secondary)] p-4 rounded-xl">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium text-gray-600">Overall Success Rate</span>
-                                <span className="font-bold text-gray-900">{sellerData.weekStats.successRate}%</span>
+                                <span className="font-bold text-[var(--text-primary)]">{sellerData.weekStats.successRate}%</span>
                             </div>
                             <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
                                 <div
@@ -409,11 +409,11 @@ export default function SellerDashboardPage() {
                 </div>
 
                 {/* Quick Track */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Search className="h-5 w-5 text-gray-400" />
-                            <h2 className="font-semibold text-gray-900">Quick Track</h2>
+                            <h2 className="font-semibold text-[var(--text-primary)]">Quick Track</h2>
                         </div>
                         <Link href="/seller/tracking" className="text-sm text-[#2525FF] hover:underline font-medium">
                             Advanced Search
@@ -435,12 +435,12 @@ export default function SellerDashboardPage() {
 
                         <div className="flex items-center gap-2 mb-3">
                             <div className="h-1.5 w-1.5 rounded-full bg-gray-300" />
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Shipments</p>
+                            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Recent Shipments</p>
                         </div>
 
                         <div className="space-y-3">
                             {recentShipments.map((shipment) => (
-                                <div key={shipment.awb} className="group flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-white hover:shadow-md hover:shadow-gray-100 transition-all cursor-pointer border border-transparent hover:border-gray-100">
+                                <div key={shipment.awb} className="group flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg hover:bg-[var(--bg-primary)] hover:shadow-md transition-all cursor-pointer border border-transparent hover:border-[var(--border-subtle)]">
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
                                             "h-2 w-2 rounded-full",
@@ -448,13 +448,14 @@ export default function SellerDashboardPage() {
                                                 shipment.status === 'out_for_delivery' ? "bg-amber-500" : "bg-blue-500"
                                         )} />
                                         <div>
-                                            <p className="font-semibold text-gray-900 text-sm group-hover:text-[#2525FF] transition-colors">{shipment.awb}</p>
-                                            <p className="text-xs text-gray-500">{shipment.customer} • {shipment.carrier}</p>
+                                            <p className="font-semibold text-[var(--text-primary)] text-sm group-hover:text-[#2525FF] transition-colors">{shipment.awb}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{shipment.customer} • {shipment.carrier}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <Badge variant="neutral" className={cn(
-                                            "bg-white border-gray-200 transition-colors",
+                                        <Badge className={cn(
+                                            "px-2 py-0.5 rounded-full text-xs font-medium",
+                                            "bg-[var(--bg-primary)] border border-[var(--border-default)] transition-colors",
                                             shipment.status === 'delivered' ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
                                                 shipment.status === 'out_for_delivery' ? "text-amber-700 bg-amber-50 border-amber-100" :
                                                     "text-blue-700 bg-blue-50 border-blue-100"
@@ -474,11 +475,11 @@ export default function SellerDashboardPage() {
             {/* Bottom Row */}
             <div className="grid gap-6 md:grid-cols-2">
                 {/* COD Settlements */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <IndianRupee className="h-5 w-5 text-gray-400" />
-                            <h2 className="font-semibold text-gray-900">COD Settlements</h2>
+                            <h2 className="font-semibold text-[var(--text-primary)]">COD Settlements</h2>
                         </div>
                         <Link href="/seller/financials" className="text-sm text-[#2525FF] hover:underline font-medium">
                             View All
@@ -487,15 +488,15 @@ export default function SellerDashboardPage() {
                     <div className="p-6">
                         <div className="space-y-3">
                             {codSettlements.map((settlement, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-transparent hover:border-gray-200 transition-colors">
+                                <div key={idx} className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-xl border border-transparent hover:border-[var(--border-default)] transition-colors">
                                     <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-center justify-center h-12 w-12 rounded-lg bg-white border border-gray-200 text-xs font-medium text-gray-500">
+                                        <div className="flex flex-col items-center justify-center h-12 w-12 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-muted)]">
                                             <span>{settlement.date.split(' ')[1]}</span>
-                                            <span className="text-gray-900 font-bold">{settlement.date.split(' ')[0]}</span>
+                                            <span className="text-[var(--text-primary)] font-bold">{settlement.date.split(' ')[0]}</span>
                                         </div>
                                         <div>
-                                            <p className="text-lg font-bold text-gray-900">{formatCurrency(settlement.amount)}</p>
-                                            <p className="text-sm text-gray-500">{settlement.orders} orders processed</p>
+                                            <p className="text-lg font-bold text-[var(--text-primary)]">{formatCurrency(settlement.amount)}</p>
+                                            <p className="text-sm text-[var(--text-muted)]">{settlement.orders} orders processed</p>
                                         </div>
                                     </div>
                                     <Badge variant={settlement.status === 'scheduled' ? 'success' : 'neutral'} className="capitalize">
@@ -508,11 +509,11 @@ export default function SellerDashboardPage() {
                 </div>
 
                 {/* Store Connections */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <ShoppingBag className="h-5 w-5 text-gray-400" />
-                            <h2 className="font-semibold text-gray-900">Connected Stores</h2>
+                            <h2 className="font-semibold text-[var(--text-primary)]">Connected Stores</h2>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => addToast('Syncing...', 'info')} className="h-8">
                             <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
@@ -521,35 +522,35 @@ export default function SellerDashboardPage() {
                     </div>
                     <div className="p-6">
                         <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-[#95BF47] transition-colors group bg-white">
+                            <div className="flex items-center gap-4 p-4 border border-[var(--border-default)] rounded-xl hover:border-[#95BF47] transition-colors group bg-[var(--bg-primary)]">
                                 <div className="h-12 w-12 bg-[#95BF47] rounded-xl flex items-center justify-center shadow-lg shadow-[#95BF47]/20 group-hover:scale-110 transition-transform">
                                     <ShoppingBag className="h-6 w-6 text-white" />
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between">
-                                        <p className="font-bold text-gray-900">Shopify Store</p>
+                                        <p className="font-bold text-[var(--text-primary)]">Shopify Store</p>
                                         <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                             Live
                                         </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-0.5">Last sync: 2 min ago</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">Last sync: 2 min ago</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-[#96588A] transition-colors group bg-white">
+                            <div className="flex items-center gap-4 p-4 border border-[var(--border-default)] rounded-xl hover:border-[#96588A] transition-colors group bg-[var(--bg-primary)]">
                                 <div className="h-12 w-12 bg-[#96588A] rounded-xl flex items-center justify-center shadow-lg shadow-[#96588A]/20 group-hover:scale-110 transition-transform">
                                     <ShoppingBag className="h-6 w-6 text-white" />
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between">
-                                        <p className="font-bold text-gray-900">WooCommerce</p>
+                                        <p className="font-bold text-[var(--text-primary)]">WooCommerce</p>
                                         <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                             Live
                                         </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-0.5">Last sync: 5 min ago</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">Last sync: 5 min ago</p>
                                 </div>
                             </div>
                         </div>

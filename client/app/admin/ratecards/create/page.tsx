@@ -88,11 +88,11 @@ export default function CreateRateCardPage() {
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                             <CreditCard className="h-6 w-6 text-[#2525FF]" />
                             Create Rate Card
                         </h1>
-                        <p className="text-gray-500 text-sm mt-1">
+                        <p className="text-[var(--text-muted)] text-sm mt-1">
                             Define pricing for a courier service
                         </p>
                     </div>
@@ -120,7 +120,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.courierProviderId}
                                 onChange={(e) => handleInputChange('courierProviderId', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                             >
                                 <option value="">Select Courier</option>
                                 {couriers.map((c) => (
@@ -136,7 +136,7 @@ export default function CreateRateCardPage() {
                                 value={formData.courierServiceId}
                                 onChange={(e) => handleInputChange('courierServiceId', e.target.value)}
                                 disabled={!selectedCourierData}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <option value="">Select Service</option>
                                 {selectedCourierData?.services.map((s) => (
@@ -151,7 +151,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.rateCardCategory}
                                 onChange={(e) => handleInputChange('rateCardCategory', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
                             >
                                 <option value="">Select Category</option>
                                 {categories.map((c) => (
@@ -166,7 +166,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.shipmentType}
                                 onChange={(e) => handleInputChange('shipmentType', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
                             >
                                 {shipmentTypes.map((t) => (
                                     <option key={t} value={t} className="capitalize">{t}</option>
@@ -196,7 +196,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.minimumFareCalculatedOn}
                                 onChange={(e) => handleInputChange('minimumFareCalculatedOn', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                             >
                                 <option value="freight">Freight</option>
                                 <option value="freight_overhead">Freight + Overhead</option>
@@ -224,7 +224,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.status}
                                 onChange={(e) => handleInputChange('status', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
                             >
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
@@ -239,7 +239,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.zoneBType}
                                 onChange={(e) => handleInputChange('zoneBType', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300 capitalize"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
                             >
                                 {zoneMappings.map((z) => (
                                     <option key={z} value={z} className="capitalize">{z}</option>
@@ -252,7 +252,7 @@ export default function CreateRateCardPage() {
                             <select
                                 value={formData.isWeightConstraint ? 'yes' : 'no'}
                                 onChange={(e) => handleInputChange('isWeightConstraint', e.target.value === 'yes')}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                             >
                                 <option value="no">No</option>
                                 <option value="yes">Yes</option>

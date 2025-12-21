@@ -102,11 +102,11 @@ export default function RechargePage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Wallet className="h-6 w-6 text-[#2525FF]" />
                         Wallet Recharge
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Add funds to your wallet for shipping
                     </p>
                 </div>
@@ -127,7 +127,7 @@ export default function RechargePage() {
                                 Secured wallet by RBI guidelines
                             </p>
                         </div>
-                        <div className="h-16 w-16 rounded-2xl bg-white/10 flex items-center justify-center">
+                        <div className="h-16 w-16 rounded-2xl bg-[var(--bg-primary)]/10 flex items-center justify-center">
                             <Wallet className="h-8 w-8" />
                         </div>
                     </div>
@@ -172,7 +172,7 @@ export default function RechargePage() {
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-xs text-gray-500">Minimum recharge: ₹100</p>
+                            <p className="text-xs text-[var(--text-muted)]">Minimum recharge: ₹100</p>
                         </CardContent>
                     </Card>
 
@@ -202,12 +202,12 @@ export default function RechargePage() {
                                     )}>
                                         <method.icon className={cn(
                                             "h-5 w-5",
-                                            selectedMethod === method.id ? "text-[#2525FF]" : "text-gray-500"
+                                            selectedMethod === method.id ? "text-[#2525FF]" : "text-[var(--text-muted)]"
                                         )} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-900">{method.name}</p>
-                                        <p className="text-sm text-gray-500">{method.description}</p>
+                                        <p className="font-semibold text-[var(--text-primary)]">{method.name}</p>
+                                        <p className="text-sm text-[var(--text-muted)]">{method.description}</p>
                                     </div>
                                     <div className={cn(
                                         "h-5 w-5 rounded-full border-2 flex items-center justify-center",

@@ -97,11 +97,11 @@ export default function ShippingLabelPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <FileText className="h-6 w-6 text-[#2525FF]" />
                         Shipping Labels
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Generate and download shipping labels for your orders
                     </p>
                 </div>
@@ -156,18 +156,18 @@ export default function ShippingLabelPage() {
                         </CardHeader>
                         <CardContent>
                             {/* Actual Label Design */}
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-white">
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-[var(--bg-primary)]">
                                 {/* Header with AWB */}
                                 <div className="flex items-center justify-between border-b-2 border-gray-900 pb-4 mb-4">
                                     <div>
-                                        <p className="text-xs text-gray-500 uppercase">Courier Partner</p>
-                                        <p className="text-xl font-bold text-gray-900">{shipmentData.courier}</p>
+                                        <p className="text-xs text-[var(--text-muted)] uppercase">Courier Partner</p>
+                                        <p className="text-xl font-bold text-[var(--text-primary)]">{shipmentData.courier}</p>
                                         <p className="text-sm text-gray-600">{shipmentData.service}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs text-gray-500 uppercase">AWB Number</p>
-                                        <p className="text-2xl font-mono font-bold text-gray-900">{shipmentData.awbNumber}</p>
-                                        <div className="mt-2 bg-gray-100 p-2 rounded">
+                                        <p className="text-xs text-[var(--text-muted)] uppercase">AWB Number</p>
+                                        <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">{shipmentData.awbNumber}</p>
+                                        <div className="mt-2 bg-[var(--bg-tertiary)] p-2 rounded">
                                             <QrCode className="h-16 w-16 text-gray-800 mx-auto" />
                                         </div>
                                     </div>
@@ -177,11 +177,11 @@ export default function ShippingLabelPage() {
                                 <div className="grid grid-cols-2 gap-6 border-b border-gray-200 pb-4 mb-4">
                                     {/* From */}
                                     <div>
-                                        <p className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                        <p className="text-xs font-bold text-[var(--text-muted)] uppercase mb-2 flex items-center gap-1">
                                             <MapPin className="h-3 w-3" />
                                             Ship From
                                         </p>
-                                        <div className="text-sm text-gray-900">
+                                        <div className="text-sm text-[var(--text-primary)]">
                                             <p className="font-semibold">{shipmentData.shipperDetails.name}</p>
                                             <p>{shipmentData.shipperDetails.address}</p>
                                             <p>{shipmentData.shipperDetails.city}, {shipmentData.shipperDetails.state}</p>
@@ -195,7 +195,7 @@ export default function ShippingLabelPage() {
 
                                     {/* To */}
                                     <div className="border-l pl-6">
-                                        <p className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                        <p className="text-xs font-bold text-[var(--text-muted)] uppercase mb-2 flex items-center gap-1">
                                             <MapPin className="h-3 w-3" />
                                             Ship To
                                         </p>
@@ -260,7 +260,7 @@ export default function ShippingLabelPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg">
                                     <div>
                                         <p className="text-xs text-gray-500">AWB Number</p>
                                         <p className="font-mono font-semibold text-gray-900">{shipmentData.awbNumber}</p>
@@ -270,7 +270,7 @@ export default function ShippingLabelPage() {
                                     </Button>
                                 </div>
 
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg">
                                     <div>
                                         <p className="text-xs text-gray-500">Order ID</p>
                                         <p className="font-semibold text-gray-900">{shipmentData.orderId}</p>
@@ -280,7 +280,7 @@ export default function ShippingLabelPage() {
                                     </Button>
                                 </div>
 
-                                <div className="p-3 bg-gray-50 rounded-lg">
+                                <div className="p-3 bg-[var(--bg-secondary)] rounded-lg">
                                     <p className="text-xs text-gray-500">Courier</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <Truck className="h-4 w-4 text-[#2525FF]" />
@@ -289,7 +289,7 @@ export default function ShippingLabelPage() {
                                     <p className="text-xs text-gray-500 mt-1">{shipmentData.service}</p>
                                 </div>
 
-                                <div className="p-3 bg-gray-50 rounded-lg">
+                                <div className="p-3 bg-[var(--bg-secondary)] rounded-lg">
                                     <p className="text-xs text-gray-500">Package</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <Package className="h-4 w-4 text-gray-400" />

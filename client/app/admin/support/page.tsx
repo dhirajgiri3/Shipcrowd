@@ -233,7 +233,7 @@ export default function SupportTicketsPage() {
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300"
+                            className="h-10 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
                         >
                             {categories.map((c) => (
                                 <option key={c} value={c}>{c}</option>
@@ -243,7 +243,7 @@ export default function SupportTicketsPage() {
                         <select
                             value={selectedPriority}
                             onChange={(e) => setSelectedPriority(e.target.value)}
-                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:border-gray-300 capitalize"
+                            className="h-10 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 capitalize"
                         >
                             <option value="all">All Priorities</option>
                             <option value="high">High</option>
@@ -292,14 +292,14 @@ export default function SupportTicketsPage() {
                                         {getPriorityBadge(ticket.priority)}
                                         <Badge variant="neutral" className="text-xs">{ticket.category}</Badge>
                                     </div>
-                                    <h3 className="font-medium text-gray-900">{ticket.subject}</h3>
-                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                    <h3 className="font-medium text-[var(--text-primary)]">{ticket.subject}</h3>
+                                    <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
                                         <span className="flex items-center gap-1">
                                             <User className="h-3.5 w-3.5" />
                                             {ticket.sellerName}
                                         </span>
                                         {ticket.awbNumber && (
-                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">
+                                            <span className="bg-[var(--bg-tertiary)] px-2 py-0.5 rounded text-xs">
                                                 AWB: {ticket.awbNumber}
                                             </span>
                                         )}
@@ -312,7 +312,7 @@ export default function SupportTicketsPage() {
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
                                         <p className="text-xs text-gray-400">Created: {ticket.createdAt}</p>
-                                        <p className="text-xs text-gray-500">Updated {ticket.lastUpdate}</p>
+                                        <p className="text-xs text-[var(--text-muted)]">Updated {ticket.lastUpdate}</p>
                                         {ticket.assignedTo && (
                                             <p className="text-xs text-[#2525FF] mt-1">Assigned: {ticket.assignedTo}</p>
                                         )}
@@ -329,7 +329,7 @@ export default function SupportTicketsPage() {
             {selectedTicket && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20 px-4">
                     <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <CardHeader className="flex flex-row items-start justify-between sticky top-0 bg-white z-10 border-b">
+                        <CardHeader className="flex flex-row items-start justify-between sticky top-0 bg-[var(--bg-primary)] z-10 border-b">
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
                                     <code className="text-xs font-mono text-gray-400">{selectedTicket.id}</code>
@@ -347,7 +347,7 @@ export default function SupportTicketsPage() {
                         <CardContent className="space-y-4 pt-4">
                             {/* Mock conversation */}
                             <div className="space-y-4">
-                                <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="h-8 w-8 rounded-full bg-[#2525FF] flex items-center justify-center text-white text-xs font-bold">
                                             FH
@@ -384,7 +384,7 @@ export default function SupportTicketsPage() {
                             <div className="border-t pt-4">
                                 <div className="flex gap-2">
                                     <textarea
-                                        className="flex-1 min-h-[80px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-300 resize-none"
+                                        className="flex-1 min-h-[80px] rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-300 resize-none"
                                         placeholder="Type your reply..."
                                     />
                                 </div>
@@ -394,7 +394,7 @@ export default function SupportTicketsPage() {
                                         Attach
                                     </Button>
                                     <div className="flex gap-2">
-                                        <select className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none">
+                                        <select className="h-9 rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)] focus:outline-none">
                                             <option>Change Status</option>
                                             <option value="in_progress">Mark In Progress</option>
                                             <option value="resolved">Mark Resolved</option>

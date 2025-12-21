@@ -52,8 +52,8 @@ export default function IntegrationsPage() {
                                         {integration.status}
                                     </Badge>
                                 </div>
-                                <h3 className="font-semibold text-gray-900 mb-1">{integration.name}</h3>
-                                <p className="text-xs text-gray-500 mb-3">
+                                <h3 className="font-semibold text-[var(--text-primary)] mb-1">{integration.name}</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-3">
                                     {integration.ordersSync.toLocaleString()} orders synced
                                 </p>
                                 <div className="text-[10px] text-gray-400 mb-3">
@@ -75,7 +75,7 @@ export default function IntegrationsPage() {
             {/* 2. User Management Section */}
             <div>
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-900">Team Members</h3>
+                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Team Members</h3>
                     <Button variant="outline">+ Invite User</Button>
                 </div>
 
@@ -83,7 +83,7 @@ export default function IntegrationsPage() {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100 text-[var(--text-muted)]">
                                     <tr>
                                         <th className="px-6 py-3 font-medium">Name</th>
                                         <th className="px-6 py-3 font-medium">Email</th>
@@ -95,8 +95,8 @@ export default function IntegrationsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {mockUsers.map((user, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
+                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
+                                            <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{user.name}</td>
                                             <td className="px-6 py-4 text-gray-600">{user.email}</td>
                                             <td className="px-6 py-4">
                                                 <Badge variant="outline">{user.role}</Badge>
@@ -106,7 +106,7 @@ export default function IntegrationsPage() {
                                                     {user.status}
                                                 </Badge>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500">{user.lastActive}</td>
+                                            <td className="px-6 py-4 text-[var(--text-muted)]">{user.lastActive}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <Button size="sm" variant="ghost" className="h-8 text-xs">
                                                     Manage

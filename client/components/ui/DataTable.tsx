@@ -64,37 +64,37 @@ export function DataTable<T extends { id: string | number }>({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-primary)] overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-[#f9fafb] border-b border-gray-200">
+                        <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                             <tr>
                                 {columns.map((col, idx) => (
                                     <th
                                         key={idx}
                                         className={cn(
-                                            "px-6 py-4 font-medium text-gray-500 whitespace-nowrap",
+                                            "px-6 py-4 font-medium text-[var(--text-muted)] whitespace-nowrap",
                                             col.width,
-                                            typeof col.accessorKey === 'string' ? "cursor-pointer hover:bg-gray-100 transition-colors" : ""
+                                            typeof col.accessorKey === 'string' ? "cursor-pointer hover:bg-[var(--bg-hover)] transition-colors" : ""
                                         )}
                                         onClick={() => typeof col.accessorKey === 'string' && handleSort(col.accessorKey as string)}
                                     >
                                         <div className="flex items-center space-x-1">
                                             <span>{col.header}</span>
                                             {typeof col.accessorKey === 'string' && (
-                                                <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                                                <ArrowUpDown className="w-3 h-3 text-[var(--text-muted)]" />
                                             )}
                                         </div>
                                     </th>
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-[var(--border-subtle)]">
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         {columns.map((_, j) => (
-                                            <td key={j} className="px-6 py-4"><div className="h-4 bg-gray-100 rounded w-3/4"></div></td>
+                                            <td key={j} className="px-6 py-4"><div className="h-4 bg-[var(--bg-secondary)] rounded w-3/4"></div></td>
                                         ))}
                                     </tr>
                                 ))
@@ -102,11 +102,11 @@ export function DataTable<T extends { id: string | number }>({
                                 paginatedData.map((row) => (
                                     <tr
                                         key={row.id}
-                                        className={`hover:bg-gray-50/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                                        className={`hover:bg-[var(--bg-hover)] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                                         onClick={() => onRowClick?.(row)}
                                     >
                                         {columns.map((col, idx) => (
-                                            <td key={idx} className="px-6 py-4 text-gray-700">
+                                            <td key={idx} className="px-6 py-4 text-[var(--text-primary)]">
                                                 {col.cell ? col.cell(row) : (row[col.accessorKey as keyof T] as React.ReactNode)}
                                             </td>
                                         ))}
@@ -114,7 +114,7 @@ export function DataTable<T extends { id: string | number }>({
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={columns.length} className="px-6 py-12 text-center text-[var(--text-muted)]">
                                         No results found
                                     </td>
                                 </tr>
@@ -126,7 +126,7 @@ export function DataTable<T extends { id: string | number }>({
 
             {/* Pagination */}
             <div className="flex items-center justify-between px-2">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[var(--text-muted)]">
                     Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                     <span className="font-medium">{Math.min(currentPage * itemsPerPage, data.length)}</span> of{' '}
                     <span className="font-medium">{data.length}</span> results
@@ -140,7 +140,7 @@ export function DataTable<T extends { id: string | number }>({
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-[var(--text-primary)]">
                         Page {currentPage} of {totalPages}
                     </span>
                     <Button

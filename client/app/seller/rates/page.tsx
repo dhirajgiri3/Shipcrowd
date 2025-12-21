@@ -62,11 +62,11 @@ export default function RatesPage() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Calculator className="h-6 w-6 text-indigo-600" />
                         Rate Calculator
                     </h2>
-                    <p className="text-gray-500 text-sm mt-1">Compare shipping rates across all courier partners</p>
+                    <p className="text-[var(--text-muted)] text-sm mt-1">Compare shipping rates across all courier partners</p>
                 </div>
             </div>
 
@@ -171,10 +171,10 @@ export default function RatesPage() {
                 {/* Results */}
                 <div className="lg:col-span-2">
                     {!showResults ? (
-                        <Card className="h-full flex items-center justify-center bg-gray-50">
+                        <Card className="h-full flex items-center justify-center bg-[var(--bg-secondary)]">
                             <CardContent className="text-center py-12">
                                 <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                                <p className="text-gray-500">Enter shipment details to see available rates</p>
+                                <p className="text-[var(--text-muted)]">Enter shipment details to see available rates</p>
                             </CardContent>
                         </Card>
                     ) : (
@@ -183,7 +183,7 @@ export default function RatesPage() {
                                 <p className="text-sm text-gray-600">
                                     <span className="font-medium">{mockRates.length}</span> courier options available
                                 </p>
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
                                     <span>{formData.originPincode}</span>
                                     <ArrowRight className="h-4 w-4" />
                                     <span>{formData.destinationPincode}</span>
@@ -210,12 +210,12 @@ export default function RatesPage() {
                                                 />
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-semibold text-gray-900">{rate.courier}</span>
+                                                        <span className="font-semibold text-[var(--text-primary)]">{rate.courier}</span>
                                                         {rate.recommended && (
                                                             <Badge variant="success" className="text-xs">Recommended</Badge>
                                                         )}
                                                     </div>
-                                                    <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                                                    <div className="flex items-center gap-3 mt-1 text-sm text-[var(--text-muted)]">
                                                         <span className="flex items-center gap-1">
                                                             <Clock className="h-3.5 w-3.5" />
                                                             {rate.eta}
@@ -229,8 +229,8 @@ export default function RatesPage() {
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="text-right">
-                                                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(rate.rate)}</p>
-                                                    <p className="text-xs text-gray-500">All inclusive</p>
+                                                    <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rate.rate)}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">All inclusive</p>
                                                 </div>
                                                 <Button
                                                     onClick={() => addToast(`Creating shipment with ${rate.courier}...`, 'info')}

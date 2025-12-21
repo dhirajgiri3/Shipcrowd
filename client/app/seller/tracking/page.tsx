@@ -80,7 +80,7 @@ export default function TrackingPage() {
             <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-100">
                 <CardContent className="pt-6">
                     <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Track Your Shipment</h2>
+                        <h2 className="text-2xl font-bold text-[var(--text-primary)]">Track Your Shipment</h2>
                         <p className="text-gray-600 mt-1">Enter AWB number to get real-time tracking updates</p>
                     </div>
                     <div className="flex gap-3 max-w-xl mx-auto">
@@ -91,7 +91,7 @@ export default function TrackingPage() {
                                 onChange={(e) => setAwbInput(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleTrack()}
                                 icon={<Search className="h-4 w-4" />}
-                                className="bg-white"
+                                className="bg-[var(--bg-primary)]"
                             />
                         </div>
                         <Button
@@ -124,18 +124,18 @@ export default function TrackingPage() {
                     </CardHeader>
                     <CardContent>
                         {/* Route Info */}
-                        <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-4 mb-6 p-4 bg-[var(--bg-secondary)] rounded-lg">
                             <div className="text-center">
-                                <p className="text-xs text-gray-500">From</p>
-                                <p className="font-semibold text-gray-900">{trackingResult.origin}</p>
+                                <p className="text-xs text-[var(--text-muted)]">From</p>
+                                <p className="font-semibold text-[var(--text-primary)]">{trackingResult.origin}</p>
                             </div>
                             <ArrowRight className="h-5 w-5 text-gray-400" />
                             <div className="text-center">
-                                <p className="text-xs text-gray-500">To</p>
-                                <p className="font-semibold text-gray-900">{trackingResult.destination}</p>
+                                <p className="text-xs text-[var(--text-muted)]">To</p>
+                                <p className="font-semibold text-[var(--text-primary)]">{trackingResult.destination}</p>
                             </div>
                             <div className="ml-auto text-right">
-                                <p className="text-xs text-gray-500">Expected Delivery</p>
+                                <p className="text-xs text-[var(--text-muted)]">Expected Delivery</p>
                                 <p className="font-semibold text-indigo-600">{trackingResult.estimatedDelivery}</p>
                             </div>
                         </div>
@@ -148,12 +148,12 @@ export default function TrackingPage() {
                                     const Icon = event.icon;
                                     return (
                                         <div key={idx} className="relative flex gap-4 pl-10">
-                                            <div className="absolute left-2 p-1.5 bg-white border-2 border-indigo-500 rounded-full">
+                                            <div className="absolute left-2 p-1.5 bg-[var(--bg-primary)] border-2 border-indigo-500 rounded-full">
                                                 <Icon className="h-3 w-3 text-indigo-600" />
                                             </div>
                                             <div className="flex-1 pb-4">
-                                                <p className="font-medium text-gray-900">{event.status}</p>
-                                                <p className="text-sm text-gray-500">{event.location}</p>
+                                                <p className="font-medium text-[var(--text-primary)]">{event.status}</p>
+                                                <p className="text-sm text-[var(--text-muted)]">{event.location}</p>
                                                 <p className="text-xs text-gray-400 mt-1">{event.timestamp}</p>
                                             </div>
                                         </div>
@@ -178,19 +178,19 @@ export default function TrackingPage() {
                         {recentTracking.map((item, idx) => (
                             <div
                                 key={idx}
-                                className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                                className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer"
                                 onClick={() => {
                                     setAwbInput(item.awb);
                                     handleTrack();
                                 }}
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-gray-100 rounded-lg">
+                                    <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg">
                                         <Package className="h-4 w-4 text-gray-600" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-900">{item.awb}</p>
-                                        <p className="text-xs text-gray-500">To: {item.destination}</p>
+                                        <p className="font-medium text-[var(--text-primary)]">{item.awb}</p>
+                                        <p className="text-xs text-[var(--text-muted)]">To: {item.destination}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">

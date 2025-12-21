@@ -45,7 +45,7 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex min-h-screen bg-white">
+        <div className="flex min-h-screen bg-[var(--bg-primary)]">
             {/* Left Side - Form */}
             <div className="w-full lg:w-[45%] flex flex-col justify-between p-8 md:p-12 lg:p-16 xl:p-24 relative z-10">
                 {/* Logo */}
@@ -171,7 +171,7 @@ export default function LoginPage() {
                                 <div className="w-full border-t border-charcoal-200"></div>
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-charcoal-500">Or continue with</span>
+                                <span className="px-2 bg-[var(--bg-primary)] text-charcoal-500">Or continue with</span>
                             </div>
                         </div>
 

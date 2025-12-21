@@ -226,7 +226,7 @@ export default function CourierServicesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Courier Partner *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
                                     <option value="">Select Courier</option>
                                     <option value="delhivery">Delhivery</option>
                                     <option value="xpressbees">Xpressbees</option>
@@ -247,7 +247,7 @@ export default function CourierServicesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Service Type *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
                                     <option value="surface">Surface</option>
                                     <option value="air">Air</option>
                                 </select>
@@ -262,7 +262,7 @@ export default function CourierServicesPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Status</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-300">
+                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
@@ -359,7 +359,7 @@ export default function CourierServicesPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredServices.map((service) => (
-                                    <tr key={service.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={service.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
                                             <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{service.serviceName}</p>
                                             <code className="text-xs" style={{ color: 'var(--text-secondary)' }}>{service.serviceCode}</code>

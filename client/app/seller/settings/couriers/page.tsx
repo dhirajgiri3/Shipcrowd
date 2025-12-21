@@ -150,7 +150,7 @@ export default function CourierPriorityPage() {
                                 <p className="text-sm text-gray-500">Disabled</p>
                                 <p className="text-2xl font-bold text-gray-400">{couriers.length - enabledCount}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
                                 <ToggleLeft className="h-5 w-5 text-gray-400" />
                             </div>
                         </div>
@@ -192,8 +192,8 @@ export default function CourierPriorityPage() {
                                 draggedId === courier.id
                                     ? "border-[#2525FF] bg-[#2525FF]/5 shadow-lg scale-[1.02]"
                                     : courier.enabled
-                                        ? "border-gray-200 bg-white hover:border-gray-300"
-                                        : "border-gray-100 bg-gray-50/50 opacity-60"
+                                        ? "border-gray-200 bg-[var(--bg-primary)] hover:border-gray-300"
+                                        : "border-gray-100 bg-[var(--bg-secondary)]/50 opacity-60"
                             )}
                         >
                             <div className="flex items-center gap-4">

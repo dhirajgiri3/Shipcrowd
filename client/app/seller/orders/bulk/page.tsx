@@ -155,7 +155,7 @@ export default function BulkUploadPage() {
                     </div>
 
                     {/* Template Download */}
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] rounded-xl">
                         <div className="flex items-center gap-3">
                             <FileText className="h-5 w-5 text-[#2525FF]" />
                             <div>
@@ -255,7 +255,7 @@ export default function BulkUploadPage() {
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                         <tr>
                                             <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
                                             <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Order ID</th>
@@ -271,7 +271,7 @@ export default function BulkUploadPage() {
                                                 key={order.id}
                                                 className={cn(
                                                     "transition-colors",
-                                                    order.status === 'error' ? "bg-rose-50/50" : "hover:bg-gray-50"
+                                                    order.status === 'error' ? "bg-rose-50/50" : "hover:bg-[var(--bg-hover)]"
                                                 )}
                                             >
                                                 <td className="p-4">

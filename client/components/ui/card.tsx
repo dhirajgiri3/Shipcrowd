@@ -23,10 +23,9 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(
             ref={ref}
             className={cn(
                 // Base styles using design tokens
-                'rounded-[--radius-xl] border border-[--color-gray-200] bg-[--card-background]',
-                'shadow-[--shadow-sm]',
+                'rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--bg-primary)]',
                 // Hover state (optional)
-                hover && 'transition-all duration-[--transition-base] hover:border-[--color-gray-300] hover:shadow-[--shadow-md] hover:-translate-y-0.5',
+                hover && 'transition-all duration-[var(--duration-base)] hover:border-[var(--border-strong)] hover:-translate-y-0.5',
                 // Padding variants
                 {
                     'p-0': padding === 'none',
@@ -66,7 +65,7 @@ const CardTitle = memo(forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeading
         <h3
             ref={ref}
             className={cn(
-                'font-semibold leading-none tracking-tight text-[--color-gray-900]',
+                'font-semibold leading-none tracking-tight text-[var(--text-primary)]',
                 className
             )}
             {...props}
@@ -83,7 +82,7 @@ const CardDescription = memo(forwardRef<HTMLParagraphElement, HTMLAttributes<HTM
     ({ className, ...props }, ref) => (
         <p
             ref={ref}
-            className={cn('text-sm text-[--color-gray-500]', className)}
+            className={cn('text-sm text-[var(--text-muted)]', className)}
             {...props}
         />
     )

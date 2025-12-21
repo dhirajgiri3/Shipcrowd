@@ -109,11 +109,11 @@ export default function CODRemittancePage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Banknote className="h-6 w-6 text-[#2525FF]" />
                         COD Remittance
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Track your COD collections and bank remittances
                     </p>
                 </div>
@@ -129,8 +129,8 @@ export default function CODRemittancePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total COD Collected</p>
-                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCODCollected)}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total COD Collected</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalCODCollected)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <IndianRupee className="h-5 w-5 text-[#2525FF]" />
@@ -142,7 +142,7 @@ export default function CODRemittancePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Remitted</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Remitted</p>
                                 <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalRemitted)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
@@ -155,7 +155,7 @@ export default function CODRemittancePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Pending Remit</p>
+                                <p className="text-sm text-[var(--text-muted)]">Pending Remit</p>
                                 <p className="text-2xl font-bold text-amber-600">{formatCurrency(totalPending)}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
@@ -168,9 +168,9 @@ export default function CODRemittancePage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">This Month</p>
-                                <p className="text-2xl font-bold text-gray-900">{mockRemittances.length}</p>
-                                <p className="text-xs text-gray-500">remittances</p>
+                                <p className="text-sm text-[var(--text-muted)]">This Month</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockRemittances.length}</p>
+                                <p className="text-xs text-[var(--text-muted)]">remittances</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
                                 <TrendingUp className="h-5 w-5 text-purple-600" />
@@ -188,7 +188,7 @@ export default function CODRemittancePage() {
                         "px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-px",
                         activeTab === 'remittances'
                             ? "border-[#2525FF] text-[#2525FF]"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-[var(--text-muted)] hover:text-gray-700"
                     )}
                 >
                     Remittance History
@@ -199,7 +199,7 @@ export default function CODRemittancePage() {
                         "px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-px flex items-center gap-2",
                         activeTab === 'pending'
                             ? "border-[#2525FF] text-[#2525FF]"
-                            : "border-transparent text-gray-500 hover:text-gray-700"
+                            : "border-transparent text-[var(--text-muted)] hover:text-gray-700"
                     )}
                 >
                     Pending COD
@@ -227,36 +227,36 @@ export default function CODRemittancePage() {
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                         <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                            <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">Remit ID</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Total COD</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Deductions</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                                            <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Shipments</th>
-                                            <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                            <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Remit ID</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Total COD</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Deductions</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">TDS</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Net Amount</th>
+                                            <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
+                                            <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredRemittances.map((rem) => (
-                                            <tr key={rem.id} className="hover:bg-gray-50 transition-colors">
+                                            <tr key={rem.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar className="h-4 w-4 text-gray-400" />
-                                                        <span className="text-sm text-gray-900">{rem.date}</span>
+                                                        <span className="text-sm text-[var(--text-primary)]">{rem.date}</span>
                                                     </div>
                                                 </td>
                                                 <td className="p-4">
-                                                    <code className="font-mono text-sm font-semibold text-gray-900">{rem.id}</code>
+                                                    <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{rem.id}</code>
                                                     {rem.utr && (
-                                                        <p className="text-xs text-gray-500 mt-1">UTR: {rem.utr}</p>
+                                                        <p className="text-xs text-[var(--text-muted)] mt-1">UTR: {rem.utr}</p>
                                                     )}
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <p className="text-sm font-medium text-gray-900">{formatCurrency(rem.totalCOD)}</p>
+                                                    <p className="text-sm font-medium text-[var(--text-primary)]">{formatCurrency(rem.totalCOD)}</p>
                                                 </td>
                                                 <td className="p-4 text-right">
                                                     <p className="text-sm text-rose-600">-{formatCurrency(rem.deductions)}</p>
@@ -268,7 +268,7 @@ export default function CODRemittancePage() {
                                                     <p className="text-sm font-bold text-emerald-600">{formatCurrency(rem.netAmount)}</p>
                                                 </td>
                                                 <td className="p-4 text-center">
-                                                    <span className="text-sm text-gray-900">{rem.shipmentCount}</span>
+                                                    <span className="text-sm text-[var(--text-primary)]">{rem.shipmentCount}</span>
                                                 </td>
                                                 <td className="p-4 text-center">
                                                     {rem.status === 'processed' ? (
@@ -314,22 +314,22 @@ export default function CODRemittancePage() {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-100">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
                                     <tr>
-                                        <th className="text-left p-4 text-xs font-medium text-gray-500 uppercase">AWB Number</th>
-                                        <th className="text-right p-4 text-xs font-medium text-gray-500 uppercase">COD Amount</th>
-                                        <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Delivered</th>
-                                        <th className="text-center p-4 text-xs font-medium text-gray-500 uppercase">Expected Remit</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB Number</th>
+                                        <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">COD Amount</th>
+                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Delivered</th>
+                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Expected Remit</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {mockPendingCOD.map((item) => (
-                                        <tr key={item.awb} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={item.awb} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                             <td className="p-4">
-                                                <code className="font-mono text-sm font-semibold text-gray-900">{item.awb}</code>
+                                                <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{item.awb}</code>
                                             </td>
                                             <td className="p-4 text-right">
-                                                <p className="text-sm font-bold text-gray-900">{formatCurrency(item.amount)}</p>
+                                                <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(item.amount)}</p>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <p className="text-sm text-gray-600">{item.deliveredDate}</p>
@@ -340,10 +340,10 @@ export default function CODRemittancePage() {
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-gray-50 border-t border-gray-200">
+                                <tfoot className="bg-[var(--bg-secondary)] border-t border-gray-200">
                                     <tr>
-                                        <td className="p-4 font-medium text-gray-900">Total</td>
-                                        <td className="p-4 text-right font-bold text-gray-900">
+                                        <td className="p-4 font-medium text-[var(--text-primary)]">Total</td>
+                                        <td className="p-4 text-right font-bold text-[var(--text-primary)]">
                                             {formatCurrency(mockPendingCOD.reduce((sum, i) => sum + i.amount, 0))}
                                         </td>
                                         <td colSpan={2}></td>

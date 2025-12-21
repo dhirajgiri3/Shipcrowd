@@ -19,7 +19,7 @@ export default function IntelligencePage() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Sparkles className="h-6 w-6 text-indigo-600" />
                         AI Command Center
                     </h2>
@@ -36,7 +36,7 @@ export default function IntelligencePage() {
                     <Card key={idx} className="border-l-4 border-l-indigo-500 bg-gradient-to-br from-white to-indigo-50/30">
                         <CardHeader className="pb-2">
                             <div className="flex justify-between items-start">
-                                <Badge variant="outline" className="bg-white border-indigo-100 text-indigo-700">
+                                <Badge variant="outline" className="bg-[var(--bg-primary)] border-indigo-100 text-indigo-700">
                                     {insight.impact} Impact
                                 </Badge>
                                 <BrainCircuit className="h-5 w-5 text-indigo-400" />
@@ -94,7 +94,7 @@ export default function IntelligencePage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {MOCK_ANOMALIES.map((anomaly) => (
-                            <div key={anomaly.id} className="p-3 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
+                            <div key={anomaly.id} className="p-3 rounded-lg border border-gray-100 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] hover:shadow-sm transition-all">
                                 <div className="flex justify-between items-start mb-1">
                                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${anomaly.severity === 'critical' ? 'bg-rose-100 text-rose-700' :
                                         anomaly.severity === 'high' ? 'bg-orange-100 text-orange-700' :
@@ -107,7 +107,7 @@ export default function IntelligencePage() {
                                 <p className="text-sm text-gray-700 leading-snug">{anomaly.message}</p>
                             </div>
                         ))}
-                        <Button variant="ghost" className="w-full text-xs text-gray-500 mt-2">
+                        <Button variant="ghost" className="w-full text-xs text-[var(--text-muted)] mt-2">
                             View All System Logs
                         </Button>
                     </CardContent>
@@ -129,7 +129,7 @@ export default function IntelligencePage() {
                         </p>
                     </div>
                     <div className="flex gap-3">
-                        <Button variant="outline" className="text-white border-white/20 hover:bg-white/10">
+                        <Button variant="outline" className="text-white border-white/20 hover:bg-[var(--bg-primary)]/10">
                             Configure Rules
                         </Button>
                         <Button className="bg-indigo-500 hover:bg-indigo-600 border-0">

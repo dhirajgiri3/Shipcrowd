@@ -73,8 +73,8 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "flex items-center gap-2.5 p-1.5 rounded-xl transition-all duration-200",
-                    "hover:bg-gray-50",
-                    isOpen && "bg-gray-50"
+                    "hover:bg-[var(--bg-hover)]",
+                    isOpen && "bg-[var(--bg-hover)]"
                 )}
             >
                 {/* Avatar */}
@@ -92,12 +92,12 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
 
                 {/* User Info (hidden on mobile) */}
                 <div className="hidden lg:block text-left">
-                    <p className="text-sm font-medium text-gray-900 leading-none">{user.name}</p>
-                    <p className="text-xs text-gray-500 leading-none mt-0.5">{currentRoleLabel}</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)] leading-none">{user.name}</p>
+                    <p className="text-xs text-[var(--text-muted)] leading-none mt-0.5">{currentRoleLabel}</p>
                 </div>
 
                 <ChevronDown className={cn(
-                    "h-4 w-4 text-gray-400 transition-transform duration-200 hidden lg:block",
+                    "h-4 w-4 text-[var(--text-muted)] transition-transform duration-200 hidden lg:block",
                     isOpen && "rotate-180"
                 )} />
             </button>
@@ -105,7 +105,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
             {/* Dropdown Menu */}
             {isOpen && (
                 <div className={cn(
-                    "absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50",
+                    "absolute right-0 top-full mt-2 w-56 bg-[var(--bg-primary)] rounded-xl shadow-xl border border-[var(--border-subtle)] overflow-hidden z-50",
                     "animate-in fade-in slide-in-from-top-2 duration-150"
                 )}>
                     {/* User Info Header */}
@@ -123,8 +123,8 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                                 </div>
                             )}
                             <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{user.name}</p>
+                                <p className="text-xs text-[var(--text-muted)] truncate">{user.email}</p>
                             </div>
                         </div>
                     </div>
@@ -136,7 +136,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                             <Link
                                 href="/admin"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-[#2525FF]/5 hover:text-[#2525FF] transition-colors"
+                                className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[#2525FF]/5 hover:text-[#2525FF] transition-colors"
                             >
                                 <Shield className="h-4 w-4" />
                                 <span>Admin Dashboard</span>
@@ -147,7 +147,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                             <Link
                                 href="/seller"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-[#2525FF]/5 hover:text-[#2525FF] transition-colors"
+                                className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[#2525FF]/5 hover:text-[#2525FF] transition-colors"
                             >
                                 <LayoutDashboard className="h-4 w-4" />
                                 <span>Seller Dashboard</span>
@@ -162,7 +162,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                         <Link
                             href={isAdminDashboard ? "/admin/settings" : "/seller/settings"}
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
                         >
                             <User className="h-4 w-4" />
                             <span>Profile</span>
@@ -171,7 +171,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                         <Link
                             href={isAdminDashboard ? "/admin/settings" : "/seller/settings"}
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
                         >
                             <Settings className="h-4 w-4" />
                             <span>Settings</span>
@@ -185,7 +185,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                                 setIsOpen(false);
                                 onSignOut?.();
                             }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
                         >
                             <LogOut className="h-4 w-4" />
                             <span>Sign Out</span>
