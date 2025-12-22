@@ -54,8 +54,18 @@ export default function SellerDashboardPage() {
     const { data: shipmentsData } = useShipments({ limit: 3, sortBy: 'createdAt:desc' });
 
     // Compute pending actions from live data
-    const pendingActions = dashboardData ? [
-        dashboardData.pendingOrders > 0 && {
+    type PendingAction = {
+        id: number;
+        title: string;
+        subtitle: string;
+        urgency: string;
+        icon: typeof Package;
+        href: string;
+        color: string;
+    };
+
+    const pendingActions: PendingAction[] = dashboardData ? [
+        dashboardData.pendingOrders > 0 ? {
             id: 1,
             title: `${dashboardData.pendingOrders} Orders waiting to be shipped`,
             subtitle: 'Ship before 6 PM for same-day pickup',
@@ -63,8 +73,8 @@ export default function SellerDashboardPage() {
             icon: Package,
             href: '/seller/orders',
             color: 'blue'
-        },
-        (dashboardData.codPending?.count || 0) > 0 && {
+        } : null,
+        (dashboardData.codPending?.count || 0) > 0 ? {
             id: 2,
             title: 'Low wallet balance detected',
             subtitle: 'Recharge to continue shipping seamlessly',
@@ -72,8 +82,8 @@ export default function SellerDashboardPage() {
             icon: Wallet,
             href: '/seller/financials',
             color: 'amber'
-        }
-    ].filter(Boolean) : [];
+        } : null
+    ].filter((action): action is PendingAction => action !== null) : [];
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -135,6 +145,7 @@ export default function SellerDashboardPage() {
     const deliveredOrders = dashboardData?.deliveredOrders || 0;
     const totalRevenue = dashboardData?.totalRevenue || 0;
     const successRate = dashboardData?.successRate || 0;
+    const walletLow = totalRevenue < 5000; // Flag if revenue/wallet is low
     const recentShipments = shipmentsData?.shipments || [];
 
     return (
@@ -256,7 +267,7 @@ export default function SellerDashboardPage() {
                             <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#2525FF] group-hover:scale-110 transition-transform">
                                 <Wallet className="h-5 w-5" />
                             </div>
-                            {sellerData.walletLow && (
+                            {walletLow && (
                                 <span className="relative flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>

@@ -5,7 +5,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff, CheckCircle2, Loader2, AlertCircle, Check, X } from "lucide-react"
 import { useAuth } from "@/src/lib/auth/AuthContext"
-import { authService } from "@/src/lib/api/services/auth.service"
 
 export default function SignupPage() {
     const router = useRouter()
@@ -26,16 +25,17 @@ export default function SignupPage() {
 
     const handlePasswordChange = async (value: string) => {
         setPassword(value)
-        if (value.length >= 4) {
-            try {
-                const strength = await authService.checkPasswordStrength(value, email, name)
-                setPasswordStrength(strength)
-            } catch (err) {
-                // Ignore errors for password strength checking
-            }
-        } else {
-            setPasswordStrength(null)
-        }
+        // TODO: Implement password strength check when auth API is ready
+        // if (value.length >= 4) {
+        //     try {
+        //         const strength = await authService.checkPasswordStrength(value, email, name)
+        //         setPasswordStrength(strength)
+        //     } catch (err) {
+        //         // Ignore errors for password strength checking
+        //     }
+        // } else {
+        //     setPasswordStrength(null)
+        // }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -207,8 +207,8 @@ export default function SignupPage() {
                                             <div
                                                 key={level}
                                                 className={`h-1 flex-1 rounded-full transition-all ${passwordStrength && passwordStrength.score >= level
-                                                        ? getStrengthColor()
-                                                        : 'bg-charcoal-200'
+                                                    ? getStrengthColor()
+                                                    : 'bg-charcoal-200'
                                                     }`}
                                             />
                                         ))}
@@ -219,9 +219,9 @@ export default function SignupPage() {
                                         </p>
                                         {passwordStrength && (
                                             <span className={`text-xs font-medium ${passwordStrength.score <= 1 ? 'text-rose' :
-                                                    passwordStrength.score === 2 ? 'text-amber' :
-                                                        passwordStrength.score === 3 ? 'text-cyan' :
-                                                            'text-emerald'
+                                                passwordStrength.score === 2 ? 'text-amber' :
+                                                    passwordStrength.score === 3 ? 'text-cyan' :
+                                                        'text-emerald'
                                                 }`}>
                                                 {getStrengthLabel()}
                                             </span>

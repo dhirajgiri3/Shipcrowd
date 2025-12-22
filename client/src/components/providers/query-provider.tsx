@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { useState } from 'react';
+import { QUERY_CONFIG } from '@/src/lib/constants/query-config';
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -11,14 +12,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
             new QueryClient({
                 defaultOptions: {
                     queries: {
-                        // Global defaults for all queries
-                        staleTime: 30000, // 30 seconds
-                        refetchOnWindowFocus: false,
-                        retry: 1,
+                        staleTime: QUERY_CONFIG.staleTime.default,
+                        gcTime: QUERY_CONFIG.gcTime,
+                        refetchOnWindowFocus: QUERY_CONFIG.refetchOnWindowFocus,
+                        retry: QUERY_CONFIG.retry.queries,
+                        networkMode: QUERY_CONFIG.networkMode,
                     },
                     mutations: {
-                        // Global defaults for all mutations
-                        retry: 0,
+                        retry: QUERY_CONFIG.retry.mutations,
+                        networkMode: QUERY_CONFIG.networkMode,
                     },
                 },
             })

@@ -1,7 +1,32 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { authService, AuthUser, LoginCredentials, SignupData, LoginResponse } from '@/src/lib/api/services/auth.service'
+
+// TODO: Replace with actual auth hooks when auth API is implemented
+export interface AuthUser {
+    id: string;
+    name: string;
+    email: string;
+    role: 'admin' | 'seller' | 'staff';
+    companyId?: string;
+}
+
+export interface LoginCredentials {
+    email: string;
+    password: string;
+    rememberMe?: boolean;
+}
+
+export interface SignupData {
+    name: string;
+    email: string;
+    password: string;
+}
+
+export interface LoginResponse {
+    accessToken: string;
+    user: AuthUser;
+}
 
 export interface AuthContextType {
     user: AuthUser | null
@@ -31,13 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
                 const token = localStorage.getItem(ACCESS_TOKEN_KEY)
                 if (token) {
-                    // Try to refresh the token
-                    const response = await authService.refreshToken()
-                    if (response.accessToken) {
-                        localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken)
-                        // Note: We don't get user info from refresh, so we'd need a /me endpoint
-                        // For now, we'll rely on the login flow
-                    }
+                    // TODO: Implement token refresh when auth API is ready
+                    // const response = await authService.refreshToken()
+                    // if (response.accessToken) {
+                    //     localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken)
+                    // }
                 }
             } catch (err) {
                 // Token is invalid, clear it
@@ -55,15 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
 
         try {
-            const response: LoginResponse = await authService.login(credentials)
+            // TODO: Implement actual login API call
+            // const response: LoginResponse = await authService.login(credentials)
+            // localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken)
+            // setUser(response.user)
 
-            // Store the access token
-            localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken)
-
-            // Set user state
-            setUser(response.user)
-
-            return { success: true }
+            // Placeholder for development
+            console.warn('Login not implemented - using placeholder')
+            return { success: false, error: 'Auth API not implemented yet' }
         } catch (err: any) {
             const errorMessage = err.message || 'Login failed. Please try again.'
             setError(errorMessage)
@@ -78,8 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null)
 
         try {
-            const response = await authService.register(data)
-            return { success: true, message: response.message }
+            // TODO: Implement actual register API call
+            // const response = await authService.register(data)
+            // return { success: true, message: response.message }
+
+            // Placeholder for development
+            console.warn('Register not implemented - using placeholder')
+            return { success: false, error: 'Auth API not implemented yet' }
         } catch (err: any) {
             const errorMessage = err.message || 'Registration failed. Please try again.'
             setError(errorMessage)
@@ -92,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = useCallback(async () => {
         setIsLoading(true)
         try {
-            await authService.logout()
+            // TODO: Implement actual logout API call
+            // await authService.logout()
+            console.warn('Logout not implemented - using placeholder')
         } catch (err) {
             // Even if logout fails on server, clear local state
             console.error('Logout error:', err)
