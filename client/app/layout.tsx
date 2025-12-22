@@ -2,9 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth";
-import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
-import { ToastProvider } from "@/src/shared/components/Toast";
+import { Toaster } from "@/components/ui/Toaster";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION
@@ -64,14 +63,6 @@ export const metadata: Metadata = {
     title: "ShipCrowd - India's Smartest Shipping Aggregator",
     description:
       "Compare rates, book shipments, and track deliveries across all major couriers. Save up to 40% on shipping costs.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "ShipCrowd - AI-Powered Shipping Platform",
-      },
-    ],
   },
 
   // Twitter Card
@@ -79,7 +70,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ShipCrowd - Ship Smarter, Not Harder",
     description: "India's smartest shipping aggregator for eCommerce sellers.",
-    images: ["/og-image.png"],
   },
 
   // Robots
@@ -142,14 +132,11 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <QueryProviders>
-          <ThemeProvider>
-            <AuthProvider>
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </AuthProvider>
-          </ThemeProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </QueryProviders>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

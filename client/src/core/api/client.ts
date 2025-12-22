@@ -101,10 +101,11 @@ const createApiClient = (): AxiosInstance => {
                 // Remove invalid token
                 removeAuthToken();
 
+                // TODO: Temporarily disabled for development - Re-enable when auth is fully implemented
                 // Redirect to login
-                if (typeof window !== 'undefined') {
-                    window.location.href = '/login';
-                }
+                // if (typeof window !== 'undefined') {
+                //     window.location.href = '/login';
+                // }
 
                 return Promise.reject(normalizeError(error));
             }

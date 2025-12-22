@@ -1,324 +1,400 @@
+/**
+ * Enhanced Signup Page with Toast Notifications and Better Error Handling
+ */
+
 "use client"
 
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Mail, Lock, User, Eye, EyeOff, CheckCircle2, Loader2, AlertCircle, Check, X } from "lucide-react"
+import { motion } from "framer-motion"
+import {
+    ArrowRight,
+    Mail,
+    Lock,
+    User,
+    Eye,
+    EyeOff,
+    CheckCircle2,
+} from "lucide-react"
 import { useAuth } from "@/src/features/auth"
+import { toast } from "sonner"
+import { getErrorMessage } from "@/lib/error-handler"
+import { Alert, AlertDescription } from "@/components/ui/Alert"
+import { LoadingButton } from "@/components/ui/LoadingButton"
 
 export default function SignupPage() {
     const router = useRouter()
-    const { register, isLoading, error, clearError } = useAuth()
+    const { register, isLoading } = useAuth()
 
     const [showPassword, setShowPassword] = useState(false)
     const [name, setName] = useState("")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [agreedToTerms, setAgreedToTerms] = useState(false)
-    const [localError, setLocalError] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
-    const [passwordStrength, setPasswordStrength] = useState<{
-        score: number;
-        feedback: string[];
-        isStrong: boolean;
-    } | null>(null)
 
-    const handlePasswordChange = async (value: string) => {
-        setPassword(value)
-        // TODO: Implement password strength check when auth API is ready
-        // if (value.length >= 4) {
-        //     try {
-        //         const strength = await authService.checkPasswordStrength(value, email, name)
-        //         setPasswordStrength(strength)
-        //     } catch (err) {
-        //         // Ignore errors for password strength checking
-        //     }
-        // } else {
-        //     setPasswordStrength(null)
-        // }
+    // Password strength calculation
+    const getPasswordStrength = (pwd: string) => {
+        if (!pwd) return { score: 0, label: '', color: '' }
+
+        let score = 0
+        if (pwd.length >= 8) score++
+        if (pwd.length >= 12) score++
+        if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
+        if (/\d/.test(pwd)) score++
+        if (/[^a-zA-Z0-9]/.test(pwd)) score++
+
+        if (score <= 2) return { score, label: 'Weak', color: 'red' }
+        if (score === 3) return { score, label: 'Fair', color: 'amber' }
+        if (score === 4) return { score, label: 'Good', color: 'blue' }
+        return { score, label: 'Strong', color: 'emerald' }
     }
+
+    const passwordStrength = password ? getPasswordStrength(password) : null
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        clearError()
-        setLocalError(null)
+        setError(null)
         setSuccessMessage(null)
 
-        // Basic validation
+        // Client-side validation
         if (!name || !email || !password) {
-            setLocalError("Please fill in all fields")
+            const message = "Please fill in all fields"
+            setError(message)
+            toast.error(message)
+            return
+        }
+
+        if (!email.includes('@')) {
+            const message = "Please enter a valid email address"
+            setError(message)
+            toast.error(message)
             return
         }
 
         if (!agreedToTerms) {
-            setLocalError("Please agree to the Terms of Service and Privacy Policy")
+            const message = "Please agree to the Terms of Service and Privacy Policy"
+            setError(message)
+            toast.error(message)
             return
         }
 
         if (password.length < 8) {
-            setLocalError("Password must be at least 8 characters")
+            const message = "Password must be at least 8 characters"
+            setError(message)
+            toast.error(message)
             return
         }
 
-        const result = await register({ name, email, password })
+        try {
+            const result = await register({ name, email, password })
 
-        if (result.success) {
-            setSuccessMessage(result.message || "Registration successful! Please check your email to verify your account.")
-            // Optionally redirect after a delay
-            setTimeout(() => {
-                router.push("/login")
-            }, 3000)
-        } else {
-            setLocalError(result.error || "Registration failed")
+            if (result.success) {
+                const message = result.message || "Registration successful! Please check your email to verify your account."
+                setSuccessMessage(message)
+                toast.success(message)
+
+                // Redirect after 3 seconds
+                setTimeout(() => {
+                    router.push("/login")
+                }, 3000)
+            } else {
+                const errorMessage = getErrorMessage(result.error)
+                setError(errorMessage)
+                toast.error(errorMessage)
+            }
+        } catch (err: any) {
+            const errorMessage = getErrorMessage(err)
+            setError(errorMessage)
+            toast.error(errorMessage)
         }
     }
 
-    const displayError = localError || error
-
-    const getStrengthColor = () => {
-        if (!passwordStrength) return 'bg-charcoal-200'
-        if (passwordStrength.score <= 1) return 'bg-rose'
-        if (passwordStrength.score === 2) return 'bg-amber'
-        if (passwordStrength.score === 3) return 'bg-cyan'
-        return 'bg-emerald'
-    }
-
-    const getStrengthLabel = () => {
-        if (!passwordStrength) return ''
-        if (passwordStrength.score <= 1) return 'Weak'
-        if (passwordStrength.score === 2) return 'Fair'
-        if (passwordStrength.score === 3) return 'Good'
-        return 'Strong'
-    }
-
     return (
-        <div className="flex min-h-screen bg-[var(--bg-primary)]">
+        <div className="flex min-h-screen">
             {/* Left Side - Form */}
-            <div className="w-full lg:w-[45%] flex flex-col justify-between p-8 md:p-12 lg:p-16 xl:p-24 relative z-10">
-                {/* Logo */}
-                <div>
-                    <Link href="/">
+            <motion.div
+                className="w-full lg:w-1/2 flex flex-col justify-center p-8 md:p-12 lg:p-20 bg-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+            >
+                <div className="w-full max-w-md mx-auto">
+                    {/* Logo */}
+                    <Link href="/" className="inline-block mb-12">
                         <img
                             src="/logos/Shipcrowd-logo.png"
                             alt="ShipCrowd"
-                            className="h-8 w-auto object-contain"
+                            className="h-8 w-auto"
                         />
                     </Link>
-                </div>
 
-                <div className="flex-1 flex flex-col justify-center max-w-[440px] mx-auto w-full py-10 lg:py-0">
+                    {/* Header */}
                     <div className="mb-8">
-                        <h1 className="text-3xl md:text-4xl font-bold text-charcoal-950 mb-3 tracking-tight">
-                            Create an account
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            Create your account
                         </h1>
-                        <p className="text-charcoal-500 text-base md:text-lg">
-                            Join thousands of merchants shipping smarter.
+                        <p className="text-gray-600">
+                            Get started with your free account
                         </p>
                     </div>
 
                     {/* Success Alert */}
                     {successMessage && (
-                        <div className="mb-6 p-4 bg-emerald/10 border border-emerald/20 rounded-xl flex items-start gap-3">
-                            <CheckCircle2 className="w-5 h-5 text-emerald flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-emerald">{successMessage}</div>
-                        </div>
+                        <motion.div
+                            className="mb-6"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <Alert variant="success" dismissible onDismiss={() => setSuccessMessage(null)}>
+                                <AlertDescription>{successMessage}</AlertDescription>
+                            </Alert>
+                        </motion.div>
                     )}
 
                     {/* Error Alert */}
-                    {displayError && (
-                        <div className="mb-6 p-4 bg-rose/10 border border-rose/20 rounded-xl flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 text-rose flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-rose">{displayError}</div>
-                        </div>
+                    {error && (
+                        <motion.div
+                            className="mb-6"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <Alert variant="error" dismissible onDismiss={() => setError(null)}>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        </motion.div>
                     )}
 
-                    <form className="space-y-5" onSubmit={handleSubmit}>
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Name Field */}
                         <div>
-                            <label className="block text-sm font-medium text-charcoal-700 mb-1.5" htmlFor="name">
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-900 mb-2">
                                 Full Name
                             </label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-400">
-                                    <User size={18} />
-                                </div>
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="text"
                                     id="name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="block w-full pl-10 pr-3 py-3 border border-charcoal-200 rounded-xl text-charcoal-900 placeholder:text-charcoal-400 focus:outline-none focus:ring-2 focus:ring-primaryBlue/20 focus:border-primaryBlue transition-all"
+                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
                                     placeholder="John Doe"
                                     disabled={isLoading || !!successMessage}
                                 />
                             </div>
                         </div>
 
+                        {/* Email Field */}
                         <div>
-                            <label className="block text-sm font-medium text-charcoal-700 mb-1.5" htmlFor="email">
-                                Email address
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+                                Email
                             </label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-400">
-                                    <Mail size={18} />
-                                </div>
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="email"
                                     id="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full pl-10 pr-3 py-3 border border-charcoal-200 rounded-xl text-charcoal-900 placeholder:text-charcoal-400 focus:outline-none focus:ring-2 focus:ring-primaryBlue/20 focus:border-primaryBlue transition-all"
+                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
                                     placeholder="you@company.com"
                                     disabled={isLoading || !!successMessage}
                                 />
                             </div>
                         </div>
 
+                        {/* Password Field */}
                         <div>
-                            <label className="block text-sm font-medium text-charcoal-700 mb-1.5" htmlFor="password">
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
                                 Password
                             </label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-400">
-                                    <Lock size={18} />
-                                </div>
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     id="password"
                                     value={password}
-                                    onChange={(e) => handlePasswordChange(e.target.value)}
-                                    className="block w-full pl-10 pr-10 py-3 border border-charcoal-200 rounded-xl text-charcoal-900 placeholder:text-charcoal-400 focus:outline-none focus:ring-2 focus:ring-primaryBlue/20 focus:border-primaryBlue transition-all"
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-primaryBlue focus:ring-2 focus:ring-primaryBlue/10 outline-none transition-all"
                                     placeholder="Create a strong password"
                                     disabled={isLoading || !!successMessage}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-charcoal-400 hover:text-charcoal-600 transition-colors cursor-pointer"
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
 
                             {/* Password strength indicator */}
-                            {password.length > 0 && (
-                                <div className="mt-3 space-y-2">
+                            {password.length > 0 && passwordStrength && (
+                                <motion.div
+                                    className="mt-3 space-y-2"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                >
                                     <div className="flex gap-1">
-                                        {[1, 2, 3, 4].map((level) => (
+                                        {[1, 2, 3, 4, 5].map((level) => (
                                             <div
                                                 key={level}
-                                                className={`h-1 flex-1 rounded-full transition-all ${passwordStrength && passwordStrength.score >= level
-                                                    ? getStrengthColor()
-                                                    : 'bg-charcoal-200'
+                                                className={`h-1 flex-1 rounded-full transition-all ${passwordStrength.score >= level
+                                                        ? passwordStrength.color === 'red' ? 'bg-red-500' :
+                                                            passwordStrength.color === 'amber' ? 'bg-amber-500' :
+                                                                passwordStrength.color === 'blue' ? 'bg-primaryBlue' :
+                                                                    'bg-emerald-500'
+                                                        : 'bg-gray-200'
                                                     }`}
                                             />
                                         ))}
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <p className="text-xs text-charcoal-500">
-                                            Must be at least 8 characters.
+                                        <p className="text-xs text-gray-500">
+                                            Must be at least 8 characters
                                         </p>
-                                        {passwordStrength && (
-                                            <span className={`text-xs font-medium ${passwordStrength.score <= 1 ? 'text-rose' :
-                                                passwordStrength.score === 2 ? 'text-amber' :
-                                                    passwordStrength.score === 3 ? 'text-cyan' :
-                                                        'text-emerald'
-                                                }`}>
-                                                {getStrengthLabel()}
-                                            </span>
-                                        )}
+                                        <span
+                                            className={`text-xs font-semibold ${passwordStrength.color === 'red' ? 'text-red-500' :
+                                                    passwordStrength.color === 'amber' ? 'text-amber-500' :
+                                                        passwordStrength.color === 'blue' ? 'text-primaryBlue' :
+                                                            'text-emerald-500'
+                                                }`}
+                                        >
+                                            {passwordStrength.label}
+                                        </span>
                                     </div>
-                                </div>
+                                </motion.div>
                             )}
                         </div>
 
-                        <div className="flex items-start">
-                            <div className="flex items-center h-5">
-                                <input
-                                    id="terms"
-                                    name="terms"
-                                    type="checkbox"
-                                    checked={agreedToTerms}
-                                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                                    className="h-4 w-4 text-primaryBlue focus:ring-primaryBlue border-gray-300 rounded cursor-pointer"
-                                    disabled={isLoading || !!successMessage}
-                                />
-                            </div>
-                            <div className="ml-3 text-sm">
-                                <label htmlFor="terms" className="text-charcoal-600">
-                                    I agree to the <a href="#" className="font-medium text-primaryBlue hover:underline">Terms of Service</a> and <a href="#" className="font-medium text-primaryBlue hover:underline">Privacy Policy</a>
-                                </label>
-                            </div>
+                        {/* Terms Checkbox */}
+                        <div className="flex items-start gap-3">
+                            <input
+                                type="checkbox"
+                                id="terms"
+                                checked={agreedToTerms}
+                                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue focus:ring-offset-0"
+                                disabled={isLoading || !!successMessage}
+                            />
+                            <label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer">
+                                I agree to the{" "}
+                                <a href="/terms" className="text-primaryBlue hover:text-primaryBlue/80 font-medium">
+                                    Terms of Service
+                                </a>{" "}
+                                and{" "}
+                                <a href="/privacy" className="text-primaryBlue hover:text-primaryBlue/80 font-medium">
+                                    Privacy Policy
+                                </a>
+                            </label>
                         </div>
 
-                        <button
+                        {/* Submit Button - Using LoadingButton */}
+                        <LoadingButton
                             type="submit"
-                            disabled={isLoading || !!successMessage}
-                            className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-primaryBlue hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primaryBlue transition-all shadow-blue hover:shadow-blue-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                            isLoading={isLoading}
+                            loadingText="Creating account..."
+                            disabled={!!successMessage}
+                            className="w-full py-3 bg-primaryBlue hover:bg-primaryBlue/90"
                         >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Creating account...
-                                </>
-                            ) : successMessage ? (
-                                <>
-                                    <Check className="mr-2 h-4 w-4" />
-                                    Account created!
-                                </>
-                            ) : (
-                                <>
-                                    Create account
-                                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                                </>
-                            )}
-                        </button>
+                            <span className="flex items-center justify-center gap-2">
+                                Create account
+                                <ArrowRight className="w-4 h-4" />
+                            </span>
+                        </LoadingButton>
                     </form>
-                </div>
 
-                <div className="mt-8 text-center sm:text-left">
-                    <p className="text-sm text-charcoal-600">
+                    {/* Footer */}
+                    <p className="mt-8 text-center text-sm text-gray-600">
                         Already have an account?{" "}
-                        <Link href="/login" className="font-semibold text-primaryBlue hover:text-indigo-600 transition-colors">
+                        <Link href="/login" className="font-semibold text-primaryBlue hover:text-primaryBlue/80 transition-colors">
                             Sign in
                         </Link>
                     </p>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Right Side - Image/Branding */}
-            <div className="hidden lg:block lg:w-[55%] relative overflow-hidden bg-charcoal-900">
-                <div className="absolute inset-0 z-0">
+            {/* Right Side - Premium Hero (unchanged) */}
+            <div className="hidden lg:block lg:w-1/2 relative bg-gray-900">
+                <div className="absolute inset-0">
                     <img
                         src="/images/auth-bg.png"
-                        alt="Background"
-                        className="w-full h-full object-cover scale-x-[-1] opacity-80"
+                        alt="Logistics"
+                        className="w-full h-full object-cover scale-x-[-1]"
                     />
-                    {/* Mirror image for valid variation */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal-950/80 via-charcoal-900/20 to-transparent mix-blend-multiply" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-charcoal-950/100 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-l from-black/50 via-transparent to-black/30" />
+                    <div className="absolute inset-0 bg-primaryBlue/[0.03]" />
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 p-16 z-10 text-white">
-                    <div className="max-w-xl space-y-8">
-                        <div className="grid gap-6">
-                            {[
-                                "AI-Powered Rate Optimization",
-                                "Real-time Multi-Carrier Tracking",
-                                "Automated Label Generation"
-                            ].map((feature, i) => (
-                                <div key={i} className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-[var(--bg-primary)]/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-                                        <CheckCircle2 className="text-emerald" size={24} />
-                                    </div>
-                                    <span className="text-lg font-medium">{feature}</span>
-                                </div>
-                            ))}
+                <div className="relative h-full flex flex-col justify-between p-16">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.6 }}
+                    >
+                        <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-xl border border-white/20">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <span className="text-sm font-medium text-white/90 tracking-wide">
+                                Join thousands of merchants
+                            </span>
                         </div>
-                        <div className="pt-4">
-                            <h3 className="text-2xl font-bold mb-2">Start shipping smarter today.</h3>
-                            <p className="text-charcoal-300">Join the fastest growing shipping aggregator platform.</p>
+                    </motion.div>
+
+                    <motion.div
+                        className="space-y-6 max-w-lg"
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.7 }}
+                    >
+                        <h2 className="text-5xl font-bold text-white leading-tight tracking-tight">
+                            Start shipping
+                            <br />
+                            smarter in
+                            <br />
+                            <span className="text-white/70">under 5 minutes</span>
+                        </h2>
+                    </motion.div>
+
+                    <motion.div
+                        className="space-y-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.7, duration: 0.6 }}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                                <CheckCircle2 className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="text-white font-semibold mb-0.5">No setup fees</div>
+                                <div className="text-sm text-white/60">Pay only for what you ship</div>
+                            </div>
                         </div>
-                    </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                                <CheckCircle2 className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="text-white font-semibold mb-0.5">Instant integration</div>
+                                <div className="text-sm text-white/60">Connect all couriers in minutes</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                                <CheckCircle2 className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="text-white font-semibold mb-0.5">24/7 support</div>
+                                <div className="text-sm text-white/60">Help when you need it most</div>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
             </div>
         </div>

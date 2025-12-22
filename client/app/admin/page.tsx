@@ -328,7 +328,7 @@ function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, colo
                 animate={{ opacity: isHovered ? 1 : 0.7 }}
                 className="h-14 w-full mt-4 -mb-2"
             >
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart data={chartData}>
                         <defs>
                             <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
@@ -493,7 +493,7 @@ function CourierCard({ data }: CourierCardProps) {
                 animate={{ opacity: isHovered ? 1 : 0.8 }}
                 className="h-14 -mx-2 mb-3"
             >
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart data={data.trendData.map((val, i) => ({ val, i }))}>
                         <defs>
                             <linearGradient id={`gradient-${data.name}`} x1="0" y1="0" x2="0" y2="1">

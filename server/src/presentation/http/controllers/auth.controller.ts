@@ -9,6 +9,7 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRe
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../../core/application/services/communication/email.service';
 import { createSession, updateSessionActivity, revokeSession, getUserSessions, revokeAllSessions } from '../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../core/application/services/auth/password.service';
+import { formatError } from '../../../shared/errors/error-messages';
 import logger from '../../../shared/logger/winston.logger';
 import { AuthRequest } from '../middleware/auth';
 import mongoose from 'mongoose';
@@ -694,6 +695,35 @@ export const checkPasswordStrength = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+/**
+ * Get current user
+ * @route GET /auth/me
+ */
+export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
+      const error = new Error('not authenticated') as any;
+      error.code = 'server/unauthorized';
+      res.status(401).json(formatError(error));
+      return;
+    }
+
+    const user = await User.findById(authReq.user._id).select('-password');
+
+    if (!user) {
+      const error = new Error('user not found') as any;
+      error.code = 'server/not-found';
+      res.status(404).json(formatError(error));
+      return;
+    }
+
+    res.json(user);
+  } catch (error) {
+    logger.error('Get user error:', error);
+    next(error);
+  }
+};
 
 const authController = {
   register,
@@ -705,6 +735,7 @@ const authController = {
   logout,
   resendVerificationEmail,
   checkPasswordStrength,
+  getMe,
 };
 
 export default authController;

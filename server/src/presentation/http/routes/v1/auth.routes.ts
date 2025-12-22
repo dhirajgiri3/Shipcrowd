@@ -69,6 +69,13 @@ router.post('/resend-verification', csrfProtection, emailVerificationRateLimiter
 router.post('/check-password-strength', csrfProtection, authController.checkPasswordStrength);
 
 /**
+ * @route GET /auth/me
+ * @desc Get current authenticated user
+ * @access Private
+ */
+router.get('/me', authenticate, authController.getMe);
+
+/**
  * @route POST /auth/logout
  * @desc Logout a user
  * @access Public (but requires authentication to log audit)

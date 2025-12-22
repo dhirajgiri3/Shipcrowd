@@ -5,6 +5,7 @@ import KYC from '../../../infrastructure/database/mongoose/models/KYC';
 import User, { IUser } from '../../../infrastructure/database/mongoose/models/User';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../middleware/auditLog';
+import { formatError } from '../../../shared/errors/error-messages';
 import logger from '../../../shared/logger/winston.logger';
 import deepvueService from '../../../core/application/services/integrations/deepvue.service';
 
@@ -293,7 +294,7 @@ export const verifyKYCDocument = async (req: AuthRequest, res: Response, next: N
     const allDocumentsVerified = Object.keys(kyc.documents)
       .filter(key => {
         return ['pan', 'aadhaar', 'gstin', 'bankAccount'].includes(key) &&
-               kyc.documents[key as 'pan' | 'aadhaar' | 'gstin' | 'bankAccount'] !== undefined;
+          kyc.documents[key as 'pan' | 'aadhaar' | 'gstin' | 'bankAccount'] !== undefined;
       })
       .every(key => {
         const docKey = key as 'pan' | 'aadhaar' | 'gstin' | 'bankAccount';
@@ -521,13 +522,13 @@ export const verifyPanCard = async (req: AuthRequest, res: Response, next: NextF
       // Determine if the PAN is valid based on the response structure
       // The new API might have a different structure
       const isValid = verificationResult.valid === true ||
-                     (verificationResult.data && verificationResult.data.valid === true) ||
-                     (verificationResult.status === 'success' && verificationResult.data && verificationResult.data.valid !== false);
+        (verificationResult.data && verificationResult.data.valid === true) ||
+        (verificationResult.status === 'success' && verificationResult.data && verificationResult.data.valid !== false);
 
       // Extract name from the response if available
       const panName = verificationResult.name ||
-                     (verificationResult.data && verificationResult.data.name) ||
-                     name || '';
+        (verificationResult.data && verificationResult.data.name) ||
+        name || '';
 
       // Update PAN details
       const panData: {
@@ -653,8 +654,8 @@ export const verifyGstin = async (req: AuthRequest, res: Response, next: NextFun
 
       // Determine if the GSTIN is valid based on the response structure
       const isValid = verificationResult.valid === true ||
-                     (verificationResult.data && verificationResult.data.valid === true) ||
-                     (verificationResult.status === 'success' && verificationResult.data && verificationResult.data.valid !== false);
+        (verificationResult.data && verificationResult.data.valid === true) ||
+        (verificationResult.status === 'success' && verificationResult.data && verificationResult.data.valid !== false);
 
       // Extract business information from the response
       const data = verificationResult.data || {};
@@ -842,25 +843,25 @@ export const verifyBankAccount = async (req: AuthRequest, res: Response, next: N
 
       // Determine if the bank account is valid based on the response structure
       const isValid = verificationResult.status === 'success' ||
-                     (verificationResult.data && verificationResult.data.accountExists === true) ||
-                     (verificationResult.data && verificationResult.data.account_exists === true);
+        (verificationResult.data && verificationResult.data.accountExists === true) ||
+        (verificationResult.data && verificationResult.data.account_exists === true);
 
       // Extract account holder name from the response
       const holderName = verificationResult.data?.accountHolderName ||
-                        verificationResult.data?.name_at_bank ||
-                        verificationResult.data?.account_holder_name ||
-                        accountHolderName || '';
+        verificationResult.data?.name_at_bank ||
+        verificationResult.data?.account_holder_name ||
+        accountHolderName || '';
 
       // Extract cleaned account holder name if available
       const holderNameClean = verificationResult.data?.accountHolderNameClean ||
-                             (verificationResult.data?.name_information?.name_at_bank_cleaned) ||
-                             holderName;
+        (verificationResult.data?.name_information?.name_at_bank_cleaned) ||
+        holderName;
 
       // Extract bank name from the response or use the one from IFSC verification
       const bankNameValue = verificationResult.data?.bankName ||
-                           verificationResult.data?.bank_name ||
-                           (bankDetails?.bankName) ||
-                           '';
+        verificationResult.data?.bank_name ||
+        (bankDetails?.bankName) ||
+        '';
 
       // Extract UTR and amount deposited if available
       const utr = verificationResult.data?.utr || '';
@@ -1188,7 +1189,7 @@ export const verifyIfscCode = async (req: AuthRequest, res: Response, next: Next
 
       // Determine if the IFSC is valid based on the response structure
       const isValid = verificationResult.status === 'success' ||
-                     (verificationResult.data && verificationResult.data.valid === true);
+        (verificationResult.data && verificationResult.data.valid === true);
 
       if (isValid && verificationResult.data) {
         // Extract bank details from the response

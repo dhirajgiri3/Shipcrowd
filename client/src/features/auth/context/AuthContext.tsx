@@ -1,31 +1,19 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { authApi, AuthUser, LoginCredentials, RegisterData } from '@/src/core/api'
+import { removeAuthToken } from '@/src/core/api/client'
 
-// TODO: Replace with actual auth hooks when auth API is implemented
-export interface AuthUser {
-    id: string;
-    name: string;
-    email: string;
-    role: 'admin' | 'seller' | 'staff';
-    companyId?: string;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
-export interface LoginCredentials {
-    email: string;
-    password: string;
-    rememberMe?: boolean;
-}
+export type { AuthUser, LoginCredentials }
 
 export interface SignupData {
     name: string;
     email: string;
     password: string;
-}
-
-export interface LoginResponse {
-    accessToken: string;
-    user: AuthUser;
 }
 
 export interface AuthContextType {
@@ -37,11 +25,18 @@ export interface AuthContextType {
     register: (data: SignupData) => Promise<{ success: boolean; message?: string; error?: string }>
     logout: () => Promise<void>
     clearError: () => void
+    refreshUser: () => Promise<void>
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════════════════════════════════════════
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const ACCESS_TOKEN_KEY = 'shipcrowd_access_token'
+// ═══════════════════════════════════════════════════════════════════════════
+// PROVIDER COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null)
@@ -50,44 +45,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isAuthenticated = !!user
 
-    // Initialize auth state from stored token
+    /**
+     * Fetch current user from the API
+     */
+    const fetchCurrentUser = useCallback(async (): Promise<AuthUser | null> => {
+        try {
+            const userData = await authApi.getMe()
+            return userData
+        } catch {
+            return null
+        }
+    }, [])
+
+    /**
+     * Refresh user data
+     */
+    const refreshUser = useCallback(async () => {
+        const userData = await fetchCurrentUser()
+        setUser(userData)
+    }, [fetchCurrentUser])
+
+    /**
+     * Initialize auth state on mount
+     * Try to restore session using refresh token cookie
+     */
     useEffect(() => {
         const initAuth = async () => {
             try {
-                const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-                if (token) {
-                    // TODO: Implement token refresh when auth API is ready
-                    // const response = await authService.refreshToken()
-                    // if (response.accessToken) {
-                    //     localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken)
-                    // }
-                }
-            } catch (err) {
-                // Token is invalid, clear it
-                localStorage.removeItem(ACCESS_TOKEN_KEY)
+                // First try to refresh the token (uses httpOnly cookie)
+                await authApi.refreshToken()
+
+                // Then fetch current user
+                const userData = await fetchCurrentUser()
+                setUser(userData)
+            } catch {
+                // No valid session, clear any stale tokens
+                removeAuthToken()
+                setUser(null)
             } finally {
                 setIsLoading(false)
             }
         }
 
         initAuth()
-    }, [])
+    }, [fetchCurrentUser])
 
+    /**
+     * Login with email and password
+     */
     const login = useCallback(async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
         setIsLoading(true)
         setError(null)
 
         try {
-            // TODO: Implement actual login API call
-            // const response: LoginResponse = await authService.login(credentials)
-            // localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken)
-            // setUser(response.user)
+            const response = await authApi.login(credentials)
 
-            // Placeholder for development
-            console.warn('Login not implemented - using placeholder')
-            return { success: false, error: 'Auth API not implemented yet' }
+            // Set user from login response
+            setUser(response.user)
+
+            return { success: true }
         } catch (err: any) {
-            const errorMessage = err.message || 'Login failed. Please try again.'
+            const errorMessage = err.message || 'Login failed. Please check your credentials.'
             setError(errorMessage)
             return { success: false, error: errorMessage }
         } finally {
@@ -95,18 +113,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [])
 
+    /**
+     * Register a new user
+     */
     const register = useCallback(async (data: SignupData): Promise<{ success: boolean; message?: string; error?: string }> => {
         setIsLoading(true)
         setError(null)
 
         try {
-            // TODO: Implement actual register API call
-            // const response = await authService.register(data)
-            // return { success: true, message: response.message }
-
-            // Placeholder for development
-            console.warn('Register not implemented - using placeholder')
-            return { success: false, error: 'Auth API not implemented yet' }
+            const response = await authApi.register(data as RegisterData)
+            return {
+                success: true,
+                message: response.message || 'Registration successful! Please check your email to verify your account.'
+            }
         } catch (err: any) {
             const errorMessage = err.message || 'Registration failed. Please try again.'
             setError(errorMessage)
@@ -116,22 +135,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [])
 
+    /**
+     * Logout user
+     */
     const logout = useCallback(async () => {
         setIsLoading(true)
         try {
-            // TODO: Implement actual logout API call
-            // await authService.logout()
-            console.warn('Logout not implemented - using placeholder')
+            await authApi.logout()
         } catch (err) {
-            // Even if logout fails on server, clear local state
+            // Even if server logout fails, clear local state
             console.error('Logout error:', err)
         } finally {
-            localStorage.removeItem(ACCESS_TOKEN_KEY)
             setUser(null)
             setIsLoading(false)
         }
     }, [])
 
+    /**
+     * Clear error state
+     */
     const clearError = useCallback(() => {
         setError(null)
     }, [])
@@ -147,12 +169,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 register,
                 logout,
                 clearError,
+                refreshUser,
             }}
         >
             {children}
         </AuthContext.Provider>
     )
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function useAuth(): AuthContextType {
     const context = useContext(AuthContext)

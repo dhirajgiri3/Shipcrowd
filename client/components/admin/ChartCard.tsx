@@ -21,7 +21,7 @@ export function ChartCard({ title, children, height = 300, className, action }: 
             </CardHeader>
             <CardContent className="flex-1 min-h-0 relative">
                 <div className="w-full" style={{ height: height, minWidth: 0 }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         {children}
                     </ResponsiveContainer>
                 </div>

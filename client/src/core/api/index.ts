@@ -9,6 +9,10 @@
 export { apiClient, setAuthToken, removeAuthToken, normalizeError, isApiEnabled } from './client';
 export type { ApiError } from './client';
 
+// Auth API
+export { authApi } from './authApi';
+export type { AuthUser, LoginCredentials, LoginResponse, RegisterData, RegisterResponse } from './authApi';
+
 // Error Handling
 export { handleApiError, showSuccessToast, showInfoToast } from './errors/error-handler';
 
