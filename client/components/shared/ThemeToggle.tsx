@@ -41,19 +41,18 @@ export function ThemeToggle() {
       <button
         onClick={cycleTheme}
         className={cn(
-          "relative h-10 w-10 rounded-xl",
+          "relative h-9 w-9 rounded-xl",
           "flex items-center justify-center",
           "transition-all duration-300 ease-out",
-          "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]",
-          "border border-[var(--border-default)]",
-          "hover:border-[var(--border-strong)]",
-          "hover:scale-110 active:scale-95",
-          "focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] focus:ring-offset-2",
+          "bg-transparent hover:bg-[var(--bg-secondary)]",
+          "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+          "hover:scale-105 active:scale-95",
+          "focus:outline-none focus:ring-1 focus:ring-[var(--primary-blue)]/30",
           "overflow-hidden"
         )}
         aria-label={`Switch to ${theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'} theme`}
       >
-        {/* Animated Background Gradient */}
+        {/* Animated Background Gradient (Subtler) */}
         <div className={cn(
           "absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300",
           "bg-gradient-to-br",
@@ -63,56 +62,26 @@ export function ThemeToggle() {
         {/* Icon with Rotation Animation */}
         <Icon
           className={cn(
-            "h-5 w-5 text-[var(--text-primary)] relative z-10",
+            "h-4.5 w-4.5 relative z-10",
             "transition-all duration-500 ease-out",
-            "group-hover:rotate-12 group-hover:scale-110"
+            "group-hover:rotate-12"
           )}
         />
-
-        {/* Pulse Effect on Click */}
-        <span className="absolute inset-0 rounded-xl animate-ping opacity-0 group-active:opacity-20 bg-[var(--primary-blue)]" />
       </button>
 
-      {/* Tooltip */}
+      {/* Tooltip - Elegant & Minimal */}
       <div className={cn(
         "absolute left-1/2 -translate-x-1/2 top-full mt-2",
-        "px-3 py-1.5 rounded-lg",
-        "bg-[var(--bg-elevated)] border border-[var(--border-default)]",
+        "px-2.5 py-1 rounded-md",
+        "bg-[var(--bg-elevated)] border border-[var(--border-subtle)]",
         "shadow-lg backdrop-blur-sm",
-        "text-xs font-medium text-[var(--text-primary)] whitespace-nowrap",
+        "text-[10px] font-medium text-[var(--text-primary)] whitespace-nowrap",
         "opacity-0 invisible group-hover:opacity-100 group-hover:visible",
         "transition-all duration-200 ease-out",
         "pointer-events-none z-50",
-        "group-hover:translate-y-0 translate-y-[-4px]"
+        "translate-y-[-4px] group-hover:translate-y-0"
       )}>
         {label}
-        {/* Tooltip Arrow */}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 rotate-45 bg-[var(--bg-elevated)] border-l border-t border-[var(--border-default)]" />
-      </div>
-
-      {/* Theme Indicator Dots */}
-      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
-        {/* Light Dot */}
-        <div className={cn(
-          "w-1 h-1 rounded-full transition-all duration-300",
-          theme === 'light'
-            ? "bg-amber-500 scale-125 shadow-sm shadow-amber-500/50"
-            : "bg-[var(--border-default)]"
-        )} />
-        {/* Dark Dot */}
-        <div className={cn(
-          "w-1 h-1 rounded-full transition-all duration-300",
-          theme === 'dark'
-            ? "bg-indigo-500 scale-125 shadow-sm shadow-indigo-500/50"
-            : "bg-[var(--border-default)]"
-        )} />
-        {/* System Dot */}
-        <div className={cn(
-          "w-1 h-1 rounded-full transition-all duration-300",
-          theme === 'system'
-            ? "bg-blue-500 scale-125 shadow-sm shadow-blue-500/50"
-            : "bg-[var(--border-default)]"
-        )} />
       </div>
     </div>
   );

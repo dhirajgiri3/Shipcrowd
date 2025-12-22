@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
-import { Store, Truck, PackageCheck, MapPin, ArrowRight, MousePointer2, Sparkles, Box, BarChart, CheckCircle } from "lucide-react"
+import { Store, Truck, PackageCheck, MapPin, ArrowRight, MousePointer2, Zap, Box, BarChart, CheckCircle } from "lucide-react"
 
 export default function HowItWorks() {
     return (
@@ -108,7 +108,7 @@ export default function HowItWorks() {
                             </button>
                         </div>
                         <div className="mt-8 flex items-center justify-center gap-6 text-white/80 text-sm font-medium">
-                            <span className="flex items-center gap-2"><Sparkles size={14} /> No credit card required</span>
+                            <span className="flex items-center gap-2"><Zap size={14} /> No credit card required</span>
                             <span className="w-1 h-1 bg-white/40 rounded-full" />
                             <span>5-minute setup</span>
                         </div>

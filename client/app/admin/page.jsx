@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { AnimatedNumber } from '@/hooks/useCountUp';
+import { RadialProgress } from '@/components/ui/RadialProgress';
 import {
     BarChart,
     Bar,
@@ -38,7 +40,8 @@ import {
     X,
     Activity,
     Server,
-    Sparkles,
+    LayoutDashboard,
+    BrainCircuit,
     Zap,
     Download,
     Megaphone,
@@ -57,6 +60,7 @@ import {
     Medal,
     Crown
 } from 'lucide-react';
+import { TopSellers } from '@/components/admin/TopSellers';
 import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -85,7 +89,7 @@ const aiInsights = [
     {
         id: 1,
         type: 'opportunity',
-        icon: Sparkles,
+        icon: BrainCircuit,
         title: 'Volume Spike Predicted',
         description: 'Expected 15% increase in orders this weekend due to festive season.',
         action: 'View Forecast',
@@ -161,13 +165,7 @@ const activityFeed = [
     { id: 4, user: 'Admin', action: 'approved new seller "Urban Trends"', time: '2 hours ago', icon: CheckCircle2, color: 'indigo' },
 ];
 
-const topSellers = [
-    { rank: 1, name: 'TechGadgets Inc.', volume: 342, revenue: 485000, growth: 15, avatar: 'TG' },
-    { rank: 2, name: 'Fashion Hub', volume: 289, revenue: 412000, growth: 8, avatar: 'FH' },
-    { rank: 3, name: 'HomeDecor Plus', volume: 245, revenue: 356000, growth: 22, avatar: 'HD' },
-    { rank: 4, name: 'SportsZone', volume: 198, revenue: 298000, growth: -3, avatar: 'SZ' },
-    { rank: 5, name: 'BookWorld', volume: 176, revenue: 245000, growth: 12, avatar: 'BW' }
-];
+
 
 const revenueByChannel = [
     { name: 'Delhivery', value: 35, color: '#2525FF' },
@@ -215,7 +213,15 @@ function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, colo
             <div className="relative z-10">
                 <p className="text-sm font-medium text-[var(--text-muted)] mb-1">{title}</p>
                 <div className="flex items-end justify-between">
-                    <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight metric-number">{value}</p>
+                    {typeof value === 'number' ? (
+                        <AnimatedNumber
+                            value={value}
+                            duration={2000}
+                            className="text-3xl font-bold text-[var(--text-primary)] tracking-tight metric-number"
+                        />
+                    ) : (
+                        <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight metric-number">{value}</p>
+                    )}
                 </div>
             </div>
 
@@ -301,25 +307,40 @@ function CourierCard({ data }) {
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-2 gap-px bg-[var(--border-subtle)] rounded-lg overflow-hidden border border-[var(--border-subtle)] mb-4 relative z-10">
-                <div className="bg-[var(--bg-secondary)] p-3 text-center group-hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">SLA Perf</p>
-                    <p className={cn(
-                        "text-lg font-bold metric-number",
-                        data.sla >= 90 ? "text-[var(--success)]" :
-                            data.sla >= 80 ? "text-[var(--text-primary)]" : "text-[var(--warning)]"
-                    )}>
-                        {data.sla}%
-                    </p>
+            <div className="flex items-center justify-between gap-4 mb-4 relative z-10">
+                {/* Radial Progress for SLA */}
+                <div className="flex-shrink-0">
+                    <RadialProgress
+                        value={data.sla}
+                        size={90}
+                        strokeWidth={6}
+                        showValue={true}
+                        animated={true}
+                    />
+                    <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider text-center mt-1">SLA Performance</p>
                 </div>
-                <div className="bg-[var(--bg-secondary)] p-3 text-center group-hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">Trend (7d)</p>
-                    <div className="flex items-center justify-center gap-1">
+
+                {/* Trend Stats */}
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                    <div className="bg-[var(--bg-secondary)] p-3 rounded-xl group-hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">7-Day Trend</p>
+                        <div className="flex items-center gap-1">
+                            <p className={cn(
+                                "text-lg font-bold metric-number leading-none",
+                                data.trend.startsWith('+') ? "text-[var(--success)]" : "text-[var(--error)]"
+                            )}>
+                                {data.trend}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-[var(--bg-secondary)] p-3 rounded-xl group-hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">Issues</p>
                         <p className={cn(
-                            "text-lg font-bold metric-number leading-none",
-                            data.trend.startsWith('+') ? "text-[var(--success)]" : "text-[var(--error)]"
+                            "text-lg font-bold metric-number",
+                            data.issues === 0 ? "text-[var(--success)]" : "text-[var(--warning)]"
                         )}>
-                            {data.trend}
+                            {data.issues}
                         </p>
                     </div>
                 </div>
@@ -386,7 +407,7 @@ export default function AdminDashboardPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-in">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
-                        <Sparkles className="w-3.5 h-3.5" />
+                        <LayoutDashboard className="w-3.5 h-3.5" />
                         <span>Platform Command Center</span>
                     </div>
                     <h1 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-2">
@@ -455,7 +476,7 @@ export default function AdminDashboardPage() {
 
                     {/* Decorative Background Elements */}
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
-                        <Sparkles className="w-48 h-48 text-white rotate-12 transform translate-x-10 -translate-y-10" />
+                        <BrainCircuit className="w-48 h-48 text-white rotate-12 transform translate-x-10 -translate-y-10" />
                     </div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2"></div>
 
@@ -463,7 +484,7 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner border border-white/10">
-                                    <Sparkles className="h-5 w-5" />
+                                    <BrainCircuit className="h-5 w-5" />
                                 </div>
                                 <div>
                                     <h2 className="font-bold text-white text-xl">AI Smart Insights</h2>
@@ -736,94 +757,10 @@ export default function AdminDashboardPage() {
                 </div>
             </div>
 
-            {/* Top Sellers Table - Premium Floating Rows */}
-            <div className="space-y-4 animate-fade-in stagger-6">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-[var(--bg-secondary)] flex items-center justify-center">
-                            <Trophy className="h-4 w-4 text-[var(--warning)]" />
-                        </div>
-                        <h2 className="font-bold text-[var(--text-primary)]">Top Performing Sellers</h2>
-                    </div>
-                    <Link href="/admin/sellers" className="text-sm text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] font-medium transition-colors flex items-center gap-1 group">
-                        View All Leaderboard
-                        <ArrowUpRight className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </Link>
-                </div>
-
-                <div className="overflow-x-auto pb-4">
-                    <table className="w-full border-separate border-spacing-y-3">
-                        <thead>
-                            <tr>
-                                <th className="text-left py-2 px-6 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Rank</th>
-                                <th className="text-left py-2 px-6 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Seller Profile</th>
-                                <th className="text-right py-2 px-6 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Volume</th>
-                                <th className="text-right py-2 px-6 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Revenue</th>
-                                <th className="text-right py-2 px-6 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Growth</th>
-                                <th className="text-right py-2 px-6 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {topSellers.map((seller, index) => (
-                                <tr key={seller.rank} className="group bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 rounded-2xl">
-                                    <td className="py-4 px-6 rounded-l-2xl border-y border-l border-[var(--border-subtle)] group-hover:border-[var(--border-default)]">
-                                        <div className={cn(
-                                            "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shadow-inner relative overflow-hidden",
-                                            seller.rank === 1 ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-700" :
-                                                seller.rank === 2 ? "bg-gradient-to-br from-slate-100 to-slate-300 text-slate-700" :
-                                                    seller.rank === 3 ? "bg-gradient-to-br from-orange-100 to-orange-300 text-orange-800" :
-                                                        "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
-                                        )}>
-                                            {seller.rank <= 3 && <div className="absolute inset-0 bg-white/30 skew-x-12 -translate-x-full group-hover:animate-shimmer"></div>}
-                                            {seller.rank === 1 ? <Crown className="h-5 w-5" /> :
-                                                seller.rank === 2 ? <Medal className="h-5 w-5" /> :
-                                                    seller.rank === 3 ? <Medal className="h-5 w-5" /> :
-                                                        seller.rank}
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 border-y border-[var(--border-subtle)] group-hover:border-[var(--border-default)]">
-                                        <div className="flex items-center gap-4">
-                                            <div className="relative">
-                                                <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-sm font-bold text-[var(--primary-blue)] border-2 border-white dark:border-slate-800 shadow-sm">
-                                                    {seller.avatar}
-                                                </div>
-                                                <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-[var(--success)] rounded-full border-2 border-white dark:border-slate-800"></div>
-                                            </div>
-                                            <div>
-                                                <span className="block font-bold text-[var(--text-primary)] text-sm">{seller.name}</span>
-                                                <span className="text-xs text-[var(--text-muted)] font-medium">Premium Merchant</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-right border-y border-[var(--border-subtle)] group-hover:border-[var(--border-default)]">
-                                        <span className="font-bold text-[var(--text-secondary)] metric-number">{seller.volume}</span>
-                                        <span className="text-xs text-[var(--text-muted)] ml-1">orders</span>
-                                    </td>
-                                    <td className="py-4 px-6 text-right border-y border-[var(--border-subtle)] group-hover:border-[var(--border-default)]">
-                                        <span className="font-bold text-[var(--text-primary)] metric-number">{formatCurrency(seller.revenue)}</span>
-                                    </td>
-                                    <td className="py-4 px-6 text-right border-y border-[var(--border-subtle)] group-hover:border-[var(--border-default)]">
-                                        <span className={cn(
-                                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold metric-number border",
-                                            seller.growth >= 0
-                                                ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20"
-                                                : "bg-[var(--error-bg)] text-[var(--error)] border-[var(--error)]/20"
-                                        )}>
-                                            <TrendingUp className={cn("h-3 w-3 mr-1", seller.growth < 0 && "rotate-180")} />
-                                            {Math.abs(seller.growth)}%
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-6 rounded-r-2xl text-right border-y border-r border-[var(--border-subtle)] group-hover:border-[var(--border-default)]">
-                                        <button className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] transition-all duration-200">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            {/* Top Sellers Component */}
+            <div className="animate-fade-in stagger-6">
+                <TopSellers />
             </div>
-        </div>
+        </div >
     );
 }

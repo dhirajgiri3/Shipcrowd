@@ -63,14 +63,14 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-[--radius-xl] border",
-                    "bg-[--card-background] border-[--color-gray-200] text-[--color-gray-700]",
-                    "transition-all duration-[--transition-fast]",
-                    "hover:border-[--color-gray-300]",
-                    isOpen && "border-[--color-primary] ring-2 ring-[--color-primary-light]"
+                    "flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-xl)] border",
+                    "bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)]",
+                    "transition-all duration-[var(--duration-fast)]",
+                    "hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]",
+                    isOpen && "border-[var(--primary-blue)] ring-2 ring-[var(--primary-blue-soft)]"
                 )}
             >
-                <Calendar className="h-4 w-4 text-[--color-gray-400]" />
+                <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
                 <span className="text-sm font-medium">
                     {dateRange.label === 'Custom Range'
                         ? `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`
@@ -78,7 +78,7 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                     }
                 </span>
                 <ChevronDown className={cn(
-                    "h-4 w-4 text-[--color-gray-400] transition-transform duration-[--transition-fast]",
+                    "h-4 w-4 text-[var(--text-muted)] transition-transform duration-[var(--duration-fast)]",
                     isOpen && "rotate-180"
                 )} />
             </button>
@@ -87,33 +87,33 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
             {isOpen && (
                 <div
                     className={cn(
-                        "absolute top-full left-0 mt-2 w-80 z-[--z-dropdown]",
-                        "bg-[--card-background] rounded-[--radius-xl] border border-[--color-gray-200]",
-                        "shadow-[--shadow-lg] overflow-hidden",
+                        "absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 z-[var(--z-dropdown)]",
+                        "bg-[var(--bg-elevated)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]",
+                        "shadow-[var(--shadow-dropdown)] overflow-hidden",
                         "animate-fade-in"
                     )}
                 >
                     {/* Presets */}
-                    <div className="p-2 border-b border-[--color-gray-100]">
-                        <p className="text-xs font-medium text-[--color-gray-500] uppercase px-2 py-1">
+                    <div className="p-2 border-b border-[var(--border-subtle)]">
+                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase px-2 py-2 mb-1">
                             Quick Select
                         </p>
-                        <div className="grid grid-cols-2 gap-1 mt-1">
+                        <div className="grid grid-cols-2 gap-1">
                             {presets.map((preset, index) => (
                                 <button
                                     key={index}
                                     onClick={() => handlePresetClick(preset)}
                                     className={cn(
-                                        "flex items-center justify-between px-3 py-2 rounded-[--radius-lg] text-sm text-left",
-                                        "transition-all duration-[--transition-fast]",
+                                        "flex items-center justify-between px-3 py-2 rounded-[var(--radius-lg)] text-sm text-left",
+                                        "transition-all duration-[var(--duration-fast)]",
                                         dateRange.label === preset.label
-                                            ? "bg-[--color-primary-light] text-[--color-primary] font-medium"
-                                            : "hover:bg-[--color-gray-50] text-[--color-gray-700]"
+                                            ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] font-medium"
+                                            : "hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                     )}
                                 >
                                     <span>{preset.label}</span>
                                     {dateRange.label === preset.label && (
-                                        <Check className="h-4 w-4" />
+                                        <Check className="h-3.5 w-3.5" />
                                     )}
                                 </button>
                             ))}
@@ -122,7 +122,7 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
 
                     {/* Custom Range */}
                     <div className="p-3">
-                        <p className="text-xs font-medium text-[--color-gray-500] uppercase mb-2">
+                        <p className="text-xs font-medium text-[var(--text-muted)] uppercase mb-2">
                             Custom Range
                         </p>
                         <div className="flex gap-2 mb-2">
@@ -131,22 +131,24 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                                 value={customFrom}
                                 onChange={(e) => setCustomFrom(e.target.value)}
                                 className={cn(
-                                    "flex-1 h-9 px-3 text-sm rounded-[--radius-lg]",
-                                    "border border-[--color-gray-200] text-[--color-gray-900]",
-                                    "focus:outline-none focus:border-[--color-primary]",
-                                    "transition-colors duration-[--transition-fast]"
+                                    "flex-1 h-9 px-3 text-sm rounded-[var(--radius-lg)]",
+                                    "bg-[var(--bg-tertiary)]",
+                                    "border border-[var(--border-default)] text-[var(--text-primary)]",
+                                    "focus:outline-none focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)]",
+                                    "transition-colors duration-[var(--duration-fast)]"
                                 )}
                             />
-                            <span className="self-center text-[--color-gray-400] text-sm">to</span>
+                            <span className="self-center text-[var(--text-muted)] text-sm">to</span>
                             <input
                                 type="date"
                                 value={customTo}
                                 onChange={(e) => setCustomTo(e.target.value)}
                                 className={cn(
-                                    "flex-1 h-9 px-3 text-sm rounded-[--radius-lg]",
-                                    "border border-[--color-gray-200] text-[--color-gray-900]",
-                                    "focus:outline-none focus:border-[--color-primary]",
-                                    "transition-colors duration-[--transition-fast]"
+                                    "flex-1 h-9 px-3 text-sm rounded-[var(--radius-lg)]",
+                                    "bg-[var(--bg-tertiary)]",
+                                    "border border-[var(--border-default)] text-[var(--text-primary)]",
+                                    "focus:outline-none focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)]",
+                                    "transition-colors duration-[var(--duration-fast)]"
                                 )}
                             />
                         </div>
@@ -154,11 +156,11 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                             onClick={handleCustomApply}
                             disabled={!customFrom || !customTo}
                             className={cn(
-                                "w-full h-9 rounded-[--radius-lg] text-sm font-medium",
-                                "transition-all duration-[--transition-fast]",
+                                "w-full h-9 rounded-[var(--radius-lg)] text-sm font-medium",
+                                "transition-all duration-[var(--duration-fast)]",
                                 customFrom && customTo
-                                    ? "bg-[--color-primary] text-white hover:bg-[--color-primary-hover]"
-                                    : "bg-[--color-gray-100] text-[--color-gray-400] cursor-not-allowed"
+                                    ? "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] shadow-[var(--shadow-brand-sm)]"
+                                    : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
                             )}
                         >
                             Apply Custom Range

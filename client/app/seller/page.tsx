@@ -19,10 +19,10 @@ import {
     ArrowUpRight,
     Bell,
     X,
-    Sparkles,
     Zap,
     MoveRight,
-    Megaphone
+    Megaphone,
+    BarChart2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -128,14 +128,14 @@ export default function SellerDashboardPage() {
                         {getGreeting()}, {sellerData.name} 👋
                     </h1>
                 </div>
-                <div className="flex items-center gap-3">
-                    <DateRangePicker />
+                <div className="flex flex-wrap items-center gap-3">
+                    <DateRangePicker className="w-full sm:w-auto" />
                     <Button variant="outline" className="hidden sm:flex" onClick={() => addToast('Syncing stores...', 'info')}>
                         <RefreshCcw className="h-4 w-4 mr-2" />
                         Sync Stores
                     </Button>
-                    <Link href="/seller/orders?tab=new">
-                        <Button className="bg-[#2525FF] hover:bg-[#1e1ecc] shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
+                    <Link href="/seller/orders?tab=new" className="w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto bg-[#2525FF] hover:bg-[#1e1ecc] shadow-lg shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
                             <Package className="h-4 w-4 mr-2" />
                             Ship Orders
                         </Button>
@@ -171,33 +171,54 @@ export default function SellerDashboardPage() {
                 </div>
             )}
 
-            {/* Hero Insight Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6 sm:p-8">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
-                    <Sparkles className="w-64 h-64 text-[#2525FF]" />
-                </div>
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            {/* Hero Insight Card - Redesigned */}
+            <div className="relative overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-8 shadow-sm">
+                {/* Decorative Background Elements */}
+                <div className="absolute top-0 right-0 -mt-16 -mr-16 h-64 w-64 rounded-full bg-[var(--primary-blue-soft)] opacity-50 blur-3xl" />
+                <div className="absolute bottom-0 left-0 -mb-16 -ml-16 h-64 w-64 rounded-full bg-[var(--success-bg)] opacity-30 blur-3xl" />
+
+                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
                     <div className="max-w-xl">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-3">
-                            <Zap className="w-3 h-3 fill-current" />
-                            Daily Insight
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs font-medium mb-4 border border-[var(--border-subtle)]">
+                            <TrendingUp className="w-3.5 h-3.5 text-[var(--success)]" />
+                            <span>Daily Performance Insight</span>
                         </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-2">
-                            Ready to crush your goals? 🚀
+                        <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-4 tracking-tight">
+                            Ready to ship your orders?
                         </h2>
-                        <p className="text-[var(--text-muted)] leading-relaxed">
-                            You have <span className="font-bold text-[var(--text-primary)]">{sellerData.ordersToShip} orders</span> pending shipment.
-                            Processing them before 6 PM usually results in a <span className="font-semibold text-emerald-600">faster delivery time</span>.
+                        <p className="text-[var(--text-secondary)] text-lg leading-relaxed">
+                            You have <span className="font-semibold text-[var(--text-primary)]">{sellerData.ordersToShip} orders</span> pending.
+                            Shipping them before 6 PM can improve your <span className="text-[var(--success)] font-medium">delivery speed by 15%</span>.
                         </p>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="text-center px-4 py-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-subtle)]">
-                            <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider">Success Rate</p>
-                            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">96.4%</p>
+
+                        <div className="mt-6 flex flex-wrap gap-3">
+                            <Button className="h-10 px-6 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-primary)]/90 hover:scale-105 transition-all shadow-lg shadow-[var(--shadow-brand-sm)] border-none">
+                                Ship Pending Orders <MoveRight className="ml-2 h-4 w-4" />
+                            </Button>
                         </div>
-                        <div className="text-center px-4 py-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-subtle)]">
-                            <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider">Avg. Time</p>
-                            <p className="text-xl font-bold text-[var(--primary-blue)]">2.4 Days</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto min-w-[300px]">
+                        <div className="flex-1 p-5 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] hover:border-[var(--border-strong)] transition-all group">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Success Rate</p>
+                                <div className="h-6 w-6 rounded-full bg-[var(--success-bg)] flex items-center justify-center text-[var(--success)] group-hover:scale-110 transition-transform">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                </div>
+                            </div>
+                            <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">96.4%</p>
+                            <p className="text-xs text-[var(--success)] mt-1 font-medium">+2.1% this week</p>
+                        </div>
+
+                        <div className="flex-1 p-5 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] hover:border-[var(--border-strong)] transition-all group">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Avg. Time</p>
+                                <div className="h-6 w-6 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] group-hover:scale-110 transition-transform">
+                                    <Clock className="h-3.5 w-3.5" />
+                                </div>
+                            </div>
+                            <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">2.4d</p>
+                            <p className="text-xs text-[var(--success)] mt-1 font-medium">-4hrs faster</p>
                         </div>
                     </div>
                 </div>
@@ -447,9 +468,9 @@ export default function SellerDashboardPage() {
                                             shipment.status === 'delivered' ? "bg-emerald-500" :
                                                 shipment.status === 'out_for_delivery' ? "bg-amber-500" : "bg-blue-500"
                                         )} />
-                                        <div>
-                                            <p className="font-semibold text-[var(--text-primary)] text-sm group-hover:text-[#2525FF] transition-colors">{shipment.awb}</p>
-                                            <p className="text-xs text-[var(--text-muted)]">{shipment.customer} • {shipment.carrier}</p>
+                                        <div className="min-w-0 flex-1 mr-2">
+                                            <p className="font-semibold text-[var(--text-primary)] text-sm group-hover:text-[#2525FF] transition-colors truncate">{shipment.awb}</p>
+                                            <p className="text-xs text-[var(--text-muted)] truncate">{shipment.customer} • {shipment.carrier}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">

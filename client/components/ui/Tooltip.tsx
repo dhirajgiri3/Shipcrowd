@@ -12,11 +12,16 @@ interface TooltipProps {
 
 export function Tooltip({ content, children, side = 'top', delay = 200 }: TooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const [currentSide, setCurrentSide] = useState(side);
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+    const triggerRef = useRef<HTMLDivElement>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
 
     const handleMouseEnter = () => {
         timeoutRef.current = setTimeout(() => {
             setIsVisible(true);
+            // Reset side to preference before calculation
+            setCurrentSide(side);
         }, delay);
     };
 
@@ -26,6 +31,37 @@ export function Tooltip({ content, children, side = 'top', delay = 200 }: Toolti
         }
         setIsVisible(false);
     };
+
+    // Smart positioning logic
+    useEffect(() => {
+        if (isVisible && triggerRef.current && tooltipRef.current) {
+            const triggerRect = triggerRef.current.getBoundingClientRect();
+            const tooltipRect = tooltipRef.current.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            let newSide = side;
+
+            // Check vertical overflow
+            if (side === 'top' && triggerRect.top - tooltipRect.height - 8 < 0) {
+                newSide = 'bottom';
+            } else if (side === 'bottom' && triggerRect.bottom + tooltipRect.height + 8 > viewportHeight) {
+                newSide = 'top';
+            }
+
+            // Check horizontal overflow
+            if (side === 'left' && triggerRect.left - tooltipRect.width - 8 < 0) {
+                newSide = 'right';
+            } else if (side === 'right' && triggerRect.right + tooltipRect.width + 8 > viewportWidth) {
+                newSide = 'left';
+            }
+
+            // Additional check: if flipping didn't help (e.g. both top and bottom are tight), prioritize visibility
+            // For now, we simple flip. We could add more complex logic (e.g. fallback to left/right) if needed.
+
+            setCurrentSide(newSide);
+        }
+    }, [isVisible, side]);
 
     useEffect(() => {
         return () => {
@@ -50,18 +86,21 @@ export function Tooltip({ content, children, side = 'top', delay = 200 }: Toolti
     };
 
     return (
-        <div className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+        <div className="relative inline-block" ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
             {children}
             {isVisible && (
-                <div className={cn(
-                    "absolute z-[100] px-2.5 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg whitespace-nowrap pointer-events-none",
-                    "animate-in fade-in duration-150",
-                    positionClasses[side]
-                )}>
+                <div
+                    ref={tooltipRef}
+                    className={cn(
+                        "absolute z-[100] px-2.5 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg whitespace-nowrap pointer-events-none",
+                        "animate-in fade-in duration-150",
+                        positionClasses[currentSide]
+                    )}
+                >
                     {content}
                     <div className={cn(
                         "absolute w-0 h-0 border-4",
-                        arrowClasses[side]
+                        arrowClasses[currentSide]
                     )} />
                 </div>
             )}

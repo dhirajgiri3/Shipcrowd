@@ -68,78 +68,87 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
 
     return (
         <div className="relative" ref={dropdownRef}>
-            {/* Trigger Button */}
+            {/* Trigger Button - Enhanced */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "flex items-center gap-2.5 p-1.5 rounded-xl transition-all duration-200",
-                    "hover:bg-[var(--bg-hover)]",
-                    isOpen && "bg-[var(--bg-hover)]"
+                    "flex items-center gap-3 pl-1.5 pr-2.5 py-1.5 rounded-xl transition-all duration-200 group",
+                    "hover:bg-[var(--bg-secondary)] border border-transparent",
+                    isOpen && "bg-[var(--bg-secondary)] border-[var(--border-subtle)]"
                 )}
             >
-                {/* Avatar */}
-                {user.avatar ? (
-                    <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="h-8 w-8 rounded-lg object-cover"
-                    />
-                ) : (
-                    <div className="h-8 w-8 rounded-lg bg-[#2525FF] flex items-center justify-center text-white text-xs font-semibold">
-                        {initials}
-                    </div>
-                )}
+                {/* Avatar with Status Dot */}
+                <div className="relative">
+                    {user.avatar ? (
+                        <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="h-8 w-8 rounded-lg object-cover ring-2 ring-[var(--bg-primary)] group-hover:ring-[var(--bg-secondary)] transition-all"
+                        />
+                    ) : (
+                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[var(--primary-blue)] to-blue-700 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-[var(--bg-primary)] group-hover:ring-[var(--bg-secondary)] transition-all">
+                            {initials}
+                        </div>
+                    )}
+                    <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-[var(--bg-primary)] flex items-center justify-center">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    </span>
+                </div>
 
                 {/* User Info (hidden on mobile) */}
                 <div className="hidden lg:block text-left">
-                    <p className="text-sm font-medium text-[var(--text-primary)] leading-none">{user.name}</p>
-                    <p className="text-xs text-[var(--text-muted)] leading-none mt-0.5">{currentRoleLabel}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)] leading-none group-hover:text-[var(--primary-blue)] transition-colors">{user.name}</p>
+                    <p className="text-[10px] font-medium text-[var(--text-muted)] leading-none mt-1 uppercase tracking-wider">{currentRoleLabel}</p>
                 </div>
 
                 <ChevronDown className={cn(
-                    "h-4 w-4 text-[var(--text-muted)] transition-transform duration-200 hidden lg:block",
+                    "h-3.5 w-3.5 text-[var(--text-muted)] transition-transform duration-300 ease-out hidden lg:block",
+                    "group-hover:text-[var(--text-secondary)]",
                     isOpen && "rotate-180"
                 )} />
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - Glassmorphism */}
             {isOpen && (
                 <div className={cn(
-                    "absolute right-0 top-full mt-2 w-56 bg-[var(--bg-primary)] rounded-xl shadow-xl border border-[var(--border-subtle)] overflow-hidden z-50",
-                    "animate-in fade-in slide-in-from-top-2 duration-150"
+                    "absolute right-0 top-full mt-2 w-64",
+                    "bg-[var(--bg-primary)]/95 backdrop-blur-xl border border-[var(--border-subtle)]",
+                    "rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20",
+                    "origin-top-right overflow-hidden z-50",
+                    "animate-in fade-in slide-in-from-top-2 duration-200"
                 )}>
                     {/* User Info Header */}
-                    <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="px-4 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/30">
                         <div className="flex items-center gap-3">
                             {user.avatar ? (
                                 <img
                                     src={user.avatar}
                                     alt={user.name}
-                                    className="h-10 w-10 rounded-lg object-cover"
+                                    className="h-10 w-10 rounded-xl object-cover shadow-sm"
                                 />
                             ) : (
-                                <div className="h-10 w-10 rounded-lg bg-[#2525FF] flex items-center justify-center text-white text-sm font-semibold">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-blue)] to-blue-700 flex items-center justify-center text-white text-sm font-bold shadow-sm">
                                     {initials}
                                 </div>
                             )}
                             <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{user.name}</p>
-                                <p className="text-xs text-[var(--text-muted)] truncate">{user.email}</p>
+                                <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>
+                                <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{user.email}</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Menu Items */}
-                    <div className="py-1.5">
+                    <div className="p-2 space-y-0.5">
                         {/* Dashboard Switching */}
                         {canAccessAdmin && isSellerDashboard && (
                             <Link
                                 href="/admin"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[#2525FF]/5 hover:text-[#2525FF] transition-colors"
+                                className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl text-[var(--text-secondary)] hover:bg-[var(--primary-blue)]/[0.08] hover:text-[var(--primary-blue)] transition-all group"
                             >
-                                <Shield className="h-4 w-4" />
-                                <span>Admin Dashboard</span>
+                                <Shield className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                <span>Switch to Admin</span>
                             </Link>
                         )}
 
@@ -147,47 +156,47 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                             <Link
                                 href="/seller"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[#2525FF]/5 hover:text-[#2525FF] transition-colors"
+                                className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl text-[var(--text-secondary)] hover:bg-[var(--primary-blue)]/[0.08] hover:text-[var(--primary-blue)] transition-all group"
                             >
-                                <LayoutDashboard className="h-4 w-4" />
-                                <span>Seller Dashboard</span>
+                                <LayoutDashboard className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                <span>Switch to Seller</span>
                             </Link>
                         )}
 
                         {((canAccessAdmin && isSellerDashboard) || (canAccessSeller && isAdminDashboard)) && (
-                            <div className="border-t border-gray-100 my-1.5" />
+                            <div className="h-px bg-[var(--border-subtle)] my-1.5 mx-2" />
                         )}
 
                         {/* Profile Settings */}
                         <Link
                             href={isAdminDashboard ? "/admin/settings" : "/seller/settings"}
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] transition-all group"
                         >
-                            <User className="h-4 w-4" />
-                            <span>Profile</span>
+                            <User className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
+                            <span>My Profile</span>
                         </Link>
 
                         <Link
                             href={isAdminDashboard ? "/admin/settings" : "/seller/settings"}
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] transition-all group"
                         >
-                            <Settings className="h-4 w-4" />
-                            <span>Settings</span>
+                            <Settings className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
+                            <span>Account Settings</span>
                         </Link>
                     </div>
 
                     {/* Sign Out */}
-                    <div className="border-t border-gray-100 py-1.5">
+                    <div className="border-t border-[var(--border-subtle)] p-2">
                         <button
                             onClick={() => {
                                 setIsOpen(false);
                                 onSignOut?.();
                             }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                            className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all group"
                         >
-                            <LogOut className="h-4 w-4" />
+                            <LogOut className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                             <span>Sign Out</span>
                         </button>
                     </div>

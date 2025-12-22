@@ -1,10 +1,11 @@
 "use client";
 
 import { Card, CardContent } from '@/components/ui/Card';
-import { Sparkles, ArrowRight, X } from 'lucide-react';
+import { Lightbulb, ArrowRight, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export function SmartAIWidget() {
     const [isVisible, setIsVisible] = useState(true);
@@ -12,50 +13,60 @@ export function SmartAIWidget() {
     if (!isVisible) return null;
 
     return (
-        <Card className="bg-[#2525FF] text-white border-0 overflow-hidden relative">
-            {/* Subtle pattern overlay */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }} />
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-r from-[#2525FF] to-[#3B3BFF] shadow-lg shadow-blue-500/20 group animate-in fade-in slide-in-from-top-2 duration-500">
+            {/* Abstract Background Shapes */}
+            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-2xl opacity-50 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl opacity-50 pointer-events-none" />
 
-            <CardContent className="p-5 pr-12 relative z-10">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    {/* Left section */}
-                    <div className="flex items-start gap-3.5 flex-1">
-                        <div className="p-2.5 bg-white/10 rounded-lg flex-shrink-0">
-                            <Sparkles className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-sm font-semibold">AI Insight</h3>
-                                <span className="px-2 py-0.5 text-[10px] font-medium bg-white/20 rounded-full">New</span>
-                            </div>
-                            <p className="text-white/80 text-sm leading-relaxed">
-                                Switch priority for North Zone shipments to save <span className="font-semibold text-white">₹12,400</span> this month.
-                            </p>
+            <CardContent className="p-1 pr-10 relative z-10">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4">
+                    {/* Left Icon Section */}
+                    <div className="flex-shrink-0">
+                        <div className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-inner">
+                            <Lightbulb className="h-6 w-6 text-white animate-pulse" />
                         </div>
                     </div>
 
-                    {/* Right section */}
-                    <Link href="/admin/intelligence" className="flex-shrink-0 self-start sm:self-center">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="whitespace-nowrap bg-white text-[#2525FF] hover:bg-white/90 border-0 font-medium"
-                        >
-                            Apply
-                            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                        </Button>
-                    </Link>
+                    {/* Content Section */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <h3 className="text-sm font-bold text-white tracking-wide">AI Recommendation</h3>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 border border-white/10 text-[10px] font-bold text-white shadow-sm">
+                                <Sparkles className="h-2.5 w-2.5" />
+                                NEW
+                            </span>
+                        </div>
+                        <p className="text-sm text-white/90 leading-relaxed font-medium">
+                            Optimize North Zone logistics to save <span className="font-bold text-white bg-white/20 px-1 rounded mx-0.5">₹12,400</span> this month.
+                        </p>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="flex-shrink-0 pt-2 sm:pt-0">
+                        <Link href="/admin/intelligence">
+                            <Button
+                                size="sm"
+                                className={cn(
+                                    "bg-white text-[#2525FF] hover:bg-blue-50 border-0 font-semibold shadow-md",
+                                    "transition-all duration-300 transform hover:scale-105 active:scale-95",
+                                    "h-9 px-4 rounded-lg"
+                                )}
+                            >
+                                Apply Now
+                                <ArrowRight className="ml-1.5 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </CardContent>
 
-            {/* Close button - positioned absolutely in top right */}
+            {/* Close Button - Enhanced */}
             <button
                 onClick={() => setIsVisible(false)}
-                className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors z-20"
+                className="absolute top-2 right-2 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200"
+                aria-label="Dismiss"
             >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" />
             </button>
         </Card>
     );

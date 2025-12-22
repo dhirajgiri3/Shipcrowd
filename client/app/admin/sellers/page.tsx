@@ -28,8 +28,7 @@ import {
     TrendingUp,
     UserPlus,
     ArrowUpRight,
-    Shield,
-    Sparkles
+    Shield
 } from 'lucide-react';
 
 // Mock sellers data

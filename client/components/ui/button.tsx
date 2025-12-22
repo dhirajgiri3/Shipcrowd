@@ -31,10 +31,10 @@ const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
                     // Variant styles using design tokens
                     {
                         // Primary - Brand blue
-                        'bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] active:scale-[0.98] shadow-sm hover:shadow-md':
+                        'bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] active:bg-[var(--primary-blue-active)] shadow-sm hover:shadow-md':
                             variant === 'primary',
                         // Secondary - Subtle gray
-                        'bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-active)]':
+                        'bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-active)] border border-[var(--border-subtle)]':
                             variant === 'secondary',
                         // Outline - Border only
                         'border border-[var(--border-default)] text-[var(--text-secondary)] bg-[var(--bg-primary)] hover:text-[var(--primary-blue)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]':
@@ -43,12 +43,12 @@ const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
                         'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]':
                             variant === 'ghost',
                         // Danger - Red
-                        'bg-[var(--error)] text-white hover:bg-[var(--error-dark)] active:scale-[0.98]':
+                        'bg-[var(--error)] text-white hover:bg-[var(--error-light)] active:scale-[0.98] shadow-sm':
                             variant === 'danger',
                     },
                     // Size styles
                     {
-                        'h-8 px-3 text-sm gap-1.5': size === 'sm',
+                        'h-8 px-3 text-xs gap-1.5': size === 'sm',
                         'h-10 px-4 text-sm gap-2': size === 'md',
                         'h-12 px-6 text-base gap-2': size === 'lg',
                         'h-10 w-10 p-0': size === 'icon',

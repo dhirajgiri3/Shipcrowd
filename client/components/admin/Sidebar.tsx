@@ -22,7 +22,8 @@ import {
     Ticket,
     Headphones,
     Scale as ScaleIcon,
-    ChevronRight
+    ChevronRight,
+    Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +32,7 @@ const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { label: 'Sellers', href: '/admin/sellers', icon: Users },
     { label: 'KYC Analytics', href: '/admin/kyc', icon: Boxes },
-    { label: 'Intelligence', href: '/admin/intelligence', icon: Sparkles },
+    { label: 'Intelligence', href: '/admin/intelligence', icon: Zap },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { label: 'Shipments', href: '/admin/shipments', icon: Package },
     { label: 'Warehouses', href: '/admin/warehouses', icon: Building2 },

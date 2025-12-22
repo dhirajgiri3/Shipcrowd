@@ -45,7 +45,7 @@ export default function SellerLayout({
                 </div>
 
                 {/* Main content */}
-                <div className="lg:pl-64 transition-all duration-200">
+                <div className="lg:pl-64 transition-all duration-200 overflow-x-hidden">
                     <Header onMenuClick={() => setSidebarOpen(true)} />
                     <main className="p-4 sm:p-6 lg:p-8">
                         <div className="mx-auto max-w-7xl">

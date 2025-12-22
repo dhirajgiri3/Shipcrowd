@@ -10,7 +10,7 @@ import {
     ComposedChart, Line
 } from 'recharts';
 import {
-    BrainCircuit, Sparkles, AlertTriangle, TrendingUp, Zap,
+    BrainCircuit, AlertTriangle, TrendingUp, Zap,
     MessageSquare, ArrowRight, Target
 } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export default function IntelligencePage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <Sparkles className="h-6 w-6 text-indigo-600" />
+                        <BrainCircuit className="h-6 w-6 text-indigo-600" />
                         AI Command Center
                     </h2>
                     <p className="text-gray-500 text-sm mt-1">Real-time predictive insights & anomalies</p>

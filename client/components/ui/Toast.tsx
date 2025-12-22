@@ -47,24 +47,32 @@ const icons = {
 // Styles using design tokens
 const toastStyles = {
     success: {
-        container: 'bg-[--card-background] border-[--color-success]/30',
-        icon: 'text-[--color-success] bg-[--color-success-light]',
-        text: 'text-[--color-gray-900]',
+        container: 'bg-[var(--bg-elevated)] border-[var(--border-subtle)]',
+        indicator: 'bg-[var(--success)]',
+        icon: 'text-[var(--success)] bg-[var(--success-bg)]',
+        text: 'text-[var(--text-primary)]',
+        title: 'text-[var(--text-primary)]'
     },
     error: {
-        container: 'bg-[--card-background] border-[--color-error]/30',
-        icon: 'text-[--color-error] bg-[--color-error-light]',
-        text: 'text-[--color-gray-900]',
+        container: 'bg-[var(--bg-elevated)] border-[var(--border-subtle)]',
+        indicator: 'bg-[var(--error)]',
+        icon: 'text-[var(--error)] bg-[var(--error-bg)]',
+        text: 'text-[var(--text-primary)]',
+        title: 'text-[var(--text-primary)]'
     },
     warning: {
-        container: 'bg-[--card-background] border-[--color-warning]/30',
-        icon: 'text-[--color-warning] bg-[--color-warning-light]',
-        text: 'text-[--color-gray-900]',
+        container: 'bg-[var(--bg-elevated)] border-[var(--border-subtle)]',
+        indicator: 'bg-[var(--warning)]',
+        icon: 'text-[var(--warning)] bg-[var(--warning-bg)]',
+        text: 'text-[var(--text-primary)]',
+        title: 'text-[var(--text-primary)]'
     },
     info: {
-        container: 'bg-[--card-background] border-[--color-primary]/20',
-        icon: 'text-[--color-primary] bg-[--color-primary-light]',
-        text: 'text-[--color-gray-900]',
+        container: 'bg-[var(--bg-elevated)] border-[var(--border-subtle)]',
+        indicator: 'bg-[var(--primary-blue)]',
+        icon: 'text-[var(--primary-blue)] bg-[var(--primary-blue-soft)]',
+        text: 'text-[var(--text-primary)]',
+        title: 'text-[var(--text-primary)]'
     },
 };
 
@@ -83,31 +91,35 @@ const ToastItem = memo(function ToastItem({
         <div
             role="alert"
             className={cn(
-                "flex items-start gap-3 p-4 rounded-[--radius-xl] border-2",
-                "shadow-[--shadow-xl]",
+                "group relative flex items-start gap-3 p-4 rounded-[var(--radius-xl)] border",
+                "shadow-[var(--shadow-dropdown)]",
                 "min-w-[320px] max-w-md",
-                "animate-slide-up",
+                "animate-slide-up bg-[var(--bg-elevated)]",
+                "overflow-hidden",
                 styles.container
             )}
         >
+            {/* Status Indicator Bar */}
+            <div className={cn("absolute left-0 top-0 bottom-0 w-1", styles.indicator)} />
+
             {/* Icon */}
             <div className={cn(
-                "p-2 rounded-[--radius-lg] flex-shrink-0",
+                "p-2 rounded-[var(--radius-lg)] flex-shrink-0 mt-0.5",
                 styles.icon
             )}>
                 <Icon className="h-4 w-4" />
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0 pt-0.5">
+            <div className="flex-1 min-w-0 py-0.5">
                 {toast.title && (
-                    <p className={cn("font-semibold text-sm mb-0.5", styles.text)}>
+                    <p className={cn("font-semibold text-sm mb-1", styles.title)}>
                         {toast.title}
                     </p>
                 )}
                 <p className={cn(
-                    "text-sm",
-                    styles.text,
+                    "text-sm leading-relaxed",
+                    "text-[var(--text-secondary)]",
                     !toast.title && "font-medium"
                 )}>
                     {toast.message}
@@ -118,10 +130,10 @@ const ToastItem = memo(function ToastItem({
             <button
                 onClick={onRemove}
                 className={cn(
-                    "flex-shrink-0 p-1.5 rounded-[--radius-lg]",
-                    "text-[--color-gray-500] hover:text-[--color-gray-900]",
-                    "hover:bg-[--color-gray-100]",
-                    "transition-colors duration-[--transition-fast]"
+                    "flex-shrink-0 p-1.5 rounded-[var(--radius-lg)] -mr-1 -mt-1",
+                    "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+                    "hover:bg-[var(--bg-hover)]",
+                    "transition-colors duration-[var(--duration-fast)]"
                 )}
                 aria-label="Dismiss notification"
             >
@@ -154,7 +166,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
             {/* Toast Container */}
             <div
-                className="fixed bottom-6 right-6 z-[--z-toast] flex flex-col gap-3 pointer-events-none"
+                className="fixed bottom-6 right-6 z-[var(--z-toast)] flex flex-col gap-3 pointer-events-none"
                 aria-live="polite"
             >
                 {toasts.map(toast => (
