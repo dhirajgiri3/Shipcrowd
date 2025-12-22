@@ -8,7 +8,7 @@ import {
     Package, MapPin, User, Phone, Mail, Truck, Calendar,
     IndianRupee, Copy, ExternalLink, Clock, FileText
 } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/src/shared/components/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Shipment } from '@/types/admin';
 

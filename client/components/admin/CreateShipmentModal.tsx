@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/src/shared/components/Toast';
 import { Package, MapPin, User, Phone, Weight, IndianRupee } from 'lucide-react';
 
 interface CreateShipmentModalProps {
@@ -38,7 +38,7 @@ export function CreateShipmentModal({ isOpen, onClose, onSuccess }: CreateShipme
         // Simulate API call
         setTimeout(() => {
             setIsSubmitting(false);
-            addToast('Shipment created successfully!', 'success', 'New Shipment');
+            addToast('Shipment created successfully!', 'success');
             onSuccess?.();
             onClose();
             // Reset form

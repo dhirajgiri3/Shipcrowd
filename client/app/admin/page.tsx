@@ -1,10 +1,11 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { AnimatedNumber } from '@/hooks/useCountUp';
-import { RadialProgress } from '@/components/ui/RadialProgress';
+import { RadialProgress } from '@/src/shared/components/RadialProgress';
 import {
     ResponsiveContainer,
     AreaChart,
@@ -40,9 +41,9 @@ import {
 } from 'lucide-react';
 import { TopSellers } from '@/components/admin/TopSellers';
 
-import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, cn } from '@/lib/utils';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatCurrency, cn } from '@/src/shared/utils';
+import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
 
 // --- TYPES ---
 

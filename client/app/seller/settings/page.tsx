@@ -1,12 +1,13 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
+import { Button } from '@/src/shared/components/button';
+import { Input } from '@/src/shared/components/Input';
+import { Badge } from '@/src/shared/components/badge';
 import { User, Bell, Lock, Globe, CreditCard, Building2, Key } from 'lucide-react';
 import { useState } from 'react';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/src/shared/components/Toast';
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('profile');

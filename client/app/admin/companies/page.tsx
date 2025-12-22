@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { MOCK_COMPANIES } from '@/lib/mockData';
-import { DataTable } from '@/components/ui/DataTable';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { DataTable } from '@/src/shared/components/DataTable';
+import { Card, CardHeader, CardContent } from '@/src/shared/components/card';
+import { Button } from '@/src/shared/components/button';
+import { Input } from '@/src/shared/components/Input';
 import { Search, Plus, MoreHorizontal } from 'lucide-react';
 import { StatusBadge } from '@/components/admin/StatusBadge';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/shared/utils';
 import { Company } from '@/types/admin';
 
 export default function CompaniesPage() {
@@ -23,7 +23,7 @@ export default function CompaniesPage() {
 
     const columns: {
         header: string;
-        accessorKey: keyof Company | ((row: Company) => React.ReactNode);
+        accessorKey: keyof Company | string;
         cell?: (row: Company) => React.ReactNode;
         width?: string;
     }[] = [

@@ -1,15 +1,16 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import React, { useMemo, useState } from 'react';
-import { DataTable } from '@/components/ui/DataTable';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Tooltip } from '@/components/ui/Tooltip';
-import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { DataTable } from '@/src/shared/components/DataTable';
+import { Card, CardHeader, CardContent } from '@/src/shared/components/card';
+import { Input } from '@/src/shared/components/Input';
+import { Badge } from '@/src/shared/components/badge';
+import { Button } from '@/src/shared/components/button';
+import { Modal } from '@/src/shared/components/Modal';
+import { Tooltip } from '@/src/shared/components/Tooltip';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
 import {
     Search,
     Plus,

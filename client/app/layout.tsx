@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/src/lib/auth/AuthContext";
+import { AuthProvider } from "@/src/features/auth";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
-import { Providers as QueryProviders } from "@/src/components/providers/query-provider";
+import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
+import { ToastProvider } from "@/src/shared/components/Toast";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION
@@ -143,7 +144,9 @@ export default function RootLayout({
         <QueryProviders>
           <ThemeProvider>
             <AuthProvider>
-              {children}
+              <ToastProvider>
+                {children}
+              </ToastProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryProviders>

@@ -1,11 +1,12 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
+import { Button } from '@/src/shared/components/button';
+import { Badge } from '@/src/shared/components/badge';
 import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/lib/mockData';
 import { Warehouse, MapPin, Package, Plus, Settings } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/src/shared/components/Toast';
 
 export default function WarehousesPage() {
     const { addToast } = useToast();

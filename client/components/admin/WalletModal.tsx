@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/src/shared/components/Toast';
 import { IndianRupee, CreditCard, Wallet, CheckCircle } from 'lucide-react';
 
 interface WalletModalProps {
@@ -32,7 +32,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         setTimeout(() => {
             setIsProcessing(false);
             setIsSuccess(true);
-            addToast(`₹${amount} added to wallet successfully!`, 'success', 'Wallet Recharged');
+            addToast('Wallet recharged successfully!', 'success');
 
             // Reset and close after success animation
             setTimeout(() => {

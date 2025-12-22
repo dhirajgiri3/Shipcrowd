@@ -1,10 +1,11 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useMemo, useState } from 'react';
 import { MOCK_SHIPMENTS } from '@/lib/mockData';
-import { DataTable } from '@/components/ui/DataTable';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
+import { DataTable } from '@/src/shared/components/DataTable';
+import { Card, CardHeader, CardTitle, CardContent } from '@/src/shared/components/card';
+import { Input } from '@/src/shared/components/Input';
 import {
     Search,
     Eye,
@@ -19,15 +20,15 @@ import {
     PackageX
 } from 'lucide-react';
 import { StatusBadge } from '@/components/admin/StatusBadge';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/src/shared/components/badge';
 import { getCourierLogo } from '@/lib/constants';
 import { FilterBar } from '@/components/admin/FilterBar';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/src/shared/components/button';
 import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
 import { Shipment } from '@/types/admin';
-import { useToast } from '@/components/ui/Toast';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { useToast } from '@/src/shared/components/Toast';
+import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
 
 export default function ShipmentsPage() {
     const [search, setSearch] = useState('');
@@ -56,7 +57,7 @@ export default function ShipmentsPage() {
 
     const columns: {
         header: string;
-        accessorKey: keyof Shipment | ((row: Shipment) => React.ReactNode);
+        accessorKey: keyof Shipment | string;
         cell?: (row: Shipment) => React.ReactNode;
         width?: string;
     }[] = [

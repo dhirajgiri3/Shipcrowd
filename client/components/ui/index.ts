@@ -23,7 +23,6 @@ export type { InputProps } from './Input';
 
 // Feedback Components
 export { Modal } from './Modal';
-export { ToastProvider, useToast } from './Toast';
 
 // Data Display
 export { DataTable } from './DataTable';

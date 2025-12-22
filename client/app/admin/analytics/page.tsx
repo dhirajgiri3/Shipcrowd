@@ -1,8 +1,9 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Select } from '@/components/ui/Select';
-import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
+import { Select } from '@/src/shared/components/Select';
+import { Button } from '@/src/shared/components/button';
 import { ChartCard } from '@/components/admin/ChartCard';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

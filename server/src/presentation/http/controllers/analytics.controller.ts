@@ -5,10 +5,11 @@ import { AuthRequest } from '../middleware/auth';
 import logger from '../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { guardChecks } from '../../../shared/helpers/controller.helpers';
+import cacheService from '../../../shared/services/cache.service';
 
 /**
- * Get seller dashboard analytics
- * @route GET /api/v1/analytics/dashboard/seller
+ * Analytics Controller
+ * Handles dashboard analytics, order trends, and shipment performance metrics/dashboard/seller
  */
 export const getSellerDashboard = async (
     req: AuthRequest,
@@ -20,6 +21,14 @@ export const getSellerDashboard = async (
         if (!auth) return;
 
         const companyObjectId = new mongoose.Types.ObjectId(auth.companyId);
+
+        // Check cache first (5 min TTL)
+        const cacheKey = `analytics:seller:${auth.companyId}:${req.query.startDate || 'default'}:${req.query.endDate || 'default'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            res.json(cached);
+            return;
+        }
 
         // Date filters
         const startDate = req.query.startDate
@@ -115,7 +124,7 @@ export const getSellerDashboard = async (
             { $sort: { _id: 1 } },
         ]);
 
-        res.json({
+        const responseData = {
             totalOrders,
             pendingOrders: statusCounts['pending'] || 0,
             readyToShip: statusCounts['ready_to_ship'] || 0,
@@ -132,7 +141,12 @@ export const getSellerDashboard = async (
             recentShipments,
             weeklyTrend,
             dateRange: { startDate, endDate },
-        });
+        };
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, responseData, 300);
+
+        res.json(responseData);
     } catch (error) {
         logger.error('Error fetching seller dashboard:', error);
         next(error);

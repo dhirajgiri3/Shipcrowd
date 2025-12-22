@@ -1,9 +1,10 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
 import { MetricCard } from '@/components/admin/MetricCard';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/src/shared/components/button';
+import { Badge } from '@/src/shared/components/badge';
 import {
     IndianRupee,
     ArrowUpRight,
@@ -14,8 +15,8 @@ import {
     Plus,
     RefreshCcw
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
-import { useToast } from '@/components/ui/Toast';
+import { formatCurrency } from '@/src/shared/utils';
+import { useToast } from '@/src/shared/components/Toast';
 
 const transactions = [
     { id: 'TXN-001', date: '2024-12-11', description: 'Wallet Recharge', amount: 5000, type: 'credit', status: 'success' },

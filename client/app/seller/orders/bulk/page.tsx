@@ -1,9 +1,10 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
+import { Button } from '@/src/shared/components/button';
+import { Badge } from '@/src/shared/components/badge';
 import {
     Upload,
     FileSpreadsheet,
@@ -17,8 +18,8 @@ import {
     Package,
     FileText
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/components/ui/Toast';
+import { cn } from '@/src/shared/utils';
+import { useToast } from '@/src/shared/components/Toast';
 import Link from 'next/link';
 
 // Mock uploaded orders

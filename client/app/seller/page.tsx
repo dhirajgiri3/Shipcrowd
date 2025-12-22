@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -24,16 +25,16 @@ import {
     Megaphone,
     BarChart2
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Input } from '@/components/ui/Input';
-import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, cn } from '@/lib/utils';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { Button } from '@/src/shared/components/button';
+import { Badge } from '@/src/shared/components/badge';
+import { Input } from '@/src/shared/components/Input';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatCurrency, cn } from '@/src/shared/utils';
+import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
 
 // API Hooks
-import { useSellerDashboard } from '@/src/hooks/api/useAnalytics';
-import { useShipments } from '@/src/hooks/api/useShipments';
+import { useSellerDashboard } from '@/src/core/api/hooks/useAnalytics';
+import { useShipments } from '@/src/core/api/hooks/useShipments';
 
 // Static fallback data for COD settlements (not yet in API)
 const codSettlements = [

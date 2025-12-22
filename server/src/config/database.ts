@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import logger from "../shared/logger/winston.logger";
+import { createIndexes } from "../infrastructure/database/indexes";
 
 dotenv.config();
 
@@ -19,6 +20,10 @@ const connectDB = async (): Promise<void> => {
   try {
     await mongoose.connect(MONGODB_URI, options);
     logger.info("MongoDB connected successfully");
+
+    // Create database indexes for performance
+    await createIndexes();
+
 
     // Handle connection events
     mongoose.connection.on("error", (err) => {

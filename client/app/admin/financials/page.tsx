@@ -1,11 +1,11 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
 import { MetricCard } from '@/components/admin/MetricCard';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/src/shared/components/button';
 import { IndianRupee, ArrowUpRight, ArrowDownRight, CreditCard, Wallet } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
-import { Badge } from '@/components/ui/Badge';
+import { formatCurrency } from '@/src/shared/utils';
+import { Badge } from '@/src/shared/components/badge';
 
 const transactions = [
     { id: 'TXN-001', date: '2023-12-09', description: 'Wallet Recharge', amount: 5000, type: 'credit', status: 'success' },

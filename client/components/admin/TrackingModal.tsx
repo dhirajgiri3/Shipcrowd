@@ -9,7 +9,7 @@ import {
     Search, Package, CheckCircle, Truck, MapPin, Clock,
     Phone, Copy, ExternalLink
 } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/src/shared/components/Toast';
 
 interface TrackingModalProps {
     isOpen: boolean;
@@ -50,7 +50,7 @@ export function TrackingModal({ isOpen, onClose, initialAwb = '' }: TrackingModa
         setTimeout(() => {
             setIsTracking(false);
             setShowResult(true);
-            addToast('Shipment found!', 'success', 'Tracking');
+            addToast('Shipment found!', 'success');
         }, 1000);
     };
 

@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/seller/Sidebar';
 import { Header } from '@/components/seller/Header';
-import { ToastProvider } from '@/components/ui/Toast';
+import { ToastProvider } from '@/src/shared/components/Toast';
 import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/shared/utils';
 
 export default function SellerLayout({
     children,

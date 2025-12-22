@@ -1,11 +1,12 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
+import { Button } from '@/src/shared/components/button';
+import { Input } from '@/src/shared/components/Input';
+import { Select } from '@/src/shared/components/Select';
+import { Badge } from '@/src/shared/components/badge';
 import {
     Calculator,
     MapPin,
@@ -18,8 +19,8 @@ import {
     Star,
     ArrowRight
 } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
-import { formatCurrency } from '@/lib/utils';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatCurrency } from '@/src/shared/utils';
 import { getCourierLogo } from '@/lib/constants';
 
 // Mock rate results
@@ -154,7 +155,7 @@ export default function RatesPage() {
                                     { label: 'COD', value: 'cod' },
                                 ]}
                                 value={formData.paymentMode}
-                                onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
+                                onChange={(value) => setFormData({ ...formData, paymentMode: value })}
                             />
                         </div>
 

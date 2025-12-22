@@ -1,16 +1,17 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import React, { useMemo, useState } from 'react';
-import { DataTable } from '@/components/ui/DataTable';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Tooltip } from '@/components/ui/Tooltip';
-import { StatusBadge } from '@/components/admin/StatusBadge';
-import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { DataTable } from '@/src/shared/components/DataTable';
+import { Card, CardContent } from '@/src/shared/components/card';
+import { Input } from '@/src/shared/components/Input';
+import { Badge } from '@/src/shared/components/badge';
+import { Button } from '@/src/shared/components/button';
+import { Modal } from '@/src/shared/components/Modal';
+import { Tooltip } from '@/src/shared/components/Tooltip';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
+import { useOrders, useCreateShipment } from '@/src/core/api/hooks';
 import {
     Search,
     Plus,
@@ -26,100 +27,13 @@ import {
     Download,
     RefreshCcw,
     Zap,
-    ArrowRight
+    ArrowRight,
+    Loader2,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 
-// Enhanced mock data with fulfillment statuses
-const mockOrders = [
-    {
-        id: 'ORD-2024-001',
-        customer: { name: 'Rajesh Kumar', phone: '+91 98765 43210', city: 'Mumbai' },
-        items: 3,
-        productName: 'Wireless Earbuds Pro',
-        amount: 2450,
-        paymentMode: 'Prepaid',
-        paymentStatus: 'paid',
-        fulfillmentStatus: 'new',
-        store: 'Shopify',
-        warehouse: 'Mumbai WH',
-        createdAt: '2024-12-11T10:30:00',
-    },
-    {
-        id: 'ORD-2024-002',
-        customer: { name: 'Priya Sharma', phone: '+91 87654 32109', city: 'Delhi' },
-        items: 1,
-        productName: 'Smart Watch Series 5',
-        amount: 899,
-        paymentMode: 'COD',
-        paymentStatus: 'pending',
-        fulfillmentStatus: 'new',
-        store: 'WooCommerce',
-        warehouse: 'Delhi WH',
-        createdAt: '2024-12-11T09:15:00',
-    },
-    {
-        id: 'ORD-2024-003',
-        customer: { name: 'Amit Patel', phone: '+91 76543 21098', city: 'Bangalore' },
-        items: 2,
-        productName: 'Bluetooth Speaker',
-        amount: 1599,
-        paymentMode: 'Prepaid',
-        paymentStatus: 'paid',
-        fulfillmentStatus: 'ready',
-        store: 'Shopify',
-        warehouse: 'Bangalore WH',
-        createdAt: '2024-12-11T08:45:00',
-    },
-    {
-        id: 'ORD-2024-004',
-        customer: { name: 'Sneha Reddy', phone: '+91 65432 10987', city: 'Pune' },
-        items: 5,
-        productName: 'Phone Case Bundle',
-        amount: 4299,
-        paymentMode: 'COD',
-        paymentStatus: 'pending',
-        fulfillmentStatus: 'shipped',
-        store: 'Shopify',
-        warehouse: 'Mumbai WH',
-        awbNumber: 'AWB123456789',
-        courier: 'Delhivery',
-        createdAt: '2024-12-10T14:20:00',
-    },
-    {
-        id: 'ORD-2024-005',
-        customer: { name: 'Vikram Singh', phone: '+91 54321 09876', city: 'Noida' },
-        items: 1,
-        productName: 'Laptop Stand Pro',
-        amount: 3499,
-        paymentMode: 'Prepaid',
-        paymentStatus: 'paid',
-        fulfillmentStatus: 'delivered',
-        store: 'WooCommerce',
-        warehouse: 'Delhi WH',
-        awbNumber: 'AWB987654321',
-        courier: 'Xpressbees',
-        createdAt: '2024-12-08T11:00:00',
-        deliveredAt: '2024-12-10T16:30:00',
-    },
-    {
-        id: 'ORD-2024-006',
-        customer: { name: 'Kavita Iyer', phone: '+91 43210 98765', city: 'Chennai' },
-        items: 2,
-        productName: 'USB-C Hub',
-        amount: 1899,
-        paymentMode: 'COD',
-        paymentStatus: 'pending',
-        fulfillmentStatus: 'rto',
-        store: 'Shopify',
-        warehouse: 'Chennai WH',
-        awbNumber: 'AWB456789123',
-        courier: 'DTDC',
-        createdAt: '2024-12-05T09:30:00',
-        rtoReason: 'Customer not available',
-    },
-];
-
-// Mock courier rates
+// Courier rates (TODO: Get from API)
 const courierRates = [
     { name: 'Delhivery', rate: 58, eta: '3-4 days', rating: 4.5 },
     { name: 'Xpressbees', rate: 52, eta: '4-5 days', rating: 4.2 },
@@ -128,58 +42,99 @@ const courierRates = [
 ];
 
 const statusTabs = [
-    { id: 'new', label: 'New', icon: Clock, color: 'text-amber-600' },
-    { id: 'ready', label: 'Ready to Ship', icon: Package, color: 'text-blue-600' },
+    { id: null, label: 'All', icon: Package, color: 'text-gray-600' },
+    { id: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
+    { id: 'ready_to_ship', label: 'Ready to Ship', icon: Package, color: 'text-blue-600' },
     { id: 'shipped', label: 'Shipped', icon: Truck, color: 'text-purple-600' },
     { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-600' },
-    { id: 'rto', label: 'RTO/NDR', icon: RotateCcw, color: 'text-rose-600' },
+    { id: 'rto', label: 'RTO', icon: RotateCcw, color: 'text-rose-600' },
 ];
 
-type Order = typeof mockOrders[0];
+type OrderStatus = 'pending' | 'ready_to_ship' | 'shipped' | 'delivered' | 'cancelled' | 'rto' | null;
+
+interface OrderRow {
+    id: string;
+    _id: string;
+    orderNumber: string;
+    customerInfo: {
+        name: string;
+        phone: string;
+        address: {
+            city: string;
+            state: string;
+        };
+    };
+    products: Array<{ name: string; quantity: number; price: number }>;
+    totals: { total: number };
+    paymentMethod: 'cod' | 'prepaid';
+    currentStatus: string;
+    createdAt: string;
+}
 
 export default function OrdersPage() {
-    const [activeTab, setActiveTab] = useState('new');
+    const [activeTab, setActiveTab] = useState<OrderStatus>(null);
     const [search, setSearch] = useState('');
     const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);
-    const [selectedOrderForShip, setSelectedOrderForShip] = useState<Order | null>(null);
+    const [selectedOrderForShip, setSelectedOrderForShip] = useState<OrderRow | null>(null);
     const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
     const { addToast } = useToast();
 
-    const tabCounts = useMemo(() => ({
-        new: mockOrders.filter(o => o.fulfillmentStatus === 'new').length,
-        ready: mockOrders.filter(o => o.fulfillmentStatus === 'ready').length,
-        shipped: mockOrders.filter(o => o.fulfillmentStatus === 'shipped').length,
-        delivered: mockOrders.filter(o => o.fulfillmentStatus === 'delivered').length,
-        rto: mockOrders.filter(o => o.fulfillmentStatus === 'rto').length,
-    }), []);
+    // API Hooks
+    const {
+        data: ordersData,
+        isLoading,
+        error,
+        refetch,
+    } = useOrders({
+        status: activeTab || undefined,
+        search: search || undefined,
+        page,
+        limit: 20,
+    });
 
-    const filteredOrders = useMemo(() => {
-        return mockOrders.filter(order => {
-            const matchesTab = order.fulfillmentStatus === activeTab;
-            const matchesSearch =
-                order.id.toLowerCase().includes(search.toLowerCase()) ||
-                order.customer.name.toLowerCase().includes(search.toLowerCase()) ||
-                order.productName.toLowerCase().includes(search.toLowerCase());
-            return matchesTab && matchesSearch;
-        });
-    }, [activeTab, search]);
+    const createShipment = useCreateShipment();
 
-    const handleShipNow = (order: Order) => {
+    // Transform API response
+    const orders: OrderRow[] = useMemo(() => {
+        if (!ordersData?.orders) return [];
+        return ordersData.orders.map((order: any) => ({
+            ...order,
+            id: order._id,
+        }));
+    }, [ordersData]);
+
+    const pagination = ordersData?.pagination;
+
+    const handleShipNow = (order: OrderRow) => {
         setSelectedOrderForShip(order);
         setSelectedCourier(null);
         setIsShipModalOpen(true);
     };
 
-    const handleCreateShipment = () => {
-        if (!selectedCourier) {
+    const handleCreateShipment = async () => {
+        if (!selectedCourier || !selectedOrderForShip) {
             addToast('Please select a courier', 'warning');
             return;
         }
-        addToast(`Shipment created with ${selectedCourier}! AWB generated.`, 'success');
-        setIsShipModalOpen(false);
-        setSelectedOrderForShip(null);
-        setSelectedCourier(null);
+
+        try {
+            await createShipment.mutateAsync({
+                orderId: selectedOrderForShip._id,
+                courierId: selectedCourier,
+                pickupAddress: 'default',
+                deliveryAddress: selectedOrderForShip.customerInfo.address,
+            } as any);
+
+            addToast(`Shipment created with ${selectedCourier}!`, 'success');
+            setIsShipModalOpen(false);
+            setSelectedOrderForShip(null);
+            setSelectedCourier(null);
+            refetch();
+        } catch (err) {
+            addToast('Failed to create shipment', 'error');
+        }
     };
 
     const handleBulkShip = () => {
@@ -190,98 +145,115 @@ export default function OrdersPage() {
         addToast(`Creating shipments for ${selectedOrders.length} orders...`, 'info');
     };
 
+    const handleRefresh = () => {
+        refetch();
+        addToast('Refreshing orders...', 'info');
+    };
+
     const columns = [
         {
             header: 'Order',
-            accessorKey: 'id' as const,
-            cell: (row: Order) => (
+            accessorKey: 'orderNumber' as const,
+            cell: (row: OrderRow) => (
                 <div>
-                    <p className="font-semibold text-[var(--text-primary)]">{row.id}</p>
-                    <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                        <span className={row.store === 'Shopify' ? 'text-green-600' : 'text-purple-600'}>●</span>
-                        {row.store}
+                    <p className="font-semibold text-[var(--text-primary)]">{row.orderNumber}</p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                        {formatDate(row.createdAt)}
                     </p>
                 </div>
             )
         },
         {
             header: 'Customer',
-            accessorKey: 'customer' as const,
-            cell: (row: Order) => (
+            accessorKey: 'customerInfo' as const,
+            cell: (row: OrderRow) => (
                 <div>
-                    <p className="font-medium text-[var(--text-primary)]">{row.customer.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{row.customer.city}</p>
+                    <p className="font-medium text-[var(--text-primary)]">{row.customerInfo.name}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{row.customerInfo.address?.city}</p>
                 </div>
             )
         },
         {
-            header: 'Product',
-            accessorKey: 'productName' as const,
-            cell: (row: Order) => (
+            header: 'Products',
+            accessorKey: 'products' as const,
+            cell: (row: OrderRow) => (
                 <div className="flex items-center gap-2">
                     <div className="p-1.5 bg-[var(--bg-tertiary)] rounded">
                         <ShoppingBag className="h-4 w-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
-                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.productName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Qty: {row.items}</p>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">
+                            {row.products[0]?.name || 'N/A'}
+                        </p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                            {row.products.length} item(s)
+                        </p>
                     </div>
                 </div>
             )
         },
         {
             header: 'Amount',
-            accessorKey: 'amount' as const,
-            cell: (row: Order) => (
+            accessorKey: 'totals' as const,
+            cell: (row: OrderRow) => (
                 <div>
-                    <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(row.amount)}</p>
-                    <Badge variant={row.paymentMode === 'COD' ? 'warning' : 'success'} className="text-xs mt-0.5">
-                        {row.paymentMode}
+                    <p className="font-semibold text-[var(--text-primary)]">
+                        {formatCurrency(row.totals.total)}
+                    </p>
+                    <Badge
+                        variant={row.paymentMethod === 'cod' ? 'warning' : 'success'}
+                        className="text-xs mt-0.5"
+                    >
+                        {row.paymentMethod.toUpperCase()}
                     </Badge>
                 </div>
             )
         },
         {
-            header: 'Warehouse',
-            accessorKey: 'warehouse' as const,
-            cell: (row: Order) => <span className="text-sm text-gray-600">{row.warehouse}</span>
-        },
-        {
-            header: 'Date',
-            accessorKey: 'createdAt' as const,
-            cell: (row: Order) => <span className="text-sm text-[var(--text-muted)]">{formatDate(row.createdAt)}</span>
+            header: 'Status',
+            accessorKey: 'currentStatus' as const,
+            cell: (row: OrderRow) => {
+                const statusColors: Record<string, string> = {
+                    pending: 'bg-amber-100 text-amber-700',
+                    ready_to_ship: 'bg-blue-100 text-blue-700',
+                    shipped: 'bg-purple-100 text-purple-700',
+                    delivered: 'bg-emerald-100 text-emerald-700',
+                    cancelled: 'bg-gray-100 text-gray-700',
+                    rto: 'bg-rose-100 text-rose-700',
+                };
+                return (
+                    <span className={cn(
+                        "px-2 py-1 rounded-full text-xs font-medium",
+                        statusColors[row.currentStatus] || 'bg-gray-100 text-gray-700'
+                    )}>
+                        {row.currentStatus.replace('_', ' ').toUpperCase()}
+                    </span>
+                );
+            }
         },
         {
             header: 'Action',
-            accessorKey: 'id' as const,
+            accessorKey: '_id' as const,
             width: 'w-28',
-            cell: (row: Order) => {
-                if (activeTab === 'new' || activeTab === 'ready') {
+            cell: (row: OrderRow) => {
+                if (row.currentStatus === 'pending' || row.currentStatus === 'ready_to_ship') {
                     return (
                         <Tooltip content="Create shipment">
                             <Button
                                 size="sm"
                                 className="bg-[#2525FF] hover:bg-[#1e1ecc] text-white"
-                                onClick={(e) => {
+                                onClick={(e: React.MouseEvent) => {
                                     e.stopPropagation();
                                     handleShipNow(row);
                                 }}
                             >
                                 <Truck className="h-3.5 w-3.5 mr-1" />
-                                Ship Now
+                                Ship
                             </Button>
                         </Tooltip>
                     );
                 }
-                if (activeTab === 'shipped') {
-                    return (
-                        <div className="text-sm">
-                            <p className="font-medium text-[var(--text-primary)]">{row.awbNumber}</p>
-                            <p className="text-xs text-[var(--text-muted)]">{row.courier}</p>
-                        </div>
-                    );
-                }
-                if (activeTab === 'delivered') {
+                if (row.currentStatus === 'delivered') {
                     return (
                         <Badge variant="success" className="text-xs">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -289,20 +261,55 @@ export default function OrdersPage() {
                         </Badge>
                     );
                 }
-                if (activeTab === 'rto') {
-                    return (
-                        <div>
-                            <p className="text-xs text-rose-600 font-medium">{row.rtoReason}</p>
-                            <Button size="sm" variant="outline" className="mt-1 text-xs h-7">
-                                Reattempt
-                            </Button>
-                        </div>
-                    );
-                }
                 return null;
             }
         }
     ];
+
+    // Loading State
+    if (isLoading && !orders.length) {
+        return (
+            <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold text-[var(--text-primary)]">Orders</h2>
+                        <p className="text-[var(--text-muted)] text-sm mt-0.5">Manage and fulfill your orders</p>
+                    </div>
+                </div>
+                <Card>
+                    <CardContent className="p-12">
+                        <div className="flex flex-col items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)] mb-3" />
+                            <p className="text-[var(--text-muted)]">Loading orders...</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Error State
+    if (error) {
+        return (
+            <div className="space-y-6">
+                <Card>
+                    <CardContent className="p-12">
+                        <div className="flex flex-col items-center justify-center">
+                            <AlertCircle className="h-12 w-12 text-red-500 mb-3" />
+                            <p className="text-[var(--text-primary)] font-medium mb-2">Failed to load orders</p>
+                            <p className="text-[var(--text-muted)] text-sm mb-4">
+                                {(error as any)?.message || 'An unexpected error occurred'}
+                            </p>
+                            <Button onClick={handleRefresh} size="sm">
+                                <RefreshCcw className="h-4 w-4 mr-1.5" />
+                                Retry
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -310,10 +317,13 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-[var(--text-primary)]">Orders</h2>
-                    <p className="text-[var(--text-muted)] text-sm mt-0.5">Manage and fulfill your orders</p>
+                    <p className="text-[var(--text-muted)] text-sm mt-0.5">
+                        Manage and fulfill your orders
+                        {pagination && ` • ${pagination.total} total`}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => addToast('Syncing orders...', 'info')}>
+                    <Button variant="outline" size="sm" onClick={handleRefresh}>
                         <RefreshCcw className="h-4 w-4 mr-1.5" />
                         Sync
                     </Button>
@@ -331,14 +341,16 @@ export default function OrdersPage() {
             {/* Status Tabs */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
                 {statusTabs.map((tab) => {
-                    const count = tabCounts[tab.id as keyof typeof tabCounts];
                     const isActive = activeTab === tab.id;
                     const Icon = tab.icon;
 
                     return (
                         <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            key={tab.id ?? 'all'}
+                            onClick={() => {
+                                setActiveTab(tab.id as OrderStatus);
+                                setPage(1);
+                            }}
                             className={cn(
                                 "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap",
                                 isActive
@@ -348,12 +360,6 @@ export default function OrdersPage() {
                         >
                             <Icon className={cn("h-4 w-4", isActive ? "text-[#2525FF]" : tab.color)} />
                             <span className="font-medium">{tab.label}</span>
-                            <Badge
-                                variant={isActive ? "default" : "neutral"}
-                                className={cn("text-xs", isActive && "bg-[#2525FF] text-white")}
-                            >
-                                {count}
-                            </Badge>
                         </button>
                     );
                 })}
@@ -367,31 +373,19 @@ export default function OrdersPage() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search by order ID, customer, or product..."
+                                    placeholder="Search by order ID, customer..."
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                                     className="pl-9"
                                 />
                             </div>
                         </div>
-                        {(activeTab === 'new' || activeTab === 'ready') && selectedOrders.length > 0 && (
+                        {selectedOrders.length > 0 && (
                             <div className="flex items-center gap-2">
-                                <Badge variant="neutral">{selectedOrders.length} selected</Badge>
+                                <Badge variant="secondary">{selectedOrders.length} selected</Badge>
                                 <Button size="sm" onClick={handleBulkShip}>
                                     <Truck className="h-4 w-4 mr-1.5" />
                                     Ship Selected
-                                </Button>
-                            </div>
-                        )}
-                        {(activeTab === 'shipped') && (
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm">
-                                    <Printer className="h-4 w-4 mr-1.5" />
-                                    Print Labels
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                    <Download className="h-4 w-4 mr-1.5" />
-                                    Manifest
                                 </Button>
                             </div>
                         )}
@@ -402,22 +396,54 @@ export default function OrdersPage() {
             {/* Orders Table */}
             <Card>
                 <CardContent className="p-0">
-                    {filteredOrders.length === 0 ? (
+                    {orders.length === 0 ? (
                         <div className="text-center py-16">
                             <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                             <p className="text-[var(--text-muted)] font-medium">No orders found</p>
                             <p className="text-sm text-gray-400 mt-1">
-                                {search ? 'Try adjusting your search' : 'Orders will appear here when synced'}
+                                {search ? 'Try adjusting your search' : 'Orders will appear here'}
                             </p>
                         </div>
                     ) : (
                         <DataTable
                             columns={columns}
-                            data={filteredOrders}
+                            data={orders}
+                            selectable
+                            selectedRows={selectedOrders}
+                            onRowSelect={setSelectedOrders}
                         />
                     )}
                 </CardContent>
             </Card>
+
+            {/* Pagination */}
+            {pagination && pagination.pages > 1 && (
+                <div className="flex items-center justify-between">
+                    <p className="text-sm text-[var(--text-muted)]">
+                        Page {pagination.page} of {pagination.pages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                            disabled={page === pagination.pages}
+                        >
+                            Next
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Create Shipment Modal */}
             <Modal
@@ -430,20 +456,26 @@ export default function OrdersPage() {
                         {/* Order Summary */}
                         <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <p className="font-semibold text-[var(--text-primary)]">{selectedOrderForShip.id}</p>
-                                <Badge variant={selectedOrderForShip.paymentMode === 'COD' ? 'warning' : 'success'}>
-                                    {selectedOrderForShip.paymentMode}
+                                <p className="font-semibold text-[var(--text-primary)]">
+                                    {selectedOrderForShip.orderNumber}
+                                </p>
+                                <Badge variant={selectedOrderForShip.paymentMethod === 'cod' ? 'warning' : 'success'}>
+                                    {selectedOrderForShip.paymentMethod.toUpperCase()}
                                 </Badge>
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <p className="text-[var(--text-muted)]">Customer</p>
-                                    <p className="font-medium">{selectedOrderForShip.customer.name}</p>
-                                    <p className="text-[var(--text-muted)] text-xs">{selectedOrderForShip.customer.city}</p>
+                                    <p className="font-medium">{selectedOrderForShip.customerInfo.name}</p>
+                                    <p className="text-[var(--text-muted)] text-xs">
+                                        {selectedOrderForShip.customerInfo.address?.city}
+                                    </p>
                                 </div>
                                 <div>
                                     <p className="text-[var(--text-muted)]">Amount</p>
-                                    <p className="font-semibold text-lg">{formatCurrency(selectedOrderForShip.amount)}</p>
+                                    <p className="font-semibold text-lg">
+                                        {formatCurrency(selectedOrderForShip.totals.total)}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -469,11 +501,15 @@ export default function OrdersPage() {
                                             </div>
                                             <div>
                                                 <p className="font-semibold text-[var(--text-primary)]">{courier.name}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">ETA: {courier.eta} • ⭐ {courier.rating}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">
+                                                    ETA: {courier.eta} • ⭐ {courier.rating}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-lg text-[var(--text-primary)]">{formatCurrency(courier.rate)}</p>
+                                            <p className="font-bold text-lg text-[var(--text-primary)]">
+                                                {formatCurrency(courier.rate)}
+                                            </p>
                                             {courier.rate === Math.min(...courierRates.map(c => c.rate)) && (
                                                 <Badge variant="success" className="text-xs">
                                                     <Zap className="h-3 w-3 mr-0.5" />
@@ -491,9 +527,21 @@ export default function OrdersPage() {
                             <Button variant="outline" onClick={() => setIsShipModalOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleCreateShipment} disabled={!selectedCourier}>
-                                Create Shipment
-                                <ArrowRight className="h-4 w-4 ml-1.5" />
+                            <Button
+                                onClick={handleCreateShipment}
+                                disabled={!selectedCourier || createShipment.isPending}
+                            >
+                                {createShipment.isPending ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                        Creating...
+                                    </>
+                                ) : (
+                                    <>
+                                        Create Shipment
+                                        <ArrowRight className="h-4 w-4 ml-1.5" />
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>

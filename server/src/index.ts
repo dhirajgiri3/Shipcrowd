@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import compression from 'compression';
 
 // Load environment variables before other imports
 dotenv.config();
@@ -28,6 +29,20 @@ const PORT = process.env.PORT || 5005;
 // Trust proxy (for rate limiters behind reverse proxy)
 app.set('trust proxy', 1);
 
+// Apply compression middleware (compress all responses)
+app.use(compression({
+    level: 6, // Compression level (0-9, default 6)
+    threshold: 1024, // Only compress responses > 1KB
+    filter: (req, res) => {
+        // Don't compress responses with this request header
+        if (req.headers['x-no-compression']) {
+            return false;
+        }
+        // Use compression filter function
+        return compression.filter(req, res);
+    },
+}));
+
 // Apply global rate limiter
 app.use(globalRateLimiter);
 
@@ -40,6 +55,7 @@ const corsOptions = {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With'],
+    maxAge: 86400, // Cache preflight requests for 24 hours
 };
 app.use(cors(corsOptions));
 
