@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/lib/auth/AuthContext";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
+import { Providers as QueryProviders } from "@/src/components/providers/query-provider";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION
@@ -139,11 +140,13 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </ThemeProvider>
+        <QueryProviders>
+          <ThemeProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </ThemeProvider>
+        </QueryProviders>
       </body>
     </html>
   );

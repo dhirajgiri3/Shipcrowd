@@ -1,778 +1,2712 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "Shipcrowd API",
-    "description": "Backend API for Shipcrowd logistics platform",
-    "version": "1.0.0",
-    "contact": {
-      "name": "Shipcrowd Team"
-    }
-  },
-  "servers": [
-    {
-      "url": "http://localhost:5005/api/v1",
-      "description": "Development server"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Shipcrowd API",
+        "description": "Production-ready API for Shipcrowd logistics and shipping management platform. Handles orders, shipments, carrier selection, analytics, rate cards, and zone management with intelligent automation.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Shipcrowd Team",
+            "email": "api@shipcrowd.com"
+        },
+        "license": {
+            "name": "Proprietary"
+        }
     },
-    "schemas": {
-      "Error": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "object"
+    "servers": [
+        {
+            "url": "http://localhost:5005/api/v1",
+            "description": "Development server"
+        },
+        {
+            "url": "https://api.shipcrowd.com/v1",
+            "description": "Production server"
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT authentication token obtained from /auth/login"
             }
-          }
-        }
-      },
-      "Pagination": {
-        "type": "object",
-        "properties": {
-          "total": { "type": "integer" },
-          "page": { "type": "integer" },
-          "limit": { "type": "integer" },
-          "pages": { "type": "integer" }
-        }
-      },
-      "Address": {
-        "type": "object",
-        "required": ["line1", "city", "state", "postalCode"],
-        "properties": {
-          "line1": { "type": "string" },
-          "line2": { "type": "string" },
-          "city": { "type": "string" },
-          "state": { "type": "string" },
-          "country": { "type": "string", "default": "India" },
-          "postalCode": { "type": "string" }
-        }
-      },
-      "CustomerInfo": {
-        "type": "object",
-        "required": ["name", "phone", "address"],
-        "properties": {
-          "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "phone": { "type": "string" },
-          "address": { "$ref": "#/components/schemas/Address" }
-        }
-      },
-      "Product": {
-        "type": "object",
-        "required": ["name", "quantity", "price"],
-        "properties": {
-          "name": { "type": "string" },
-          "sku": { "type": "string" },
-          "quantity": { "type": "integer", "minimum": 1 },
-          "price": { "type": "number", "minimum": 0 },
-          "weight": { "type": "number" }
-        }
-      },
-      "Order": {
-        "type": "object",
-        "properties": {
-          "_id": { "type": "string" },
-          "orderNumber": { "type": "string", "example": "ORD-20241222-1234" },
-          "companyId": { "type": "string" },
-          "customerInfo": { "$ref": "#/components/schemas/CustomerInfo" },
-          "products": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } },
-          "currentStatus": { "type": "string", "enum": ["pending", "ready_to_ship", "shipped", "delivered", "cancelled", "rto"] },
-          "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed", "refunded"] },
-          "paymentMethod": { "type": "string", "enum": ["cod", "prepaid"] },
-          "totals": {
-            "type": "object",
-            "properties": {
-              "subtotal": { "type": "number" },
-              "tax": { "type": "number" },
-              "shipping": { "type": "number" },
-              "discount": { "type": "number" },
-              "total": { "type": "number" }
-            }
-          },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      "Shipment": {
-        "type": "object",
-        "properties": {
-          "_id": { "type": "string" },
-          "trackingNumber": { "type": "string", "example": "SHP-20241222-1234" },
-          "orderId": { "type": "string" },
-          "companyId": { "type": "string" },
-          "carrier": { "type": "string", "enum": ["Delhivery", "DTDC", "Xpressbees"] },
-          "serviceType": { "type": "string", "enum": ["express", "standard"] },
-          "currentStatus": { "type": "string", "enum": ["created", "picked", "in_transit", "out_for_delivery", "delivered", "ndr", "rto"] },
-          "estimatedDelivery": { "type": "string", "format": "date-time" },
-          "createdAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      "CarrierOption": {
-        "type": "object",
-        "properties": {
-          "carrier": { "type": "string" },
-          "rate": { "type": "number" },
-          "deliveryTime": { "type": "integer" },
-          "score": { "type": "number" },
-          "serviceType": { "type": "string" }
-        }
-      },
-      "RateCard": {
-        "type": "object",
-        "properties": {
-          "_id": { "type": "string" },
-          "name": { "type": "string" },
-          "companyId": { "type": "string" },
-          "status": { "type": "string", "enum": ["draft", "active", "inactive", "expired"] },
-          "baseRates": { "type": "array", "items": { "type": "object" } },
-          "weightRules": { "type": "array", "items": { "type": "object" } },
-          "zoneRules": { "type": "array", "items": { "type": "object" } }
-        }
-      },
-      "Zone": {
-        "type": "object",
-        "properties": {
-          "_id": { "type": "string" },
-          "name": { "type": "string" },
-          "companyId": { "type": "string" },
-          "postalCodes": { "type": "array", "items": { "type": "string" } },
-          "serviceability": {
-            "type": "object",
-            "properties": {
-              "carriers": { "type": "array", "items": { "type": "string" } },
-              "serviceTypes": { "type": "array", "items": { "type": "string" } }
-            }
-          }
-        }
-      }
-    },
-    "responses": {
-      "Unauthorized": {
-        "description": "Authentication required",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": { "message": "Authentication required" }
-          }
-        }
-      },
-      "Forbidden": {
-        "description": "Insufficient permissions",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": { "message": "User is not associated with any company" }
-          }
-        }
-      },
-      "NotFound": {
-        "description": "Resource not found",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": { "message": "Order not found" }
-          }
-        }
-      },
-      "ValidationError": {
-        "description": "Validation error",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": { "message": "Validation error", "errors": [] }
-          }
-        }
-      }
-    }
-  },
-  "paths": {
-    "/health": {
-      "get": {
-        "summary": "Health check endpoint",
-        "tags": ["System"],
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Service is healthy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "timestamp": { "type": "string", "format": "date-time" },
-                    "version": { "type": "string", "example": "1.0.0" },
-                    "uptime": { "type": "number" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/orders": {
-      "get": {
-        "summary": "Get all orders",
-        "tags": ["Orders"],
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } },
-          { "name": "search", "in": "query", "schema": { "type": "string" } },
-          { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of orders",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "orders": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
-                  }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      },
-      "post": {
-        "summary": "Create a new order",
-        "tags": ["Orders"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+        },
+        "schemas": {
+            "Error": {
                 "type": "object",
-                "required": ["customerInfo", "products"],
+                "required": [
+                    "message"
+                ],
                 "properties": {
-                  "customerInfo": { "$ref": "#/components/schemas/CustomerInfo" },
-                  "products": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } },
-                  "paymentMethod": { "type": "string", "enum": ["cod", "prepaid"] },
-                  "warehouseId": { "type": "string" },
-                  "notes": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Order created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": { "type": "string" },
-                    "order": { "$ref": "#/components/schemas/Order" }
-                  }
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/orders/{orderId}": {
-      "get": {
-        "summary": "Get order by ID",
-        "tags": ["Orders"],
-        "parameters": [
-          { "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Order details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": { "order": { "$ref": "#/components/schemas/Order" } }
-                }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "patch": {
-        "summary": "Update an order",
-        "tags": ["Orders"],
-        "parameters": [
-          { "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": { "type": "object" }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Order updated" },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "delete": {
-        "summary": "Delete an order (soft delete)",
-        "tags": ["Orders"],
-        "parameters": [
-          { "name": "orderId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Order deleted" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/orders/bulk": {
-      "post": {
-        "summary": "Bulk import orders from CSV",
-        "tags": ["Orders"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": { "type": "string", "format": "binary" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Orders imported" },
-          "400": { "$ref": "#/components/responses/ValidationError" }
-        }
-      }
-    },
-    "/shipments": {
-      "get": {
-        "summary": "Get all shipments",
-        "tags": ["Shipments"],
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } },
-          { "name": "carrier", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of shipments",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "shipments": { "type": "array", "items": { "$ref": "#/components/schemas/Shipment" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a shipment from order",
-        "tags": ["Shipments"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["orderId"],
-                "properties": {
-                  "orderId": { "type": "string" },
-                  "serviceType": { "type": "string", "enum": ["express", "standard"] },
-                  "carrierOverride": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Shipment created with carrier selection",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": { "type": "string" },
-                    "shipment": { "$ref": "#/components/schemas/Shipment" },
-                    "carrierSelection": {
-                      "type": "object",
-                      "properties": {
-                        "selectedCarrier": { "type": "string" },
-                        "selectedRate": { "type": "number" },
-                        "alternativeOptions": { "type": "array", "items": { "$ref": "#/components/schemas/CarrierOption" } }
-                      }
+                    "message": {
+                        "type": "string",
+                        "description": "Error message"
+                    },
+                    "errors": {
+                        "type": "array",
+                        "description": "Detailed validation errors",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "path": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
-                  }
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/shipments/tracking/{trackingNumber}": {
-      "get": {
-        "summary": "Track shipment by AWB",
-        "tags": ["Shipments"],
-        "parameters": [
-          { "name": "trackingNumber", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^SHP-\\d{8}-\\d{4}$" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tracking info with timeline",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "trackingNumber": { "type": "string" },
-                    "carrier": { "type": "string" },
-                    "currentStatus": { "type": "string" },
-                    "timeline": { "type": "array", "items": { "type": "object" } }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/shipments/{shipmentId}": {
-      "get": {
-        "summary": "Get shipment by ID",
-        "tags": ["Shipments"],
-        "parameters": [
-          { "name": "shipmentId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Shipment details" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "delete": {
-        "summary": "Delete a shipment",
-        "tags": ["Shipments"],
-        "parameters": [
-          { "name": "shipmentId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Shipment deleted" }
-        }
-      }
-    },
-    "/shipments/{shipmentId}/status": {
-      "patch": {
-        "summary": "Update shipment status",
-        "tags": ["Shipments"],
-        "parameters": [
-          { "name": "shipmentId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+            },
+            "Pagination": {
                 "type": "object",
-                "required": ["status"],
+                "required": [
+                    "total",
+                    "page",
+                    "limit",
+                    "pages"
+                ],
                 "properties": {
-                  "status": { "type": "string", "enum": ["created", "picked", "in_transit", "out_for_delivery", "delivered", "rto", "ndr"] },
-                  "location": { "type": "string" },
-                  "description": { "type": "string" }
+                    "total": {
+                        "type": "integer",
+                        "description": "Total number of items",
+                        "example": 150
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Current page number",
+                        "example": 1
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "example": 20
+                    },
+                    "pages": {
+                        "type": "integer",
+                        "description": "Total number of pages",
+                        "example": 8
+                    }
                 }
-              }
+            },
+            "Address": {
+                "type": "object",
+                "required": [
+                    "line1",
+                    "city",
+                    "state",
+                    "postalCode"
+                ],
+                "properties": {
+                    "line1": {
+                        "type": "string",
+                        "minLength": 3,
+                        "description": "Address line 1",
+                        "example": "123 MG Road"
+                    },
+                    "line2": {
+                        "type": "string",
+                        "description": "Address line 2 (optional)",
+                        "example": "Near City Mall"
+                    },
+                    "city": {
+                        "type": "string",
+                        "minLength": 2,
+                        "example": "Bangalore"
+                    },
+                    "state": {
+                        "type": "string",
+                        "minLength": 2,
+                        "example": "Karnataka"
+                    },
+                    "country": {
+                        "type": "string",
+                        "default": "India",
+                        "example": "India"
+                    },
+                    "postalCode": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 10,
+                        "pattern": "^[0-9]{6}$",
+                        "example": "560001"
+                    }
+                }
+            },
+            "CustomerInfo": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "phone",
+                    "address"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 2,
+                        "example": "John Doe"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "john.doe@example.com"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "minLength": 10,
+                        "pattern": "^[0-9]{10}$",
+                        "example": "9876543210"
+                    },
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    }
+                }
+            },
+            "Product": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "quantity",
+                    "price"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "example": "Wireless Mouse"
+                    },
+                    "sku": {
+                        "type": "string",
+                        "example": "WM-001"
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "example": 2
+                    },
+                    "price": {
+                        "type": "number",
+                        "minimum": 0,
+                        "example": 599.99,
+                        "description": "Price per unit in INR"
+                    },
+                    "weight": {
+                        "type": "number",
+                        "minimum": 0,
+                        "example": 0.2,
+                        "description": "Weight in kilograms"
+                    },
+                    "dimensions": {
+                        "type": "object",
+                        "properties": {
+                            "length": {
+                                "type": "number",
+                                "example": 10
+                            },
+                            "width": {
+                                "type": "number",
+                                "example": 8
+                            },
+                            "height": {
+                                "type": "number",
+                                "example": 3
+                            }
+                        }
+                    }
+                }
+            },
+            "Order": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string",
+                        "example": "507f1f77bcf86cd799439011"
+                    },
+                    "orderNumber": {
+                        "type": "string",
+                        "pattern": "^ORD-\\d{8}-\\d{4}$",
+                        "example": "ORD-20241222-1234",
+                        "description": "Auto-generated order number"
+                    },
+                    "companyId": {
+                        "type": "string",
+                        "example": "507f1f77bcf86cd799439012"
+                    },
+                    "customerInfo": {
+                        "$ref": "#/components/schemas/CustomerInfo"
+                    },
+                    "products": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Product"
+                        }
+                    },
+                    "currentStatus": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "ready_to_ship",
+                            "shipped",
+                            "delivered",
+                            "cancelled",
+                            "rto"
+                        ],
+                        "example": "pending"
+                    },
+                    "paymentStatus": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "paid",
+                            "failed",
+                            "refunded"
+                        ],
+                        "example": "pending"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "enum": [
+                            "cod",
+                            "prepaid"
+                        ],
+                        "example": "cod"
+                    },
+                    "totals": {
+                        "type": "object",
+                        "required": [
+                            "subtotal",
+                            "total"
+                        ],
+                        "properties": {
+                            "subtotal": {
+                                "type": "number",
+                                "example": 1199.98
+                            },
+                            "tax": {
+                                "type": "number",
+                                "example": 0
+                            },
+                            "shipping": {
+                                "type": "number",
+                                "example": 0
+                            },
+                            "discount": {
+                                "type": "number",
+                                "example": 0
+                            },
+                            "total": {
+                                "type": "number",
+                                "example": 1199.98
+                            }
+                        }
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 1000,
+                        "example": "Handle with care"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "fragile",
+                            "priority"
+                        ]
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "Shipment": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "trackingNumber": {
+                        "type": "string",
+                        "pattern": "^SHP-\\d{8}-\\d{4}$",
+                        "example": "SHP-20241222-5678",
+                        "description": "Auto-generated AWB tracking number"
+                    },
+                    "orderId": {
+                        "type": "string",
+                        "description": "Reference to the order"
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "carrier": {
+                        "type": "string",
+                        "enum": [
+                            "Delhivery",
+                            "DTDC",
+                            "Xpressbees"
+                        ],
+                        "example": "Delhivery",
+                        "description": "Selected carrier by intelligent algorithm"
+                    },
+                    "serviceType": {
+                        "type": "string",
+                        "enum": [
+                            "express",
+                            "standard"
+                        ],
+                        "example": "standard"
+                    },
+                    "currentStatus": {
+                        "type": "string",
+                        "enum": [
+                            "created",
+                            "picked",
+                            "in_transit",
+                            "out_for_delivery",
+                            "delivered",
+                            "ndr",
+                            "rto",
+                            "cancelled"
+                        ],
+                        "example": "created"
+                    },
+                    "packageDetails": {
+                        "type": "object",
+                        "properties": {
+                            "weight": {
+                                "type": "number",
+                                "example": 0.5
+                            },
+                            "packageCount": {
+                                "type": "integer",
+                                "example": 1
+                            }
+                        }
+                    },
+                    "paymentDetails": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "cod",
+                                    "prepaid"
+                                ]
+                            },
+                            "codAmount": {
+                                "type": "number"
+                            },
+                            "shippingCost": {
+                                "type": "number",
+                                "example": 45.50
+                            }
+                        }
+                    },
+                    "estimatedDelivery": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "actualDelivery": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CarrierOption": {
+                "type": "object",
+                "properties": {
+                    "carrier": {
+                        "type": "string",
+                        "example": "Delhivery"
+                    },
+                    "rate": {
+                        "type": "number",
+                        "example": 45.50,
+                        "description": "ShippING cost in INR"
+                    },
+                    "deliveryTime": {
+                        "type": "integer",
+                        "example": 3,
+                        "description": "Estimated delivery days"
+                    },
+                    "score": {
+                        "type": "number",
+                        "example": 156.5,
+                        "description": "Selection score (lower is better)"
+                    },
+                    "serviceType": {
+                        "type": "string",
+                        "enum": [
+                            "express",
+                            "standard"
+                        ]
+                    },
+                    "zone": {
+                        "type": "string",
+                        "example": "local",
+                        "enum": [
+                            "local",
+                            "metro",
+                            "zonal",
+                            "roi"
+                        ]
+                    }
+                }
+            },
+            "RateCard": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Standard Rates 2024"
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "draft",
+                            "active",
+                            "inactive",
+                            "expired"
+                        ],
+                        "example": "active"
+                    },
+                    "baseRates": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "carrier": {
+                                    "type": "string",
+                                    "example": "Delhivery"
+                                },
+                                "serviceType": {
+                                    "type": "string",
+                                    "example": "standard"
+                                },
+                                "basePrice": {
+                                    "type": "number",
+                                    "example": 40
+                                },
+                                "minWeight": {
+                                    "type": "number",
+                                    "example": 0
+                                },
+                                "maxWeight": {
+                                    "type": "number",
+                                    "example": 5
+                                }
+                            }
+                        }
+                    },
+                    "weightRules": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "minWeight": {
+                                    "type": "number"
+                                },
+                                "maxWeight": {
+                                    "type": "number"
+                                },
+                                "pricePerKg": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    },
+                    "effectiveDates": {
+                        "type": "object",
+                        "properties": {
+                            "startDate": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "endDate": {
+                                "type": "string",
+                                "format": "date-time"
+                            }
+                        }
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "Zone": {
+                "type": "object",
+                "properties": {
+                    "_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Karnataka Zone"
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "postalCodes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "560",
+                            "561",
+                            "562"
+                        ],
+                        "description": "Postal code prefixes"
+                    },
+                    "serviceability": {
+                        "type": "object",
+                        "required": [
+                            "carriers",
+                            "serviceTypes"
+                        ],
+                        "properties": {
+                            "carriers": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "example": [
+                                    "Delhivery",
+                                    "DTDC"
+                                ]
+                            },
+                            "serviceTypes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "example": [
+                                    "express",
+                                    "standard"
+                                ]
+                            }
+                        }
+                    },
+                    "transitTimes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "carrier": {
+                                    "type": "string"
+                                },
+                                "serviceType": {
+                                    "type": "string"
+                                },
+                                "minDays": {
+                                    "type": "integer"
+                                },
+                                "maxDays": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
             }
-          }
         },
         "responses": {
-          "200": { "description": "Status updated" }
-        }
-      }
-    },
-    "/analytics/dashboard/seller": {
-      "get": {
-        "summary": "Get seller dashboard analytics",
-        "tags": ["Analytics"],
-        "parameters": [
-          { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
-          { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Seller analytics",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "totalOrders": { "type": "integer" },
-                    "pendingOrders": { "type": "integer" },
-                    "deliveredOrders": { "type": "integer" },
-                    "totalRevenue": { "type": "number" },
-                    "successRate": { "type": "number" },
-                    "codPending": { "type": "object" },
-                    "recentShipments": { "type": "array" },
-                    "weeklyTrend": { "type": "array" }
-                  }
+            "Unauthorized": {
+                "description": "Authentication token is missing or invalid",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "example": {
+                            "message": "Authentication required"
+                        }
+                    }
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/analytics/dashboard/admin": {
-      "get": {
-        "summary": "Get admin dashboard analytics (admin only)",
-        "tags": ["Analytics"],
-        "responses": {
-          "200": { "description": "Admin analytics with multi-company data" },
-          "403": { "description": "Admin access required" }
-        }
-      }
-    },
-    "/analytics/orders": {
-      "get": {
-        "summary": "Get order trends",
-        "tags": ["Analytics"],
-        "parameters": [
-          { "name": "days", "in": "query", "schema": { "type": "integer", "default": 30 } }
-        ],
-        "responses": {
-          "200": { "description": "Order trends data" }
-        }
-      }
-    },
-    "/analytics/shipments": {
-      "get": {
-        "summary": "Get shipment performance metrics",
-        "tags": ["Analytics"],
-        "responses": {
-          "200": { "description": "Shipment performance data" }
-        }
-      }
-    },
-    "/ratecards": {
-      "get": {
-        "summary": "Get all rate cards",
-        "tags": ["Rate Cards"],
-        "responses": {
-          "200": {
-            "description": "List of rate cards",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "rateCards": { "type": "array", "items": { "$ref": "#/components/schemas/RateCard" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
-                  }
+            },
+            "Forbidden": {
+                "description": "User lacks permission to access this resource",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "examples": {
+                            "noCompany": {
+                                "value": {
+                                    "message": "User is not associated with any company"
+                                }
+                            },
+                            "adminOnly": {
+                                "value": {
+                                    "message": "Admin access required"
+                                }
+                            }
+                        }
+                    }
                 }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a rate card",
-        "tags": ["Rate Cards"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name", "baseRates", "effectiveDates"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "baseRates": { "type": "array" },
-                  "weightRules": { "type": "array" },
-                  "zoneRules": { "type": "array" },
-                  "effectiveDates": { "type": "object" },
-                  "status": { "type": "string" }
+            },
+            "NotFound": {
+                "description": "Requested resource not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "examples": {
+                            "order": {
+                                "value": {
+                                    "message": "Order not found"
+                                }
+                            },
+                            "shipment": {
+                                "value": {
+                                    "message": "Shipment not found"
+                                }
+                            }
+                        }
+                    }
                 }
-              }
+            },
+            "ValidationError": {
+                "description": "Request validation failed",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "example": {
+                            "message": "Validation error",
+                            "errors": [
+                                {
+                                    "path": [
+                                        "customerInfo",
+                                        "phone"
+                                    ],
+                                    "message": "Phone must be at least 10 digits"
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "BadRequest": {
+                "description": "Invalid request or business logic error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        },
+                        "examples": {
+                            "invalidTransition": {
+                                "value": {
+                                    "message": "Invalid status transition from 'pending' to 'delivered'",
+                                    "allowedTransitions": [
+                                        "ready_to_ship",
+                                        "cancelled"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
             }
-          }
+        }
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health check endpoint",
+                "description": "Returns server health status, version, and uptime. No authentication required.",
+                "tags": [
+                    "System"
+                ],
+                "security": [],
+                "operationId": "healthCheck",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy and operational",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "status",
+                                        "timestamp",
+                                        "version",
+                                        "uptime"
+                                    ],
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "ok"
+                                            ],
+                                            "example": "ok"
+                                        },
+                                        "timestamp": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "example": "2024-12-22T14:30:00.000Z"
+                                        },
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0.0"
+                                        },
+                                        "uptime": {
+                                            "type": "number",
+                                            "description": "Server uptime in seconds",
+                                            "example": 3600.5
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
-        "responses": {
-          "201": { "description": "Rate card created" }
-        }
-      }
-    },
-    "/ratecards/calculate": {
-      "post": {
-        "summary": "Calculate shipping rate",
-        "tags": ["Rate Cards"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["weight"],
-                "properties": {
-                  "weight": { "type": "number" },
-                  "destinationPincode": { "type": "string" },
-                  "carrier": { "type": "string" },
-                  "serviceType": { "type": "string" }
+        "/orders": {
+            "get": {
+                "summary": "List all orders",
+                "description": "Retrieve paginated list of orders for the authenticated user's company with optional filters",
+                "tags": [
+                    "Orders"
+                ],
+                "operationId": "listOrders",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Items per page (max 100)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by order status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "ready_to_ship",
+                                "shipped",
+                                "delivered",
+                                "cancelled",
+                                "rto"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "phone",
+                        "in": "query",
+                        "description": "Filter by customer phone number",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "warehouse",
+                        "in": "query",
+                        "description": "Filter by warehouse ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search in order number, customer name, or phone",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "startDate",
+                        "in": "query",
+                        "description": "Filter orders created after this date",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "description": "Filter orders created before this date",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of orders retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "orders",
+                                        "pagination"
+                                    ],
+                                    "properties": {
+                                        "orders": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Order"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "$ref": "#/components/schemas/Pagination"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
                 }
-              }
+            },
+            "post": {
+                "summary": "Create a new order",
+                "description": "Create a new order with automatic order number generation (ORD-YYYYMMDD-XXXX format)",
+                "tags": [
+                    "Orders"
+                ],
+                "operationId": "createOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "customerInfo",
+                                    "products"
+                                ],
+                                "properties": {
+                                    "customerInfo": {
+                                        "$ref": "#/components/schemas/CustomerInfo"
+                                    },
+                                    "products": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "$ref": "#/components/schemas/Product"
+                                        }
+                                    },
+                                    "paymentMethod": {
+                                        "type": "string",
+                                        "enum": [
+                                            "cod",
+                                            "prepaid"
+                                        ],
+                                        "default": "prepaid"
+                                    },
+                                    "warehouseId": {
+                                        "type": "string",
+                                        "description": "MongoDB ObjectId of warehouse"
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "maxLength": 1000
+                                    },
+                                    "tags": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "example": {
+                                "customerInfo": {
+                                    "name": "John Doe",
+                                    "email": "john@example.com",
+                                    "phone": "9876543210",
+                                    "address": {
+                                        "line1": "123 MG Road",
+                                        "city": "Bangalore",
+                                        "state": "Karnataka",
+                                        "country": "India",
+                                        "postalCode": "560001"
+                                    }
+                                },
+                                "products": [
+                                    {
+                                        "name": "Wireless Mouse",
+                                        "sku": "WM-001",
+                                        "quantity": 2,
+                                        "price": 599.99,
+                                        "weight": 0.2
+                                    }
+                                ],
+                                "paymentMethod": "cod",
+                                "notes": "Deliver between 10 AM - 6 PM"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "message",
+                                        "order"
+                                    ],
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order created successfully"
+                                        },
+                                        "order": {
+                                            "$ref": "#/components/schemas/Order"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": "Calculated rate",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "rate": { "type": "number" },
-                    "carrier": { "type": "string" },
-                    "zone": { "type": "string" },
-                    "breakdown": { "type": "object" }
-                  }
+        "/orders/{orderId}": {
+            "get": {
+                "summary": "Get order by ID",
+                "description": "Retrieve detailed information about a specific order",
+                "tags": [
+                    "Orders"
+                ],
+                "operationId": "getOrderById",
+                "parameters": [
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "description": "MongoDB ObjectId of the order",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{24}$"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "order"
+                                    ],
+                                    "properties": {
+                                        "order": {
+                                            "$ref": "#/components/schemas/Order"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid order ID format",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "message": "Invalid order ID format"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ratecards/{id}": {
-      "get": {
-        "summary": "Get rate card by ID",
-        "tags": ["Rate Cards"],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Rate card details" }
-        }
-      },
-      "patch": {
-        "summary": "Update rate card",
-        "tags": ["Rate Cards"],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Rate card updated" }
-        }
-      }
-    },
-    "/zones": {
-      "get": {
-        "summary": "Get all zones",
-        "tags": ["Zones"],
-        "responses": {
-          "200": {
-            "description": "List of zones",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "zones": { "type": "array", "items": { "$ref": "#/components/schemas/Zone" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
-                  }
+            },
+            "patch": {
+                "summary": "Update an order",
+                "description": "Update order details with status transition validation",
+                "tags": [
+                    "Orders"
+                ],
+                "operationId": "updateOrder",
+                "parameters": [
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "customerInfo": {
+                                        "type": "object",
+                                        "description": "Partial customer info update"
+                                    },
+                                    "products": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/components/schemas/Product"
+                                        }
+                                    },
+                                    "currentStatus": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pending",
+                                            "ready_to_ship",
+                                            "shipped",
+                                            "delivered",
+                                            "cancelled",
+                                            "rto"
+                                        ]
+                                    },
+                                    "paymentStatus": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pending",
+                                            "paid",
+                                            "failed",
+                                            "refunded"
+                                        ]
+                                    },
+                                    "notes": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "order": {
+                                            "$ref": "#/components/schemas/Order"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a zone",
-        "tags": ["Zones"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name", "postalCodes", "serviceability"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "postalCodes": { "type": "array", "items": { "type": "string" } },
-                  "serviceability": { "type": "object" }
+            },
+            "delete": {
+                "summary": "Delete an order",
+                "description": "Soft delete an order (marks as deleted, doesn't remove from database). Cannot delete shipped or delivered orders.",
+                "tags": [
+                    "Orders"
+                ],
+                "operationId": "deleteOrder",
+                "parameters": [
+                    {
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Order deleted successfully"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cannot delete order in current status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "message": "Cannot delete order with status 'shipped'"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
                 }
-              }
             }
-          }
         },
-        "responses": {
-          "201": { "description": "Zone created" }
+        "/orders/bulk": {
+            "post": {
+                "summary": "Bulk import orders",
+                "description": "Import multiple orders from CSV file with transaction rollback on errors",
+                "tags": [
+                    "Orders"
+                ],
+                "operationId": "bulkImportOrders",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "file"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "CSV file with order data"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Orders imported successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "created": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "orderNumber": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "row": {
+                                                        "type": "integer"
+                                                    },
+                                                    "error": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/shipments": {
+            "get": {
+                "summary": "List all shipments",
+                "description": "Retrieve paginated shipments with filters",
+                "tags": [
+                    "Shipments"
+                ],
+                "operationId": "listShipments",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by shipment status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "created",
+                                "picked",
+                                "in_transit",
+                                "out_for_delivery",
+                                "delivered",
+                                "ndr",
+                                "rto",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "carrier",
+                        "in": "query",
+                        "description": "Filter by carrier name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "pincode",
+                        "in": "query",
+                        "description": "Filter by destination pincode",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search by tracking number or recipient",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "startDate",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of shipments",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "shipments": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Shipment"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "$ref": "#/components/schemas/Pagination"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create shipment from order",
+                "description": "Create shipment with intelligent carrier selection algorithm. Returns selected carrier and alternative options.",
+                "tags": [
+                    "Shipments"
+                ],
+                "operationId": "createShipment",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "orderId"
+                                ],
+                                "properties": {
+                                    "orderId": {
+                                        "type": "string",
+                                        "description": "MongoDB ObjectId of the order"
+                                    },
+                                    "serviceType": {
+                                        "type": "string",
+                                        "enum": [
+                                            "express",
+                                            "standard"
+                                        ],
+                                        "default": "standard"
+                                    },
+                                    "carrierOverride": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Delhivery",
+                                            "DTDC",
+                                            "Xpressbees"
+                                        ],
+                                        "description": "Manual carrier selection (overrides algorithm)"
+                                    },
+                                    "warehouseId": {
+                                        "type": "string"
+                                    },
+                                    "instructions": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    }
+                                }
+                            },
+                            "example": {
+                                "orderId": "507f1f77bcf86cd799439011",
+                                "serviceType": "standard"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Shipment created with carrier selection",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "shipment": {
+                                            "$ref": "#/components/schemas/Shipment"
+                                        },
+                                        "carrierSelection": {
+                                            "type": "object",
+                                            "properties": {
+                                                "selectedCarrier": {
+                                                    "type": "string"
+                                                },
+                                                "selectedRate": {
+                                                    "type": "number"
+                                                },
+                                                "selectedDeliveryTime": {
+                                                    "type": "integer"
+                                                },
+                                                "alternativeOptions": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/CarrierOption"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/shipments/tracking/{trackingNumber}": {
+            "get": {
+                "summary": "Track shipment by tracking number",
+                "description": "Get shipment tracking information with complete status timeline",
+                "tags": [
+                    "Shipments"
+                ],
+                "operationId": "trackShipment",
+                "parameters": [
+                    {
+                        "name": "trackingNumber",
+                        "in": "path",
+                        "required": true,
+                        "description": "AWB tracking number (format: SHP-YYYYMMDD-XXXX)",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^SHP-\\d{8}-\\d{4}$",
+                            "example": "SHP-20241222-5678"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tracking information with timeline",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "trackingNumber": {
+                                            "type": "string"
+                                        },
+                                        "carrier": {
+                                            "type": "string"
+                                        },
+                                        "serviceType": {
+                                            "type": "string"
+                                        },
+                                        "currentStatus": {
+                                            "type": "string"
+                                        },
+                                        "estimatedDelivery": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "actualDelivery": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "recipient": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "city": {
+                                                    "type": "string"
+                                                },
+                                                "state": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "timeline": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "timestamp": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "location": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid tracking number format",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "example": {
+                                    "message": "Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/shipments/{shipmentId}": {
+            "get": {
+                "summary": "Get shipment by ID",
+                "description": "Retrieve detailed shipment information",
+                "tags": [
+                    "Shipments"
+                ],
+                "operationId": "getShipmentById",
+                "parameters": [
+                    {
+                        "name": "shipmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shipment details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "shipment": {
+                                            "$ref": "#/components/schemas/Shipment"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a shipment",
+                "description": "Soft delete shipment (cannot delete in-transit or delivered shipments)",
+                "tags": [
+                    "Shipments"
+                ],
+                "operationId": "deleteShipment",
+                "parameters": [
+                    {
+                        "name": "shipmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shipment deleted successfully"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/shipments/{shipmentId}/status": {
+            "patch": {
+                "summary": "Update shipment status",
+                "description": "Update shipment status with transition validation. Automatically updates related order status.",
+                "tags": [
+                    "Shipments"
+                ],
+                "operationId": "updateShipmentStatus",
+                "parameters": [
+                    {
+                        "name": "shipmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "created",
+                                            "picked",
+                                            "in_transit",
+                                            "out_for_delivery",
+                                            "delivered",
+                                            "ndr",
+                                            "rto",
+                                            "cancelled"
+                                        ]
+                                    },
+                                    "location": {
+                                        "type": "string",
+                                        "maxLength": 200,
+                                        "example": "Mumbai Processing Center"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "example": "Package scanned and in transit"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "shipment": {
+                                            "$ref": "#/components/schemas/Shipment"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/analytics/dashboard/seller": {
+            "get": {
+                "summary": "Get seller dashboard analytics",
+                "description": "Company-scoped analytics with order counts, revenue, success rate, COD pending, and trends",
+                "tags": [
+                    "Analytics"
+                ],
+                "operationId": "getSellerDashboard",
+                "parameters": [
+                    {
+                        "name": "startDate",
+                        "in": "query",
+                        "description": "Start date for analytics (defaults to 30 days ago)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "description": "End date for analytics (defaults to today)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Seller dashboard analytics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "totalOrders": {
+                                            "type": "integer"
+                                        },
+                                        "pendingOrders": {
+                                            "type": "integer"
+                                        },
+                                        "readyToShip": {
+                                            "type": "integer"
+                                        },
+                                        "shippedOrders": {
+                                            "type": "integer"
+                                        },
+                                        "deliveredOrders": {
+                                            "type": "integer"
+                                        },
+                                        "cancelledOrders": {
+                                            "type": "integer"
+                                        },
+                                        "rtoOrders": {
+                                            "type": "integer"
+                                        },
+                                        "totalRevenue": {
+                                            "type": "number"
+                                        },
+                                        "successRate": {
+                                            "type": "number",
+                                            "description": "Delivery success rate percentage"
+                                        },
+                                        "codPending": {
+                                            "type": "object",
+                                            "properties": {
+                                                "amount": {
+                                                    "type": "number"
+                                                },
+                                                "count": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "recentShipments": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Shipment"
+                                            }
+                                        },
+                                        "weeklyTrend": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "orders": {
+                                                        "type": "integer"
+                                                    },
+                                                    "revenue": {
+                                                        "type": "number"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "dateRange": {
+                                            "type": "object",
+                                            "properties": {
+                                                "startDate": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "endDate": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/analytics/dashboard/admin": {
+            "get": {
+                "summary": "Get admin dashboard analytics",
+                "description": "Multi-company aggregated analytics (admin only)",
+                "tags": [
+                    "Analytics"
+                ],
+                "operationId": "getAdminDashboard",
+                "parameters": [
+                    {
+                        "name": "startDate",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "endDate",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Admin analytics with multi-company data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/analytics/orders": {
+            "get": {
+                "summary": "Get order trends",
+                "description": "Order statistics by date, status, and payment method",
+                "tags": [
+                    "Analytics"
+                ],
+                "operationId": "getOrderTrends",
+                "parameters": [
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "description": "Number of days to analyze",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30,
+                            "minimum": 1,
+                            "maximum": 365
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order trends data"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/analytics/shipments": {
+            "get": {
+                "summary": "Get shipment performance metrics",
+                "description": "Shipment statistics by carrier, average delivery time, NDR analysis",
+                "tags": [
+                    "Analytics"
+                ],
+                "operationId": "getShipmentPerformance",
+                "parameters": [
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Shipment performance data"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/ratecards": {
+            "get": {
+                "summary": "List all rate cards",
+                "description": "Get paginated list of rate cards",
+                "tags": [
+                    "Rate Cards"
+                ],
+                "operationId": "listRateCards",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "draft",
+                                "active",
+                                "inactive",
+                                "expired"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of rate cards",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "rateCards": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/RateCard"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "$ref": "#/components/schemas/Pagination"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a rate card",
+                "description": "Create new rate card with weight slab validation",
+                "tags": [
+                    "Rate Cards"
+                ],
+                "operationId": "createRateCard",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "baseRates",
+                                    "effectiveDates"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 2
+                                    },
+                                    "baseRates": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "object",
+                                            "required": [
+                                                "carrier",
+                                                "serviceType",
+                                                "basePrice",
+                                                "minWeight",
+                                                "maxWeight"
+                                            ],
+                                            "properties": {
+                                                "carrier": {
+                                                    "type": "string"
+                                                },
+                                                "serviceType": {
+                                                    "type": "string"
+                                                },
+                                                "basePrice": {
+                                                    "type": "number"
+                                                },
+                                                "minWeight": {
+                                                    "type": "number"
+                                                },
+                                                "maxWeight": {
+                                                    "type": "number"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "weightRules": {
+                                        "type": "array"
+                                    },
+                                    "zoneRules": {
+                                        "type": "array"
+                                    },
+                                    "effectiveDates": {
+                                        "type": "object",
+                                        "required": [
+                                            "startDate"
+                                        ],
+                                        "properties": {
+                                            "startDate": {
+                                                "type": "string",
+                                                "format": "date-time"
+                                            },
+                                            "endDate": {
+                                                "type": "string",
+                                                "format": "date-time"
+                                            }
+                                        }
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "draft",
+                                            "active",
+                                            "inactive"
+                                        ],
+                                        "default": "draft"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Rate card created"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/ratecards/calculate": {
+            "post": {
+                "summary": "Calculate shipping rate",
+                "description": "Calculate shipping cost based on weight, carrier, and destination",
+                "tags": [
+                    "Rate Cards"
+                ],
+                "operationId": "calculateRate",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "weight"
+                                ],
+                                "properties": {
+                                    "weight": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "example": 5.5
+                                    },
+                                    "destinationPincode": {
+                                        "type": "string",
+                                        "example": "560001"
+                                    },
+                                    "carrier": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Delhivery",
+                                            "DTDC",
+                                            "Xpressbees"
+                                        ]
+                                    },
+                                    "serviceType": {
+                                        "type": "string",
+                                        "enum": [
+                                            "express",
+                                            "standard"
+                                        ],
+                                        "default": "standard"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Calculated rate",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "rate": {
+                                            "type": "number",
+                                            "example": 154.50
+                                        },
+                                        "carrier": {
+                                            "type": "string"
+                                        },
+                                        "serviceType": {
+                                            "type": "string"
+                                        },
+                                        "weight": {
+                                            "type": "number"
+                                        },
+                                        "zone": {
+                                            "type": "string"
+                                        },
+                                        "rateCardName": {
+                                            "type": "string"
+                                        },
+                                        "breakdown": {
+                                            "type": "object",
+                                            "properties": {
+                                                "base": {
+                                                    "type": "number"
+                                                },
+                                                "weightCharge": {
+                                                    "type": "number"
+                                                },
+                                                "zoneCharge": {
+                                                    "type": "number"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "description": "No active rate card found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ratecards/{id}": {
+            "get": {
+                "summary": "Get rate card by ID",
+                "description": "Retrieve rate card details",
+                "tags": [
+                    "Rate Cards"
+                ],
+                "operationId": "getRateCardById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Rate card details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "rateCard": {
+                                            "$ref": "#/components/schemas/RateCard"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update rate card",
+                "description": "Update rate card with validation",
+                "tags": [
+                    "Rate Cards"
+                ],
+                "operationId": "updateRateCard",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "description": "Partial rate card update"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Rate card updated"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/zones": {
+            "get": {
+                "summary": "List all zones",
+                "description": "Get paginated list of zones with search",
+                "tags": [
+                    "Zones"
+                ],
+                "operationId": "listZones",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "maximum": 50
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search by zone name or postal code",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of zones",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "zones": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Zone"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "$ref": "#/components/schemas/Pagination"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a zone",
+                "description": "Create new zone with pincode overlap validation",
+                "tags": [
+                    "Zones"
+                ],
+                "operationId": "createZone",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "postalCodes",
+                                    "serviceability"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 2,
+                                        "example": "Karnataka Zone"
+                                    },
+                                    "postalCodes": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "560",
+                                            "561",
+                                            "562"
+                                        ]
+                                    },
+                                    "serviceability": {
+                                        "type": "object",
+                                        "required": [
+                                            "carriers",
+                                            "serviceTypes"
+                                        ],
+                                        "properties": {
+                                            "carriers": {
+                                                "type": "array",
+                                                "minItems": 1,
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "serviceTypes": {
+                                                "type": "array",
+                                                "minItems": 1,
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "transitTimes": {
+                                        "type": "array"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Zone created"
+                    },
+                    "400": {
+                        "description": "Validation error or postal code overlap",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "overlap": {
+                                        "value": {
+                                            "message": "Postal codes overlap with existing zone: Mumbai Zone"
+                                        }
+                                    },
+                                    "duplicate": {
+                                        "value": {
+                                            "message": "Zone with this name already exists"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/zones/{id}": {
+            "get": {
+                "summary": "Get zone by ID",
+                "description": "Retrieve zone details",
+                "tags": [
+                    "Zones"
+                ],
+                "operationId": "getZoneById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Zone details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "zone": {
+                                            "$ref": "#/components/schemas/Zone"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid zone ID format"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update a zone",
+                "description": "Update zone with validation",
+                "tags": [
+                    "Zones"
+                ],
+                "operationId": "updateZone",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "description": "Partial zone update"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Zone updated"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
         }
-      }
     },
-    "/zones/{id}": {
-      "get": {
-        "summary": "Get zone by ID",
-        "tags": ["Zones"],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Zone details" }
+    "tags": [
+        {
+            "name": "System",
+            "description": "System health and status endpoints"
+        },
+        {
+            "name": "Orders",
+            "description": "Order management with automatic order number generation"
+        },
+        {
+            "name": "Shipments",
+            "description": "Shipment management with intelligent carrier selection algorithm"
+        },
+        {
+            "name": "Analytics",
+            "description": "Dashboard analytics and reporting with MongoDB aggregations"
+        },
+        {
+            "name": "Rate Cards",
+            "description": "Pricing configuration and rate calculation"
+        },
+        {
+            "name": "Zones",
+            "description": "Zone management with pincode mapping"
         }
-      },
-      "patch": {
-        "summary": "Update a zone",
-        "tags": ["Zones"],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Zone updated" }
-        }
-      }
-    }
-  },
-  "tags": [
-    { "name": "System", "description": "System health and status" },
-    { "name": "Orders", "description": "Order management" },
-    { "name": "Shipments", "description": "Shipment and tracking" },
-    { "name": "Analytics", "description": "Dashboard and reporting" },
-    { "name": "Rate Cards", "description": "Pricing configuration" },
-    { "name": "Zones", "description": "Zone management" }
-  ]
+    ]
 }

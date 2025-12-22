@@ -1,5 +1,5 @@
-import { apiClient, ApiError } from '../lib/api/client';
-import { handleApiError, showSuccessToast } from '../lib/api/error-handler';
+import { apiClient, ApiError } from '../../lib/api/client';
+import { handleApiError, showSuccessToast } from '../../lib/api/error-handler';
 import {
     useQuery,
     useMutation,

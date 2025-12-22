@@ -31,59 +31,11 @@ import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 
-// Mock data
-const sellerData = {
-    name: 'Rajesh',
-    walletBalance: 12450,
-    walletLow: true,
-    ordersToShip: 23,
-    inTransit: 45,
-    ndrsToResolve: 3,
-    weekStats: {
-        orders: 156,
-        shipped: 148,
-        delivered: 132,
-        rto: 5,
-        successRate: 96.4
-    }
-};
+// API Hooks
+import { useSellerDashboard } from '@/src/hooks/api/useAnalytics';
+import { useShipments } from '@/src/hooks/api/useShipments';
 
-const pendingActions = [
-    {
-        id: 1,
-        title: '23 Orders waiting to be shipped',
-        subtitle: 'Ship before 6 PM for same-day pickup',
-        urgency: 'high',
-        icon: Package,
-        href: '/seller/orders',
-        color: 'blue'
-    },
-    {
-        id: 2,
-        title: '3 NDRs need your response',
-        subtitle: 'Response deadline: Today, 6 PM',
-        urgency: 'critical',
-        icon: AlertTriangle,
-        href: '/seller/ndr',
-        color: 'rose'
-    },
-    {
-        id: 3,
-        title: 'Low wallet balance detected',
-        subtitle: 'Recharge to continue shipping seamlessy',
-        urgency: 'warning',
-        icon: Wallet,
-        href: '/seller/financials',
-        color: 'amber'
-    }
-];
-
-const recentShipments = [
-    { awb: 'AWB123456789', customer: 'Priya Sharma', status: 'in_transit', city: 'Mumbai', carrier: 'Delhivery' },
-    { awb: 'AWB987654321', customer: 'Amit Patel', status: 'out_for_delivery', city: 'Delhi', carrier: 'Xpressbees' },
-    { awb: 'AWB456789123', customer: 'Sneha Reddy', status: 'delivered', city: 'Bangalore', carrier: 'DTDC' }
-];
-
+// Static fallback data for COD settlements (not yet in API)
 const codSettlements = [
     { date: 'Dec 15', amount: 45230, orders: 52, status: 'scheduled' },
     { date: 'Dec 18', amount: 32100, orders: 38, status: 'processing' },
@@ -94,6 +46,34 @@ export default function SellerDashboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showBanner, setShowBanner] = useState(true);
     const { addToast } = useToast();
+
+    // Fetch live dashboard data with auto-refresh
+    const { data: dashboardData, isLoading, isError, error } = useSellerDashboard();
+
+    // Fetch recent shipments (limit 3, sorted by createdAt desc)
+    const { data: shipmentsData } = useShipments({ limit: 3, sortBy: 'createdAt:desc' });
+
+    // Compute pending actions from live data
+    const pendingActions = dashboardData ? [
+        dashboardData.pendingOrders > 0 && {
+            id: 1,
+            title: `${dashboardData.pendingOrders} Orders waiting to be shipped`,
+            subtitle: 'Ship before 6 PM for same-day pickup',
+            urgency: 'high',
+            icon: Package,
+            href: '/seller/orders',
+            color: 'blue'
+        },
+        (dashboardData.codPending?.count || 0) > 0 && {
+            id: 2,
+            title: 'Low wallet balance detected',
+            subtitle: 'Recharge to continue shipping seamlessly',
+            urgency: 'warning',
+            icon: Wallet,
+            href: '/seller/financials',
+            color: 'amber'
+        }
+    ].filter(Boolean) : [];
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -115,6 +95,48 @@ export default function SellerDashboardPage() {
         addToast(`Tracking ${trackingInput}...`, 'info');
     };
 
+    // Loading skeleton
+    if (isLoading) {
+        return (
+            <div className="space-y-6 pb-10 animate-pulse">
+                <div className="h-20 bg-[var(--bg-secondary)] rounded-xl" />
+                <div className="h-64 bg-[var(--bg-secondary)] rounded-xl" />
+                <div className="grid gap-4 md:grid-cols-4">
+                    {[1, 2, 3, 4].map((i) => <div key={i} className="h-40 bg-[var(--bg-secondary)] rounded-xl" />)}
+                </div>
+                <div className="h-96 bg-[var(--bg-secondary)] rounded-xl" />
+            </div>
+        );
+    }
+
+    // Error state
+    if (isError) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[600px] space-y-4">
+                <AlertTriangle className="h-16 w-16 text-rose-500" />
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Failed to load dashboard</h2>
+                    <p className="text-[var(--text-secondary)] mb-4">
+                        {(error as any)?.message || 'An error occurred while fetching dashboard data'}
+                    </p>
+                    <Button onClick={() => window.location.reload()} className="bg-[#2525FF] hover:bg-[#1e1ecc]">
+                        <RefreshCcw className="h-4 w-4 mr-2" />
+                        Retry
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    // Extract data with fallbacks
+    const sellerName = 'Seller'; // TODO: Get from auth context
+    const totalOrders = dashboardData?.totalOrders || 0;
+    const pendingOrders = dashboardData?.pendingOrders || 0;
+    const deliveredOrders = dashboardData?.deliveredOrders || 0;
+    const totalRevenue = dashboardData?.totalRevenue || 0;
+    const successRate = dashboardData?.successRate || 0;
+    const recentShipments = shipmentsData?.shipments || [];
+
     return (
         <div className="space-y-6 pb-10">
             {/* Header Area */}
@@ -125,7 +147,7 @@ export default function SellerDashboardPage() {
                         {currentTime.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
                     </div>
                     <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-                        {getGreeting()}, {sellerData.name} 👋
+                        {getGreeting()}, {sellerName} 👋
                     </h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -187,8 +209,9 @@ export default function SellerDashboardPage() {
                             Ready to ship your orders?
                         </h2>
                         <p className="text-[var(--text-secondary)] text-lg leading-relaxed">
-                            You have <span className="font-semibold text-[var(--text-primary)]">{sellerData.ordersToShip} orders</span> pending.
-                            Shipping them before 6 PM can improve your <span className="text-[var(--success)] font-medium">delivery speed by 15%</span>.
+                            You have <span className="font-semibold text-[var(--text-primary)]">{pendingOrders} orders</span> pending.
+                            {pendingOrders > 0 && ' Shipping them before 6 PM can improve your '}
+                            {pendingOrders > 0 && <span className="text-[var(--success)] font-medium">delivery speed by 15%</span>}.
                         </p>
 
                         <div className="mt-6 flex flex-wrap gap-3">
@@ -206,8 +229,8 @@ export default function SellerDashboardPage() {
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                 </div>
                             </div>
-                            <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">96.4%</p>
-                            <p className="text-xs text-[var(--success)] mt-1 font-medium">+2.1% this week</p>
+                            <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">{successRate.toFixed(1)}%</p>
+                            <p className="text-xs text-[var(--success)] mt-1 font-medium">This week</p>
                         </div>
 
                         <div className="flex-1 p-5 rounded-[var(--radius-xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] hover:border-[var(--border-strong)] transition-all group">
@@ -242,7 +265,7 @@ export default function SellerDashboardPage() {
                         </div>
                         <p className="text-sm font-medium text-[var(--text-muted)] mb-1">Wallet Balance</p>
                         <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">
-                            {formatCurrency(sellerData.walletBalance)}
+                            {formatCurrency(totalRevenue)}
                         </p>
                         <div className="flex items-center text-sm font-medium text-[#2525FF]">
                             <Plus className="h-4 w-4 mr-1" />
@@ -260,7 +283,7 @@ export default function SellerDashboardPage() {
                             </div>
                         </div>
                         <p className="text-sm font-medium text-[var(--text-muted)] mb-1">Orders to Ship</p>
-                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{sellerData.ordersToShip}</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{pendingOrders}</p>
                         <div className="flex items-center text-sm font-medium text-emerald-600">
                             Ship now
                             <ArrowUpRight className="h-4 w-4 ml-1 opacity-100 sm:opacity-0 sm:-translate-x-2 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 transition-all" />
@@ -277,7 +300,7 @@ export default function SellerDashboardPage() {
                             </div>
                         </div>
                         <p className="text-sm font-medium text-[var(--text-muted)] mb-1">In Transit</p>
-                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{sellerData.inTransit}</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{totalOrders - deliveredOrders - pendingOrders}</p>
                         <div className="flex items-center text-sm font-medium text-violet-600">
                             Track all
                             <ArrowUpRight className="h-4 w-4 ml-1 opacity-100 sm:opacity-0 sm:-translate-x-2 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 transition-all" />
@@ -292,14 +315,14 @@ export default function SellerDashboardPage() {
                             <div className="h-10 w-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform">
                                 <AlertTriangle className="h-5 w-5" />
                             </div>
-                            {sellerData.ndrsToResolve > 0 && (
+                            {0 > 0 && (
                                 <Badge variant="destructive" className="h-6 w-auto px-2">
-                                    {sellerData.ndrsToResolve} Action{sellerData.ndrsToResolve > 1 ? 's' : ''}
+                                    0 Actions
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm font-medium text-[var(--text-muted)] mb-1">Failed Deliveries</p>
-                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">{sellerData.ndrsToResolve}</p>
+                        <p className="text-2xl font-bold text-[var(--text-primary)] mb-3 tracking-tight">0</p>
                         <div className="flex items-center text-sm font-medium text-rose-600">
                             Resolve now
                             <ArrowUpRight className="h-4 w-4 ml-1 opacity-100 sm:opacity-0 sm:-translate-x-2 sm:group-hover:translate-x-0 sm:group-hover:opacity-100 transition-all" />
@@ -397,19 +420,19 @@ export default function SellerDashboardPage() {
                     <div className="p-6">
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div className="text-center p-4 bg-[var(--bg-secondary)] rounded-xl hover:bg-[var(--bg-tertiary)] transition-colors">
-                                <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{sellerData.weekStats.orders}</p>
+                                <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{totalOrders}</p>
                                 <p className="text-sm font-medium text-[var(--text-muted)] mt-1">Total Orders</p>
                             </div>
                             <div className="text-center p-4 bg-blue-50/50 rounded-xl hover:bg-blue-50 transition-colors">
-                                <p className="text-3xl font-bold text-[#2525FF] tracking-tight">{sellerData.weekStats.shipped}</p>
+                                <p className="text-3xl font-bold text-[#2525FF] tracking-tight">{totalOrders - pendingOrders}</p>
                                 <p className="text-sm font-medium text-[var(--text-muted)] mt-1">Shipped</p>
                             </div>
                             <div className="text-center p-4 bg-emerald-50/50 rounded-xl hover:bg-emerald-50 transition-colors">
-                                <p className="text-3xl font-bold text-emerald-600 tracking-tight">{sellerData.weekStats.delivered}</p>
+                                <p className="text-3xl font-bold text-emerald-600 tracking-tight">{deliveredOrders}</p>
                                 <p className="text-sm font-medium text-[var(--text-muted)] mt-1">Delivered</p>
                             </div>
                             <div className="text-center p-4 bg-rose-50/50 rounded-xl hover:bg-rose-50 transition-colors">
-                                <p className="text-3xl font-bold text-rose-600 tracking-tight">{sellerData.weekStats.rto}</p>
+                                <p className="text-3xl font-bold text-rose-600 tracking-tight">0</p>
                                 <p className="text-sm font-medium text-[var(--text-muted)] mt-1">RTO</p>
                             </div>
                         </div>
@@ -417,12 +440,12 @@ export default function SellerDashboardPage() {
                         <div className="space-y-2 bg-[var(--bg-secondary)] p-4 rounded-xl">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium text-gray-600">Overall Success Rate</span>
-                                <span className="font-bold text-[var(--text-primary)]">{sellerData.weekStats.successRate}%</span>
+                                <span className="font-bold text-[var(--text-primary)]">{successRate.toFixed(1)}%</span>
                             </div>
                             <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-1000 ease-out"
-                                    style={{ width: `${sellerData.weekStats.successRate}%` }}
+                                    style={{ width: `${successRate}%` }}
                                 />
                             </div>
                         </div>
@@ -460,34 +483,37 @@ export default function SellerDashboardPage() {
                         </div>
 
                         <div className="space-y-3">
-                            {recentShipments.map((shipment) => (
-                                <div key={shipment.awb} className="group flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg hover:bg-[var(--bg-primary)] hover:shadow-md transition-all cursor-pointer border border-transparent hover:border-[var(--border-subtle)]">
+                            {recentShipments.length > 0 ? recentShipments.map((shipment) => (
+                                <div key={shipment._id} className="group flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg hover:bg-[var(--bg-primary)] hover:shadow-md transition-all cursor-pointer border border-transparent hover:border-[var(--border-subtle)]">
                                     <div className="flex items-center gap-3">
                                         <div className={cn(
                                             "h-2 w-2 rounded-full",
-                                            shipment.status === 'delivered' ? "bg-emerald-500" :
-                                                shipment.status === 'out_for_delivery' ? "bg-amber-500" : "bg-blue-500"
+                                            shipment.currentStatus === 'delivered' ? "bg-emerald-500" :
+                                                shipment.currentStatus === 'out_for_delivery' ? "bg-amber-500" : "bg-blue-500"
                                         )} />
                                         <div className="min-w-0 flex-1 mr-2">
-                                            <p className="font-semibold text-[var(--text-primary)] text-sm group-hover:text-[#2525FF] transition-colors truncate">{shipment.awb}</p>
-                                            <p className="text-xs text-[var(--text-muted)] truncate">{shipment.customer} • {shipment.carrier}</p>
+                                            <p className="font-semibold text-[var(--text-primary)] text-sm group-hover:text-[#2525FF] transition-colors truncate">{shipment.trackingNumber}</p>
+                                            <p className="text-xs text-[var(--text-muted)] truncate">{shipment.carrier}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <Badge className={cn(
                                             "px-2 py-0.5 rounded-full text-xs font-medium",
                                             "bg-[var(--bg-primary)] border border-[var(--border-default)] transition-colors",
-                                            shipment.status === 'delivered' ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
-                                                shipment.status === 'out_for_delivery' ? "text-amber-700 bg-amber-50 border-amber-100" :
+                                            shipment.currentStatus === 'delivered' ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
+                                                shipment.currentStatus === 'out_for_delivery' ? "text-amber-700 bg-amber-50 border-amber-100" :
                                                     "text-blue-700 bg-blue-50 border-blue-100"
                                         )}>
-                                            {shipment.status === 'delivered' && 'Delivered'}
-                                            {shipment.status === 'out_for_delivery' && 'Out for Delivery'}
-                                            {shipment.status === 'in_transit' && 'In Transit'}
+                                            {shipment.currentStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                         </Badge>
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className="text-center py-8 text-[var(--text-muted)]">
+                                    <p>No recent shipments</p>
+                                    <p className="text-xs mt-1">Your recent shipments will appear here</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -143,15 +143,17 @@ export const getSellerDashboard = async (
  * Get admin dashboard analytics (multi-company)
  * @route GET /api/v1/analytics/dashboard/admin
  */
-export const getAdminDashboard = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getAdminDashboard = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res, { requireCompany: false });
+        if (!auth) return;
 
         // Admin role check
-        if (req.user.role !== 'admin') {
+        if (req.user!.role !== 'admin') {
             res.status(403).json({ message: 'Admin access required' });
             return;
         }
@@ -309,15 +311,17 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response, next: N
  * Get order trends
  * @route GET /api/v1/analytics/orders
  */
-export const getOrderTrends = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getOrderTrends = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res, { requireCompany: false });
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        const isAdmin = req.user.role === 'admin';
+        const companyId = auth.companyId;
+        const isAdmin = req.user!.role === 'admin';
 
         // Date filters
         const days = parseInt(req.query.days as string) || 30;
@@ -384,15 +388,17 @@ export const getOrderTrends = async (req: AuthRequest, res: Response, next: Next
  * Get shipment/delivery performance metrics
  * @route GET /api/v1/analytics/shipments
  */
-export const getShipmentPerformance = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getShipmentPerformance = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res, { requireCompany: false });
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        const isAdmin = req.user.role === 'admin';
+        const companyId = auth.companyId;
+        const isAdmin = req.user!.role === 'admin';
 
         // Date filters
         const days = parseInt(req.query.days as string) || 30;
