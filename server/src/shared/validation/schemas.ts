@@ -1,0 +1,301 @@
+/**
+ * Shared Zod validation schemas for use across multiple controllers
+ * Centralizes common validation patterns to ensure consistency
+ */
+
+import { z } from 'zod';
+
+// ============================================================================
+// Address Schemas
+// ============================================================================
+
+export const addressSchema = z.object({
+    line1: z.string().min(3, 'Address line 1 must be at least 3 characters'),
+    line2: z.string().optional(),
+    city: z.string().min(2, 'City must be at least 2 characters'),
+    state: z.string().min(2, 'State must be at least 2 characters'),
+    country: z.string().min(2).default('India'),
+    postalCode: z.string().min(5).max(10, 'Invalid postal code'),
+});
+
+export type Address = z.infer<typeof addressSchema>;
+
+// ============================================================================
+// Customer/Contact Schemas
+// ============================================================================
+
+export const customerInfoSchema = z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Invalid email format').optional(),
+    phone: z.string().min(10, 'Phone must be at least 10 digits'),
+    address: addressSchema,
+});
+
+export type CustomerInfo = z.infer<typeof customerInfoSchema>;
+
+export const contactInfoSchema = z.object({
+    name: z.string().min(2),
+    phone: z.string().min(10),
+    email: z.string().email().optional(),
+    alternatePhone: z.string().optional(),
+});
+
+export type ContactInfo = z.infer<typeof contactInfoSchema>;
+
+// ============================================================================
+// Product Schemas
+// ============================================================================
+
+export const productSchema = z.object({
+    name: z.string().min(1, 'Product name is required'),
+    sku: z.string().optional(),
+    quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+    price: z.number().min(0, 'Price cannot be negative'),
+    weight: z.number().min(0).optional(),
+    dimensions: z.object({
+        length: z.number().min(0).optional(),
+        width: z.number().min(0).optional(),
+        height: z.number().min(0).optional(),
+    }).optional(),
+});
+
+export type Product = z.infer<typeof productSchema>;
+
+// ============================================================================
+// Order Schemas
+// ============================================================================
+
+export const orderStatusSchema = z.enum([
+    'pending',
+    'ready_to_ship',
+    'shipped',
+    'delivered',
+    'cancelled',
+    'rto',
+]);
+
+export type OrderStatus = z.infer<typeof orderStatusSchema>;
+
+export const paymentStatusSchema = z.enum([
+    'pending',
+    'paid',
+    'failed',
+    'refunded',
+]);
+
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+
+export const paymentMethodSchema = z.enum(['cod', 'prepaid']);
+
+export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
+
+export const createOrderSchema = z.object({
+    customerInfo: customerInfoSchema,
+    products: z.array(productSchema).min(1, 'At least one product is required'),
+    paymentMethod: paymentMethodSchema.optional(),
+    warehouseId: z.string().optional(),
+    notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+    tags: z.array(z.string()).optional(),
+});
+
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
+export const updateOrderSchema = z.object({
+    customerInfo: customerInfoSchema.partial().optional(),
+    products: z.array(productSchema).optional(),
+    currentStatus: orderStatusSchema.optional(),
+    paymentStatus: paymentStatusSchema.optional(),
+    paymentMethod: paymentMethodSchema.optional(),
+    notes: z.string().max(1000).optional(),
+    tags: z.array(z.string()).optional(),
+});
+
+export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
+
+// ============================================================================
+// Shipment Schemas
+// ============================================================================
+
+export const shipmentStatusSchema = z.enum([
+    'created',
+    'picked',
+    'in_transit',
+    'out_for_delivery',
+    'delivered',
+    'ndr',
+    'rto',
+    'cancelled',
+]);
+
+export type ShipmentStatus = z.infer<typeof shipmentStatusSchema>;
+
+export const serviceTypeSchema = z.enum(['express', 'standard']);
+
+export type ServiceType = z.infer<typeof serviceTypeSchema>;
+
+export const createShipmentSchema = z.object({
+    orderId: z.string().min(1, 'Order ID is required'),
+    serviceType: serviceTypeSchema.default('standard'),
+    carrierOverride: z.string().optional(),
+    warehouseId: z.string().optional(),
+    instructions: z.string().max(500, 'Instructions cannot exceed 500 characters').optional(),
+});
+
+export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;
+
+export const updateShipmentStatusSchema = z.object({
+    status: shipmentStatusSchema,
+    location: z.string().max(200).optional(),
+    description: z.string().max(500).optional(),
+});
+
+export type UpdateShipmentStatusInput = z.infer<typeof updateShipmentStatusSchema>;
+
+// ============================================================================
+// RateCard Schemas
+// ============================================================================
+
+export const baseRateSchema = z.object({
+    carrier: z.string().min(1),
+    serviceType: z.string().min(1),
+    basePrice: z.number().min(0),
+    minWeight: z.number().min(0),
+    maxWeight: z.number().min(0),
+});
+
+export const weightRuleSchema = z.object({
+    minWeight: z.number().min(0),
+    maxWeight: z.number().min(0),
+    pricePerKg: z.number().min(0),
+    carrier: z.string().optional(),
+    serviceType: z.string().optional(),
+});
+
+export const zoneRuleSchema = z.object({
+    zoneId: z.string(),
+    carrier: z.string().min(1),
+    serviceType: z.string().min(1),
+    additionalPrice: z.number(),
+    transitDays: z.number().int().min(0).optional(),
+});
+
+export const rateCardStatusSchema = z.enum(['draft', 'active', 'inactive', 'expired']);
+
+export const createRateCardSchema = z.object({
+    name: z.string().min(2, 'Rate card name is required'),
+    baseRates: z.array(baseRateSchema).min(1, 'At least one base rate is required'),
+    weightRules: z.array(weightRuleSchema).optional(),
+    zoneRules: z.array(zoneRuleSchema).optional(),
+    effectiveDates: z.object({
+        startDate: z.string().transform(str => new Date(str)),
+        endDate: z.string().transform(str => new Date(str)).optional(),
+    }),
+    status: rateCardStatusSchema.default('draft'),
+});
+
+export type CreateRateCardInput = z.infer<typeof createRateCardSchema>;
+
+export const updateRateCardSchema = createRateCardSchema.partial();
+
+export const calculateRateSchema = z.object({
+    weight: z.number().min(0, 'Weight must be positive'),
+    zoneId: z.string().optional(),
+    originPincode: z.string().optional(),
+    destinationPincode: z.string().optional(),
+    carrier: z.string().optional(),
+    serviceType: serviceTypeSchema.default('standard'),
+});
+
+export type CalculateRateInput = z.infer<typeof calculateRateSchema>;
+
+// ============================================================================
+// Zone Schemas
+// ============================================================================
+
+export const transitTimeSchema = z.object({
+    carrier: z.string().min(1),
+    serviceType: z.string().min(1),
+    minDays: z.number().int().min(0),
+    maxDays: z.number().int().min(0),
+});
+
+export const createZoneSchema = z.object({
+    name: z.string().min(2, 'Zone name is required'),
+    postalCodes: z.array(z.string()).min(1, 'At least one postal code is required'),
+    serviceability: z.object({
+        carriers: z.array(z.string()).min(1, 'At least one carrier required'),
+        serviceTypes: z.array(z.string()).min(1, 'At least one service type required'),
+    }),
+    transitTimes: z.array(transitTimeSchema).optional(),
+});
+
+export type CreateZoneInput = z.infer<typeof createZoneSchema>;
+
+export const updateZoneSchema = createZoneSchema.partial();
+
+export type UpdateZoneInput = z.infer<typeof updateZoneSchema>;
+
+// ============================================================================
+// Query Schemas (for filtering/searching)
+// ============================================================================
+
+export const paginationQuerySchema = z.object({
+    page: z.string().optional().transform(val => parseInt(val || '1', 10)),
+    limit: z.string().optional().transform(val => parseInt(val || '20', 10)),
+});
+
+export const dateRangeQuerySchema = z.object({
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+});
+
+export const searchQuerySchema = z.object({
+    search: z.string().optional(),
+});
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Validate weight slabs don't overlap
+ */
+export const validateWeightSlabs = (
+    rules: Array<{ minWeight: number; maxWeight: number }>
+): boolean => {
+    if (rules.length <= 1) return true;
+
+    const sorted = [...rules].sort((a, b) => a.minWeight - b.minWeight);
+    for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
+            return false;
+        }
+    }
+    return true;
+};
+
+/**
+ * Valid order status transitions
+ */
+export const ORDER_STATUS_TRANSITIONS: Record<string, string[]> = {
+    pending: ['ready_to_ship', 'cancelled'],
+    ready_to_ship: ['shipped', 'cancelled'],
+    shipped: ['delivered', 'rto'],
+    delivered: [],
+    cancelled: [],
+    rto: [],
+};
+
+/**
+ * Valid shipment status transitions
+ */
+export const SHIPMENT_STATUS_TRANSITIONS: Record<string, string[]> = {
+    created: ['picked', 'cancelled'],
+    picked: ['in_transit', 'rto'],
+    in_transit: ['out_for_delivery', 'rto', 'ndr'],
+    out_for_delivery: ['delivered', 'ndr', 'rto'],
+    delivered: [],
+    ndr: ['out_for_delivery', 'rto'],
+    rto: [],
+    cancelled: [],
+};

@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { z } from 'zod';
-import Shipment, { IShipment } from '../../../infrastructure/database/mongoose/models/Shipment';
+import Shipment from '../../../infrastructure/database/mongoose/models/Shipment';
 import Order from '../../../infrastructure/database/mongoose/models/Order';
 import Warehouse from '../../../infrastructure/database/mongoose/models/Warehouse';
 import { AuthRequest } from '../middleware/auth';
@@ -8,67 +8,51 @@ import logger from '../../../shared/logger/winston.logger';
 import { createAuditLog } from '../middleware/auditLog';
 import mongoose from 'mongoose';
 import { selectBestCarrier, CarrierSelectionResult } from '../../../lib/carrier-selection';
+import {
+    guardChecks,
+    validateObjectId,
+    parsePagination,
+    buildPaginationResponse,
+    generateTrackingNumber,
+    validateStatusTransition,
+} from '../../../shared/helpers/controller.helpers';
+import {
+    createShipmentSchema,
+    updateShipmentStatusSchema,
+    SHIPMENT_STATUS_TRANSITIONS,
+} from '../../../shared/validation/schemas';
 
-// AWB/Tracking number generator: SHP-YYYYMMDD-XXXX
-const generateTrackingNumber = (): string => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const random = Math.floor(1000 + Math.random() * 9000);
-    return `SHP-${year}${month}${day}-${random}`;
-};
-
-// Validation schemas
-const createShipmentSchema = z.object({
-    orderId: z.string().min(1),
-    serviceType: z.enum(['express', 'standard']).default('standard'),
-    carrierOverride: z.string().optional(),
-    warehouseId: z.string().optional(),
-    instructions: z.string().optional(),
-});
-
-const updateStatusSchema = z.object({
-    status: z.enum(['created', 'picked', 'in_transit', 'out_for_delivery', 'delivered', 'rto', 'ndr']),
-    location: z.string().optional(),
-    description: z.string().optional(),
-});
-
-// Valid status transitions
-const validStatusTransitions: Record<string, string[]> = {
-    created: ['picked', 'cancelled'],
-    picked: ['in_transit', 'rto'],
-    in_transit: ['out_for_delivery', 'rto', 'ndr'],
-    out_for_delivery: ['delivered', 'ndr', 'rto'],
-    delivered: [],
-    ndr: ['out_for_delivery', 'rto'],
-    rto: [],
-    cancelled: [],
+/**
+ * Generate unique tracking number with collision retry
+ */
+const getUniqueTrackingNumber = async (maxAttempts = 10): Promise<string | null> => {
+    for (let i = 0; i < maxAttempts; i++) {
+        const trackingNumber = generateTrackingNumber();
+        const exists = await Shipment.exists({ trackingNumber });
+        if (!exists) return trackingNumber;
+    }
+    return null;
 };
 
 /**
  * Create a new shipment from an order
  * @route POST /api/v1/shipments
  */
-export const createShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createShipment = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const validatedData = createShipmentSchema.parse(req.body);
+        const data = createShipmentSchema.parse(req.body);
 
         // Get the order
         const order = await Order.findOne({
-            _id: validatedData.orderId,
-            companyId,
+            _id: data.orderId,
+            companyId: auth.companyId,
             isDeleted: false,
         });
 
@@ -85,7 +69,7 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
             return;
         }
 
-        // Check for existing shipment
+        // Check for existing active shipment
         const existingShipment = await Shipment.findOne({
             orderId: order._id,
             isDeleted: false,
@@ -101,29 +85,29 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
             return;
         }
 
-        // Get warehouse
-        const warehouseId = validatedData.warehouseId || order.warehouseId;
-        let warehouse = null;
-        let originPincode = '110001'; // Default to Delhi
+        // Get warehouse for origin pincode
+        const warehouseId = data.warehouseId || order.warehouseId;
+        let originPincode = '110001';
 
         if (warehouseId) {
-            warehouse = await Warehouse.findOne({
+            const warehouse = await Warehouse.findOne({
                 _id: warehouseId,
-                companyId,
+                companyId: auth.companyId,
                 isDeleted: false,
             });
-            if (warehouse) {
-                originPincode = warehouse.address?.postalCode || originPincode;
+            if (warehouse?.address?.postalCode) {
+                originPincode = warehouse.address.postalCode;
             }
         }
 
         // Calculate total weight
-        const totalWeight = order.products.reduce((sum, product) => {
-            return sum + (product.weight || 0.5) * product.quantity;
-        }, 0);
+        const totalWeight = order.products.reduce(
+            (sum, p) => sum + (p.weight || 0.5) * p.quantity,
+            0
+        );
 
         // Run carrier selection algorithm
-        const serviceType = validatedData.serviceType as 'express' | 'standard';
+        const serviceType = data.serviceType as 'express' | 'standard';
         const carrierResult: CarrierSelectionResult = selectBestCarrier(
             totalWeight,
             originPincode,
@@ -132,20 +116,14 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
         );
 
         // Allow carrier override
-        const selectedCarrier = validatedData.carrierOverride || carrierResult.selectedCarrier;
+        const selectedCarrier = data.carrierOverride || carrierResult.selectedCarrier;
         const selectedOption = carrierResult.alternativeOptions.find(
             opt => opt.carrier.toLowerCase() === selectedCarrier.toLowerCase()
         ) || carrierResult.alternativeOptions[0];
 
         // Generate unique tracking number
-        let trackingNumber = generateTrackingNumber();
-        let attempts = 0;
-        while (await Shipment.findOne({ trackingNumber }) && attempts < 10) {
-            trackingNumber = generateTrackingNumber();
-            attempts++;
-        }
-
-        if (attempts >= 10) {
+        const trackingNumber = await getUniqueTrackingNumber();
+        if (!trackingNumber) {
             res.status(500).json({ message: 'Failed to generate unique tracking number' });
             return;
         }
@@ -158,27 +136,23 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
         const shipment = new Shipment({
             trackingNumber,
             orderId: order._id,
-            companyId,
+            companyId: auth.companyId,
             carrier: selectedOption.carrier,
             serviceType,
             packageDetails: {
                 weight: totalWeight,
-                dimensions: { length: 20, width: 15, height: 10 }, // Default dimensions
+                dimensions: { length: 20, width: 15, height: 10 },
                 packageCount: 1,
                 packageType: 'box',
                 declaredValue: order.totals.total,
             },
-            pickupDetails: warehouse ? {
-                warehouseId: warehouse._id,
-                contactPerson: warehouse.contactInfo?.name || 'N/A',
-                contactPhone: warehouse.contactInfo?.phone || 'N/A',
-            } : undefined,
+            pickupDetails: warehouseId ? { warehouseId } : undefined,
             deliveryDetails: {
                 recipientName: order.customerInfo.name,
                 recipientPhone: order.customerInfo.phone,
                 recipientEmail: order.customerInfo.email,
                 address: order.customerInfo.address,
-                instructions: validatedData.instructions,
+                instructions: data.instructions,
             },
             paymentDetails: {
                 type: order.paymentMethod || 'prepaid',
@@ -192,13 +166,13 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
 
         await shipment.save();
 
-        // Update order status
+        // Update order
         order.currentStatus = 'shipped';
         order.statusHistory.push({
             status: 'shipped',
             timestamp: new Date(),
-            comment: `Shipment created with ${selectedOption.carrier}`,
-            updatedBy: new mongoose.Types.ObjectId(req.user._id),
+            comment: `Shipment created via ${selectedOption.carrier}`,
+            updatedBy: new mongoose.Types.ObjectId(auth.userId),
         });
         order.shippingDetails = {
             provider: selectedOption.carrier,
@@ -212,12 +186,12 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
         await order.save();
 
         await createAuditLog(
-            req.user._id,
-            companyId,
+            auth.userId,
+            auth.companyId,
             'create',
             'shipment',
             String(shipment._id),
-            { message: 'Shipment created', trackingNumber, carrier: selectedOption.carrier },
+            { trackingNumber, carrier: selectedOption.carrier },
             req
         );
 
@@ -232,11 +206,11 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
             },
         });
     } catch (error) {
-        logger.error('Error creating shipment:', error);
         if (error instanceof z.ZodError) {
             res.status(400).json({ message: 'Validation error', errors: error.errors });
             return;
         }
+        logger.error('Error creating shipment:', error);
         next(error);
     }
 };
@@ -245,66 +219,41 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
  * Get all shipments for the current user's company
  * @route GET /api/v1/shipments
  */
-export const getShipments = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getShipments = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
+        const { page, limit, skip } = parsePagination(req.query as any);
 
-        // Pagination
-        const page = Math.max(1, parseInt(req.query.page as string) || 1);
-        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
-        const skip = (page - 1) * limit;
-
-        // Build filter
-        const filter: any = {
-            companyId,
+        const filter: Record<string, any> = {
+            companyId: auth.companyId,
             isDeleted: false,
         };
 
-        // Status filter
-        if (req.query.status) {
-            filter.currentStatus = req.query.status;
-        }
+        if (req.query.status) filter.currentStatus = req.query.status;
+        if (req.query.carrier) filter.carrier = { $regex: req.query.carrier, $options: 'i' };
+        if (req.query.pincode) filter['deliveryDetails.address.postalCode'] = req.query.pincode;
 
-        // Carrier filter
-        if (req.query.carrier) {
-            filter.carrier = { $regex: req.query.carrier, $options: 'i' };
-        }
-
-        // Pincode filter
-        if (req.query.pincode) {
-            filter['deliveryDetails.address.postalCode'] = req.query.pincode;
-        }
-
-        // Date range filter
         if (req.query.startDate || req.query.endDate) {
             filter.createdAt = {};
-            if (req.query.startDate) {
-                filter.createdAt.$gte = new Date(req.query.startDate as string);
-            }
-            if (req.query.endDate) {
-                filter.createdAt.$lte = new Date(req.query.endDate as string);
-            }
+            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate as string);
+            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate as string);
         }
 
-        // Search filter
         if (req.query.search) {
+            const searchRegex = { $regex: req.query.search, $options: 'i' };
             filter.$or = [
-                { trackingNumber: { $regex: req.query.search, $options: 'i' } },
-                { 'deliveryDetails.recipientName': { $regex: req.query.search, $options: 'i' } },
-                { 'deliveryDetails.recipientPhone': { $regex: req.query.search, $options: 'i' } },
+                { trackingNumber: searchRegex },
+                { 'deliveryDetails.recipientName': searchRegex },
+                { 'deliveryDetails.recipientPhone': searchRegex },
             ];
         }
 
-        // Get shipments with pagination
         const [shipments, total] = await Promise.all([
             Shipment.find(filter)
                 .populate('orderId', 'orderNumber customerInfo totals')
@@ -317,12 +266,7 @@ export const getShipments = async (req: AuthRequest, res: Response, next: NextFu
 
         res.json({
             shipments,
-            pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit),
-            },
+            pagination: buildPaginationResponse(total, page, limit),
         });
     } catch (error) {
         logger.error('Error fetching shipments:', error);
@@ -334,28 +278,21 @@ export const getShipments = async (req: AuthRequest, res: Response, next: NextFu
  * Get a single shipment by ID
  * @route GET /api/v1/shipments/:shipmentId
  */
-export const getShipmentById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getShipmentById = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const shipmentId = req.params.shipmentId;
-        if (!mongoose.Types.ObjectId.isValid(shipmentId)) {
-            res.status(400).json({ message: 'Invalid shipment ID format' });
-            return;
-        }
+        const { shipmentId } = req.params;
+        if (!validateObjectId(shipmentId, res, 'shipment')) return;
 
         const shipment = await Shipment.findOne({
             _id: shipmentId,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         })
             .populate('orderId', 'orderNumber customerInfo products totals currentStatus')
@@ -377,31 +314,29 @@ export const getShipmentById = async (req: AuthRequest, res: Response, next: Nex
  * Track a shipment by tracking number
  * @route GET /api/v1/shipments/tracking/:trackingNumber
  */
-export const trackShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const trackShipment = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const trackingNumber = req.params.trackingNumber;
+        const { trackingNumber } = req.params;
 
         // Validate AWB format
         const awbRegex = /^SHP-\d{8}-\d{4}$/;
         if (!awbRegex.test(trackingNumber)) {
-            res.status(400).json({ message: 'Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX' });
+            res.status(400).json({
+                message: 'Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX',
+            });
             return;
         }
 
         const shipment = await Shipment.findOne({
             trackingNumber,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         })
             .populate('orderId', 'orderNumber customerInfo')
@@ -412,7 +347,7 @@ export const trackShipment = async (req: AuthRequest, res: Response, next: NextF
             return;
         }
 
-        // Sort status history by timestamp ascending (oldest first)
+        // Sort timeline chronologically
         const timeline = [...shipment.statusHistory].sort(
             (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
@@ -441,30 +376,23 @@ export const trackShipment = async (req: AuthRequest, res: Response, next: NextF
  * Update shipment status
  * @route PATCH /api/v1/shipments/:shipmentId/status
  */
-export const updateShipmentStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateShipmentStatus = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
+        const { shipmentId } = req.params;
+        if (!validateObjectId(shipmentId, res, 'shipment')) return;
 
-        const shipmentId = req.params.shipmentId;
-        if (!mongoose.Types.ObjectId.isValid(shipmentId)) {
-            res.status(400).json({ message: 'Invalid shipment ID format' });
-            return;
-        }
-
-        const validatedData = updateStatusSchema.parse(req.body);
+        const data = updateShipmentStatusSchema.parse(req.body);
 
         const shipment = await Shipment.findOne({
             _id: shipmentId,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         });
 
@@ -473,31 +401,34 @@ export const updateShipmentStatus = async (req: AuthRequest, res: Response, next
             return;
         }
 
-        // Validate status transition
-        const allowedTransitions = validStatusTransitions[shipment.currentStatus] || [];
-        if (!allowedTransitions.includes(validatedData.status)) {
+        // Validate transition
+        const { valid, allowedTransitions } = validateStatusTransition(
+            shipment.currentStatus,
+            data.status,
+            SHIPMENT_STATUS_TRANSITIONS
+        );
+
+        if (!valid) {
             res.status(400).json({
-                message: `Invalid status transition from '${shipment.currentStatus}' to '${validatedData.status}'`,
+                message: `Invalid status transition from '${shipment.currentStatus}' to '${data.status}'`,
                 allowedTransitions,
             });
             return;
         }
 
-        // Add to status history
+        // Update status
         shipment.statusHistory.push({
-            status: validatedData.status,
+            status: data.status,
             timestamp: new Date(),
-            location: validatedData.location,
-            description: validatedData.description,
-            updatedBy: new mongoose.Types.ObjectId(req.user._id),
+            location: data.location,
+            description: data.description,
+            updatedBy: new mongoose.Types.ObjectId(auth.userId),
         });
-        shipment.currentStatus = validatedData.status;
+        shipment.currentStatus = data.status;
 
-        // Handle special status updates
-        if (validatedData.status === 'delivered') {
+        // Handle special statuses
+        if (data.status === 'delivered') {
             shipment.actualDelivery = new Date();
-
-            // Update order status
             await Order.findByIdAndUpdate(shipment.orderId, {
                 currentStatus: 'delivered',
                 $push: {
@@ -505,12 +436,11 @@ export const updateShipmentStatus = async (req: AuthRequest, res: Response, next
                         status: 'delivered',
                         timestamp: new Date(),
                         comment: `Delivered via ${shipment.carrier}`,
-                        updatedBy: new mongoose.Types.ObjectId(req.user._id),
+                        updatedBy: new mongoose.Types.ObjectId(auth.userId),
                     },
                 },
             });
-        } else if (validatedData.status === 'rto') {
-            // Update order status
+        } else if (data.status === 'rto') {
             await Order.findByIdAndUpdate(shipment.orderId, {
                 currentStatus: 'rto',
                 $push: {
@@ -518,42 +448,29 @@ export const updateShipmentStatus = async (req: AuthRequest, res: Response, next
                         status: 'rto',
                         timestamp: new Date(),
                         comment: 'Return to origin initiated',
-                        updatedBy: new mongoose.Types.ObjectId(req.user._id),
+                        updatedBy: new mongoose.Types.ObjectId(auth.userId),
                     },
                 },
             });
-        } else if (validatedData.status === 'ndr') {
-            // Set NDR details
+        } else if (data.status === 'ndr') {
             shipment.ndrDetails = {
                 ndrDate: new Date(),
                 ndrStatus: 'pending',
                 ndrAttempts: (shipment.ndrDetails?.ndrAttempts || 0) + 1,
-                ndrReason: validatedData.description,
+                ndrReason: data.description,
             };
         }
 
         await shipment.save();
+        await createAuditLog(auth.userId, auth.companyId, 'update', 'shipment', shipmentId, { newStatus: data.status }, req);
 
-        await createAuditLog(
-            req.user._id,
-            companyId,
-            'update',
-            'shipment',
-            shipmentId,
-            { message: 'Shipment status updated', newStatus: validatedData.status },
-            req
-        );
-
-        res.json({
-            message: 'Shipment status updated successfully',
-            shipment,
-        });
+        res.json({ message: 'Shipment status updated successfully', shipment });
     } catch (error) {
-        logger.error('Error updating shipment status:', error);
         if (error instanceof z.ZodError) {
             res.status(400).json({ message: 'Validation error', errors: error.errors });
             return;
         }
+        logger.error('Error updating shipment status:', error);
         next(error);
     }
 };
@@ -562,28 +479,21 @@ export const updateShipmentStatus = async (req: AuthRequest, res: Response, next
  * Soft delete a shipment
  * @route DELETE /api/v1/shipments/:shipmentId
  */
-export const deleteShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deleteShipment = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const shipmentId = req.params.shipmentId;
-        if (!mongoose.Types.ObjectId.isValid(shipmentId)) {
-            res.status(400).json({ message: 'Invalid shipment ID format' });
-            return;
-        }
+        const { shipmentId } = req.params;
+        if (!validateObjectId(shipmentId, res, 'shipment')) return;
 
         const shipment = await Shipment.findOne({
             _id: shipmentId,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         });
 
@@ -592,8 +502,9 @@ export const deleteShipment = async (req: AuthRequest, res: Response, next: Next
             return;
         }
 
-        // Prevent deletion of in-transit or delivered shipments
-        if (['in_transit', 'out_for_delivery', 'delivered'].includes(shipment.currentStatus)) {
+        // Prevent deletion of in-transit or delivered
+        const nonDeletableStatuses = ['in_transit', 'out_for_delivery', 'delivered'];
+        if (nonDeletableStatuses.includes(shipment.currentStatus)) {
             res.status(400).json({
                 message: `Cannot delete shipment with status '${shipment.currentStatus}'`,
             });
@@ -602,16 +513,7 @@ export const deleteShipment = async (req: AuthRequest, res: Response, next: Next
 
         shipment.isDeleted = true;
         await shipment.save();
-
-        await createAuditLog(
-            req.user._id,
-            companyId,
-            'delete',
-            'shipment',
-            shipmentId,
-            { message: 'Shipment deleted (soft delete)' },
-            req
-        );
+        await createAuditLog(auth.userId, auth.companyId, 'delete', 'shipment', shipmentId, { softDelete: true }, req);
 
         res.json({ message: 'Shipment deleted successfully' });
     } catch (error) {

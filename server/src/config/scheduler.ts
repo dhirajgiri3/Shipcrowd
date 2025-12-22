@@ -1,6 +1,6 @@
 import { CronJob } from 'cron';
-import logger from '../src/shared/logger/winston.logger';
-import { processScheduledDeletions } from '../src/infrastructure/jobs/accountDeletion.job';
+import logger from '../shared/logger/winston.logger';
+import { processScheduledDeletions } from '../infrastructure/jobs/accountDeletion.job';
 
 /**
  * Initialize all scheduled jobs
@@ -18,7 +18,7 @@ export const initializeScheduler = (): void => {
 
     // Start the jobs
     accountDeletionJob.start();
-    
+
     logger.info('Scheduler initialized successfully');
   } catch (error) {
     logger.error('Error initializing scheduler:', error);

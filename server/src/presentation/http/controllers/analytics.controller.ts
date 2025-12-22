@@ -1,29 +1,25 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import Order from '../../../infrastructure/database/mongoose/models/Order';
 import Shipment from '../../../infrastructure/database/mongoose/models/Shipment';
-import Company from '../../../infrastructure/database/mongoose/models/Company';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
+import { guardChecks } from '../../../shared/helpers/controller.helpers';
 
 /**
  * Get seller dashboard analytics
  * @route GET /api/v1/analytics/dashboard/seller
  */
-export const getSellerDashboard = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getSellerDashboard = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const companyObjectId = new mongoose.Types.ObjectId(companyId);
+        const companyObjectId = new mongoose.Types.ObjectId(auth.companyId);
 
         // Date filters
         const startDate = req.query.startDate

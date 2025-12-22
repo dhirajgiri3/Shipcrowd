@@ -1,164 +1,95 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import Order, { IOrder } from '../../../infrastructure/database/mongoose/models/Order';
+import Order from '../../../infrastructure/database/mongoose/models/Order';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../../../shared/logger/winston.logger';
 import { createAuditLog } from '../middleware/auditLog';
 import mongoose from 'mongoose';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
+import {
+    guardChecks,
+    validateObjectId,
+    parsePagination,
+    buildPaginationResponse,
+    generateOrderNumber,
+    validateStatusTransition,
+} from '../../../shared/helpers/controller.helpers';
+import {
+    createOrderSchema,
+    updateOrderSchema,
+    ORDER_STATUS_TRANSITIONS,
+} from '../../../shared/validation/schemas';
 
-// Order number generator: ORD-YYYYMMDD-XXXX
-const generateOrderNumber = (): string => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const random = Math.floor(1000 + Math.random() * 9000);
-    return `ORD-${year}${month}${day}-${random}`;
+/**
+ * Calculate order totals from products
+ */
+const calculateTotals = (products: Array<{ price: number; quantity: number }>) => {
+    const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+    return { subtotal, tax: 0, shipping: 0, discount: 0, total: subtotal };
 };
 
-// Validation schemas
-const productSchema = z.object({
-    name: z.string().min(1),
-    sku: z.string().optional(),
-    quantity: z.number().int().min(1),
-    price: z.number().min(0),
-    weight: z.number().optional(),
-    dimensions: z.object({
-        length: z.number().optional(),
-        width: z.number().optional(),
-        height: z.number().optional(),
-    }).optional(),
-});
-
-const addressSchema = z.object({
-    line1: z.string().min(3),
-    line2: z.string().optional(),
-    city: z.string().min(2),
-    state: z.string().min(2),
-    country: z.string().min(2).default('India'),
-    postalCode: z.string().min(5).max(10),
-});
-
-const customerInfoSchema = z.object({
-    name: z.string().min(2),
-    email: z.string().email().optional(),
-    phone: z.string().min(10),
-    address: addressSchema,
-});
-
-const createOrderSchema = z.object({
-    customerInfo: customerInfoSchema,
-    products: z.array(productSchema).min(1),
-    paymentMethod: z.enum(['cod', 'prepaid']).optional(),
-    warehouseId: z.string().optional(),
-    notes: z.string().optional(),
-    tags: z.array(z.string()).optional(),
-});
-
-const updateOrderSchema = z.object({
-    customerInfo: customerInfoSchema.partial().optional(),
-    products: z.array(productSchema).optional(),
-    currentStatus: z.enum(['pending', 'ready_to_ship', 'shipped', 'delivered', 'cancelled', 'rto']).optional(),
-    paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).optional(),
-    paymentMethod: z.enum(['cod', 'prepaid']).optional(),
-    notes: z.string().optional(),
-    tags: z.array(z.string()).optional(),
-});
-
-// Valid status transitions
-const validStatusTransitions: Record<string, string[]> = {
-    pending: ['ready_to_ship', 'cancelled'],
-    ready_to_ship: ['shipped', 'cancelled'],
-    shipped: ['delivered', 'rto'],
-    delivered: [],
-    cancelled: [],
-    rto: [],
+/**
+ * Generate unique order number with collision retry
+ */
+const getUniqueOrderNumber = async (maxAttempts = 10): Promise<string | null> => {
+    for (let i = 0; i < maxAttempts; i++) {
+        const orderNumber = generateOrderNumber();
+        const exists = await Order.exists({ orderNumber });
+        if (!exists) return orderNumber;
+    }
+    return null;
 };
 
 /**
  * Create a new order
  * @route POST /api/v1/orders
  */
-export const createOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createOrder = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
+        const data = createOrderSchema.parse(req.body);
+        const orderNumber = await getUniqueOrderNumber();
 
-        const validatedData = createOrderSchema.parse(req.body);
-
-        // Calculate totals
-        const subtotal = validatedData.products.reduce(
-            (sum, product) => sum + product.price * product.quantity,
-            0
-        );
-        const shipping = 0; // Will be calculated when shipment is created
-        const tax = 0;
-        const discount = 0;
-        const total = subtotal + shipping + tax - discount;
-
-        // Generate unique order number
-        let orderNumber = generateOrderNumber();
-        let attempts = 0;
-        while (await Order.findOne({ orderNumber }) && attempts < 10) {
-            orderNumber = generateOrderNumber();
-            attempts++;
-        }
-
-        if (attempts >= 10) {
+        if (!orderNumber) {
             res.status(500).json({ message: 'Failed to generate unique order number' });
             return;
         }
 
+        const totals = calculateTotals(data.products);
+
         const order = new Order({
             orderNumber,
-            companyId,
-            customerInfo: validatedData.customerInfo,
-            products: validatedData.products,
-            paymentMethod: validatedData.paymentMethod || 'prepaid',
-            paymentStatus: validatedData.paymentMethod === 'cod' ? 'pending' : 'paid',
+            companyId: auth.companyId,
+            customerInfo: data.customerInfo,
+            products: data.products,
+            paymentMethod: data.paymentMethod || 'prepaid',
+            paymentStatus: data.paymentMethod === 'cod' ? 'pending' : 'paid',
             source: 'manual',
-            warehouseId: validatedData.warehouseId
-                ? new mongoose.Types.ObjectId(validatedData.warehouseId)
-                : undefined,
+            warehouseId: data.warehouseId ? new mongoose.Types.ObjectId(data.warehouseId) : undefined,
             currentStatus: 'pending',
-            totals: { subtotal, tax, shipping, discount, total },
-            notes: validatedData.notes,
-            tags: validatedData.tags,
+            totals,
+            notes: data.notes,
+            tags: data.tags,
             shippingDetails: { shippingCost: 0 },
         });
 
         await order.save();
+        await createAuditLog(auth.userId, auth.companyId, 'create', 'order', String(order._id), { orderNumber }, req);
 
-        await createAuditLog(
-            req.user._id,
-            companyId,
-            'create',
-            'order',
-            String(order._id),
-            { message: 'Order created', orderNumber },
-            req
-        );
-
-        res.status(201).json({
-            message: 'Order created successfully',
-            order,
-        });
+        res.status(201).json({ message: 'Order created successfully', order });
     } catch (error) {
-        logger.error('Error creating order:', error);
         if (error instanceof z.ZodError) {
             res.status(400).json({ message: 'Validation error', errors: error.errors });
             return;
         }
+        logger.error('Error creating order:', error);
         next(error);
     }
 };
@@ -167,66 +98,45 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
  * Get all orders for the current user's company
  * @route GET /api/v1/orders
  */
-export const getOrders = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getOrders = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        // Pagination
-        const page = Math.max(1, parseInt(req.query.page as string) || 1);
-        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = parsePagination(req.query as any);
 
         // Build filter
-        const filter: any = {
-            companyId,
+        const filter: Record<string, any> = {
+            companyId: auth.companyId,
             isDeleted: false,
         };
 
-        // Status filter
-        if (req.query.status) {
-            filter.currentStatus = req.query.status;
-        }
+        // Apply filters
+        if (req.query.status) filter.currentStatus = req.query.status;
+        if (req.query.phone) filter['customerInfo.phone'] = { $regex: req.query.phone, $options: 'i' };
+        if (req.query.warehouse) filter.warehouseId = new mongoose.Types.ObjectId(req.query.warehouse as string);
 
-        // Phone filter
-        if (req.query.phone) {
-            filter['customerInfo.phone'] = { $regex: req.query.phone, $options: 'i' };
-        }
-
-        // Warehouse filter
-        if (req.query.warehouse) {
-            filter.warehouseId = new mongoose.Types.ObjectId(req.query.warehouse as string);
-        }
-
-        // Date range filter
+        // Date range
         if (req.query.startDate || req.query.endDate) {
             filter.createdAt = {};
-            if (req.query.startDate) {
-                filter.createdAt.$gte = new Date(req.query.startDate as string);
-            }
-            if (req.query.endDate) {
-                filter.createdAt.$lte = new Date(req.query.endDate as string);
-            }
+            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate as string);
+            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate as string);
         }
 
-        // Search filter
+        // Search
         if (req.query.search) {
+            const searchRegex = { $regex: req.query.search, $options: 'i' };
             filter.$or = [
-                { orderNumber: { $regex: req.query.search, $options: 'i' } },
-                { 'customerInfo.name': { $regex: req.query.search, $options: 'i' } },
-                { 'customerInfo.phone': { $regex: req.query.search, $options: 'i' } },
+                { orderNumber: searchRegex },
+                { 'customerInfo.name': searchRegex },
+                { 'customerInfo.phone': searchRegex },
             ];
         }
 
-        // Get orders with pagination
         const [orders, total] = await Promise.all([
             Order.find(filter)
                 .populate('warehouseId', 'name address')
@@ -238,12 +148,7 @@ export const getOrders = async (req: AuthRequest, res: Response, next: NextFunct
 
         res.json({
             orders,
-            pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit),
-            },
+            pagination: buildPaginationResponse(total, page, limit),
         });
     } catch (error) {
         logger.error('Error fetching orders:', error);
@@ -255,28 +160,21 @@ export const getOrders = async (req: AuthRequest, res: Response, next: NextFunct
  * Get a single order by ID
  * @route GET /api/v1/orders/:orderId
  */
-export const getOrderById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getOrderById = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const orderId = req.params.orderId;
-        if (!mongoose.Types.ObjectId.isValid(orderId)) {
-            res.status(400).json({ message: 'Invalid order ID format' });
-            return;
-        }
+        const { orderId } = req.params;
+        if (!validateObjectId(orderId, res, 'order')) return;
 
         const order = await Order.findOne({
             _id: orderId,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         }).populate('warehouseId', 'name address');
 
@@ -296,31 +194,23 @@ export const getOrderById = async (req: AuthRequest, res: Response, next: NextFu
  * Update an order
  * @route PATCH /api/v1/orders/:orderId
  */
-export const updateOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateOrder = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
+        const { orderId } = req.params;
+        if (!validateObjectId(orderId, res, 'order')) return;
 
-        const orderId = req.params.orderId;
-        if (!mongoose.Types.ObjectId.isValid(orderId)) {
-            res.status(400).json({ message: 'Invalid order ID format' });
-            return;
-        }
+        const data = updateOrderSchema.parse(req.body);
 
-        const validatedData = updateOrderSchema.parse(req.body);
-
-        // Get existing order
         const order = await Order.findOne({
             _id: orderId,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         });
 
@@ -329,75 +219,54 @@ export const updateOrder = async (req: AuthRequest, res: Response, next: NextFun
             return;
         }
 
-        // Validate status transition
-        if (validatedData.currentStatus && validatedData.currentStatus !== order.currentStatus) {
-            const allowedTransitions = validStatusTransitions[order.currentStatus] || [];
-            if (!allowedTransitions.includes(validatedData.currentStatus)) {
+        // Handle status transition
+        if (data.currentStatus && data.currentStatus !== order.currentStatus) {
+            const { valid, allowedTransitions } = validateStatusTransition(
+                order.currentStatus,
+                data.currentStatus,
+                ORDER_STATUS_TRANSITIONS
+            );
+
+            if (!valid) {
                 res.status(400).json({
-                    message: `Invalid status transition from '${order.currentStatus}' to '${validatedData.currentStatus}'`,
+                    message: `Invalid status transition from '${order.currentStatus}' to '${data.currentStatus}'`,
                     allowedTransitions,
                 });
                 return;
             }
 
-            // Add to status history
             order.statusHistory.push({
-                status: validatedData.currentStatus,
+                status: data.currentStatus,
                 timestamp: new Date(),
-                updatedBy: new mongoose.Types.ObjectId(req.user._id),
+                updatedBy: new mongoose.Types.ObjectId(auth.userId),
             });
-            order.currentStatus = validatedData.currentStatus;
+            order.currentStatus = data.currentStatus;
         }
 
-        // Update other fields
-        if (validatedData.customerInfo) {
-            order.customerInfo = { ...order.customerInfo, ...validatedData.customerInfo } as any;
+        // Update fields
+        if (data.customerInfo) {
+            order.customerInfo = { ...order.customerInfo, ...data.customerInfo } as any;
         }
-        if (validatedData.products) {
-            order.products = validatedData.products;
-            // Recalculate totals
-            const subtotal = validatedData.products.reduce(
-                (sum, product) => sum + product.price * product.quantity,
-                0
-            );
-            order.totals.subtotal = subtotal;
-            order.totals.total = subtotal + order.totals.shipping + order.totals.tax - order.totals.discount;
+        if (data.products) {
+            order.products = data.products;
+            const totals = calculateTotals(data.products);
+            order.totals = { ...order.totals, ...totals };
         }
-        if (validatedData.paymentStatus) {
-            order.paymentStatus = validatedData.paymentStatus;
-        }
-        if (validatedData.paymentMethod) {
-            order.paymentMethod = validatedData.paymentMethod;
-        }
-        if (validatedData.notes !== undefined) {
-            order.notes = validatedData.notes;
-        }
-        if (validatedData.tags) {
-            order.tags = validatedData.tags;
-        }
+        if (data.paymentStatus) order.paymentStatus = data.paymentStatus;
+        if (data.paymentMethod) order.paymentMethod = data.paymentMethod;
+        if (data.notes !== undefined) order.notes = data.notes;
+        if (data.tags) order.tags = data.tags;
 
         await order.save();
+        await createAuditLog(auth.userId, auth.companyId, 'update', 'order', orderId, { changes: Object.keys(data) }, req);
 
-        await createAuditLog(
-            req.user._id,
-            companyId,
-            'update',
-            'order',
-            orderId,
-            { message: 'Order updated', changes: Object.keys(validatedData) },
-            req
-        );
-
-        res.json({
-            message: 'Order updated successfully',
-            order,
-        });
+        res.json({ message: 'Order updated successfully', order });
     } catch (error) {
-        logger.error('Error updating order:', error);
         if (error instanceof z.ZodError) {
             res.status(400).json({ message: 'Validation error', errors: error.errors });
             return;
         }
+        logger.error('Error updating order:', error);
         next(error);
     }
 };
@@ -406,28 +275,21 @@ export const updateOrder = async (req: AuthRequest, res: Response, next: NextFun
  * Soft delete an order
  * @route DELETE /api/v1/orders/:orderId
  */
-export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deleteOrder = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
-
-        const orderId = req.params.orderId;
-        if (!mongoose.Types.ObjectId.isValid(orderId)) {
-            res.status(400).json({ message: 'Invalid order ID format' });
-            return;
-        }
+        const { orderId } = req.params;
+        if (!validateObjectId(orderId, res, 'order')) return;
 
         const order = await Order.findOne({
             _id: orderId,
-            companyId,
+            companyId: auth.companyId,
             isDeleted: false,
         });
 
@@ -437,7 +299,8 @@ export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFun
         }
 
         // Prevent deletion of shipped/delivered orders
-        if (['shipped', 'delivered'].includes(order.currentStatus)) {
+        const nonDeletableStatuses = ['shipped', 'delivered'];
+        if (nonDeletableStatuses.includes(order.currentStatus)) {
             res.status(400).json({
                 message: `Cannot delete order with status '${order.currentStatus}'`,
             });
@@ -446,16 +309,7 @@ export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFun
 
         order.isDeleted = true;
         await order.save();
-
-        await createAuditLog(
-            req.user._id,
-            companyId,
-            'delete',
-            'order',
-            orderId,
-            { message: 'Order deleted (soft delete)' },
-            req
-        );
+        await createAuditLog(auth.userId, auth.companyId, 'delete', 'order', orderId, { softDelete: true }, req);
 
         res.json({ message: 'Order deleted successfully' });
     } catch (error) {
@@ -468,65 +322,59 @@ export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFun
  * Bulk import orders from CSV
  * @route POST /api/v1/orders/bulk
  */
-export const bulkImportOrders = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const bulkImportOrders = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
     try {
-        if (!req.user) {
-            res.status(401).json({ message: 'Authentication required' });
-            return;
-        }
-
-        const companyId = req.user.companyId;
-        if (!companyId) {
-            res.status(403).json({ message: 'User is not associated with any company' });
-            return;
-        }
+        const auth = guardChecks(req, res);
+        if (!auth) return;
 
         if (!req.file) {
             res.status(400).json({ message: 'CSV file is required' });
             return;
         }
 
-        const results: any[] = [];
-        const created: any[] = [];
-        const errors: any[] = [];
+        const rows: any[] = [];
+        const created: Array<{ orderNumber: string; id: any }> = [];
+        const errors: Array<{ row: number; error: string; data?: any }> = [];
 
         const stream = Readable.from(req.file.buffer.toString());
 
         stream
             .pipe(csv())
-            .on('data', (data) => results.push(data))
+            .on('data', (row) => rows.push(row))
             .on('end', async () => {
-                // Use a transaction for atomicity
                 const session = await mongoose.startSession();
                 session.startTransaction();
 
                 try {
-                    for (let i = 0; i < results.length; i++) {
-                        const row = results[i];
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
                         try {
                             // Validate required fields
-                            if (!row.customer_name || !row.customer_phone || !row.address_line1 ||
-                                !row.city || !row.state || !row.postal_code || !row.product_name ||
-                                !row.quantity || !row.price) {
-                                errors.push({ row: i + 1, error: 'Missing required fields', data: row });
+                            const requiredFields = ['customer_name', 'customer_phone', 'address_line1', 'city', 'state', 'postal_code', 'product_name', 'quantity', 'price'];
+                            const missingFields = requiredFields.filter(f => !row[f]);
+
+                            if (missingFields.length > 0) {
+                                errors.push({ row: i + 1, error: `Missing fields: ${missingFields.join(', ')}` });
                                 continue;
                             }
 
-                            // Generate order number
-                            let orderNumber = generateOrderNumber();
-                            let attempts = 0;
-                            while (await Order.findOne({ orderNumber }) && attempts < 10) {
-                                orderNumber = generateOrderNumber();
-                                attempts++;
+                            const orderNumber = await getUniqueOrderNumber();
+                            if (!orderNumber) {
+                                errors.push({ row: i + 1, error: 'Failed to generate order number' });
+                                continue;
                             }
 
-                            const quantity = parseInt(row.quantity);
+                            const quantity = parseInt(row.quantity, 10);
                             const price = parseFloat(row.price);
                             const subtotal = quantity * price;
 
                             const order = new Order({
                                 orderNumber,
-                                companyId,
+                                companyId: auth.companyId,
                                 customerInfo: {
                                     name: row.customer_name,
                                     email: row.customer_email || undefined,
@@ -561,37 +409,31 @@ export const bulkImportOrders = async (req: AuthRequest, res: Response, next: Ne
                             errors.push({
                                 row: i + 1,
                                 error: rowError instanceof Error ? rowError.message : 'Unknown error',
-                                data: row,
                             });
                         }
                     }
 
-                    // If there are errors, rollback
-                    if (errors.length > 0 && created.length === 0) {
+                    if (created.length === 0 && errors.length > 0) {
                         await session.abortTransaction();
-                        res.status(400).json({
-                            message: 'Failed to import orders',
-                            errors,
-                        });
+                        res.status(400).json({ message: 'No orders imported', errors });
                         return;
                     }
 
                     await session.commitTransaction();
-
                     await createAuditLog(
-                        req.user!._id,
-                        companyId,
+                        auth.userId,
+                        auth.companyId,
                         'create',
                         'order',
                         'bulk',
-                        { message: `Bulk import: ${created.length} orders created, ${errors.length} errors` },
+                        { imported: created.length, failed: errors.length },
                         req
                     );
 
                     res.status(201).json({
-                        message: `Imported ${created.length} orders with ${errors.length} errors`,
+                        message: `Imported ${created.length} orders`,
                         created,
-                        errors,
+                        errors: errors.length > 0 ? errors : undefined,
                     });
                 } catch (error) {
                     await session.abortTransaction();
@@ -601,7 +443,7 @@ export const bulkImportOrders = async (req: AuthRequest, res: Response, next: Ne
                 }
             })
             .on('error', (error) => {
-                logger.error('Error parsing CSV:', error);
+                logger.error('CSV parsing error:', error);
                 res.status(400).json({ message: 'Failed to parse CSV file' });
             });
     } catch (error) {
