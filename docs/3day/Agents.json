@@ -1,0 +1,289 @@
+{
+  "agents": [
+    {
+      "id": "backend",
+      "name": "Backend API Agent",
+      "responsibilities": [
+        "Develop REST API controllers and routes",
+        "Implement business logic for orders, shipments, analytics",
+        "Generate OpenAPI contract for frontend",
+        "Optimize database queries and indexes",
+        "Apply authentication and authorization middleware"
+      ],
+      "taskQueue": [
+        {
+          "phase": 1,
+          "day": 1,
+          "tasks": ["T1.1", "T1.2", "T1.3", "T1.4", "T1.5", "T1.6", "T1.7"],
+          "estimatedDuration": "8 hours",
+          "timeWindow": {
+            "earliest": "2025-01-XX 09:00 IST",
+            "latest": "2025-01-XX 18:00 IST"
+          }
+        },
+        {
+          "phase": 3,
+          "day": 3,
+          "tasks": ["T3.6"],
+          "estimatedDuration": "1 hour",
+          "timeWindow": {
+            "earliest": "2025-01-XX 14:00 IST",
+            "latest": "2025-01-XX 15:00 IST"
+          }
+        }
+      ],
+      "requiredResources": {
+        "compute": "4 CPU cores, 8GB RAM",
+        "storage": "10GB disk (MongoDB + logs)",
+        "network": "Local MongoDB connection, no external APIs"
+      },
+      "expectedThroughput": "35+ API endpoints in 8 hours (4.4 endpoints/hour)",
+      "preconditions": [
+        "MongoDB running on localhost:27017",
+        "Backend repo cloned with existing models",
+        "Node.js 18+ and npm installed",
+        "Auth middleware functional (pre-verified)"
+      ],
+      "outputs": [
+        "6 new controller files",
+        "6 new route files",
+        "openapi.json contract",
+        "Postman collection for testing"
+      ],
+      "conflictResolution": {
+        "strategy": "Feature branch per task (backend/order-api, backend/shipment-api)",
+        "mergePolicy": "Merge to main at end of Day 1 after smoke tests pass",
+        "lockingMechanism": "None (separate controllers, no shared files)",
+        "retryPolicy": "Exponential backoff on DB connection errors (3 retries, 2s delay)"
+      }
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend Integration Agent",
+      "responsibilities": [
+        "Build API client infrastructure with TypeScript",
+        "Create React Query hooks for data fetching",
+        "Replace mock data with real API calls",
+        "Implement loading states and error handling",
+        "Polish UI/UX with skeletons and toasts"
+      ],
+      "taskQueue": [
+        {
+          "phase": 1,
+          "day": 1,
+          "tasks": ["T2.1", "T2.2", "T2.3", "T2.4"],
+          "estimatedDuration": "3 hours",
+          "timeWindow": {
+            "earliest": "2025-01-XX 13:00 IST",
+            "latest": "2025-01-XX 16:00 IST"
+          },
+          "blockedBy": "T1.7 (OpenAPI contract generation)"
+        },
+        {
+          "phase": 2,
+          "day": 2,
+          "tasks": ["T2.5", "T2.6", "T2.7", "T2.8", "T2.9", "T2.10"],
+          "estimatedDuration": "7.5 hours",
+          "timeWindow": {
+            "earliest": "2025-01-XX 09:00 IST",
+            "latest": "2025-01-XX 17:00 IST"
+          }
+        },
+        {
+          "phase": 3,
+          "day": 3,
+          "tasks": ["T2.11"],
+          "estimatedDuration": "1.5 hours",
+          "timeWindow": {
+            "earliest": "2025-01-XX 09:00 IST",
+            "latest": "2025-01-XX 10:30 IST"
+          }
+        }
+      ],
+      "requiredResources": {
+        "compute": "4 CPU cores, 8GB RAM",
+        "storage": "5GB disk (node_modules + build cache)",
+        "network": "Connection to backend API (localhost:5005)"
+      },
+      "expectedThroughput": "10 pages connected in 8 hours (1.25 pages/hour)",
+      "preconditions": [
+        "Next.js app running on localhost:3000",
+        "React Query and Axios installed",
+        "OpenAPI contract available from backend agent",
+        "Mock data preserved in separate branch (rollback safety)"
+      ],
+      "outputs": [
+        "API client with interceptors",
+        "8+ React Query hooks",
+        "10 connected pages (seller + admin)",
+        "Loading skeletons and toast system"
+      ],
+      "conflictResolution": {
+        "strategy": "Feature branch per page (frontend/seller-dashboard, frontend/orders-page)",
+        "mergePolicy": "Merge to main incrementally after each page passes smoke test",
+        "lockingMechanism": "None (separate pages, no shared components modified)",
+        "retryPolicy": "Mock data fallback on API failure during development"
+      }
+    },
+    {
+      "id": "seed",
+      "name": "Data Seeding Agent",
+      "responsibilities": [
+        "Generate 200+ realistic demo records",
+        "Implement idempotent seed scripts with upserts",
+        "Assign intelligent carrier distribution",
+        "Create predefined demo users and companies",
+        "Validate data integrity and referential consistency"
+      ],
+      "taskQueue": [
+        {
+          "phase": 3,
+          "day": 3,
+          "tasks": ["T3.1", "T3.2", "T3.3", "T3.4"],
+          "estimatedDuration": "3.5 hours",
+          "timeWindow": {
+            "earliest": "2025-01-XX 09:00 IST",
+            "latest": "2025-01-XX 12:30 IST"
+          },
+          "blockedBy": "Backend Day 1 complete (all models and APIs deployed)"
+        }
+      ],
+      "requiredResources": {
+        "compute": "2 CPU cores, 4GB RAM",
+        "storage": "1GB disk (seed script + Faker cache)",
+        "network": "MongoDB write access"
+      },
+      "expectedThroughput": "200 records in 3.5 hours (57 records/hour)",
+      "preconditions": [
+        "Backend Day 1 complete (all models available)",
+        "MongoDB empty or clearable (idempotent seed)",
+        "Faker.js installed for realistic data",
+        "Predefined UUIDs for seed entities"
+      ],
+      "outputs": [
+        "seed-demo-data.ts script",
+        "200 orders (30 pending, 60 delivered, 40 shipped, 10 cancelled, 15 RTO)",
+        "120 shipments with tracking timelines",
+        "5 companies, 5 users, 10 warehouses",
+        "3 rate cards, 4 zones"
+      ],
+      "conflictResolution": {
+        "strategy": "Idempotent upsert operations with predefined UUIDs",
+        "mergePolicy": "Single commit after all seed tasks complete",
+        "lockingMechanism": "None (single agent owns all seed data)",
+        "retryPolicy": "Retry on unique constraint violation (3 retries, regenerate UUID)"
+      }
+    },
+    {
+      "id": "qa",
+      "name": "QA & Integration Agent",
+      "responsibilities": [
+        "Execute integration tests for critical flows",
+        "Prepare demo script and credentials",
+        "Cross-browser testing and bug fixes",
+        "Performance validation (< 500ms API, < 2s page load)",
+        "Final sign-off and deployment readiness"
+      ],
+      "taskQueue": [
+        {
+          "phase": 3,
+          "day": 3,
+          "tasks": ["T3.5", "T3.7", "T3.8"],
+          "estimatedDuration": "3.5 hours",
+          "timeWindow": {
+            "earliest": "2025-01-XX 13:00 IST",
+            "latest": "2025-01-XX 17:00 IST"
+          },
+          "blockedBy": "Seed agent complete (T3.1-T3.4), Frontend complete (T2.11)"
+        }
+      ],
+      "requiredResources": {
+        "compute": "4 CPU cores, 8GB RAM",
+        "storage": "2GB disk (test reports + screenshots)",
+        "network": "Access to both frontend and backend"
+      },
+      "expectedThroughput": "3 user flows tested in 1 hour, 10 bugs fixed in 1.5 hours",
+      "preconditions": [
+        "All features integrated (Backend + Frontend + Seed complete)",
+        "Test credentials created (demo@shipcrowd.com)",
+        "Chrome, Safari, Firefox installed for cross-browser testing"
+      ],
+      "outputs": [
+        "Integration test report",
+        "demo-script.md with 15-min flow",
+        "Bug list with severity/priority",
+        "QA sign-off document"
+      ],
+      "conflictResolution": {
+        "strategy": "Hot-fix branch for critical bugs",
+        "mergePolicy": "Immediate merge for P0 bugs blocking demo",
+        "lockingMechanism": "None (read-only testing, no code conflicts)",
+        "retryPolicy": "Rerun flaky tests 3 times before marking as failure"
+      }
+    }
+  ],
+  "orchestrationStrategy": {
+    "model": "Push-based with phase boundaries",
+    "messageBroker": "Redis Pub/Sub (lightweight, no Kafka overhead)",
+    "schedulingRules": [
+      "Backend agent starts immediately on Day 1 at 9 AM IST",
+      "Frontend agent polls for T1.7 completion every 5 minutes (expected by 1 PM IST)",
+      "Seed agent starts only after backend Day 1 complete (phase boundary enforced)",
+      "QA agent starts only after Seed + Frontend complete (phase boundary enforced)"
+    ],
+    "phaseTransitions": [
+      {
+        "from": "Phase 1 (Day 1)",
+        "to": "Phase 2 (Day 2)",
+        "condition": "Backend T1.7 complete AND Frontend T2.4 complete",
+        "checkpointTime": "Day 1 6 PM IST"
+      },
+      {
+        "from": "Phase 2 (Day 2)",
+        "to": "Phase 3 (Day 3)",
+        "condition": "Frontend T2.10 complete",
+        "checkpointTime": "Day 2 5 PM IST"
+      }
+    ],
+    "healthChecks": {
+      "backend": "GET /api/v1/health every 1 min",
+      "frontend": "GET http://localhost:3000 every 1 min",
+      "seed": "MongoDB connection ping every 5 min",
+      "qa": "Manual status update every hour"
+    }
+  },
+  "telemetry": {
+    "metrics": [
+      "Task completion rate (tasks completed / total tasks)",
+      "API response time (P50, P95, P99)",
+      "Frontend page load time (Time to Interactive)",
+      "Queue depth per agent (pending tasks)",
+      "Database write throughput (inserts/sec during seed)",
+      "Error rate per agent (errors / total operations)"
+    ],
+    "alerts": [
+      {
+        "condition": "API response time > 1000ms",
+        "action": "Notify backend agent, trigger performance optimization task"
+      },
+      {
+        "condition": "Task blocked > 30 minutes",
+        "action": "Escalate to project lead, check dependency resolution"
+      },
+      {
+        "condition": "Error rate > 5% for any agent",
+        "action": "Pause agent, rollback to last known good state"
+      }
+    ],
+    "dashboards": [
+      "Grafana dashboard with task progress, API latency, error rate",
+      "Real-time log aggregation with correlation IDs (request ID)"
+    ]
+  },
+  "deployment": {
+    "startCommand": "npm run start-agents --config agents.json --phase 1",
+    "stopCommand": "npm run stop-agents --graceful-timeout 30s",
+    "restartCommand": "npm run restart-agent --id <agent-id> --resume",
+    "statusCommand": "npm run agent-status --all"
+  }
+}

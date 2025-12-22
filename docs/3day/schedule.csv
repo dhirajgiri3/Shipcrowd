@@ -1,0 +1,27 @@
+Task ID,Task Name,Agent,Phase,Day,Start Time (IST),End Time (IST),Duration (mins),Dependencies,Critical Path,Priority,Resource Type,Idempotent
+T1.1,Order Controller & Routes,backend,1,1,09:00,10:30,90,,Yes,P0-CRITICAL,CPU,Yes
+T1.2,Shipment Controller & Routes,backend,1,1,10:30,12:00,90,T1.1,Yes,P0-CRITICAL,CPU,Yes
+T1.3,Register Routes,backend,1,1,12:00,12:30,30,"T1.1,T1.2",Yes,P0-CRITICAL,CPU,Yes
+T1.4,Analytics Endpoints,backend,1,1,13:00,14:30,90,,No,P0-CRITICAL,CPU+DB,Yes
+T1.5,RateCard Controller,backend,1,1,14:30,16:00,90,,No,P1-IMPORTANT,CPU,Yes
+T1.6,Zone Management,backend,1,1,16:00,17:00,60,,No,P1-IMPORTANT,CPU,Yes
+T1.7,API Contract Generation,backend,1,1,17:00,17:30,30,"T1.1,T1.2,T1.4,T1.5,T1.6",Yes,P0-CRITICAL,CPU,Yes
+T2.1,API Client Infrastructure,frontend,1,1,13:30,15:00,90,T1.7,Yes,P0-CRITICAL,CPU,Yes
+T2.2,React Query Hooks - Orders,frontend,1,1,15:00,15:30,30,T2.1,No,P0-CRITICAL,CPU,Yes
+T2.3,React Query Hooks - Shipments,frontend,1,1,15:30,16:00,30,T2.1,Yes,P0-CRITICAL,CPU,Yes
+T2.4,React Query Hooks - Analytics & Warehouses,frontend,1,1,16:00,16:30,30,T2.1,No,P0-CRITICAL,CPU,Yes
+T2.5,Connect Seller Dashboard,frontend,2,2,09:00,10:30,90,"T2.4,T1.4",No,P0-CRITICAL,CPU,Yes
+T2.6,Connect Orders Page,frontend,2,2,10:30,12:00,90,"T2.2,T1.1",No,P0-CRITICAL,CPU,Yes
+T2.7,Connect Shipments Page,frontend,2,2,13:00,14:30,90,"T2.3,T1.2",Yes,P0-CRITICAL,CPU,Yes
+T2.8,Connect Warehouse Page,frontend,2,2,14:30,15:30,60,T2.4,No,P1-IMPORTANT,CPU,Yes
+T2.9,Connect Rate Cards Page,frontend,2,2,15:30,16:30,60,"T2.4,T1.5",No,P1-IMPORTANT,CPU,Yes
+T2.10,Connect Admin Dashboard,frontend,2,2,16:30,17:30,60,"T2.4,T1.4",No,P1-IMPORTANT,CPU,Yes
+T2.11,UI/UX Polish,frontend,3,3,09:00,10:30,90,"T2.5,T2.6,T2.7,T2.8,T2.9,T2.10",Yes,P1-IMPORTANT,CPU,Yes
+T3.1,Database Seed Script - Core Entities,seed,3,3,09:00,10:00,60,"T1.3,T1.7",No,P0-CRITICAL,CPU+DB,Yes
+T3.2,Database Seed Script - Orders & Products,seed,3,3,10:00,11:00,60,T3.1,No,P0-CRITICAL,CPU+DB,Yes
+T3.3,Database Seed Script - Shipments & Carriers,seed,3,3,11:00,12:00,60,T3.2,Yes,P0-CRITICAL,CPU+DB,Yes
+T3.4,Database Seed Script - Zones & Rate Cards,seed,3,3,12:00,12:30,30,T3.1,No,P1-IMPORTANT,CPU+DB,Yes
+T3.5,Integration Testing - Critical Flows,qa,3,3,13:00,14:00,60,"T3.3,T3.4,T2.11",Yes,P0-CRITICAL,CPU+DB,No
+T3.6,Performance Optimization,backend,3,3,14:00,15:00,60,T3.5,No,P1-IMPORTANT,CPU+DB,Yes
+T3.7,Demo Script Preparation,qa,3,3,14:00,15:00,60,T3.5,No,P0-CRITICAL,CPU,Yes
+T3.8,Final QA & Bug Fixes,qa,3,3,15:00,16:30,90,"T3.6,T3.7",Yes,P0-CRITICAL,CPU,No

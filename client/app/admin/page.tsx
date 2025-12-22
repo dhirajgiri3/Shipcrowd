@@ -2,23 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { AnimatedNumber } from '@/hooks/useCountUp';
 import { RadialProgress } from '@/components/ui/RadialProgress';
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
     ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
     AreaChart,
-    Area,
-    LineChart,
-    Line
+    Area
 } from 'recharts';
 import {
     Users,
@@ -30,41 +20,57 @@ import {
     CheckCircle2,
     Clock,
     ArrowUpRight,
-    Building2,
     BarChart3,
-    AlertCircle,
     RefreshCcw,
-    XCircle,
-    Eye,
-    Shield,
     X,
     Activity,
     Server,
     LayoutDashboard,
     BrainCircuit,
-    Zap,
-    Download,
     Megaphone,
-    Search,
     Filter,
     MoreHorizontal,
-    Bell,
     ChevronDown,
     Settings,
     FileText,
-    MessageSquare,
     Wallet,
     Briefcase,
     ChevronRight,
-    Trophy,
-    Medal,
-    Crown
+    Zap
 } from 'lucide-react';
 import { TopSellers } from '@/components/admin/TopSellers';
-import { Badge } from '@/components/ui/Badge';
+
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
+
+// --- TYPES ---
+
+interface MetricCardProps {
+    title: string;
+    value: string | number;
+    subtext: string;
+    icon: any;
+    trend?: 'up' | 'down';
+    trendValue?: string;
+    color?: 'blue' | 'emerald' | 'violet' | 'amber';
+    chartData: any[];
+}
+
+interface CourierData {
+    name: string;
+    logo: string;
+    sla: number;
+    volume: string;
+    trend: string;
+    trendData: number[];
+    status: string;
+    issues: number;
+}
+
+interface CourierCardProps {
+    data: CourierData;
+}
 
 // --- MOCK DATA ---
 
@@ -175,43 +181,133 @@ const revenueByChannel = [
     { name: 'Others', value: 7, color: '#E5E7EB' }
 ];
 
+// --- COLOR CONFIGURATIONS ---
+
+const METRIC_COLOR_CONFIG = {
+    blue: {
+        bg: 'bg-[var(--primary-blue-soft)]',
+        text: 'text-[var(--primary-blue)]',
+        glow: 'bg-blue-500',
+        gradient: 'rgba(37, 99, 235, 0.1)',
+        chart: 'var(--primary-blue)'
+    },
+    emerald: {
+        bg: 'bg-[var(--success-bg)]',
+        text: 'text-[var(--success)]',
+        glow: 'bg-emerald-500',
+        gradient: 'rgba(16, 185, 129, 0.1)',
+        chart: 'var(--success)'
+    },
+    violet: {
+        bg: 'bg-violet-500/10',
+        text: 'text-violet-600 dark:text-violet-400',
+        glow: 'bg-violet-500',
+        gradient: 'rgba(139, 92, 246, 0.1)',
+        chart: '#8b5cf6'
+    },
+    amber: {
+        bg: 'bg-[var(--warning-bg)]',
+        text: 'text-[var(--warning)]',
+        glow: 'bg-amber-500',
+        gradient: 'rgba(245, 158, 11, 0.1)',
+        chart: 'var(--warning)'
+    }
+};
+
 // --- COMPONENTS ---
 
-function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, color = "blue", chartData }) {
+function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, color = "blue", chartData }: MetricCardProps) {
+    const [isHovered, setIsHovered] = useState(false);
+    const colorConfig = METRIC_COLOR_CONFIG[color];
+
+    const cardVariants = {
+        hidden: {
+            opacity: 0,
+            y: 20,
+            scale: 0.95
+        },
+        visible: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: {
+                duration: 0.5,
+                ease: [0.22, 1, 0.36, 1] as const
+            }
+        },
+        hover: {
+            y: -8,
+            scale: 1.02,
+            transition: {
+                duration: 0.3,
+                ease: [0.22, 1, 0.36, 1] as const
+            }
+        }
+    };
+
     return (
-        <div className="group relative overflow-hidden bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-6 hover:border-[var(--primary-blue-medium)] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in card-hover">
-            {/* Background Decor */}
-            <div className={cn(
-                "absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-500 blur-3xl",
-                color === "blue" ? "bg-blue-500" :
-                    color === "emerald" ? "bg-emerald-500" :
-                        color === "violet" ? "bg-violet-500" :
-                            "bg-amber-500"
-            )} />
+        <motion.div
+            variants={cardVariants}
+            whileHover="hover"
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
+            className="group relative overflow-hidden bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-6 cursor-pointer"
+            style={{
+                boxShadow: isHovered
+                    ? '0 20px 40px -12px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--primary-blue-medium)'
+                    : '0 1px 3px rgba(0, 0, 0, 0.05)'
+            }}
+        >
+            {/* Glassmorphism Background Glow */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: isHovered ? 0.15 : 0, scale: isHovered ? 1.2 : 0.8 }}
+                transition={{ duration: 0.4 }}
+                className={cn("absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none", colorConfig.glow)}
+            />
+
+            {/* Gradient Border Effect on Hover */}
+            <motion.div
+                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                style={{
+                    background: `linear-gradient(135deg, ${color === 'blue' ? 'rgba(37, 99, 235, 0.1)' :
+                        color === 'emerald' ? 'rgba(16, 185, 129, 0.1)' :
+                            color === 'violet' ? 'rgba(139, 92, 246, 0.1)' :
+                                'rgba(245, 158, 11, 0.1)'
+                        } 0%, transparent 100%)`
+                }}
+            />
 
             <div className="flex items-center justify-between mb-4 relative z-10">
-                <div className={cn(
-                    "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-sm",
-                    color === "blue" ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
-                        color === "emerald" ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                            color === "violet" ? "bg-violet-500/10 text-violet-600 dark:text-violet-400" :
-                                "bg-[var(--warning-bg)] text-[var(--warning)]"
-                )}>
+                <motion.div
+                    whileHover={{ scale: 1.15, rotate: 5 }}
+                    transition={{ duration: 0.3 }}
+                    className={cn(
+                        "h-12 w-12 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm",
+                        colorConfig.bg,
+                        colorConfig.text
+                    )}
+                >
                     <Icon className="h-6 w-6" />
-                </div>
+                </motion.div>
                 {trend && (
-                    <span className={cn(
-                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm",
-                        trend === "up" ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--error-bg)] text-[var(--error)]"
-                    )}>
+                    <motion.span
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className={cn(
+                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm shadow-sm",
+                            trend === "up" ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--error-bg)] text-[var(--error)]"
+                        )}
+                    >
                         <TrendingUp className={cn("h-3 w-3 mr-1", trend === "down" && "rotate-180")} />
                         {trendValue}
-                    </span>
+                    </motion.span>
                 )}
             </div>
 
             <div className="relative z-10">
-                <p className="text-sm font-medium text-[var(--text-muted)] mb-1">{title}</p>
+                <p className="text-sm font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wide">{title}</p>
                 <div className="flex items-end justify-between">
                     {typeof value === 'number' ? (
                         <AnimatedNumber
@@ -225,72 +321,102 @@ function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, colo
                 </div>
             </div>
 
-            {/* Sparkline Chart */}
-            <div className="h-12 w-full mt-4 -mb-2 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+            {/* Enhanced Sparkline Chart */}
+            <motion.div
+                initial={{ opacity: 0.6 }}
+                animate={{ opacity: isHovered ? 1 : 0.7 }}
+                className="h-14 w-full mt-4 -mb-2"
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                         <defs>
                             <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={
-                                    color === 'blue' ? 'var(--primary-blue)' :
-                                        color === 'emerald' ? 'var(--success)' :
-                                            color === 'violet' ? '#8b5cf6' :
-                                                'var(--warning)'
-                                } stopOpacity={0.2} />
-                                <stop offset="100%" stopColor={
-                                    color === 'blue' ? 'var(--primary-blue)' :
-                                        color === 'emerald' ? 'var(--success)' :
-                                            color === 'violet' ? '#8b5cf6' :
-                                                'var(--warning)'
-                                } stopOpacity={0} />
+                                <stop offset="5%" stopColor={colorConfig.chart} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={colorConfig.chart} stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <Area
                             type="monotone"
                             dataKey="value"
-                            stroke={
-                                color === 'blue' ? 'var(--primary-blue)' :
-                                    color === 'emerald' ? 'var(--success)' :
-                                        color === 'violet' ? '#8b5cf6' :
-                                            'var(--warning)'
-                            }
-                            strokeWidth={2}
+                            stroke={colorConfig.chart}
+                            strokeWidth={2.5}
                             fill={`url(#gradient-${title})`}
+                            isAnimationActive={true}
+                            animationDuration={1500}
+                            animationEasing="ease-out"
                         />
                     </AreaChart>
                 </ResponsiveContainer>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }
 
-function CourierCard({ data }) {
+function CourierCard({ data }: CourierCardProps) {
     const isWarning = data.status === 'warning';
     const isExcellent = data.status === 'excellent';
+    const [isHovered, setIsHovered] = useState(false);
+
+    const cardVariants = {
+        hidden: { opacity: 0, scale: 0.95, y: 20 },
+        visible: {
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            transition: {
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1] as const
+            }
+        },
+        hover: {
+            y: -6,
+            scale: 1.01,
+            transition: { duration: 0.25 }
+        }
+    };
 
     return (
-        <div className={cn(
-            "group relative overflow-hidden bg-[var(--bg-primary)] border rounded-2xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5",
-            isWarning ? "border-[var(--warning-border)] shadow-[0_0_0_1px_var(--warning-border)]" :
-                isExcellent ? "border-[var(--success-border)] shadow-[0_0_0_1px_rgba(16,185,129,0.1)]" :
-                    "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
-        )}>
-            {/* Soft Glow Background */}
-            <div className={cn(
-                "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
-                isWarning ? "bg-gradient-to-br from-[var(--warning-bg)]/20 to-transparent" :
-                    "bg-gradient-to-br from-[var(--primary-blue-soft)]/20 to-transparent"
-            )} />
+        <motion.div
+            variants={cardVariants}
+            whileHover="hover"
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
+            className={cn(
+                "group relative overflow-hidden bg-[var(--bg-primary)] border rounded-2xl p-5 cursor-pointer",
+                isWarning ? "border-[var(--warning-border)] shadow-[0_0_0_1px_var(--warning-border)]" :
+                    isExcellent ? "border-[var(--success-border)] shadow-[0_0_0_1px_rgba(16,185,129,0.1)]" :
+                        "border-[var(--border-subtle)]"
+            )}
+            style={{
+                boxShadow: isHovered
+                    ? '0 12px 30px -10px rgba(0, 0, 0, 0.15)'
+                    : undefined
+            }}
+        >
+            {/* Animated Glow Background */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isHovered ? 1 : 0 }}
+                className={cn(
+                    "absolute inset-0 pointer-events-none",
+                    isWarning ? "bg-gradient-to-br from-[var(--warning-bg)]/30 to-transparent" :
+                        "bg-gradient-to-br from-[var(--primary-blue-soft)]/30 to-transparent"
+                )}
+            />
 
             {/* Top Row */}
             <div className="flex items-start justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-3">
-                    <div className={cn(
-                        "h-12 w-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm transition-transform group-hover:scale-110",
-                        isWarning ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
-                    )}>
+                    <motion.div
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        transition={{ duration: 0.3 }}
+                        className={cn(
+                            "h-12 w-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm",
+                            isWarning ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
+                        )}
+                    >
                         {data.logo}
-                    </div>
+                    </motion.div>
                     <div>
                         <h3 className="font-bold text-[var(--text-primary)] text-base">{data.name}</h3>
                         <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
@@ -300,16 +426,24 @@ function CourierCard({ data }) {
                     </div>
                 </div>
                 {isWarning && (
-                    <div className="h-8 w-8 rounded-full bg-[var(--warning-bg)] flex items-center justify-center animate-pulse shadow-sm">
+                    <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="h-8 w-8 rounded-full bg-[var(--warning-bg)] flex items-center justify-center shadow-sm"
+                    >
                         <AlertTriangle className="h-4 w-4 text-[var(--warning)]" />
-                    </div>
+                    </motion.div>
                 )}
             </div>
 
             {/* Metrics Grid */}
             <div className="flex items-center justify-between gap-4 mb-4 relative z-10">
                 {/* Radial Progress for SLA */}
-                <div className="flex-shrink-0">
+                <motion.div
+                    className="flex-shrink-0"
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                >
                     <RadialProgress
                         value={data.sla}
                         size={90}
@@ -318,11 +452,14 @@ function CourierCard({ data }) {
                         animated={true}
                     />
                     <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider text-center mt-1">SLA Performance</p>
-                </div>
+                </motion.div>
 
                 {/* Trend Stats */}
                 <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div className="bg-[var(--bg-secondary)] p-3 rounded-xl group-hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        className="bg-[var(--bg-secondary)] p-3 rounded-xl transition-colors"
+                    >
                         <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">7-Day Trend</p>
                         <div className="flex items-center gap-1">
                             <p className={cn(
@@ -332,9 +469,12 @@ function CourierCard({ data }) {
                                 {data.trend}
                             </p>
                         </div>
-                    </div>
+                    </motion.div>
 
-                    <div className="bg-[var(--bg-secondary)] p-3 rounded-xl group-hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        className="bg-[var(--bg-secondary)] p-3 rounded-xl transition-colors"
+                    >
                         <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">Issues</p>
                         <p className={cn(
                             "text-lg font-bold metric-number",
@@ -342,17 +482,21 @@ function CourierCard({ data }) {
                         )}>
                             {data.issues}
                         </p>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
             {/* Mini Chart */}
-            <div className="h-14 -mx-2 mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
+            <motion.div
+                initial={{ opacity: 0.7 }}
+                animate={{ opacity: isHovered ? 1 : 0.8 }}
+                className="h-14 -mx-2 mb-3"
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data.trendData.map((val, i) => ({ val, i }))}>
                         <defs>
                             <linearGradient id={`gradient-${data.name}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={isWarning ? "#F59E0B" : "#2525FF"} stopOpacity={0.2} />
+                                <stop offset="5%" stopColor={isWarning ? "#F59E0B" : "#2525FF"} stopOpacity={0.3} />
                                 <stop offset="95%" stopColor={isWarning ? "#F59E0B" : "#2525FF"} stopOpacity={0} />
                             </linearGradient>
                         </defs>
@@ -360,26 +504,37 @@ function CourierCard({ data }) {
                             type="basis"
                             dataKey="val"
                             stroke={isWarning ? "#F59E0B" : "#6B6BFF"}
-                            strokeWidth={2}
+                            strokeWidth={2.5}
                             fill={`url(#gradient-${data.name})`}
+                            isAnimationActive={true}
+                            animationDuration={1200}
+                            animationEasing="ease-in-out"
                         />
                     </AreaChart>
                 </ResponsiveContainer>
-            </div>
+            </motion.div>
 
             {/* Actions */}
             <div className="relative z-10">
                 {isWarning ? (
-                    <button className="w-full h-9 rounded-lg text-xs font-bold bg-[var(--warning-bg)] text-[var(--warning)] hover:shadow-md hover:scale-[1.02] transition-all duration-200 border border-[var(--warning)]/20">
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full h-9 rounded-lg text-xs font-bold bg-[var(--warning-bg)] text-[var(--warning)] hover:shadow-md transition-all duration-200 border border-[var(--warning)]/20"
+                    >
                         Investigate High Failures
-                    </button>
+                    </motion.button>
                 ) : (
-                    <button className="w-full h-9 rounded-lg text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] border border-transparent hover:border-[var(--border-subtle)] transition-all duration-200">
+                    <motion.button
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className="w-full h-9 rounded-lg text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] border border-transparent hover:border-[var(--border-subtle)] transition-all duration-200"
+                    >
                         View Detailed Report
-                    </button>
+                    </motion.button>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -468,46 +623,117 @@ export default function AdminDashboardPage() {
                 </div>
             )}
 
-            {/* AI Command Center - Premium Redesign */}
-            <div className="grid lg:grid-cols-12 gap-6 animate-fade-in stagger-2">
+            {/* AI Command Center - Premium Redesign with Enhanced Animations */}
+            <motion.div
+                className="grid lg:grid-cols-12 gap-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+            >
                 {/* AI Insights - Width 8/12 */}
-                <div className="lg:col-span-8 relative overflow-hidden group">
+                <motion.div
+                    className="lg:col-span-8 relative overflow-hidden group"
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ duration: 0.3 }}
+                >
                     <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] rounded-3xl opacity-100 transition-all duration-300"></div>
 
                     {/* Decorative Background Elements */}
-                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
-                        <BrainCircuit className="w-48 h-48 text-white rotate-12 transform translate-x-10 -translate-y-10" />
-                    </div>
+                    <motion.div
+                        className="absolute top-0 right-0 p-8 opacity-10"
+                        animate={{
+                            rotate: [0, 360],
+                            scale: [1, 1.05, 1]
+                        }}
+                        transition={{
+                            rotate: { duration: 30, repeat: Infinity, ease: "linear" },
+                            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                    >
+                        <BrainCircuit className="w-48 h-48 text-white" />
+                    </motion.div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2"></div>
 
                     <div className="relative h-full p-6 md:p-8 flex flex-col">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner border border-white/10">
+                                <motion.div
+                                    className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner border border-white/10"
+                                    animate={{
+                                        boxShadow: [
+                                            "0 0 10px rgba(255,255,255,0.2)",
+                                            "0 0 20px rgba(255,255,255,0.4)",
+                                            "0 0 10px rgba(255,255,255,0.2)"
+                                        ]
+                                    }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                >
                                     <BrainCircuit className="h-5 w-5" />
-                                </div>
+                                </motion.div>
                                 <div>
                                     <h2 className="font-bold text-white text-xl">AI Smart Insights</h2>
                                     <p className="text-blue-100 text-xs font-medium">Real-time predictive analytics</p>
                                 </div>
                             </div>
-                            <button className="h-8 px-4 rounded-lg text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10 flex items-center gap-2">
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="h-8 px-4 rounded-lg text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10 flex items-center gap-2"
+                            >
                                 View Forecast
                                 <ArrowUpRight className="h-3 w-3" />
-                            </button>
+                            </motion.button>
                         </div>
 
-                        {/* Insights Carousel / Grid */}
-                        <div className="grid md:grid-cols-2 gap-4 mt-auto">
-                            {aiInsights.slice(0, 2).map((insight) => (
-                                <div key={insight.id} className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 hover:bg-white/15 transition-all duration-200 cursor-pointer group/card relative overflow-hidden">
-                                    <div className={`absolute top-0 left-0 w-1 h-full ${insight.type === 'opportunity' ? 'bg-emerald-400' :
-                                        insight.type === 'optimization' ? 'bg-amber-400' : 'bg-rose-400'
-                                        }`}></div>
+                        {/* Insights Carousel / Grid with Stagger */}
+                        <motion.div
+                            className="grid md:grid-cols-2 gap-4 mt-auto"
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                visible: {
+                                    transition: {
+                                        staggerChildren: 0.15,
+                                        delayChildren: 0.3
+                                    }
+                                }
+                            }}
+                        >
+                            {aiInsights.slice(0, 2).map((insight, index) => (
+                                <motion.div
+                                    key={insight.id}
+                                    variants={{
+                                        hidden: { opacity: 0, x: -20, scale: 0.9 },
+                                        visible: {
+                                            opacity: 1,
+                                            x: 0,
+                                            scale: 1,
+                                            transition: { duration: 0.4 }
+                                        }
+                                    }}
+                                    whileHover={{
+                                        scale: 1.03,
+                                        y: -4,
+                                        transition: { duration: 0.2 }
+                                    }}
+                                    className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 cursor-pointer group/card relative overflow-hidden"
+                                >
+                                    <motion.div
+                                        className={`absolute top-0 left-0 w-1 h-full ${insight.type === 'opportunity' ? 'bg-emerald-400' :
+                                            insight.type === 'optimization' ? 'bg-amber-400' : 'bg-rose-400'
+                                            }`}
+                                        initial={{ scaleY: 0 }}
+                                        animate={{ scaleY: 1 }}
+                                        transition={{ duration: 0.5, delay: index * 0.2 + 0.5 }}
+                                    />
                                     <div className="flex justify-between items-start mb-2 pl-3">
-                                        <div className="p-2 rounded-lg bg-white/10 w-fit">
+                                        <motion.div
+                                            className="p-2 rounded-lg bg-white/10 w-fit"
+                                            whileHover={{ rotate: 360 }}
+                                            transition={{ duration: 0.5 }}
+                                        >
                                             <insight.icon className="h-4 w-4 text-white" />
-                                        </div>
+                                        </motion.div>
                                         <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider bg-white/5 px-2 py-1 rounded-md">
                                             {insight.type}
                                         </span>
@@ -519,57 +745,78 @@ export default function AdminDashboardPage() {
                                             {insight.action} <ChevronDown className="w-3 h-3 -rotate-90 opacity-70" />
                                         </span>
                                     </div>
-                                </div>
+                                </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Quick Actions Dock - Width 4/12 */}
                 <div className="lg:col-span-4 flex flex-col gap-4">
-                    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-3xl p-6 h-full shadow-sm relative overflow-hidden">
+                    <motion.div
+                        className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-3xl p-6 h-full shadow-sm relative overflow-hidden"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                    >
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-bold text-[var(--text-primary)]">Quick Actions</h2>
-                            <button className="text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] p-1.5 rounded-lg transition-colors">
+                            <motion.button
+                                whileHover={{ rotate: 90 }}
+                                transition={{ duration: 0.3 }}
+                                className="text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] p-1.5 rounded-lg transition-colors"
+                            >
                                 <Settings className="w-4 h-4" />
-                            </button>
+                            </motion.button>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 h-full pb-2">
-                            <button className="flex flex-col items-center justify-center gap-3 p-3 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:scale-[1.02] active:scale-95 transition-all duration-200 group border border-transparent hover:border-[var(--border-subtle)]">
-                                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                                    <Users className="h-5 w-5" />
-                                </div>
-                                <span className="text-xs font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Verify Sellers</span>
-                            </button>
-
-                            <button className="flex flex-col items-center justify-center gap-3 p-3 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:scale-[1.02] active:scale-95 transition-all duration-200 group border border-transparent hover:border-[var(--border-subtle)]">
-                                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
-                                    <FileText className="h-5 w-5" />
-                                </div>
-                                <span className="text-xs font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Daily Reports</span>
-                            </button>
-
-                            <button className="flex flex-col items-center justify-center gap-3 p-3 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:scale-[1.02] active:scale-95 transition-all duration-200 group border border-transparent hover:border-[var(--border-subtle)]">
-                                <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
-                                    <Megaphone className="h-5 w-5" />
-                                </div>
-                                <span className="text-xs font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Broadcast</span>
-                            </button>
-
-                            <button className="flex flex-col items-center justify-center gap-3 p-3 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:scale-[1.02] active:scale-95 transition-all duration-200 group border border-transparent hover:border-[var(--border-subtle)]">
-                                <div className="h-10 w-10 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-600 group-hover:bg-violet-500 group-hover:text-white transition-all duration-300">
-                                    <Wallet className="h-5 w-5" />
-                                </div>
-                                <span className="text-xs font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Manage Payouts</span>
-                            </button>
+                            {[
+                                { icon: Users, label: "Verify Sellers", color: "blue" },
+                                { icon: FileText, label: "Daily Reports", color: "emerald" },
+                                { icon: Megaphone, label: "Broadcast", color: "amber" },
+                                { icon: Wallet, label: "Manage Payouts", color: "violet" }
+                            ].map((action, index) => (
+                                <motion.button
+                                    key={action.label}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.4 + index * 0.1, duration: 0.3 }}
+                                    whileHover={{ scale: 1.05, y: -2 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="flex flex-col items-center justify-center gap-3 p-3 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 group border border-transparent hover:border-[var(--border-subtle)]"
+                                >
+                                    <div className={cn(
+                                        "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
+                                        action.color === "blue" && "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white",
+                                        action.color === "emerald" && "bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
+                                        action.color === "amber" && "bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white",
+                                        action.color === "violet" && "bg-violet-500/10 text-violet-600 group-hover:bg-violet-500 group-hover:text-white"
+                                    )}>
+                                        <action.icon className="h-5 w-5" />
+                                    </div>
+                                    <span className="text-xs font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">{action.label}</span>
+                                </motion.button>
+                            ))}
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Key Metrics Row - Premium */}
-            <div className="grid gap-6 md:grid-cols-4 stagger-3">
+            {/* Key Metrics Row - Premium with Stagger Animation */}
+            <motion.div
+                className="grid gap-6 md:grid-cols-4"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                    visible: {
+                        transition: {
+                            staggerChildren: 0.1,
+                            delayChildren: 0.2
+                        }
+                    }
+                }}
+            >
                 <MetricCard
                     title="Active Sellers"
                     value={platformMetrics.activeSellers}
@@ -610,25 +857,42 @@ export default function AdminDashboardPage() {
                     color="amber"
                     chartData={platformMetrics.sparklines.margin}
                 />
-            </div>
+            </motion.div>
 
-            {/* Courier Performance Grid - Redesigned */}
-            <div className="space-y-4 animate-fade-in stagger-4">
+            {/* Courier Performance Grid - Redesigned with Stagger */}
+            <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-[var(--text-primary)]">Courier Performance Overview</h2>
                     <Link href="/admin/couriers" className="text-sm font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] transition-colors flex items-center gap-1">
                         Manage Couriers <ArrowUpRight className="h-4 w-4" />
                     </Link>
                 </div>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <motion.div
+                    className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                        visible: {
+                            transition: {
+                                staggerChildren: 0.08,
+                                delayChildren: 0.3
+                            }
+                        }
+                    }}
+                >
                     {courierPerformance.map((courier) => (
                         <CourierCard key={courier.name} data={courier} />
                     ))}
-                </div>
+                </motion.div>
             </div>
 
-            {/* Two Column Layout: Activity & Financials - Premium */}
-            <div className="grid lg:grid-cols-3 gap-6 animate-fade-in stagger-5">
+            {/* Two Column Layout: Activity & Financials - Premium with Animations */}
+            <motion.div
+                className="grid lg:grid-cols-3 gap-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+            >
                 {/* Real-time Activity Timeline */}
                 <div className="lg:col-span-2 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden flex flex-col">
                     <div className="px-6 py-5 flex items-center justify-between border-b border-[var(--border-subtle)]">
@@ -638,29 +902,70 @@ export default function AdminDashboardPage() {
                             </div>
                             <h2 className="font-bold text-[var(--text-primary)]">System Activity</h2>
                         </div>
-                        <button className="h-8 px-3 rounded-lg text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center gap-2">
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="h-8 px-3 rounded-lg text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center gap-2"
+                        >
                             <Filter className="h-3 w-3" />
                             Filter
-                        </button>
+                        </motion.button>
                     </div>
 
                     <div className="p-6 relative">
                         {/* Timeline Connector Line */}
-                        <div className="absolute left-[2.25rem] top-8 bottom-8 w-px bg-gradient-to-b from-[var(--border-subtle)] via-[var(--border-subtle)] to-transparent"></div>
+                        <motion.div
+                            className="absolute left-[2.25rem] top-8 bottom-8 w-px bg-gradient-to-b from-[var(--border-subtle)] via-[var(--border-subtle)] to-transparent"
+                            initial={{ scaleY: 0 }}
+                            animate={{ scaleY: 1 }}
+                            transition={{ duration: 1, delay: 0.6 }}
+                        />
 
-                        <div className="space-y-6">
+                        <motion.div
+                            className="space-y-6"
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                visible: {
+                                    transition: {
+                                        staggerChildren: 0.1,
+                                        delayChildren: 0.7
+                                    }
+                                }
+                            }}
+                        >
                             {activityFeed.map((activity, index) => (
-                                <div key={activity.id} className="relative flex gap-4 group">
-                                    <div className={cn(
-                                        "relative z-10 h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-[0_0_0_4px_var(--bg-primary)] transition-all duration-300 group-hover:scale-110",
-                                        activity.color === 'blue' ? "bg-[var(--primary-blue)] text-white" :
-                                            activity.color === 'purple' ? "bg-purple-500 text-white" :
-                                                activity.color === 'emerald' ? "bg-[var(--success)] text-white" :
-                                                    "bg-[var(--info)] text-white"
-                                    )}>
+                                <motion.div
+                                    key={activity.id}
+                                    className="relative flex gap-4 group"
+                                    variants={{
+                                        hidden: { opacity: 0, x: -20 },
+                                        visible: {
+                                            opacity: 1,
+                                            x: 0,
+                                            transition: { duration: 0.4 }
+                                        }
+                                    }}
+                                    whileHover={{ x: 4 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <motion.div
+                                        className={cn(
+                                            "relative z-10 h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-[0_0_0_4px_var(--bg-primary)] transition-all duration-300",
+                                            activity.color === 'blue' ? "bg-[var(--primary-blue)] text-white" :
+                                                activity.color === 'purple' ? "bg-purple-500 text-white" :
+                                                    activity.color === 'emerald' ? "bg-[var(--success)] text-white" :
+                                                        "bg-[var(--info)] text-white"
+                                        )}
+                                        whileHover={{ scale: 1.15, rotate: 5 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
                                         <activity.icon className="h-4 w-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0 pt-0.5 bg-[var(--bg-secondary)] p-4 rounded-2xl group-hover:bg-[var(--bg-tertiary)] transition-colors border border-transparent group-hover:border-[var(--border-subtle)]">
+                                    </motion.div>
+                                    <motion.div
+                                        className="flex-1 min-w-0 pt-0.5 bg-[var(--bg-secondary)] p-4 rounded-2xl group-hover:bg-[var(--bg-tertiary)] transition-colors border border-transparent group-hover:border-[var(--border-subtle)]"
+                                        whileHover={{ scale: 1.01 }}
+                                    >
                                         <div className="flex items-start justify-between gap-4">
                                             <div>
                                                 <p className="text-sm text-[var(--text-primary)] font-medium">
@@ -671,19 +976,27 @@ export default function AdminDashboardPage() {
                                                     {activity.time}
                                                 </p>
                                             </div>
-                                            <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[var(--bg-primary)]">
+                                            <motion.button
+                                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[var(--bg-primary)]"
+                                            >
                                                 <MoreHorizontal className="h-4 w-4" />
-                                            </button>
+                                            </motion.button>
                                         </div>
-                                    </div>
-                                </div>
+                                    </motion.div>
+                                </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
                     </div>
                     <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 mt-auto text-center">
-                        <button className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--primary-blue)] transition-colors flex items-center justify-center gap-2">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--primary-blue)] transition-colors flex items-center justify-center gap-2"
+                        >
                             View Full History <ArrowUpRight className="w-3 h-3" />
-                        </button>
+                        </motion.button>
                     </div>
                 </div>
 
@@ -755,12 +1068,13 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Top Sellers Component */}
-            <div className="animate-fade-in stagger-6">
-                <TopSellers />
-            </div>
-        </div >
+
+                {/* Top Sellers Component */}
+                <div className="animate-fade-in stagger-6">
+                    <TopSellers />
+                </div>
+            </motion.div>
+        </div>
     );
 }
