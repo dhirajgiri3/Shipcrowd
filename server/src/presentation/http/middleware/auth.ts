@@ -17,14 +17,20 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Get token from cookie first, then fallback to Authorization header
+    let token = req.cookies?.accessToken;
+
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+
+    if (!token) {
       res.status(401).json({ message: 'Authentication required' });
       return;
     }
-
-    const token = authHeader.split(' ')[1];
 
     // Verify token
     const payload = await verifyAccessToken(token);

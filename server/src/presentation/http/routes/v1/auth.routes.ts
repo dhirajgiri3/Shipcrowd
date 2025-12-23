@@ -107,7 +107,14 @@ router.get('/google/callback',
       // Generate tokens
       const { accessToken, refreshToken } = generateAuthTokens(req.user as any);
 
-      // Set refresh token in cookie
+      // Set both tokens as httpOnly cookies
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -115,49 +122,8 @@ router.get('/google/callback',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
-      // Redirect to frontend with access token
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/oauth-callback?token=${accessToken}`);
-    } catch (error) {
-      console.error('Error in Google callback:', error);
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`);
-    }
-  }
-);
-/**
- * @route GET /auth/google
- * @desc Authenticate with Google
- * @access Public
- */
-router.get('/google', passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false,
-}));
-
-/**
- * @route GET /auth/google/callback
- * @desc Google OAuth callback
- * @access Public
- */
-router.get('/google/callback',
-  passport.authenticate('google', {
-    failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`,
-    session: false
-  }),
-  (req, res) => {
-    try {
-      // Generate tokens
-      const { accessToken, refreshToken } = generateAuthTokens(req.user as any);
-
-      // Set refresh token in cookie
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
-
-      // Redirect to frontend with access token
-      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/oauth-callback?token=${accessToken}`);
+      // Redirect to frontend (cookies are already set)
+      res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/oauth-callback`);
     } catch (error) {
       console.error('Error in Google callback:', error);
       res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`);

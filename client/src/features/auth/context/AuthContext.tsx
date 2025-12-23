@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { authApi, AuthUser, LoginCredentials, RegisterData } from '@/src/core/api'
-import { removeAuthToken } from '@/src/core/api/client'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -79,8 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const userData = await fetchCurrentUser()
                 setUser(userData)
             } catch {
-                // No valid session, clear any stale tokens
-                removeAuthToken()
+                // No valid session
                 setUser(null)
             } finally {
                 setIsLoading(false)

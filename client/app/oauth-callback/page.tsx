@@ -9,11 +9,10 @@ function OAuthCallbackContent() {
     const searchParams = useSearchParams();
 
     useEffect(() => {
-        const token = searchParams.get('token');
         const error = searchParams.get('error');
+        const success = searchParams.get('success') !== null || !error; // No error means success
 
         if (error) {
-            // Handle OAuth error
             let errorMessage = 'Authentication failed';
 
             if (error === 'oauth_failed') {
@@ -29,20 +28,12 @@ function OAuthCallbackContent() {
             return;
         }
 
-        if (token) {
-            // Store access token with the correct key that the API client expects
-            localStorage.setItem('shipcrowd_token', token);
-
-            toast.success('Successfully signed in with Google!');
-
-            // Redirect to dashboard
-            setTimeout(() => {
-                router.push('/seller');
-            }, 500);
-        } else {
-            toast.error('Invalid OAuth response');
-            router.push('/login');
-        }
+        // Cookies are set by the backend during redirect
+        // Just show success and redirect to dashboard
+        toast.success('Successfully signed in with Google!');
+        setTimeout(() => {
+            router.push('/seller');
+        }, 500);
     }, [searchParams, router]);
 
     return (

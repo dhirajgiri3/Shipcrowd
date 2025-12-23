@@ -1,7 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
-const STORAGE_KEY = 'shipcrowd_token';
-
 /**
  * Normalized API error format
  */
@@ -12,33 +10,8 @@ export interface ApiError {
 }
 
 /**
- * Get auth token from localStorage
- */
-const getAuthToken = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEY);
-};
-
-/**
- * Set auth token in localStorage
- */
-export const setAuthToken = (token: string): void => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, token);
-    }
-};
-
-/**
- * Remove auth token from localStorage
- */
-export const removeAuthToken = (): void => {
-    if (typeof window !== 'undefined') {
-        localStorage.removeItem(STORAGE_KEY);
-    }
-};
-
-/**
  * Create axios instance with configuration
+ * Tokens are now stored in httpOnly cookies, not localStorage
  */
 const createApiClient = (): AxiosInstance => {
     const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
@@ -46,29 +19,23 @@ const createApiClient = (): AxiosInstance => {
     const client = axios.create({
         baseURL,
         timeout: 30000,
+        withCredentials: true, // Send cookies with every request
         headers: {
             'Content-Type': 'application/json',
         },
     });
 
     /**
-     * Request interceptor: Add Bearer token
+     * Request interceptor: Log requests in development
      */
     client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
-            const token = getAuthToken();
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-
-            // Log requests in development
             if (process.env.NODE_ENV === 'development') {
                 console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
                     params: config.params,
                     data: config.data,
                 });
             }
-
             return config;
         },
         (error) => {
@@ -78,11 +45,10 @@ const createApiClient = (): AxiosInstance => {
     );
 
     /**
-     * Response interceptor: Handle errors
+     * Response interceptor: Handle errors and auto-refresh
      */
     client.interceptors.response.use(
         (response: AxiosResponse) => {
-            // Log successful responses in development
             if (process.env.NODE_ENV === 'development') {
                 console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
                     status: response.status,
@@ -94,45 +60,34 @@ const createApiClient = (): AxiosInstance => {
         async (error: AxiosError) => {
             const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-            // Handle 401 Unauthorized
+            // Handle 401 - try to refresh token
             if (error.response?.status === 401 && !originalRequest._retry) {
                 originalRequest._retry = true;
 
-                // Remove invalid token
-                removeAuthToken();
-
-                // TODO: Temporarily disabled for development - Re-enable when auth is fully implemented
-                // Redirect to login
-                // if (typeof window !== 'undefined') {
-                //     window.location.href = '/login';
-                // }
-
-                return Promise.reject(normalizeError(error));
+                try {
+                    // Token refresh will set new cookies automatically
+                    await client.post('/auth/refresh');
+                    // Retry the original request
+                    return client(originalRequest);
+                } catch (refreshError) {
+                    // Refresh failed - redirect to login
+                    if (typeof window !== 'undefined') {
+                        window.location.href = '/login';
+                    }
+                    return Promise.reject(normalizeError(error));
+                }
             }
 
-            // Handle 403 Forbidden
-            if (error.response?.status === 403) {
-                console.error('[403 Forbidden]', error.response.data);
-                // Show toast notification (will be handled by React Query error callback)
-            }
-
-            // Handle 5xx Server Errors with retry
+            // Handle 5xx with retry
             if (error.response?.status && error.response.status >= 500) {
                 const retryCount = (originalRequest as any).__retryCount || 0;
-                const maxRetries = 2;
-
-                if (retryCount < maxRetries) {
+                if (retryCount < 2) {
                     (originalRequest as any).__retryCount = retryCount + 1;
-                    const backoffDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-
-                    console.warn(`[Retry ${retryCount + 1}/${maxRetries}] ${error.config?.url} after ${backoffDelay}ms`);
-
-                    await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+                    await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
                     return client(originalRequest);
                 }
             }
 
-            // Log errors in development
             if (process.env.NODE_ENV === 'development') {
                 console.error('[API Response Error]', {
                     url: error.config?.url,

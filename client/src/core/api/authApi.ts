@@ -2,9 +2,10 @@
  * Auth API Service
  * 
  * Handles all authentication-related API calls to the backend.
+ * Tokens are stored in httpOnly cookies (set by server).
  */
 
-import { apiClient, setAuthToken, removeAuthToken } from './client';
+import { apiClient } from './client';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -27,9 +28,8 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-    accessToken: string;
+    message: string;
     user: AuthUser;
-    expiresIn: number;
 }
 
 export interface RegisterData {
@@ -45,8 +45,7 @@ export interface RegisterResponse {
 }
 
 export interface RefreshResponse {
-    accessToken: string;
-    expiresIn: number;
+    message: string;
 }
 
 export interface MeResponse {
@@ -59,20 +58,14 @@ export interface MeResponse {
 
 /**
  * Login user with email and password
+ * Server sets httpOnly cookies for tokens
  */
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/auth/login', credentials, {
-        withCredentials: true, // Important for refresh token cookie
         headers: {
-            'X-CSRF-Token': 'frontend-request', // CSRF token for protection
+            'X-CSRF-Token': 'frontend-request',
         },
     });
-
-    // Store access token
-    if (response.data.accessToken) {
-        setAuthToken(response.data.accessToken);
-    }
-
     return response.data;
 }
 
@@ -89,32 +82,18 @@ export async function register(data: RegisterData): Promise<RegisterResponse> {
 }
 
 /**
- * Logout user and clear tokens
+ * Logout user - server clears cookies
  */
 export async function logout(): Promise<void> {
-    try {
-        await apiClient.post('/auth/logout', {}, {
-            withCredentials: true,
-        });
-    } finally {
-        // Always clear local token, even if server request fails
-        removeAuthToken();
-    }
+    await apiClient.post('/auth/logout');
 }
 
 /**
  * Refresh access token using refresh token cookie
+ * Server sets new cookies automatically
  */
 export async function refreshToken(): Promise<RefreshResponse> {
-    const response = await apiClient.post<RefreshResponse>('/auth/refresh', {}, {
-        withCredentials: true, // Send refresh token cookie
-    });
-
-    // Store new access token
-    if (response.data.accessToken) {
-        setAuthToken(response.data.accessToken);
-    }
-
+    const response = await apiClient.post<RefreshResponse>('/auth/refresh');
     return response.data;
 }
 
@@ -122,10 +101,8 @@ export async function refreshToken(): Promise<RefreshResponse> {
  * Get current authenticated user
  */
 export async function getMe(): Promise<AuthUser> {
-    const response = await apiClient.get<MeResponse>('/auth/me', {
-        withCredentials: true,
-    });
-    return response.data.user;
+    const response = await apiClient.get('/auth/me');
+    return response.data;
 }
 
 /**

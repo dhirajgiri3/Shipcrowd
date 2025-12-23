@@ -6,7 +6,7 @@
  */
 
 // API Client
-export { apiClient, setAuthToken, removeAuthToken, normalizeError, isApiEnabled } from './client';
+export { apiClient, normalizeError, isApiEnabled } from './client';
 export type { ApiError } from './client';
 
 // Auth API

@@ -312,8 +312,16 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       maxAge: cookieMaxAge,
     });
 
+    // Set access token as httpOnly cookie
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
     res.json({
-      accessToken,
+      message: 'Login successful',
       user: {
         id: typedUser._id.toString(),
         name: typedUser.name,
@@ -373,6 +381,25 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
+      // Check for inactivity timeout (8 hours)
+      const INACTIVITY_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
+      const lastActiveTime = session.lastActive?.getTime() || session.createdAt.getTime();
+      const timeSinceActive = Date.now() - lastActiveTime;
+
+      if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
+        // Revoke the session due to inactivity
+        session.isRevoked = true;
+        await session.save();
+
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+        res.status(401).json({
+          message: 'Session expired due to inactivity',
+          code: 'SESSION_TIMEOUT'
+        });
+        return;
+      }
+
       // Update session activity
       await updateSessionActivity(token);
 
@@ -389,6 +416,14 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
+      // Set new access token as httpOnly cookie
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+
       await createAuditLog(
         typedUser._id.toString(),
         typedUser.companyId,
@@ -399,7 +434,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         req
       );
 
-      res.json({ accessToken });
+      res.json({ message: 'Token refreshed' });
     } catch (tokenError) {
       logger.error('Token verification error:', tokenError);
       res.status(401).json({ message: 'Invalid refresh token' });
@@ -564,8 +599,9 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
   try {
     const refreshToken = req.cookies?.refreshToken;
 
-    // Clear the refresh token cookie
+    // Clear both cookies
     res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
 
     // Cast to AuthRequest to access user property
     const authReq = req as AuthRequest;
