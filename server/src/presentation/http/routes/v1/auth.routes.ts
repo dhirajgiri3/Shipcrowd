@@ -83,6 +83,13 @@ router.get('/me', authenticate, authController.getMe);
 router.post('/logout', authenticate, authController.logout);
 
 /**
+ * @route POST /auth/set-password
+ * @desc Set password for OAuth users (enables email/password login)
+ * @access Private
+ */
+router.post('/set-password', authenticate, authController.setPassword);
+
+/**
  * @route GET /auth/google
  * @desc Authenticate with Google
  * @access Public

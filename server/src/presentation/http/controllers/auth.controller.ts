@@ -204,6 +204,22 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       return; // Return void
     }
 
+    // Check if this is an OAuth-only user (no password set)
+    if (!typedUser.password && typedUser.oauthProvider && typedUser.oauthProvider !== 'email') {
+      res.status(401).json({
+        message: `This account uses ${typedUser.oauthProvider} sign-in. Please use "Continue with ${typedUser.oauthProvider.charAt(0).toUpperCase() + typedUser.oauthProvider.slice(1)}" to login.`,
+        code: 'OAUTH_ACCOUNT',
+        provider: typedUser.oauthProvider
+      });
+      return;
+    }
+
+    // Check if password exists before comparing
+    if (!typedUser.password) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
+
     const isPasswordValid = await typedUser.comparePassword(validatedData.password);
     if (!isPasswordValid) {
       // Increment failed login attempts
@@ -829,6 +845,73 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+/**
+ * Set password for OAuth users (allows login with both methods)
+ * @route POST /auth/set-password
+ */
+export const setPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    // Validate password
+    const schema = z.object({
+      password: z.string().min(8, 'Password must be at least 8 characters'),
+    });
+    const { password } = schema.parse(req.body);
+
+    const user = await User.findById(authReq.user._id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    // Check if user already has a password
+    if (typedUser.password) {
+      res.status(400).json({
+        message: 'Password already set. Use change password instead.',
+        code: 'PASSWORD_EXISTS'
+      });
+      return;
+    }
+
+    // Set the password (will be hashed by pre-save hook)
+    typedUser.password = password;
+
+    // Update oauthProvider to indicate both methods available
+    if (typedUser.oauthProvider && typedUser.oauthProvider !== 'email') {
+      // Keep tracking that they also have OAuth
+      // But now they can use password too
+    }
+
+    await typedUser.save();
+
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'password_change',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Password set for OAuth account', success: true },
+      req
+    );
+
+    res.json({ message: 'Password set successfully. You can now login with email and password.' });
+  } catch (error) {
+    logger.error('Set password error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      return;
+    }
+    next(error);
+  }
+};
+
 
 const authController = {
   register,
@@ -841,7 +924,9 @@ const authController = {
   resendVerificationEmail,
   checkPasswordStrength,
   getMe,
+  setPassword,
 };
 
 export default authController;
+
 
