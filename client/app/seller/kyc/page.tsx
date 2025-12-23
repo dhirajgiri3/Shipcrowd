@@ -1,79 +1,336 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
 import { Button } from '@/src/shared/components/button';
 import { Input } from '@/src/shared/components/Input';
 import { Badge } from '@/src/shared/components/badge';
+import { toast } from 'sonner';
 import {
     User,
     Building2,
     Landmark,
     FileCheck,
     CheckCircle2,
-    ChevronRight,
-    Upload,
     ArrowLeft,
     ArrowRight,
-    AlertCircle
+    AlertCircle,
+    Loader2,
+    CheckCircle,
+    XCircle
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
+import { kycApi, KYCData } from '@/src/core/api';
+import { useAuth } from '@/src/features/auth';
+import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { LoadingButton } from '@/components/ui/LoadingButton';
 
 // KYC Steps Configuration
 const kycSteps = [
-    { id: 'personal', label: 'Personal Info', icon: User, description: 'Your identity details' },
-    { id: 'company', label: 'Company Info', icon: Building2, description: 'Business registration' },
-    { id: 'bank', label: 'Bank Details', icon: Landmark, description: 'Payment information' },
-    { id: 'agreement', label: 'Agreement', icon: FileCheck, description: 'Terms & conditions' },
+    { id: 'personal', label: 'Personal Info', icon: User, description: 'PAN verification' },
+    { id: 'bank', label: 'Bank Details', icon: Landmark, description: 'Bank account' },
+    { id: 'company', label: 'Business Info', icon: Building2, description: 'GSTIN (optional)' },
+    { id: 'agreement', label: 'Agreement', icon: FileCheck, description: 'Accept terms' },
 ];
 
-// Mock KYC Status
-const mockKycStatus = {
-    status: 'incomplete' as 'incomplete' | 'pending' | 'verified' | 'rejected',
-    completedSteps: ['personal'],
-    currentStep: 'company',
-};
+interface VerificationStatus {
+    verified: boolean;
+    loading: boolean;
+    error?: string;
+    data?: any;
+}
 
 export default function KycPage() {
+    const router = useRouter();
+    const { user, isLoading: authLoading } = useAuth();
+
     const [currentStep, setCurrentStep] = useState(1);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [existingKYC, setExistingKYC] = useState<KYCData | null>(null);
+
+    // Verification states
+    const [panVerification, setPanVerification] = useState<VerificationStatus>({ verified: false, loading: false });
+    const [bankVerification, setBankVerification] = useState<VerificationStatus>({ verified: false, loading: false });
+    const [gstinVerification, setGstinVerification] = useState<VerificationStatus>({ verified: false, loading: false });
+    const [ifscData, setIfscData] = useState<{ bank: string; branch: string } | null>(null);
+
+    // Form data
     const [formData, setFormData] = useState({
-        // Personal Info
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
+        // Personal
         pan: '',
-        aadhaar: '',
-        // Company Info
-        companyName: '',
-        gstNumber: '',
-        companyType: '',
-        addressLine1: '',
-        addressLine2: '',
-        city: '',
-        state: '',
-        pincode: '',
-        // Bank Details
-        accountHolderName: '',
+        // Bank
         accountNumber: '',
         confirmAccountNumber: '',
         ifscCode: '',
-        bankName: '',
-        branchName: '',
+        // Company
+        gstin: '',
         // Agreement
         agreementAccepted: false,
+        confirmationAccepted: false,
     });
+
+    // Fetch existing KYC on mount
+    useEffect(() => {
+        const fetchKYC = async () => {
+            try {
+                const response = await kycApi.getKYC();
+                if (response.kyc) {
+                    setExistingKYC(response.kyc);
+                    // Pre-fill form if KYC exists
+                    const docs = response.kyc.documents || [];
+                    const panDoc = docs.find(d => d.type === 'pan');
+                    const bankDoc = docs.find(d => d.type === 'bank_account');
+                    const gstinDoc = docs.find(d => d.type === 'gstin');
+
+                    if (panDoc?.status === 'verified') {
+                        setPanVerification({ verified: true, loading: false });
+                    }
+                    if (bankDoc?.status === 'verified') {
+                        setBankVerification({ verified: true, loading: false });
+                    }
+                    if (gstinDoc?.status === 'verified') {
+                        setGstinVerification({ verified: true, loading: false });
+                    }
+                }
+            } catch (err) {
+                // No existing KYC, that's fine
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (!authLoading && user) {
+            fetchKYC();
+        } else if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [authLoading, user, router]);
 
     const handleInputChange = (field: string, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        setError(null);
+    };
+
+    // PAN Verification
+    const verifyPAN = useCallback(async () => {
+        if (!isValidPAN(formData.pan) || formData.pan.length !== 10) {
+            setPanVerification({ verified: false, loading: false, error: 'Invalid PAN format' });
+            return;
+        }
+
+        setPanVerification({ verified: false, loading: true });
+
+        try {
+            const response = await kycApi.verifyPAN({ panNumber: formData.pan });
+            if (response.success && response.verified) {
+                setPanVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                toast.success('PAN verified successfully!');
+            } else {
+                setPanVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'PAN verification failed'
+                });
+            }
+        } catch (err: any) {
+            setPanVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
+    }, [formData.pan]);
+
+    // IFSC Lookup
+    const lookupIFSC = useCallback(async () => {
+        if (!isValidIFSC(formData.ifscCode) || formData.ifscCode.length !== 11) {
+            setIfscData(null);
+            return;
+        }
+
+        try {
+            const response = await kycApi.verifyIFSC(formData.ifscCode);
+            if (response.success && response.data) {
+                setIfscData({ bank: response.data.bank, branch: response.data.branch });
+            }
+        } catch {
+            setIfscData(null);
+        }
+    }, [formData.ifscCode]);
+
+    // Bank Verification
+    const verifyBank = useCallback(async () => {
+        if (!isValidBankAccount(formData.accountNumber) || !isValidIFSC(formData.ifscCode)) {
+            setBankVerification({ verified: false, loading: false, error: 'Invalid bank details' });
+            return;
+        }
+
+        if (formData.accountNumber !== formData.confirmAccountNumber) {
+            setBankVerification({ verified: false, loading: false, error: 'Account numbers do not match' });
+            return;
+        }
+
+        setBankVerification({ verified: false, loading: true });
+
+        try {
+            const response = await kycApi.verifyBankAccount({
+                accountNumber: formData.accountNumber,
+                ifscCode: formData.ifscCode,
+            });
+            if (response.success && response.verified) {
+                setBankVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                toast.success('Bank account verified!');
+            } else {
+                setBankVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'Bank verification failed'
+                });
+            }
+        } catch (err: any) {
+            setBankVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
+    }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode]);
+
+    // GSTIN Verification
+    const verifyGSTIN = useCallback(async () => {
+        if (!formData.gstin) return; // GSTIN is optional
+
+        if (!isValidGSTIN(formData.gstin)) {
+            setGstinVerification({ verified: false, loading: false, error: 'Invalid GSTIN format' });
+            return;
+        }
+
+        setGstinVerification({ verified: false, loading: true });
+
+        try {
+            const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
+            if (response.success && response.verified) {
+                setGstinVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                toast.success('GSTIN verified!');
+            } else {
+                setGstinVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'GSTIN verification failed'
+                });
+            }
+        } catch (err: any) {
+            setGstinVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
+    }, [formData.gstin]);
+
+    // Step validation
+    const validateCurrentStep = (): boolean => {
+        setError(null);
+
+        if (currentStep === 1) {
+            if (!formData.pan || formData.pan.length !== 10) {
+                setError('Please enter a valid 10-character PAN');
+                return false;
+            }
+            if (!panVerification.verified) {
+                setError('Please verify your PAN before proceeding');
+                return false;
+            }
+        }
+
+        if (currentStep === 2) {
+            if (!formData.accountNumber || !formData.ifscCode) {
+                setError('Please fill all bank details');
+                return false;
+            }
+            if (formData.accountNumber !== formData.confirmAccountNumber) {
+                setError('Account numbers do not match');
+                return false;
+            }
+            if (!bankVerification.verified) {
+                setError('Please verify your bank account before proceeding');
+                return false;
+            }
+        }
+
+        if (currentStep === 3) {
+            // GSTIN is optional, but if provided must be valid
+            if (formData.gstin && !gstinVerification.verified) {
+                setError('Please verify your GSTIN or leave it empty');
+                return false;
+            }
+        }
+
+        if (currentStep === 4) {
+            if (!formData.agreementAccepted || !formData.confirmationAccepted) {
+                setError('Please accept all terms to proceed');
+                return false;
+            }
+        }
+
+        return true;
     };
 
     const nextStep = () => {
-        if (currentStep < 4) setCurrentStep(currentStep + 1);
+        if (validateCurrentStep() && currentStep < 4) {
+            setCurrentStep(currentStep + 1);
+        }
     };
 
     const prevStep = () => {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
+    };
+
+    // Submit KYC
+    const handleSubmit = async () => {
+        if (!validateCurrentStep()) return;
+
+        setIsSubmitting(true);
+        setError(null);
+
+        try {
+            await kycApi.submitKYC({
+                panNumber: formData.pan,
+                bankDetails: {
+                    accountNumber: formData.accountNumber,
+                    ifscCode: formData.ifscCode,
+                    bankName: ifscData?.bank,
+                },
+                gstin: formData.gstin || undefined,
+            });
+
+            await kycApi.updateAgreement(true);
+
+            toast.success('KYC submitted successfully!');
+            router.push('/seller');
+        } catch (err: any) {
+            const message = err.message || 'Failed to submit KYC';
+            setError(message);
+            toast.error(message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const getStepStatus = (stepIndex: number) => {
@@ -81,6 +338,49 @@ export default function KycPage() {
         if (stepIndex + 1 === currentStep) return 'current';
         return 'upcoming';
     };
+
+    // Render verification badge
+    const VerificationBadge = ({ status }: { status: VerificationStatus }) => {
+        if (status.loading) {
+            return <Loader2 className="w-4 h-4 animate-spin text-primaryBlue" />;
+        }
+        if (status.verified) {
+            return <CheckCircle className="w-4 h-4 text-emerald-500" />;
+        }
+        if (status.error) {
+            return <XCircle className="w-4 h-4 text-red-500" />;
+        }
+        return null;
+    };
+
+    // Loading state
+    if (isLoading || authLoading) {
+        return (
+            <div className="min-h-[600px] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primaryBlue" />
+            </div>
+        );
+    }
+
+    // Already verified
+    if (existingKYC?.status === 'verified') {
+        return (
+            <div className="space-y-6">
+                <Card>
+                    <CardContent className="p-8 text-center">
+                        <div className="w-16 h-16 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">KYC Verified</h2>
+                        <p className="text-gray-600">Your KYC has been verified. You can now start shipping!</p>
+                        <Button onClick={() => router.push('/seller')} className="mt-6">
+                            Go to Dashboard
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -92,8 +392,8 @@ export default function KycPage() {
                         Verify your identity to start shipping with ShipCrowd
                     </p>
                 </div>
-                <Badge variant={mockKycStatus.status === 'verified' ? 'success' : 'warning'}>
-                    {mockKycStatus.status === 'verified' ? 'Verified' : 'Pending Verification'}
+                <Badge variant={existingKYC?.status === 'pending' ? 'warning' : 'neutral'}>
+                    {existingKYC?.status === 'pending' ? 'Under Review' : 'Incomplete'}
                 </Badge>
             </div>
 
@@ -112,7 +412,7 @@ export default function KycPage() {
                                             className={cn(
                                                 "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
                                                 status === 'completed' && "bg-emerald-500 text-white",
-                                                status === 'current' && "bg-[#2525FF] text-white shadow-lg shadow-[#2525FF]/30",
+                                                status === 'current' && "bg-primaryBlue text-white shadow-lg shadow-primaryBlue/30",
                                                 status === 'upcoming' && "bg-gray-100 text-gray-400"
                                             )}
                                         >
@@ -129,9 +429,6 @@ export default function KycPage() {
                                             )}>
                                                 {step.label}
                                             </p>
-                                            <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
-                                                {step.description}
-                                            </p>
                                         </div>
                                     </div>
                                     {index < kycSteps.length - 1 && (
@@ -147,399 +444,276 @@ export default function KycPage() {
                 </CardContent>
             </Card>
 
-            {/* Form Cards */}
-            <div className="grid gap-6">
-                {/* Step 1: Personal Info */}
-                {currentStep === 1 && (
-                    <Card className="animate-in slide-in-from-right duration-300">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <User className="h-5 w-5 text-[#2525FF]" />
-                                Personal Information
-                            </CardTitle>
-                            <CardDescription>
-                                Please provide your personal details as per your government ID
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">First Name *</label>
-                                    <Input
-                                        placeholder="Enter first name"
-                                        value={formData.firstName}
-                                        onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Last Name *</label>
-                                    <Input
-                                        placeholder="Enter last name"
-                                        value={formData.lastName}
-                                        onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                    />
-                                </div>
-                            </div>
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="error" dismissible onDismiss={() => setError(null)}>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Email Address *</label>
-                                    <Input
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        value={formData.email}
-                                        onChange={(e) => handleInputChange('email', e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Phone Number *</label>
-                                    <Input
-                                        type="tel"
-                                        placeholder="+91 98765 43210"
-                                        value={formData.phone}
-                                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">PAN Number *</label>
+            {/* Step 1: PAN Verification */}
+            {currentStep === 1 && (
+                <Card className="animate-in slide-in-from-right duration-300">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <User className="h-5 w-5 text-primaryBlue" />
+                            PAN Verification
+                        </CardTitle>
+                        <CardDescription>
+                            Your PAN will be verified in real-time
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">PAN Number *</label>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
                                     <Input
                                         placeholder="ABCDE1234F"
                                         value={formData.pan}
-                                        onChange={(e) => handleInputChange('pan', e.target.value.toUpperCase())}
+                                        onChange={(e) => handleInputChange('pan', formatPAN(e.target.value))}
                                         maxLength={10}
+                                        disabled={panVerification.verified}
+                                        className={panVerification.verified ? 'bg-emerald-50 border-emerald-200' : ''}
                                     />
-                                    <p className="text-xs text-gray-400">10-character alphanumeric PAN</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Aadhaar Number *</label>
-                                    <Input
-                                        placeholder="1234 5678 9012"
-                                        value={formData.aadhaar}
-                                        onChange={(e) => handleInputChange('aadhaar', e.target.value)}
-                                        maxLength={14}
-                                    />
-                                    <p className="text-xs text-gray-400">12-digit Aadhaar number</p>
-                                </div>
-                            </div>
-
-                            {/* Document Upload Section */}
-                            <div className="pt-4 border-t border-gray-100">
-                                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-4">Upload Documents</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
-                                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm font-medium text-gray-700">PAN Card</p>
-                                        <p className="text-xs text-gray-400 mt-1">Upload front side (PDF/JPG/PNG, max 2MB)</p>
-                                    </div>
-                                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
-                                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm font-medium text-gray-700">Aadhaar Card</p>
-                                        <p className="text-xs text-gray-400 mt-1">Upload front & back (PDF/JPG/PNG, max 2MB)</p>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <VerificationBadge status={panVerification} />
                                     </div>
                                 </div>
+                                <Button
+                                    onClick={verifyPAN}
+                                    disabled={formData.pan.length !== 10 || panVerification.loading || panVerification.verified}
+                                    variant={panVerification.verified ? 'outline' : 'default'}
+                                >
+                                    {panVerification.loading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : panVerification.verified ? 'Verified' : 'Verify'}
+                                </Button>
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                            {panVerification.error && (
+                                <p className="text-sm text-red-500">{panVerification.error}</p>
+                            )}
+                            {panVerification.data?.name && (
+                                <p className="text-sm text-emerald-600">Name: {panVerification.data.name}</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
-                {/* Step 2: Company Info */}
-                {currentStep === 2 && (
-                    <Card className="animate-in slide-in-from-right duration-300">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Building2 className="h-5 w-5 text-[#2525FF]" />
-                                Company Information
-                            </CardTitle>
-                            <CardDescription>
-                                Provide your business registration details
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Company Name *</label>
-                                    <Input
-                                        placeholder="Your Company Pvt. Ltd."
-                                        value={formData.companyName}
-                                        onChange={(e) => handleInputChange('companyName', e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Company Type *</label>
-                                    <select
-                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 transition-colors"
-                                        value={formData.companyType}
-                                        onChange={(e) => handleInputChange('companyType', e.target.value)}
-                                    >
-                                        <option value="">Select company type</option>
-                                        <option value="proprietorship">Proprietorship</option>
-                                        <option value="partnership">Partnership</option>
-                                        <option value="llp">LLP</option>
-                                        <option value="pvt-ltd">Private Limited</option>
-                                        <option value="public">Public Limited</option>
-                                    </select>
-                                </div>
-                            </div>
+            {/* Step 2: Bank Details */}
+            {currentStep === 2 && (
+                <Card className="animate-in slide-in-from-right duration-300">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Landmark className="h-5 w-5 text-primaryBlue" />
+                            Bank Account Verification
+                        </CardTitle>
+                        <CardDescription>
+                            For COD remittance and refunds
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-amber-800">
+                                Bank account must be in the name of the registered business or proprietor.
+                            </p>
+                        </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">GST Number *</label>
+                                <label className="text-sm font-medium text-gray-700">Account Number *</label>
                                 <Input
-                                    placeholder="22AAAAA0000A1Z5"
-                                    value={formData.gstNumber}
-                                    onChange={(e) => handleInputChange('gstNumber', e.target.value.toUpperCase())}
-                                    maxLength={15}
-                                />
-                                <p className="text-xs text-gray-400">15-character GST Identification Number</p>
-                            </div>
-
-                            <div className="pt-4 border-t border-gray-100">
-                                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-4">Registered Address</h4>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Address Line 1 *</label>
-                                        <Input
-                                            placeholder="Building, Street"
-                                            value={formData.addressLine1}
-                                            onChange={(e) => handleInputChange('addressLine1', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Address Line 2</label>
-                                        <Input
-                                            placeholder="Landmark, Area (Optional)"
-                                            value={formData.addressLine2}
-                                            onChange={(e) => handleInputChange('addressLine2', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-700">City *</label>
-                                            <Input
-                                                placeholder="Mumbai"
-                                                value={formData.city}
-                                                onChange={(e) => handleInputChange('city', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-700">State *</label>
-                                            <Input
-                                                placeholder="Maharashtra"
-                                                value={formData.state}
-                                                onChange={(e) => handleInputChange('state', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="space-y-2 col-span-2 md:col-span-2">
-                                            <label className="text-sm font-medium text-gray-700">Pincode *</label>
-                                            <Input
-                                                placeholder="400001"
-                                                value={formData.pincode}
-                                                onChange={(e) => handleInputChange('pincode', e.target.value)}
-                                                maxLength={6}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* GST Certificate Upload */}
-                            <div className="pt-4 border-t border-gray-100">
-                                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
-                                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                    <p className="text-sm font-medium text-gray-700">GST Certificate</p>
-                                    <p className="text-xs text-gray-400 mt-1">Upload GST registration certificate (PDF, max 5MB)</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Step 3: Bank Details */}
-                {currentStep === 3 && (
-                    <Card className="animate-in slide-in-from-right duration-300">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Landmark className="h-5 w-5 text-[#2525FF]" />
-                                Bank Account Details
-                            </CardTitle>
-                            <CardDescription>
-                                Add your bank account for COD remittance and refunds
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-3">
-                                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="text-sm font-medium text-amber-800">Important</p>
-                                    <p className="text-xs text-amber-700 mt-1">
-                                        Bank account must be in the name of the registered business or proprietor.
-                                        Personal savings accounts are not accepted for business transactions.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Account Holder Name *</label>
-                                <Input
-                                    placeholder="As per bank records"
-                                    value={formData.accountHolderName}
-                                    onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
+                                    type="password"
+                                    placeholder="Enter account number"
+                                    value={formData.accountNumber}
+                                    onChange={(e) => handleInputChange('accountNumber', e.target.value.replace(/\D/g, ''))}
+                                    disabled={bankVerification.verified}
                                 />
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Confirm Account Number *</label>
+                                <Input
+                                    placeholder="Re-enter account number"
+                                    value={formData.confirmAccountNumber}
+                                    onChange={(e) => handleInputChange('confirmAccountNumber', e.target.value.replace(/\D/g, ''))}
+                                    disabled={bankVerification.verified}
+                                />
+                            </div>
+                        </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Account Number *</label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">IFSC Code *</label>
+                                <Input
+                                    placeholder="SBIN0001234"
+                                    value={formData.ifscCode}
+                                    onChange={(e) => {
+                                        handleInputChange('ifscCode', formatIFSC(e.target.value));
+                                    }}
+                                    onBlur={lookupIFSC}
+                                    maxLength={11}
+                                    disabled={bankVerification.verified}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Bank Name</label>
+                                <Input
+                                    value={ifscData?.bank || ''}
+                                    placeholder="Auto-filled"
+                                    disabled
+                                    className="bg-gray-50"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Branch</label>
+                                <Input
+                                    value={ifscData?.branch || ''}
+                                    placeholder="Auto-filled"
+                                    disabled
+                                    className="bg-gray-50"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <Button
+                                onClick={verifyBank}
+                                disabled={!formData.accountNumber || !formData.ifscCode || bankVerification.loading || bankVerification.verified}
+                                variant={bankVerification.verified ? 'outline' : 'default'}
+                            >
+                                {bankVerification.loading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...</>
+                                ) : bankVerification.verified ? (
+                                    <><CheckCircle className="w-4 h-4 mr-2" /> Verified</>
+                                ) : 'Verify Bank Account'}
+                            </Button>
+                            {bankVerification.error && (
+                                <p className="text-sm text-red-500">{bankVerification.error}</p>
+                            )}
+                        </div>
+                        {bankVerification.data?.accountHolderName && (
+                            <p className="text-sm text-emerald-600">Account Holder: {bankVerification.data.accountHolderName}</p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Step 3: GSTIN (Optional) */}
+            {currentStep === 3 && (
+                <Card className="animate-in slide-in-from-right duration-300">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5 text-primaryBlue" />
+                            Business Information (Optional)
+                        </CardTitle>
+                        <CardDescription>
+                            Add GSTIN for GST invoicing. You can skip this step.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">GST Number</label>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
                                     <Input
-                                        type="password"
-                                        placeholder="Enter account number"
-                                        value={formData.accountNumber}
-                                        onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+                                        placeholder="22AAAAA0000A1Z5"
+                                        value={formData.gstin}
+                                        onChange={(e) => handleInputChange('gstin', formatGSTIN(e.target.value))}
+                                        maxLength={15}
+                                        disabled={gstinVerification.verified}
+                                        className={gstinVerification.verified ? 'bg-emerald-50 border-emerald-200' : ''}
                                     />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <VerificationBadge status={gstinVerification} />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Confirm Account Number *</label>
-                                    <Input
-                                        placeholder="Re-enter account number"
-                                        value={formData.confirmAccountNumber}
-                                        onChange={(e) => handleInputChange('confirmAccountNumber', e.target.value)}
-                                    />
-                                </div>
+                                <Button
+                                    onClick={verifyGSTIN}
+                                    disabled={!formData.gstin || formData.gstin.length !== 15 || gstinVerification.loading || gstinVerification.verified}
+                                    variant={gstinVerification.verified ? 'outline' : 'default'}
+                                >
+                                    {gstinVerification.loading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : gstinVerification.verified ? 'Verified' : 'Verify'}
+                                </Button>
                             </div>
+                            {gstinVerification.error && (
+                                <p className="text-sm text-red-500">{gstinVerification.error}</p>
+                            )}
+                            {gstinVerification.data?.businessName && (
+                                <p className="text-sm text-emerald-600">Business: {gstinVerification.data.businessName}</p>
+                            )}
+                            <p className="text-xs text-gray-400">15-character GST Identification Number (optional)</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">IFSC Code *</label>
-                                    <Input
-                                        placeholder="SBIN0001234"
-                                        value={formData.ifscCode}
-                                        onChange={(e) => handleInputChange('ifscCode', e.target.value.toUpperCase())}
-                                        maxLength={11}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Bank Name</label>
-                                    <Input
-                                        placeholder="Auto-filled from IFSC"
-                                        value={formData.bankName}
-                                        onChange={(e) => handleInputChange('bankName', e.target.value)}
-                                        disabled
-                                        className="bg-[var(--bg-secondary)]"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Branch Name</label>
-                                    <Input
-                                        placeholder="Auto-filled from IFSC"
-                                        value={formData.branchName}
-                                        onChange={(e) => handleInputChange('branchName', e.target.value)}
-                                        disabled
-                                        className="bg-[var(--bg-secondary)]"
-                                    />
-                                </div>
-                            </div>
+            {/* Step 4: Agreement */}
+            {currentStep === 4 && (
+                <Card className="animate-in slide-in-from-right duration-300">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileCheck className="h-5 w-5 text-primaryBlue" />
+                            Terms & Agreement
+                        </CardTitle>
+                        <CardDescription>
+                            Review and accept the ShipCrowd seller agreement
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="bg-gray-50 rounded-lg p-6 max-h-64 overflow-y-auto text-sm text-gray-600 space-y-4">
+                            <h4 className="font-semibold text-gray-900">ShipCrowd Seller Agreement</h4>
+                            <p>
+                                This Seller Agreement ("Agreement") is entered into between ShipCrowd Technologies Pvt. Ltd.
+                                ("ShipCrowd") and the Seller ("You") upon acceptance of these terms.
+                            </p>
+                            <h5 className="font-medium text-gray-800">1. Services</h5>
+                            <p>
+                                ShipCrowd provides a logistics aggregation platform that enables sellers to ship products
+                                through various courier partners.
+                            </p>
+                            <h5 className="font-medium text-gray-800">2. Payment Terms</h5>
+                            <p>
+                                COD remittance will be processed within 2-3 business days after delivery confirmation.
+                            </p>
+                            <h5 className="font-medium text-gray-800">3. Liability</h5>
+                            <p>
+                                ShipCrowd's liability for lost or damaged shipments is limited to the declared value
+                                or the courier partner's standard liability, whichever is lower.
+                            </p>
+                        </div>
 
-                            {/* Cancelled Cheque Upload */}
-                            <div className="pt-4 border-t border-gray-100">
-                                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
-                                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                    <p className="text-sm font-medium text-gray-700">Cancelled Cheque / Bank Statement</p>
-                                    <p className="text-xs text-gray-400 mt-1">Upload for bank account verification (PDF/JPG/PNG, max 2MB)</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Step 4: Agreement */}
-                {currentStep === 4 && (
-                    <Card className="animate-in slide-in-from-right duration-300">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <FileCheck className="h-5 w-5 text-[#2525FF]" />
-                                Terms & Agreement
-                            </CardTitle>
-                            <CardDescription>
-                                Review and accept the ShipCrowd seller agreement
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {/* Agreement Preview */}
-                            <div className="bg-[var(--bg-secondary)] rounded-lg p-6 max-h-80 overflow-y-auto text-sm text-gray-600 space-y-4">
-                                <h4 className="font-semibold text-gray-900">ShipCrowd Seller Agreement</h4>
-                                <p>
-                                    This Seller Agreement ("Agreement") is entered into between ShipCrowd Technologies Pvt. Ltd.
-                                    ("ShipCrowd") and the Seller ("You") upon acceptance of these terms.
-                                </p>
-                                <h5 className="font-medium text-gray-800">1. Services</h5>
-                                <p>
-                                    ShipCrowd provides a logistics aggregation platform that enables sellers to ship products
-                                    through various courier partners. The platform offers rate comparison, order management,
-                                    tracking, and COD remittance services.
-                                </p>
-                                <h5 className="font-medium text-gray-800">2. Seller Obligations</h5>
-                                <p>
-                                    You agree to provide accurate shipment information, maintain adequate wallet balance,
-                                    and comply with all applicable laws regarding the products being shipped.
-                                </p>
-                                <h5 className="font-medium text-gray-800">3. Payment Terms</h5>
-                                <p>
-                                    COD remittance will be processed within 2-3 business days after delivery confirmation.
-                                    Shipping charges will be deducted from your wallet balance at the time of booking.
-                                </p>
-                                <h5 className="font-medium text-gray-800">4. Liability</h5>
-                                <p>
-                                    ShipCrowd's liability for lost or damaged shipments is limited to the declared value
-                                    or the courier partner's standard liability, whichever is lower.
-                                </p>
-                                <h5 className="font-medium text-gray-800">5. Termination</h5>
-                                <p>
-                                    Either party may terminate this agreement with 30 days written notice. Outstanding
-                                    balances will be settled within 15 business days of termination.
-                                </p>
-                            </div>
-
-                            {/* Checkboxes */}
-                            <div className="space-y-4">
-                                <label className="flex items-start gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-[#2525FF] focus:ring-[#2525FF]"
-                                        checked={formData.agreementAccepted}
-                                        onChange={(e) => handleInputChange('agreementAccepted', e.target.checked)}
-                                    />
-                                    <span className="text-sm text-gray-600">
-                                        I have read and agree to the ShipCrowd Seller Agreement,
-                                        <a href="#" className="text-[#2525FF] hover:underline ml-1">Terms of Service</a>, and
-                                        <a href="#" className="text-[#2525FF] hover:underline ml-1">Privacy Policy</a>.
-                                    </span>
-                                </label>
-                                <label className="flex items-start gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-[#2525FF] focus:ring-[#2525FF]"
-                                    />
-                                    <span className="text-sm text-gray-600">
-                                        I confirm that all information provided is accurate and I am authorized to
-                                        enter into this agreement on behalf of my business.
-                                    </span>
-                                </label>
-                            </div>
-
-                            {/* Digital Signature */}
-                            <div className="pt-4 border-t border-gray-100">
-                                <h4 className="text-sm font-medium text-gray-900 mb-4">Digital Signature</h4>
-                                <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer bg-[var(--bg-secondary)]">
-                                    <p className="text-sm text-gray-500">Click to draw your signature or type your name</p>
-                                    <p className="text-xs text-gray-400 mt-2">This will serve as your electronic signature</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
+                        <div className="space-y-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue"
+                                    checked={formData.agreementAccepted}
+                                    onChange={(e) => handleInputChange('agreementAccepted', e.target.checked)}
+                                />
+                                <span className="text-sm text-gray-600">
+                                    I have read and agree to the ShipCrowd Seller Agreement, Terms of Service, and Privacy Policy.
+                                </span>
+                            </label>
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue"
+                                    checked={formData.confirmationAccepted}
+                                    onChange={(e) => handleInputChange('confirmationAccepted', e.target.checked)}
+                                />
+                                <span className="text-sm text-gray-600">
+                                    I confirm that all information provided is accurate and I am authorized to
+                                    enter into this agreement on behalf of my business.
+                                </span>
+                            </label>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Navigation Buttons */}
             <div className="flex items-center justify-between pt-4">
@@ -559,18 +733,20 @@ export default function KycPage() {
 
                 {currentStep < 4 ? (
                     <Button onClick={nextStep} className="gap-2">
-                        Next Step
+                        {currentStep === 3 && !formData.gstin ? 'Skip & Continue' : 'Next Step'}
                         <ArrowRight className="h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button
-                        onClick={() => alert('KYC Submitted! (Mock)')}
-                        disabled={!formData.agreementAccepted}
+                    <LoadingButton
+                        onClick={handleSubmit}
+                        isLoading={isSubmitting}
+                        loadingText="Submitting..."
+                        disabled={!formData.agreementAccepted || !formData.confirmationAccepted}
                         className="gap-2"
                     >
                         <CheckCircle2 className="h-4 w-4" />
                         Submit KYC
-                    </Button>
+                    </LoadingButton>
                 )}
             </div>
         </div>

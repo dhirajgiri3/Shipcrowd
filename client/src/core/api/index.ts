@@ -17,6 +17,10 @@ export type { AuthUser, LoginCredentials, LoginResponse, RegisterData, RegisterR
 export { companyApi } from './companyApi';
 export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './companyApi';
 
+// KYC API
+export { kycApi } from './kycApi';
+export type { KYCData, KYCDocument, SubmitKYCRequest, VerifyPANRequest, VerifyBankAccountRequest, VerifyGSTINRequest } from './kycApi';
+
 // Error Handling
 export { handleApiError, showSuccessToast, showInfoToast } from './errors/error-handler';
 
