@@ -603,6 +603,60 @@ export const sendRecoveryEmail = async (
   }
 };
 
+/**
+ * Send a company owner invitation email (admin only)
+ */
+export const sendOwnerInvitationEmail = async (
+  to: string,
+  name: string,
+  companyName: string,
+  token: string
+): Promise<boolean> => {
+  const inviteUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/accept-owner-invitation?token=${token}`;
+
+  // Check if we have a template ID for owner invitation emails
+  const templateId = process.env.SENDGRID_OWNER_INVITATION_TEMPLATE_ID;
+
+  if (templateId && EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    // Use SendGrid template with dynamic data
+    return sendEmail(
+      to,
+      `You've been invited to manage ${companyName} on ShipCrowd`,
+      '', // HTML is not needed when using a template
+      '', // Text is not needed when using a template
+      undefined, // No attachments
+      templateId,
+      {
+        name,
+        company_name: companyName,
+        invite_url: inviteUrl,
+      }
+    );
+  } else {
+    // Fallback to custom HTML
+    const html = `
+      <h1>Company Owner Invitation</h1>
+      <p>Hello ${name},</p>
+      <p>You have been selected to be the owner of <strong>${companyName}</strong> on ShipCrowd!</p>
+      <p>As the company owner, you'll have full access to:</p>
+      <ul>
+        <li>Manage orders and shipments</li>
+        <li>Track deliveries and analytics</li>
+        <li>Set up warehouses and rate cards</li>
+        <li>Invite and manage team members</li>
+        <li>Configure company settings</li>
+      </ul>
+      <p>Please click the link below to accept this invitation and set up your account:</p>
+      <p><a href="${inviteUrl}" style="background-color: #2525FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation & Create Account</a></p>
+      <p>This invitation will expire in 7 days.</p>
+      <p>If you did not expect this invitation, please contact our support team.</p>
+      <p>Thank you,<br>The ShipCrowd Team</p>
+    `;
+
+    return sendEmail(to, `You've been invited to manage ${companyName} on ShipCrowd`, html);
+  }
+};
+
 export default {
   sendEmail,
   sendVerificationEmail,
@@ -615,4 +669,5 @@ export default {
   sendEmailChangeVerification,
   sendEmailChangeNotification,
   sendRecoveryEmail,
+  sendOwnerInvitationEmail,
 };

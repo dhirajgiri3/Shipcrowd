@@ -324,7 +324,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: cookieMaxAge,
     });
 
@@ -332,7 +332,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
@@ -428,7 +428,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       res.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -436,7 +436,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       res.cookie('accessToken', accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         maxAge: 15 * 60 * 1000, // 15 minutes
       });
 
@@ -771,7 +771,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
       return;
     }
 
-    res.json(user);
+    res.json({ user });
   } catch (error) {
     logger.error('Get user error:', error);
     next(error);

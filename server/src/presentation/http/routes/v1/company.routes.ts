@@ -51,6 +51,27 @@ router.post('/', authenticate, csrfProtection, asHandler(companyController.creat
 router.get('/:companyId', authenticate, asHandler(companyController.getCompanyById));
 
 /**
+ * @route GET /companies/stats
+ * @desc Get company statistics (admin only)
+ * @access Private (Admin)
+ */
+router.get('/stats', authenticate, asHandler(companyController.getCompanyStats));
+
+/**
+ * @route POST /companies/:companyId/invite-owner
+ * @desc Invite owner for a company (admin only)
+ * @access Private (Admin)
+ */
+router.post('/:companyId/invite-owner', authenticate, csrfProtection, asHandler(companyController.inviteCompanyOwner));
+
+/**
+ * @route PATCH /companies/:companyId/status
+ * @desc Update company status (admin only)
+ * @access Private (Admin)
+ */
+router.patch('/:companyId/status', authenticate, csrfProtection, asHandler(companyController.updateCompanyStatus));
+
+/**
  * @route PUT /companies/:companyId
  * @desc Update a company
  * @access Private

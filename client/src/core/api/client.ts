@@ -60,23 +60,87 @@ const createApiClient = (): AxiosInstance => {
         async (error: AxiosError) => {
             const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+            // Helper to check if URL matches a path (handles relative and absolute URLs)
+            const isUrlPath = (url: string | undefined, path: string): boolean => {
+                if (!url) return false;
+                // Normalize to pathname only (remove baseURL if present)
+                const pathname = url.includes('://') ? new URL(url).pathname : url;
+                return pathname.includes(path);
+            };
+
             // Handle 401 - try to refresh token (ensure we don't get into an infinite loop)
-            // We also exclude /auth/login because a 401 on login means invalid credentials, not an expired token
-            if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh') && !originalRequest.url?.includes('/auth/login')) {
+            // Exclude: refresh endpoint itself, login endpoint, and already retried requests
+            if (
+                error.response?.status === 401 &&
+                !originalRequest._retry &&
+                !isUrlPath(originalRequest.url, '/auth/refresh') &&
+                !isUrlPath(originalRequest.url, '/auth/login')
+            ) {
                 originalRequest._retry = true;
 
                 try {
                     // Token refresh will set new cookies automatically
                     await client.post('/auth/refresh');
+
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log('[API] Token refreshed, retrying request:', originalRequest.url);
+                    }
+
                     // Retry the original request
                     return client(originalRequest);
                 } catch (refreshError) {
-                    // Refresh failed - redirect to login
+                    // Refresh failed - redirect to login ONLY if not already on auth pages
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('[API] Token refresh failed');
+                    }
+
                     if (typeof window !== 'undefined') {
-                        window.location.href = '/login';
+                        const currentPath = window.location.pathname;
+                        const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
+
+                        // Only redirect if not already on a public page
+                        if (!publicPaths.includes(currentPath) && !currentPath.startsWith('/verify-email')) {
+                            window.location.href = '/login';
+                        }
                     }
                     return Promise.reject(normalizeError(error));
                 }
+            }
+
+            // Handle 403 - Forbidden (access denied)
+            if (error.response?.status === 403) {
+                const responseData = error.response.data as any;
+                let userMessage = 'You do not have permission to perform this action.';
+
+                // Check for specific 403 reasons in response
+                if (responseData?.code === 'KYC_REQUIRED' || responseData?.message?.toLowerCase().includes('kyc')) {
+                    userMessage = 'Please complete your KYC verification to access this feature.';
+                    if (typeof window !== 'undefined') {
+                        // Optionally redirect to KYC page after short delay
+                        setTimeout(() => {
+                            window.location.href = '/seller/kyc';
+                        }, 2000);
+                    }
+                } else if (responseData?.code === 'COMPANY_INACTIVE' || responseData?.message?.toLowerCase().includes('company')) {
+                    userMessage = 'Your company account is inactive. Please contact support or update your company settings.';
+                } else if (responseData?.message) {
+                    userMessage = responseData.message;
+                }
+
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('[API] 403 Forbidden:', {
+                        url: error.config?.url,
+                        reason: responseData?.code || 'unknown',
+                        message: responseData?.message,
+                    });
+                }
+
+                // Return error with user-friendly message
+                return Promise.reject({
+                    code: responseData?.code || 'HTTP_403',
+                    message: userMessage,
+                    field: responseData?.field,
+                } as ApiError);
             }
 
             // Handle 5xx with retry

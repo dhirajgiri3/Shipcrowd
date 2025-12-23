@@ -2,9 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import Company, { ICompany } from '../../../infrastructure/database/mongoose/models/Company';
 import User from '../../../infrastructure/database/mongoose/models/User';
+import TeamInvitation from '../../../infrastructure/database/mongoose/models/TeamInvitation';
 import { AuthRequest } from '../middleware/auth';
 import logger from '../../../shared/logger/winston.logger';
 import { createAuditLog } from '../middleware/auditLog';
+import { generateAccessToken } from '../../../shared/helpers/jwt';
+import { sendOwnerInvitationEmail } from '../../../core/application/services/communication/email.service';
 import mongoose from 'mongoose';
 
 // Define validation schemas
@@ -131,7 +134,23 @@ export const createCompany = async (req: AuthRequest, res: Response, next: NextF
     if (req.user.role !== 'admin') {
       await User.findByIdAndUpdate(req.user._id, {
         companyId: savedCompany._id,
-        teamRole: 'manager',
+        teamRole: 'owner',
+      });
+
+      // Generate new access token with updated companyId
+      // This ensures the JWT token reflects the user's new company association
+      const newAccessToken = generateAccessToken(
+        req.user._id,
+        req.user.role,
+        savedCompany._id.toString()
+      );
+
+      // Set the new access token as cookie to update the session
+      res.cookie('accessToken', newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000, // 15 minutes
       });
     }
 
@@ -303,9 +322,219 @@ export const getAllCompanies = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
+/**
+ * Invite owner for a company (admin only)
+ * @route POST /companies/:companyId/invite-owner
+ */
+export const inviteCompanyOwner = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    // Only admin can invite company owners
+    if (req.user.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can invite company owners' });
+      return;
+    }
+
+    const companyId = req.params.companyId;
+    const { email, name, message } = req.body;
+
+    // Validate input
+    if (!email || !name) {
+      res.status(400).json({ message: 'Email and name are required' });
+      return;
+    }
+
+    // Check if company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      res.status(404).json({ message: 'Company not found' });
+      return;
+    }
+
+    // Check if user with this email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      res.status(400).json({ message: 'User with this email already exists' });
+      return;
+    }
+
+    // Check if there's already a pending invitation for this email
+    const existingInvitation = await TeamInvitation.findOne({
+      email: email.toLowerCase(),
+      companyId,
+      status: 'pending'
+    });
+
+    if (existingInvitation) {
+      res.status(400).json({ message: 'Invitation already sent to this email' });
+      return;
+    }
+
+    // Create invitation
+    const invitation = new TeamInvitation({
+      email: email.toLowerCase(),
+      companyId,
+      invitedBy: req.user._id,
+      teamRole: 'owner',
+      invitationMessage: message || undefined,
+    });
+
+    await invitation.save();
+
+    // Send invitation email
+    await sendOwnerInvitationEmail(
+      email,
+      name,
+      company.name,
+      invitation.token
+    );
+
+    await createAuditLog(
+      req.user._id,
+      companyId,
+      'invite',
+      'company',
+      companyId,
+      { message: `Invited ${email} as company owner`, email },
+      req
+    );
+
+    res.status(201).json({
+      message: 'Owner invitation sent successfully',
+      invitation: {
+        email: invitation.email,
+        companyId: invitation.companyId,
+        teamRole: invitation.teamRole,
+        expiresAt: invitation.expiresAt,
+      },
+    });
+  } catch (error) {
+    logger.error('Error inviting company owner:', error);
+    next(error);
+  }
+};
+
+/**
+ * Update company status (admin only)
+ * @route PATCH /companies/:companyId/status
+ */
+export const updateCompanyStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    // Only admin can update company status
+    if (req.user.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can update company status' });
+      return;
+    }
+
+    const companyId = req.params.companyId;
+    const { status, reason } = req.body;
+
+    const validStatuses = ['pending_verification', 'kyc_submitted', 'approved', 'suspended', 'rejected'];
+    if (!status || !validStatuses.includes(status)) {
+      res.status(400).json({ message: 'Invalid status', validStatuses });
+      return;
+    }
+
+    const company = await Company.findByIdAndUpdate(
+      companyId,
+      { $set: { status } },
+      { new: true, runValidators: true }
+    ) as ICompany | null;
+
+    if (!company) {
+      res.status(404).json({ message: 'Company not found' });
+      return;
+    }
+
+    await createAuditLog(
+      req.user._id,
+      companyId,
+      'update',
+      'company',
+      companyId,
+      { message: `Company status updated to ${status}`, status, reason },
+      req
+    );
+
+    res.json({
+      message: 'Company status updated successfully',
+      company: company.toObject(),
+    });
+  } catch (error) {
+    logger.error('Error updating company status:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get company statistics (admin only)
+ * @route GET /companies/stats
+ */
+export const getCompanyStats = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    // Only admin can see company stats
+    if (req.user.role !== 'admin') {
+      res.status(403).json({ message: 'Access denied' });
+      return;
+    }
+
+    const stats = await Company.aggregate([
+      {
+        $match: { isDeleted: false }
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const totalCompanies = await Company.countDocuments({ isDeleted: false });
+    const activeCompanies = await Company.countDocuments({ isDeleted: false, isActive: true });
+
+    const statsByStatus = stats.reduce((acc: any, stat) => {
+      acc[stat._id] = stat.count;
+      return acc;
+    }, {});
+
+    res.json({
+      total: totalCompanies,
+      active: activeCompanies,
+      byStatus: {
+        pending_verification: statsByStatus.pending_verification || 0,
+        kyc_submitted: statsByStatus.kyc_submitted || 0,
+        approved: statsByStatus.approved || 0,
+        suspended: statsByStatus.suspended || 0,
+        rejected: statsByStatus.rejected || 0,
+      },
+    });
+  } catch (error) {
+    logger.error('Error fetching company stats:', error);
+    next(error);
+  }
+};
+
 export default {
   getCompanyById,
   createCompany,
   updateCompany,
   getAllCompanies,
+  inviteCompanyOwner,
+  updateCompanyStatus,
+  getCompanyStats,
 };

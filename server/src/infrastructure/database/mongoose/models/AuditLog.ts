@@ -4,7 +4,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IAuditLog extends Document {
   userId: mongoose.Types.ObjectId;
   companyId?: mongoose.Types.ObjectId;
-  action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'generate' | 'other' | 'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update';
+  action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'generate' | 'other' | 'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update' | 'invite';
   resource: string;
   resourceId?: mongoose.Types.ObjectId | string;
   details: {
@@ -39,7 +39,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
         'create', 'read', 'update', 'delete',
         'login', 'logout', 'verify', 'generate', 'other',
         'security', 'password_change', 'email_change',
-        'account_lock', 'account_unlock', 'session_revoke', 'profile_update'
+        'account_lock', 'account_unlock', 'session_revoke', 'profile_update', 'invite'
       ],
       required: true,
     },

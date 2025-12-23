@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [initAttempted, setInitAttempted] = useState(false)
 
     const isAuthenticated = !!user
 
@@ -69,29 +70,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * Try to restore session using refresh token cookie
      */
     useEffect(() => {
-        const initAuth = async () => {
-            try {
-                // First try to refresh the token (uses httpOnly cookie)
-                // This will silently fail if no refresh token exists
-                await authApi.refreshToken()
+        // Prevent multiple initialization attempts
+        if (initAttempted) {
+            return;
+        }
 
-                // Then fetch current user
-                const userData = await fetchCurrentUser()
-                setUser(userData)
-            } catch (err: any) {
-                // No valid session - this is expected for non-authenticated users
-                // Only log if it's not a 401 (unauthorized) error
-                if (err?.code !== 'HTTP_401' && process.env.NODE_ENV === 'development') {
-                    console.warn('[Auth] Session initialization failed:', err.message)
+        let mounted = true;
+
+        const initAuth = async () => {
+            setInitAttempted(true);
+
+            // Skip auth check on public pages to avoid unnecessary API calls
+            if (typeof window !== 'undefined') {
+                const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
+                const currentPath = window.location.pathname;
+
+                // If on public page, immediately set user to null and stop loading
+                if (publicPaths.includes(currentPath) || currentPath.startsWith('/verify-email')) {
+                    if (mounted) {
+                        setUser(null);
+                        setIsLoading(false);
+                    }
+                    return; // Skip auth check entirely
                 }
-                setUser(null)
+            }
+
+            // Only run auth check for protected/authenticated pages
+            try {
+                // First, try to get current user directly (validates accessToken cookie)
+                // This is cheaper than refresh and works if session is still valid
+                const userData = await fetchCurrentUser()
+                if (mounted) {
+                    setUser(userData)
+                }
+            } catch (err: any) {
+                if (!mounted) return;
+
+                // If getMe fails, check if it's a 401 (could be expired access token)
+                if (err?.code === 'HTTP_401') {
+                    try {
+                        // Try to refresh using refreshToken cookie
+                        await authApi.refreshToken()
+
+                        // If refresh succeeds, fetch user again
+                        const userData = await fetchCurrentUser()
+                        if (mounted) {
+                            setUser(userData)
+                            if (process.env.NODE_ENV === 'development') {
+                                console.log('[Auth] Session restored via token refresh')
+                            }
+                        }
+                    } catch (refreshErr: any) {
+                        // Refresh failed - no valid session exists
+                        // This is normal for logged-out users
+                        if (mounted) {
+                            setUser(null)
+
+                            // Only log non-401 errors (network issues, server errors, etc.)
+                            if (refreshErr?.code !== 'HTTP_401' && process.env.NODE_ENV === 'development') {
+                                console.warn('[Auth] Session refresh failed:', refreshErr.message)
+                            }
+                        }
+                    }
+                } else {
+                    // Non-401 error (network issue, server error, etc.)
+                    if (mounted) {
+                        setUser(null)
+                        if (process.env.NODE_ENV === 'development') {
+                            console.warn('[Auth] Session initialization failed:', err.message)
+                        }
+                    }
+                }
             } finally {
-                setIsLoading(false)
+                if (mounted) {
+                    setIsLoading(false)
+                }
             }
         }
 
         initAuth()
-    }, [fetchCurrentUser])
+
+        return () => {
+            mounted = false;
+        }
+    }, [fetchCurrentUser, initAttempted])
 
     /**
      * Login with email and password

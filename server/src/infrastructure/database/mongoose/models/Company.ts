@@ -48,6 +48,7 @@ export interface ICompany extends Document {
     autoGenerateInvoice?: boolean;
   };
 
+  status: 'pending_verification' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
   isActive: boolean;
   isDeleted: boolean;
   createdAt: Date;
@@ -132,6 +133,11 @@ const CompanySchema = new Schema<ICompany>(
       },
     },
 
+    status: {
+      type: String,
+      enum: ['pending_verification', 'kyc_submitted', 'approved', 'suspended', 'rejected'],
+      default: 'pending_verification',
+    },
     isActive: {
       type: Boolean,
       default: true,

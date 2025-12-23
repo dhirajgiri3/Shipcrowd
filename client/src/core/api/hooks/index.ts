@@ -15,3 +15,6 @@ export * from './useShipments';
 export * from './useAnalytics';
 export * from './useWarehouses';
 export * from './useRateCards';
+export * from './useProfile';
+export * from './useCompanies';
+export * from './useKYC';

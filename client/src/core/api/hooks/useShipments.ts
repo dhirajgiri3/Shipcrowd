@@ -31,6 +31,7 @@ export interface ShipmentFilters {
     limit?: number;
     status?: string;
     carrier?: string;
+    search?: string;
     sortBy?: string;
 }
 

@@ -8,7 +8,9 @@
     "start": "node server.cjs",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "seed": "npx tsx src/scripts/seed-demo-data.ts",
+    "verify-seed": "npx tsx src/scripts/verify-seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -40,6 +42,7 @@
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.1.0",
     "@types/bcrypt": "^5.0.2",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.8",
@@ -61,6 +64,7 @@
     "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   }
 }

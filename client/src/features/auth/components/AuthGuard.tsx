@@ -13,6 +13,12 @@ interface AuthGuardProps {
     requireCompany?: boolean;
     /** Allow only specific roles */
     allowedRoles?: ('admin' | 'seller' | 'staff' | 'user')[];
+    /** Require KYC to be approved */
+    requireKycApproved?: boolean;
+    /** Require company to be active */
+    requireCompanyActive?: boolean;
+    /** Required permissions (any match) */
+    requiredPermissions?: string[];
 }
 
 /**
@@ -34,6 +40,9 @@ export function AuthGuard({
     redirectTo = '/login',
     requireCompany = false,
     allowedRoles,
+    requireKycApproved = false,
+    requireCompanyActive = false,
+    requiredPermissions,
 }: AuthGuardProps) {
     const router = useRouter();
     const { user, isLoading, isAuthenticated } = useAuth();
@@ -58,7 +67,36 @@ export function AuthGuard({
             router.push('/unauthorized');
             return;
         }
-    }, [isLoading, isAuthenticated, user, requireCompany, allowedRoles, redirectTo, router]);
+
+        // KYC check
+        if (requireKycApproved && user?.kycStatus !== 'approved') {
+            // Allow admin to bypass KYC requirement
+            if (user?.role !== 'admin') {
+                router.push('/seller/kyc');
+                return;
+            }
+        }
+
+        // Company status check
+        if (requireCompanyActive && user?.companyStatus !== 'active') {
+            if (user?.role !== 'admin') {
+                router.push('/seller/settings/profile?error=company_inactive');
+                return;
+            }
+        }
+
+        // Permission check (user needs at least one of the required permissions)
+        if (requiredPermissions && requiredPermissions.length > 0 && user) {
+            const hasPermission = requiredPermissions.some(perm =>
+                user.permissions?.includes(perm)
+            );
+
+            if (!hasPermission && user.role !== 'admin') {
+                router.push('/unauthorized');
+                return;
+            }
+        }
+    }, [isLoading, isAuthenticated, user, requireCompany, allowedRoles, requireKycApproved, requireCompanyActive, requiredPermissions, redirectTo, router]);
 
     // Loading state
     if (isLoading) {
@@ -73,6 +111,12 @@ export function AuthGuard({
     if (!isAuthenticated) return null;
     if (requireCompany && !user?.companyId) return null;
     if (allowedRoles && user && !allowedRoles.includes(user.role)) return null;
+    if (requireKycApproved && user?.kycStatus !== 'approved' && user?.role !== 'admin') return null;
+    if (requireCompanyActive && user?.companyStatus !== 'active' && user?.role !== 'admin') return null;
+    if (requiredPermissions && requiredPermissions.length > 0 && user) {
+        const hasPermission = requiredPermissions.some(perm => user.permissions?.includes(perm));
+        if (!hasPermission && user.role !== 'admin') return null;
+    }
 
     return <>{children}</>;
 }

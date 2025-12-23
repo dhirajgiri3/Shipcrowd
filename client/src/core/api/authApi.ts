@@ -19,6 +19,11 @@ export interface AuthUser {
     companyId?: string;
     isEmailVerified?: boolean;
     isActive?: boolean;
+
+    // Additional fields for permission/access control
+    kycStatus?: 'not_started' | 'in_progress' | 'approved' | 'rejected';
+    companyStatus?: 'active' | 'inactive' | 'suspended';
+    permissions?: string[]; // e.g., ['shipments.create', 'analytics.view']
 }
 
 export interface LoginCredentials {
@@ -101,8 +106,9 @@ export async function refreshToken(): Promise<RefreshResponse> {
  * Get current authenticated user
  */
 export async function getMe(): Promise<AuthUser> {
-    const response = await apiClient.get('/auth/me');
-    return response.data;
+    const response = await apiClient.get<MeResponse>('/auth/me');
+    // Backend returns { user: AuthUser }, extract the user object
+    return response.data.user || response.data;
 }
 
 /**

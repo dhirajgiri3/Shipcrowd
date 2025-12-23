@@ -44,6 +44,8 @@ import { TopSellers } from '@/components/admin/TopSellers';
 import { useToast } from '@/src/shared/components/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { useAdminDashboard } from '@/src/core/api/hooks/useAnalytics';
+import { useAuth } from '@/src/features/auth';
 
 // --- TYPES ---
 
@@ -73,25 +75,9 @@ interface CourierCardProps {
     data: CourierData;
 }
 
-// --- MOCK DATA ---
+// --- MOCK DATA (AI Insights & Activity - not yet in backend) ---
 
-const platformMetrics = {
-    activeSellers: 247,
-    sellersGrowth: 12,
-    totalGMV: 24500000,
-    gmvGrowth: 18,
-    shipmentsToday: 1245,
-    shipmentsGrowth: 5,
-    platformMargin: 8.5,
-    marginGrowth: 0.3,
-    sparklines: {
-        sellers: Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 50) + 200 })),
-        gmv: Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 500000) + 2000000 })),
-        shipments: Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 200) + 1000 })),
-        margin: Array.from({ length: 7 }, () => ({ value: Math.random() * 2 + 7 }))
-    }
-};
-
+// These remain as mock data until backend support is added
 const aiInsights = [
     {
         id: 1,
@@ -122,57 +108,12 @@ const aiInsights = [
     }
 ];
 
-const courierPerformance = [
-    {
-        name: 'Delhivery',
-        logo: 'DL',
-        sla: 94,
-        volume: '15.2K',
-        trend: '+2.4%',
-        trendData: [65, 59, 80, 81, 56, 95, 94],
-        status: 'excellent',
-        issues: 0
-    },
-    {
-        name: 'Xpressbees',
-        logo: 'XB',
-        sla: 88,
-        volume: '12.5K',
-        trend: '-1.2%',
-        trendData: [40, 60, 55, 70, 65, 85, 88],
-        status: 'good',
-        issues: 2
-    },
-    {
-        name: 'DTDC',
-        logo: 'DT',
-        sla: 76,
-        volume: '8.1K',
-        trend: '-5.8%',
-        trendData: [85, 80, 75, 70, 72, 68, 76],
-        status: 'warning',
-        issues: 15
-    },
-    {
-        name: 'Ecom Express',
-        logo: 'EE',
-        sla: 91,
-        volume: '9.4K',
-        trend: '+3.1%',
-        trendData: [50, 60, 70, 80, 85, 90, 91],
-        status: 'excellent',
-        issues: 0
-    }
-];
-
 const activityFeed = [
     { id: 1, user: 'TechGadgets Inc.', action: 'processed 150 orders', time: '10 min ago', icon: Package, color: 'blue' },
     { id: 2, user: 'System', action: 'completed daily settlement report', time: '25 min ago', icon: FileText, color: 'purple' },
     { id: 3, user: 'Fashion Hub', action: 'added ₹50,000 to wallet', time: '1 hour ago', icon: Wallet, color: 'emerald' },
     { id: 4, user: 'Admin', action: 'approved new seller "Urban Trends"', time: '2 hours ago', icon: CheckCircle2, color: 'indigo' },
 ];
-
-
 
 const revenueByChannel = [
     { name: 'Delhivery', value: 35, color: '#2525FF' },
@@ -541,10 +482,58 @@ function CourierCard({ data }: CourierCardProps) {
 
 export default function AdminDashboardPage() {
     const { addToast } = useToast();
+    const { user } = useAuth();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showSystemAlert, setShowSystemAlert] = useState(true);
 
     const [greeting, setGreeting] = useState('');
+
+    // Fetch real dashboard data from API
+    const { data: adminData } = useAdminDashboard();
+
+    // Extract admin name from user data
+    const adminName = user?.name?.split(' ')[0] || 'Admin';
+
+    // Transform API data for metrics
+    const platformMetrics = adminData ? {
+        activeSellers: adminData.companies?.length || 0,
+        sellersGrowth: 12,
+        totalGMV: adminData.totalRevenue || 0,
+        gmvGrowth: 18,
+        shipmentsToday: adminData.totalShipments || 0,
+        shipmentsGrowth: 5,
+        platformMargin: adminData.globalSuccessRate || 0,
+        marginGrowth: 0.3,
+        sparklines: {
+            sellers: adminData.revenueTrend?.map(t => ({ value: Math.floor(t.revenue / 50000) })) || Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 50) + 200 })),
+            gmv: adminData.revenueTrend?.map(t => ({ value: t.revenue })) || Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 500000) + 2000000 })),
+            shipments: Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 200) + 1000 })),
+            margin: Array.from({ length: 7 }, () => ({ value: Math.random() * 2 + 7 }))
+        }
+    } : {
+        activeSellers: 0,
+        sellersGrowth: 0,
+        totalGMV: 0,
+        gmvGrowth: 0,
+        shipmentsToday: 0,
+        shipmentsGrowth: 0,
+        platformMargin: 0,
+        marginGrowth: 0,
+        sparklines: {
+            sellers: Array.from({ length: 7 }, () => ({ value: 220 })),
+            gmv: Array.from({ length: 7 }, () => ({ value: 2000000 })),
+            shipments: Array.from({ length: 7 }, () => ({ value: 1000 })),
+            margin: Array.from({ length: 7 }, () => ({ value: 8 }))
+        }
+    };
+
+    // Courier performance - mock until backend support
+    const courierPerformance = [
+        { name: 'Delhivery', logo: 'DL', sla: 94, volume: '15.2K', trend: '+2.4%', trendData: [65, 59, 80, 81, 56, 95, 94], status: 'excellent', issues: 0 },
+        { name: 'Xpressbees', logo: 'XB', sla: 88, volume: '12.5K', trend: '-1.2%', trendData: [40, 60, 55, 70, 65, 85, 88], status: 'good', issues: 2 },
+        { name: 'DTDC', logo: 'DT', sla: 76, volume: '8.1K', trend: '-5.8%', trendData: [85, 80, 75, 70, 72, 68, 76], status: 'warning', issues: 15 },
+        { name: 'Ecom Express', logo: 'EE', sla: 91, volume: '9.4K', trend: '+3.1%', trendData: [50, 60, 70, 80, 85, 90, 91], status: 'excellent', issues: 0 }
+    ];
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -567,7 +556,7 @@ export default function AdminDashboardPage() {
                         <span>Platform Command Center</span>
                     </div>
                     <h1 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-2">
-                        {greeting}, Dhiraj <span className="text-2xl">👋</span>
+                        {greeting}, {adminName} <span className="text-2xl">👋</span>
                     </h1>
                     <p className="text-[var(--text-secondary)] flex items-center gap-2 text-sm">
                         <Clock className="w-4 h-4 text-[var(--text-muted)]" />

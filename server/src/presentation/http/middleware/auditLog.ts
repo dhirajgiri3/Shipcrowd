@@ -21,7 +21,7 @@ export const createAuditLog = async (
   userId: mongoose.Types.ObjectId | string,
   companyId: mongoose.Types.ObjectId | string | undefined,
   action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'generate' | 'other' |
-          'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update',
+    'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update' | 'invite',
   resource: string,
   resourceId: mongoose.Types.ObjectId | string | undefined,
   details: any, // Consider defining a more specific type for details
@@ -71,7 +71,7 @@ export const auditLogMiddleware = (
     logged = true;
 
     let action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'verify' | 'generate' | 'other' |
-                'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update';
+      'security' | 'password_change' | 'email_change' | 'account_lock' | 'account_unlock' | 'session_revoke' | 'profile_update' | 'invite';
 
     // Determine action based on path and method
     if (req.path.includes('/auth/login')) {
@@ -105,10 +105,10 @@ export const auditLogMiddleware = (
     const potentialId = pathParts.length > 2 ? pathParts[2] : undefined;
     let resourceId: string | mongoose.Types.ObjectId | undefined = undefined;
     if (potentialId && mongoose.Types.ObjectId.isValid(potentialId)) {
-        resourceId = new mongoose.Types.ObjectId(potentialId);
+      resourceId = new mongoose.Types.ObjectId(potentialId);
     } else if (potentialId) {
-        // Handle cases where ID might not be a valid ObjectId but still relevant
-        resourceId = potentialId;
+      // Handle cases where ID might not be a valid ObjectId but still relevant
+      resourceId = potentialId;
     }
 
     const userId = req.user._id;
@@ -171,13 +171,13 @@ export const auditLogMiddleware = (
 
   res.json = function (body) {
     logRequest(body);
-     // Use apply to pass arguments correctly
+    // Use apply to pass arguments correctly
     return originalJson.apply(this, [body]);
   };
 
   res.end = function (...args: any[]) { // Revert to any[] for simplicity
     if (!logged) {
-        logRequest();
+      logRequest();
     }
     // Use apply with the arguments array. Ignore TS error due to complex overloads.
     // @ts-ignore
@@ -239,14 +239,14 @@ export const auditLogPlugin = (schema: Schema) => {
 
   // Log document updates after successful update
   schema.post('findOneAndUpdate', async function () {
-     // @ts-ignore - Accessing custom property and context
+    // @ts-ignore - Accessing custom property and context
     if (!this || !this._originalDoc) {
+      // @ts-ignore
+      if (this && this._originalDoc === null) { // Handle case where doc didn't exist initially
         // @ts-ignore
-        if (this && this._originalDoc === null) { // Handle case where doc didn't exist initially
-             // @ts-ignore
-             delete this._originalDoc;
-        }
-        return; // Exit if originalDoc wasn't stored or was explicitly null
+        delete this._originalDoc;
+      }
+      return; // Exit if originalDoc wasn't stored or was explicitly null
     }
 
 
@@ -315,7 +315,7 @@ export const auditLogPlugin = (schema: Schema) => {
         );
       }
     } catch (error) {
-       // @ts-ignore
+      // @ts-ignore
       const modelName = (this.model as mongoose.Model<any>)?.modelName || 'Unknown Model';
       logger.error(`Error creating audit log for ${modelName} update:`, error);
     } finally {
@@ -340,7 +340,7 @@ export const auditLogPlugin = (schema: Schema) => {
       try {
         // @ts-ignore
         const query = this.getQuery();
-         // @ts-ignore
+        // @ts-ignore
         const model = this.model as mongoose.Model<AuditableDocument>;
         // Find the document *before* it's marked as deleted
         const docToDelete = await model.findOne(query).lean<AuditableDocument>();
@@ -365,7 +365,7 @@ export const auditLogPlugin = (schema: Schema) => {
           }
         );
       } catch (error) {
-         // @ts-ignore
+        // @ts-ignore
         const modelName = (this.model as mongoose.Model<any>)?.modelName || 'Unknown Model';
         logger.error(`Error creating audit log for ${modelName} soft deletion:`, error);
       }

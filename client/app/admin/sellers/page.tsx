@@ -487,35 +487,6 @@ export default function SellersPage() {
                 {selectedSeller && (
                     <div className="space-y-6">
                         {/* Header */}
-                        <div className="flex items-start gap-4">
-                            <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-[#2525FF]/10 text-[#2525FF] font-bold text-xl">
-                                {selectedSeller.avatar}
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-xl font-bold text-[var(--text-primary)]">{selectedSeller.companyName}</h3>
-                                <p className="text-[var(--text-muted)]">{selectedSeller.ownerName}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                    {(() => {
-                                        const config = getStatusConfig(selectedSeller.status);
-                                        return (
-                                            <span className={cn(
-                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                                                config.bg, config.color
-                                            )}>
-                                                {config.label}
-                                            </span>
-                                        );
-                                    })()}
-                                    {selectedSeller.kycStatus === 'verified' && (
-                                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                                            <Shield className="h-3 w-3" />
-                                            KYC Verified
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Contact */}
                         <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[var(--bg-secondary)]">
                             <div className="flex items-center gap-3">

@@ -12,6 +12,8 @@ import { Tooltip } from '@/src/shared/components/Tooltip';
 import { useToast } from '@/src/shared/components/Toast';
 import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
 import { useOrders, useCreateShipment } from '@/src/core/api/hooks';
+import { CreateOrderModal } from '@/components/orders/CreateOrderModal';
+import { BulkImportModal } from '@/components/orders/BulkImportModal';
 import {
     Search,
     Plus,
@@ -76,6 +78,8 @@ export default function OrdersPage() {
     const [search, setSearch] = useState('');
     const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);
+    const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false);
+    const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
     const [selectedOrderForShip, setSelectedOrderForShip] = useState<OrderRow | null>(null);
     const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
     const [page, setPage] = useState(1);
@@ -327,13 +331,13 @@ export default function OrdersPage() {
                         <RefreshCcw className="h-4 w-4 mr-1.5" />
                         Sync
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setIsBulkImportModalOpen(true)}>
                         <Upload className="h-4 w-4 mr-1.5" />
                         Import
                     </Button>
-                    <Button size="sm">
+                    <Button size="sm" onClick={() => setIsCreateOrderModalOpen(true)}>
                         <Plus className="h-4 w-4 mr-1.5" />
-                        Create Order
+                        New Order
                     </Button>
                 </div>
             </div>
@@ -547,6 +551,22 @@ export default function OrdersPage() {
                     </div>
                 )}
             </Modal>
+
+            {/* Create Order Modal */}
+            <CreateOrderModal
+                isOpen={isCreateOrderModalOpen}
+                onClose={() => setIsCreateOrderModalOpen(false)}
+            />
+
+            {/* Bulk Import Modal */}
+            <BulkImportModal
+                isOpen={isBulkImportModalOpen}
+                onClose={() => setIsBulkImportModalOpen(false)}
+                onSuccess={() => {
+                    refetch();
+                    setIsBulkImportModalOpen(false);
+                }}
+            />
         </div>
     );
 }
