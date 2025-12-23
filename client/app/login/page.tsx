@@ -60,8 +60,10 @@ export default function LoginPage() {
             const result = await login({ email, password, rememberMe })
 
             if (result.success) {
-                toast.success("Welcome back! Redirecting to your dashboard...")
-                setTimeout(() => router.push("/seller"), 500)
+                toast.success("Welcome back! Redirecting...")
+                // Redirect to onboarding if no company, otherwise to dashboard
+                const destination = result.user?.companyId ? "/seller" : "/onboarding"
+                setTimeout(() => router.push(destination), 500)
             } else {
                 // Use error handler to get user-friendly message
                 const errorMessage = getErrorMessage(result.error)
@@ -121,7 +123,7 @@ export default function LoginPage() {
                     <div className="mb-6">
                         <button
                             type="button"
-                            onClick={() => window.location.href = 'http://localhost:5005/api/v1/auth/google'}
+                            onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
                             className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all group"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24">

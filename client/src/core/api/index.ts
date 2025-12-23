@@ -13,6 +13,10 @@ export type { ApiError } from './client';
 export { authApi } from './authApi';
 export type { AuthUser, LoginCredentials, LoginResponse, RegisterData, RegisterResponse } from './authApi';
 
+// Company API
+export { companyApi } from './companyApi';
+export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './companyApi';
+
 // Error Handling
 export { handleApiError, showSuccessToast, showInfoToast } from './errors/error-handler';
 

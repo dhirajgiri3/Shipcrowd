@@ -20,7 +20,7 @@ export interface AuthContextType {
     isLoading: boolean
     isAuthenticated: boolean
     error: string | null
-    login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>
+    login: (credentials: LoginCredentials) => Promise<{ success: boolean; user?: AuthUser; error?: string }>
     register: (data: SignupData) => Promise<{ success: boolean; message?: string; error?: string }>
     logout: () => Promise<void>
     clearError: () => void
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     /**
      * Login with email and password
      */
-    const login = useCallback(async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
+    const login = useCallback(async (credentials: LoginCredentials): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
         setIsLoading(true)
         setError(null)
 
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Set user from login response
             setUser(response.user)
 
-            return { success: true }
+            return { success: true, user: response.user }
         } catch (err: any) {
             const errorMessage = err.message || 'Login failed. Please check your credentials.'
             setError(errorMessage)

@@ -109,7 +109,7 @@ export async function getMe(): Promise<AuthUser> {
  * Request password reset email
  */
 export async function requestPasswordReset(email: string): Promise<{ message: string }> {
-    const response = await apiClient.post('/auth/reset-password', { email }, {
+    const response = await apiClient.post('/auth/request-password-reset', { email }, {
         headers: {
             'X-CSRF-Token': 'frontend-request',
         },
@@ -121,7 +121,7 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
  * Reset password with token
  */
 export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
-    const response = await apiClient.post('/auth/reset-password/confirm', { token, password }, {
+    const response = await apiClient.post('/auth/reset-password', { token, password }, {
         headers: {
             'X-CSRF-Token': 'frontend-request',
         },
