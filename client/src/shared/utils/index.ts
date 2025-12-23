@@ -12,3 +12,6 @@ export * from './format';
 
 // Validation utilities
 export * from './validators';
+
+// Password utilities
+export * from './password';

@@ -10,6 +10,8 @@ export * from './button';
 export * from './card';
 export { Input } from './Input';
 export { Select } from './Select';
+export { FormInput } from './FormInput';
+export { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 
 // UI Components
 export { DataTable } from './DataTable';
