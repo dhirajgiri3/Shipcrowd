@@ -227,7 +227,7 @@ export default function LoginPage() {
                             type="submit"
                             isLoading={isLoading}
                             loadingText="Signing in..."
-                            className="w-full py-3 bg-primaryBlue hover:bg-primaryBlue/90"
+                            className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90"
                         >
                             <span className="flex items-center justify-center gap-2">
                                 Sign in

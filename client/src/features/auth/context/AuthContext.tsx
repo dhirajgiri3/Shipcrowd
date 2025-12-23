@@ -72,13 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const initAuth = async () => {
             try {
                 // First try to refresh the token (uses httpOnly cookie)
+                // This will silently fail if no refresh token exists
                 await authApi.refreshToken()
 
                 // Then fetch current user
                 const userData = await fetchCurrentUser()
                 setUser(userData)
-            } catch {
-                // No valid session
+            } catch (err: any) {
+                // No valid session - this is expected for non-authenticated users
+                // Only log if it's not a 401 (unauthorized) error
+                if (err?.code !== 'HTTP_401' && process.env.NODE_ENV === 'development') {
+                    console.warn('[Auth] Session initialization failed:', err.message)
+                }
                 setUser(null)
             } finally {
                 setIsLoading(false)

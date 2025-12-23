@@ -43,13 +43,7 @@ app.use(compression({
     },
 }));
 
-// Apply global rate limiter
-app.use(globalRateLimiter);
-
-// Apply security headers
-app.use(securityHeaders);
-
-// CORS configuration
+// CORS configuration - MUST be before rate limiter to ensure CORS headers are always sent
 const corsOptions = {
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
     credentials: true,
@@ -58,6 +52,12 @@ const corsOptions = {
     maxAge: 86400, // Cache preflight requests for 24 hours
 };
 app.use(cors(corsOptions));
+
+// Apply global rate limiter
+app.use(globalRateLimiter);
+
+// Apply security headers
+app.use(securityHeaders);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

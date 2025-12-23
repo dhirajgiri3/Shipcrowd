@@ -60,8 +60,9 @@ const createApiClient = (): AxiosInstance => {
         async (error: AxiosError) => {
             const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-            // Handle 401 - try to refresh token
-            if (error.response?.status === 401 && !originalRequest._retry) {
+            // Handle 401 - try to refresh token (ensure we don't get into an infinite loop)
+            // We also exclude /auth/login because a 401 on login means invalid credentials, not an expired token
+            if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/refresh') && !originalRequest.url?.includes('/auth/login')) {
                 originalRequest._retry = true;
 
                 try {
@@ -88,7 +89,8 @@ const createApiClient = (): AxiosInstance => {
                 }
             }
 
-            if (process.env.NODE_ENV === 'development') {
+            // Only log unexpected errors (not 401s which are expected for unauthenticated users)
+            if (process.env.NODE_ENV === 'development' && error.response?.status !== 401) {
                 console.error('[API Response Error]', {
                     url: error.config?.url,
                     method: error.config?.method,
