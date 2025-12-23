@@ -31,6 +31,7 @@ import { Input } from '@/src/shared/components/Input';
 import { useToast } from '@/src/shared/components/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { useAuth } from '@/src/features/auth';
 
 // API Hooks
 import { useSellerDashboard } from '@/src/core/api/hooks/useAnalytics';
@@ -47,6 +48,7 @@ export default function SellerDashboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showBanner, setShowBanner] = useState(true);
     const { addToast } = useToast();
+    const { user } = useAuth();
 
     // Fetch live dashboard data with auto-refresh
     const { data: dashboardData, isLoading, isError, error } = useSellerDashboard();
@@ -140,7 +142,7 @@ export default function SellerDashboardPage() {
     }
 
     // Extract data with fallbacks
-    const sellerName = 'Seller'; // TODO: Get from auth context
+    const sellerName = user?.name?.split(' ')[0] || 'Seller';
     const totalOrders = dashboardData?.totalOrders || 0;
     const pendingOrders = dashboardData?.pendingOrders || 0;
     const deliveredOrders = dashboardData?.deliveredOrders || 0;

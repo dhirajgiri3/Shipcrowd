@@ -7,3 +7,6 @@
 // Context
 export { AuthProvider, useAuth } from './context/AuthContext';
 export type { AuthUser, LoginCredentials, SignupData, AuthContextType } from './context/AuthContext';
+
+// Components
+export { AuthGuard, GuestGuard } from './components/AuthGuard';

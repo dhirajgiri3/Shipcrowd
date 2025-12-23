@@ -15,3 +15,7 @@ export * from './utils';
 
 // Types
 export * from './types';
+
+// Constants
+export { INDIAN_STATES, STATE_CODES } from './constants/india';
+export type { IndianState } from './constants/india';

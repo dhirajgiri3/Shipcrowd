@@ -1,28 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check } from "lucide-react"
+import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/src/features/auth"
 import { companyApi, CreateCompanyData } from "@/src/core/api"
 import { LoadingButton } from "@/components/ui/LoadingButton"
 import { Alert, AlertDescription } from "@/components/ui/Alert"
-
-const INDIAN_STATES = [
-    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
-    "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
-    "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-    "Delhi", "Jammu and Kashmir", "Ladakh"
-]
+import { INDIAN_STATES, isValidGSTIN, isValidPAN, isValidPincode } from "@/src/shared"
 
 export default function OnboardingPage() {
     const router = useRouter()
-    const { user, refreshUser } = useAuth()
+    const { user, isLoading: authLoading, isAuthenticated, refreshUser } = useAuth()
 
     const [step, setStep] = useState(1)
     const [isLoading, setIsLoading] = useState(false)
@@ -45,6 +37,17 @@ export default function OnboardingPage() {
         },
     })
 
+    // Auth guard - redirect if not authenticated or already has company
+    useEffect(() => {
+        if (!authLoading) {
+            if (!isAuthenticated) {
+                router.push("/login")
+            } else if (user?.companyId) {
+                router.push("/seller")
+            }
+        }
+    }, [authLoading, isAuthenticated, user?.companyId, router])
+
     const updateField = (field: string, value: string) => {
         if (field.includes('.')) {
             const [parent, child] = field.split('.')
@@ -58,24 +61,45 @@ export default function OnboardingPage() {
     }
 
     const validateStep = (stepNum: number): boolean => {
+        setError(null)
+
         if (stepNum === 1) {
             if (!formData.name.trim()) {
                 setError("Company name is required")
                 return false
             }
+            if (formData.name.trim().length < 2) {
+                setError("Company name must be at least 2 characters")
+                return false
+            }
         }
+
         if (stepNum === 2) {
             const { line1, city, state, postalCode } = formData.address
-            if (!line1 || !city || !state || !postalCode) {
+            if (!line1?.trim() || !city?.trim() || !state || !postalCode) {
                 setError("Please fill all required address fields")
                 return false
             }
-            if (postalCode.length !== 6) {
-                setError("Postal code must be 6 digits")
+            if (!isValidPincode(postalCode)) {
+                setError("Postal code must be exactly 6 digits")
                 return false
             }
         }
-        setError(null)
+
+        if (stepNum === 3) {
+            const gstin = formData.billingInfo?.gstin || ""
+            const pan = formData.billingInfo?.pan || ""
+
+            if (gstin && !isValidGSTIN(gstin)) {
+                setError("Invalid GSTIN format (e.g., 22AAAAA0000A1Z5)")
+                return false
+            }
+            if (pan && !isValidPAN(pan)) {
+                setError("Invalid PAN format (e.g., ABCDE1234F)")
+                return false
+            }
+        }
+
         return true
     }
 
@@ -105,10 +129,13 @@ export default function OnboardingPage() {
         }
     }
 
-    // Redirect if already has company
-    if (user?.companyId) {
-        router.push("/seller")
-        return null
+    // Show loading while checking auth
+    if (authLoading || !isAuthenticated || user?.companyId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader2 className="w-8 h-8 text-primaryBlue animate-spin" />
+            </div>
+        )
     }
 
     return (
@@ -124,7 +151,7 @@ export default function OnboardingPage() {
                     {[1, 2, 3].map((s) => (
                         <div key={s} className="flex items-center">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${s < step ? "bg-emerald-500 text-white" :
-                                    s === step ? "bg-primaryBlue text-white" : "bg-gray-200 text-gray-500"
+                                s === step ? "bg-primaryBlue text-white" : "bg-gray-200 text-gray-500"
                                 }`}>
                                 {s < step ? <Check className="w-4 h-4" /> : s}
                             </div>
