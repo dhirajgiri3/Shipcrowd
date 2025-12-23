@@ -14,13 +14,13 @@ export const configureGoogleStrategy = (): void => {
       {
         clientID: process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        callbackURL: `${process.env.API_URL || 'http://localhost:5005'}/api/auth/google/callback`,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5005/api/v1/auth/google/callback',
         passReqToCallback: true,
       },
       async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
         try {
-          // Check if user already exists with this Google ID
-          let user = await User.findOne({ 'oauth.google.id': profile.id });
+          // Check if user already exists with this Google ID (using new field)
+          let user = await User.findOne({ googleId: profile.id });
 
           // If user exists, return the user
           if (user) {
@@ -54,7 +54,13 @@ export const configureGoogleStrategy = (): void => {
 
             // If user exists with this email, link the Google account
             if (user) {
-              // Link Google account to existing user
+              // Link Google account using new top-level fields
+              user.googleId = profile.id;
+              user.oauthProvider = 'google';
+              user.isEmailVerified = true; // Google emails are verified
+              user.avatar = profile.photos && profile.photos[0] ? profile.photos[0].value : user.avatar;
+
+              // Also update nested oauth object for backward compatibility
               user.oauth = {
                 ...user.oauth,
                 google: {
@@ -102,16 +108,22 @@ export const configureGoogleStrategy = (): void => {
           const newUser = new User({
             email: email,
             name: profile.displayName || 'Google User',
-            // Generate a random password for the user (they won't use it)
-            password: crypto.randomBytes(16).toString('hex'),
             role: 'seller', // Default role
             isActive: true, // Google accounts are pre-verified
+            // New top-level OAuth fields
+            googleId: profile.id,
+            oauthProvider: 'google',
+            isEmailVerified: true,
+            avatar: profile.photos && profile.photos[0] ? profile.photos[0].value : undefined,
+            // Password not required for OAuth users
+            password: undefined,
+            // Nested oauth object for backward compatibility
             oauth: {
               google: {
                 id: profile.id,
                 email: email,
                 name: profile.displayName,
-                picture: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
+                picture: profile.photos && profile.photos[0] ? profile.photos[0].value : undefined,
                 accessToken,
                 refreshToken,
               },

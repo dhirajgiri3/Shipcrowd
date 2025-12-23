@@ -10,6 +10,11 @@ export interface IUser extends Document {
   companyId?: mongoose.Types.ObjectId;
   teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
   teamStatus?: 'active' | 'invited' | 'suspended';
+  // OAuth fields
+  googleId?: string;
+  oauthProvider?: 'email' | 'google';
+  isEmailVerified?: boolean;
+  avatar?: string;
   profile: {
     phone?: string;
     avatar?: string;
@@ -111,7 +116,9 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
+      required: function (this: IUser) {
+        return !this.googleId && this.oauthProvider === 'email';
+      },
       minlength: 8,
     },
     name: {
@@ -137,6 +144,22 @@ const UserSchema = new Schema<IUser>(
       enum: ['active', 'invited', 'suspended'],
       default: 'active',
     },
+    // OAuth fields
+    googleId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    oauthProvider: {
+      type: String,
+      enum: ['email', 'google'],
+      default: 'email',
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    avatar: String,
     profile: {
       phone: String,
       avatar: String,
@@ -272,10 +295,14 @@ UserSchema.index({ companyId: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isDeleted: 1 });
 UserSchema.index({ 'oauth.google.id': 1 });
+UserSchema.index({ googleId: 1 }, { sparse: true });
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
   const user = this;
+
+  // Skip if password not provided (OAuth users)
+  if (!user.password) return next();
 
   // Only hash the password if it has been modified (or is new)
   if (!user.isModified('password')) return next();

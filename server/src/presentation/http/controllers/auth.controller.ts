@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
+import passport from 'passport';
 import User, { IUser } from '../../../infrastructure/database/mongoose/models/User';
 import TeamInvitation from '../../../infrastructure/database/mongoose/models/TeamInvitation';
 import Session from '../../../infrastructure/database/mongoose/models/Session';
@@ -725,6 +726,74 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
   }
 };
 
+/**
+ * Initiate Google OAuth
+ * @route GET /auth/google
+ */
+export const googleAuth = passport.authenticate('google', {
+  scope: ['profile', 'email'],
+  session: false,
+});
+
+/**
+
+* Google OAuth callback
+ * @route GET /auth/google/callback
+ */
+export const googleCallback = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user as IUser & { _id: mongoose.Types.ObjectId };
+
+    if (!user) {
+      logger.error('Google OAuth: No user in request');
+      const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=oauth_failed`;
+      res.redirect(redirectUrl);
+      return;
+    }
+
+    logger.info('Google OAuth callback successful', { userId: user._id });
+
+    // Generate JWT tokens
+    const accessToken = generateAccessToken(
+      user._id.toString(),
+      user.role,
+      user.companyId
+    );
+    const refreshToken = await generateRefreshToken(user._id.toString(), user.security?.tokenVersion || 0);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+    // Create session
+    await createSession(
+      user._id.toString(),
+      refreshToken,
+      req,
+      expiresAt
+    );
+
+    // Audit log
+    await createAuditLog(
+      user._id.toString(),
+      user.companyId,
+      'login',
+      'user',
+      user._id.toString(),
+      { message: 'Google OAuth login successful', provider: 'google', success: true },
+      req
+    );
+
+    // Redirect to frontend with tokens
+    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${accessToken}&refresh=${refreshToken}`;
+    res.redirect(redirectUrl);
+  } catch (error) {
+    logger.error('Google OAuth callback error:', error);
+    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=server_error`;
+    res.redirect(redirectUrl);
+  }
+};
+
+
 const authController = {
   register,
   login,
@@ -739,3 +808,4 @@ const authController = {
 };
 
 export default authController;
+
