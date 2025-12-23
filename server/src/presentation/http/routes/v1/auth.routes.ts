@@ -90,6 +90,27 @@ router.post('/logout', authenticate, authController.logout);
 router.post('/set-password', authenticate, authController.setPassword);
 
 /**
+ * @route POST /auth/change-password
+ * @desc Change password for authenticated user (requires current password)
+ * @access Private
+ */
+router.post('/change-password', authenticate, csrfProtection, authController.changePassword);
+
+/**
+ * @route POST /auth/change-email
+ * @desc Request email change (sends verification to new email)
+ * @access Private
+ */
+router.post('/change-email', authenticate, csrfProtection, authController.changeEmail);
+
+/**
+ * @route POST /auth/verify-email-change
+ * @desc Verify and complete email change
+ * @access Public
+ */
+router.post('/verify-email-change', authController.verifyEmailChange);
+
+/**
  * @route GET /auth/google
  * @desc Authenticate with Google
  * @access Public

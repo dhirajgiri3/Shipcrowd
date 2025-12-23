@@ -912,6 +912,233 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+/**
+ * Change password for authenticated user
+ * @route POST /auth/change-password
+ */
+export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const schema = z.object({
+      currentPassword: z.string(),
+      newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    });
+    const { currentPassword, newPassword } = schema.parse(req.body);
+
+    const user = await User.findById(authReq.user._id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    // Check if user has a password (OAuth users who haven't set password should use set-password)
+    if (!typedUser.password) {
+      res.status(400).json({
+        message: 'No password set. Please use set-password endpoint first.',
+        code: 'NO_PASSWORD'
+      });
+      return;
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await typedUser.comparePassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      res.status(401).json({ message: 'Current password is incorrect' });
+      return;
+    }
+
+    // Check new password is different
+    if (currentPassword === newPassword) {
+      res.status(400).json({ message: 'New password must be different from current password' });
+      return;
+    }
+
+    // Update password and increment token version (invalidate all sessions)
+    typedUser.password = newPassword;
+    typedUser.security.tokenVersion = (typedUser.security.tokenVersion || 0) + 1;
+    await typedUser.save();
+
+    // Revoke all existing sessions
+    await Session.updateMany(
+      { userId: typedUser._id, isRevoked: false },
+      { isRevoked: true }
+    );
+
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'password_change',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Password changed successfully', success: true },
+      req
+    );
+
+    res.json({
+      message: 'Password changed successfully. Please login again with your new password.',
+      sessionInvalidated: true
+    });
+  } catch (error) {
+    logger.error('Change password error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      return;
+    }
+    next(error);
+  }
+};
+
+/**
+ * Request email change (sends verification to new email)
+ * @route POST /auth/change-email
+ */
+export const changeEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const schema = z.object({
+      newEmail: z.string().email('Invalid email format'),
+      password: z.string(), // Require password for security
+    });
+    const { newEmail, password } = schema.parse(req.body);
+
+    const user = await User.findById(authReq.user._id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    // Verify password (if user has one)
+    if (typedUser.password) {
+      const isPasswordValid = await typedUser.comparePassword(password);
+      if (!isPasswordValid) {
+        res.status(401).json({ message: 'Invalid password' });
+        return;
+      }
+    }
+
+    // Check if new email is same as current
+    if (typedUser.email.toLowerCase() === newEmail.toLowerCase()) {
+      res.status(400).json({ message: 'New email is same as current email' });
+      return;
+    }
+
+    // Check if new email already exists
+    const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
+    if (existingUser) {
+      res.status(409).json({ message: 'Email already in use' });
+      return;
+    }
+
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date();
+    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // 24 hours
+
+    // Store pending email change
+    typedUser.pendingEmailChange = {
+      email: newEmail.toLowerCase(),
+      token: verificationToken,
+      tokenExpiry: tokenExpiry,
+    };
+    await typedUser.save();
+
+    // Send verification email to NEW email address
+    await sendVerificationEmail(newEmail, typedUser.name, verificationToken);
+
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'other',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Email change requested', newEmail, success: true },
+      req
+    );
+
+    res.json({
+      message: `Verification email sent to ${newEmail}. Please check your inbox to confirm the change.`
+    });
+  } catch (error) {
+    logger.error('Change email error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      return;
+    }
+    next(error);
+  }
+};
+
+/**
+ * Verify email change
+ * @route POST /auth/verify-email-change
+ */
+export const verifyEmailChange = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const schema = z.object({
+      token: z.string(),
+    });
+    const { token } = schema.parse(req.body);
+
+    const user = await User.findOne({
+      'pendingEmailChange.token': token,
+      'pendingEmailChange.tokenExpiry': { $gt: new Date() },
+    });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid or expired verification token' });
+      return;
+    }
+
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    if (!typedUser.pendingEmailChange) {
+      res.status(400).json({ message: 'No pending email change' });
+      return;
+    }
+
+    const oldEmail = typedUser.email;
+    const newEmail = typedUser.pendingEmailChange.email;
+
+    // Update email and clear pending change
+    typedUser.email = newEmail;
+    typedUser.pendingEmailChange = undefined;
+    await typedUser.save();
+
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'email_change',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Email changed successfully', oldEmail, newEmail, success: true },
+      req
+    );
+
+    res.json({ message: 'Email changed successfully', newEmail });
+  } catch (error) {
+    logger.error('Verify email change error:', error);
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      return;
+    }
+    next(error);
+  }
+};
+
 
 const authController = {
   register,
@@ -925,6 +1152,9 @@ const authController = {
   checkPasswordStrength,
   getMe,
   setPassword,
+  changePassword,
+  changeEmail,
+  verifyEmailChange,
 };
 
 export default authController;
