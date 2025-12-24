@@ -29,7 +29,7 @@ import RateCard from '../infrastructure/database/mongoose/models/RateCard';
 import KYC from '../infrastructure/database/mongoose/models/KYC';
 
 // Import carrier selection algorithm
-import { selectBestCarrier } from '../lib/carrier-selection';
+import { selectBestCarrier } from '../core/application/services/shipping/carrier.service';
 
 // Connect to MongoDB
 const connectDB = async () => {

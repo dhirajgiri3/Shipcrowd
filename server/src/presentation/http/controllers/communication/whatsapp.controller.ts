@@ -46,7 +46,7 @@ export const sendWhatsAppMessage = async (req: Request, res: Response, next: Nex
     let phoneNumber = validation.data.to;
     if (process.env.NODE_ENV === 'development' && process.env.TEST_WHATSAPP_NUMBER) {
       phoneNumber = process.env.TEST_WHATSAPP_NUMBER;
-      console.log(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
+      logger.info(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
     }
 
     const result = await whatsappService.sendWhatsAppMessage(
@@ -81,7 +81,7 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
     let phoneNumber = validation.data.to;
     if (process.env.NODE_ENV === 'development' && process.env.TEST_WHATSAPP_NUMBER) {
       phoneNumber = process.env.TEST_WHATSAPP_NUMBER;
-      console.log(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
+      logger.info(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
     }
 
     const result = await whatsappService.sendShipmentStatusWhatsApp(
@@ -118,7 +118,7 @@ export const sendWelcome = async (req: Request, res: Response, next: NextFunctio
     let phoneNumber = validation.data.to;
     if (process.env.NODE_ENV === 'development' && process.env.TEST_WHATSAPP_NUMBER) {
       phoneNumber = process.env.TEST_WHATSAPP_NUMBER;
-      console.log(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
+      logger.info(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
     }
 
     const result = await whatsappService.sendWelcomeWhatsApp(phoneNumber, validation.data.customerName);
@@ -149,7 +149,7 @@ export const sendDeliveryConfirmation = async (req: Request, res: Response, next
     let phoneNumber = validation.data.to;
     if (process.env.NODE_ENV === 'development' && process.env.TEST_WHATSAPP_NUMBER) {
       phoneNumber = process.env.TEST_WHATSAPP_NUMBER;
-      console.log(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
+      logger.info(`[DEV MODE] Overriding WhatsApp recipient to ${phoneNumber}`);
     }
 
     const result = await whatsappService.sendDeliveryConfirmationWhatsApp(

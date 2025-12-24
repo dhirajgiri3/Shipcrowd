@@ -7,7 +7,7 @@ import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';
 import mongoose from 'mongoose';
-import { selectBestCarrier, CarrierSelectionResult } from '../../../../lib/carrier-selection';
+import { selectBestCarrier, CarrierSelectionResult } from '../../../../core/application/services/shipping/carrier.service';
 import {
     guardChecks,
     validateObjectId,

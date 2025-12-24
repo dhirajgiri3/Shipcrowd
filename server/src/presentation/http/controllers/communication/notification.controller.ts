@@ -85,7 +85,7 @@ export const sendSMS = async (req: Request, res: Response, next: NextFunction): 
     let phoneNumber = validation.data.to;
     if (process.env.NODE_ENV === 'development' && process.env.TEST_PHONE_NUMBER) {
       phoneNumber = process.env.TEST_PHONE_NUMBER;
-      console.log(`[DEV MODE] Overriding recipient phone number to ${phoneNumber}`);
+      logger.info(`[DEV MODE] Overriding recipient phone number to ${phoneNumber}`);
     }
 
     const result = await smsService.sendSMS(phoneNumber, validation.data.message);

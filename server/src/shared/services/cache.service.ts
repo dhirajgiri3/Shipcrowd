@@ -11,6 +11,8 @@
  * - Automatic cleanup of expired entries
  */
 
+import logger from '../logger/winston.logger';
+
 interface CacheEntry<T> {
     data: T;
     expiresAt: number;
@@ -141,7 +143,7 @@ class CacheService {
         }
 
         if (removed > 0) {
-            console.log(`Cache cleanup: removed ${removed} expired entries`);
+            logger.debug(`Cache cleanup: removed ${removed} expired entries`);
         }
     }
 

@@ -1,15 +1,18 @@
 "use client";
 
+import { lazy, Suspense } from "react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Package, Upload, Zap, User, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/src/shared/components/card";
 import { Button } from "@/src/shared/components/button";
 import { useRecentCustomers, RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
-import { QuickOrderModal } from "./QuickOrderModal";
-import { CSVUploadModal } from "./CSVUploadModal";
 import Link from "next/link";
 import { cn } from "@/src/shared/utils";
+
+// Lazy load modals for better performance
+const QuickOrderModal = lazy(() => import("./QuickOrderModal"));
+const CSVUploadModal = lazy(() => import("./CSVUploadModal"));
 
 export function QuickCreate() {
     const { data: recentCustomers, isLoading } = useRecentCustomers({ limit: 5 });
@@ -176,18 +179,25 @@ export function QuickCreate() {
                 </Card>
             </motion.div>
 
-            {/* Quick Order Modal */}
-            <QuickOrderModal
-                customer={selectedCustomer}
-                isOpen={!!selectedCustomer}
-                onClose={() => setSelectedCustomer(null)}
-            />
+            {/* Lazy loaded modals with Suspense */}
+            <Suspense fallback={null}>
+                {selectedCustomer && (
+                    <QuickOrderModal
+                        customer={selectedCustomer}
+                        isOpen={!!selectedCustomer}
+                        onClose={() => setSelectedCustomer(null)}
+                    />
+                )}
+            </Suspense>
 
-            {/* CSV Upload Modal */}
-            <CSVUploadModal
-                isOpen={showCSVModal}
-                onClose={() => setShowCSVModal(false)}
-            />
+            <Suspense fallback={null}>
+                {showCSVModal && (
+                    <CSVUploadModal
+                        isOpen={showCSVModal}
+                        onClose={() => setShowCSVModal(false)}
+                    />
+                )}
+            </Suspense>
         </>
     );
 }

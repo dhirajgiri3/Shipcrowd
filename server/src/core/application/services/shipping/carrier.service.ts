@@ -1,9 +1,9 @@
 /**
- * Intelligent Carrier Selection Algorithm
- * 
+ * Intelligent Carrier Selection Service
+ *
  * Selects the best carrier based on weight, zone, and delivery time.
  * Score = (rate × 0.7) + (deliveryTime × 5) - lower is better
- * 
+ *
  * Carriers:
  * - Delhivery: Express, optimized for metro areas
  * - DTDC: Standard, pan-India coverage
@@ -114,7 +114,7 @@ const getZoneType = (originPincode: string, destinationPincode: string): string 
 
 /**
  * Select the best carrier for a shipment
- * 
+ *
  * @param weight - Package weight in kg
  * @param originPincode - Origin pincode
  * @param destinationPincode - Destination pincode

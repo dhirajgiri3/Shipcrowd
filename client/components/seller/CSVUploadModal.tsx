@@ -148,7 +148,9 @@ export function CSVUploadModal({ isOpen, onClose }: CSVUploadModalProps) {
                 paymentMethod: r.data.payment_mode.toLowerCase(),
             }));
 
-            console.log('Orders to create:', orders);
+            // TODO: Replace with actual API call
+            // await apiClient.post('/orders/bulk', { orders });
+
             addToast(`Successfully created ${validRows.length} orders`, 'success');
             setParsedData([]);
             onClose();
