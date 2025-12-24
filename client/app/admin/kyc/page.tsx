@@ -2,15 +2,18 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/src/shared/components/button';
 import { Input } from '@/src/shared/components/Input';
 import { Badge } from '@/src/shared/components/badge';
+import { Modal } from '@/src/shared/components/Modal';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatDate, cn } from '@/src/shared/utils';
 import {
     Shield,
     Search,
     Users,
-    CheckCircle,
+    CheckCircle2,
     XCircle,
     Clock,
     AlertTriangle,
@@ -18,14 +21,15 @@ import {
     Eye,
     FileText,
     TrendingUp,
+    Filter,
+    MoreHorizontal,
+    ChevronDown,
+    Building2,
     Calendar,
-    Filter
+    ArrowUpRight
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
-import { formatDate } from '@/src/shared/utils';
 
-// Mock KYC data
+// --- MOCK DATA ---
 const mockKYCData = [
     {
         id: 'SLR-001',
@@ -36,6 +40,7 @@ const mockKYCData = [
         submittedAt: '2024-11-15',
         verifiedAt: '2024-11-17',
         documents: ['Pan Card', 'GST Certificate', 'Bank Statement'],
+        riskScore: 'Low'
     },
     {
         id: 'SLR-002',
@@ -47,6 +52,7 @@ const mockKYCData = [
         verifiedAt: null,
         documents: ['Pan Card', 'GST Certificate'],
         pendingDocs: ['Bank Statement'],
+        riskScore: 'Medium'
     },
     {
         id: 'SLR-003',
@@ -57,6 +63,7 @@ const mockKYCData = [
         submittedAt: '2024-10-20',
         verifiedAt: '2024-10-22',
         documents: ['Pan Card', 'GST Certificate', 'Bank Statement', 'Address Proof'],
+        riskScore: 'Low'
     },
     {
         id: 'SLR-004',
@@ -68,6 +75,7 @@ const mockKYCData = [
         verifiedAt: null,
         documents: ['Pan Card'],
         pendingDocs: ['GST Certificate', 'Bank Statement'],
+        riskScore: 'High'
     },
     {
         id: 'SLR-005',
@@ -79,297 +87,288 @@ const mockKYCData = [
         verifiedAt: null,
         documents: ['Pan Card', 'GST Certificate'],
         rejectionReason: 'GST certificate expired',
-    },
-    {
-        id: 'SLR-006',
-        name: 'SportsZone',
-        owner: 'Neha Gupta',
-        email: 'neha@sportszone.in',
-        status: 'pending',
-        submittedAt: '2024-12-12',
-        verifiedAt: null,
-        documents: ['Pan Card', 'GST Certificate', 'Bank Statement'],
-    },
+        riskScore: 'High'
+    }
 ];
 
 const statusFilters = [
-    { id: 'all', label: 'All' },
-    { id: 'verified', label: 'Verified' },
-    { id: 'pending', label: 'Pending Review' },
-    { id: 'incomplete', label: 'Incomplete' },
-    { id: 'rejected', label: 'Rejected' },
+    { id: 'all', label: 'All Requests' },
+    { id: 'verified', label: 'Verified', color: 'bg-emerald-500' },
+    { id: 'pending', label: 'Pending Review', color: 'bg-amber-500' },
+    { id: 'rejected', label: 'Rejected', color: 'bg-rose-500' },
+    { id: 'incomplete', label: 'Incomplete', color: 'bg-blue-500' }
 ];
 
-export default function KYCAnalyticsPage() {
+// --- COMPONENTS ---
+
+function StatsCard({ title, value, icon: Icon, color, trend }: any) {
+    return (
+        <motion.div
+            whileHover={{ y: -5 }}
+            className="p-6 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:shadow-lg transition-all group"
+        >
+            <div className="flex items-center justify-between mb-4">
+                <div className={cn(
+                    "p-3 rounded-xl",
+                    color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                        color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                            color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                "bg-rose-500/10 text-rose-500"
+                )}>
+                    <Icon className="w-6 h-6" />
+                </div>
+                <span className={cn(
+                    "text-xs font-bold px-2 py-1 rounded-full",
+                    color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                        color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                            color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                "bg-rose-500/10 text-rose-500"
+                )}>
+                    {trend}
+                </span>
+            </div>
+            <div>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
+                <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide mt-1">{title}</p>
+            </div>
+        </motion.div>
+    );
+}
+
+export default function KYCPage() {
+    const [activeFilter, setActiveFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState('all');
+    const [selectedRequest, setSelectedRequest] = useState<any>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { addToast } = useToast();
 
+    // Derived Data
     const filteredData = mockKYCData.filter(item => {
+        const matchesFilter = activeFilter === 'all' || item.status === activeFilter;
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.owner.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.id.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
-        return matchesSearch && matchesStatus;
+            item.email.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesFilter && matchesSearch;
     });
-
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'verified':
-                return <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" />Verified</Badge>;
-            case 'pending':
-                return <Badge variant="warning" className="gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
-            case 'incomplete':
-                return <Badge variant="info" className="gap-1"><AlertTriangle className="h-3 w-3" />Incomplete</Badge>;
-            case 'rejected':
-                return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Rejected</Badge>;
-            default:
-                return <Badge variant="neutral">{status}</Badge>;
-        }
-    };
-
-    const handleApprove = (id: string) => {
-        addToast('KYC approved successfully!', 'success');
-    };
-
-    const handleReject = (id: string) => {
-        addToast('KYC rejected. Seller notified.', 'info');
-    };
 
     const stats = {
         total: mockKYCData.length,
         verified: mockKYCData.filter(k => k.status === 'verified').length,
         pending: mockKYCData.filter(k => k.status === 'pending').length,
-        incomplete: mockKYCData.filter(k => k.status === 'incomplete').length,
-        rejected: mockKYCData.filter(k => k.status === 'rejected').length,
+        rejected: mockKYCData.filter(k => k.status === 'rejected').length
     };
 
-    const verificationRate = Math.round((stats.verified / stats.total) * 100);
+    // Actions
+    const handleViewDetails = (item: any) => {
+        setSelectedRequest(item);
+        setIsDetailOpen(true);
+    };
+
+    const handleApprove = () => {
+        addToast('KYC Approved Successfully', 'success');
+        setIsDetailOpen(false);
+    };
+
+    const handleReject = () => {
+        addToast('KYC Rejected', 'warning');
+        setIsDetailOpen(false);
+    };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <Shield className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
-                        Seller KYC Analytics
-                    </h1>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                        Monitor and manage seller verification status
-                    </p>
-                </div>
-                <Button variant="outline" onClick={() => addToast('Exporting report...', 'info')}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Report
-                </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Sellers</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.total}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
-                                <Users className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Verified</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{stats.verified}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
-                                <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{stats.pending}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
-                                <Clock className="h-5 w-5" style={{ color: 'var(--warning)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Incomplete</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--info)' }}>{stats.incomplete}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
-                                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--info)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Verification Rate</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{verificationRate}%</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
-                                <TrendingUp className="h-5 w-5" style={{ color: 'var(--info)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                    <Input
-                        placeholder="Search by seller name, owner, or ID..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        icon={<Search className="h-4 w-4" />}
-                    />
-                </div>
-                <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
-                    {statusFilters.map((filter) => (
-                        <button
-                            key={filter.id}
-                            onClick={() => setSelectedStatus(filter.id)}
-                            className="px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap"
-                            style={{
-                                background: selectedStatus === filter.id ? 'var(--primary-blue)' : 'var(--bg-secondary)',
-                                color: selectedStatus === filter.id ? 'var(--text-inverse)' : 'var(--text-secondary)'
-                            }}
-                        >
-                            {filter.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* KYC Table */}
-            <Card>
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
-                                <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
-                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Documents</th>
-                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Submitted</th>
-                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredData.map((item) => (
-                                    <tr key={item.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                        <td className="p-4">
-                                            <p className="font-semibold text-[var(--text-primary)]">{item.name}</p>
-                                            <p className="text-sm text-[var(--text-muted)]">{item.owner} • {item.email}</p>
-                                            <code className="text-xs text-gray-400">{item.id}</code>
-                                        </td>
-                                        <td className="p-4">
-                                            {getStatusBadge(item.status)}
-                                            {item.rejectionReason && (
-                                                <p className="text-xs text-rose-600 mt-1">{item.rejectionReason}</p>
-                                            )}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {item.documents.map((doc, i) => (
-                                                    <Badge key={i} variant="outline" className="text-xs gap-1">
-                                                        <FileText className="h-3 w-3" />
-                                                        {doc}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                            {item.pendingDocs && item.pendingDocs.length > 0 && (
-                                                <p className="text-xs text-amber-600 mt-1">
-                                                    Missing: {item.pendingDocs.join(', ')}
-                                                </p>
-                                            )}
-                                        </td>
-                                        <td className="p-4">
-                                            {item.submittedAt ? (
-                                                <div className="flex items-center gap-1 text-sm text-gray-600">
-                                                    <Calendar className="h-3.5 w-3.5" />
-                                                    {item.submittedAt}
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-gray-400">Not submitted</span>
-                                            )}
-                                            {item.verifiedAt && (
-                                                <p className="text-xs text-emerald-600 mt-1">
-                                                    Verified on {item.verifiedAt}
-                                                </p>
-                                            )}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex justify-end gap-2">
-                                                {item.status === 'pending' && (
-                                                    <>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                                                            onClick={() => handleApprove(item.id)}
-                                                        >
-                                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                                            Approve
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-xs border-rose-200 text-rose-700 hover:bg-rose-50"
-                                                            onClick={() => handleReject(item.id)}
-                                                        >
-                                                            <XCircle className="h-3 w-3 mr-1" />
-                                                            Reject
-                                                        </Button>
-                                                    </>
-                                                )}
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => addToast('Opening details...', 'info')}
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
+                        <Shield className="h-6 w-6" />
                     </div>
-                </CardContent>
-            </Card>
+                    <div>
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">KYC Verification</h1>
+                        <p className="text-[var(--text-muted)] text-sm">Review and approve document submissions</p>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                        <Download className="w-4 h-4 mr-2" /> Export Report
+                    </Button>
+                </div>
+            </div>
 
-            {/* Empty State */}
-            {filteredData.length === 0 && (
-                <Card>
-                    <CardContent className="py-12 text-center">
-                        <Shield className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No KYC records found</h3>
-                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your search or filters</p>
-                    </CardContent>
-                </Card>
-            )}
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard title="Total Requests" value={stats.total} icon={FileText} color="blue" trend="+12%" />
+                <StatsCard title="Verified" value={stats.verified} icon={CheckCircle2} color="emerald" trend="+8%" />
+                <StatsCard title="Pending Review" value={stats.pending} icon={Clock} color="amber" trend="5 Urgent" />
+                <StatsCard title="Rejected" value={stats.rejected} icon={XCircle} color="rose" trend="2 New" />
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex flex-col lg:flex-row gap-6">
+
+                {/* Left: Filters & List */}
+                <div className="flex-1 space-y-4">
+
+                    {/* Toolbar */}
+                    <div className="flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)] p-2 rounded-2xl border border-[var(--border-subtle)]">
+                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                            {statusFilters.map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setActiveFilter(filter.id)}
+                                    className={cn(
+                                        "px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2",
+                                        activeFilter === filter.id
+                                            ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]"
+                                            : "text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-secondary)]"
+                                    )}
+                                >
+                                    {activeFilter === filter.id && (
+                                        <span className={cn("w-2 h-2 rounded-full", filter.color || 'bg-gray-500')} />
+                                    )}
+                                    {filter.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="relative w-full md:w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                            <input
+                                type="text"
+                                placeholder="Search requests..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-0 text-sm transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* List Cards */}
+                    <div className="grid gap-3">
+                        <AnimatePresence>
+                            {filteredData.map((item) => (
+                                <motion.div
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    key={item.id}
+                                    onClick={() => handleViewDetails(item)}
+                                    className="group relative p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md cursor-pointer transition-all"
+                                >
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
+                                                {item.name.substring(0, 2)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-[var(--text-primary)]">{item.name}</h4>
+                                                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
+                                                    <span>{item.id}</span>
+                                                    <span>•</span>
+                                                    <span>{item.owner}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col items-end">
+                                                <span className={cn(
+                                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize",
+                                                    item.status === 'verified' ? "bg-emerald-500/10 text-emerald-500" :
+                                                        item.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
+                                                            item.status === 'incomplete' ? "bg-blue-500/10 text-blue-500" :
+                                                                "bg-rose-500/10 text-rose-500"
+                                                )}>
+                                                    {item.status === 'verified' && <CheckCircle2 className="w-3 h-3" />}
+                                                    {item.status === 'pending' && <Clock className="w-3 h-3" />}
+                                                    {item.status === 'incomplete' && <AlertTriangle className="w-3 h-3" />}
+                                                    {item.status === 'rejected' && <XCircle className="w-3 h-3" />}
+                                                    {item.status}
+                                                </span>
+                                                {item.submittedAt && (
+                                                    <span className="text-[10px] text-[var(--text-muted)] mt-1">
+                                                        Submitted {item.submittedAt}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <ChevronDown className="-rotate-90 w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] transition-colors" />
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                </div>
+
+                {/* Right: Details Panel (Desktop) / Modal (Mobile) - For now simplified to Modal */}
+            </div>
+
+            {/* Detail Modal */}
+            <Modal
+                isOpen={isDetailOpen}
+                onClose={() => setIsDetailOpen(false)}
+                title="Application Details"
+            >
+                {selectedRequest && (
+                    <div className="space-y-6">
+                        {/* Header */}
+                        <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-[var(--primary-blue)] text-white flex items-center justify-center font-bold">
+                                    {selectedRequest.name.substring(0, 2)}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-[var(--text-primary)]">{selectedRequest.name}</h3>
+                                    <p className="text-xs text-[var(--text-muted)]">{selectedRequest.email}</p>
+                                </div>
+                            </div>
+                            <Badge variant={selectedRequest.riskScore === 'Low' ? 'success' : selectedRequest.riskScore === 'Medium' ? 'warning' : 'destructive'}>
+                                {selectedRequest.riskScore} Risk
+                            </Badge>
+                        </div>
+
+                        {/* Documents Grid */}
+                        <div>
+                            <h4 className="text-sm font-bold text-[var(--text-secondary)] mb-3">Submitted Documents</h4>
+                            <div className="grid gap-2">
+                                {selectedRequest.documents.map((doc: string, i: number) => (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                                                <FileText className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium text-[var(--text-primary)]">{doc}</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                                <Eye className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
+                                            </Button>
+                                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                                <Download className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[var(--border-subtle)]">
+                            <Button
+                                variant="outline"
+                                className="border-rose-200 text-rose-500 hover:bg-rose-50"
+                                onClick={handleReject}
+                            >
+                                <XCircle className="w-4 h-4 mr-2" /> Reject
+                            </Button>
+                            <Button
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                                onClick={handleApprove}
+                            >
+                                <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

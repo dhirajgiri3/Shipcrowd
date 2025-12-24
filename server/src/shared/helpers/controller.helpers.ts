@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { AuthRequest } from '../../presentation/http/middleware/auth';
+import { AuthRequest } from '../../presentation/http/middleware/auth/auth';
 import logger from '../logger/winston.logger';
 
 /**

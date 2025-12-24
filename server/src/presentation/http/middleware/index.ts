@@ -1,6 +1,6 @@
-import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './auditLog';
-import auth, { authenticate, authorize, checkCompany, loginRateLimiter, csrfProtection } from './auth';
-import permissions, { checkPermission, getUserPermissions } from './permissions';
+import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './system/auditLog';
+import auth, { authenticate, authorize, checkCompany, loginRateLimiter, csrfProtection } from './auth/auth';
+import permissions, { checkPermission, getUserPermissions } from './auth/permissions';
 
 export {
   auditLog,

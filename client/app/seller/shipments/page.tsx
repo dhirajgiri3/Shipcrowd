@@ -1,383 +1,286 @@
 "use client";
-export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
-import { useShipments } from '@/src/core/api/hooks/useShipments';
+import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { MOCK_SHIPMENTS } from '@/lib/mockData';
 import { DataTable } from '@/src/shared/components/DataTable';
-import { Card, CardHeader, CardContent } from '@/src/shared/components/card';
-import { Input } from '@/src/shared/components/Input';
-import { Search, Eye, FileText, Plus, Upload, RefreshCw } from 'lucide-react';
-import { StatusBadge } from '@/components/admin/StatusBadge';
-import { Badge } from '@/src/shared/components/badge';
-import { getCourierLogo } from '@/lib/constants';
-import { FilterBar } from '@/components/admin/FilterBar';
 import { Button } from '@/src/shared/components/button';
+import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { formatCurrency, cn } from '@/src/shared/utils';
 import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
-import { CreateShipmentModal } from '@/components/admin/CreateShipmentModal';
-import { formatCurrency, formatDate } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
+import { StatusBadge } from '@/components/admin/StatusBadge';
+import { getCourierLogo } from '@/lib/constants';
+import {
+    Search,
+    Eye,
+    FileText,
+    Package,
+    Truck,
+    CheckCircle,
+    Clock,
+    AlertTriangle,
+    RotateCcw,
+    Filter,
+    Download,
+    BarChart3
+} from 'lucide-react';
+import { Shipment } from '@/types/admin';
 
-// Map API shipment to UI Shipment type for modal compatibility
-const mapApiShipmentToUI = (apiShipment: any) => ({
-    id: apiShipment._id,
-    awb: apiShipment.trackingNumber,
-    orderNumber: apiShipment.orderId?.orderNumber || 'N/A',
-    customer: {
-        name: apiShipment.deliveryDetails?.recipientName || 'N/A',
-        phone: apiShipment.deliveryDetails?.recipientPhone || 'N/A',
-    },
-    origin: {
-        city: apiShipment.pickupDetails?.warehouseId?.address?.city || 'Origin',
-    },
-    destination: {
-        city: apiShipment.deliveryDetails?.address?.city || 'Destination',
-    },
-    courier: apiShipment.carrier,
-    status: apiShipment.currentStatus,
-    codAmount: apiShipment.paymentDetails?.codAmount || 0,
-    paymentMode: apiShipment.paymentDetails?.type || 'prepaid',
-});
-
-export default function ShipmentsPage() {
+export default function SellerShipmentsPage() {
     const [search, setSearch] = useState('');
-    const [selectedShipment, setSelectedShipment] = useState<any>(null);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [page, setPage] = useState(1);
-    const [filters, setFilters] = useState({
-        status: 'all',
-        courier: 'all',
-        paymentMode: 'all'
-    });
-    const { addToast } = useToast();
+    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    // Use the real API hook
-    const {
-        data: shipmentsData,
-        isLoading,
-        error,
-        refetch
-    } = useShipments({
-        page,
-        limit: 20,
-        status: filters.status !== 'all' ? filters.status : undefined,
-        carrier: filters.courier !== 'all' ? filters.courier : undefined,
-        search: search || undefined,
-    });
+    // Derived Data
+    const filteredData = useMemo(() => {
+        return MOCK_SHIPMENTS.filter(item => {
+            const matchesSearch =
+                item.awb.toLowerCase().includes(search.toLowerCase()) ||
+                item.customer.name.toLowerCase().includes(search.toLowerCase()) ||
+                item.orderNumber.toLowerCase().includes(search.toLowerCase());
 
-    const shipments = shipmentsData?.shipments || [];
-    const pagination = shipmentsData?.pagination;
+            const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }, [search, statusFilter]);
 
-    // Map to UI format for table
-    const displayShipments = shipments.map(mapApiShipmentToUI);
+    // Status Cards Data
+    const statusGrid = [
+        { id: 'all', label: 'Total Shipments', icon: Package, color: 'blue', count: MOCK_SHIPMENTS.length },
+        { id: 'pending', label: 'Pending Pickup', icon: Clock, color: 'amber', count: MOCK_SHIPMENTS.filter(s => s.status === 'pending').length },
+        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'violet', count: MOCK_SHIPMENTS.filter(s => s.status === 'in-transit').length },
+        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'emerald', count: MOCK_SHIPMENTS.filter(s => s.status === 'delivered').length },
+        { id: 'ndr', label: 'NDR / Issues', icon: AlertTriangle, color: 'orange', count: MOCK_SHIPMENTS.filter(s => s.status === 'ndr').length },
+        { id: 'rto', label: 'RTO / Returned', icon: RotateCcw, color: 'rose', count: MOCK_SHIPMENTS.filter(s => s.status === 'rto').length },
+    ];
 
-    const columns: {
-        header: string;
-        accessorKey: string;
-        cell?: (row: any) => React.ReactNode;
-        width?: string;
-    }[] = [
-            {
-                header: 'AWB / Order',
-                accessorKey: 'awb',
-                width: 'w-48',
-                cell: (row: any) => (
-                    <div>
-                        <div className="font-medium text-[var(--text-primary)]">{row.awb}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{row.orderNumber}</div>
-                    </div>
-                )
-            },
-            {
-                header: 'Customer',
-                accessorKey: 'customer',
-                cell: (row: any) => (
-                    <div>
-                        <div className="font-medium text-[var(--text-primary)]">{row.customer.name}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
-                    </div>
-                )
-            },
-            {
-                header: 'Origin / Dest',
-                accessorKey: 'origin',
-                cell: (row: any) => (
-                    <div className="max-w-[150px]">
-                        <div className="text-xs text-[var(--text-muted)] truncate" title={row.origin.city}>{row.origin.city} →</div>
-                        <div className="font-medium text-[var(--text-primary)] truncate" title={row.destination.city}>{row.destination.city}</div>
-                    </div>
-                )
-            },
-            {
-                header: 'Courier',
-                accessorKey: 'courier',
-                cell: (row: any) => (
-                    <div className="flex items-center gap-2">
-                        <img
-                            src={getCourierLogo(row.courier)}
-                            className="w-6 h-6 object-contain"
-                            alt={row.courier}
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + row.courier + '&background=random&color=fff&size=24';
-                            }}
-                        />
-                        <span className="font-medium text-gray-700">{row.courier}</span>
-                    </div>
-                )
-            },
-            {
-                header: 'Status',
-                accessorKey: 'status',
-                cell: (row: any) => <StatusBadge status={row.status} />
-            },
-            {
-                header: 'Amount',
-                accessorKey: 'codAmount',
-                cell: (row: any) => (
-                    <div>
-                        <div className="font-medium text-[var(--text-primary)]">{formatCurrency(row.codAmount)}</div>
-                        <Badge variant="secondary" className="text-[10px] py-0 h-4">{row.paymentMode.toUpperCase()}</Badge>
-                    </div>
-                )
-            },
-            {
-                header: 'Actions',
-                accessorKey: 'id',
-                width: 'w-20',
-                cell: (row: any) => (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-blue-600"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedShipment(row);
-                            }}
-                        >
-                            <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-[var(--text-primary)]"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                addToast('Generating label...', 'info');
-                                // TODO: Implement PDF label generation
-                            }}
-                        >
-                            <FileText className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )
-            }
-        ];
-
-    const filterOptions = [
+    // Columns
+    const columns = [
         {
-            label: 'Status',
-            value: 'status',
-            options: [
-                { label: 'All Statuses', value: 'all' },
-                { label: 'Created', value: 'created' },
-                { label: 'Picked', value: 'picked' },
-                { label: 'In Transit', value: 'in_transit' },
-                { label: 'Out for Delivery', value: 'out_for_delivery' },
-                { label: 'Delivered', value: 'delivered' },
-                { label: 'NDR', value: 'ndr' },
-                { label: 'RTO', value: 'rto' },
-            ]
+            header: 'Shipment Details',
+            accessorKey: 'awb',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                        <Package className="w-4 h-4 text-[var(--text-muted)]" />
+                    </div>
+                    <div>
+                        <div className="font-bold text-[var(--text-primary)] text-sm">{row.awb}</div>
+                        <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                            Order #{row.orderNumber}
+                        </div>
+                    </div>
+                </div>
+            )
         },
         {
-            label: 'Courier',
-            value: 'courier',
-            options: [
-                { label: 'All Couriers', value: 'all' },
-                { label: 'Delhivery', value: 'Delhivery' },
-                { label: 'Xpressbees', value: 'Xpressbees' },
-                { label: 'DTDC', value: 'DTDC' },
-                { label: 'Bluedart', value: 'Bluedart' },
-            ]
-
+            header: 'Customer',
+            accessorKey: 'customer',
+            cell: (row: Shipment) => (
+                <div>
+                    <div className="font-semibold text-[var(--text-primary)] text-sm">{row.customer.name}</div>
+                    <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
+                </div>
+            )
         },
         {
-            label: 'Payment',
-            value: 'paymentMode',
-            options: [
-                { label: 'All Modes', value: 'all' },
-                { label: 'COD', value: 'cod' },
-                { label: 'Prepaid', value: 'prepaid' },
-            ]
-
+            header: 'Route',
+            accessorKey: 'origin',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="text-[var(--text-secondary)] font-medium">{row.origin.city}</span>
+                    <span className="text-[var(--text-muted)]">→</span>
+                    <span className="text-[var(--text-primary)] font-bold">{row.destination.city}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Courier',
+            accessorKey: 'courier',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-2">
+                    <img
+                        src={getCourierLogo(row.courier)}
+                        className="w-5 h-5 object-contain opacity-80"
+                        alt={row.courier}
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${row.courier}&background=random&color=fff&size=20`;
+                        }}
+                    />
+                    <span className="text-sm font-medium text-[var(--text-secondary)]">{row.courier}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Status',
+            accessorKey: 'status',
+            cell: (row: Shipment) => <StatusBadge status={row.status} />
+        },
+        {
+            header: 'Amount',
+            accessorKey: 'codAmount',
+            cell: (row: Shipment) => (
+                <div>
+                    <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(row.codAmount)}</div>
+                    <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
+                        row.paymentMode === 'prepaid' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
+                    )}>
+                        {row.paymentMode}
+                    </span>
+                </div>
+            )
+        },
+        {
+            header: 'Actions',
+            accessorKey: 'id',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedShipment(row)}>
+                        <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                        <FileText className="w-4 h-4" />
+                    </Button>
+                </div>
+            )
         }
     ];
 
-    // Loading state
-    if (isLoading && !shipments.length) {
-        return (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Shipments</h2>
-                </div>
-                <Card>
-                    <CardContent className="p-8">
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <RefreshCw className="h-8 w-8 animate-spin text-[var(--primary-blue)] mb-4" />
-                            <p className="text-[var(--text-muted)]">Loading shipments...</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    // Error state
-    if (error) {
-        return (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Shipments</h2>
-                </div>
-                <Card>
-                    <CardContent className="p-8">
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <div className="text-red-500 mb-4">
-                                <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <p className="text-[var(--text-primary)] font-semibold mb-2">Failed to load shipments</p>
-                            <p className="text-[var(--text-muted)] text-sm mb-4">{error.message || 'An error occurred'}</p>
-                            <Button onClick={() => refetch()}>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Retry
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Shipment Detail Modal */}
+        <div className="min-h-screen space-y-8 pb-10">
+            {/* Header */}
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-2"
+                    >
+                        <div className="px-2 py-1 rounded-md bg-[var(--primary-blue-soft)]/20 border border-[var(--primary-blue)]/20 flex items-center gap-2">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary-blue)]"></span>
+                            </span>
+                            Live Tracking
+                        </div>
+                    </motion.div>
+                    <motion.h1
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
+                    >
+                        Shipments
+                    </motion.h1>
+                    <p className="text-[var(--text-muted)] mt-1">Track and manage all your deliveries</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <DateRangePicker />
+                    <button className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors">
+                        <Filter className="w-5 h-5" />
+                    </button>
+                    <button className="px-4 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white shadow-lg shadow-blue-500/20 hover:bg-[var(--primary-blue-deep)] transition-colors flex items-center gap-2">
+                        <Download className="w-5 h-5" />
+                        <span className="font-medium">Export</span>
+                    </button>
+                </div>
+            </header>
+
+            {/* Status Grid */}
+            <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {statusGrid.map((status, i) => {
+                    const isActive = statusFilter === status.id;
+                    return (
+                        <motion.button
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            key={status.id}
+                            onClick={() => setStatusFilter(status.id)}
+                            className={cn(
+                                "relative p-5 rounded-2xl border transition-all text-left group overflow-hidden",
+                                isActive
+                                    ? "bg-[var(--bg-primary)] border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)] shadow-lg"
+                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md"
+                            )}
+                        >
+                            <div className="flex flex-col h-full justify-between">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className={cn(
+                                        "p-2.5 rounded-xl",
+                                        status.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                                            status.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                                status.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
+                                                    status.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                                                        status.color === 'orange' ? "bg-orange-500/10 text-orange-500" :
+                                                            "bg-rose-500/10 text-rose-500"
+                                    )}>
+                                        <status.icon className="w-4 h-4" />
+                                    </div>
+                                    {isActive && (
+                                        <div className="w-2 h-2 rounded-full bg-[var(--primary-blue)] animate-pulse" />
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-[var(--text-primary)]">{status.count}</p>
+                                    <p className="text-xs text-[var(--text-muted)] font-medium mt-1">{status.label}</p>
+                                </div>
+                            </div>
+                        </motion.button>
+                    );
+                })}
+            </section>
+
+            {/* Search & Filters */}
+            <div className="bg-[var(--bg-primary)] p-4 rounded-2xl border border-[var(--border-subtle)]">
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
+                    <input
+                        type="text"
+                        placeholder="Search by AWB, Order ID, or Customer..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue)] text-sm transition-all text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    />
+                </div>
+            </div>
+
+            {/* Shipments Table */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden shadow-sm"
+            >
+                <div className="p-6 border-b border-[var(--border-subtle)]">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">All Shipments</h3>
+                            <p className="text-sm text-[var(--text-secondary)]">
+                                {filteredData.length} {filteredData.length === 1 ? 'shipment' : 'shipments'} found
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                            <BarChart3 className="w-4 h-4" />
+                            <span>Last updated: just now</span>
+                        </div>
+                    </div>
+                </div>
+
+                <DataTable
+                    columns={columns}
+                    data={filteredData}
+                    onRowClick={(row) => setSelectedShipment(row)}
+                />
+            </motion.div>
+
+            {/* Detail Modal */}
             <ShipmentDetailModal
                 isOpen={!!selectedShipment}
                 onClose={() => setSelectedShipment(null)}
                 shipment={selectedShipment}
             />
-
-            {/* Create Shipment Modal */}
-            <CreateShipmentModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSuccess={() => {
-                    setIsCreateModalOpen(false);
-                    refetch();
-                }}
-            />
-
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Shipments</h2>
-                    {pagination && (
-                        <p className="text-sm text-[var(--text-muted)] mt-1">
-                            Showing {shipments.length} of {pagination.total} shipments
-                        </p>
-                    )}
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() => refetch()}
-                        disabled={isLoading}
-                    >
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button variant="outline" onClick={() => addToast('Bulk import coming soon!', 'info')}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Bulk Import
-                    </Button>
-                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Shipment
-                    </Button>
-                </div>
-            </div>
-
-            <Card>
-                <CardHeader className="pb-4">
-                    <div className="relative">
-                        <Input
-                            placeholder="Search by AWB, Order ID, or Customer"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            icon={<Search className="h-4 w-4" />}
-                            className="max-w-md"
-                        />
-                    </div>
-                    <FilterBar
-                        filters={filterOptions}
-                        activeFilters={filters}
-                        onFilterChange={(key, val) => {
-                            setFilters(prev => ({ ...prev, [key]: val }));
-                            setPage(1); // Reset to page 1 when filters change
-                        }}
-                        onClearFilters={() => {
-                            setFilters({ status: 'all', courier: 'all', paymentMode: 'all' });
-                            setPage(1);
-                        }}
-                    />
-                </CardHeader>
-                <CardContent>
-                    {displayShipments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <svg className="h-12 w-12 text-[var(--text-muted)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                            </svg>
-                            <p className="text-[var(--text-primary)] font-semibold mb-1">No shipments found</p>
-                            <p className="text-[var(--text-muted)] text-sm">Try adjusting your filters or create a new shipment</p>
-                        </div>
-                    ) : (
-                        <>
-                            <DataTable
-                                columns={columns}
-                                data={displayShipments}
-                                onRowClick={(row) => setSelectedShipment(row)}
-                            />
-
-                            {/* Pagination */}
-                            {pagination && pagination.pages > 1 && (
-                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-default)]">
-                                    <p className="text-sm text-[var(--text-muted)]">
-                                        Page {pagination.page} of {pagination.pages}
-                                    </p>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                                            disabled={page === 1 || isLoading}
-                                        >
-                                            Previous
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-                                            disabled={page === pagination.pages || isLoading}
-                                        >
-                                            Next
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </CardContent>
-            </Card>
         </div>
     );
 }

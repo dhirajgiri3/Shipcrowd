@@ -3,1068 +3,605 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedNumber } from '@/hooks/useCountUp';
-import { RadialProgress } from '@/src/shared/components/RadialProgress';
 import {
-    ResponsiveContainer,
-    AreaChart,
-    Area
-} from 'recharts';
-import {
-    Users,
-    Package,
-    Truck,
-    IndianRupee,
-    TrendingUp,
+    Activity,
     AlertTriangle,
-    CheckCircle2,
-    Clock,
     ArrowUpRight,
     BarChart3,
-    RefreshCcw,
-    X,
-    Activity,
-    Server,
-    LayoutDashboard,
+    Box,
     BrainCircuit,
-    Megaphone,
-    Filter,
-    MoreHorizontal,
+    Calendar,
+    CheckCircle2,
     ChevronDown,
-    Settings,
+    Clock,
+    CreditCard,
+    DollarSign,
     FileText,
+    Globe,
+    LayoutDashboard,
+    Map,
+    MapPin,
+    MoreHorizontal,
+    Package,
+    PieChart,
+    Search,
+    Server,
+    Settings,
+    TrendingUp,
+    Truck,
+    Users,
     Wallet,
-    Briefcase,
-    ChevronRight,
+    X,
     Zap
 } from 'lucide-react';
-import { TopSellers } from '@/components/admin/TopSellers';
-
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    PieChart as RechartsPieChart,
+    Pie,
+    Cell
+} from 'recharts';
+import { useAuth } from '@/src/features/auth';
 import { useToast } from '@/src/shared/components/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
-import { useAdminDashboard } from '@/src/core/api/hooks/useAnalytics';
-import { useAuth } from '@/src/features/auth';
+import { TopSellers } from '@/components/admin/TopSellers';
 
-// --- TYPES ---
-
-interface MetricCardProps {
-    title: string;
-    value: string | number;
-    subtext: string;
-    icon: any;
-    trend?: 'up' | 'down';
-    trendValue?: string;
-    color?: 'blue' | 'emerald' | 'violet' | 'amber';
-    chartData: any[];
-}
-
-interface CourierData {
-    name: string;
-    logo: string;
-    sla: number;
-    volume: string;
-    trend: string;
-    trendData: number[];
-    status: string;
-    issues: number;
-}
-
-interface CourierCardProps {
-    data: CourierData;
-}
-
-// --- MOCK DATA (AI Insights & Activity - not yet in backend) ---
-
-// These remain as mock data until backend support is added
-const aiInsights = [
-    {
-        id: 1,
-        type: 'opportunity',
-        icon: BrainCircuit,
-        title: 'Volume Spike Predicted',
-        description: 'Expected 15% increase in orders this weekend due to festive season.',
-        action: 'View Forecast',
-        color: 'blue'
-    },
-    {
-        id: 2,
-        type: 'optimization',
-        icon: Zap,
-        title: 'Route Optimization',
-        description: 'Switching Mumbai → Delhi traffic to Xpressbees could save 12% on costs.',
-        action: 'Apply Route',
-        color: 'amber'
-    },
-    {
-        id: 3,
-        type: 'alert',
-        icon: AlertTriangle,
-        title: 'SLA Risk Detected',
-        description: 'DTDC pickup delays in Bangalore region exceeding 4 hours.',
-        action: 'View Impact',
-        color: 'rose'
-    }
-];
-
-const activityFeed = [
-    { id: 1, user: 'TechGadgets Inc.', action: 'processed 150 orders', time: '10 min ago', icon: Package, color: 'blue' },
-    { id: 2, user: 'System', action: 'completed daily settlement report', time: '25 min ago', icon: FileText, color: 'purple' },
-    { id: 3, user: 'Fashion Hub', action: 'added ₹50,000 to wallet', time: '1 hour ago', icon: Wallet, color: 'emerald' },
-    { id: 4, user: 'Admin', action: 'approved new seller "Urban Trends"', time: '2 hours ago', icon: CheckCircle2, color: 'indigo' },
-];
-
-const revenueByChannel = [
-    { name: 'Delhivery', value: 35, color: '#2525FF' },
-    { name: 'Xpressbees', value: 28, color: '#6B7280' },
-    { name: 'DTDC', value: 18, color: '#F59E0B' },
-    { name: 'Ecom Express', value: 12, color: '#10B981' },
-    { name: 'Others', value: 7, color: '#E5E7EB' }
-];
-
-// --- COLOR CONFIGURATIONS ---
-
-const METRIC_COLOR_CONFIG = {
-    blue: {
-        bg: 'bg-[var(--primary-blue-soft)]',
-        text: 'text-[var(--primary-blue)]',
-        glow: 'bg-blue-500',
-        gradient: 'rgba(37, 99, 235, 0.1)',
-        chart: 'var(--primary-blue)'
-    },
-    emerald: {
-        bg: 'bg-[var(--success-bg)]',
-        text: 'text-[var(--success)]',
-        glow: 'bg-emerald-500',
-        gradient: 'rgba(16, 185, 129, 0.1)',
-        chart: 'var(--success)'
-    },
-    violet: {
-        bg: 'bg-violet-500/10',
-        text: 'text-violet-600 dark:text-violet-400',
-        glow: 'bg-violet-500',
-        gradient: 'rgba(139, 92, 246, 0.1)',
-        chart: '#8b5cf6'
-    },
-    amber: {
-        bg: 'bg-[var(--warning-bg)]',
-        text: 'text-[var(--warning)]',
-        glow: 'bg-amber-500',
-        gradient: 'rgba(245, 158, 11, 0.1)',
-        chart: 'var(--warning)'
+// --- ANIMATION VARIANTS ---
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
     }
 };
 
+const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+        y: 0,
+        opacity: 1
+    }
+};
+
+// --- MOCK DATA ---
+const revenueData = [
+    { name: 'Mon', revenue: 45000, orders: 120 },
+    { name: 'Tue', revenue: 52000, orders: 145 },
+    { name: 'Wed', revenue: 49000, orders: 132 },
+    { name: 'Thu', revenue: 62000, orders: 180 },
+    { name: 'Fri', revenue: 58000, orders: 160 },
+    { name: 'Sat', revenue: 75000, orders: 210 },
+    { name: 'Sun', revenue: 82000, orders: 245 },
+];
+
+const orderStatusData = [
+    { name: 'Delivered', value: 4500, color: '#10B981' },
+    { name: 'In Transit', value: 1200, color: '#3B82F6' },
+    { name: 'Pending', value: 800, color: '#F59E0B' },
+    { name: 'RTO', value: 300, color: '#EF4444' },
+];
+
+const aiInsights = [
+    {
+        id: 1,
+        title: "Growth Opportunity",
+        description: "High demand detected in Tier-2 cities. Recommend activating 'Express' logistics for Nagpur region.",
+        type: "opportunity",
+        impact: "+12% Revenue",
+        icon: TrendingUp,
+        color: "emerald"
+    },
+    {
+        id: 2,
+        title: "SLA Breach Risk",
+        description: "Weather alert in North India may delay Delhivery shipments by 24h.",
+        type: "risk",
+        impact: "High Impact",
+        icon: AlertTriangle,
+        color: "amber"
+    },
+    {
+        id: 3,
+        title: "Inventory Optimization",
+        description: "Seller 'TechGadgets' has 3 slow-moving SKUs. Recommend markdown campaign.",
+        type: "optimization",
+        impact: "Cost Saving",
+        icon: Box,
+        color: "blue"
+    }
+];
+
 // --- COMPONENTS ---
 
-function MetricCard({ title, value, subtext, icon: Icon, trend, trendValue, color = "blue", chartData }: MetricCardProps) {
-    const [isHovered, setIsHovered] = useState(false);
-    const colorConfig = METRIC_COLOR_CONFIG[color];
-
-    const cardVariants = {
-        hidden: {
-            opacity: 0,
-            y: 20,
-            scale: 0.95
-        },
-        visible: {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            transition: {
-                duration: 0.5,
-                ease: [0.22, 1, 0.36, 1] as const
-            }
-        },
-        hover: {
-            y: -8,
-            scale: 1.02,
-            transition: {
-                duration: 0.3,
-                ease: [0.22, 1, 0.36, 1] as const
-            }
-        }
-    };
-
+// 1. Stat Card with Sparkline
+function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data }: any) {
     return (
         <motion.div
-            variants={cardVariants}
-            whileHover="hover"
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
-            className="group relative overflow-hidden bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-6 cursor-pointer"
-            style={{
-                boxShadow: isHovered
-                    ? '0 20px 40px -12px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--primary-blue-medium)'
-                    : '0 1px 3px rgba(0, 0, 0, 0.05)'
-            }}
+            variants={itemVariants}
+            className="relative overflow-hidden p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] group hover:shadow-xl transition-all duration-300"
         >
-            {/* Glassmorphism Background Glow */}
-            <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: isHovered ? 0.15 : 0, scale: isHovered ? 1.2 : 0.8 }}
-                transition={{ duration: 0.4 }}
-                className={cn("absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none", colorConfig.glow)}
-            />
+            <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
+                <Icon className="w-32 h-32" />
+            </div>
 
-            {/* Gradient Border Effect on Hover */}
-            <motion.div
-                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{
-                    background: `linear-gradient(135deg, ${color === 'blue' ? 'rgba(37, 99, 235, 0.1)' :
-                        color === 'emerald' ? 'rgba(16, 185, 129, 0.1)' :
-                            color === 'violet' ? 'rgba(139, 92, 246, 0.1)' :
-                                'rgba(245, 158, 11, 0.1)'
-                        } 0%, transparent 100%)`
-                }}
-            />
-
-            <div className="flex items-center justify-between mb-4 relative z-10">
-                <motion.div
-                    whileHover={{ scale: 1.15, rotate: 5 }}
-                    transition={{ duration: 0.3 }}
-                    className={cn(
-                        "h-12 w-12 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm",
-                        colorConfig.bg,
-                        colorConfig.text
-                    )}
-                >
-                    <Icon className="h-6 w-6" />
-                </motion.div>
+            <div className="flex items-center justify-between mb-4">
+                <div className={cn(
+                    "p-3 rounded-2xl",
+                    color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                        color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                            color === 'violet' ? "bg-violet-500/10 text-violet-500" :
+                                "bg-amber-500/10 text-amber-500"
+                )}>
+                    <Icon className="w-6 h-6" />
+                </div>
                 {trend && (
-                    <motion.span
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className={cn(
-                            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm shadow-sm",
-                            trend === "up" ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--error-bg)] text-[var(--error)]"
-                        )}
-                    >
-                        <TrendingUp className={cn("h-3 w-3 mr-1", trend === "down" && "rotate-180")} />
+                    <div className={cn(
+                        "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
+                        trend === 'up' ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+                    )}>
+                        <TrendingUp className={cn("w-3 h-3", trend === 'down' && "rotate-180")} />
                         {trendValue}
-                    </motion.span>
+                    </div>
                 )}
             </div>
 
-            <div className="relative z-10">
-                <p className="text-sm font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wide">{title}</p>
-                <div className="flex items-end justify-between">
-                    {typeof value === 'number' ? (
-                        <AnimatedNumber
-                            value={value}
-                            duration={2000}
-                            className="text-3xl font-bold text-[var(--text-primary)] tracking-tight metric-number"
-                        />
-                    ) : (
-                        <p className="text-3xl font-bold text-[var(--text-primary)] tracking-tight metric-number">{value}</p>
-                    )}
+            <div>
+                <p className="text-sm font-medium text-[var(--text-secondary)]">{title}</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                    <h3 className="text-3xl font-bold text-[var(--text-primary)]">
+                        <AnimatedNumber value={value} />
+                    </h3>
                 </div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">{subtext}</p>
             </div>
 
-            {/* Enhanced Sparkline Chart */}
-            <motion.div
-                initial={{ opacity: 0.6 }}
-                animate={{ opacity: isHovered ? 1 : 0.7 }}
-                className="h-14 w-full mt-4 -mb-2"
-            >
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={chartData}>
+            <div className="h-16 mt-4 -mx-2">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data || revenueData}>
                         <defs>
                             <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={colorConfig.chart} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={colorConfig.chart} stopOpacity={0} />
+                                <stop offset="5%" stopColor={
+                                    color === 'blue' ? '#3B82F6' :
+                                        color === 'emerald' ? '#10B981' :
+                                            color === 'violet' ? '#8B5CF6' : '#F59E0B'
+                                } stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={
+                                    color === 'blue' ? '#3B82F6' :
+                                        color === 'emerald' ? '#10B981' :
+                                            color === 'violet' ? '#8B5CF6' : '#F59E0B'
+                                } stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <Area
                             type="monotone"
                             dataKey="value"
-                            stroke={colorConfig.chart}
-                            strokeWidth={2.5}
+                            stroke={
+                                color === 'blue' ? '#3B82F6' :
+                                    color === 'emerald' ? '#10B981' :
+                                        color === 'violet' ? '#8B5CF6' : '#F59E0B'
+                            }
                             fill={`url(#gradient-${title})`}
-                            isAnimationActive={true}
-                            animationDuration={1500}
-                            animationEasing="ease-out"
+                            strokeWidth={2}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
-            </motion.div>
+            </div>
         </motion.div>
     );
 }
 
-function CourierCard({ data }: CourierCardProps) {
-    const isWarning = data.status === 'warning';
-    const isExcellent = data.status === 'excellent';
-    const [isHovered, setIsHovered] = useState(false);
-
-    const cardVariants = {
-        hidden: { opacity: 0, scale: 0.95, y: 20 },
-        visible: {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            transition: {
-                duration: 0.4,
-                ease: [0.22, 1, 0.36, 1] as const
-            }
-        },
-        hover: {
-            y: -6,
-            scale: 1.01,
-            transition: { duration: 0.25 }
-        }
-    };
-
+// 2. AI Insight Card
+function AIInsightCard({ insight }: { insight: any }) {
     return (
         <motion.div
-            variants={cardVariants}
-            whileHover="hover"
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
-            className={cn(
-                "group relative overflow-hidden bg-[var(--bg-primary)] border rounded-2xl p-5 cursor-pointer",
-                isWarning ? "border-[var(--warning-border)] shadow-[0_0_0_1px_var(--warning-border)]" :
-                    isExcellent ? "border-[var(--success-border)] shadow-[0_0_0_1px_rgba(16,185,129,0.1)]" :
-                        "border-[var(--border-subtle)]"
-            )}
-            style={{
-                boxShadow: isHovered
-                    ? '0 12px 30px -10px rgba(0, 0, 0, 0.15)'
-                    : undefined
-            }}
+            whileHover={{ scale: 1.02 }}
+            className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 transition-colors cursor-pointer"
         >
-            {/* Animated Glow Background */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isHovered ? 1 : 0 }}
-                className={cn(
-                    "absolute inset-0 pointer-events-none",
-                    isWarning ? "bg-gradient-to-br from-[var(--warning-bg)]/30 to-transparent" :
-                        "bg-gradient-to-br from-[var(--primary-blue-soft)]/30 to-transparent"
-                )}
-            />
-
-            {/* Top Row */}
-            <div className="flex items-start justify-between mb-4 relative z-10">
-                <div className="flex items-center gap-3">
-                    <motion.div
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        transition={{ duration: 0.3 }}
-                        className={cn(
-                            "h-12 w-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm",
-                            isWarning ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
-                        )}
-                    >
-                        {data.logo}
-                    </motion.div>
-                    <div>
-                        <h3 className="font-bold text-[var(--text-primary)] text-base">{data.name}</h3>
-                        <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
-                            <Truck className="h-3 w-3" />
-                            {data.volume} shipments
-                        </div>
-                    </div>
+            <div className="flex gap-4">
+                <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                    insight.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                        insight.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                            "bg-blue-500/10 text-blue-500"
+                )}>
+                    <insight.icon className="w-5 h-5" />
                 </div>
-                {isWarning && (
-                    <motion.div
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        className="h-8 w-8 rounded-full bg-[var(--warning-bg)] flex items-center justify-center shadow-sm"
-                    >
-                        <AlertTriangle className="h-4 w-4 text-[var(--warning)]" />
-                    </motion.div>
-                )}
-            </div>
-
-            {/* Metrics Grid */}
-            <div className="flex items-center justify-between gap-4 mb-4 relative z-10">
-                {/* Radial Progress for SLA */}
-                <motion.div
-                    className="flex-shrink-0"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    <RadialProgress
-                        value={data.sla}
-                        size={90}
-                        strokeWidth={6}
-                        showValue={true}
-                        animated={true}
-                    />
-                    <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider text-center mt-1">SLA Performance</p>
-                </motion.div>
-
-                {/* Trend Stats */}
-                <div className="flex-1 grid grid-cols-2 gap-2">
-                    <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="bg-[var(--bg-secondary)] p-3 rounded-xl transition-colors"
-                    >
-                        <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">7-Day Trend</p>
-                        <div className="flex items-center gap-1">
-                            <p className={cn(
-                                "text-lg font-bold metric-number leading-none",
-                                data.trend.startsWith('+') ? "text-[var(--success)]" : "text-[var(--error)]"
-                            )}>
-                                {data.trend}
-                            </p>
-                        </div>
-                    </motion.div>
-
-                    <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="bg-[var(--bg-secondary)] p-3 rounded-xl transition-colors"
-                    >
-                        <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">Issues</p>
-                        <p className={cn(
-                            "text-lg font-bold metric-number",
-                            data.issues === 0 ? "text-[var(--success)]" : "text-[var(--warning)]"
+                <div>
+                    <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        {insight.title}
+                        <span className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
+                            insight.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                                insight.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                    "bg-blue-500/10 text-blue-500"
                         )}>
-                            {data.issues}
-                        </p>
-                    </motion.div>
+                            {insight.impact}
+                        </span>
+                    </h4>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                        {insight.description}
+                    </p>
                 </div>
-            </div>
-
-            {/* Mini Chart */}
-            <motion.div
-                initial={{ opacity: 0.7 }}
-                animate={{ opacity: isHovered ? 1 : 0.8 }}
-                className="h-14 -mx-2 mb-3"
-            >
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={data.trendData.map((val, i) => ({ val, i }))}>
-                        <defs>
-                            <linearGradient id={`gradient-${data.name}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={isWarning ? "#F59E0B" : "#2525FF"} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={isWarning ? "#F59E0B" : "#2525FF"} stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <Area
-                            type="basis"
-                            dataKey="val"
-                            stroke={isWarning ? "#F59E0B" : "#6B6BFF"}
-                            strokeWidth={2.5}
-                            fill={`url(#gradient-${data.name})`}
-                            isAnimationActive={true}
-                            animationDuration={1200}
-                            animationEasing="ease-in-out"
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </motion.div>
-
-            {/* Actions */}
-            <div className="relative z-10">
-                {isWarning ? (
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full h-9 rounded-lg text-xs font-bold bg-[var(--warning-bg)] text-[var(--warning)] hover:shadow-md transition-all duration-200 border border-[var(--warning)]/20"
-                    >
-                        Investigate High Failures
-                    </motion.button>
-                ) : (
-                    <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className="w-full h-9 rounded-lg text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] border border-transparent hover:border-[var(--border-subtle)] transition-all duration-200"
-                    >
-                        View Detailed Report
-                    </motion.button>
-                )}
             </div>
         </motion.div>
     );
 }
 
 export default function AdminDashboardPage() {
-    const { addToast } = useToast();
     const { user } = useAuth();
+    const { addToast } = useToast();
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [showSystemAlert, setShowSystemAlert] = useState(true);
-
-    const [greeting, setGreeting] = useState('');
-
-    // Fetch real dashboard data from API
-    const { data: adminData } = useAdminDashboard();
-
-    // Extract admin name from user data
-    const adminName = user?.name?.split(' ')[0] || 'Admin';
-
-    // Transform API data for metrics
-    const platformMetrics = adminData ? {
-        activeSellers: adminData.companies?.length || 0,
-        sellersGrowth: 12,
-        totalGMV: adminData.totalRevenue || 0,
-        gmvGrowth: 18,
-        shipmentsToday: adminData.totalShipments || 0,
-        shipmentsGrowth: 5,
-        platformMargin: adminData.globalSuccessRate || 0,
-        marginGrowth: 0.3,
-        sparklines: {
-            sellers: adminData.revenueTrend?.map(t => ({ value: Math.floor(t.revenue / 50000) })) || Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 50) + 200 })),
-            gmv: adminData.revenueTrend?.map(t => ({ value: t.revenue })) || Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 500000) + 2000000 })),
-            shipments: Array.from({ length: 7 }, () => ({ value: Math.floor(Math.random() * 200) + 1000 })),
-            margin: Array.from({ length: 7 }, () => ({ value: Math.random() * 2 + 7 }))
-        }
-    } : {
-        activeSellers: 0,
-        sellersGrowth: 0,
-        totalGMV: 0,
-        gmvGrowth: 0,
-        shipmentsToday: 0,
-        shipmentsGrowth: 0,
-        platformMargin: 0,
-        marginGrowth: 0,
-        sparklines: {
-            sellers: Array.from({ length: 7 }, () => ({ value: 220 })),
-            gmv: Array.from({ length: 7 }, () => ({ value: 2000000 })),
-            shipments: Array.from({ length: 7 }, () => ({ value: 1000 })),
-            margin: Array.from({ length: 7 }, () => ({ value: 8 }))
-        }
-    };
-
-    // Courier performance - mock until backend support
-    const courierPerformance = [
-        { name: 'Delhivery', logo: 'DL', sla: 94, volume: '15.2K', trend: '+2.4%', trendData: [65, 59, 80, 81, 56, 95, 94], status: 'excellent', issues: 0 },
-        { name: 'Xpressbees', logo: 'XB', sla: 88, volume: '12.5K', trend: '-1.2%', trendData: [40, 60, 55, 70, 65, 85, 88], status: 'good', issues: 2 },
-        { name: 'DTDC', logo: 'DT', sla: 76, volume: '8.1K', trend: '-5.8%', trendData: [85, 80, 75, 70, 72, 68, 76], status: 'warning', issues: 15 },
-        { name: 'Ecom Express', logo: 'EE', sla: 91, volume: '9.4K', trend: '+3.1%', trendData: [50, 60, 70, 80, 85, 90, 91], status: 'excellent', issues: 0 }
-    ];
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-
-        const hour = new Date().getHours();
-        if (hour < 12) setGreeting('Good Morning');
-        else if (hour < 18) setGreeting('Good Afternoon');
-        else setGreeting('Good Evening');
-
         return () => clearInterval(timer);
     }, []);
 
+    // Simulated API Data
+    const metrics = {
+        gmv: 1250000,
+        orders: 4520,
+        activeSellers: 142,
+        avgSla: 94.5
+    };
+
     return (
-        <div className="space-y-8 pb-10">
-            {/* Header - Premium Redesign */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-in">
+        <div className="min-h-screen space-y-8 pb-10">
+            {/* 1. Top Navigation & Welcome */}
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
-                        <LayoutDashboard className="w-3.5 h-3.5" />
-                        <span>Platform Command Center</span>
-                    </div>
-                    <h1 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-2">
-                        {greeting}, {adminName} <span className="text-2xl">👋</span>
-                    </h1>
-                    <p className="text-[var(--text-secondary)] flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-[var(--text-muted)]" />
-                        {currentTime.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-4 bg-[var(--bg-primary)] p-2 rounded-2xl border border-[var(--border-subtle)] shadow-sm">
-                    {/* Status Orb */}
-                    <div className="hidden sm:flex items-center gap-3 pl-2 pr-4 border-r border-[var(--border-subtle)]">
-                        <div className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--success)] shadow-[0_0_8px_var(--success)]"></span>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">System Status</span>
-                            <span className="text-xs font-bold text-[var(--success)] leading-none">Operational</span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <DateRangePicker />
-                        <button
-                            onClick={() => addToast('Refreshing data...', 'info')}
-                            className="h-10 w-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--primary-blue)] transition-all duration-200"
-                            title="Refresh Data"
-                        >
-                            <RefreshCcw className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* System Notification Banner */}
-            {showSystemAlert && (
-                <div className="relative overflow-hidden rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-px animate-fade-in stagger-1">
-                    <div className="relative flex items-center justify-between gap-4 rounded-xl px-5 py-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--info-bg)] text-[var(--info)]">
-                                <Server className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">System Update Scheduled</p>
-                                <p className="text-xs sm:text-sm text-[var(--text-secondary)]">Maintenance scheduled for Dec 15, 02:00 AM - 04:00 AM IST. No downtime expected.</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setShowSystemAlert(false)}
-                            className="rounded-full p-1.5 hover:bg-[var(--bg-tertiary)] transition-all duration-200 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* AI Command Center - Premium Redesign with Enhanced Animations */}
-            <motion.div
-                className="grid lg:grid-cols-12 gap-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-            >
-                {/* AI Insights - Width 8/12 */}
-                <motion.div
-                    className="lg:col-span-8 relative overflow-hidden group"
-                    whileHover={{ scale: 1.01 }}
-                    transition={{ duration: 0.3 }}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] rounded-3xl opacity-100 transition-all duration-300"></div>
-
-                    {/* Decorative Background Elements */}
                     <motion.div
-                        className="absolute top-0 right-0 p-8 opacity-10"
-                        animate={{
-                            rotate: [0, 360],
-                            scale: [1, 1.05, 1]
-                        }}
-                        transition={{
-                            rotate: { duration: 30, repeat: Infinity, ease: "linear" },
-                            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" }
-                        }}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-2"
                     >
-                        <BrainCircuit className="w-48 h-48 text-white" />
-                    </motion.div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2"></div>
-
-                    <div className="relative h-full p-6 md:p-8 flex flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <motion.div
-                                    className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner border border-white/10"
-                                    animate={{
-                                        boxShadow: [
-                                            "0 0 10px rgba(255,255,255,0.2)",
-                                            "0 0 20px rgba(255,255,255,0.4)",
-                                            "0 0 10px rgba(255,255,255,0.2)"
-                                        ]
-                                    }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                >
-                                    <BrainCircuit className="h-5 w-5" />
-                                </motion.div>
-                                <div>
-                                    <h2 className="font-bold text-white text-xl">AI Smart Insights</h2>
-                                    <p className="text-blue-100 text-xs font-medium">Real-time predictive analytics</p>
-                                </div>
-                            </div>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="h-8 px-4 rounded-lg text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10 flex items-center gap-2"
-                            >
-                                View Forecast
-                                <ArrowUpRight className="h-3 w-3" />
-                            </motion.button>
+                        <div className="px-2 py-1 rounded-md bg-[var(--primary-blue-soft)]/20 border border-[var(--primary-blue)]/20 flex items-center gap-2">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary-blue)]"></span>
+                            </span>
+                            Live System
                         </div>
-
-                        {/* Insights Carousel / Grid with Stagger */}
-                        <motion.div
-                            className="grid md:grid-cols-2 gap-4 mt-auto"
-                            initial="hidden"
-                            animate="visible"
-                            variants={{
-                                visible: {
-                                    transition: {
-                                        staggerChildren: 0.15,
-                                        delayChildren: 0.3
-                                    }
-                                }
-                            }}
-                        >
-                            {aiInsights.slice(0, 2).map((insight, index) => (
-                                <motion.div
-                                    key={insight.id}
-                                    variants={{
-                                        hidden: { opacity: 0, x: -20, scale: 0.9 },
-                                        visible: {
-                                            opacity: 1,
-                                            x: 0,
-                                            scale: 1,
-                                            transition: { duration: 0.4 }
-                                        }
-                                    }}
-                                    whileHover={{
-                                        scale: 1.03,
-                                        y: -4,
-                                        transition: { duration: 0.2 }
-                                    }}
-                                    className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 cursor-pointer group/card relative overflow-hidden"
-                                >
-                                    <motion.div
-                                        className={`absolute top-0 left-0 w-1 h-full ${insight.type === 'opportunity' ? 'bg-emerald-400' :
-                                            insight.type === 'optimization' ? 'bg-amber-400' : 'bg-rose-400'
-                                            }`}
-                                        initial={{ scaleY: 0 }}
-                                        animate={{ scaleY: 1 }}
-                                        transition={{ duration: 0.5, delay: index * 0.2 + 0.5 }}
-                                    />
-                                    <div className="flex justify-between items-start mb-2 pl-3">
-                                        <motion.div
-                                            className="p-2 rounded-lg bg-white/10 w-fit"
-                                            whileHover={{ rotate: 360 }}
-                                            transition={{ duration: 0.5 }}
-                                        >
-                                            <insight.icon className="h-4 w-4 text-white" />
-                                        </motion.div>
-                                        <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider bg-white/5 px-2 py-1 rounded-md">
-                                            {insight.type}
-                                        </span>
-                                    </div>
-                                    <div className="pl-3">
-                                        <h3 className="font-bold text-white text-sm mb-1 line-clamp-1">{insight.title}</h3>
-                                        <p className="text-blue-100 text-xs leading-relaxed line-clamp-2 mb-3 opacity-90">{insight.description}</p>
-                                        <span className="text-xs font-semibold text-white group-hover/card:underline decoration-white/50 underline-offset-4 flex items-center gap-1">
-                                            {insight.action} <ChevronDown className="w-3 h-3 -rotate-90 opacity-70" />
-                                        </span>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                    </div>
-                </motion.div>
-
-                {/* Quick Actions Dock - Width 4/12 */}
-                <div className="lg:col-span-4 flex flex-col gap-4">
-                    <motion.div
-                        className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-3xl p-6 h-full shadow-sm relative overflow-hidden"
-                        initial={{ opacity: 0, x: 20 }}
+                        <span className="text-[var(--text-muted)]">•</span>
+                        <span className="text-[var(--text-muted)]">{currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                    </motion.div>
+                    <motion.h1
+                        initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: 0.3 }}
+                        className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-bold text-[var(--text-primary)]">Quick Actions</h2>
-                            <motion.button
-                                whileHover={{ rotate: 90 }}
-                                transition={{ duration: 0.3 }}
-                                className="text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] p-1.5 rounded-lg transition-colors"
-                            >
-                                <Settings className="w-4 h-4" />
-                            </motion.button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 h-full pb-2">
-                            {[
-                                { icon: Users, label: "Verify Sellers", color: "blue" },
-                                { icon: FileText, label: "Daily Reports", color: "emerald" },
-                                { icon: Megaphone, label: "Broadcast", color: "amber" },
-                                { icon: Wallet, label: "Manage Payouts", color: "violet" }
-                            ].map((action, index) => (
-                                <motion.button
-                                    key={action.label}
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 0.4 + index * 0.1, duration: 0.3 }}
-                                    whileHover={{ scale: 1.05, y: -2 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className="flex flex-col items-center justify-center gap-3 p-3 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 group border border-transparent hover:border-[var(--border-subtle)]"
-                                >
-                                    <div className={cn(
-                                        "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
-                                        action.color === "blue" && "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white",
-                                        action.color === "emerald" && "bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
-                                        action.color === "amber" && "bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white",
-                                        action.color === "violet" && "bg-violet-500/10 text-violet-600 group-hover:bg-violet-500 group-hover:text-white"
-                                    )}>
-                                        <action.icon className="h-5 w-5" />
-                                    </div>
-                                    <span className="text-xs font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">{action.label}</span>
-                                </motion.button>
-                            ))}
-                        </div>
-                    </motion.div>
+                        Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
+                    </motion.h1>
                 </div>
-            </motion.div>
 
-            {/* Key Metrics Row - Premium with Stagger Animation */}
-            <motion.div
-                className="grid gap-6 md:grid-cols-4"
+                <div className="flex items-center gap-3">
+                    <DateRangePicker />
+                    <button className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors">
+                        <Settings className="w-5 h-5" />
+                    </button>
+                    <button className="p-2.5 rounded-xl bg-[var(--primary-blue)] text-white shadow-lg shadow-blue-500/20 hover:bg-[var(--primary-blue-deep)] transition-colors">
+                        <ArrowUpRight className="w-5 h-5" />
+                    </button>
+                </div>
+            </header>
+
+            {/* 2. Key Metrics Grid */}
+            <motion.section
+                variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                variants={{
-                    visible: {
-                        transition: {
-                            staggerChildren: 0.1,
-                            delayChildren: 0.2
-                        }
-                    }
-                }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
-                <MetricCard
-                    title="Active Sellers"
-                    value={platformMetrics.activeSellers}
-                    subtext="View all sellers"
-                    icon={Users}
+                <StatCard
+                    title="Total Revenue"
+                    value={metrics.gmv}
+                    subtext="vs prev. 30 days"
+                    icon={DollarSign}
                     trend="up"
-                    trendValue={`+${platformMetrics.sellersGrowth}%`}
-                    color="blue"
-                    chartData={platformMetrics.sparklines.sellers}
-                />
-                <MetricCard
-                    title="Total GMV"
-                    value={formatCurrency(platformMetrics.totalGMV)}
-                    subtext="Revenue analytics"
-                    icon={IndianRupee}
-                    trend="up"
-                    trendValue={`+${platformMetrics.gmvGrowth}%`}
+                    trendValue="+14.5%"
                     color="emerald"
-                    chartData={platformMetrics.sparklines.gmv}
+                    data={revenueData.map(d => ({ value: d.revenue }))}
                 />
-                <MetricCard
-                    title="Shipments Today"
-                    value={platformMetrics.shipmentsToday.toLocaleString()}
-                    subtext="Live tracking"
+                <StatCard
+                    title="Total Orders"
+                    value={metrics.orders}
+                    subtext="vs prev. 30 days"
                     icon={Package}
                     trend="up"
-                    trendValue={`+${platformMetrics.shipmentsGrowth}%`}
-                    color="violet"
-                    chartData={platformMetrics.sparklines.shipments}
+                    trendValue="+8.2%"
+                    color="blue"
+                    data={revenueData.map(d => ({ value: d.orders }))}
                 />
-                <MetricCard
-                    title="Platform Margin"
-                    value={`${platformMetrics.platformMargin}%`}
-                    subtext="Financial report"
-                    icon={BarChart3}
+                <StatCard
+                    title="Active Sellers"
+                    value={metrics.activeSellers}
+                    subtext="4 pending approval"
+                    icon={Users}
                     trend="up"
-                    trendValue={`+${platformMetrics.marginGrowth}%`}
-                    color="amber"
-                    chartData={platformMetrics.sparklines.margin}
+                    trendValue="+12"
+                    color="violet"
+                    data={[
+                        { value: 120 }, { value: 125 }, { value: 132 }, { value: 140 }, { value: 138 }, { value: 142 }
+                    ]}
                 />
-            </motion.div>
+                <StatCard
+                    title="Avg. SLA"
+                    value={98.2}
+                    subtext="Delivery Success Rate"
+                    icon={Zap}
+                    trend="down"
+                    trendValue="-0.4%"
+                    color="amber"
+                    data={[
+                        { value: 99 }, { value: 98 }, { value: 98.5 }, { value: 97 }, { value: 98 }, { value: 98.2 }
+                    ]}
+                />
+            </motion.section>
 
-            {/* Courier Performance Grid - Redesigned with Stagger */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-[var(--text-primary)]">Courier Performance Overview</h2>
-                    <Link href="/admin/couriers" className="text-sm font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] transition-colors flex items-center gap-1">
-                        Manage Couriers <ArrowUpRight className="h-4 w-4" />
-                    </Link>
-                </div>
-                <motion.div
-                    className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                        visible: {
-                            transition: {
-                                staggerChildren: 0.08,
-                                delayChildren: 0.3
-                            }
-                        }
-                    }}
-                >
-                    {courierPerformance.map((courier) => (
-                        <CourierCard key={courier.name} data={courier} />
-                    ))}
-                </motion.div>
-            </div>
+            {/* 3. Main Dashboard Content - Grid Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {/* Two Column Layout: Activity & Financials - Premium with Animations */}
-            <motion.div
-                className="grid lg:grid-cols-3 gap-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-            >
-                {/* Real-time Activity Timeline */}
-                <div className="lg:col-span-2 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden flex flex-col">
-                    <div className="px-6 py-5 flex items-center justify-between border-b border-[var(--border-subtle)]">
-                        <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-[var(--bg-secondary)] flex items-center justify-center">
-                                <Activity className="h-4 w-4 text-[var(--text-muted)]" />
+                {/* LEFT COLUMN (2/3) */}
+                <div className="lg:col-span-2 space-y-8">
+
+                    {/* Revenue Analytics Chart */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
+                                <p className="text-sm text-[var(--text-secondary)]">Income vs Orders Overview</p>
                             </div>
-                            <h2 className="font-bold text-[var(--text-primary)]">System Activity</h2>
+                            <div className="flex gap-2">
+                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">Daily</button>
+                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--primary-blue)] text-white">Weekly</button>
+                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">Monthly</button>
+                            </div>
                         </div>
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="h-8 px-3 rounded-lg text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center gap-2"
-                        >
-                            <Filter className="h-3 w-3" />
-                            Filter
-                        </motion.button>
-                    </div>
+                        <div className="h-[350px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={revenueData}>
+                                    <defs>
+                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(value) => `₹${value / 1000}k`} />
+                                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)', borderRadius: '12px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }}
+                                        itemStyle={{ color: 'var(--text-primary)', fontSize: '12px' }}
+                                    />
+                                    <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                    <Area yAxisId="right" type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
 
-                    <div className="p-6 relative">
-                        {/* Timeline Connector Line */}
-                        <motion.div
-                            className="absolute left-[2.25rem] top-8 bottom-8 w-px bg-gradient-to-b from-[var(--border-subtle)] via-[var(--border-subtle)] to-transparent"
-                            initial={{ scaleY: 0 }}
-                            animate={{ scaleY: 1 }}
-                            transition={{ duration: 1, delay: 0.6 }}
-                        />
+                    {/* Live Operations Feed */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden flex flex-col h-[400px]"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-[var(--primary-blue)]" />
+                                    Live Operations
+                                </h3>
+                                <p className="text-sm text-[var(--text-secondary)]">Real-time platform activity</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                </span>
+                                <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide">Live</span>
+                            </div>
+                        </div>
 
-                        <motion.div
-                            className="space-y-6"
-                            initial="hidden"
-                            animate="visible"
-                            variants={{
-                                visible: {
-                                    transition: {
-                                        staggerChildren: 0.1,
-                                        delayChildren: 0.7
-                                    }
-                                }
-                            }}
-                        >
-                            {activityFeed.map((activity, index) => (
-                                <motion.div
-                                    key={activity.id}
-                                    className="relative flex gap-4 group"
-                                    variants={{
-                                        hidden: { opacity: 0, x: -20 },
-                                        visible: {
-                                            opacity: 1,
-                                            x: 0,
-                                            transition: { duration: 0.4 }
-                                        }
-                                    }}
-                                    whileHover={{ x: 4 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <motion.div
-                                        className={cn(
-                                            "relative z-10 h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-[0_0_0_4px_var(--bg-primary)] transition-all duration-300",
-                                            activity.color === 'blue' ? "bg-[var(--primary-blue)] text-white" :
-                                                activity.color === 'purple' ? "bg-purple-500 text-white" :
-                                                    activity.color === 'emerald' ? "bg-[var(--success)] text-white" :
-                                                        "bg-[var(--info)] text-white"
-                                        )}
-                                        whileHover={{ scale: 1.15, rotate: 5 }}
-                                        transition={{ duration: 0.2 }}
-                                    >
-                                        <activity.icon className="h-4 w-4" />
-                                    </motion.div>
-                                    <motion.div
-                                        className="flex-1 min-w-0 pt-0.5 bg-[var(--bg-secondary)] p-4 rounded-2xl group-hover:bg-[var(--bg-tertiary)] transition-colors border border-transparent group-hover:border-[var(--border-subtle)]"
-                                        whileHover={{ scale: 1.01 }}
-                                    >
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <p className="text-sm text-[var(--text-primary)] font-medium">
-                                                    <span className="font-bold text-[var(--text-primary)] opacity-90">{activity.user}</span> {activity.action}
-                                                </p>
-                                                <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1.5">
-                                                    <Clock className="h-3 w-3" />
-                                                    {activity.time}
-                                                </p>
-                                            </div>
-                                            <motion.button
-                                                whileHover={{ scale: 1.1, rotate: 90 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[var(--bg-primary)]"
-                                            >
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </motion.button>
+                        {/* Scrolling Activity Feed */}
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                            {[
+                                { action: 'Order Placed', details: 'Order #ORD-2024-892 placed by Rahul Kumar', time: 'Just now', icon: Package, color: 'blue' },
+                                { action: 'Payment Received', details: '₹1,299 received via UPI for #ORD-890', time: '2 min ago', icon: Wallet, color: 'emerald' },
+                                { action: 'Seller Verified', details: 'Kyra Fashion KYC approved automatically', time: '5 min ago', icon: CheckCircle2, color: 'violet' },
+                                { action: 'Shipment Created', details: 'AWB generated for 12 orders (Batch #B-102)', time: '12 min ago', icon: Truck, color: 'amber' },
+                                { action: 'High Value Order', details: '₹45,000 order detected from Bangalore', time: '18 min ago', icon: AlertTriangle, color: 'rose' },
+                                { action: 'New Seller Signup', details: 'TechStore India started onboarding', time: '25 min ago', icon: Users, color: 'blue' },
+                                { action: 'RTO Initiated', details: 'Shipment #SHP-992 marked as RTO (Customer Refused)', time: '32 min ago', icon: X, color: 'red' },
+                                { action: 'Order Delivered', details: 'Successfully delivered to Mumbai Hub', time: '40 min ago', icon: CheckCircle2, color: 'emerald' },
+                                { action: 'Stock Alert', details: 'Low inventory warning for SKU-902', time: '45 min ago', icon: Box, color: 'amber' },
+                                { action: 'System Backup', details: 'Daily database backup completed', time: '1 hr ago', icon: Server, color: 'slate' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex gap-4 p-3 rounded-2xl hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)] group">
+                                    <div className={cn(
+                                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-current opacity-80",
+                                        item.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                                            item.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                                                item.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
+                                                    item.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                                        item.color === 'rose' || item.color === 'red' ? "bg-rose-500/10 text-rose-500" :
+                                                            "bg-slate-500/10 text-slate-500"
+                                    )}>
+                                        <item.icon className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <p className="text-sm font-bold text-[var(--text-primary)]">{item.action}</p>
+                                            <span className="text-[10px] font-medium text-[var(--text-muted)] bg-[var(--bg-secondary)] px-2 py-0.5 rounded-full group-hover:bg-white/50">{item.time}</span>
                                         </div>
-                                    </motion.div>
-                                </motion.div>
+                                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed truncate">{item.details}</p>
+                                    </div>
+                                </div>
                             ))}
-                        </motion.div>
-                    </div>
-                    <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 mt-auto text-center">
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--primary-blue)] transition-colors flex items-center justify-center gap-2"
-                        >
-                            View Full History <ArrowUpRight className="w-3 h-3" />
-                        </motion.button>
-                    </div>
-                </div>
-
-                {/* Financial Wallet Card */}
-                <div className="space-y-6">
-                    <div className="relative overflow-hidden rounded-3xl p-6 text-white h-64 flex flex-col justify-between group shadow-xl">
-                        {/* Gradient Background */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-black z-0"></div>
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[var(--primary-blue)]/20 to-purple-500/20 z-0 opacity-50"></div>
-
-                        {/* Content */}
-                        <div className="relative z-10 flex items-start justify-between">
-                            <div className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10">
-                                <Wallet className="h-6 w-6 text-white" />
-                            </div>
-                            <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-bold tracking-widest uppercase border border-white/5 backdrop-blur-md">Wallet</span>
                         </div>
+                    </motion.div>
 
-                        <div className="relative z-10">
-                            <p className="text-slate-400 text-sm font-medium mb-1">Total Balance</p>
-                            <h3 className="text-4xl font-bold tracking-tight text-white mb-1">₹1,24,592.50</h3>
-                            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 w-fit px-2 py-1 rounded-lg">
-                                <TrendingUp className="w-3 h-3" />
-                                +12.5% this week
-                            </div>
-                        </div>
-
-                        <div className="relative z-10 flex gap-3 mt-4">
-                            <button className="flex-1 h-9 rounded-xl bg-white text-slate-900 text-xs font-bold hover:bg-slate-200 transition-colors">
-                                Add Funds
-                            </button>
-                            <button className="flex-1 h-9 rounded-xl bg-white/10 text-white backdrop-blur-md border border-white/10 text-xs font-bold hover:bg-white/20 transition-colors">
-                                Withdraw
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-2xl p-5">
-                        <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-[var(--text-muted)]" />
-                            Pending Actions
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-transparent hover:border-[var(--border-subtle)] transition-all">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                                        <Clock className="w-4 h-4 text-amber-500" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-[var(--text-primary)]">Pending Payouts</span>
-                                        <span className="text-[10px] text-[var(--text-muted)]">3 requests waiting</span>
-                                    </div>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-transparent hover:border-[var(--border-subtle)] transition-all">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-[var(--primary-blue-soft)] flex items-center justify-center">
-                                        <Users className="w-4 h-4 text-[var(--primary-blue)]" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-[var(--text-primary)]">KYC Approvals</span>
-                                        <span className="text-[10px] text-[var(--text-muted)]">5 new documents</span>
-                                    </div>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                {/* Top Sellers Component */}
-                <div className="animate-fade-in stagger-6">
+                    {/* Top Sellers Table */}
                     <TopSellers />
+
                 </div>
-            </motion.div>
+
+                {/* RIGHT COLUMN (1/3) */}
+                <div className="space-y-8">
+
+                    {/* AI Smart Insights Widget */}
+                    <div className="p-6 rounded-3xl bg-gradient-to-br from-[var(--bg-primary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary-blue)]/10 blur-3xl rounded-full pointer-events-none" />
+
+                        <div className="flex items-center gap-3 mb-6 relative z-10">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                <BrainCircuit className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-[var(--text-primary)]">AI Insights</h3>
+                                <p className="text-xs text-[var(--primary-blue)] font-semibold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary-blue)] animate-pulse" />
+                                    Analyzing Live Data...
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 relative z-10">
+                            {aiInsights.map((insight) => (
+                                <AIInsightCard key={insight.id} insight={insight} />
+                            ))}
+                        </div>
+
+                        <button className="w-full mt-6 py-3 rounded-xl border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] transition-colors">
+                            View All Predictions
+                        </button>
+                    </div>
+
+                    {/* Order Status Distribution (Donut Chart) */}
+                    <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
+                        <h3 className="font-bold text-[var(--text-primary)] mb-6">Order Status</h3>
+                        <div className="h-[250px] relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RechartsPieChart>
+                                    <Pie
+                                        data={orderStatusData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {orderStatusData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
+                                        itemStyle={{ color: 'var(--text-primary)' }}
+                                    />
+                                </RechartsPieChart>
+                            </ResponsiveContainer>
+                            {/* Center Text */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-3xl font-bold text-[var(--text-primary)]">4.5k</span>
+                                <span className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wide">Orders</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                            {orderStatusData.map((status) => (
+                                <div key={status.name} className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
+                                    <span className="text-xs font-medium text-[var(--text-secondary)]">{status.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* System Health Compact */}
+                    <div className="p-6 rounded-3xl bg-[#0f172a] text-white border border-slate-800 shadow-xl overflow-hidden relative">
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold flex items-center gap-2">
+                                    <Server className="w-4 h-4 text-emerald-400" />
+                                    System Status
+                                </h3>
+                                <div className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20">
+                                    Healthy
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                        <span>API Latency</span>
+                                        <span className="text-emerald-400">45ms</span>
+                                    </div>
+                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: "25%" }}
+                                            className="h-full bg-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                        <span>Error Rate</span>
+                                        <span className="text-emerald-400">0.01%</span>
+                                    </div>
+                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: "2%" }}
+                                            className="h-full bg-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                        <span>Database Load</span>
+                                        <span className="text-blue-400">32%</span>
+                                    </div>
+                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: "32%" }}
+                                            className="h-full bg-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
     );
 }
+

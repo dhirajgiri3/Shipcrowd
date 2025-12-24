@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import React, { useMemo, useState } from 'react';
 import { DataTable } from '@/src/shared/components/DataTable';
-import { Card, CardHeader, CardContent } from '@/src/shared/components/card';
+import { Card, CardContent } from '@/src/shared/components/card';
 import { Input } from '@/src/shared/components/Input';
 import { Badge } from '@/src/shared/components/badge';
 import { Button } from '@/src/shared/components/button';
@@ -11,10 +11,9 @@ import { Modal } from '@/src/shared/components/Modal';
 import { Tooltip } from '@/src/shared/components/Tooltip';
 import { useToast } from '@/src/shared/components/Toast';
 import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,
-    Plus,
-    Upload,
     Truck,
     Package,
     Clock,
@@ -27,10 +26,13 @@ import {
     Zap,
     ArrowRight,
     Building2,
-    Eye
+    LayoutDashboard,
+    Filter,
+    MoreHorizontal,
+    Box
 } from 'lucide-react';
 
-// Enhanced mock data with fulfillment statuses
+// --- MOCK DATA ---
 const mockOrders = [
     {
         id: 'ORD-2024-001',
@@ -134,12 +136,12 @@ const courierRates = [
     { name: 'Ecom Express', rate: 61, eta: '4-5 days', rating: 4.3 },
 ];
 
-const statusTabs = [
-    { id: 'new', label: 'New', icon: Clock, color: 'text-amber-600' },
-    { id: 'ready', label: 'Ready to Ship', icon: Package, color: 'text-blue-600' },
-    { id: 'shipped', label: 'Shipped', icon: Truck, color: 'text-purple-600' },
-    { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-600' },
-    { id: 'rto', label: 'RTO/NDR', icon: RotateCcw, color: 'text-rose-600' },
+const statusConfig = [
+    { id: 'new', label: 'New Orders', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+    { id: 'ready', label: 'Ready to Ship', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+    { id: 'shipped', label: 'In Transit', icon: Truck, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+    { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+    { id: 'rto', label: 'RTO / NDR', icon: RotateCcw, color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
 ];
 
 type Order = typeof mockOrders[0];
@@ -200,27 +202,30 @@ export default function OrdersPage() {
 
     const columns = [
         {
-            header: 'Order',
+            header: 'Order Details',
             accessorKey: 'id' as const,
             cell: (row: Order) => (
-                <div>
-                    <p className="font-semibold text-[var(--text-primary)]">{row.id}</p>
-                    <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                        <span className={row.store === 'Shopify' ? 'text-green-600' : 'text-purple-600'}>●</span>
-                        {row.store}
-                    </p>
+                <div className="group cursor-pointer">
+                    <div className="flex items-center gap-2">
+                        <p className="font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{row.id}</p>
+                        <Badge variant="neutral" className="px-1.5 py-0 text-[10px] h-5">{row.store}</Badge>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{formatDate(row.createdAt)}</p>
                 </div>
             )
         },
         {
-            header: 'Seller',
+            header: 'Merchant',
             accessorKey: 'seller' as const,
             cell: (row: Order) => (
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded">
-                        <Building2 className="h-4 w-4 text-[var(--text-muted)]" />
+                    <div className="h-8 w-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border-subtle)]">
+                        <Building2 className="h-4 w-4 text-[var(--text-secondary)]" />
                     </div>
-                    <span className="font-medium text-[var(--text-primary)] text-sm">{row.seller}</span>
+                    <div>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.seller}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Verified Seller</p>
+                    </div>
                 </div>
             )
         },
@@ -235,16 +240,16 @@ export default function OrdersPage() {
             )
         },
         {
-            header: 'Product',
+            header: 'Product Info',
             accessorKey: 'productName' as const,
             cell: (row: Order) => (
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded">
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-[var(--bg-tertiary)] rounded-lg flex items-center justify-center border border-[var(--border-subtle)]">
                         <ShoppingBag className="h-4 w-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
                         <p className="font-medium text-[var(--text-primary)] text-sm">{row.productName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Qty: {row.items}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Cty: {row.items}</p>
                     </div>
                 </div>
             )
@@ -254,61 +259,65 @@ export default function OrdersPage() {
             accessorKey: 'amount' as const,
             cell: (row: Order) => (
                 <div>
-                    <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(row.amount)}</p>
-                    <Badge variant={row.paymentMode === 'COD' ? 'warning' : 'success'} className="text-xs mt-0.5">
-                        {row.paymentMode}
-                    </Badge>
+                    <p className="font-bold text-[var(--text-primary)]">{formatCurrency(row.amount)}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                        <span className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            row.paymentMode === 'COD' ? "bg-amber-500" : "bg-emerald-500"
+                        )} />
+                        <span className="text-xs text-[var(--text-secondary)]">{row.paymentMode}</span>
+                    </div>
                 </div>
             )
         },
         {
-            header: 'Date',
-            accessorKey: 'createdAt' as const,
-            cell: (row: Order) => <span className="text-sm text-[var(--text-muted)]">{formatDate(row.createdAt)}</span>
-        },
-        {
             header: 'Action',
             accessorKey: 'id' as const,
-            width: 'w-28',
+            width: 'w-32',
             cell: (row: Order) => {
                 if (activeTab === 'new' || activeTab === 'ready') {
                     return (
-                        <Tooltip content="Create shipment">
-                            <Button
-                                size="sm"
-                                className="bg-[#2525FF] hover:bg-[#1e1ecc] text-white"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleShipNow(row);
-                                }}
-                            >
-                                <Truck className="h-3.5 w-3.5 mr-1" />
-                                Ship Now
-                            </Button>
-                        </Tooltip>
+                        <div className="flex items-center gap-2">
+                            <Tooltip content="Ship Order">
+                                <Button
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleShipNow(row);
+                                    }}
+                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white h-8 px-3 text-xs shadow-custom"
+                                >
+                                    <Truck className="h-3 w-3 mr-1.5" />
+                                    Ship
+                                </Button>
+                            </Tooltip>
+                        </div>
                     );
                 }
                 if (activeTab === 'shipped') {
                     return (
                         <div className="text-sm">
-                            <p className="font-medium text-[var(--text-primary)]">{row.awbNumber}</p>
-                            <p className="text-xs text-[var(--text-muted)]">{row.courier}</p>
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <span className="font-mono text-xs font-medium text-[var(--primary-blue)] px-1.5 py-0.5 bg-[var(--primary-blue-soft)] rounded">
+                                    {row.awbNumber}
+                                </span>
+                            </div>
                         </div>
                     );
                 }
                 if (activeTab === 'delivered') {
                     return (
-                        <Badge variant="success" className="text-xs">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
                             Delivered
-                        </Badge>
+                        </span>
                     );
                 }
                 if (activeTab === 'rto') {
                     return (
                         <div>
-                            <p className="text-xs text-rose-600 font-medium">{row.rtoReason}</p>
-                            <Button size="sm" variant="outline" className="mt-1 text-xs h-7">
+                            <p className="text-[10px] text-rose-500 font-medium uppercase tracking-wide mb-1">Action Required</p>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 hover:border-rose-300 hover:bg-rose-50 text-rose-700">
                                 Reattempt
                             </Button>
                         </div>
@@ -320,117 +329,176 @@ export default function OrdersPage() {
     ];
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 pb-10">
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
                 <div>
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">Orders</h2>
-                    <p className="text-[var(--text-muted)] text-sm mt-0.5">Manage all seller orders and fulfillment</p>
+                    <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
+                        <LayoutDashboard className="w-3.5 h-3.5" />
+                        <span>Order Command Center</span>
+                    </div>
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                        Order Management
+                    </h1>
+                    <p className="text-[var(--text-secondary)] mt-1">
+                        Monitor, fulfil and track orders across all your sellers in real-time.
+                    </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => addToast('Syncing orders...', 'info')}>
-                        <RefreshCcw className="h-4 w-4 mr-1.5" />
-                        Sync All
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={() => addToast('Syncing orders...', 'info')} className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                        <RefreshCcw className="h-4 w-4 mr-2" />
+                        Sync Orders
                     </Button>
-                    <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-1.5" />
-                        Export
+                    <Button variant="outline" className="bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Data
                     </Button>
                 </div>
             </div>
 
-            {/* Status Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {statusTabs.map((tab) => {
-                    const count = tabCounts[tab.id as keyof typeof tabCounts];
-                    const isActive = activeTab === tab.id;
-                    const Icon = tab.icon;
+            {/* Metric Cards Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {statusConfig.map((status, index) => {
+                    const isActive = activeTab === status.id;
+                    const count = tabCounts[status.id as keyof typeof tabCounts];
+                    const Icon = status.icon;
 
                     return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                        <motion.button
+                            key={status.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => setActiveTab(status.id)}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap",
+                                "relative flex flex-col p-4 rounded-2xl border transition-all duration-300 text-left group overflow-hidden",
                                 isActive
-                                    ? "bg-[var(--primary-blue)]/5 border-[var(--primary-blue)] text-[var(--primary-blue)]"
-                                    : "bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
+                                    ? `bg-[var(--bg-primary)] border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)] shadow-[0_0_20px_var(--primary-blue-soft)]`
+                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-md"
                             )}
                         >
-                            <Icon className={cn("h-4 w-4", isActive ? "text-[#2525FF]" : tab.color)} />
-                            <span className="font-medium">{tab.label}</span>
-                            <Badge
-                                variant={isActive ? "default" : "neutral"}
-                                className={cn("text-xs", isActive && "bg-[#2525FF] text-white")}
-                            >
-                                {count}
-                            </Badge>
-                        </button>
+                            {/* Active Indicator & Background Glow */}
+                            {isActive && (
+                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary-blue)]/5 to-transparent pointer-events-none" />
+                            )}
+
+                            <div className="flex items-center justify-between mb-3 relative z-10">
+                                <div className={cn(
+                                    "h-10 w-10 rounded-xl flex items-center justify-center transition-colors duration-300",
+                                    isActive ? "bg-[var(--primary-blue)] text-white" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
+                                )}>
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                                <div className={cn(
+                                    "px-2.5 py-1 rounded-full text-xs font-bold font-mono transition-colors",
+                                    isActive ? "bg-[var(--primary-blue)]/10 text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                )}>
+                                    {count}
+                                </div>
+                            </div>
+
+                            <div className="relative z-10">
+                                <p className={cn(
+                                    "font-medium text-sm transition-colors",
+                                    isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
+                                )}>
+                                    {status.label}
+                                </p>
+                            </div>
+                        </motion.button>
                     );
                 })}
             </div>
 
-            {/* Search & Bulk Actions */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search by order ID, seller, customer, or product..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-9"
-                                />
-                            </div>
-                        </div>
+            {/* Main Content Area */}
+            <motion.div
+                layout
+                className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden shadow-sm"
+            >
+                {/* Toolbar */}
+                <div className="p-4 border-b border-[var(--border-subtle)] flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)]">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                        <Input
+                            placeholder="Search by ID, Customer, Seller or Product..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] transition-all h-10 rounded-xl"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
                         {(activeTab === 'new' || activeTab === 'ready') && selectedOrders.length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <Badge variant="neutral">{selectedOrders.length} selected</Badge>
-                                <Button size="sm" onClick={handleBulkShip}>
-                                    <Truck className="h-4 w-4 mr-1.5" />
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center gap-2 mr-2"
+                            >
+                                <span className="text-sm text-[var(--text-secondary)] font-medium bg-[var(--bg-secondary)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
+                                    {selectedOrders.length} selected
+                                </span>
+                                <Button
+                                    size="sm"
+                                    onClick={handleBulkShip}
+                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20"
+                                >
+                                    <Truck className="h-4 w-4 mr-2" />
                                     Ship Selected
                                 </Button>
-                            </div>
+                            </motion.div>
                         )}
-                        {(activeTab === 'shipped') && (
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm">
-                                    <Printer className="h-4 w-4 mr-1.5" />
-                                    Print Labels
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                    <Download className="h-4 w-4 mr-1.5" />
-                                    Manifest
-                                </Button>
-                            </div>
-                        )}
+                        <Button variant="ghost" size="icon" className="text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]">
+                            <Filter className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
 
-            {/* Orders Table */}
-            <Card>
-                <CardContent className="p-0">
-                    {filteredOrders.length === 0 ? (
-                        <div className="text-center py-16">
-                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                            <p className="text-[var(--text-muted)] font-medium">No orders found</p>
-                            <p className="text-sm text-gray-400 mt-1">
-                                {search ? 'Try adjusting your search' : 'Orders will appear here when synced'}
-                            </p>
-                        </div>
-                    ) : (
-                        <DataTable
-                            columns={columns}
-                            data={filteredOrders}
-                        />
-                    )}
-                </CardContent>
-            </Card>
+                {/* Table */}
+                <div className="relative min-h-[400px]">
+                    <AnimatePresence mode="wait">
+                        {filteredOrders.length === 0 ? (
+                            <motion.div
+                                key="empty"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                            >
+                                <div className="h-20 w-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mb-4">
+                                    <Box className="h-10 w-10 text-[var(--text-muted)] opacity-50" />
+                                </div>
+                                <h3 className="text-lg font-bold text-[var(--text-primary)]">No orders found</h3>
+                                <p className="text-[var(--text-muted)] max-w-sm mx-auto mt-1 mb-6">
+                                    We couldn't find any orders matching your search filters for this category.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setSearch(''); setActiveTab('new'); }}
+                                    className="border-[var(--border-default)]"
+                                >
+                                    Clear Filters
+                                </Button>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="table"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                            >
+                                <DataTable
+                                    columns={columns}
+                                    data={filteredOrders}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </motion.div>
 
-            {/* Create Shipment Modal */}
+            {/* Ship Modal with Premium Styling */}
             <Modal
                 isOpen={isShipModalOpen}
                 onClose={() => setIsShipModalOpen(false)}
@@ -438,60 +506,71 @@ export default function OrdersPage() {
             >
                 {selectedOrderForShip && (
                     <div className="space-y-6">
-                        {/* Order Summary */}
-                        <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
+                        {/* Order Summary Card */}
+                        <div className="bg-[var(--bg-secondary)] rounded-xl p-5 border border-[var(--border-subtle)]">
+                            <div className="flex items-center justify-between mb-4 pb-4 border-b border-[var(--border-subtle)]">
                                 <div>
-                                    <p className="font-semibold text-[var(--text-primary)]">{selectedOrderForShip.id}</p>
-                                    <p className="text-xs text-[var(--text-muted)]">{selectedOrderForShip.seller}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-lg text-[var(--text-primary)]">{selectedOrderForShip.id}</p>
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wide bg-[var(--bg-primary)]">
+                                            {selectedOrderForShip.paymentMode}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-[var(--text-muted)] mt-0.5">{selectedOrderForShip.seller}</p>
                                 </div>
-                                <Badge variant={selectedOrderForShip.paymentMode === 'COD' ? 'warning' : 'success'}>
-                                    {selectedOrderForShip.paymentMode}
-                                </Badge>
+                                <div className="text-right">
+                                    <p className="font-bold text-xl text-[var(--text-primary)]">{formatCurrency(selectedOrderForShip.amount)}</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Total Value</p>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="grid grid-cols-2 gap-6 text-sm">
                                 <div>
-                                    <p className="text-[var(--text-muted)]">Customer</p>
-                                    <p className="font-medium">{selectedOrderForShip.customer.name}</p>
-                                    <p className="text-[var(--text-muted)] text-xs">{selectedOrderForShip.customer.city}</p>
+                                    <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider mb-1">Customer</p>
+                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.customer.name}</p>
+                                    <p className="text-[var(--text-muted)]">{selectedOrderForShip.customer.city}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[var(--text-muted)]">Amount</p>
-                                    <p className="font-semibold text-lg">{formatCurrency(selectedOrderForShip.amount)}</p>
+                                    <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider mb-1">Shipping From</p>
+                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.warehouse}</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Courier Selection */}
                         <div>
-                            <p className="font-medium text-[var(--text-primary)] mb-3">Select Courier Partner</p>
-                            <div className="space-y-2">
+                            <p className="font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-[var(--primary-blue)]" />
+                                Select Courier Partner
+                            </p>
+                            <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
                                 {courierRates.map((courier) => (
                                     <button
                                         key={courier.name}
                                         onClick={() => setSelectedCourier(courier.name)}
                                         className={cn(
-                                            "w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all text-left",
+                                            "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left relative overflow-hidden group",
                                             selectedCourier === courier.name
-                                                ? "border-[#2525FF] bg-[#2525FF]/5"
-                                                : "border-gray-200 hover:border-gray-300"
+                                                ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] ring-1 ring-[var(--primary-blue)]"
+                                                : "border-[var(--border-default)] hover:border-[var(--border-strong)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
                                         )}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg">
-                                                <Truck className="h-5 w-5 text-gray-600" />
+                                        <div className="flex items-center gap-4 relative z-10">
+                                            <div className={cn(
+                                                "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
+                                                selectedCourier === courier.name ? "bg-white text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                            )}>
+                                                <Truck className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-[var(--text-primary)]">{courier.name}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">ETA: {courier.eta} • ⭐ {courier.rating}</p>
+                                                <p className="font-bold text-[var(--text-primary)]">{courier.name}</p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-0.5">ETA: {courier.eta} • <span className="text-amber-500">★ {courier.rating}</span></p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right relative z-10">
                                             <p className="font-bold text-lg text-[var(--text-primary)]">{formatCurrency(courier.rate)}</p>
                                             {courier.rate === Math.min(...courierRates.map(c => c.rate)) && (
-                                                <Badge variant="success" className="text-xs">
-                                                    <Zap className="h-3 w-3 mr-0.5" />
-                                                    Cheapest
+                                                <Badge variant="success" className="text-[10px] ml-auto mt-1 flex w-fit">
+                                                    Best Price
                                                 </Badge>
                                             )}
                                         </div>
@@ -501,11 +580,18 @@ export default function OrdersPage() {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                            <Button variant="outline" onClick={() => setIsShipModalOpen(false)}>
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
+                            <Button variant="ghost" onClick={() => setIsShipModalOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleCreateShipment} disabled={!selectedCourier}>
+                            <Button
+                                onClick={handleCreateShipment}
+                                disabled={!selectedCourier}
+                                className={cn(
+                                    "transition-all duration-300",
+                                    selectedCourier ? "bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/25" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
+                                )}
+                            >
                                 Create Shipment
                                 <ArrowRight className="h-4 w-4 ml-1.5" />
                             </Button>

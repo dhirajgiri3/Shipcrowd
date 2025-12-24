@@ -1,572 +1,350 @@
 "use client";
-export const dynamic = "force-dynamic";
 
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { MOCK_ORDERS } from '@/lib/mockData';
 import { DataTable } from '@/src/shared/components/DataTable';
-import { Card, CardContent } from '@/src/shared/components/card';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
 import { Button } from '@/src/shared/components/button';
-import { Modal } from '@/src/shared/components/Modal';
-import { Tooltip } from '@/src/shared/components/Tooltip';
-import { useToast } from '@/src/shared/components/Toast';
-import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
-import { useOrders, useCreateShipment } from '@/src/core/api/hooks';
-import { CreateOrderModal } from '@/components/orders/CreateOrderModal';
-import { BulkImportModal } from '@/components/orders/BulkImportModal';
+import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { formatCurrency, cn } from '@/src/shared/utils';
+import { AnimatedNumber } from '@/hooks/useCountUp';
 import {
     Search,
-    Plus,
-    Upload,
-    Truck,
-    Package,
-    Clock,
-    CheckCircle2,
-    AlertCircle,
-    RotateCcw,
-    ShoppingBag,
-    Printer,
+    Eye,
+    MoreHorizontal,
+    Filter,
     Download,
-    RefreshCcw,
-    Zap,
-    ArrowRight,
-    Loader2,
-    ChevronLeft,
-    ChevronRight,
+    Package,
+    ArrowUpRight,
+    CreditCard,
+    AlertCircle,
+    RefreshCw,
+    Calendar,
+    ChevronDown,
+    CheckCircle2,
+    Clock,
+    XCircle
 } from 'lucide-react';
+import { Order } from '@/types/admin';
+import {
+    AreaChart,
+    Area,
+    ResponsiveContainer,
+    BarChart,
+    Bar
+} from 'recharts';
 
-// Courier rates (TODO: Get from API)
-const courierRates = [
-    { name: 'Delhivery', rate: 58, eta: '3-4 days', rating: 4.5 },
-    { name: 'Xpressbees', rate: 52, eta: '4-5 days', rating: 4.2 },
-    { name: 'DTDC', rate: 65, eta: '3-4 days', rating: 4.0 },
-    { name: 'Ecom Express', rate: 61, eta: '4-5 days', rating: 4.3 },
+// --- VISUALIZATION DATA ---
+const trendData = [
+    { name: 'Mon', orders: 12, value: 4500 },
+    { name: 'Tue', orders: 19, value: 6200 },
+    { name: 'Wed', orders: 15, value: 5100 },
+    { name: 'Thu', orders: 25, value: 9800 },
+    { name: 'Fri', orders: 32, value: 12500 },
+    { name: 'Sat', orders: 28, value: 11000 },
+    { name: 'Sun', orders: 22, value: 8500 },
 ];
 
-const statusTabs = [
-    { id: null, label: 'All', icon: Package, color: 'text-gray-600' },
-    { id: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
-    { id: 'ready_to_ship', label: 'Ready to Ship', icon: Package, color: 'text-blue-600' },
-    { id: 'shipped', label: 'Shipped', icon: Truck, color: 'text-purple-600' },
-    { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-600' },
-    { id: 'rto', label: 'RTO', icon: RotateCcw, color: 'text-rose-600' },
-];
-
-type OrderStatus = 'pending' | 'ready_to_ship' | 'shipped' | 'delivered' | 'cancelled' | 'rto' | null;
-
-interface OrderRow {
-    id: string;
-    _id: string;
-    orderNumber: string;
-    customerInfo: {
-        name: string;
-        phone: string;
-        address: {
-            city: string;
-            state: string;
-        };
-    };
-    products: Array<{ name: string; quantity: number; price: number }>;
-    totals: { total: number };
-    paymentMethod: 'cod' | 'prepaid';
-    currentStatus: string;
-    createdAt: string;
-}
-
-export default function OrdersPage() {
-    const [activeTab, setActiveTab] = useState<OrderStatus>(null);
+export default function SellerOrdersPage() {
     const [search, setSearch] = useState('');
-    const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-    const [isShipModalOpen, setIsShipModalOpen] = useState(false);
-    const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false);
-    const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
-    const [selectedOrderForShip, setSelectedOrderForShip] = useState<OrderRow | null>(null);
-    const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
-    const [page, setPage] = useState(1);
-    const { addToast } = useToast();
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [activeTab, setActiveTab] = useState('all');
+    const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // API Hooks
-    const {
-        data: ordersData,
-        isLoading,
-        error,
-        refetch,
-    } = useOrders({
-        status: activeTab || undefined,
-        search: search || undefined,
-        page,
-        limit: 20,
-    });
+    // Filter Logic
+    const filteredData = useMemo(() => {
+        return MOCK_ORDERS.filter(item => {
+            const matchesSearch =
+                item.id.toLowerCase().includes(search.toLowerCase()) ||
+                item.customer.name.toLowerCase().includes(search.toLowerCase()) ||
+                item.customer.email.toLowerCase().includes(search.toLowerCase()) ||
+                item.productName.toLowerCase().includes(search.toLowerCase());
 
-    const createShipment = useCreateShipment();
+            const matchesTab = activeTab === 'all' || item.shipmentStatus === activeTab;
+            const matchesPayment = paymentFilter === 'all' || item.paymentStatus === paymentFilter;
 
-    // Transform API response
-    const orders: OrderRow[] = useMemo(() => {
-        if (!ordersData?.orders) return [];
-        return ordersData.orders.map((order: any) => ({
-            ...order,
-            id: order._id,
-        }));
-    }, [ordersData]);
+            return matchesSearch && matchesTab && matchesPayment;
+        });
+    }, [search, activeTab, paymentFilter]);
 
-    const pagination = ordersData?.pagination;
-
-    const handleShipNow = (order: OrderRow) => {
-        setSelectedOrderForShip(order);
-        setSelectedCourier(null);
-        setIsShipModalOpen(true);
-    };
-
-    const handleCreateShipment = async () => {
-        if (!selectedCourier || !selectedOrderForShip) {
-            addToast('Please select a courier', 'warning');
-            return;
-        }
-
-        try {
-            await createShipment.mutateAsync({
-                orderId: selectedOrderForShip._id,
-                courierId: selectedCourier,
-                pickupAddress: 'default',
-                deliveryAddress: selectedOrderForShip.customerInfo.address,
-            } as any);
-
-            addToast(`Shipment created with ${selectedCourier}!`, 'success');
-            setIsShipModalOpen(false);
-            setSelectedOrderForShip(null);
-            setSelectedCourier(null);
-            refetch();
-        } catch (err) {
-            addToast('Failed to create shipment', 'error');
-        }
-    };
-
-    const handleBulkShip = () => {
-        if (selectedOrders.length === 0) {
-            addToast('Please select orders to ship', 'warning');
-            return;
-        }
-        addToast(`Creating shipments for ${selectedOrders.length} orders...`, 'info');
-    };
+    // Derived Metrics
+    const metrics = useMemo(() => {
+        const totalRevenue = filteredData.reduce((acc, curr) => acc + curr.amount, 0);
+        const pendingPaymentCount = filteredData.filter(o => o.paymentStatus === 'pending').length;
+        return { totalRevenue, pendingPaymentCount };
+    }, [filteredData]);
 
     const handleRefresh = () => {
-        refetch();
-        addToast('Refreshing orders...', 'info');
+        setIsRefreshing(true);
+        setTimeout(() => setIsRefreshing(false), 1000);
     };
 
+    // --- Columns Definition ---
     const columns = [
         {
-            header: 'Order',
-            accessorKey: 'orderNumber' as const,
-            cell: (row: OrderRow) => (
-                <div>
-                    <p className="font-semibold text-[var(--text-primary)]">{row.orderNumber}</p>
-                    <p className="text-xs text-[var(--text-muted)]">
-                        {formatDate(row.createdAt)}
-                    </p>
+            header: 'Order ID',
+            accessorKey: 'id',
+            cell: (row: Order) => (
+                <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[var(--text-primary)] text-sm font-mono">{row.id}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Date',
+            accessorKey: 'createdAt',
+            cell: (row: Order) => (
+                <div className="flex flex-col text-xs">
+                    <span className="text-[var(--text-primary)] font-medium">
+                        {new Date(row.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="text-[var(--text-muted)]">
+                        {new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                 </div>
             )
         },
         {
             header: 'Customer',
-            accessorKey: 'customerInfo' as const,
-            cell: (row: OrderRow) => (
-                <div>
-                    <p className="font-medium text-[var(--text-primary)]">{row.customerInfo.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{row.customerInfo.address?.city}</p>
+            accessorKey: 'customer',
+            cell: (row: Order) => (
+                <div className="max-w-[180px]">
+                    <div className="font-medium text-[var(--text-primary)] text-sm truncate">{row.customer.name}</div>
+                    <div className="text-xs text-[var(--text-muted)] opacity-80 truncate">{row.customer.email}</div>
                 </div>
             )
         },
         {
-            header: 'Products',
-            accessorKey: 'products' as const,
-            cell: (row: OrderRow) => (
+            header: 'Product',
+            accessorKey: 'productName',
+            cell: (row: Order) => (
+                <div className="max-w-[200px] flex items-center gap-2">
+                    <div className="flex-1 truncate">
+                        <div className="font-medium text-[var(--text-primary)] text-sm truncate" title={row.productName}>{row.productName}</div>
+                    </div>
+                    {row.quantity > 1 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                            x{row.quantity}
+                        </span>
+                    )}
+                </div>
+            )
+        },
+        {
+            header: 'Payment',
+            accessorKey: 'paymentStatus',
+            cell: (row: Order) => (
+                <span className={cn(
+                    "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border",
+                    row.paymentStatus === 'paid' ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
+                        row.paymentStatus === 'pending' ? "bg-amber-500/5 text-amber-600 border-amber-500/20" :
+                            "bg-rose-500/5 text-rose-600 border-rose-500/20"
+                )}>
+                    {row.paymentStatus}
+                </span>
+            )
+        },
+        {
+            header: 'Status',
+            accessorKey: 'shipmentStatus',
+            cell: (row: Order) => (
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-[var(--bg-tertiary)] rounded">
-                        <ShoppingBag className="h-4 w-4 text-[var(--text-muted)]" />
-                    </div>
-                    <div>
-                        <p className="font-medium text-[var(--text-primary)] text-sm">
-                            {row.products[0]?.name || 'N/A'}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                            {row.products.length} item(s)
-                        </p>
-                    </div>
+                    <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        row.shipmentStatus === 'delivered' ? "bg-emerald-500" :
+                            row.shipmentStatus === 'shipped' ? "bg-blue-500" :
+                                "bg-amber-500"
+                    )} />
+                    <span className="text-sm text-[var(--text-primary)] capitalize">{row.shipmentStatus}</span>
                 </div>
             )
         },
         {
             header: 'Amount',
-            accessorKey: 'totals' as const,
-            cell: (row: OrderRow) => (
-                <div>
-                    <p className="font-semibold text-[var(--text-primary)]">
-                        {formatCurrency(row.totals.total)}
-                    </p>
-                    <Badge
-                        variant={row.paymentMethod === 'cod' ? 'warning' : 'success'}
-                        className="text-xs mt-0.5"
-                    >
-                        {row.paymentMethod.toUpperCase()}
-                    </Badge>
-                </div>
+            accessorKey: 'amount',
+            cell: (row: Order) => (
+                <div className="font-semibold text-[var(--text-primary)] text-sm font-mono">{formatCurrency(row.amount)}</div>
             )
         },
         {
-            header: 'Status',
-            accessorKey: 'currentStatus' as const,
-            cell: (row: OrderRow) => {
-                const statusColors: Record<string, string> = {
-                    pending: 'bg-amber-100 text-amber-700',
-                    ready_to_ship: 'bg-blue-100 text-blue-700',
-                    shipped: 'bg-purple-100 text-purple-700',
-                    delivered: 'bg-emerald-100 text-emerald-700',
-                    cancelled: 'bg-gray-100 text-gray-700',
-                    rto: 'bg-rose-100 text-rose-700',
-                };
-                return (
-                    <span className={cn(
-                        "px-2 py-1 rounded-full text-xs font-medium",
-                        statusColors[row.currentStatus] || 'bg-gray-100 text-gray-700'
-                    )}>
-                        {row.currentStatus.replace('_', ' ').toUpperCase()}
-                    </span>
-                );
-            }
-        },
-        {
-            header: 'Action',
-            accessorKey: '_id' as const,
-            width: 'w-28',
-            cell: (row: OrderRow) => {
-                if (row.currentStatus === 'pending' || row.currentStatus === 'ready_to_ship') {
-                    return (
-                        <Tooltip content="Create shipment">
-                            <Button
-                                size="sm"
-                                className="bg-[#2525FF] hover:bg-[#1e1ecc] text-white"
-                                onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    handleShipNow(row);
-                                }}
-                            >
-                                <Truck className="h-3.5 w-3.5 mr-1" />
-                                Ship
-                            </Button>
-                        </Tooltip>
-                    );
-                }
-                if (row.currentStatus === 'delivered') {
-                    return (
-                        <Badge variant="success" className="text-xs">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Delivered
-                        </Badge>
-                    );
-                }
-                return null;
-            }
+            header: 'Actions',
+            accessorKey: 'id',
+            cell: (row: Order) => (
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(row)} className="h-7 w-7 p-0 hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
+                        <Eye className="w-4 h-4" />
+                    </Button>
+                </div>
+            )
         }
     ];
 
-    // Loading State
-    if (isLoading && !orders.length) {
-        return (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-[var(--text-primary)]">Orders</h2>
-                        <p className="text-[var(--text-muted)] text-sm mt-0.5">Manage and fulfill your orders</p>
-                    </div>
-                </div>
-                <Card>
-                    <CardContent className="p-12">
-                        <div className="flex flex-col items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)] mb-3" />
-                            <p className="text-[var(--text-muted)]">Loading orders...</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    // Error State
-    if (error) {
-        return (
-            <div className="space-y-6">
-                <Card>
-                    <CardContent className="p-12">
-                        <div className="flex flex-col items-center justify-center">
-                            <AlertCircle className="h-12 w-12 text-red-500 mb-3" />
-                            <p className="text-[var(--text-primary)] font-medium mb-2">Failed to load orders</p>
-                            <p className="text-[var(--text-muted)] text-sm mb-4">
-                                {(error as any)?.message || 'An unexpected error occurred'}
-                            </p>
-                            <Button onClick={handleRefresh} size="sm">
-                                <RefreshCcw className="h-4 w-4 mr-1.5" />
-                                Retry
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="min-h-screen space-y-6 pb-20">
+            {/* --- HEADER --- */}
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">Orders</h2>
-                    <p className="text-[var(--text-muted)] text-sm mt-0.5">
-                        Manage and fulfill your orders
-                        {pagination && ` • ${pagination.total} total`}
-                    </p>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
+                    <p className="text-sm text-[var(--text-muted)]">Manage your orders and fulfillments</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleRefresh}>
-                        <RefreshCcw className="h-4 w-4 mr-1.5" />
-                        Sync
+                    <DateRangePicker />
+                    <Button
+                        onClick={handleRefresh}
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-9 w-9 p-0 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]", isRefreshing && "animate-spin")}
+                    >
+                        <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsBulkImportModalOpen(true)}>
-                        <Upload className="h-4 w-4 mr-1.5" />
-                        Import
-                    </Button>
-                    <Button size="sm" onClick={() => setIsCreateOrderModalOpen(true)}>
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        New Order
+                    <Button size="sm" className="h-9 px-4 rounded-lg bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-xs font-medium">
+                        Export CSV
                     </Button>
                 </div>
-            </div>
+            </header>
 
-            {/* Status Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {statusTabs.map((tab) => {
-                    const isActive = activeTab === tab.id;
-                    const Icon = tab.icon;
-
-                    return (
-                        <button
-                            key={tab.id ?? 'all'}
-                            onClick={() => {
-                                setActiveTab(tab.id as OrderStatus);
-                                setPage(1);
-                            }}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap",
-                                isActive
-                                    ? "bg-[var(--primary-blue)]/5 border-[var(--primary-blue)] text-[var(--primary-blue)]"
-                                    : "bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
-                            )}
-                        >
-                            <Icon className={cn("h-4 w-4", isActive ? "text-[#2525FF]" : tab.color)} />
-                            <span className="font-medium">{tab.label}</span>
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Search & Bulk Actions */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search by order ID, customer..."
-                                    value={search}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                                    className="pl-9"
-                                />
-                            </div>
-                        </div>
-                        {selectedOrders.length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <Badge variant="secondary">{selectedOrders.length} selected</Badge>
-                                <Button size="sm" onClick={handleBulkShip}>
-                                    <Truck className="h-4 w-4 mr-1.5" />
-                                    Ship Selected
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Orders Table */}
-            <Card>
-                <CardContent className="p-0">
-                    {orders.length === 0 ? (
-                        <div className="text-center py-16">
-                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                            <p className="text-[var(--text-muted)] font-medium">No orders found</p>
-                            <p className="text-sm text-gray-400 mt-1">
-                                {search ? 'Try adjusting your search' : 'Orders will appear here'}
-                            </p>
-                        </div>
-                    ) : (
-                        <DataTable
-                            columns={columns}
-                            data={orders}
-                            selectable
-                            selectedRows={selectedOrders}
-                            onRowSelect={setSelectedOrders}
-                        />
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Pagination */}
-            {pagination && pagination.pages > 1 && (
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-[var(--text-muted)]">
-                        Page {pagination.page} of {pagination.pages}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-                            disabled={page === pagination.pages}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Create Shipment Modal */}
-            <Modal
-                isOpen={isShipModalOpen}
-                onClose={() => setIsShipModalOpen(false)}
-                title="Create Shipment"
-            >
-                {selectedOrderForShip && (
-                    <div className="space-y-6">
-                        {/* Order Summary */}
-                        <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <p className="font-semibold text-[var(--text-primary)]">
-                                    {selectedOrderForShip.orderNumber}
-                                </p>
-                                <Badge variant={selectedOrderForShip.paymentMethod === 'cod' ? 'warning' : 'success'}>
-                                    {selectedOrderForShip.paymentMethod.toUpperCase()}
-                                </Badge>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p className="text-[var(--text-muted)]">Customer</p>
-                                    <p className="font-medium">{selectedOrderForShip.customerInfo.name}</p>
-                                    <p className="text-[var(--text-muted)] text-xs">
-                                        {selectedOrderForShip.customerInfo.address?.city}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[var(--text-muted)]">Amount</p>
-                                    <p className="font-semibold text-lg">
-                                        {formatCurrency(selectedOrderForShip.totals.total)}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Courier Selection */}
+            {/* --- METRICS --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Orders */}
+                <div className="p-5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm">
+                    <div className="flex justify-between items-start">
                         <div>
-                            <p className="font-medium text-[var(--text-primary)] mb-3">Select Courier Partner</p>
-                            <div className="space-y-2">
-                                {courierRates.map((courier) => (
+                            <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Total Orders</p>
+                            <h3 className="text-2xl font-bold text-[var(--text-primary)] mt-1">
+                                <AnimatedNumber value={MOCK_ORDERS.length} />
+                            </h3>
+                        </div>
+                        <div className="text-emerald-500 flex items-center gap-1 text-xs font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            <ArrowUpRight className="w-3 h-3" /> 12%
+                        </div>
+                    </div>
+                    <div className="h-10 w-full mt-3">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={trendData}>
+                                <Bar dataKey="orders" fill="#3B82F6" opacity={0.8} radius={[2, 2, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Revenue */}
+                <div className="p-5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Revenue</p>
+                            <h3 className="text-2xl font-bold text-[var(--text-primary)] mt-1">
+                                {formatCurrency(metrics.totalRevenue)}
+                            </h3>
+                        </div>
+                        <div className="text-emerald-500 flex items-center gap-1 text-xs font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            <ArrowUpRight className="w-3 h-3" /> 8.4%
+                        </div>
+                    </div>
+                    <div className="h-10 w-full mt-3">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trendData}>
+                                <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} fill="#10B981" fillOpacity={0.1} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="p-5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm flex flex-col justify-between">
+                    <div>
+                        <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Pending Actions</p>
+                        <div className="mt-2 text-sm text-[var(--text-primary)] font-medium">
+                            {metrics.pendingPaymentCount} payments pending
+                        </div>
+                        <div className="text-sm text-[var(--text-muted)]">
+                            {MOCK_ORDERS.filter(o => o.shipmentStatus === 'unshipped').length} orders to ship
+                        </div>
+                    </div>
+                    <Button variant="link" className="self-start p-0 h-auto text-xs text-[var(--primary-blue)] font-medium mt-2">
+                        View details &rarr;
+                    </Button>
+                </div>
+            </div>
+
+            {/* --- TABLE & CONTROLS --- */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    {/* Tabs */}
+                    <div className="flex p-1 rounded-lg bg-[var(--bg-secondary)] w-fit">
+                        {['all', 'unshipped', 'shipped', 'delivered'].map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize",
+                                    activeTab === tab
+                                        ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
+                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                                )}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                            <input
+                                type="text"
+                                placeholder="Search orders..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9 pr-3 py-1.5 h-9 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:border-[var(--primary-blue)] text-sm w-64 transition-colors placeholder:text-[var(--text-muted)]"
+                            />
+                        </div>
+                        <div className="relative group">
+                            <button className="h-9 px-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] text-sm font-medium flex items-center gap-2">
+                                <Filter className="w-3.5 h-3.5" />
+                                <span className="capitalize">{paymentFilter === 'all' ? 'All Payments' : paymentFilter}</span>
+                                <ChevronDown className="w-3.5 h-3.5 opacity-50" />
+                            </button>
+                            {/* Filter Dropdown */}
+                            <div className="absolute top-full right-0 mt-1 w-40 p-1 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-subtle)] shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                                {['all', 'paid', 'pending', 'failed'].map(opt => (
                                     <button
-                                        key={courier.name}
-                                        onClick={() => setSelectedCourier(courier.name)}
+                                        key={opt}
+                                        onClick={() => setPaymentFilter(opt as any)}
                                         className={cn(
-                                            "w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all text-left",
-                                            selectedCourier === courier.name
-                                                ? "border-[#2525FF] bg-[#2525FF]/5"
-                                                : "border-gray-200 hover:border-gray-300"
+                                            "w-full text-left px-3 py-1.5 text-xs rounded-md capitalize",
+                                            paymentFilter === opt ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
                                         )}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-[var(--bg-tertiary)] rounded-lg">
-                                                <Truck className="h-5 w-5 text-gray-600" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-[var(--text-primary)]">{courier.name}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">
-                                                    ETA: {courier.eta} • ⭐ {courier.rating}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-lg text-[var(--text-primary)]">
-                                                {formatCurrency(courier.rate)}
-                                            </p>
-                                            {courier.rate === Math.min(...courierRates.map(c => c.rate)) && (
-                                                <Badge variant="success" className="text-xs">
-                                                    <Zap className="h-3 w-3 mr-0.5" />
-                                                    Cheapest
-                                                </Badge>
-                                            )}
-                                        </div>
+                                        {opt}
                                     </button>
                                 ))}
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                            <Button variant="outline" onClick={() => setIsShipModalOpen(false)}>
-                                Cancel
-                            </Button>
+                <div className="bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] overflow-hidden shadow-sm">
+                    <DataTable
+                        columns={columns}
+                        data={filteredData}
+                        onRowClick={(row) => setSelectedOrder(row)}
+                    />
+                    {filteredData.length === 0 && (
+                        <div className="py-12 text-center">
+                            <p className="text-[var(--text-muted)] text-sm">No orders found.</p>
                             <Button
-                                onClick={handleCreateShipment}
-                                disabled={!selectedCourier || createShipment.isPending}
+                                variant="link"
+                                onClick={() => { setSearch(''); setActiveTab('all'); setPaymentFilter('all'); }}
+                                className="text-[var(--primary-blue)] text-xs mt-1"
                             >
-                                {createShipment.isPending ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                        Creating...
-                                    </>
-                                ) : (
-                                    <>
-                                        Create Shipment
-                                        <ArrowRight className="h-4 w-4 ml-1.5" />
-                                    </>
-                                )}
+                                Clear filters
                             </Button>
                         </div>
-                    </div>
-                )}
-            </Modal>
-
-            {/* Create Order Modal */}
-            <CreateOrderModal
-                isOpen={isCreateOrderModalOpen}
-                onClose={() => setIsCreateOrderModalOpen(false)}
-            />
-
-            {/* Bulk Import Modal */}
-            <BulkImportModal
-                isOpen={isBulkImportModalOpen}
-                onClose={() => setIsBulkImportModalOpen(false)}
-                onSuccess={() => {
-                    refetch();
-                    setIsBulkImportModalOpen(false);
-                }}
-            />
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

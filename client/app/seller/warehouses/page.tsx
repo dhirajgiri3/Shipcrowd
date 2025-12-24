@@ -1,204 +1,210 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { useWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse } from '@/src/core/api/hooks/useWarehouses';
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
+import { motion } from 'framer-motion';
+import {
+    Building2,
+    Plus,
+    MapPin,
+    Phone,
+    Edit,
+    Trash2,
+    CheckCircle2,
+    Star
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/src/shared/components/card';
 import { Button } from '@/src/shared/components/button';
 import { Badge } from '@/src/shared/components/badge';
-import { Warehouse, MapPin, Package, Plus, Settings, RefreshCw, Edit, Trash2 } from 'lucide-react';
-import { useToast } from '@/src/shared/components/Toast';
+import { cn } from '@/src/shared/utils';
+import Link from 'next/link';
+
+// Mock warehouses data
+const mockWarehouses = [
+    {
+        id: 'WH001',
+        name: 'Mumbai Central Hub',
+        address: {
+            line1: '123 MG Road',
+            city: 'Mumbai',
+            state: 'Maharashtra',
+            postalCode: '400001',
+        },
+        contactPerson: 'Rajesh Kumar',
+        phone: '9876543210',
+        isDefault: true,
+        isVerified: true,
+        ordersThisMonth: 245,
+    },
+    {
+        id: 'WH002',
+        name: 'Delhi Warehouse',
+        address: {
+            line1: '456 Connaught Place',
+            city: 'New Delhi',
+            state: 'Delhi',
+            postalCode: '110001',
+        },
+        contactPerson: 'Priya Singh',
+        phone: '9123456789',
+        isDefault: false,
+        isVerified: true,
+        ordersThisMonth: 189,
+    },
+    {
+        id: 'WH003',
+        name: 'Bangalore Storage',
+        address: {
+            line1: '789 Electronic City',
+            city: 'Bangalore',
+            state: 'Karnataka',
+            postalCode: '560100',
+        },
+        contactPerson: 'Amit Patel',
+        phone: '9988776655',
+        isDefault: false,
+        isVerified: false,
+        ordersThisMonth: 67,
+    },
+];
 
 export default function WarehousesPage() {
-    const { addToast } = useToast();
-    const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null);
-
-    // Fetch warehouses from API
-    const { data: warehouses, isLoading, error, refetch } = useWarehouses();
-    const updateWarehouse = useUpdateWarehouse();
-    const deleteWarehouse = useDeleteWarehouse();
-
-    const handleSetDefault = (warehouseId: string) => {
-        updateWarehouse.mutate(
-            { warehouseId, data: { isDefault: true } },
-            {
-                onSuccess: () => {
-                    addToast('Default warehouse updated!', 'success');
-                    refetch();
-                }
-            }
-        );
-    };
-
-    const handleDelete = (warehouseId: string) => {
-        if (confirm('Are you sure you want to delete this warehouse?')) {
-            deleteWarehouse.mutate(warehouseId, {
-                onSuccess: () => refetch()
-            });
-        }
-    };
-
-    // Loading state
-    if (isLoading) {
-        return (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-gray-900">Warehouse Management</h2>
-                </div>
-                <Card>
-                    <CardContent className="p-8">
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <RefreshCw className="h-8 w-8 animate-spin text-[var(--primary-blue)] mb-4" />
-                            <p className="text-[var(--text-muted)]">Loading warehouses...</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    // Error state
-    if (error) {
-        return (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-gray-900">Warehouse Management</h2>
-                </div>
-                <Card>
-                    <CardContent className="p-8">
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <div className="text-red-500 mb-4">
-                                <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <p className="text-[var(--text-primary)] font-semibold mb-2">Failed to load warehouses</p>
-                            <p className="text-[var(--text-muted)] text-sm mb-4">{error.message || 'An error occurred'}</p>
-                            <Button onClick={() => refetch()}>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Retry
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    const warehouseList = warehouses || [];
+    const [warehouses] = useState(mockWarehouses);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
+        <div className="min-h-screen space-y-6 pb-10">
+            {/* Header */}
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Warehouse className="h-6 w-6 text-indigo-600" />
-                        Warehouse Management
-                    </h2>
-                    <p className="text-gray-500 text-sm mt-1">
-                        Manage pickup locations • {warehouseList.length} warehouse{warehouseList.length !== 1 ? 's' : ''}
+                    <motion.h1
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-3xl font-bold text-[var(--text-primary)] tracking-tight"
+                    >
+                        Warehouses
+                    </motion.h1>
+                    <p className="text-sm text-[var(--text-secondary)] mt-2">
+                        Manage your pickup locations and warehouses
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => addToast('Add warehouse form coming soon!', 'info')}>
-                        <Plus className="h-4 w-4 mr-2" /> Add Warehouse
-                    </Button>
-                </div>
-            </div>
 
-            {/* Warehouse List */}
-            {warehouseList.length === 0 ? (
-                <Card>
-                    <CardContent className="p-12">
-                        <div className="flex flex-col items-center justify-center">
-                            <Warehouse className="h-12 w-12 text-gray-300 mb-4" />
-                            <p className="text-[var(--text-primary)] font-semibold mb-1">No warehouses found</p>
-                            <p className="text-[var(--text-muted)] text-sm mb-4">Create your first warehouse to start shipping</p>
-                            <Button onClick={() => addToast('Add warehouse form coming soon!', 'info')}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Warehouse
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {warehouseList.map((wh: any) => (
-                        <Card key={wh._id} className={`hover:shadow-md transition-shadow ${wh.isDefault ? 'ring-2 ring-indigo-500' : ''}`}>
-                            <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start">
-                                    <div className="p-2 bg-indigo-50 rounded-lg">
-                                        <Warehouse className="h-6 w-6 text-indigo-600" />
+                <Link href="/seller/warehouses/add">
+                    <Button variant="primary" className="shadow-lg shadow-blue-500/20">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Warehouse
+                    </Button>
+                </Link>
+            </header>
+
+            {/* Warehouses Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {warehouses.map((warehouse, index) => (
+                    <motion.div
+                        key={warehouse.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                    >
+                        <Card className="border-[var(--border-default)] hover:shadow-lg transition-shadow h-full">
+                            <CardContent className="p-6 space-y-4">
+                                {/* Header */}
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn(
+                                            "h-12 w-12 rounded-2xl flex items-center justify-center",
+                                            warehouse.isDefault
+                                                ? "bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-light)] text-white shadow-lg shadow-blue-500/20"
+                                                : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
+                                        )}>
+                                            <Building2 className="h-6 w-6" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                                                {warehouse.name}
+                                                {warehouse.isDefault && (
+                                                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                                                )}
+                                            </h3>
+                                            <p className="text-xs text-[var(--text-muted)]">
+                                                {warehouse.id}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <Badge variant={wh.isDefault ? 'default' : 'neutral'}>
-                                        {wh.isDefault ? 'Default' : 'Active'}
-                                    </Badge>
+
+                                    {warehouse.isVerified ? (
+                                        <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                                            Verified
+                                        </Badge>
+                                    ) : (
+                                        <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                                            Pending
+                                        </Badge>
+                                    )}
                                 </div>
-                                <CardTitle className="text-lg mt-3">{wh.name}</CardTitle>
-                                <div className="flex items-start text-xs text-gray-500 mt-1">
-                                    <MapPin className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
-                                    <span className="line-clamp-2">
-                                        {wh.address.line1}, {wh.address.city}, {wh.address.state} - {wh.address.postalCode}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-3">
-                                    <div className="pt-3 border-t border-gray-100 flex gap-2">
-                                        {!wh.isDefault && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 text-xs"
-                                                onClick={() => handleSetDefault(wh._id)}
-                                                disabled={updateWarehouse.isPending}
-                                            >
-                                                Set as Default
-                                            </Button>
-                                        )}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="w-8 px-0"
-                                            onClick={() => addToast('Edit coming soon!', 'info')}
-                                        >
-                                            <Edit className="h-4 w-4 text-gray-400" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="w-8 px-0"
-                                            onClick={() => handleDelete(wh._id)}
-                                            disabled={wh.isDefault || deleteWarehouse.isPending}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-red-400" />
-                                        </Button>
+
+                                {/* Address */}
+                                <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                                    <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-[var(--text-muted)]" />
+                                    <div>
+                                        <p>{warehouse.address.line1}</p>
+                                        <p>{warehouse.address.city}, {warehouse.address.state} - {warehouse.address.postalCode}</p>
                                     </div>
+                                </div>
+
+                                {/* Contact */}
+                                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                                    <Phone className="h-4 w-4 text-[var(--text-muted)]" />
+                                    <span>{warehouse.contactPerson} • {warehouse.phone}</span>
+                                </div>
+
+                                {/* Stats */}
+                                <div className="pt-4 border-t border-[var(--border-subtle)]">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-[var(--text-muted)]">Orders this month</span>
+                                        <span className="font-semibold text-[var(--text-primary)]">{warehouse.ordersThisMonth}</span>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex gap-2 pt-2">
+                                    <Button variant="outline" size="sm" className="flex-1">
+                                        <Edit className="h-4 w-4 mr-1" />
+                                        Edit
+                                    </Button>
+                                    {!warehouse.isDefault && (
+                                        <Button variant="outline" size="sm" className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
-                </div>
-            )}
+                    </motion.div>
+                ))}
 
-            {/* Note about inventory - not implemented yet */}
-            <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                        <Package className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-semibold text-blue-900">Inventory Management</p>
-                            <p className="text-xs text-blue-700 mt-1">
-                                Track stock levels across warehouses (Coming soon)
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                {/* Add New Card */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: warehouses.length * 0.1 }}
+                >
+                    <Link href="/seller/warehouses/add">
+                        <Card className="border-dashed border-2 border-[var(--border-default)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]/10 transition-all h-full min-h-[300px] cursor-pointer group">
+                            <CardContent className="h-full flex flex-col items-center justify-center p-6 text-center">
+                                <div className="h-16 w-16 rounded-2xl bg-[var(--bg-tertiary)] group-hover:bg-[var(--primary-blue)]/10 flex items-center justify-center mb-4 transition-colors">
+                                    <Plus className="h-8 w-8 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
+                                </div>
+                                <h3 className="font-semibold text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)]">
+                                    Add New Warehouse
+                                </h3>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">
+                                    Set up a new pickup location
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                </motion.div>
+            </div>
         </div>
     );
 }

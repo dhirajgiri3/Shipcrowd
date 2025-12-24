@@ -172,12 +172,15 @@ const KYCSchema = new Schema<IKYC>(
 );
 
 // Create indexes
-KYCSchema.index({ userId: 1 });
+KYCSchema.index({ userId: 1 }, { unique: true }); // One KYC per user
 KYCSchema.index({ companyId: 1 });
 KYCSchema.index({ status: 1 });
 KYCSchema.index({ 'documents.pan.number': 1 });
 KYCSchema.index({ 'documents.aadhaar.number': 1 });
 KYCSchema.index({ 'documents.gstin.number': 1 });
+
+// Compound indexes for common query patterns
+KYCSchema.index({ companyId: 1, status: 1 }); // Admin KYC filtering
 
 // Create and export the KYC model
 const KYC = mongoose.model<IKYC>('KYC', KYCSchema);

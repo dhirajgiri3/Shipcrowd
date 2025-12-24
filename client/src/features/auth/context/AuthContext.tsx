@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [initAttempted, setInitAttempted] = useState(false)
 
     const isAuthenticated = !!user
 
@@ -70,19 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * Try to restore session using refresh token cookie
      */
     useEffect(() => {
-        // Prevent multiple initialization attempts
-        if (initAttempted) {
-            return;
-        }
-
         let mounted = true;
 
         const initAuth = async () => {
-            setInitAttempted(true);
-
             // Skip auth check on public pages to avoid unnecessary API calls
             if (typeof window !== 'undefined') {
-                const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
+                const publicPaths = ['/login', '/signup', '/forgot-password', '/reset-password'];
                 const currentPath = window.location.pathname;
 
                 // If on public page, immediately set user to null and stop loading
@@ -153,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => {
             mounted = false;
         }
-    }, [fetchCurrentUser, initAttempted])
+    }, [fetchCurrentUser])
 
     /**
      * Login with email and password

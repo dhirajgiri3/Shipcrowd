@@ -185,6 +185,10 @@ RateCardSchema.index({ 'effectiveDates.startDate': 1, 'effectiveDates.endDate': 
 RateCardSchema.index({ status: 1 });
 RateCardSchema.index({ isDeleted: 1 });
 
+// Compound indexes for common query patterns
+RateCardSchema.index({ companyId: 1, status: 1 }); // Active rate cards
+RateCardSchema.index({ companyId: 1, isDeleted: 1 }); // Rate card listing
+
 // Create and export the RateCard model
 const RateCard = mongoose.model<IRateCard>('RateCard', RateCardSchema);
 export default RateCard;

@@ -96,6 +96,10 @@ ZoneSchema.index({ companyId: 1 });
 ZoneSchema.index({ postalCodes: 1 });
 ZoneSchema.index({ isDeleted: 1 });
 
+// Compound indexes for common query patterns
+ZoneSchema.index({ companyId: 1, name: 1 }); // Zone lookup by company
+ZoneSchema.index({ companyId: 1, isDeleted: 1 }); // Active zones listing
+
 // Create and export the Zone model
 const Zone = mongoose.model<IZone>('Zone', ZoneSchema);
 export default Zone;

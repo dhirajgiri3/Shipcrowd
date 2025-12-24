@@ -1,0 +1,36 @@
+import express from 'express';
+import { authenticate, authorize } from '../../../middleware/auth/auth';
+import analyticsController from '../../../controllers/system/analytics.controller';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
+
+const router = express.Router();
+
+/**
+ * @route GET /api/v1/analytics/dashboard/seller
+ * @desc Get seller dashboard analytics (company-scoped)
+ * @access Private
+ */
+router.get('/dashboard/seller', authenticate, asyncHandler(analyticsController.getSellerDashboard));
+
+/**
+ * @route GET /api/v1/analytics/dashboard/admin
+ * @desc Get admin dashboard analytics (multi-company, admin only)
+ * @access Private (Admin)
+ */
+router.get('/dashboard/admin', authenticate, authorize('admin'), asyncHandler(analyticsController.getAdminDashboard));
+
+/**
+ * @route GET /api/v1/analytics/orders
+ * @desc Get order trends and statistics
+ * @access Private
+ */
+router.get('/orders', authenticate, asyncHandler(analyticsController.getOrderTrends));
+
+/**
+ * @route GET /api/v1/analytics/shipments
+ * @desc Get shipment/delivery performance metrics
+ * @access Private
+ */
+router.get('/shipments', authenticate, asyncHandler(analyticsController.getShipmentPerformance));
+
+export default router;

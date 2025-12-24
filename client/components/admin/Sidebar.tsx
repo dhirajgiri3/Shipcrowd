@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard,
     Package,
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/src/features/auth';
 
 const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -50,8 +51,20 @@ const navItems = [
     { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, logout } = useAuth();
+
+    // Get user initials for avatar
+    const userInitials = user?.name
+        ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        : 'AD';
+
+    const handleSignOut = async () => {
+        await logout();
+        router.push('/login');
+    };
 
     // Group navigation items
     const coreItems = navItems.slice(0, 4); // Dashboard, Sellers, KYC, Intelligence
@@ -157,15 +170,18 @@ export function Sidebar() {
 
                     <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-[var(--bg-secondary)] shadow-sm hover:shadow-md transition-all duration-200">
                         <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] flex items-center justify-center text-white font-bold text-sm shadow-md">
-                            DG
+                            {userInitials}
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-semibold text-[var(--text-primary)] truncate">Dhiraj Giri</p>
-                            <p className="text-xs text-[var(--text-muted)] truncate">Admin</p>
+                            <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{user?.name || 'Admin'}</p>
+                            <p className="text-xs text-[var(--text-muted)] truncate capitalize">{user?.role || 'admin'}</p>
                         </div>
                     </div>
 
-                    <button className="w-full flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200 group">
+                    <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200 group"
+                    >
                         <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
                         <span>Sign Out</span>
                     </button>

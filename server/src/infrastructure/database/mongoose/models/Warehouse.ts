@@ -126,6 +126,10 @@ WarehouseSchema.index({ isActive: 1 });
 WarehouseSchema.index({ isDefault: 1 });
 WarehouseSchema.index({ isDeleted: 1 });
 
+// Compound indexes for common query patterns
+WarehouseSchema.index({ companyId: 1, isActive: 1 }); // Active warehouses listing
+WarehouseSchema.index({ companyId: 1, isDeleted: 1 }); // Warehouse listing
+
 // Create and export the Warehouse model
 const Warehouse = mongoose.model<IWarehouse>('Warehouse', WarehouseSchema);
 export default Warehouse;

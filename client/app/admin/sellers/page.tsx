@@ -1,15 +1,13 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/src/shared/components/card';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/src/shared/components/button';
-import { Badge } from '@/src/shared/components/badge';
-import { Input } from '@/src/shared/components/Input';
 import { DataTable } from '@/src/shared/components/DataTable';
 import { Modal } from '@/src/shared/components/Modal';
 import { useToast } from '@/src/shared/components/Toast';
-import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/shared/utils';
 import {
     Search,
     Building2,
@@ -18,18 +16,17 @@ import {
     IndianRupee,
     Clock,
     CheckCircle2,
-    XCircle,
-    Filter,
     Download,
-    Eye,
     Ban,
     Mail,
     Phone,
     MapPin,
-    TrendingUp,
     UserPlus,
-    ArrowUpRight,
-    Shield
+    LayoutGrid,
+    List,
+    Shield,
+    MoreHorizontal,
+    ArrowUpRight
 } from 'lucide-react';
 
 // Mock sellers data
@@ -118,23 +115,6 @@ const mockSellers = [
         successRate: 88.2,
         revenue: 245000,
         avatar: 'BW'
-    },
-    {
-        id: 'SEL-006',
-        companyName: 'SportsZone',
-        ownerName: 'Neha Gupta',
-        email: 'neha@sportszone.in',
-        phone: '+91 43210 98765',
-        city: 'Pune',
-        status: 'active',
-        kycStatus: 'verified',
-        joinedAt: '2024-05-15',
-        totalShipments: 1980,
-        monthlyVolume: 198,
-        walletBalance: 22000,
-        successRate: 91.5,
-        revenue: 298000,
-        avatar: 'SZ'
     }
 ];
 
@@ -149,19 +129,20 @@ type Seller = typeof mockSellers[0];
 
 export default function SellersPage() {
     const [activeTab, setActiveTab] = useState('all');
+    const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
     const [search, setSearch] = useState('');
     const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { addToast } = useToast();
 
+    // Derived state
     const filteredSellers = useMemo(() => {
         return mockSellers.filter(seller => {
             const matchesTab = activeTab === 'all' || seller.status === activeTab;
             const matchesSearch =
                 seller.companyName.toLowerCase().includes(search.toLowerCase()) ||
                 seller.ownerName.toLowerCase().includes(search.toLowerCase()) ||
-                seller.email.toLowerCase().includes(search.toLowerCase()) ||
-                seller.city.toLowerCase().includes(search.toLowerCase());
+                seller.email.toLowerCase().includes(search.toLowerCase());
             return matchesTab && matchesSearch;
         });
     }, [activeTab, search]);
@@ -170,18 +151,11 @@ export default function SellersPage() {
         total: mockSellers.length,
         active: mockSellers.filter(s => s.status === 'active').length,
         pending: mockSellers.filter(s => s.status === 'pending').length,
-        suspended: mockSellers.filter(s => s.status === 'suspended').length,
         monthlyVolume: mockSellers.reduce((acc, s) => acc + s.monthlyVolume, 0),
         totalRevenue: mockSellers.reduce((acc, s) => acc + s.revenue, 0)
     }), []);
 
-    const tabCounts = useMemo(() => ({
-        all: mockSellers.length,
-        active: mockSellers.filter(s => s.status === 'active').length,
-        pending: mockSellers.filter(s => s.status === 'pending').length,
-        suspended: mockSellers.filter(s => s.status === 'suspended').length,
-    }), []);
-
+    // Handlers
     const handleViewSeller = (seller: Seller) => {
         setSelectedSeller(seller);
         setIsDetailOpen(true);
@@ -197,107 +171,80 @@ export default function SellersPage() {
         setIsDetailOpen(false);
     };
 
-    const getStatusConfig = (status: string) => {
-        switch (status) {
-            case 'active':
-                return { label: 'Active', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' };
-            case 'pending':
-                return { label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' };
-            case 'suspended':
-                return { label: 'Suspended', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' };
-            default:
-                return { label: status, color: 'text-gray-600', bg: 'bg-[var(--bg-secondary)]', border: 'border-gray-200' };
-        }
-    };
-
+    // Columns config
     const columns = [
         {
-            header: 'Seller',
+            header: 'Company',
             accessorKey: 'companyName' as const,
             cell: (row: Seller) => (
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-[#2525FF]/10 text-[#2525FF] font-semibold text-sm">
+                    <div className="h-10 w-10 rounded-xl bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] flex items-center justify-center font-bold text-sm">
                         {row.avatar}
                     </div>
                     <div>
                         <p className="font-semibold text-[var(--text-primary)]">{row.companyName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{row.ownerName} • {row.city}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{row.city}</p>
                     </div>
+                </div>
+            )
+        },
+        {
+            header: 'Owner',
+            accessorKey: 'ownerName' as const,
+            cell: (row: Seller) => (
+                <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">{row.ownerName}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{row.email}</p>
                 </div>
             )
         },
         {
             header: 'Status',
             accessorKey: 'status' as const,
-            cell: (row: Seller) => {
-                const config = getStatusConfig(row.status);
-                return (
-                    <div className="space-y-1">
-                        <span className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                            config.bg, config.color
-                        )}>
-                            {row.status === 'active' && <CheckCircle2 className="h-3 w-3" />}
-                            {row.status === 'pending' && <Clock className="h-3 w-3" />}
-                            {row.status === 'suspended' && <XCircle className="h-3 w-3" />}
-                            {config.label}
-                        </span>
-                        {row.kycStatus === 'verified' && (
-                            <div className="flex items-center gap-1 text-xs text-emerald-600">
-                                <Shield className="h-3 w-3" />
-                                KYC Verified
-                            </div>
-                        )}
-                    </div>
-                );
-            }
-        },
-        {
-            header: 'Monthly Volume',
-            accessorKey: 'monthlyVolume' as const,
             cell: (row: Seller) => (
-                <div>
-                    <p className="font-bold text-[var(--text-primary)] text-lg">{row.monthlyVolume}</p>
-                    <p className="text-xs text-[var(--text-muted)]">shipments</p>
+                <div className="flex flex-col gap-1">
+                    <span className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold w-fit",
+                        row.status === 'active' ? "bg-emerald-500/10 text-emerald-500" :
+                            row.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
+                                "bg-rose-500/10 text-rose-500"
+                    )}>
+                        <span className={cn("w-1.5 h-1.5 rounded-full",
+                            row.status === 'active' ? "bg-emerald-500" :
+                                row.status === 'pending' ? "bg-amber-500" : "bg-rose-500"
+                        )} />
+                        {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                    </span>
+                    {row.kycStatus === 'verified' && (
+                        <span className="text-[10px] text-emerald-500 flex items-center gap-1 px-1">
+                            <Shield className="w-3 h-3" /> Verified
+                        </span>
+                    )}
                 </div>
             )
         },
         {
             header: 'Performance',
             accessorKey: 'successRate' as const,
-            cell: (row: Seller) => {
-                if (row.successRate === 0) {
-                    return <span className="text-sm text-gray-400">No data</span>;
-                }
-                const isGood = row.successRate >= 90;
-                return (
-                    <div className="space-y-1.5 w-28">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className={cn("font-semibold", isGood ? "text-emerald-600" : "text-amber-600")}>
-                                {row.successRate}%
-                            </span>
-                        </div>
-                        <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-                            <div
-                                className={cn(
-                                    "h-full rounded-full",
-                                    isGood ? "bg-emerald-500" : "bg-amber-500"
-                                )}
-                                style={{ width: `${row.successRate}%` }}
-                            />
-                        </div>
+            cell: (row: Seller) => (
+                <div className="w-24">
+                    <div className="flex justify-between text-xs mb-1">
+                        <span className="text-[var(--text-muted)]">Success</span>
+                        <span className={cn("font-bold", row.successRate > 90 ? "text-emerald-500" : "text-amber-500")}>{row.successRate}%</span>
                     </div>
-                );
-            }
+                    <div className="h-1 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                        <div className={cn("h-full rounded-full", row.successRate > 90 ? "bg-emerald-500" : "text-amber-500")} style={{ width: `${row.successRate}%` }} />
+                    </div>
+                </div>
+            )
         },
         {
             header: 'Wallet',
             accessorKey: 'walletBalance' as const,
             cell: (row: Seller) => (
                 <span className={cn(
-                    "font-semibold",
-                    row.walletBalance < 0 ? "text-rose-600" :
-                        row.walletBalance < 5000 ? "text-amber-600" : "text-[var(--text-primary)]"
+                    "font-bold font-mono",
+                    row.walletBalance < 0 ? "text-rose-500" : "text-[var(--text-primary)]"
                 )}>
                     {formatCurrency(row.walletBalance)}
                 </span>
@@ -306,255 +253,235 @@ export default function SellersPage() {
         {
             header: 'Actions',
             accessorKey: 'id' as const,
-            width: 'w-40',
             cell: (row: Seller) => (
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 px-3"
-                        onClick={() => handleViewSeller(row)}
-                    >
-                        <Eye className="h-4 w-4 mr-1" />
+                    <Button variant="ghost" size="sm" onClick={() => handleViewSeller(row)}>
                         View
                     </Button>
-                    {row.status === 'pending' && (
-                        <Button
-                            size="sm"
-                            className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700"
-                            onClick={() => handleApproveSeller(row)}
-                        >
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Approve
-                        </Button>
-                    )}
                 </div>
             )
         }
     ];
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-[#2525FF]/10">
-                            <Building2 className="h-6 w-6 text-[#2525FF]" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Seller Management</h1>
-                            <p className="text-[var(--text-muted)] text-sm">Manage all registered sellers on the platform</p>
-                        </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
+                        <Building2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Seller Management</h1>
+                        <p className="text-[var(--text-muted)] text-sm">Monitor performance and manage accounts</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="hidden md:flex">
                         <Download className="h-4 w-4 mr-1.5" />
                         Export
                     </Button>
-                    <Button size="sm">
+                    <Button size="sm" className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25 border-0">
                         <UserPlus className="h-4 w-4 mr-1.5" />
                         Invite Seller
                     </Button>
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-5">
-                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-[#2525FF]/10">
-                            <Users className="h-5 w-5 text-[#2525FF]" />
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: 'Total Sellers', value: stats.total, icon: Users, color: 'blue' },
+                    { label: 'Pending Approval', value: stats.pending, icon: Clock, color: 'amber' },
+                    { label: 'Monthly Volume', value: stats.monthlyVolume.toLocaleString(), icon: Package, color: 'violet' },
+                    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: IndianRupee, color: 'emerald' },
+                ].map((stat, i) => (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        key={stat.label}
+                        className="p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30 transition-colors group"
+                    >
+                        <div className="flex items-start justify-between mb-2">
+                            <div className={cn(
+                                "p-2 rounded-lg",
+                                stat.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                                    stat.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                        stat.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
+                                            "bg-emerald-500/10 text-emerald-500"
+                            )}>
+                                <stat.icon className="w-5 h-5" />
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.total}</p>
-                            <p className="text-xs text-[var(--text-muted)]">Total Sellers</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-emerald-100">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.active}</p>
-                            <p className="text-xs text-[var(--text-muted)]">Active</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-amber-100">
-                            <Clock className="h-5 w-5 text-amber-600" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.pending}</p>
-                            <p className="text-xs text-[var(--text-muted)]">Pending</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-purple-100">
-                            <Package className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.monthlyVolume.toLocaleString()}</p>
-                            <p className="text-xs text-[var(--text-muted)]">Monthly Shipments</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center h-11 w-11 rounded-lg bg-green-100">
-                            <IndianRupee className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(stats.totalRevenue)}</p>
-                            <p className="text-xs text-[var(--text-muted)]">Monthly Revenue</p>
-                        </div>
-                    </div>
-                </div>
+                        <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
+                        <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide mt-1">{stat.label}</p>
+                    </motion.div>
+                ))}
             </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {statusTabs.map((tab) => {
-                    const count = tabCounts[tab.id as keyof typeof tabCounts];
-                    const isActive = activeTab === tab.id;
-                    return (
+            {/* Filters & Controls */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-1 rounded-2xl">
+                <div className="flex items-center bg-[var(--bg-primary)] p-1 rounded-xl border border-[var(--border-subtle)] w-full md:w-auto">
+                    {statusTabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap",
-                                isActive
-                                    ? "bg-[#2525FF] border-[#2525FF] text-white"
-                                    : "bg-[var(--bg-primary)] border-gray-200 text-gray-600 hover:border-gray-300"
+                                "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                activeTab === tab.id
+                                    ? "bg-[var(--primary-blue)] text-white shadow-md"
+                                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
                             )}
                         >
-                            <span className="font-medium text-sm">{tab.label}</span>
-                            <span className={cn(
-                                "px-2 py-0.5 rounded-full text-xs font-medium",
-                                isActive ? "bg-white/20 text-white" : "bg-[var(--bg-tertiary)] text-gray-600"
-                            )}>
-                                {count}
-                            </span>
+                            {tab.label}
                         </button>
-                    );
-                })}
-            </div>
-
-            {/* Search & Table */}
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] overflow-hidden">
-                <div className="flex items-center gap-3 p-4 border-b border-[var(--border-subtle)]">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                            placeholder="Search by company name, owner, email, or city..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10 h-11"
-                        />
-                    </div>
-                    <Button variant="outline" size="sm" className="h-11">
-                        <Filter className="h-4 w-4 mr-1.5" />
-                        Filters
-                    </Button>
+                    ))}
                 </div>
 
-                {filteredSellers.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-[var(--bg-tertiary)] mx-auto mb-4">
-                            <Building2 className="h-8 w-8 text-gray-400" />
-                        </div>
-                        <p className="text-[var(--text-primary)] font-medium mb-1">No sellers found</p>
-                        <p className="text-sm text-[var(--text-muted)]">Try adjusting your search or filters</p>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                        <input
+                            type="text"
+                            placeholder="Search sellers..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]/20 focus:border-[var(--primary-blue)] transition-all"
+                        />
                     </div>
-                ) : (
-                    <DataTable columns={columns} data={filteredSellers} />
-                )}
+                    <div className="flex bg-[var(--bg-primary)] rounded-xl border border-[var(--border-subtle)] p-1">
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={cn("p-2 rounded-lg transition-all", viewMode === 'table' ? "bg-[var(--bg-secondary)] text-[var(--text-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]")}
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={cn("p-2 rounded-lg transition-all", viewMode === 'grid' ? "bg-[var(--bg-secondary)] text-[var(--text-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]")}
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            {/* Content Area */}
+            {viewMode === 'table' ? (
+                <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden">
+                    <DataTable columns={columns} data={filteredSellers} />
+                </div>
+            ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <AnimatePresence>
+                        {filteredSellers.map((seller) => (
+                            <motion.div
+                                layout
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                key={seller.id}
+                                onClick={() => handleViewSeller(seller)}
+                                className="group relative p-6 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-xl transition-all cursor-pointer overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-4">
+                                    <button className="p-2 rounded-full hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] transition-colors">
+                                        <MoreHorizontal className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-xl font-bold text-[var(--primary-blue)]">
+                                        {seller.avatar}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-[var(--text-primary)] text-lg">{seller.companyName}</h3>
+                                        <p className="text-sm text-[var(--text-muted)] flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" /> {seller.city}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                    <div className="p-3 rounded-xl bg-[var(--bg-secondary)]">
+                                        <p className="text-xs text-[var(--text-muted)]">Wallet</p>
+                                        <p className="font-bold text-[var(--text-primary)]">{formatCurrency(seller.walletBalance)}</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-[var(--bg-secondary)]">
+                                        <p className="text-xs text-[var(--text-muted)]">Volume</p>
+                                        <p className="font-bold text-[var(--text-primary)]">{seller.monthlyVolume}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--border-subtle)]">
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
+                                        seller.status === 'active' ? "bg-emerald-500/10 text-emerald-500" :
+                                            seller.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
+                                                "bg-rose-500/10 text-rose-500"
+                                    )}>
+                                        <span className={cn("w-1.5 h-1.5 rounded-full",
+                                            seller.status === 'active' ? "bg-emerald-500" :
+                                                seller.status === 'pending' ? "bg-amber-500" : "bg-rose-500"
+                                        )} />
+                                        {seller.status.charAt(0).toUpperCase() + seller.status.slice(1)}
+                                    </span>
+                                    <span className="text-xs font-medium text-[var(--primary-blue)] group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                                        View Details <ArrowUpRight className="w-3 h-3" />
+                                    </span>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+            )}
 
             {/* Seller Detail Modal */}
             <Modal
                 isOpen={isDetailOpen}
                 onClose={() => setIsDetailOpen(false)}
-                title="Seller Details"
+                title={selectedSeller?.companyName || 'Seller Details'}
             >
                 {selectedSeller && (
                     <div className="space-y-6">
-                        {/* Header */}
-                        {/* Contact */}
-                        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[var(--bg-secondary)]">
-                            <div className="flex items-center gap-3">
-                                <Mail className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{selectedSeller.email}</span>
+                        {/* Profile Section */}
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                            <div className="w-16 h-16 rounded-full bg-[var(--primary-blue)] text-white flex items-center justify-center text-xl font-bold">
+                                {selectedSeller.avatar}
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Phone className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{selectedSeller.phone}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <MapPin className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{selectedSeller.city}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Clock className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">Joined {formatDate(selectedSeller.joinedAt)}</span>
+                            <div>
+                                <h3 className="font-bold text-[var(--text-primary)]">{selectedSeller.ownerName}</h3>
+                                <div className="flex flex-col text-sm text-[var(--text-secondary)] mt-1 gap-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <Mail className="w-3.5 h-3.5" /> {selectedSeller.email}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="w-3.5 h-3.5" /> {selectedSeller.phone}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Stats */}
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center p-4 rounded-xl bg-blue-50 border border-blue-100">
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{selectedSeller.totalShipments.toLocaleString()}</p>
-                                <p className="text-xs text-[var(--text-muted)]">Total Shipments</p>
-                            </div>
-                            <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{selectedSeller.successRate || 'N/A'}%</p>
-                                <p className="text-xs text-[var(--text-muted)]">Success Rate</p>
-                            </div>
-                            <div className={cn(
-                                "text-center p-4 rounded-xl border",
-                                selectedSeller.walletBalance < 0
-                                    ? "bg-rose-50 border-rose-100"
-                                    : "bg-[var(--bg-secondary)] border-gray-100"
-                            )}>
-                                <p className={cn(
-                                    "text-2xl font-bold",
-                                    selectedSeller.walletBalance < 0 ? "text-rose-600" : "text-[var(--text-primary)]"
-                                )}>
-                                    {formatCurrency(selectedSeller.walletBalance)}
-                                </p>
-                                <p className="text-xs text-gray-500">Wallet Balance</p>
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                                Close
+                        {/* Quick Actions */}
+                        <div className="flex gap-3">
+                            <Button className="flex-1 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
+                                Login as Seller
                             </Button>
-                            {selectedSeller.status === 'pending' && (
+                            {selectedSeller.status === 'pending' ? (
                                 <Button
-                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
                                     onClick={() => handleApproveSeller(selectedSeller)}
                                 >
-                                    <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                                    Approve Seller
+                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
                                 </Button>
-                            )}
-                            {selectedSeller.status === 'active' && (
+                            ) : (
                                 <Button
                                     variant="outline"
-                                    className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                                    className="flex-1 border-rose-200 text-rose-500 hover:bg-rose-50"
                                     onClick={() => handleSuspendSeller(selectedSeller)}
                                 >
-                                    <Ban className="h-4 w-4 mr-1.5" />
-                                    Suspend
+                                    <Ban className="w-4 h-4 mr-2" /> Suspend
                                 </Button>
                             )}
                         </div>

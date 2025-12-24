@@ -16,11 +16,13 @@ import { configurePassport } from './config/passport';
 import v1Routes from './presentation/http/routes/v1';
 
 // Import middleware
-import { securityHeaders } from './presentation/http/middleware/securityHeaders';
-import { globalRateLimiter } from './presentation/http/middleware/rateLimiter';
+// Import middleware
+import { securityHeaders } from './presentation/http/middleware/system/securityHeaders';
+import { globalRateLimiter } from './presentation/http/middleware/system/rateLimiter';
 
 // Import shared utilities
 import logger from './shared/logger/winston.logger';
+import { AppError, normalizeError, isOperationalError } from './shared/errors/AppError';
 
 // Initialize Express app
 const app: Express = express();
@@ -109,17 +111,34 @@ app.use((req: Request, res: Response) => {
 
 // Global error handler
 app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
-    logger.error('Unhandled error:', {
-        message: error.message,
-        stack: error.stack,
+    // Normalize error to AppError
+    const normalizedError = normalizeError(error);
+
+    // Log error with context
+    logger.error('Error occurred:', {
+        code: normalizedError.code,
+        message: normalizedError.message,
+        statusCode: normalizedError.statusCode,
+        isOperational: normalizedError.isOperational,
         path: req.path,
         method: req.method,
+        ...(normalizedError.details && { details: normalizedError.details }),
+        stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
     });
 
-    res.status(500).json({
-        message: process.env.NODE_ENV === 'production'
-            ? 'Internal server error'
-            : error.message,
+    // Send standardized response
+    res.status(normalizedError.statusCode).json({
+        success: false,
+        error: {
+            code: normalizedError.code,
+            message: normalizedError.isOperational
+                ? normalizedError.message
+                : 'An unexpected error occurred. Please try again later.',
+            ...(process.env.NODE_ENV !== 'production' && normalizedError.details && {
+                details: normalizedError.details,
+            }),
+        },
+        timestamp: new Date().toISOString(),
     });
 });
 

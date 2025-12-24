@@ -21,9 +21,26 @@ export interface AuthUser {
     isActive?: boolean;
 
     // Additional fields for permission/access control
-    kycStatus?: 'not_started' | 'in_progress' | 'approved' | 'rejected';
+    // Additional fields from API
+    kycStatus?: {
+        isComplete: boolean;
+        lastUpdated: string;
+    };
+    profileCompletion?: {
+        status: number;
+        requiredFieldsCompleted: boolean;
+        lastUpdated: string;
+    };
+    profile?: {
+        phone?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+    };
+
+    // Legacy/Client-computed fields (keep for compatibility if needed, but mark optional)
     companyStatus?: 'active' | 'inactive' | 'suspended';
-    permissions?: string[]; // e.g., ['shipments.create', 'analytics.view']
+    permissions?: string[];
 }
 
 export interface LoginCredentials {

@@ -281,6 +281,13 @@ ShipmentSchema.index({ 'deliveryDetails.address.postalCode': 1 });
 ShipmentSchema.index({ isDeleted: 1 });
 ShipmentSchema.index({ 'ndrDetails.ndrStatus': 1 });
 
+// Compound indexes for common query patterns
+ShipmentSchema.index({ companyId: 1, createdAt: -1 }); // Shipments page listing (most recent first)
+ShipmentSchema.index({ companyId: 1, currentStatus: 1, createdAt: -1 }); // Status filtering with date sort
+ShipmentSchema.index({ companyId: 1, carrier: 1 }); // Carrier filtering
+ShipmentSchema.index({ 'ndrDetails.ndrStatus': 1, companyId: 1 }); // NDR management dashboard
+ShipmentSchema.index({ companyId: 1, 'paymentDetails.type': 1 }); // COD vs Prepaid filtering
+
 // Pre-save hook to ensure the first status is added to history
 ShipmentSchema.pre('save', function (next) {
   const shipment = this;

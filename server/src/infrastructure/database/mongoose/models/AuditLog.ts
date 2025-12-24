@@ -81,6 +81,10 @@ AuditLogSchema.index({ resourceId: 1 });
 AuditLogSchema.index({ action: 1 });
 AuditLogSchema.index({ isDeleted: 1 });
 
+// Compound indexes for common query patterns
+AuditLogSchema.index({ userId: 1, timestamp: -1 }); // User activity (most recent first)
+AuditLogSchema.index({ companyId: 1, action: 1, timestamp: -1 }); // Company activity by action
+
 // Create TTL index to automatically delete logs after 90 days
 // This also serves as a regular index on timestamp
 AuditLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });

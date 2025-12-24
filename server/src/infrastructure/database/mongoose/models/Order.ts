@@ -228,6 +228,12 @@ OrderSchema.index({ 'customerInfo.phone': 1 });
 OrderSchema.index({ 'customerInfo.address.postalCode': 1 });
 OrderSchema.index({ isDeleted: 1 });
 
+// Compound indexes for common query patterns
+OrderSchema.index({ companyId: 1, createdAt: -1 }); // Orders page listing (most recent first)
+OrderSchema.index({ companyId: 1, currentStatus: 1, createdAt: -1 }); // Status filtering with date sort
+OrderSchema.index({ companyId: 1, paymentStatus: 1 }); // Payment status filtering
+OrderSchema.index({ companyId: 1, paymentMethod: 1 }); // COD vs Prepaid filtering
+
 // Pre-save hook to ensure the first status is added to history
 OrderSchema.pre('save', function (next) {
   const order = this;

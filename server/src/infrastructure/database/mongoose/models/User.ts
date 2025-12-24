@@ -297,6 +297,12 @@ UserSchema.index({ isDeleted: 1 });
 UserSchema.index({ 'oauth.google.id': 1 });
 UserSchema.index({ googleId: 1 }, { sparse: true });
 
+// Compound indexes for common query patterns
+UserSchema.index({ companyId: 1, teamRole: 1 }); // Team filtering by role
+UserSchema.index({ email: 1, isActive: 1 }); // Login queries
+UserSchema.index({ companyId: 1, isDeleted: 1, createdAt: -1 }); // Team listing
+UserSchema.index({ companyId: 1, teamStatus: 1 }); // Team status filtering
+
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
   const user = this;

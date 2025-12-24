@@ -8,6 +8,8 @@ import {
   mockBankAccountResponse,
   mockIfscResponse
 } from './mocks/deepvue.mock';
+import { ExternalServiceError } from '../../../../shared/errors/AppError';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 dotenv.config();
 
@@ -693,9 +695,9 @@ export const processBankAccountResponse = (responseData: any): any => {
 
     // If the response indicates an error
     if (responseData.code >= 400 ||
-        responseData.message?.toLowerCase().includes('invalid') ||
-        responseData.message?.toLowerCase().includes('error') ||
-        responseData.status === 'error') {
+      responseData.message?.toLowerCase().includes('invalid') ||
+      responseData.message?.toLowerCase().includes('error') ||
+      responseData.status === 'error') {
       return {
         status: 'error',
         message: responseData.message || 'Bank account verification failed',
@@ -855,8 +857,8 @@ export const testConnection = async (): Promise<any> => {
 
     // Check if the result indicates a successful connection
     const isSuccess = result.status === 'success' ||
-                     (result.code === 200) ||
-                     (result.data && Object.keys(result.data).length > 0);
+      (result.code === 200) ||
+      (result.data && Object.keys(result.data).length > 0);
 
     if (isSuccess) {
       return {

@@ -1,10 +1,12 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
-import { createAuditLog } from '../../../../presentation/http/middleware/auditLog';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendRecoveryEmail } from '../communication/email.service';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/AppError';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // List of security questions for users to choose from
 export const SECURITY_QUESTIONS = [

@@ -1,143 +1,283 @@
 "use client";
 
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
 import { Button } from '@/src/shared/components/button';
 import { Badge } from '@/src/shared/components/badge';
-import { ChartCard } from '@/components/admin/ChartCard';
+// Removed duplicate import
 import { MOCK_PREDICTIONS, MOCK_ANOMALIES, MOCK_AI_INSIGHTS } from '@/lib/mockData';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    ComposedChart, Line
+    ComposedChart, Line, ResponsiveContainer
 } from 'recharts';
 import {
     BrainCircuit, AlertTriangle, TrendingUp, Zap,
-    MessageSquare, ArrowRight, Target
+    MessageSquare, ArrowRight, Target, Sparkles,
+    Activity, ArrowUpRight
 } from 'lucide-react';
+import { cn } from '@/src/shared/utils';
 
 export default function IntelligencePage() {
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.5 }
+        }
+    };
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <BrainCircuit className="h-6 w-6 text-indigo-600" />
-                        AI Command Center
-                    </h2>
-                    <p className="text-gray-500 text-sm mt-1">Real-time predictive insights & anomalies</p>
-                </div>
-                <Button className="bg-indigo-600 hover:bg-indigo-700">
-                    <Zap className="h-4 w-4 mr-2" /> Run Analysis
-                </Button>
+        <motion.div
+            className="space-y-6 pb-10"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <motion.div variants={itemVariants}>
+                    <div className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-1 bg-[var(--primary-blue-soft)] w-fit px-3 py-1 rounded-full">
+                        <BrainCircuit className="w-3.5 h-3.5" />
+                        <span>AI Command Center</span>
+                    </div>
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                        Intelligence & Insights
+                    </h1>
+                    <p className="text-[var(--text-secondary)] mt-1 max-w-2xl">
+                        Real-time predictive analytics and anomaly detection powered by machine learning models to optimize your logistics.
+                    </p>
+                </motion.div>
+                <motion.div variants={itemVariants} className="flex gap-3">
+                    <Button variant="outline" className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-subtle)]">
+                        <Activity className="h-4 w-4 mr-2" />
+                        Live Monitor
+                    </Button>
+                    <Button className="bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
+                        <Zap className="h-4 w-4 mr-2" />
+                        Run Deep Analysis
+                    </Button>
+                </motion.div>
             </div>
 
             {/* 1. AI Insights Cards */}
-            <div className="grid gap-6 lg:grid-cols-3">
-                {MOCK_AI_INSIGHTS.map((insight, idx) => (
-                    <Card key={idx} className="border-l-4 border-l-indigo-500 bg-gradient-to-br from-white to-indigo-50/30">
-                        <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                                <Badge variant="outline" className="bg-[var(--bg-primary)] border-indigo-100 text-indigo-700">
-                                    {insight.impact} Impact
-                                </Badge>
-                                <BrainCircuit className="h-5 w-5 text-indigo-400" />
+            <motion.div variants={containerVariants} className="grid gap-6 lg:grid-cols-3">
+                {MOCK_AI_INSIGHTS.map((insight, idx) => {
+                    const isCritical = insight.impact === 'High';
+                    return (
+                        <motion.div
+                            key={idx}
+                            variants={itemVariants}
+                            whileHover={{ y: -5 }}
+                            className={cn(
+                                "relative overflow-hidden rounded-2xl border bg-[var(--bg-primary)] p-6 transition-all duration-300",
+                                isCritical
+                                    ? "border-[var(--warning-border)] shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                                    : "border-[var(--border-subtle)] hover:border-[var(--primary-blue)] hover:shadow-lg hover:shadow-blue-500/5"
+                            )}
+                        >
+                            {/* Background Glow */}
+                            <div className={cn(
+                                "absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none",
+                                isCritical ? "bg-amber-500" : "bg-blue-500"
+                            )} />
+
+                            <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className={cn(
+                                        "p-2.5 rounded-xl",
+                                        isCritical ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
+                                    )}>
+                                        <Sparkles className="h-5 w-5" />
+                                    </div>
+                                    <Badge variant={isCritical ? "warning" : "default"} className="uppercase tracking-wider text-[10px] font-bold">
+                                        {insight.impact} Impact
+                                    </Badge>
+                                </div>
+
+                                <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2 group-hover:text-[var(--primary-blue)] transition-colors">
+                                    {insight.title}
+                                </h3>
+                                <p className="text-sm text-[var(--text-secondary)] mb-6 flex-grow leading-relaxed">
+                                    {insight.description}
+                                </p>
+
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="w-full justify-between group/btn bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:text-[var(--primary-blue)] rounded-xl border border-transparent hover:border-[var(--border-subtle)]"
+                                >
+                                    {insight.action}
+                                    <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                                </Button>
                             </div>
-                            <CardTitle className="text-lg mt-2">{insight.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-gray-600 mb-4">{insight.description}</p>
-                            <Button size="sm" variant="secondary" className="w-full justify-between group">
-                                {insight.action}
-                                <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+                        </motion.div>
+                    );
+                })}
+            </motion.div>
 
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* 2. Predictive Forecasting Chart */}
-                <ChartCard title="Demand Forecast (Next 7 Days)" height={350} className="col-span-2">
-                    <ComposedChart data={MOCK_PREDICTIONS} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                        <defs>
-                            <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#818cf8" stopOpacity={0.1} />
-                                <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke="#f5f5f5" vertical={false} />
-                        <XAxis dataKey="date" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                        <Tooltip
-                            contentStyle={{
-                                borderRadius: '8px',
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                backgroundColor: '#fff',
-                                padding: '12px'
-                            }}
-                            labelStyle={{ color: '#111827', fontWeight: 600 }}
-                        />
-                        <Legend />
-                        <Area type="monotone" dataKey="predicted" name="AI Prediction" stroke="#6366f1" fill="url(#colorPredicted)" strokeDasharray="5 5" />
-                        <Line type="monotone" dataKey="actual" name="Actual Orders" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} />
-                    </ComposedChart>
-                </ChartCard>
+                <motion.div variants={itemVariants} className="lg:col-span-2">
+                    <Card className="h-full bg-[var(--bg-primary)] border-[var(--border-subtle)]">
+                        <CardHeader>
+                            <CardTitle>Demand Forecast AI Model</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[400px]">
+                            <div className="mb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="neutral" className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">Confidence: 94%</Badge>
+                                    <Badge variant="neutral" className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">Model: v2.4 (XGBoost)</Badge>
+                                </div>
+                            </div>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={MOCK_PREDICTIONS} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" vertical={false} />
+                                    <XAxis
+                                        dataKey="date"
+                                        tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            borderRadius: '12px',
+                                            border: '1px solid var(--border-subtle)',
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                            backgroundColor: 'var(--bg-primary)',
+                                            color: 'var(--text-primary)',
+                                            padding: '12px'
+                                        }}
+                                        cursor={{ stroke: 'var(--text-muted)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                    />
+                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="predicted"
+                                        name="AI Prediction (Upper Bound)"
+                                        stroke="var(--primary-blue)"
+                                        strokeWidth={3}
+                                        fill="url(#colorPredicted)"
+                                        className="drop-shadow-sm"
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="actual"
+                                        name="Actual Orders"
+                                        stroke="var(--success)"
+                                        strokeWidth={3}
+                                        dot={{ r: 4, fill: 'var(--bg-primary)', strokeWidth: 2 }}
+                                        activeDot={{ r: 6, strokeWidth: 0 }}
+                                    />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </motion.div>
 
                 {/* 3. Anomaly Detection Feed */}
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-500" />
-                            Detected Anomalies
-                        </CardTitle>
-                        <CardDescription>Unusual patterns requiring attention</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {MOCK_ANOMALIES.map((anomaly) => (
-                            <div key={anomaly.id} className="p-3 rounded-lg border border-gray-100 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] hover:shadow-sm transition-all">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${anomaly.severity === 'critical' ? 'bg-rose-100 text-rose-700' :
-                                        anomaly.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                                            'bg-blue-100 text-blue-700'
-                                        }`}>
-                                        {anomaly.type}
-                                    </span>
-                                    <span className="text-[10px] text-gray-400">{anomaly.timestamp}</span>
-                                </div>
-                                <p className="text-sm text-gray-700 leading-snug">{anomaly.message}</p>
-                            </div>
-                        ))}
-                        <Button variant="ghost" className="w-full text-xs text-[var(--text-muted)] mt-2">
-                            View All System Logs
-                        </Button>
-                    </CardContent>
-                </Card>
+                <motion.div variants={itemVariants}>
+                    <Card className="h-full bg-[var(--bg-primary)] border-[var(--border-subtle)] flex flex-col">
+                        <CardHeader className="border-b border-[var(--border-subtle)] pb-4">
+                            <CardTitle className="flex items-center gap-2 text-[var(--text-primary)]">
+                                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                Anomaly Detection
+                            </CardTitle>
+                            <CardDescription className="text-[var(--text-muted)]">
+                                Real-time pattern deviations
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-y-auto pt-6 space-y-4 pr-2 custom-scrollbar">
+                            {MOCK_ANOMALIES.map((anomaly, i) => (
+                                <motion.div
+                                    key={anomaly.id}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="relative group p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-elevated)] transition-all duration-200"
+                                >
+                                    <div className="absolute left-0 top-4 bottom-4 w-1 bg-gradient-to-b from-transparent via-[var(--border-strong)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="flex justify-between items-start mb-2">
+                                        <Badge
+                                            variant={anomaly.severity === 'critical' ? 'destructive' : anomaly.severity === 'high' ? 'warning' : 'neutral'}
+                                            className="px-2 py-0.5 text-[10px] uppercase font-bold"
+                                        >
+                                            {anomaly.type}
+                                        </Badge>
+                                        <span className="text-[10px] font-mono text-[var(--text-muted)]">{anomaly.timestamp}</span>
+                                    </div>
+                                    <p className="text-sm text-[var(--text-primary)] font-medium leading-relaxed mb-1">{anomaly.message}</p>
+                                    <Button variant="link" className="p-0 h-auto text-xs text-[var(--primary-blue)] hover:no-underline opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                        Investigate <ArrowRight className="h-3 w-3" />
+                                    </Button>
+                                </motion.div>
+                            ))}
+                        </CardContent>
+                        <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50">
+                            <Button variant="outline" className="w-full text-xs text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-primary)]">
+                                View Full System Logs
+                            </Button>
+                        </div>
+                    </Card>
+                </motion.div>
             </div>
 
             {/* 4. Feature Showcase: Smart Routing */}
-            <Card className="bg-gradient-to-r from-gray-900 via-indigo-950 to-gray-900 text-white border-0">
-                <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Badge className="bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border-0">
-                                <Target className="h-3 w-3 mr-1" /> Smart Routing Engine
-                            </Badge>
+            <motion.div variants={itemVariants}>
+                <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-r from-[#0f172a] via-[#1e1b4b] to-[#172554] p-1">
+                    <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
+                    <div className="absolute top-0 right-0 p-12 bg-blue-500/20 rounded-full blur-3xl" />
+
+                    <div className="relative bg-[var(--bg-primary)]/10 backdrop-blur-sm rounded-xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 h-full">
+                        <div className="space-y-4 max-w-2xl">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold uppercase tracking-wider">
+                                <Target className="h-3.5 w-3.5" />
+                                <span>Smart Routing Engine</span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-white tracking-tight">Optimize Your Logistics with AI</h3>
+                            <p className="text-blue-100/80 text-lg leading-relaxed">
+                                Our machine learning models analyze <span className="text-white font-semibold">50+ parameters</span> (traffic, weather, courier performance) to automatically select the best carrier for every shipment, saving you up to <span className="text-emerald-400 font-bold">18%</span> on shipping costs.
+                            </p>
                         </div>
-                        <h3 className="text-2xl font-bold mb-2">Optimize Your Logistics with AI</h3>
-                        <p className="text-gray-300 max-w-xl">
-                            Our ML models analyze 50+ parameters (traffic, weather, courier performance) to select the best carrier for every shipment, saving you up to 18% on shipping costs.
-                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 hover:text-white backdrop-blur-md h-12 px-6">
+                                Configure Rules
+                            </Button>
+                            <Button className="bg-blue-600 hover:bg-blue-500 text-white border-none h-12 px-6 shadow-xl shadow-blue-900/20">
+                                Enable Auto-Switch
+                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex gap-3">
-                        <Button variant="outline" className="text-white border-white/20 hover:bg-[var(--bg-primary)]/10">
-                            Configure Rules
-                        </Button>
-                        <Button className="bg-indigo-500 hover:bg-indigo-600 border-0">
-                            Enable Auto-Switch
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                </div>
+            </motion.div>
+        </motion.div>
     );
 }

@@ -2,10 +2,18 @@
 export const dynamic = "force-dynamic";
 
 import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHIPMENTS } from '@/lib/mockData';
 import { DataTable } from '@/src/shared/components/DataTable';
-import { Card, CardHeader, CardTitle, CardContent } from '@/src/shared/components/card';
+import { Button } from '@/src/shared/components/button';
 import { Input } from '@/src/shared/components/Input';
+import { Badge } from '@/src/shared/components/badge';
+import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { useToast } from '@/src/shared/components/Toast';
+import { formatCurrency, cn } from '@/src/shared/utils';
+import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
+import { StatusBadge } from '@/components/admin/StatusBadge';
+import { getCourierLogo } from '@/lib/constants';
 import {
     Search,
     Eye,
@@ -16,30 +24,21 @@ import {
     Clock,
     AlertTriangle,
     RotateCcw,
-    XCircle,
-    PackageX
+    Filter,
+    Download,
+    ArrowUpRight,
+    MapPin,
+    Calendar
 } from 'lucide-react';
-import { StatusBadge } from '@/components/admin/StatusBadge';
-import { Badge } from '@/src/shared/components/badge';
-import { getCourierLogo } from '@/lib/constants';
-import { FilterBar } from '@/components/admin/FilterBar';
-import { Button } from '@/src/shared/components/button';
-import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
-import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
 import { Shipment } from '@/types/admin';
-import { useToast } from '@/src/shared/components/Toast';
-import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
 
 export default function ShipmentsPage() {
     const [search, setSearch] = useState('');
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
-    const [filters, setFilters] = useState({
-        status: 'all',
-        courier: 'all',
-        paymentMode: 'all'
-    });
+    const [statusFilter, setStatusFilter] = useState('all');
     const { addToast } = useToast();
 
+    // Derived Data
     const filteredData = useMemo(() => {
         return MOCK_SHIPMENTS.filter(item => {
             const matchesSearch =
@@ -47,251 +46,219 @@ export default function ShipmentsPage() {
                 item.customer.name.toLowerCase().includes(search.toLowerCase()) ||
                 item.orderNumber.toLowerCase().includes(search.toLowerCase());
 
-            const matchesStatus = filters.status === 'all' || item.status === filters.status;
-            const matchesCourier = filters.courier === 'all' || item.courier === filters.courier;
-            const matchesPayment = filters.paymentMode === 'all' || item.paymentMode === filters.paymentMode;
-
-            return matchesSearch && matchesStatus && matchesCourier && matchesPayment;
+            const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+            return matchesSearch && matchesStatus;
         });
-    }, [search, filters]);
+    }, [search, statusFilter]);
 
-    const columns: {
-        header: string;
-        accessorKey: keyof Shipment | string;
-        cell?: (row: Shipment) => React.ReactNode;
-        width?: string;
-    }[] = [
-            {
-                header: 'AWB / Order',
-                accessorKey: 'awb',
-                width: 'w-48',
-                cell: (row: Shipment) => (
-                    <div>
-                        <div className="font-medium text-[var(--text-primary)]">{row.awb}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{row.orderNumber}</div>
-                    </div>
-                )
-            },
-            {
-                header: 'Customer',
-                accessorKey: 'customer',
-                cell: (row: Shipment) => (
-                    <div>
-                        <div className="font-medium text-[var(--text-primary)]">{row.customer.name}</div>
-                        <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
-                    </div>
-                )
-            },
-            {
-                header: 'Origin / Dest',
-                accessorKey: 'origin',
-                cell: (row: Shipment) => (
-                    <div className="max-w-[150px]">
-                        <div className="text-xs text-[var(--text-muted)] truncate" title={row.origin.city}>{row.origin.city} →</div>
-                        <div className="font-medium text-[var(--text-primary)] truncate" title={row.destination.city}>{row.destination.city}</div>
-                    </div>
-                )
-            },
-            {
-                header: 'Courier',
-                accessorKey: 'courier',
-                cell: (row: Shipment) => (
-                    <div className="flex items-center gap-2">
-                        <img
-                            src={getCourierLogo(row.courier)}
-                            className="w-6 h-6 object-contain"
-                            alt={row.courier}
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + row.courier + '&background=random&color=fff&size=24';
-                            }}
-                        />
-                        <span className="font-medium text-gray-700">{row.courier}</span>
-                    </div>
-                )
-            },
-            {
-                header: 'Status',
-                accessorKey: 'status',
-                cell: (row: Shipment) => <StatusBadge status={row.status} />
-            },
-            {
-                header: 'Amount',
-                accessorKey: 'codAmount',
-                cell: (row: Shipment) => (
-                    <div>
-                        <div className="font-medium text-[var(--text-primary)]">{formatCurrency(row.codAmount)}</div>
-                        <Badge variant="secondary" className="text-[10px] py-0 h-4">{row.paymentMode.toUpperCase()}</Badge>
-                    </div>
-                )
-            },
-            {
-                header: 'Actions',
-                accessorKey: 'id',
-                width: 'w-20',
-                cell: (row: Shipment) => (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-blue-600"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedShipment(row);
-                            }}
-                        >
-                            <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-[var(--text-primary)]"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                addToast('Generating label...', 'info');
-                            }}
-                        >
-                            <FileText className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )
-            }
-        ];
+    // Status Cards Data
+    const statusGrid = [
+        { id: 'all', label: 'Total Shipments', icon: Package, color: 'blue' },
+        { id: 'pending', label: 'Pending Pickup', icon: Clock, color: 'amber' },
+        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'violet' },
+        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'emerald' },
+        { id: 'ndr', label: 'NDR / Issues', icon: AlertTriangle, color: 'orange' },
+        { id: 'rto', label: 'RTO / Returned', icon: RotateCcw, color: 'rose' },
+    ];
 
-    const filterOptions = [
+    const getStatusCount = (id: string) => {
+        if (id === 'all') return MOCK_SHIPMENTS.length;
+        return MOCK_SHIPMENTS.filter(s => s.status === id).length;
+    };
+
+    // Columns
+    const columns = [
         {
-            label: 'Status',
-            value: 'status',
-            options: [
-                { label: 'All Statuses', value: 'all' },
-                { label: 'Delivered', value: 'delivered' },
-                { label: 'In Transit', value: 'in-transit' },
-                { label: 'Pending', value: 'pending' },
-                { label: 'NDR', value: 'ndr' },
-                { label: 'RTO', value: 'rto' },
-            ]
+            header: 'Shipment Details',
+            accessorKey: 'awb',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                        <Package className="w-4 h-4 text-[var(--text-muted)]" />
+                    </div>
+                    <div>
+                        <div className="font-bold text-[var(--text-primary)] text-sm">{row.awb}</div>
+                        <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                            Order #{row.orderNumber}
+                        </div>
+                    </div>
+                </div>
+            )
         },
         {
-            label: 'Courier',
-            value: 'courier',
-            options: [
-                { label: 'All Couriers', value: 'all' },
-                { label: 'Delhivery', value: 'Delhivery' },
-                { label: 'Xpressbees', value: 'Xpressbees' },
-                { label: 'DTDC', value: 'DTDC' },
-                { label: 'Bluedart', value: 'Bluedart' },
-            ]
-
+            header: 'Customer',
+            accessorKey: 'customer',
+            cell: (row: Shipment) => (
+                <div>
+                    <div className="font-semibold text-[var(--text-primary)] text-sm">{row.customer.name}</div>
+                    <div className="text-xs text-[var(--text-muted)]">{row.customer.phone}</div>
+                </div>
+            )
         },
         {
-            label: 'Payment',
-            value: 'paymentMode',
-            options: [
-                { label: 'All Modes', value: 'all' },
-                { label: 'COD', value: 'cod' },
-                { label: 'Prepaid', value: 'prepaid' },
-            ]
-
+            header: 'Route',
+            accessorKey: 'origin',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="text-[var(--text-secondary)] font-medium">{row.origin.city}</span>
+                    <span className="text-[var(--text-muted)]">→</span>
+                    <span className="text-[var(--text-primary)] font-bold">{row.destination.city}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Courier',
+            accessorKey: 'courier',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-2">
+                    <img
+                        src={getCourierLogo(row.courier)}
+                        className="w-5 h-5 object-contain opacity-80"
+                        alt={row.courier}
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${row.courier}&background=random&color=fff&size=20`;
+                        }}
+                    />
+                    <span className="text-sm font-medium text-[var(--text-secondary)]">{row.courier}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Status',
+            accessorKey: 'status',
+            cell: (row: Shipment) => <StatusBadge status={row.status} />
+        },
+        {
+            header: 'Amount',
+            accessorKey: 'codAmount',
+            cell: (row: Shipment) => (
+                <div>
+                    <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(row.codAmount)}</div>
+                    <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
+                        row.paymentMode === 'prepaid' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
+                    )}>
+                        {row.paymentMode}
+                    </span>
+                </div>
+            )
+        },
+        {
+            header: 'Actions',
+            accessorKey: 'id',
+            cell: (row: Shipment) => (
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedShipment(row)}>
+                        <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                        <FileText className="w-4 h-4" />
+                    </Button>
+                </div>
+            )
         }
     ];
 
-    // Status grid configuration
-    const statusGrid = [
-        { id: 'all', label: 'Total', icon: Package, color: 'bg-[#2525FF]/10', textColor: 'text-[#2525FF]' },
-        { id: 'pending', label: 'Pending', icon: Clock, color: 'bg-amber-100', textColor: 'text-amber-600' },
-        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'bg-cyan-100', textColor: 'text-cyan-600' },
-        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'bg-emerald-100', textColor: 'text-emerald-600' },
-        { id: 'ndr', label: 'NDR', icon: AlertTriangle, color: 'bg-orange-100', textColor: 'text-orange-600' },
-        { id: 'rto', label: 'RTO', icon: RotateCcw, color: 'bg-rose-100', textColor: 'text-rose-600' },
-    ];
-
-    const getStatusCount = (status: string) => {
-        if (status === 'all') return MOCK_SHIPMENTS.length;
-        return MOCK_SHIPMENTS.filter(s => s.status === status).length;
-    };
-
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Shipment Detail Modal */}
-            <ShipmentDetailModal
-                isOpen={!!selectedShipment}
-                onClose={() => setSelectedShipment(null)}
-                shipment={selectedShipment}
-            />
-
-            {/* Header with Date Range Picker */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Shipments</h2>
+        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)] shadow-lg shadow-blue-500/20">
+                        <Truck className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Shipments</h1>
+                        <p className="text-[var(--text-muted)] text-sm">Track and manage all deliveries</p>
+                    </div>
+                </div>
                 <div className="flex items-center gap-3">
                     <DateRangePicker />
-                    <Button onClick={() => addToast('Bulk shipment feature coming soon!', 'info')}>
-                        + Create Bulk Shipment
+                    <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25 border-0">
+                        <Download className="h-4 w-4 mr-1.5" /> Export
                     </Button>
                 </div>
             </div>
 
-            {/* Status Grid Navigation */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {statusGrid.map((status) => {
+            {/* Status Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {statusGrid.map((status, i) => {
                     const count = getStatusCount(status.id);
-                    const isActive = filters.status === status.id;
+                    const isActive = statusFilter === status.id;
                     return (
-                        <button
+                        <motion.button
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
                             key={status.id}
-                            onClick={() => setFilters(prev => ({ ...prev, status: status.id }))}
+                            onClick={() => setStatusFilter(status.id)}
                             className={cn(
-                                "relative p-4 rounded-xl border transition-all",
+                                "relative p-4 rounded-2xl border transition-all text-left group overflow-hidden",
                                 isActive
-                                    ? "border-[var(--primary-blue)] ring-2 ring-[var(--primary-blue)]/20 bg-[var(--bg-primary)]"
-                                    : "border-[var(--border-default)] bg-[var(--bg-primary)] hover:border-[var(--border-strong)]"
+                                    ? "bg-[var(--bg-primary)] border-[var(--primary-blue)] ring-1 ring-[var(--primary-blue)] shadow-lg"
+                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md"
                             )}
                         >
-                            <div className="flex items-center gap-3">
-                                <div className={cn(
-                                    "flex items-center justify-center h-10 w-10 rounded-lg",
-                                    status.color
-                                )}>
-                                    <status.icon className={cn("h-5 w-5", status.textColor)} />
+                            <div className="flex flex-col h-full justify-between">
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className={cn(
+                                        "p-2 rounded-lg",
+                                        status.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                                            status.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
+                                                status.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
+                                                    status.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                                                        status.color === 'orange' ? "bg-orange-500/10 text-orange-500" :
+                                                            "bg-rose-500/10 text-rose-500"
+                                    )}>
+                                        <status.icon className="w-4 h-4" />
+                                    </div>
+                                    {isActive && <div className="w-2 h-2 rounded-full bg-[var(--primary-blue)]" />}
                                 </div>
-                                <div className="text-left">
-                                    <p className="text-2xl font-bold text-[var(--text-primary)]">{count}</p>
-                                    <p className="text-xs text-[var(--text-muted)]">{status.label}</p>
+                                <div>
+                                    <p className="text-xl font-bold text-[var(--text-primary)]">{count}</p>
+                                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{status.label}</p>
                                 </div>
                             </div>
-                            {isActive && (
-                                <div className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2525FF]" />
-                            )}
-                        </button>
+                        </motion.button>
                     );
                 })}
             </div>
 
-            <Card>
-                <CardHeader className="pb-4">
-                    <div className="relative">
-                        <Input
-                            placeholder="Search by AWB, Order ID, or Customer"
+            {/* Filters & Table */}
+            <div className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-4 justify-between bg-[var(--bg-primary)] p-1.5 rounded-2xl border border-[var(--border-subtle)]">
+                    <div className="relative w-full md:w-96">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                        <input
+                            type="text"
+                            placeholder="Search by AWB, Order ID, or Customer..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            icon={<Search className="h-4 w-4" />}
-                            className="max-w-md"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] focus:ring-0 text-sm transition-all"
                         />
                     </div>
-                    <FilterBar
-                        filters={filterOptions}
-                        activeFilters={filters}
-                        onFilterChange={(key, val) => setFilters(prev => ({ ...prev, [key]: val }))}
-                        onClearFilters={() => setFilters({ status: 'all', courier: 'all', paymentMode: 'all' })}
-                    />
-                </CardHeader>
-                <CardContent>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="h-full">
+                            <Filter className="w-4 h-4 mr-2" /> More Filters
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden shadow-sm">
                     <DataTable
                         columns={columns}
                         data={filteredData}
                         onRowClick={(row) => setSelectedShipment(row)}
                     />
-                </CardContent>
-            </Card>
+                </div>
+            </div>
+
+            {/* Detail Modal */}
+            <ShipmentDetailModal
+                isOpen={!!selectedShipment}
+                onClose={() => setSelectedShipment(null)}
+                shipment={selectedShipment}
+            />
         </div>
     );
 }
-

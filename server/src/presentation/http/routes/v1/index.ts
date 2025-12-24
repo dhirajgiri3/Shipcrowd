@@ -1,24 +1,24 @@
 import express, { Request, Response } from 'express';
-import authRoutes from './auth.routes';
-import notificationRoutes from './notification.routes';
-import userRoutes from './user.routes';
-import companyRoutes from './company.routes';
-import whatsappRoutes from './whatsapp.routes';
-import kycRoutes from './kyc.routes';
-import warehouseRoutes from './warehouse.routes';
-import teamRoutes from './team.routes';
-import sessionRoutes from './session.routes';
-import auditRoutes from './audit.routes';
-import accountRoutes from './account.routes';
-import emailRoutes from './email.routes';
-import profileRoutes from './profile.routes';
-import recoveryRoutes from './recovery.routes';
+import authRoutes from './auth/auth.routes';
+import notificationRoutes from './communication/notification.routes';
+import userRoutes from './identity/user.routes';
+import companyRoutes from './organization/company.routes';
+import whatsappRoutes from './communication/whatsapp.routes';
+import kycRoutes from './identity/kyc.routes';
+import warehouseRoutes from './shipping/warehouse.routes';
+import teamRoutes from './organization/team.routes';
+import sessionRoutes from './auth/session.routes';
+import auditRoutes from './system/audit.routes';
+import accountRoutes from './identity/account.routes';
+import emailRoutes from './communication/email.routes';
+import profileRoutes from './identity/profile.routes';
+import recoveryRoutes from './auth/recovery.routes';
 // New routes for 3-Day MVP
-import orderRoutes from './order.routes';
-import shipmentRoutes from './shipment.routes';
-import analyticsRoutes from './analytics.routes';
-import ratecardRoutes from './ratecard.routes';
-import zoneRoutes from './zone.routes';
+import orderRoutes from './shipping/order.routes';
+import shipmentRoutes from './shipping/shipment.routes';
+import analyticsRoutes from './system/analytics.routes';
+import ratecardRoutes from './shipping/ratecard.routes';
+import zoneRoutes from './shipping/zone.routes';
 
 const router = express.Router();
 

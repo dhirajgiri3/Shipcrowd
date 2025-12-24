@@ -69,7 +69,7 @@ export function AuthGuard({
         }
 
         // KYC check
-        if (requireKycApproved && user?.kycStatus !== 'approved') {
+        if (requireKycApproved && !user?.kycStatus?.isComplete) {
             // Allow admin to bypass KYC requirement
             if (user?.role !== 'admin') {
                 router.push('/seller/kyc');
@@ -111,7 +111,7 @@ export function AuthGuard({
     if (!isAuthenticated) return null;
     if (requireCompany && !user?.companyId) return null;
     if (allowedRoles && user && !allowedRoles.includes(user.role)) return null;
-    if (requireKycApproved && user?.kycStatus !== 'approved' && user?.role !== 'admin') return null;
+    if (requireKycApproved && !user?.kycStatus?.isComplete && user?.role !== 'admin') return null;
     if (requireCompanyActive && user?.companyStatus !== 'active' && user?.role !== 'admin') return null;
     if (requiredPermissions && requiredPermissions.length > 0 && user) {
         const hasPermission = requiredPermissions.some(perm => user.permissions?.includes(perm));

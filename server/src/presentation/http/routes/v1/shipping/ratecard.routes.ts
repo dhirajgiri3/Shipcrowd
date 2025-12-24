@@ -1,0 +1,43 @@
+import express from 'express';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import ratecardController from '../../../controllers/shipping/ratecard.controller';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
+
+const router = express.Router();
+
+/**
+ * @route POST /api/v1/ratecards
+ * @desc Create a new rate card
+ * @access Private
+ */
+router.post('/', authenticate, csrfProtection, asyncHandler(ratecardController.createRateCard));
+
+/**
+ * @route GET /api/v1/ratecards
+ * @desc Get all rate cards
+ * @access Private
+ */
+router.get('/', authenticate, asyncHandler(ratecardController.getRateCards));
+
+/**
+ * @route POST /api/v1/ratecards/calculate
+ * @desc Calculate shipping rate
+ * @access Private
+ */
+router.post('/calculate', authenticate, asyncHandler(ratecardController.calculateRate));
+
+/**
+ * @route GET /api/v1/ratecards/:id
+ * @desc Get a rate card by ID
+ * @access Private
+ */
+router.get('/:id', authenticate, asyncHandler(ratecardController.getRateCardById));
+
+/**
+ * @route PATCH /api/v1/ratecards/:id
+ * @desc Update a rate card
+ * @access Private
+ */
+router.patch('/:id', authenticate, csrfProtection, asyncHandler(ratecardController.updateRateCard));
+
+export default router;

@@ -61,8 +61,13 @@ export default function LoginPage() {
 
             if (result.success) {
                 toast.success("Welcome back! Redirecting...")
-                // Redirect to onboarding if no company, otherwise to dashboard
-                const destination = result.user?.companyId ? "/seller" : "/onboarding"
+                // Role-based redirect logic
+                let destination = "/onboarding"
+                if (result.user?.role === 'admin') {
+                    destination = "/admin"
+                } else if (result.user?.companyId) {
+                    destination = "/seller"
+                }
                 setTimeout(() => router.push(destination), 500)
             } else {
                 // Use error handler to get user-friendly message

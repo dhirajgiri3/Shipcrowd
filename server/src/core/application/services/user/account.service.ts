@@ -2,9 +2,11 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
 import Session from '../../../../infrastructure/database/mongoose/models/Session';
-import { createAuditLog } from '../../../../presentation/http/middleware/auditLog';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError, DatabaseError } from '../../../../shared/errors/AppError';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Deactivate a user account

@@ -1,240 +1,145 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
+import { motion } from 'framer-motion';
+import {
+    AlertTriangle,
+    Package,
+    Phone,
+    RefreshCw,
+    X,
+    CheckCircle2,
+    Clock,
+    MapPin,
+    Search,
+    Filter
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/src/shared/components/card';
 import { Button } from '@/src/shared/components/button';
 import { Input } from '@/src/shared/components/Input';
 import { Badge } from '@/src/shared/components/badge';
-import {
-    PackageX,
-    Search,
-    Filter,
-    Phone,
-    RefreshCw,
-    RotateCcw,
-    MessageSquare,
-    Clock,
-    AlertTriangle,
-    CheckCircle,
-    XCircle,
-    MapPin,
-    Calendar,
-    ArrowRight,
-    X
-} from 'lucide-react';
 import { cn } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
-import { formatCurrency } from '@/src/shared/utils';
 
 // Mock NDR data
 const mockNDRs = [
     {
-        id: 'NDR-001',
-        awbNumber: 'DL987654321IN',
-        orderId: 'ORD-2024-001234',
-        customer: { name: 'Rahul Sharma', phone: '+91 98765 43210' },
-        address: 'Green Park Extension, New Delhi - 110016',
+        id: 'NDR001',
+        orderId: 'ORD-2024-1234',
+        trackingNumber: 'DEL123456789',
+        customerName: 'Rahul Sharma',
+        customerPhone: '9876543210',
+        address: 'Mumbai, Maharashtra - 400001',
         reason: 'Customer not available',
-        reasonCode: 'CNA',
         attempts: 2,
-        maxAttempts: 3,
-        lastAttemptDate: '2024-12-10',
-        courier: 'Delhivery',
-        status: 'action_required',
-        createdAt: '2024-12-09',
-        codAmount: 1299,
-        paymentMode: 'COD',
+        status: 'pending',
+        createdAt: '2024-12-24T10:00:00Z',
+        carrier: 'Delhivery',
     },
     {
-        id: 'NDR-002',
-        awbNumber: 'XB123456789IN',
-        orderId: 'ORD-2024-001235',
-        customer: { name: 'Priya Singh', phone: '+91 87654 32109' },
-        address: 'Koramangala, Bangalore - 560034',
-        reason: 'Address incomplete',
-        reasonCode: 'AIC',
+        id: 'NDR002',
+        orderId: 'ORD-2024-1235',
+        trackingNumber: 'XPR987654321',
+        customerName: 'Priya Patel',
+        customerPhone: '9123456789',
+        address: 'Delhi - 110001',
+        reason: 'Incomplete address',
         attempts: 1,
-        maxAttempts: 3,
-        lastAttemptDate: '2024-12-11',
-        courier: 'Xpressbees',
-        status: 'action_required',
-        createdAt: '2024-12-11',
-        codAmount: 0,
-        paymentMode: 'Prepaid',
+        status: 'pending',
+        createdAt: '2024-12-24T09:30:00Z',
+        carrier: 'Xpressbees',
     },
     {
-        id: 'NDR-003',
-        awbNumber: 'BD555666777IN',
-        orderId: 'ORD-2024-001236',
-        customer: { name: 'Amit Kumar', phone: '+91 76543 21098' },
-        address: 'Andheri West, Mumbai - 400053',
-        reason: 'Customer refused delivery',
-        reasonCode: 'CRD',
-        attempts: 1,
-        maxAttempts: 3,
-        lastAttemptDate: '2024-12-10',
-        courier: 'Bluedart',
+        id: 'NDR003',
+        orderId: 'ORD-2024-1236',
+        trackingNumber: 'DTC456789123',
+        customerName: 'Amit Kumar',
+        customerPhone: '9988776655',
+        address: 'Bangalore, Karnataka - 560001',
+        reason: 'Customer rejected',
+        attempts: 3,
         status: 'rto_initiated',
-        createdAt: '2024-12-09',
-        codAmount: 2499,
-        paymentMode: 'COD',
-    },
-    {
-        id: 'NDR-004',
-        awbNumber: 'DT999888777IN',
-        orderId: 'ORD-2024-001237',
-        customer: { name: 'Sneha Patel', phone: '+91 65432 10987' },
-        address: 'Satellite, Ahmedabad - 380015',
-        reason: 'Wrong phone number',
-        reasonCode: 'WPN',
-        attempts: 2,
-        maxAttempts: 3,
-        lastAttemptDate: '2024-12-11',
-        courier: 'DTDC',
-        status: 'action_required',
-        createdAt: '2024-12-10',
-        codAmount: 799,
-        paymentMode: 'COD',
-    },
-    {
-        id: 'NDR-005',
-        awbNumber: 'EC111222333IN',
-        orderId: 'ORD-2024-001238',
-        customer: { name: 'Vikram Reddy', phone: '+91 54321 09876' },
-        address: 'Jubilee Hills, Hyderabad - 500033',
-        reason: 'Customer requested reschedule',
-        reasonCode: 'CRR',
-        attempts: 1,
-        maxAttempts: 3,
-        lastAttemptDate: '2024-12-11',
-        courier: 'Delhivery',
-        status: 'reattempt_scheduled',
-        createdAt: '2024-12-11',
-        codAmount: 1899,
-        paymentMode: 'COD',
+        createdAt: '2024-12-23T15:00:00Z',
+        carrier: 'DTDC',
     },
 ];
 
-const statusFilters = [
-    { id: 'all', label: 'All NDRs' },
-    { id: 'action_required', label: 'Action Required' },
-    { id: 'reattempt_scheduled', label: 'Reattempt Scheduled' },
-    { id: 'rto_initiated', label: 'RTO Initiated' },
-];
+const statusStyles = {
+    pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', label: 'Pending' },
+    reattempt: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', label: 'Reattempt Scheduled' },
+    rto_initiated: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300', label: 'RTO Initiated' },
+    resolved: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', label: 'Resolved' },
+};
 
 export default function NDRManagementPage() {
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState('all');
-    const [selectedNDR, setSelectedNDR] = useState<typeof mockNDRs[0] | null>(null);
-    const [showActionModal, setShowActionModal] = useState(false);
-    const { addToast } = useToast();
+    const [filter, setFilter] = useState<'all' | 'pending' | 'rto_initiated'>('all');
 
     const filteredNDRs = mockNDRs.filter(ndr => {
-        const matchesSearch = ndr.awbNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ndr.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ndr.orderId.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || ndr.status === selectedStatus;
-        return matchesSearch && matchesStatus;
+        const matchesSearch = ndr.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            ndr.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            ndr.trackingNumber.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFilter = filter === 'all' || ndr.status === filter;
+        return matchesSearch && matchesFilter;
     });
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'action_required':
-                return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />Action Required</Badge>;
-            case 'reattempt_scheduled':
-                return <Badge variant="info" className="gap-1"><RefreshCw className="h-3 w-3" />Reattempt Scheduled</Badge>;
-            case 'rto_initiated':
-                return <Badge variant="warning" className="gap-1"><RotateCcw className="h-3 w-3" />RTO Initiated</Badge>;
-            default:
-                return <Badge variant="neutral">{status}</Badge>;
-        }
-    };
-
-    const handleAction = (action: string) => {
-        setShowActionModal(false);
-        addToast(`Action "${action}" submitted successfully!`, 'success');
-    };
-
-    const actionRequiredCount = mockNDRs.filter(n => n.status === 'action_required').length;
+    const pendingCount = mockNDRs.filter(n => n.status === 'pending').length;
+    const rtoCount = mockNDRs.filter(n => n.status === 'rto_initiated').length;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="min-h-screen space-y-6 pb-10">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <PackageX className="h-6 w-6 text-[#2525FF]" />
-                        NDR Management
-                    </h1>
-                    <p className="text-[var(--text-muted)] text-sm mt-1">
-                        Manage non-delivery reports and take actions
-                    </p>
-                </div>
-                {actionRequiredCount > 0 && (
-                    <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg px-4 py-2">
-                        <AlertTriangle className="h-4 w-4 text-rose-600" />
-                        <span className="text-sm font-medium text-rose-700">
-                            {actionRequiredCount} NDR{actionRequiredCount > 1 ? 's' : ''} require action
-                        </span>
-                    </div>
-                )}
-            </div>
+            <header>
+                <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-3xl font-bold text-[var(--text-primary)] tracking-tight"
+                >
+                    NDR Management
+                </motion.h1>
+                <p className="text-sm text-[var(--text-secondary)] mt-2">
+                    Resolve failed deliveries to prevent RTO charges
+                </p>
+            </header>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-amber-200/80 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">Total NDRs</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockNDRs.length}</p>
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                                <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <PackageX className="h-5 w-5 text-[#2525FF]" />
+                            <div>
+                                <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{pendingCount}</p>
+                                <p className="text-sm text-amber-600 dark:text-amber-400">Pending NDRs</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+
+                <Card className="border-rose-200/80 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-950/20">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">Action Required</p>
-                                <p className="text-2xl font-bold text-rose-600">{actionRequiredCount}</p>
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
+                                <X className="h-6 w-6 text-rose-600 dark:text-rose-400" />
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                                <AlertTriangle className="h-5 w-5 text-rose-600" />
+                            <div>
+                                <p className="text-2xl font-bold text-rose-700 dark:text-rose-300">{rtoCount}</p>
+                                <p className="text-sm text-rose-600 dark:text-rose-400">RTO Initiated</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+
+                <Card className="border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                            </div>
                             <div>
-                                <p className="text-sm text-[var(--text-muted)]">Reattempt Scheduled</p>
-                                <p className="text-2xl font-bold text-cyan-600">
-                                    {mockNDRs.filter(n => n.status === 'reattempt_scheduled').length}
-                                </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-cyan-100 flex items-center justify-center">
-                                <RefreshCw className="h-5 w-5 text-cyan-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-muted)]">RTO Initiated</p>
-                                <p className="text-2xl font-bold text-amber-600">
-                                    {mockNDRs.filter(n => n.status === 'rto_initiated').length}
-                                </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <RotateCcw className="h-5 w-5 text-amber-600" />
+                                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">85%</p>
+                                <p className="text-sm text-emerald-600 dark:text-emerald-400">Resolution Rate</p>
                             </div>
                         </div>
                     </CardContent>
@@ -242,187 +147,110 @@ export default function NDRManagementPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                    <Input
-                        placeholder="Search by AWB, Order ID, or Customer..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        icon={<Search className="h-4 w-4" />}
-                    />
-                </div>
-                <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-                    {statusFilters.map((filter) => (
-                        <button
-                            key={filter.id}
-                            onClick={() => setSelectedStatus(filter.id)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
-                                selectedStatus === filter.id
-                                    ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
-                            )}
-                        >
-                            {filter.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <Card className="border-[var(--border-default)]">
+                <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                            <Input
+                                placeholder="Search by Order ID, Customer, or Tracking..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            {(['all', 'pending', 'rto_initiated'] as const).map((f) => (
+                                <Button
+                                    key={f}
+                                    variant={filter === f ? 'primary' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setFilter(f)}
+                                >
+                                    {f === 'all' ? 'All' : f === 'pending' ? 'Pending' : 'RTO'}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* NDR List */}
             <div className="space-y-4">
-                {filteredNDRs.map((ndr) => (
-                    <Card
-                        key={ndr.id}
-                        className={cn(
-                            "hover:shadow-lg transition-all cursor-pointer border-l-4",
-                            ndr.status === 'action_required' && "border-l-rose-500",
-                            ndr.status === 'reattempt_scheduled' && "border-l-cyan-500",
-                            ndr.status === 'rto_initiated' && "border-l-amber-500"
-                        )}
-                        onClick={() => { setSelectedNDR(ndr); setShowActionModal(true); }}
-                    >
-                        <CardContent className="p-5">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                <div className="flex-1 space-y-2">
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                        <code className="font-mono font-semibold text-[var(--text-primary)]">{ndr.awbNumber}</code>
-                                        {getStatusBadge(ndr.status)}
-                                        <Badge variant={ndr.paymentMode === 'COD' ? 'warning' : 'success'} className="text-xs">
-                                            {ndr.paymentMode}
-                                        </Badge>
-                                    </div>
+                {filteredNDRs.length === 0 ? (
+                    <Card className="border-[var(--border-default)]">
+                        <CardContent className="p-12 text-center">
+                            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-emerald-500" />
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)]">No NDRs found</h3>
+                            <p className="text-sm text-[var(--text-secondary)] mt-1">
+                                All deliveries are on track!
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    filteredNDRs.map((ndr, index) => {
+                        const status = statusStyles[ndr.status as keyof typeof statusStyles];
+                        return (
+                            <motion.div
+                                key={ndr.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <Card className="border-[var(--border-default)] hover:shadow-md transition-shadow">
+                                    <CardContent className="p-6">
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                            <div className="flex-1 space-y-3">
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <span className="font-bold text-[var(--text-primary)]">{ndr.orderId}</span>
+                                                    <Badge className={cn(status.bg, status.text)}>
+                                                        {status.label}
+                                                    </Badge>
+                                                    <span className="text-sm text-[var(--text-muted)]">{ndr.carrier}</span>
+                                                </div>
 
-                                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                                        <span className="flex items-center gap-1">
-                                            <Phone className="h-3.5 w-3.5" />
-                                            {ndr.customer.name}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <MapPin className="h-3.5 w-3.5" />
-                                            {ndr.address.split(',').slice(-1)[0].trim()}
-                                        </span>
-                                    </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                    <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                                                        <Package className="h-4 w-4 text-[var(--text-muted)]" />
+                                                        {ndr.trackingNumber}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                                                        <Phone className="h-4 w-4 text-[var(--text-muted)]" />
+                                                        {ndr.customerName} • {ndr.customerPhone}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                                                        <MapPin className="h-4 w-4 text-[var(--text-muted)]" />
+                                                        {ndr.address}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                                                        <Clock className="h-4 w-4 text-[var(--text-muted)]" />
+                                                        {ndr.attempts} attempt(s) • {ndr.reason}
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                    <div className="bg-rose-50 rounded-lg px-3 py-2 inline-block">
-                                        <p className="text-sm text-rose-700">
-                                            <span className="font-medium">Reason:</span> {ndr.reason}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-6">
-                                    <div className="text-center">
-                                        <p className="text-xs text-gray-400">Attempts</p>
-                                        <p className="text-lg font-bold text-[var(--text-primary)]">{ndr.attempts}/{ndr.maxAttempts}</p>
-                                    </div>
-                                    {ndr.codAmount > 0 && (
-                                        <div className="text-center">
-                                            <p className="text-xs text-gray-400">COD Amount</p>
-                                            <p className="text-lg font-bold text-[var(--text-primary)]">{formatCurrency(ndr.codAmount)}</p>
+                                            <div className="flex gap-2">
+                                                {ndr.status === 'pending' && (
+                                                    <>
+                                                        <Button variant="outline" size="sm">
+                                                            <Phone className="h-4 w-4 mr-1" />
+                                                            Contact
+                                                        </Button>
+                                                        <Button variant="primary" size="sm">
+                                                            <RefreshCw className="h-4 w-4 mr-1" />
+                                                            Reattempt
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                    )}
-                                    <div className="text-center">
-                                        <p className="text-xs text-gray-400">Courier</p>
-                                        <p className="text-sm font-medium text-[var(--text-primary)]">{ndr.courier}</p>
-                                    </div>
-                                    {ndr.status === 'action_required' && (
-                                        <Button size="sm" className="bg-rose-600 hover:bg-rose-700">
-                                            Take Action
-                                            <ArrowRight className="h-4 w-4 ml-1" />
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        );
+                    })
+                )}
             </div>
-
-            {/* Action Modal */}
-            {showActionModal && selectedNDR && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-lg">
-                        <CardHeader className="flex flex-row items-start justify-between">
-                            <div>
-                                <CardTitle className="text-lg">Take NDR Action</CardTitle>
-                                <CardDescription>
-                                    {selectedNDR.awbNumber} • {selectedNDR.customer.name}
-                                </CardDescription>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => setShowActionModal(false)}>
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
-                                <p className="text-sm text-[var(--text-muted)]">NDR Reason</p>
-                                <p className="font-medium text-[var(--text-primary)]">{selectedNDR.reason}</p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Last attempt: {selectedNDR.lastAttemptDate} • Attempt {selectedNDR.attempts} of {selectedNDR.maxAttempts}
-                                </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium text-gray-700">Select Action</p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        variant="outline"
-                                        className="h-auto py-4 flex-col gap-2"
-                                        onClick={() => handleAction('reattempt')}
-                                    >
-                                        <RefreshCw className="h-5 w-5 text-cyan-600" />
-                                        <span>Reattempt Delivery</span>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-auto py-4 flex-col gap-2"
-                                        onClick={() => handleAction('rto')}
-                                    >
-                                        <RotateCcw className="h-5 w-5 text-amber-600" />
-                                        <span>Initiate RTO</span>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-auto py-4 flex-col gap-2"
-                                        onClick={() => handleAction('update_address')}
-                                    >
-                                        <MapPin className="h-5 w-5 text-[#2525FF]" />
-                                        <span>Update Address</span>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-auto py-4 flex-col gap-2"
-                                        onClick={() => handleAction('update_phone')}
-                                    >
-                                        <Phone className="h-5 w-5 text-emerald-600" />
-                                        <span>Update Phone</span>
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Remarks (Optional)</label>
-                                <textarea
-                                    className="flex min-h-[80px] w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 resize-none"
-                                    placeholder="Add any additional instructions..."
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            {/* Empty State */}
-            {filteredNDRs.length === 0 && (
-                <Card>
-                    <CardContent className="py-12 text-center">
-                        <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No NDRs found</h3>
-                        <p className="text-[var(--text-muted)] mt-1">All your deliveries are on track!</p>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     );
 }

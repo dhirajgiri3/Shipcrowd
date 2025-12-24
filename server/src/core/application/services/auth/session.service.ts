@@ -4,6 +4,8 @@ import * as UAParser from 'ua-parser-js';
 import Session, { ISession } from '../../../../infrastructure/database/mongoose/models/Session';
 import { verifyRefreshToken } from '../../../../shared/helpers/jwt';
 import logger from '../../../../shared/logger/winston.logger';
+import { DatabaseError, AuthenticationError } from '../../../../shared/errors/AppError';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Create a new session for a user

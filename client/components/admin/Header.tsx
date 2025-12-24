@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, Truck, Plus, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
@@ -12,22 +12,25 @@ import { TrackingModal } from '@/components/admin/TrackingModal';
 import { WalletModal } from '@/components/admin/WalletModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/utils';
-
-// Mock user - will be replaced with actual auth data
-const mockUser = {
-    name: 'Dhiraj Giri',
-    email: 'dhiraj.giri@shipcrowd.in',
-    role: 'admin+seller' as const,
-    walletBalance: 2450.00
-};
+import { useAuth } from '@/src/features/auth';
 
 export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, logout } = useAuth();
     const [isCreateShipmentOpen, setIsCreateShipmentOpen] = useState(false);
     const [isTrackingOpen, setIsTrackingOpen] = useState(false);
     const [isWalletOpen, setIsWalletOpen] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
     const [searchValue, setSearchValue] = useState('');
+
+    // Build user object for ProfileDropdown
+    const currentUser = {
+        name: user?.name || 'Admin',
+        email: user?.email || '',
+        role: (user?.role || 'admin') as 'admin' | 'seller' | 'admin+seller',
+        walletBalance: 0 // TODO: Fetch from wallet API
+    };
 
     const getPageTitle = (path: string) => {
         const segment = path.split('/')[2];
@@ -47,8 +50,9 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         return titles[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
     };
 
-    const handleSignOut = () => {
-        console.log('Sign out');
+    const handleSignOut = async () => {
+        await logout();
+        router.push('/login');
     };
 
     // Command+K or Ctrl+K to focus search
@@ -161,7 +165,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                                 </div>
                                 <div className="flex flex-col items-start leading-none">
                                     <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">Balance</span>
-                                    <span className="text-sm font-bold text-[var(--text-primary)] font-mono">{formatCurrency(mockUser.walletBalance)}</span>
+                                    <span className="text-sm font-bold text-[var(--text-primary)] font-mono">{formatCurrency(currentUser.walletBalance)}</span>
                                 </div>
                             </button>
                         </Tooltip>
@@ -193,7 +197,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                     <div className="flex items-center gap-2">
                         <ThemeToggle />
                         <NotificationsDropdown />
-                        <ProfileDropdown user={mockUser} onSignOut={handleSignOut} />
+                        <ProfileDropdown user={currentUser} onSignOut={handleSignOut} />
                     </div>
                 </div>
             </header>

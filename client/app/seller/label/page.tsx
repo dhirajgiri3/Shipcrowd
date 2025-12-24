@@ -1,8 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
+import { useState, useEffect } from 'react';
 import { Button } from '@/src/shared/components/button';
 import { Input } from '@/src/shared/components/Input';
 import { Badge } from '@/src/shared/components/badge';
@@ -14,21 +13,22 @@ import {
     Package,
     MapPin,
     Phone,
-    User,
     Truck,
     QrCode,
     Copy,
-    CheckCircle
+    CheckCircle,
+    ArrowRight,
+    Loader2
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
 import { useToast } from '@/src/shared/components/Toast';
+import { motion } from 'framer-motion';
 
 // Mock shipment data for label
 const mockShipmentForLabel = {
     awbNumber: 'DL987654321IN',
     orderId: 'ORD-2024-001234',
     courier: 'Delhivery',
-    courierLogo: '/logos/couriers/delhivery.png',
     service: 'Surface Express',
     createdAt: '2024-12-11',
     weight: '1.5 kg',
@@ -63,6 +63,13 @@ export default function ShippingLabelPage() {
     const [shipmentData, setShipmentData] = useState<typeof mockShipmentForLabel | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const { addToast } = useToast();
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Clock
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     const handleSearch = () => {
         if (!awbInput.trim()) {
@@ -94,238 +101,227 @@ export default function ShippingLabelPage() {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-8 pb-20">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 print:hidden">
                 <div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <FileText className="h-6 w-6 text-[#2525FF]" />
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-2"
+                    >
+                        <div className="px-2 py-1 rounded-md bg-[var(--primary-blue-soft)]/20 border border-[var(--primary-blue)]/20 flex items-center gap-2">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary-blue)]"></span>
+                            </span>
+                            Live Generator
+                        </div>
+                        <span className="text-[var(--text-muted)]">•</span>
+                        <span className="text-[var(--text-muted)]">{currentTime.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                    </motion.div>
+                    <motion.h1
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
+                    >
                         Shipping Labels
-                    </h1>
-                    <p className="text-[var(--text-muted)] text-sm mt-1">
-                        Generate and download shipping labels for your orders
-                    </p>
+                    </motion.h1>
                 </div>
             </div>
 
             {/* Search Section */}
-            <Card>
-                <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-1">
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Enter AWB Number
-                            </label>
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder="e.g., DL987654321IN"
-                                    value={awbInput}
-                                    onChange={(e) => setAwbInput(e.target.value)}
-                                    className="flex-1"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                />
-                                <Button onClick={handleSearch} isLoading={isSearching}>
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Search
-                                </Button>
-                            </div>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm print:hidden"
+            >
+                <div className="max-w-2xl">
+                    <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
+                        Enter AWB Number to Generate Label
+                    </label>
+                    <div className="flex gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                            <Input
+                                placeholder="e.g., DL987654321IN"
+                                value={awbInput}
+                                onChange={(e) => setAwbInput(e.target.value)}
+                                className="pl-10 h-12 rounded-xl bg-[var(--bg-secondary)] border-transparent focus:bg-[var(--bg-primary)] focus:border-[var(--primary-blue)] text-lg"
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            />
                         </div>
+                        <Button
+                            onClick={handleSearch}
+                            disabled={isSearching}
+                            className="h-12 px-8 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20"
+                        >
+                            {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Search'}
+                        </Button>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </motion.div>
 
-            {/* Label Preview */}
-            {shipmentData && (
-                <div className="grid gap-6 lg:grid-cols-3">
+            {/* Label Preview Area */}
+            {shipmentData ? (
+                <div className="grid gap-8 lg:grid-cols-3">
                     {/* Label Card */}
-                    <Card className="lg:col-span-2 print:shadow-none">
-                        <CardHeader className="flex flex-row items-center justify-between print:hidden">
-                            <div>
-                                <CardTitle className="text-lg">Shipping Label Preview</CardTitle>
-                                <CardDescription>Review before printing</CardDescription>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="lg:col-span-2 print:col-span-3 print:shadow-none"
+                    >
+                        <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm print:border-none print:p-0">
+                            <div className="flex items-center justify-between mb-6 print:hidden">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)]">Preview</h3>
+                                    <p className="text-sm text-[var(--text-muted)]">Check details before printing</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" onClick={handleDownload} className="bg-[var(--bg-secondary)] border-[var(--border-subtle)]">
+                                        <Download className="h-4 w-4 mr-2" /> PDF
+                                    </Button>
+                                    <Button onClick={handlePrint} className="bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-secondary)]">
+                                        <Printer className="h-4 w-4 mr-2" /> Print
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" onClick={handleDownload}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Download PDF
-                                </Button>
-                                <Button onClick={handlePrint}>
-                                    <Printer className="h-4 w-4 mr-2" />
-                                    Print Label
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {/* Actual Label Design */}
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-[var(--bg-primary)]">
-                                {/* Header with AWB */}
-                                <div className="flex items-center justify-between border-b-2 border-gray-900 pb-4 mb-4">
-                                    <div>
-                                        <p className="text-xs text-[var(--text-muted)] uppercase">Courier Partner</p>
-                                        <p className="text-xl font-bold text-[var(--text-primary)]">{shipmentData.courier}</p>
-                                        <p className="text-sm text-gray-600">{shipmentData.service}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-[var(--text-muted)] uppercase">AWB Number</p>
-                                        <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">{shipmentData.awbNumber}</p>
-                                        <div className="mt-2 bg-[var(--bg-tertiary)] p-2 rounded">
-                                            <QrCode className="h-16 w-16 text-gray-800 mx-auto" />
+
+                            {/* Actual Label Design - Replicating standard industry label format with clean CSS */}
+                            <div className="border-2 border-gray-900 rounded-lg p-0 bg-white text-black overflow-hidden print:border print:border-black">
+                                {/* Top Bar */}
+                                <div className="flex border-b-2 border-gray-900">
+                                    <div className="flex-1 p-4 border-r-2 border-gray-900">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Carrier</p>
+                                        <div className="flex items-center gap-2">
+                                            <Truck className="h-6 w-6" />
+                                            <span className="text-2xl font-black uppercase">{shipmentData.courier}</span>
                                         </div>
+                                        <p className="text-sm font-medium mt-1">{shipmentData.service}</p>
                                     </div>
-                                </div>
-
-                                {/* Addresses Section */}
-                                <div className="grid grid-cols-2 gap-6 border-b border-gray-200 pb-4 mb-4">
-                                    {/* From */}
-                                    <div>
-                                        <p className="text-xs font-bold text-[var(--text-muted)] uppercase mb-2 flex items-center gap-1">
-                                            <MapPin className="h-3 w-3" />
-                                            Ship From
-                                        </p>
-                                        <div className="text-sm text-[var(--text-primary)]">
-                                            <p className="font-semibold">{shipmentData.shipperDetails.name}</p>
-                                            <p>{shipmentData.shipperDetails.address}</p>
-                                            <p>{shipmentData.shipperDetails.city}, {shipmentData.shipperDetails.state}</p>
-                                            <p className="font-semibold">{shipmentData.shipperDetails.pincode}</p>
-                                            <p className="flex items-center gap-1 mt-1">
-                                                <Phone className="h-3 w-3" />
-                                                {shipmentData.shipperDetails.phone}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* To */}
-                                    <div className="border-l pl-6">
-                                        <p className="text-xs font-bold text-[var(--text-muted)] uppercase mb-2 flex items-center gap-1">
-                                            <MapPin className="h-3 w-3" />
-                                            Ship To
-                                        </p>
-                                        <div className="text-sm text-gray-900">
-                                            <p className="font-semibold text-lg">{shipmentData.consigneeDetails.name}</p>
-                                            <p>{shipmentData.consigneeDetails.address}</p>
-                                            <p>{shipmentData.consigneeDetails.city}, {shipmentData.consigneeDetails.state}</p>
-                                            <p className="font-bold text-xl">{shipmentData.consigneeDetails.pincode}</p>
-                                            <p className="flex items-center gap-1 mt-1">
-                                                <Phone className="h-3 w-3" />
-                                                {shipmentData.consigneeDetails.phone}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Product & Order Details */}
-                                <div className="grid grid-cols-3 gap-4 border-b border-gray-200 pb-4 mb-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Product</p>
-                                        <p className="text-sm font-medium text-gray-900">{shipmentData.productDetails.name}</p>
-                                        <p className="text-xs text-gray-500">SKU: {shipmentData.productDetails.sku}</p>
-                                        <p className="text-xs text-gray-500">Qty: {shipmentData.productDetails.quantity}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Weight</p>
-                                        <p className="text-sm font-medium text-gray-900">{shipmentData.weight}</p>
-                                        <p className="text-xs text-gray-500">{shipmentData.dimensions}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Order ID</p>
-                                        <p className="text-sm font-medium text-gray-900">{shipmentData.orderId}</p>
-                                        <p className="text-xs text-gray-500">{shipmentData.createdAt}</p>
-                                    </div>
-                                </div>
-
-                                {/* Payment Section */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <Badge
-                                            variant={shipmentData.paymentMode === 'COD' ? 'warning' : 'success'}
-                                            className="text-sm px-3 py-1"
-                                        >
-                                            {shipmentData.paymentMode}
-                                        </Badge>
+                                    <div className="p-4 flex flex-col items-center justify-center min-w-[120px]">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Payment</p>
+                                        <h2 className="text-2xl font-black">{shipmentData.paymentMode}</h2>
                                         {shipmentData.paymentMode === 'COD' && (
-                                            <p className="text-lg font-bold text-gray-900">
-                                                Collect: ₹{shipmentData.codAmount}
-                                            </p>
+                                            <p className="text-lg font-bold">₹{shipmentData.codAmount}</p>
                                         )}
                                     </div>
-                                    <p className="text-xs text-gray-400">Powered by ShipCrowd</p>
+                                </div>
+
+                                {/* Addresses */}
+                                <div className="grid grid-cols-2 border-b-2 border-gray-900">
+                                    <div className="p-4 border-r-2 border-gray-900">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">From (Shipper)</p>
+                                        <p className="font-bold text-sm">{shipmentData.shipperDetails.name}</p>
+                                        <p className="text-xs mt-1 leading-relaxed">
+                                            {shipmentData.shipperDetails.address}<br />
+                                            {shipmentData.shipperDetails.city}, {shipmentData.shipperDetails.state}<br />
+                                            {shipmentData.shipperDetails.pincode}
+                                        </p>
+                                        <div className="flex items-center gap-1 mt-2 text-xs font-medium">
+                                            <Phone className="h-3 w-3" /> {shipmentData.shipperDetails.phone}
+                                        </div>
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">To (Consignee)</p>
+                                        <p className="font-bold text-lg">{shipmentData.consigneeDetails.name}</p>
+                                        <p className="text-sm mt-1 leading-relaxed">
+                                            {shipmentData.consigneeDetails.address}<br />
+                                            {shipmentData.consigneeDetails.city}, {shipmentData.consigneeDetails.state}
+                                        </p>
+                                        <p className="text-xl font-black mt-2">{shipmentData.consigneeDetails.pincode}</p>
+                                        <div className="flex items-center gap-1 mt-2 text-xs font-medium">
+                                            <Phone className="h-3 w-3" /> {shipmentData.consigneeDetails.phone}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Product Info */}
+                                <div className="grid grid-cols-4 border-b-2 border-gray-900 text-xs">
+                                    <div className="p-3 border-r border-gray-900 col-span-2">
+                                        <p className="font-bold text-gray-500 uppercase mb-1">Product</p>
+                                        <p className="font-medium truncate">{shipmentData.productDetails.name}</p>
+                                        <p className="text-gray-500">SKU: {shipmentData.productDetails.sku}</p>
+                                    </div>
+                                    <div className="p-3 border-r border-gray-900">
+                                        <p className="font-bold text-gray-500 uppercase mb-1">Weight</p>
+                                        <p className="font-bold text-sm">{shipmentData.weight}</p>
+                                        <p className="text-[10px]">{shipmentData.dimensions}</p>
+                                    </div>
+                                    <div className="p-3">
+                                        <p className="font-bold text-gray-500 uppercase mb-1">Date</p>
+                                        <p className="font-medium">{shipmentData.createdAt}</p>
+                                    </div>
+                                </div>
+
+                                {/* Barcode Area */}
+                                <div className="p-6 flex flex-col items-center justify-center bg-white">
+                                    <QrCode className="h-24 w-24 mb-2" />
+                                    <p className="font-mono font-bold text-lg tracking-widest">{shipmentData.awbNumber}</p>
+                                    <p className="text-[10px] text-gray-500 uppercase mt-1">Scan for Tracking</p>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="bg-black text-white p-2 text-center text-[10px] font-bold uppercase tracking-widest">
+                                    Fulfilled by Shipcrowd
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </motion.div>
 
                     {/* Actions Sidebar */}
-                    <Card className="print:hidden">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Shipment Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                    <div className="print:hidden space-y-6">
+                        <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
+                            <h3 className="font-bold text-[var(--text-primary)] mb-4">Quick Details</h3>
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg">
+                                <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
                                     <div>
-                                        <p className="text-xs text-gray-500">AWB Number</p>
-                                        <p className="font-mono font-semibold text-gray-900">{shipmentData.awbNumber}</p>
+                                        <p className="text-xs text-[var(--text-muted)]">AWB Number</p>
+                                        <p className="font-mono font-semibold text-[var(--text-primary)]">{shipmentData.awbNumber}</p>
                                     </div>
-                                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(shipmentData.awbNumber)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--text-muted)] hover:text-[var(--primary-blue)]" onClick={() => copyToClipboard(shipmentData.awbNumber)}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </div>
-
-                                <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-lg">
+                                <div className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
                                     <div>
-                                        <p className="text-xs text-gray-500">Order ID</p>
-                                        <p className="font-semibold text-gray-900">{shipmentData.orderId}</p>
+                                        <p className="text-xs text-[var(--text-muted)]">Order ID</p>
+                                        <p className="font-semibold text-[var(--text-primary)]">{shipmentData.orderId}</p>
                                     </div>
-                                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(shipmentData.orderId)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--text-muted)] hover:text-[var(--primary-blue)]" onClick={() => copyToClipboard(shipmentData.orderId)}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </div>
-
-                                <div className="p-3 bg-[var(--bg-secondary)] rounded-lg">
-                                    <p className="text-xs text-gray-500">Courier</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <Truck className="h-4 w-4 text-[#2525FF]" />
-                                        <p className="font-semibold text-gray-900">{shipmentData.courier}</p>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1">{shipmentData.service}</p>
-                                </div>
-
-                                <div className="p-3 bg-[var(--bg-secondary)] rounded-lg">
-                                    <p className="text-xs text-gray-500">Package</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <Package className="h-4 w-4 text-gray-400" />
-                                        <p className="font-semibold text-gray-900">{shipmentData.weight}</p>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1">{shipmentData.dimensions}</p>
-                                </div>
                             </div>
+                        </div>
 
-                            <div className="pt-4 border-t border-gray-100 space-y-2">
-                                <Button className="w-full" onClick={handlePrint}>
-                                    <Printer className="h-4 w-4 mr-2" />
-                                    Print Label
-                                </Button>
-                                <Button variant="outline" className="w-full" onClick={handleDownload}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Download PDF
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
+                            <Button className="w-full h-12 text-lg font-semibold bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20 mb-3" onClick={handlePrint}>
+                                <Printer className="h-5 w-5 mr-2" />
+                                Print Label
+                            </Button>
+                            <Button variant="outline" className="w-full h-12 bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]" onClick={handleDownload}>
+                                <Download className="h-5 w-5 mr-2" />
+                                Download PDF
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-            )}
-
-            {/* Empty State */}
-            {!shipmentData && (
-                <Card>
-                    <CardContent className="py-16 text-center">
-                        <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">Generate Shipping Labels</h3>
-                        <p className="text-gray-500 mt-1 max-w-md mx-auto">
-                            Enter an AWB number above to fetch shipment details and generate a printable shipping label
-                        </p>
-                    </CardContent>
-                </Card>
+            ) : (
+                /* Empty State with Animation */
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center justify-center py-20 text-center"
+                >
+                    <div className="w-24 h-24 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mb-6 animate-pulse">
+                        <FileText className="h-10 w-10 text-[var(--text-muted)] opacity-50" />
+                    </div>
+                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Ready to Generate</h3>
+                    <p className="text-[var(--text-muted)] max-w-md mt-2">
+                        Enter a valid AWB number above to verify details and generate a compliant shipping label instantly.
+                    </p>
+                </motion.div>
             )}
         </div>
     );

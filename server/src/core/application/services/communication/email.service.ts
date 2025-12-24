@@ -3,6 +3,8 @@ import sgMail from '@sendgrid/mail';
 import { MailDataRequired } from '@sendgrid/mail';
 import logger from '../../../../shared/logger/winston.logger';
 import dotenv from 'dotenv';
+import { ExternalServiceError } from '../../../../shared/errors/AppError';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Load environment variables from .env file
 dotenv.config();
