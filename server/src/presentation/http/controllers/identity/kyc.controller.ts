@@ -9,6 +9,7 @@ import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
 import deepvueService from '../../../../core/application/services/integrations/deepvue.service';
 import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { withTransaction } from '../../../../shared/utils/transactionHelper';
 
 /**
  * Helper function to safely get document ID as string
@@ -86,41 +87,14 @@ const findOrCreateKyc = async (userId: mongoose.Types.ObjectId, companyId: mongo
 };
 
 // Define validation schemas
-const panSchema = z.object({
-  number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/),
-  image: z.string().url(),
-});
-
-const aadhaarSchema = z.object({
-  number: z.string().regex(/^\d{12}$/),
-  frontImage: z.string().url(),
-  backImage: z.string().url(),
-});
-
-const gstinSchema = z.object({
-  number: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/),
-});
-
-const bankAccountSchema = z.object({
-  accountNumber: z.string().min(5),
-  ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
-  accountHolderName: z.string().min(2),
-  bankName: z.string().min(2),
-  proofImage: z.string().url().optional(),
-});
-
-const submitKYCSchema = z.object({
-  pan: panSchema.optional(),
-  aadhaar: aadhaarSchema.optional(),
-  gstin: gstinSchema.optional(),
-  bankAccount: bankAccountSchema.optional(),
-});
-
-const verifyDocumentSchema = z.object({
-  documentType: z.enum(['pan', 'aadhaar', 'gstin', 'bankAccount']),
-  verified: z.boolean(),
-  notes: z.string().optional(),
-});
+import {
+  panSchema,
+  aadhaarSchema,
+  gstinSchema,
+  bankAccountSchema,
+  submitKYCSchema,
+  verifyDocumentSchema
+} from '../../../../shared/validation/schemas';
 
 /**
  * Submit KYC documents
@@ -129,12 +103,12 @@ const verifyDocumentSchema = z.object({
 export const submitKYC = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     if (!req.user.companyId) {
-      res.status(400).json({ message: 'User is not associated with any company' });
+      sendError(res, 'User is not associated with any company', 400, 'NO_COMPANY');
       return;
     }
 
@@ -209,14 +183,16 @@ export const submitKYC = async (req: AuthRequest, res: Response, next: NextFunct
       req
     );
 
-    res.status(201).json({
-      message: 'KYC documents submitted successfully',
-      kyc,
-    });
+    sendCreated(res, { kyc }, 'KYC documents submitted successfully');
   } catch (error) {
     logger.error('Error submitting KYC:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -230,18 +206,18 @@ export const submitKYC = async (req: AuthRequest, res: Response, next: NextFunct
 export const getKYC = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     const kyc = await KYC.findOne({ userId: req.user._id });
 
     if (!kyc) {
-      res.status(404).json({ message: 'KYC not found' });
+      sendError(res, 'KYC not found', 404, 'KYC_NOT_FOUND');
       return;
     }
 
-    res.json({ kyc });
+    sendSuccess(res, { kyc }, 'KYC retrieved successfully');
   } catch (error) {
     logger.error('Error fetching KYC:', error);
     next(error);
@@ -269,7 +245,7 @@ export const verifyKYCDocument = async (req: AuthRequest, res: Response, next: N
 
     const kyc = await KYC.findById(kycId);
     if (!kyc) {
-      res.status(404).json({ message: 'KYC not found' });
+      sendError(res, 'KYC not found', 404, 'KYC_NOT_FOUND');
       return;
     }
 
@@ -278,7 +254,7 @@ export const verifyKYCDocument = async (req: AuthRequest, res: Response, next: N
     const documentPath = `documents.${validatedData.documentType}`;
 
     if (!kyc.documents[validatedData.documentType]) {
-      res.status(400).json({ message: `${validatedData.documentType} document not found` });
+      sendError(res, `${validatedData.documentType} document not found`, 400, 'DOCUMENT_NOT_FOUND');
       return;
     }
 
@@ -325,14 +301,16 @@ export const verifyKYCDocument = async (req: AuthRequest, res: Response, next: N
       req
     );
 
-    res.json({
-      message: `${validatedData.documentType} ${validatedData.verified ? 'verified' : 'rejected'} successfully`,
-      kyc: updatedKYC,
-    });
+    sendSuccess(res, { kyc: updatedKYC }, `${validatedData.documentType} ${validatedData.verified ? 'verified' : 'rejected'} successfully`);
   } catch (error) {
     logger.error('Error verifying KYC document:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -359,13 +337,13 @@ export const rejectKYC = async (req: AuthRequest, res: Response, next: NextFunct
     const { reason } = req.body;
 
     if (!reason) {
-      res.status(400).json({ message: 'Rejection reason is required' });
+      sendError(res, 'Rejection reason is required', 400, 'REASON_REQUIRED');
       return;
     }
 
     const kyc = await KYC.findById(kycId);
     if (!kyc) {
-      res.status(404).json({ message: 'KYC not found' });
+      sendError(res, 'KYC not found', 404, 'KYC_NOT_FOUND');
       return;
     }
 
@@ -390,10 +368,7 @@ export const rejectKYC = async (req: AuthRequest, res: Response, next: NextFunct
       req
     );
 
-    res.json({
-      message: 'KYC rejected successfully',
-      kyc: updatedKYC,
-    });
+    sendSuccess(res, { kyc: updatedKYC }, 'KYC rejected successfully');
   } catch (error) {
     logger.error('Error rejecting KYC:', error);
     next(error);
@@ -441,15 +416,8 @@ export const getAllKYCs = async (req: AuthRequest, res: Response, next: NextFunc
     // Get total count
     const total = await KYC.countDocuments(filter);
 
-    res.json({
-      kycs,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit),
-      },
-    });
+    const pagination = calculatePagination(total, page, limit);
+    sendPaginated(res, kycs, pagination, 'KYCs retrieved successfully');
   } catch (error) {
     logger.error('Error fetching KYCs:', error);
     next(error);
@@ -463,20 +431,20 @@ export const getAllKYCs = async (req: AuthRequest, res: Response, next: NextFunc
 export const verifyPanCard = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     const { pan, name } = req.body;
 
     if (!pan) {
-      res.status(400).json({ message: 'PAN number is required' });
+      sendError(res, 'PAN number is required', 400, 'PAN_REQUIRED');
       return;
     }
 
     // Validate PAN format
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) {
-      res.status(400).json({ message: 'Invalid PAN format' });
+      sendError(res, 'Invalid PAN format', 400, 'INVALID_PAN_FORMAT');
       return;
     }
 
@@ -568,18 +536,14 @@ export const verifyPanCard = async (req: AuthRequest, res: Response, next: NextF
         req
       );
 
-      res.json({
-        message: 'PAN verification completed',
+      sendSuccess(res, {
         verified: isValid,
         data: verificationResult.data || verificationResult,
-      });
+      }, 'PAN verification completed');
     } catch (error) {
       logger.error('Error in DeepVue PAN verification:', error);
 
-      res.status(400).json({
-        message: 'PAN verification failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      sendError(res, 'PAN verification failed', 400, 'PAN_VERIFICATION_FAILED');
     }
   } catch (error) {
     logger.error('Error verifying PAN:', error);
@@ -596,20 +560,20 @@ export const verifyPanCard = async (req: AuthRequest, res: Response, next: NextF
 export const verifyGstin = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     const { gstin } = req.body;
 
     if (!gstin) {
-      res.status(400).json({ message: 'GSTIN is required' });
+      sendError(res, 'GSTIN is required', 400, 'GSTIN_REQUIRED');
       return;
     }
 
     // Validate GSTIN format
     if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
-      res.status(400).json({ message: 'Invalid GSTIN format' });
+      sendError(res, 'Invalid GSTIN format', 400, 'INVALID_GSTIN_FORMAT');
       return;
     }
 
@@ -777,10 +741,7 @@ export const verifyGstin = async (req: AuthRequest, res: Response, next: NextFun
     } catch (error) {
       logger.error('Error in DeepVue GSTIN verification:', error);
 
-      res.status(400).json({
-        message: 'GSTIN verification failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      sendError(res, 'GSTIN verification failed', 400, 'GSTIN_VERIFICATION_FAILED');
     }
   } catch (error) {
     logger.error('Error verifying GSTIN:', error);
@@ -800,19 +761,19 @@ export const verifyBankAccount = async (req: AuthRequest, res: Response, next: N
     const { accountNumber, ifsc, accountHolderName } = req.body;
 
     if (!accountNumber || !ifsc) {
-      res.status(400).json({ message: 'Account number and IFSC code are required' });
+      sendError(res, 'Account number and IFSC code are required', 400, 'MISSING_REQUIRED_FIELDS');
       return;
     }
 
     // Validate account number format (basic validation)
     if (!/^\d{9,18}$/.test(accountNumber)) {
-      res.status(400).json({ message: 'Invalid account number format. Account number should be 9-18 digits.' });
+      sendError(res, 'Invalid account number format. Account number should be 9-18 digits.', 400, 'INVALID_ACCOUNT_NUMBER');
       return;
     }
 
     // Validate IFSC code format
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-      res.status(400).json({ message: 'Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.' });
+      sendError(res, 'Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.', 400, 'INVALID_IFSC');
       return;
     }
 
@@ -928,10 +889,7 @@ export const verifyBankAccount = async (req: AuthRequest, res: Response, next: N
       res.json(enhancedResponse);
     } catch (error) {
       logger.error('Error in DeepVue bank account verification:', error);
-      res.status(400).json({
-        message: 'Bank account verification failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      sendError(res, 'Bank account verification failed', 400, 'BANK_VERIFICATION_FAILED');
     }
   } catch (error) {
     logger.error('Error verifying bank account:', error);
@@ -946,14 +904,14 @@ export const verifyBankAccount = async (req: AuthRequest, res: Response, next: N
 export const updateAgreement = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     const { agreed } = req.body;
 
     if (agreed !== true) {
-      res.status(400).json({ message: 'Agreement acceptance is required' });
+      sendError(res, 'Agreement acceptance is required', 400, 'AGREEMENT_REQUIRED');
       return;
     }
 
@@ -961,7 +919,7 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
     const userDoc = await User.findById(req.user._id);
 
     if (!userDoc) {
-      res.status(404).json({ message: 'User not found' });
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
       return;
     }
 
@@ -969,7 +927,7 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
     const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!user.companyId) {
-      res.status(400).json({ message: 'User is not associated with any company. Please create a company first.' });
+      sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
       return;
     }
 
@@ -1003,16 +961,19 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
 
     // If all steps are complete, update the overall status
     if (allComplete) {
-      kyc.status = 'verified';
+      await withTransaction(async (session) => {
+        kyc.status = 'verified';
+        await kyc.save({ session });
 
-      // Update user's KYC status
-      await User.findByIdAndUpdate(user._id, {
-        'kycStatus.isComplete': true,
-        'kycStatus.lastUpdated': new Date(),
+        // Update user's KYC status
+        await User.findByIdAndUpdate(user._id, {
+          'kycStatus.isComplete': true,
+          'kycStatus.lastUpdated': new Date(),
+        }, { session });
       });
+    } else {
+      await kyc.save();
     }
-
-    await kyc.save();
 
     await createAuditLog(
       user._id.toString(),
@@ -1024,10 +985,7 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
       req
     );
 
-    res.json({
-      message: 'Agreement status updated',
-      kycComplete: allComplete,
-    });
+    sendSuccess(res, { kycComplete: allComplete }, 'Agreement status updated');
   } catch (error) {
     logger.error('Error updating agreement status:', error);
     next(error);
@@ -1041,20 +999,20 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
 export const verifyAadhaar = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     const { aadhaar } = req.body;
 
     if (!aadhaar) {
-      res.status(400).json({ message: 'Aadhaar number is required' });
+      sendError(res, 'Aadhaar number is required', 400, 'AADHAAR_REQUIRED');
       return;
     }
 
     // Validate Aadhaar format
     if (!/^\d{12}$/.test(aadhaar)) {
-      res.status(400).json({ message: 'Invalid Aadhaar format' });
+      sendError(res, 'Invalid Aadhaar format', 400, 'INVALID_AADHAAR_FORMAT');
       return;
     }
 
@@ -1062,7 +1020,7 @@ export const verifyAadhaar = async (req: AuthRequest, res: Response, next: NextF
     const userDoc = await User.findById(req.user._id);
 
     if (!userDoc) {
-      res.status(404).json({ message: 'User not found' });
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
       return;
     }
 
@@ -1070,7 +1028,7 @@ export const verifyAadhaar = async (req: AuthRequest, res: Response, next: NextF
     const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!user.companyId) {
-      res.status(400).json({ message: 'User is not associated with any company. Please create a company first.' });
+      sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
       return;
     }
 
@@ -1143,15 +1101,9 @@ export const verifyAadhaar = async (req: AuthRequest, res: Response, next: NextF
         isMobile: verificationResult.data.is_mobile || false,
       };
 
-      res.json({
-        message: 'Aadhaar verification successful',
-        data: responseData
-      });
+      sendSuccess(res, responseData, 'Aadhaar verification successful');
     } else {
-      res.status(400).json({
-        message: 'Failed to verify Aadhaar',
-        error: verificationResult.message || 'Unknown error',
-      });
+      sendError(res, verificationResult.message || 'Failed to verify Aadhaar', 400, 'AADHAAR_VERIFICATION_FAILED');
     }
   } catch (error) {
     logger.error('Error verifying Aadhaar:', error);
@@ -1167,20 +1119,20 @@ export const verifyIfscCode = async (req: AuthRequest, res: Response, next: Next
   try {
     // Validate user (authentication check only, no need for company association)
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
       return;
     }
 
     const { ifsc } = req.body;
 
     if (!ifsc) {
-      res.status(400).json({ message: 'IFSC code is required' });
+      sendError(res, 'IFSC code is required', 400, 'IFSC_REQUIRED');
       return;
     }
 
     // Validate IFSC code format
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-      res.status(400).json({ message: 'Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.' });
+      sendError(res, 'Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.', 400, 'INVALID_IFSC_FORMAT');
       return;
     }
 
@@ -1204,24 +1156,13 @@ export const verifyIfscCode = async (req: AuthRequest, res: Response, next: Next
           valid: true,
         };
 
-        res.json({
-          message: 'IFSC verification completed successfully',
-          verified: true,
-          data: bankDetails,
-        });
+        sendSuccess(res, bankDetails, 'IFSC verification completed successfully');
       } else {
-        res.status(400).json({
-          message: 'IFSC verification failed',
-          verified: false,
-          error: verificationResult.message || 'Invalid IFSC code',
-        });
+        sendError(res, verificationResult.message || 'Invalid IFSC code', 400, 'IFSC_VERIFICATION_FAILED');
       }
     } catch (error) {
       logger.error('Error in DeepVue IFSC verification:', error);
-      res.status(400).json({
-        message: 'IFSC verification failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      sendError(res, 'IFSC verification failed', 400, 'IFSC_VERIFICATION_FAILED');
     }
   } catch (error) {
     logger.error('Error verifying IFSC:', error);

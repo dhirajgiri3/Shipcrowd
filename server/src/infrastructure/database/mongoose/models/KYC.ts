@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
 
 // Define the interface for KYC document
 export interface IKYC extends Document {
@@ -117,17 +118,23 @@ const KYCSchema = new Schema<IKYC>(
         status: String,
         registrationType: String,
         businessType: [String],
-        addresses: [{
-          type: {
-            type: String
-          },
-          address: {
-            type: String
-          },
-          businessNature: {
-            type: String
-          }
-        }],
+        addresses: {
+          type: [{
+            type: {
+              type: String
+            },
+            address: {
+              type: String
+            },
+            businessNature: {
+              type: String
+            }
+          }],
+          validate: [
+            arrayLimit(50),
+            'Maximum 50 GSTIN addresses (prevents unbounded growth for enterprises)',
+          ],
+        },
         registrationDate: String,
         lastUpdated: String,
       },

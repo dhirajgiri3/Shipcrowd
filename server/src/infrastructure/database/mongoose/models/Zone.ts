@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
 
 // Define the interface for Zone document
 export interface IZone extends Document {
@@ -40,6 +41,10 @@ const ZoneSchema = new Schema<IZone>(
     postalCodes: {
       type: [String],
       required: true,
+      validate: [
+        arrayLimit(10000),
+        'Maximum 10,000 postal codes per zone (allows national zones while preventing index bloat)',
+      ],
     },
     geographicalBoundaries: {
       type: {
@@ -58,28 +63,34 @@ const ZoneSchema = new Schema<IZone>(
         required: true,
       },
     },
-    transitTimes: [
-      {
-        carrier: {
-          type: String,
-          required: true,
+    transitTimes: {
+      type: [
+        {
+          carrier: {
+            type: String,
+            required: true,
+          },
+          serviceType: {
+            type: String,
+            required: true,
+          },
+          minDays: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          maxDays: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
         },
-        serviceType: {
-          type: String,
-          required: true,
-        },
-        minDays: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        maxDays: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-      },
-    ],
+      ],
+      validate: [
+        arrayLimit(100),
+        'Maximum 100 transit time entries (reasonable limit for carrier/service combinations)',
+      ],
+    },
     isDeleted: {
       type: Boolean,
       default: false,

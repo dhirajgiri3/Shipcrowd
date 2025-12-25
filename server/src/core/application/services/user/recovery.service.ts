@@ -8,19 +8,7 @@ import { sendRecoveryEmail } from '../communication/email.service';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/AppError';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
-// List of security questions for users to choose from
-export const SECURITY_QUESTIONS = [
-  'What was the name of your first pet?',
-  'What was the name of your first school?',
-  'In what city were you born?',
-  'What is your mother\'s maiden name?',
-  'What was the make of your first car?',
-  'What is the name of your favorite childhood teacher?',
-  'What is your favorite movie?',
-  'What street did you grow up on?',
-  'What was your childhood nickname?',
-  'What is the name of your favorite childhood friend?',
-];
+import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
 
 /**
  * Set up security questions for account recovery

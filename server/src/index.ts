@@ -11,6 +11,7 @@ dotenv.config();
 // Import configurations
 import connectDB from './config/database';
 import { configurePassport } from './config/passport';
+import { initializeScheduler } from './config/scheduler';
 
 // Import routes
 import v1Routes from './presentation/http/routes/v1';
@@ -148,6 +149,9 @@ const startServer = async (): Promise<void> => {
         // Connect to MongoDB
         await connectDB();
         logger.info('Database connected successfully');
+
+        // Initialize Scheduler
+        initializeScheduler();
 
         // Start listening
         app.listen(PORT, () => {

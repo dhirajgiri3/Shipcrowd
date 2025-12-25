@@ -36,25 +36,28 @@ const iconMap = {
 
 const priorityStyles = {
     critical: {
-        bg: "bg-rose-50 dark:bg-rose-950/30",
-        border: "border-rose-200/80 dark:border-rose-800/50",
-        text: "text-rose-700 dark:text-rose-300",
-        iconBg: "bg-rose-100 dark:bg-rose-900/50",
-        badge: "bg-rose-500 text-white border-rose-600",
+        bg: "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors",
+        border: "border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
+        text: "text-[var(--text-primary)]",
+        iconBg: "bg-[var(--error)] text-white shadow-sm shadow-rose-500/20",
+        badge: "bg-[var(--error)] text-white",
+        indicator: "bg-[var(--error)]",
     },
     high: {
-        bg: "bg-amber-50 dark:bg-amber-950/30",
-        border: "border-amber-200/80 dark:border-amber-800/50",
-        text: "text-amber-700 dark:text-amber-300",
-        iconBg: "bg-amber-100 dark:bg-amber-900/50",
-        badge: "bg-amber-500 text-white border-amber-600",
+        bg: "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors",
+        border: "border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
+        text: "text-[var(--text-primary)]",
+        iconBg: "bg-[var(--warning)] text-white shadow-sm shadow-amber-500/20",
+        badge: "bg-[var(--warning)] text-white",
+        indicator: "bg-[var(--warning)]",
     },
     medium: {
-        bg: "bg-blue-50 dark:bg-blue-950/30",
-        border: "border-blue-200/80 dark:border-blue-800/50",
-        text: "text-blue-700 dark:text-blue-300",
-        iconBg: "bg-blue-100 dark:bg-blue-900/50",
-        badge: "bg-blue-500 text-white border-blue-600",
+        bg: "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors",
+        border: "border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
+        text: "text-[var(--text-primary)]",
+        iconBg: "bg-[var(--info)] text-white shadow-sm shadow-blue-500/20",
+        badge: "bg-[var(--info)] text-white",
+        indicator: "bg-[var(--info)]",
     },
 };
 
@@ -76,18 +79,18 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
             >
-                <Card className="border-emerald-200/80 dark:border-emerald-800/50 bg-gradient-to-br from-emerald-50 to-emerald-50/50 dark:from-emerald-950/30 dark:to-emerald-950/10 shadow-sm">
+                <Card className="border-[var(--success-border)] bg-[var(--success-bg)] shadow-none">
                     <CardContent className="p-6">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shadow-sm">
-                                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                            <div className="h-12 w-12 rounded-2xl bg-[var(--bg-primary)] flex items-center justify-center border border-[var(--success-border)]">
+                                <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-lg text-emerald-900 dark:text-emerald-100">
+                                <h3 className="font-bold text-lg text-[var(--text-primary)]">
                                     All caught up! ✨
                                 </h3>
-                                <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">
-                                    No pending actions. You're doing great!
+                                <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+                                    No pending actions. Youre doing great!
                                 </p>
                             </div>
                         </div>
@@ -103,12 +106,12 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
-            <Card className="border-[var(--border-default)] bg-[var(--bg-primary)] shadow-md overflow-hidden">
+            <Card className="border-[var(--border-default)] bg-[var(--bg-primary)] overflow-hidden">
                 <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-light)] flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                <AlertCircle className="h-6 w-6 text-white" />
+                            <div className="h-12 w-12 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
+                                <AlertCircle className="h-6 w-6 text-[var(--text-primary)]" />
                             </div>
                             <div>
                                 <CardTitle className="text-xl font-bold text-[var(--text-primary)]">
@@ -123,7 +126,7 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                         {/* Priority indicator */}
                         <div className="hidden sm:flex items-center gap-2">
                             {actions.some(a => a.priority === 'critical') && (
-                                <span className="px-2 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 text-xs font-bold uppercase tracking-wide">
+                                <span className="px-2 py-1 rounded-full bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error-border)] text-xs font-bold uppercase tracking-wide">
                                     Urgent
                                 </span>
                             )}
@@ -144,13 +147,16 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                                 animate="visible"
                                 transition={{ delay: index * 0.1 }}
                                 className={cn(
-                                    "p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4",
-                                    "transition-all duration-200 hover:shadow-md group",
+                                    "p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4",
+                                    "transition-all duration-200 hover:shadow-sm group relative overflow-hidden",
                                     styles.bg,
                                     styles.border
                                 )}
                             >
-                                <div className="flex items-start sm:items-center gap-4 flex-1">
+                                {/* Subtle Indicator Line (Left) - Optional, cleaner than full border */}
+                                <div className={cn("absolute left-0 top-0 bottom-0 w-1", styles.indicator)} />
+
+                                <div className="flex items-start sm:items-center gap-4 flex-1 pl-2">
                                     <div className={cn(
                                         "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
                                         styles.iconBg
@@ -180,7 +186,7 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                                         <Button
                                             variant="primary"
                                             size="sm"
-                                            className="w-full sm:w-auto shadow-sm hover:shadow-md transition-shadow"
+                                            className="w-full sm:w-auto"
                                         >
                                             {action.actionLabel}
                                         </Button>

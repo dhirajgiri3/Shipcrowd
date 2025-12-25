@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
 
 // Define the interface for Coupon document
 export interface ICoupon extends Document {
@@ -25,6 +26,29 @@ export interface ICoupon extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * CRITICAL RACE CONDITION WARNING:
+ * 
+ * The usageCount field has a race condition when incremented in controllers.
+ * This can cause revenue loss by allowing more redemptions than usageLimit.
+ * 
+ * Unsafe pattern (DO NOT USE):
+ *   const coupon = await Coupon.findOne({ code });
+ *   if (coupon.usageCount >= coupon.usageLimit) throw new Error('Fully used');
+ *   coupon.usageCount += 1;
+ *   await coupon.save();
+ * 
+ * Safe pattern (USE THIS in controllers):
+ *   const result = await Coupon.findOneAndUpdate(
+ *     { code, usageCount: { $lt: usageLimit } },  // atomic check
+ *     { $inc: { usageCount: 1 } },                // atomic increment
+ *     { new: true }
+ *   );
+ *   if (!result) throw new Error('Coupon fully used or invalid');
+ * 
+ * Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Race Conditions
+ */
 
 // Create the Coupon schema
 const CouponSchema = new Schema<ICoupon>(
@@ -82,13 +106,25 @@ const CouponSchema = new Schema<ICoupon>(
         default: 0,
         min: 0,
       },
-      userIds: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      ],
-      postalCodes: [String],
+      userIds: {
+        type: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+          },
+        ],
+        validate: [
+          arrayLimit(10000),
+          'Maximum 10,000 users per coupon (prevents 16MB document limit breach)',
+        ],
+      },
+      postalCodes: {
+        type: [String],
+        validate: [
+          arrayLimit(10000),
+          'Maximum 10,000 postal codes per coupon (prevents 16MB document limit breach)',
+        ],
+      },
     },
     isActive: {
       type: Boolean,

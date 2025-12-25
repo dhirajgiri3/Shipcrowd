@@ -299,3 +299,43 @@ export const SHIPMENT_STATUS_TRANSITIONS: Record<string, string[]> = {
     rto: [],
     cancelled: [],
 };
+
+// ============================================================================
+// KYC Validation Schemas
+// ============================================================================
+
+export const panSchema = z.object({
+    number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/),
+    image: z.string().url(),
+});
+
+export const aadhaarSchema = z.object({
+    number: z.string().regex(/^\d{12}$/),
+    frontImage: z.string().url(),
+    backImage: z.string().url(),
+});
+
+export const gstinSchema = z.object({
+    number: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/),
+});
+
+export const bankAccountSchema = z.object({
+    accountNumber: z.string().min(5),
+    ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
+    accountHolderName: z.string().min(2),
+    bankName: z.string().min(2),
+    proofImage: z.string().url().optional(),
+});
+
+export const submitKYCSchema = z.object({
+    pan: panSchema.optional(),
+    aadhaar: aadhaarSchema.optional(),
+    gstin: gstinSchema.optional(),
+    bankAccount: bankAccountSchema.optional(),
+});
+
+export const verifyDocumentSchema = z.object({
+    documentType: z.enum(['pan', 'aadhaar', 'gstin', 'bankAccount']),
+    verified: z.boolean(),
+    notes: z.string().optional(),
+});

@@ -9,29 +9,47 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 // Load environment variables from .env file
 dotenv.config();
 
-// Initialize SendGrid if API key is available
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  logger.info('SendGrid initialized successfully');
-} else {
-  logger.warn('SendGrid API key not found, falling back to SMTP');
-}
-
 // Email service configuration
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@Shipcrowd.com';
 const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'sendgrid'; // 'sendgrid' or 'smtp'
 const MAX_RETRY_ATTEMPTS = parseInt(process.env.EMAIL_MAX_RETRY || '3');
 const RETRY_DELAY_MS = parseInt(process.env.EMAIL_RETRY_DELAY_MS || '1000');
 
-// SMTP configuration (used as fallback if SendGrid is not configured)
+// Initialize SendGrid if API key is available
+if (process.env.SENDGRID_API_KEY && EMAIL_SERVICE === 'sendgrid') {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  logger.info('SendGrid initialized successfully');
+} else if (EMAIL_SERVICE === 'smtp') {
+  logger.info('Using SMTP email service');
+} else {
+  logger.warn('No email service configured properly');
+}
+
+// SMTP configuration for ZeptoMail or other SMTP providers
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
 const smtpTransport = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
-  port: parseInt(process.env.SMTP_PORT || '2525'),
+  port: smtpPort,
+  secure: smtpPort === 465, // Use SSL for port 465, TLS for 587
   auth: {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
   },
+  tls: {
+    // Do not fail on invalid certs (useful for development)
+    rejectUnauthorized: process.env.NODE_ENV === 'production',
+  },
 });
+
+// Log SMTP configuration (without sensitive data)
+if (EMAIL_SERVICE === 'smtp') {
+  logger.info('SMTP Transport configured', {
+    host: process.env.SMTP_HOST,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    user: process.env.SMTP_USER,
+  });
+}
 
 /**
  * Helper function to retry a function with exponential backoff

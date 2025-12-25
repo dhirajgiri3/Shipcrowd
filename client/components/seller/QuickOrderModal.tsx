@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Package, Truck, MapPin, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
+import { X, Package, Truck, MapPin, CreditCard, Loader2, CheckCircle2, ChevronRight, Weight } from "lucide-react";
 import { Button } from "@/src/shared/components/button";
 import { Input } from "@/src/shared/components/Input";
 import { useWarehouses } from "@/src/core/api/hooks/useWarehouses";
 import { useCreateOrder } from "@/src/core/api/hooks/useOrders";
 import { useToast } from "@/src/shared/components/Toast";
 import { RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
-import { cn } from "@/src/shared/utils";
+import { cn, formatCurrency } from "@/src/shared/utils";
 
 interface QuickOrderModalProps {
     customer: RecentCustomer | null;
@@ -108,266 +108,237 @@ export function QuickOrderModal({ customer, isOpen, onClose }: QuickOrderModalPr
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
                         onClick={onClose}
                     />
 
                     {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.95, y: 30 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ type: "spring", duration: 0.3 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                        transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+                        className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
                     >
                         <div
-                            className="bg-[var(--bg-primary)] rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[var(--border-default)]"
+                            className="bg-[var(--bg-primary)] rounded-[32px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto ring-1 ring-white/10"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="sticky top-0 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] p-6 rounded-t-3xl z-10">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-light)] flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                            <Package className="h-5 w-5 text-white" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                                                Quick Order
-                                            </h2>
-                                            <p className="text-sm text-[var(--text-secondary)]">
-                                                Ship to {customer?.name}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={onClose}
-                                        className="h-8 w-8 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] flex items-center justify-center transition-colors"
-                                    >
-                                        <X className="h-4 w-4 text-[var(--text-muted)]" />
-                                    </button>
+                            <div className="bg-[var(--bg-secondary)]/50 backdrop-blur-md px-8 py-6 border-b border-[var(--border-subtle)] flex items-center justify-between sticky top-0 z-10">
+                                <div>
+                                    <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+                                        Quick Create Order
+                                    </h2>
+                                    <p className="text-sm text-[var(--text-secondary)] mt-0.5 flex items-center gap-1.5">
+                                        Shipment for <span className="font-semibold text-[var(--text-primary)]">{customer?.name}</span>
+                                    </p>
                                 </div>
+                                <button
+                                    onClick={onClose}
+                                    className="h-9 w-9 rounded-full bg-[var(--bg-primary)] hover:bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] flex items-center justify-center transition-all hover:rotate-90"
+                                >
+                                    <X className="h-4 w-4 text-[var(--text-secondary)]" />
+                                </button>
                             </div>
 
-                            {/* Content */}
-                            <div className="p-6 space-y-6">
-                                {/* Customer Info (Pre-filled, read-only) */}
-                                <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                                    <div className="flex items-center gap-4 mb-3">
-                                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-light)] flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                            {customer?.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="font-semibold text-[var(--text-primary)]">
-                                                {customer?.name}
-                                            </h3>
-                                            <p className="text-sm text-[var(--text-secondary)]">
-                                                {customer?.phone}
-                                            </p>
-                                        </div>
-                                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                            {/* Content - Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+
+                                {/* Customer Snapshot */}
+                                <div className="p-4 rounded-2xl bg-[var(--info-bg)]/30 border border-[var(--info-border)]/50 flex items-start gap-4">
+                                    <div className="h-10 w-10 rounded-full bg-[var(--primary-blue)] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-lg shadow-blue-500/20">
+                                        {customer?.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-                                        <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-[var(--text-muted)]" />
-                                        <p>
-                                            {customer?.city}, {customer?.state} - {customer?.postalCode}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-3 mt-3 text-xs">
-                                        <span className="text-[var(--text-muted)]">
-                                            Previous orders: <span className="font-medium text-[var(--text-secondary)]">{customer?.totalOrders}</span>
-                                        </span>
-                                        <span className="text-[var(--text-muted)]">
-                                            Avg. value: <span className="font-medium text-[var(--text-secondary)]">₹{customer?.avgOrderValue}</span>
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Product Details */}
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                        <Package className="h-5 w-5 text-[var(--primary-blue)]" />
-                                        Product Details
-                                    </h4>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2">
-                                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                                Product Name <span className="text-rose-500">*</span>
-                                            </label>
-                                            <Input
-                                                value={formData.productName}
-                                                onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
-                                                placeholder="e.g., Cotton T-Shirt"
-                                            />
-                                        </div>
-
+                                    <div className="flex-1 min-w-0 grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                                SKU (Optional)
-                                            </label>
-                                            <Input
-                                                value={formData.sku}
-                                                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                                placeholder="e.g., TS-001"
-                                            />
+                                            <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Deliver To</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)] mt-0.5 truncate">{customer?.name}</p>
+                                            <p className="text-xs text-[var(--text-secondary)] truncate">{customer?.phone}</p>
                                         </div>
-
                                         <div>
-                                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                                Quantity <span className="text-rose-500">*</span>
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                min={1}
-                                                value={formData.quantity}
-                                                onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                                Weight (kg) <span className="text-rose-500">*</span>
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                step={0.1}
-                                                min={0.1}
-                                                value={formData.weight}
-                                                onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0.1 })}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-                                                Price (₹) <span className="text-rose-500">*</span>
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                min={0}
-                                                value={formData.price || ''}
-                                                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                                                placeholder="0"
-                                            />
+                                            <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">Address</p>
+                                            <p className="text-sm font-medium text-[var(--text-primary)] mt-0.5 line-clamp-1">{customer?.addressLine1 || customer?.city}</p>
+                                            <p className="text-xs text-[var(--text-secondary)] truncate">{customer?.city}, {customer?.state} - {customer?.postalCode}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Payment Mode */}
-                                <div className="space-y-3">
-                                    <h4 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                        <CreditCard className="h-5 w-5 text-[var(--primary-blue)]" />
-                                        Payment Mode
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {(['prepaid', 'cod'] as const).map((mode) => (
-                                            <button
-                                                key={mode}
-                                                onClick={() => setFormData({ ...formData, paymentMode: mode })}
-                                                className={cn(
-                                                    "p-3 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2",
-                                                    formData.paymentMode === mode
-                                                        ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]/20 shadow-sm"
-                                                        : "border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]"
-                                                )}
-                                            >
-                                                <span className={cn(
-                                                    "text-sm font-medium capitalize",
-                                                    formData.paymentMode === mode
-                                                        ? "text-[var(--primary-blue)]"
-                                                        : "text-[var(--text-secondary)]"
-                                                )}>
-                                                    {mode === 'cod' ? 'Cash on Delivery' : 'Prepaid'}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                {/* Product Details Section */}
+                                <section className="space-y-4">
+                                    <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                                        <Package className="h-4 w-4" /> Item Details
+                                    </h3>
 
-                                {/* Warehouse Selection */}
-                                <div className="space-y-3">
-                                    <h4 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                        <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
-                                        Pickup Warehouse
-                                    </h4>
-                                    {warehousesLoading ? (
-                                        <div className="h-16 bg-[var(--bg-tertiary)] rounded-xl animate-pulse" />
-                                    ) : warehouses && warehouses.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {warehouses.slice(0, 3).map((warehouse: any) => (
+                                    <div className="grid grid-cols-12 gap-5">
+                                        <div className="col-span-12 md:col-span-8">
+                                            <div className="group">
+                                                <label className="text-xs font-medium text-[var(--text-muted)] mb-1.5 block ml-1 group-focus-within:text-[var(--primary-blue)] transition-colors">Product Name</label>
+                                                <Input
+                                                    value={formData.productName}
+                                                    onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                                                    placeholder="e.g. Graphic Print T-Shirt - Black"
+                                                    className="h-12 text-base bg-[var(--bg-secondary)]/30 border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--primary-blue)]/50 focus:bg-[var(--bg-primary)] transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-6 md:col-span-4">
+                                            <div className="group">
+                                                <label className="text-xs font-medium text-[var(--text-muted)] mb-1.5 block ml-1">SKU</label>
+                                                <Input
+                                                    value={formData.sku}
+                                                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                                                    placeholder="Optional"
+                                                    className="h-12 bg-[var(--bg-secondary)]/30 border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--primary-blue)]/50 focus:bg-[var(--bg-primary)] transition-all"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-4">
+                                            <div className="group">
+                                                <label className="text-xs font-medium text-[var(--text-muted)] mb-1.5 block ml-1">Price (₹)</label>
+                                                <Input
+                                                    type="number"
+                                                    value={formData.price || ''}
+                                                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                                                    className="h-12 font-bold bg-[var(--bg-secondary)]/30 border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--primary-blue)]/50 focus:bg-[var(--bg-primary)] transition-all"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-4">
+                                            <div className="group">
+                                                <label className="text-xs font-medium text-[var(--text-muted)] mb-1.5 block ml-1">Weight (Kg)</label>
+                                                <div className="relative">
+                                                    <Input
+                                                        type="number"
+                                                        step={0.1}
+                                                        value={formData.weight}
+                                                        onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0.1 })}
+                                                        className="h-12 pl-10 bg-[var(--bg-secondary)]/30 border-transparent hover:border-[var(--border-subtle)] focus:border-[var(--primary-blue)]/50 focus:bg-[var(--bg-primary)] transition-all"
+                                                    />
+                                                    <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-4">
+                                            <div className="group">
+                                                <label className="text-xs font-medium text-[var(--text-muted)] mb-1.5 block ml-1">Qty</label>
+                                                <div className="flex bg-[var(--bg-secondary)]/30 rounded-xl border border-transparent hover:border-[var(--border-subtle)] p-1">
+                                                    <button
+                                                        onClick={() => setFormData(p => ({ ...p, quantity: Math.max(1, p.quantity - 1) }))}
+                                                        className="h-10 w-8 flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] rounded-lg transition-colors"
+                                                    >-</button>
+                                                    <div className="flex-1 flex items-center justify-center font-bold text-[var(--text-primary)]">
+                                                        {formData.quantity}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setFormData(p => ({ ...p, quantity: p.quantity + 1 }))}
+                                                        className="h-10 w-8 flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] rounded-lg transition-colors"
+                                                    >+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <div className="h-px bg-[var(--border-subtle)]/50 w-full" />
+
+                                {/* Warehouse & Payment - Split Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <section className="space-y-4">
+                                        <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                                            <Truck className="h-4 w-4" /> Pickup From
+                                        </h3>
+                                        {warehousesLoading ? (
+                                            <div className="h-14 bg-[var(--bg-secondary)] rounded-xl animate-pulse" />
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {warehouses?.slice(0, 2).map((w: any) => (
+                                                    <button
+                                                        key={w._id}
+                                                        onClick={() => setFormData(p => ({ ...p, warehouseId: w._id }))}
+                                                        className={cn(
+                                                            "w-full text-left p-3 rounded-xl border flex items-center gap-3 transition-all duration-200",
+                                                            formData.warehouseId === w._id
+                                                                ? "bg-[var(--primary-blue-soft)]/30 border-[var(--primary-blue)]"
+                                                                : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
+                                                        )}
+                                                    >
+                                                        <div className={cn(
+                                                            "h-5 w-5 rounded-full border flex items-center justify-center",
+                                                            formData.warehouseId === w._id ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]" : "border-[var(--text-muted)]"
+                                                        )}>
+                                                            {formData.warehouseId === w._id && <div className="h-2 w-2 rounded-full bg-white" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={cn("text-xs font-bold truncate", formData.warehouseId === w._id ? "text-[var(--primary-blue)]" : "text-[var(--text-primary)]")}>
+                                                                {w.name}
+                                                            </p>
+                                                            <p className="text-[10px] text-[var(--text-muted)] truncate">{w.address?.city}</p>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <section className="space-y-4">
+                                        <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                                            <CreditCard className="h-4 w-4" /> Payment
+                                        </h3>
+                                        <div className="flex gap-3">
+                                            {(['prepaid', 'cod'] as const).map((mode) => (
                                                 <button
-                                                    key={warehouse._id}
-                                                    onClick={() => setFormData({ ...formData, warehouseId: warehouse._id })}
+                                                    key={mode}
+                                                    onClick={() => setFormData(p => ({ ...p, paymentMode: mode }))}
                                                     className={cn(
-                                                        "w-full p-3 rounded-xl border transition-all duration-200 flex items-start gap-3 text-left",
-                                                        formData.warehouseId === warehouse._id
-                                                            ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]/20 shadow-sm"
-                                                            : "border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                                        "flex-1 p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all duration-200",
+                                                        formData.paymentMode === mode
+                                                            ? "bg-[var(--primary-blue-soft)]/30 border-[var(--primary-blue)]"
+                                                            : "bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
                                                     )}
                                                 >
-                                                    <MapPin className={cn(
-                                                        "h-5 w-5 mt-0.5",
-                                                        formData.warehouseId === warehouse._id
-                                                            ? "text-[var(--primary-blue)]"
-                                                            : "text-[var(--text-muted)]"
-                                                    )} />
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={cn(
-                                                                "font-medium",
-                                                                formData.warehouseId === warehouse._id
-                                                                    ? "text-[var(--primary-blue)]"
-                                                                    : "text-[var(--text-primary)]"
-                                                            )}>
-                                                                {warehouse.name}
-                                                            </span>
-                                                            {warehouse.isDefault && (
-                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
-                                                                    Default
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm text-[var(--text-secondary)]">
-                                                            {warehouse.address?.city || 'City'}, {warehouse.address?.postalCode || 'PIN'}
-                                                        </p>
-                                                    </div>
+                                                    <span className={cn(
+                                                        "text-xs font-bold uppercase",
+                                                        formData.paymentMode === mode ? "text-[var(--primary-blue)]" : "text-[var(--text-secondary)]"
+                                                    )}>
+                                                        {mode}
+                                                    </span>
+                                                    {mode === 'prepaid' && <span className="text-[10px] text-[var(--success)] font-medium">Fastest</span>}
                                                 </button>
                                             ))}
                                         </div>
-                                    ) : (
-                                        <div className="p-4 text-center bg-[var(--bg-secondary)] rounded-xl border border-dashed border-[var(--border-default)]">
-                                            <p className="text-sm text-[var(--text-muted)]">
-                                                No warehouses found. Please add a warehouse first.
-                                            </p>
-                                        </div>
-                                    )}
+                                    </section>
                                 </div>
                             </div>
 
                             {/* Footer */}
-                            <div className="sticky bottom-0 bg-[var(--bg-primary)] border-t border-[var(--border-subtle)] p-6 rounded-b-3xl">
+                            <div className="flex items-center justify-between p-6 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/30 backdrop-blur-sm">
+                                <div className="text-sm">
+                                    <span className="text-[var(--text-muted)]">Total Amount:</span>
+                                    <span className="ml-2 text-xl font-bold text-[var(--text-primary)]">
+                                        {formatCurrency(formData.price * formData.quantity)}
+                                    </span>
+                                </div>
                                 <div className="flex gap-3">
-                                    <Button
-                                        variant="outline"
-                                        onClick={onClose}
-                                        className="flex-1"
-                                        disabled={createOrder.isPending}
-                                    >
+                                    <Button variant="ghost" onClick={onClose} disabled={createOrder.isPending}>
                                         Cancel
                                     </Button>
                                     <Button
                                         variant="primary"
                                         onClick={handleSubmit}
-                                        className="flex-1 shadow-lg shadow-blue-500/20"
                                         disabled={createOrder.isPending}
+                                        className="shadow-brand hover:shadow-brand-lg px-6"
                                     >
                                         {createOrder.isPending ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                Creating...
-                                            </>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
-                                            'Create & Ship Now'
+                                            <>
+                                                Create Order <ChevronRight className="h-4 w-4 ml-1 opacity-80" />
+                                            </>
                                         )}
                                     </Button>
                                 </div>

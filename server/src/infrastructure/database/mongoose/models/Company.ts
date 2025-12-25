@@ -156,6 +156,7 @@ const CompanySchema = new Schema<ICompany>(
 // Name index is already created by unique: true
 CompanySchema.index({ isDeleted: 1 });
 CompanySchema.index({ 'address.postalCode': 1 });
+CompanySchema.index({ status: 1 }); // Missing index for admin queries filtering by company status
 
 // Create and export the Company model
 const Company = mongoose.model<ICompany>('Company', CompanySchema);

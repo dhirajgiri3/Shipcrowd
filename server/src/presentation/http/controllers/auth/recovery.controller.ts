@@ -5,11 +5,9 @@ import User from '../../../../infrastructure/database/mongoose/models/User';
 import {
   setupSecurityQuestions,
   setupBackupEmail,
-  generateRecoveryKeys,
-  verifySecurityQuestions,
-  verifyRecoveryKey,
-  SECURITY_QUESTIONS
+  generateRecoveryKeys
 } from '../../../../core/application/services/user/recovery.service';
+import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
 import { sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
 import { createAuditLog } from '../../middleware/system/auditLog';
 import logger from '../../../../shared/logger/winston.logger';

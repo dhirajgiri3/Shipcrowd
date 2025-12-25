@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Strict: Dont use gradient in our UI
+   Dont use Primary Blue color aggresiveky in our ui design, use it sparingly and thoughfully
+*/
+
 /* ============================================
    SHIPCROWD DESIGN SYSTEM
    Comprehensive • Light Theme • Unified
@@ -121,6 +125,11 @@
    --bg-selected: #E8E8FF;
    /* Selected items */
    --bg-overlay: rgba(0, 0, 0, 0.5);
+
+   /* Tooltip Colors */
+   --bg-tooltip: #1F2937;
+   --text-tooltip: #F9FAFB;
+   --border-tooltip: #374151;
 
    /* ========================================
      BORDER COLORS
@@ -315,250 +324,167 @@
 
 .dark {
    /* ============================================
-      BACKGROUNDS - Blue-Tinted System
+      BACKGROUNDS - Pure & Clean
       ============================================ */
    --bg-primary: #000000;
-   /* True black for OLED-friendly display */
-   --bg-secondary: #080A0F;
-   /* Deep blue-black - first elevation */
-   --bg-tertiary: #0D1117;
-   /* GitHub-inspired dark blue - visible elevation */
-   --bg-elevated: #0D1117;
-   /* Modals, dropdowns */
-   --bg-hover: #161B22;
-   /* Lighter blue-gray - clear hover feedback */
-   --bg-active: #1C2128;
-   /* Active/pressed state - blue-gray */
-   --bg-selected: rgba(107, 111, 246, 0.12);
-   /* Selected items with blue tint */
-   --bg-overlay: rgba(0, 0, 0, 0.9);
+   /* True Black */
+   --bg-secondary: #0A0A0A;
+   /* Almost Black (Card Bg) */
+   --bg-tertiary: #121212;
+   /* Dark Gray (Inputs) */
+   --bg-elevated: #121212;
+   /* Modals */
+   --bg-hover: #1A1A1A;
+   /* Interactive Hover */
+   --bg-active: #262626;
+   /* Active State */
+   --bg-selected: rgba(37, 37, 255, 0.1);
+   --bg-overlay: rgba(0, 0, 0, 0.85);
 
-   /* Extended elevation scale */
-   --bg-surface-1: #080A0F;
-   /* First elevation - cards on page */
-   --bg-surface-2: #0D1117;
-   /* Second elevation - nested cards */
-   --bg-surface-3: #161B22;
-   /* Third elevation - floating elements */
-   --bg-surface-4: #1C2128;
-   /* Fourth elevation - popovers/tooltips */
+   /* Tooltip Colors */
+   --bg-tooltip: #27272A;
+   --text-tooltip: #F4F4F5;
+   --border-tooltip: #3F3F46;
 
    /* ============================================
-      TEXT - Blue-Harmonized Grays
+      TEXT - High Contrast White
       ============================================ */
-   --text-primary: #F0F3F8;
-   /* Soft white with blue tint - maximum readability */
-   --text-secondary: #D4DCE8;
-   /* Blue-tinted light gray - 14:1 contrast */
-   --text-tertiary: #B8C5D8;
-   /* Blue-tinted medium gray - 10:1 contrast */
-   --text-muted: #8B98AD;
-   /* Blue-tinted muted - 7:1 contrast */
-   --text-subtle: #6B7788;
-   /* Blue-tinted subtle - 5:1 contrast */
-   --text-inverse: #0D1117;
-   /* Blue-tinted dark for light backgrounds */
-   --text-brand: #6B6FF6;
-   /* Refined brand blue - less harsh */
-   --text-link: #7D81F7;
-   /* Slightly brighter for links */
-   --text-link-hover: #9094F8;
-   /* Hover state for links */
+   --text-primary: #FFFFFF;
+   /* Pure White */
+   --text-secondary: #D4D4D8;
+   /* Zinc-300 */
+   --text-tertiary: #A1A1AA;
+   /* Zinc-400 */
+   --text-muted: #71717A;
+   /* Zinc-500 */
+   --text-subtle: #52525B;
+   /* Zinc-600 */
+   --text-inverse: #000000;
+   /* On Light Bg */
+   --text-brand: #5252FF;
+   /* High Vis Brand Color */
+   --text-link: #5252FF;
+   --link-hover: #7575FF;
+
+   /* Status Text - Brighter for Dark Mode */
    --text-success: #4ADE80;
-   /* Success green */
-   --text-warning: #FBBF24;
-   /* Warning amber */
+   --text-warning: #FCD34D;
    --text-error: #F87171;
-   /* Error red */
 
    /* ============================================
-      BORDERS - Blue-Enhanced
+      BORDERS - Define Structure (No Shadows)
       ============================================ */
-   --border-subtle: #161B22;
-   /* Very subtle dividers - matches bg-hover */
-   --border-default: #21262D;
-   /* Standard borders - blue-tinted */
-   --border-strong: #2D333B;
-   /* Prominent borders - blue-tinted */
-   --border-hover: #383E47;
-   /* Hover state - blue-tinted */
-   --border-focus: #6B6FF6;
-   /* Focus indicator - refined blue */
-   --border-interactive: rgba(107, 111, 246, 0.20);
-   /* Interactive element borders */
-   --border-selected: #6B6FF6;
-   /* Selected state */
-   --border-disabled: #21262D;
-   /* Disabled state */
-   --border-error: #F87171;
-   /* Error states */
-   --border-success: #4ADE80;
-   /* Success states */
+   --border-subtle: #1F1F25;
+   /* Section Dividers */
+   --border-default: #27272A;
+   /* Card Borders */
+   --border-strong: #3F3F46;
+   /* Input Borders */
+   --border-hover: #52525B;
+   /* Hover State */
+   --border-focus: #5252FF;
+   /* Brand Focus */
+   --border-interactive: rgba(37, 37, 255, 0.4);
+   --border-error: #EF4444;
+   --border-success: #22C55E;
 
    /* ============================================
-      BRAND BLUE - Comprehensive Scale
+      BRAND COLOR - #2525FF Core
       ============================================ */
-   --primary-blue: #6B6FF6;
-   /* Main brand blue - 15% less saturated */
-   --primary-blue-hover: #7D81F7;
-   /* Hover state - slightly brighter */
-   --primary-blue-active: #5558E3;
-   /* Active/pressed - slightly darker */
-   --primary-blue-muted: #5558E3;
-   /* Muted variant for less emphasis */
-   --primary-blue-deep: #4144CC;
-   /* Deep variant for special cases */
-   --primary-blue-light: #9094F8;
-   /* Light variant */
-
-   /* Background tints - multiple opacity levels */
-   --primary-blue-soft: rgba(107, 111, 246, 0.08);
-   /* Very subtle tint */
-   --primary-blue-subtle: rgba(107, 111, 246, 0.12);
-   /* Subtle selection */
-   --primary-blue-medium: rgba(107, 111, 246, 0.20);
-   /* Medium emphasis */
-   --primary-blue-strong: rgba(107, 111, 246, 0.30);
-   /* Strong emphasis */
+   --primary-blue: #3E3EFF;
+   /* Adapted for Dark Mode Readability */
+   --primary-blue-hover: #5252FF;
+   --primary-blue-active: #2525FF;
+   --primary-blue-deep: #1A1A80;
+   --primary-blue-soft: rgba(37, 37, 255, 0.15);
+   /* Backgrounds */
+   --primary-blue-subtle: rgba(37, 37, 255, 0.05);
 
    /* ============================================
-      BLUE GLOW - Depth System
+      NO SHADOWS - FLAT / BORDERED ONLY
       ============================================ */
-   --blue-glow-subtle: rgba(107, 111, 246, 0.04);
-   /* Barely visible aura */
-   --blue-glow-soft: rgba(107, 111, 246, 0.08);
-   /* Soft glow */
-   --blue-glow-medium: rgba(107, 111, 246, 0.15);
-   /* Medium glow */
-   --blue-glow-strong: rgba(107, 111, 246, 0.25);
-   /* Strong glow */
-   --blue-glow-intense: rgba(107, 111, 246, 0.40);
-   /* Intense glow (rare) */
+   /* We replace shadow depth with border definition */
+   --shadow-xs: none;
+   --shadow-sm: none;
+   --shadow-md: none;
+   --shadow-lg: 0 0 0 1px #27272A;
+   /* Mock border as shadow */
+   --shadow-xl: 0 0 0 1px #3F3F46;
+   --shadow-2xl: 0 0 0 1px #52525B;
+   --shadow-inner: none;
+
+   /* Component Elevation via Borders */
+   --shadow-card: 0 0 0 1px var(--border-default);
+   --shadow-card-hover: 0 0 0 1px var(--border-hover);
+   --shadow-dropdown: 0 0 0 1px var(--border-strong);
+   --shadow-modal: 0 0 0 1px var(--border-strong), 0 0 0 100vmax rgba(0, 0, 0, 0.8);
+   --shadow-brand: 0 0 0 1px var(--primary-blue);
 
    /* ============================================
-      SHADOWS - Layered Depth
+      INPUTS
       ============================================ */
-   /* Base shadows (black only - for depth) */
-   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.8);
-   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 0.7);
-   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.9), 0 2px 4px rgba(0, 0, 0, 0.7);
-   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 1), 0 4px 8px rgba(0, 0, 0, 0.8);
-   --shadow-xl: 0 16px 32px rgba(0, 0, 0, 1), 0 8px 16px rgba(0, 0, 0, 0.9);
-   --shadow-2xl: 0 24px 48px rgba(0, 0, 0, 1), 0 12px 24px rgba(0, 0, 0, 0.9);
-   --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.8);
-
-   /* Combined shadows (black depth + blue glow) */
-   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-subtle), 0 0 8px var(--blue-glow-subtle);
-   --shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-default), 0 0 12px var(--blue-glow-soft);
-   --shadow-dropdown: 0 4px 8px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--border-strong), 0 0 16px var(--blue-glow-medium);
-   --shadow-modal: 0 16px 32px rgba(0, 0, 0, 1), 0 8px 16px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-hover), 0 0 32px var(--blue-glow-strong);
-
-   /* Brand shadows (blue-only glow) */
-   --shadow-brand-sm: 0 4px 12px rgba(107, 111, 246, 0.3), 0 0 8px var(--blue-glow-soft);
-   --shadow-brand: 0 6px 16px rgba(107, 111, 246, 0.4), 0 0 16px var(--blue-glow-medium);
-   --shadow-brand-lg: 0 8px 20px rgba(107, 111, 246, 0.5), 0 0 24px var(--blue-glow-strong);
+   --input-bg: #0A0A0A;
+   --input-border: #27272A;
+   --input-border-hover: #3F3F46;
+   --input-border-focus: #5252FF;
+   --input-text: #FFFFFF;
+   --input-placeholder: #52525B;
 
    /* ============================================
-      INPUTS - Form Elements
+      BUTTONS
       ============================================ */
-   --input-bg: #0D1117;
-   /* Blue-tinted input background */
-   --input-bg-hover: #161B22;
-   /* Hover state */
-   --input-bg-focus: #1C2128;
-   /* Focus state */
-   --input-bg-disabled: #080A0F;
-   /* Disabled state */
-   --input-border: #21262D;
-   /* Blue-tinted border */
-   --input-border-hover: #2D333B;
-   /* Hover state */
-   --input-border-focus: #6B6FF6;
-   /* Focus state - blue */
-   --input-border-error: #F87171;
-   /* Error state */
-   --input-text: #F0F3F8;
-   /* Input text color */
-   --input-placeholder: #8B98AD;
-   /* Placeholder text */
-   --input-disabled-text: #6B7788;
-   /* Disabled text */
-
-   /* ============================================
-      BUTTONS - Interactive Elements
-      ============================================ */
-   --btn-primary-bg: #6B6FF6;
-   /* Primary button - refined blue */
-   --btn-primary-bg-hover: #7D81F7;
-   /* Hover state */
-   --btn-primary-bg-active: #5558E3;
-   /* Active/pressed state */
+   --btn-primary-bg: #2525FF;
+   --btn-primary-bg-hover: #3A3AFF;
    --btn-primary-text: #FFFFFF;
-   /* Button text */
 
-   --btn-secondary-bg: #0D1117;
-   /* Secondary button - blue-tinted */
-   --btn-secondary-bg-hover: #161B22;
-   /* Hover state */
-   --btn-secondary-bg-active: #1C2128;
-   /* Active state */
-   --btn-secondary-text: #F0F3F8;
-   /* Button text */
-   --btn-secondary-border: #21262D;
-   /* Border color */
+   --btn-secondary-bg: #121212;
+   --btn-secondary-bg-hover: #1A1A1A;
+   --btn-secondary-text: #FFFFFF;
+   --btn-secondary-border: #27272A;
 
    --btn-ghost-bg: transparent;
-   /* Ghost button background */
-   --btn-ghost-bg-hover: #161B22;
-   /* Hover state - blue-tinted */
-   --btn-ghost-text: #D4DCE8;
-   /* Ghost button text */
+   --btn-ghost-bg-hover: #1A1A1A;
+   --btn-ghost-text: #D4D4D8;
 
    /* ============================================
       GLASSMORPHISM
       ============================================ */
-   --glass-bg: rgba(13, 17, 23, 0.8);
-   /* Blue-tinted glass background */
-   --glass-border: rgba(107, 111, 246, 0.08);
-   /* Blue-tinted glass border */
-   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px var(--blue-glow-soft);
-   /* Glass shadow with blue glow */
+   --glass-bg: rgba(10, 10, 10, 0.9);
+   /* More opaque */
+   --glass-border: rgba(255, 255, 255, 0.1);
+   --glass-shadow: none;
 
    /* ============================================
-      STATUS COLORS
+      STATUS COLORS - Muted Backgrounds
       ============================================ */
-   --success: #4ADE80;
-   --success-light: #6EE7A0;
-   --success-bg: rgba(74, 222, 128, 0.1);
-   --success-border: rgba(74, 222, 128, 0.3);
+   --success: #22C55E;
+   --success-bg: rgba(34, 197, 94, 0.1);
+   --success-border: rgba(34, 197, 94, 0.2);
 
-   --warning: #FBBF24;
-   --warning-light: #FCD34D;
-   --warning-bg: rgba(251, 191, 36, 0.1);
-   --warning-border: rgba(251, 191, 36, 0.3);
+   --warning: #EAB308;
+   --warning-bg: rgba(234, 179, 8, 0.1);
+   --warning-border: rgba(234, 179, 8, 0.2);
 
-   --error: #F87171;
-   --error-light: #FCA5A5;
-   --error-bg: rgba(248, 113, 113, 0.1);
-   --error-border: rgba(248, 113, 113, 0.3);
+   --error: #EF4444;
+   --error-bg: rgba(239, 68, 68, 0.1);
+   --error-border: rgba(239, 68, 68, 0.2);
 
-   --info: #60A5FA;
-   --info-light: #93C5FD;
-   --info-bg: rgba(96, 165, 250, 0.1);
-   --info-border: rgba(96, 165, 250, 0.3);
+   --info: #3B82F6;
+   --info-bg: rgba(59, 130, 246, 0.1);
+   --info-border: rgba(59, 130, 246, 0.2);
 
    /* ============================================
       FOCUS RING
       ============================================ */
    --focus-ring-width: 2px;
-   --focus-ring-offset: 2px;
-   --focus-ring-color: var(--primary-blue-soft);
+   --focus-ring-offset: 1px;
+   --focus-ring-color: #2525FF;
 
    /* ============================================
       LEGACY SUPPORT
       ============================================ */
    --background: #000000;
-   --foreground: #F0F3F8;
+   --foreground: #FFFFFF;
 }
 
 /* ========================================
@@ -599,6 +525,16 @@ body {
    [disabled] {
       cursor: not-allowed;
       opacity: 0.6;
+   }
+
+   /* Scrollbar Hide */
+   .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+   }
+
+   .scrollbar-hide::-webkit-scrollbar {
+      display: none;
    }
 
    /* Text Truncation */
@@ -713,14 +649,7 @@ body {
       background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
    }
 
-   /* Glow Effects */
-   .glow-blue {
-      box-shadow: 0 0 20px rgba(37, 37, 255, 0.3);
-   }
 
-   .glow-blue-hover:hover {
-      box-shadow: 0 0 30px rgba(37, 37, 255, 0.4);
-   }
 
    /* Interactive States */
    .interactive-lift {
@@ -993,38 +922,14 @@ body {
       background: var(--bg-surface-2);
       border-radius: var(--radius-xl);
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8),
-         0 0 0 1px var(--border-default),
-         0 0 12px var(--blue-glow-soft);
+         0 0 0 1px var(--border-default);
    }
 
    .card-elevated-3 {
       background: var(--bg-surface-3);
       border-radius: var(--radius-xl);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.9),
-         0 0 0 1px var(--border-strong),
-         0 0 16px var(--blue-glow-medium);
-   }
-
-   /* Blue glow effects */
-   .glow-blue-subtle {
-      box-shadow: 0 0 8px var(--blue-glow-subtle);
-   }
-
-   .glow-blue-soft {
-      box-shadow: 0 0 16px var(--blue-glow-soft);
-   }
-
-   .glow-blue-medium {
-      box-shadow: 0 0 24px var(--blue-glow-medium);
-   }
-
-   .glow-blue-strong {
-      box-shadow: 0 0 32px var(--blue-glow-strong);
-   }
-
-   .glow-blue-hover:hover {
-      box-shadow: 0 0 32px var(--blue-glow-medium);
-      transition: box-shadow 300ms var(--ease-out);
+         0 0 0 1px var(--border-strong);
    }
 
    /* Interactive states with blue tint */
@@ -1069,17 +974,7 @@ body {
             var(--primary-blue) 100%);
    }
 
-   /* Border glow effects */
-   .border-glow {
-      border: 1px solid var(--border-default);
-      box-shadow: inset 0 0 8px var(--blue-glow-subtle);
-   }
 
-   .border-glow-strong {
-      border: 1px solid var(--border-interactive);
-      box-shadow: inset 0 0 12px var(--blue-glow-soft),
-         0 0 16px var(--blue-glow-subtle);
-   }
 
    /* Skeleton loading with blue tint */
    .skeleton-blue {

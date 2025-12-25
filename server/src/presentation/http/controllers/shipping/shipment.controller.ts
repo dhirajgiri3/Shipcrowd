@@ -1,24 +1,18 @@
 import { Response, NextFunction } from 'express';
-import { z } from 'zod';
 import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
 import Order from '../../../../infrastructure/database/mongoose/models/Order';
-import Warehouse from '../../../../infrastructure/database/mongoose/models/Warehouse';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';
 import mongoose from 'mongoose';
-import { selectBestCarrier, CarrierSelectionResult } from '../../../../core/application/services/shipping/carrier.service';
 import {
     guardChecks,
     validateObjectId,
     parsePagination,
-    generateTrackingNumber,
-    validateStatusTransition,
 } from '../../../../shared/helpers/controller.helpers';
 import {
     createShipmentSchema,
     updateShipmentStatusSchema,
-    SHIPMENT_STATUS_TRANSITIONS,
 } from '../../../../shared/validation/schemas';
 import {
     sendSuccess,
@@ -28,15 +22,7 @@ import {
     sendCreated,
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
-
-const getUniqueTrackingNumber = async (maxAttempts = 10): Promise<string | null> => {
-    for (let i = 0; i < maxAttempts; i++) {
-        const trackingNumber = generateTrackingNumber();
-        const exists = await Shipment.exists({ trackingNumber });
-        if (!exists) return trackingNumber;
-    }
-    return null;
-};
+import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
 
 export const createShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -65,123 +51,48 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
             return;
         }
 
-        if (!['pending', 'ready_to_ship'].includes(order.currentStatus)) {
-            sendError(res, `Cannot create shipment for order with status '${order.currentStatus}'`, 400, 'INVALID_ORDER_STATUS');
+        // Validate order status
+        const orderValidation = ShipmentService.validateOrderForShipment(order);
+        if (!orderValidation.canCreate) {
+            sendError(res, orderValidation.reason!, 400, orderValidation.code!);
             return;
         }
 
-        const existingShipment = await Shipment.findOne({
-            orderId: order._id,
-            isDeleted: false,
-            currentStatus: { $nin: ['cancelled', 'rto'] },
-        }).lean();
-
-        if (existingShipment) {
+        // Check for existing active shipment
+        const hasActive = await ShipmentService.hasActiveShipment(order._id as mongoose.Types.ObjectId);
+        if (hasActive) {
             sendError(res, 'An active shipment already exists for this order', 400, 'SHIPMENT_EXISTS');
             return;
         }
 
-        const warehouseId = validation.data.warehouseId || order.warehouseId;
-        let originPincode = '110001';
-
-        if (warehouseId) {
-            const warehouse = await Warehouse.findOne({
-                _id: warehouseId,
-                companyId: auth.companyId,
-                isDeleted: false,
-            }).lean();
-            if (warehouse?.address?.postalCode) {
-                originPincode = warehouse.address.postalCode;
-            }
-        }
-
-        const totalWeight = order.products.reduce((sum, p) => sum + (p.weight || 0.5) * p.quantity, 0);
-
-        const serviceType = validation.data.serviceType as 'express' | 'standard';
-        const carrierResult: CarrierSelectionResult = selectBestCarrier(
-            totalWeight,
-            originPincode,
-            order.customerInfo.address.postalCode,
-            serviceType
-        );
-
-        const selectedCarrier = validation.data.carrierOverride || carrierResult.selectedCarrier;
-        const selectedOption = carrierResult.alternativeOptions.find(
-            (opt: any) => opt.carrier.toLowerCase() === selectedCarrier.toLowerCase()
-        ) || carrierResult.alternativeOptions[0];
-
-        const trackingNumber = await getUniqueTrackingNumber();
-        if (!trackingNumber) {
-            sendError(res, 'Failed to generate unique tracking number', 500, 'TRACKING_NUMBER_GENERATION_FAILED');
-            return;
-        }
-
-        const estimatedDelivery = new Date();
-        estimatedDelivery.setDate(estimatedDelivery.getDate() + selectedOption.deliveryTime);
-
-        const shipment = new Shipment({
-            trackingNumber,
-            orderId: order._id,
-            companyId: auth.companyId,
-            carrier: selectedOption.carrier,
-            serviceType,
-            packageDetails: {
-                weight: totalWeight,
-                dimensions: { length: 20, width: 15, height: 10 },
-                packageCount: 1,
-                packageType: 'box',
-                declaredValue: order.totals.total,
-            },
-            pickupDetails: warehouseId ? { warehouseId } : undefined,
-            deliveryDetails: {
-                recipientName: order.customerInfo.name,
-                recipientPhone: order.customerInfo.phone,
-                recipientEmail: order.customerInfo.email,
-                address: order.customerInfo.address,
-                instructions: validation.data.instructions,
-            },
-            paymentDetails: {
-                type: order.paymentMethod || 'prepaid',
-                codAmount: order.paymentMethod === 'cod' ? order.totals.total : undefined,
-                shippingCost: selectedOption.rate,
-                currency: 'INR',
-            },
-            currentStatus: 'created',
-            estimatedDelivery,
+        // Create shipment via service
+        const result = await ShipmentService.createShipment({
+            order,
+            companyId: new mongoose.Types.ObjectId(auth.companyId),
+            userId: auth.userId,
+            payload: validation.data
         });
 
-        await shipment.save();
-
-        order.currentStatus = 'shipped';
-        order.statusHistory.push({
-            status: 'shipped',
-            timestamp: new Date(),
-            comment: `Shipment created via ${selectedOption.carrier}`,
-            updatedBy: new mongoose.Types.ObjectId(auth.userId),
-        });
-        order.shippingDetails = {
-            provider: selectedOption.carrier,
-            method: serviceType,
-            trackingNumber,
-            estimatedDelivery,
-            shippingCost: selectedOption.rate,
-        };
-        order.totals.shipping = selectedOption.rate;
-        order.totals.total = order.totals.subtotal + order.totals.shipping + order.totals.tax - order.totals.discount;
-        await order.save();
-
-        await createAuditLog(auth.userId, auth.companyId, 'create', 'shipment', String(shipment._id), { trackingNumber, carrier: selectedOption.carrier }, req);
+        await createAuditLog(auth.userId, auth.companyId, 'create', 'shipment', String(result.shipment._id), {
+            trackingNumber: result.shipment.trackingNumber,
+            carrier: result.carrierSelection.selectedCarrier
+        }, req);
 
         sendCreated(res, {
-            shipment,
-            carrierSelection: {
-                selectedCarrier: selectedOption.carrier,
-                selectedRate: selectedOption.rate,
-                selectedDeliveryTime: selectedOption.deliveryTime,
-                alternativeOptions: carrierResult.alternativeOptions,
-            },
+            shipment: result.shipment,
+            carrierSelection: result.carrierSelection,
         }, 'Shipment created successfully');
     } catch (error) {
+        if (error instanceof Error) {
+            if (error.message === 'Failed to generate unique tracking number') {
+                sendError(res, 'Failed to generate unique tracking number', 500, 'TRACKING_NUMBER_GENERATION_FAILED');
+                return;
+            }
+            if (error.message.includes('Order was updated by another process')) {
+                sendError(res, error.message, 409, 'CONCURRENT_MODIFICATION');
+                return;
+            }
+        }
         logger.error('Error creating shipment:', error);
         next(error);
     }
@@ -299,9 +210,7 @@ export const trackShipment = async (req: AuthRequest, res: Response, next: NextF
             return;
         }
 
-        const timeline = [...shipment.statusHistory].sort(
-            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
+        const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);
 
         sendSuccess(res, {
             trackingNumber: shipment.trackingNumber,
@@ -353,64 +262,32 @@ export const updateShipmentStatus = async (req: AuthRequest, res: Response, next
             return;
         }
 
-        const { valid, allowedTransitions } = validateStatusTransition(
-            shipment.currentStatus,
-            validation.data.status,
-            SHIPMENT_STATUS_TRANSITIONS
-        );
+        // Update shipment status via service
+        const result = await ShipmentService.updateShipmentStatus({
+            shipmentId,
+            currentStatus: shipment.currentStatus,
+            newStatus: validation.data.status,
+            currentVersion: shipment.__v,
+            userId: auth.userId,
+            location: validation.data.location,
+            description: validation.data.description
+        });
 
-        if (!valid) {
-            sendError(res, `Invalid status transition from '${shipment.currentStatus}' to '${validation.data.status}'`, 400, 'INVALID_STATUS_TRANSITION');
+        if (!result.success) {
+            if (result.code === 'CONCURRENT_MODIFICATION') {
+                sendError(res, result.error!, 409, result.code);
+            } else {
+                sendError(res, result.error!, 400, result.code!);
+            }
             return;
         }
 
-        shipment.statusHistory.push({
-            status: validation.data.status,
-            timestamp: new Date(),
-            location: validation.data.location,
-            description: validation.data.description,
-            updatedBy: new mongoose.Types.ObjectId(auth.userId),
-        });
-        shipment.currentStatus = validation.data.status;
+        // Update related order status
+        await ShipmentService.updateRelatedOrderStatus(result.shipment, auth.userId);
 
-        if (validation.data.status === 'delivered') {
-            shipment.actualDelivery = new Date();
-            await Order.findByIdAndUpdate(shipment.orderId, {
-                currentStatus: 'delivered',
-                $push: {
-                    statusHistory: {
-                        status: 'delivered',
-                        timestamp: new Date(),
-                        comment: `Delivered via ${shipment.carrier}`,
-                        updatedBy: new mongoose.Types.ObjectId(auth.userId),
-                    },
-                },
-            });
-        } else if (validation.data.status === 'rto') {
-            await Order.findByIdAndUpdate(shipment.orderId, {
-                currentStatus: 'rto',
-                $push: {
-                    statusHistory: {
-                        status: 'rto',
-                        timestamp: new Date(),
-                        comment: 'Return to origin initiated',
-                        updatedBy: new mongoose.Types.ObjectId(auth.userId),
-                    },
-                },
-            });
-        } else if (validation.data.status === 'ndr') {
-            shipment.ndrDetails = {
-                ndrDate: new Date(),
-                ndrStatus: 'pending',
-                ndrAttempts: (shipment.ndrDetails?.ndrAttempts || 0) + 1,
-                ndrReason: validation.data.description,
-            };
-        }
-
-        await shipment.save();
         await createAuditLog(auth.userId, auth.companyId, 'update', 'shipment', shipmentId, { newStatus: validation.data.status }, req);
 
-        sendSuccess(res, { shipment }, 'Shipment status updated successfully');
+        sendSuccess(res, { shipment: result.shipment }, 'Shipment status updated successfully');
     } catch (error) {
         logger.error('Error updating shipment status:', error);
         next(error);
@@ -436,9 +313,9 @@ export const deleteShipment = async (req: AuthRequest, res: Response, next: Next
             return;
         }
 
-        const nonDeletableStatuses = ['in_transit', 'out_for_delivery', 'delivered'];
-        if (nonDeletableStatuses.includes(shipment.currentStatus)) {
-            sendError(res, `Cannot delete shipment with status '${shipment.currentStatus}'`, 400, 'CANNOT_DELETE_SHIPMENT');
+        const { canDelete, reason } = ShipmentService.canDeleteShipment(shipment.currentStatus);
+        if (!canDelete) {
+            sendError(res, reason!, 400, 'CANNOT_DELETE_SHIPMENT');
             return;
         }
 

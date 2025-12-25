@@ -64,32 +64,41 @@ const insightIcons = {
 
 const insightStyles = {
     cost_saving: {
-        bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-        border: 'border-emerald-200/80 dark:border-emerald-800/50',
-        iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
-        impactBg: 'bg-emerald-500',
+        bg: 'bg-[var(--success-bg)] hover:brightness-95 dark:hover:brightness-110 transition-all',
+        border: 'border-[var(--success-border)]',
+        iconBg: 'bg-[var(--success-bg)]',
+        iconColor: 'text-[var(--success)]',
+        impactBg: 'bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success-border)]',
+        accentColor: 'text-[var(--success)]',
     },
     delivery_optimization: {
-        bg: 'bg-blue-50 dark:bg-blue-950/30',
-        border: 'border-blue-200/80 dark:border-blue-800/50',
-        iconBg: 'bg-blue-100 dark:bg-blue-900/50',
-        iconColor: 'text-blue-600 dark:text-blue-400',
-        impactBg: 'bg-blue-500',
+        bg: 'bg-[var(--info-bg)] hover:brightness-95 dark:hover:brightness-110 transition-all',
+        border: 'border-[var(--info-border)]',
+        iconBg: 'bg-[var(--info-bg)]',
+        iconColor: 'text-[var(--info)]',
+        impactBg: 'bg-[var(--info-bg)] text-[var(--info)] border border-[var(--info-border)]',
+        accentColor: 'text-[var(--info)]',
     },
     trend_alert: {
-        bg: 'bg-amber-50 dark:bg-amber-950/30',
-        border: 'border-amber-200/80 dark:border-amber-800/50',
-        iconBg: 'bg-amber-100 dark:bg-amber-900/50',
-        iconColor: 'text-amber-600 dark:text-amber-400',
-        impactBg: 'bg-amber-500',
+        bg: 'bg-[var(--warning-bg)] hover:brightness-95 dark:hover:brightness-110 transition-all',
+        border: 'border-[var(--warning-border)]',
+        iconBg: 'bg-[var(--warning-bg)]',
+        iconColor: 'text-[var(--warning)]',
+        impactBg: 'bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning-border)]',
+        accentColor: 'text-[var(--warning)]',
     },
     action_recommended: {
-        bg: 'bg-violet-50 dark:bg-violet-950/30',
-        border: 'border-violet-200/80 dark:border-violet-800/50',
-        iconBg: 'bg-violet-100 dark:bg-violet-900/50',
-        iconColor: 'text-violet-600 dark:text-violet-400',
-        impactBg: 'bg-violet-500',
+        // Violet/Purple variables might not be fully defined in globals, checking...
+        // If not, we map to --primary-blue or custom
+        // Looking at globals.css, we have success, warning, error, info. No violet.
+        // I will use --primary-blue-soft for now or distinct hardcoded vars if needed, but user wants vars.
+        // Let's use --primary-blue-soft (which is violet/blue-ish) or create a custom style using brand vars.
+        bg: 'bg-[var(--primary-blue-soft)] hover:brightness-95 dark:hover:brightness-110 transition-all',
+        border: 'border-[var(--primary-blue-subtle)]',
+        iconBg: 'bg-[var(--primary-blue-soft)]',
+        iconColor: 'text-[var(--primary-blue)]',
+        impactBg: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border border-[var(--primary-blue-subtle)]',
+        accentColor: 'text-[var(--primary-blue)]',
     },
 };
 
@@ -106,29 +115,21 @@ export function SmartInsights() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
         >
-            <Card className="border-[var(--border-default)] bg-[var(--bg-primary)] overflow-hidden">
-                <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                                <Sparkles className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                                    Smart Insights
-                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 uppercase">
-                                        AI Powered
-                                    </span>
-                                </CardTitle>
-                                <p className="text-sm text-[var(--text-secondary)] mt-1">
-                                    Personalized recommendations to optimize your shipping
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </CardHeader>
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <Lightbulb className="h-5 w-5 text-[var(--text-secondary)]" />
+                        Optimization Tips
+                    </h3>
+                    <Link
+                        href="/seller/insights"
+                        className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                        View All
+                    </Link>
+                </div>
 
-                <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {insights.map((insight, index) => {
                         const Icon = insightIcons[insight.type];
                         const styles = insightStyles[insight.type];
@@ -136,71 +137,53 @@ export function SmartInsights() {
                         return (
                             <motion.div
                                 key={insight.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
                                 className={cn(
-                                    "p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center gap-4 transition-all duration-200 hover:shadow-md group",
+                                    "flex flex-col h-full rounded-2xl p-5 border transition-all duration-200 hover:scale-[1.01]",
                                     styles.bg,
                                     styles.border
                                 )}
                             >
-                                <div className="flex items-start gap-4 flex-1">
-                                    <div className={cn(
-                                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                                        styles.iconBg
-                                    )}>
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className={cn("p-2.5 rounded-xl", styles.iconBg)}>
                                         <Icon className={cn("h-5 w-5", styles.iconColor)} />
                                     </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <h4 className="font-semibold text-[var(--text-primary)]">
-                                                {insight.title}
-                                            </h4>
-                                            {insight.impact && (
-                                                <span className={cn(
-                                                    "px-2 py-0.5 text-[10px] font-bold rounded-full text-white",
-                                                    styles.impactBg
-                                                )}>
-                                                    {insight.impact}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-[var(--text-secondary)] line-clamp-2">
-                                            {insight.description}
-                                        </p>
-                                    </div>
+                                    {insight.impact && (
+                                        <span className={cn(
+                                            "px-2.5 py-1 text-[10px] font-bold rounded-lg border",
+                                            styles.impactBg
+                                        )}>
+                                            {insight.impact}
+                                        </span>
+                                    )}
                                 </div>
 
-                                {insight.actionUrl && insight.actionLabel && (
-                                    <Link href={insight.actionUrl} className="sm:shrink-0">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full sm:w-auto group-hover:border-[var(--primary-blue)] group-hover:text-[var(--primary-blue)] transition-colors"
-                                        >
-                                            {insight.actionLabel}
-                                            <ArrowRight className="h-3.5 w-3.5 ml-1 transition-transform group-hover:translate-x-0.5" />
-                                        </Button>
+                                <h4 className="font-bold text-[var(--text-primary)] mb-2 line-clamp-2">
+                                    {insight.title}
+                                </h4>
+
+                                <p className="text-sm text-[var(--text-secondary)] mb-4 flex-1 line-clamp-3 leading-relaxed">
+                                    {insight.description}
+                                </p>
+
+                                {insight.actionUrl && (
+                                    <Link href={insight.actionUrl} className="mt-auto pt-4 border-t border-[var(--border-subtle)]/50">
+                                        <div className={cn(
+                                            "flex items-center justify-between text-sm font-semibold transition-colors group",
+                                            styles.accentColor
+                                        )}>
+                                            {insight.actionLabel || 'View Details'}
+                                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                        </div>
                                     </Link>
                                 )}
                             </motion.div>
                         );
                     })}
-
-                    {/* View All Link */}
-                    <div className="pt-2 text-center">
-                        <Link
-                            href="/seller/insights"
-                            className="inline-flex items-center gap-1 text-sm font-medium text-[var(--primary-blue)] hover:opacity-80 transition-opacity"
-                        >
-                            View all insights
-                            <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </motion.div>
     );
 }

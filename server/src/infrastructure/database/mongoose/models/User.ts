@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
 
 // Define the interface for User document
 export interface IUser extends Document {
@@ -236,7 +237,13 @@ const UserSchema = new Schema<IUser>(
         },
         backupEmail: String,
         backupPhone: String,
-        recoveryKeys: [String],
+        recoveryKeys: {
+          type: [String],
+          validate: [
+            arrayLimit(10),
+            'Maximum 10 recovery keys (prevents DoS via excessive key generation)',
+          ],
+        },
         lastUpdated: Date,
       },
     },
@@ -296,6 +303,11 @@ UserSchema.index({ role: 1 });
 UserSchema.index({ isDeleted: 1 });
 UserSchema.index({ 'oauth.google.id': 1 });
 UserSchema.index({ googleId: 1 }, { sparse: true });
+
+// Missing indexes for token lookups (prevents full collection scan)
+UserSchema.index({ 'security.resetToken': 1 }, { sparse: true });
+UserSchema.index({ 'security.verificationToken': 1 }, { sparse: true });
+UserSchema.index({ 'pendingEmailChange.token': 1 }, { sparse: true });
 
 // Compound indexes for common query patterns
 UserSchema.index({ companyId: 1, teamRole: 1 }); // Team filtering by role

@@ -1,4 +1,18 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
+
+/**
+ * CONCURRENCY WARNING:
+ * 
+ * This model is vulnerable to race conditions during concurrent status updates.
+ * Multiple requests updating currentStatus simultaneously can overwrite each other.
+ * 
+ * Recommended fix (Phase 2 - Controller Refactoring):
+ * - Add optimistic locking using version field (__v)
+ * - Use findOneAndUpdate with version check instead of save()
+ * 
+ * Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Race Conditions
+ */
 
 // Define the interface for Order document
 export interface IOrder extends Document {
@@ -110,31 +124,37 @@ const OrderSchema = new Schema<IOrder>(
         },
       },
     },
-    products: [
-      {
-        name: {
-          type: String,
-          required: true,
+    products: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          sku: String,
+          quantity: {
+            type: Number,
+            required: true,
+            min: 1,
+          },
+          price: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          weight: Number,
+          dimensions: {
+            length: Number,
+            width: Number,
+            height: Number,
+          },
         },
-        sku: String,
-        quantity: {
-          type: Number,
-          required: true,
-          min: 1,
-        },
-        price: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        weight: Number,
-        dimensions: {
-          length: Number,
-          width: Number,
-          height: Number,
-        },
-      },
-    ],
+      ],
+      validate: [
+        arrayLimit(200),
+        'Maximum 200 products per order (prevents query timeout for bulk orders)',
+      ],
+    },
     shippingDetails: {
       provider: String,
       method: String,
@@ -164,23 +184,29 @@ const OrderSchema = new Schema<IOrder>(
       type: Schema.Types.ObjectId,
       ref: 'Warehouse',
     },
-    statusHistory: [
-      {
-        status: {
-          type: String,
-          required: true,
+    statusHistory: {
+      type: [
+        {
+          status: {
+            type: String,
+            required: true,
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+          comment: String,
+          updatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+          },
         },
-        timestamp: {
-          type: Date,
-          default: Date.now,
-        },
-        comment: String,
-        updatedBy: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      },
-    ],
+      ],
+      validate: [
+        arrayLimit(100),
+        'Maximum 100 status entries (prevents memory exhaustion from status loops)',
+      ],
+    },
     currentStatus: {
       type: String,
       required: true,

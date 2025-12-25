@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, Truck, Plus, Wallet } from 'lucide-react';
 import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
-import { NotificationsDropdown } from '@/components/shared/NotificationsDropdown';
+import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/utils';
@@ -17,12 +17,11 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const [searchFocused, setSearchFocused] = useState(false);
     const [searchValue, setSearchValue] = useState('');
 
-    // Build user object for ProfileDropdown
     const currentUser = {
         name: user?.name || 'Seller',
         email: user?.email || '',
         role: (user?.role || 'seller') as 'admin' | 'seller' | 'admin+seller',
-        walletBalance: 0 // TODO: Fetch from wallet API
+        walletBalance: 0
     };
 
     const getPageTitle = (path: string) => {
@@ -48,7 +47,6 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         router.push('/login');
     };
 
-    // Command+K or Ctrl+K to focus search
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -62,7 +60,6 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // Format currency
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
             style: 'currency',
@@ -71,36 +68,35 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         }).format(amount);
     };
 
-
     return (
-        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between bg-[var(--bg-primary)]/80 backdrop-blur-md border-b border-[var(--border-subtle)] px-6 lg:px-8 transition-colors duration-300">
+        <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-4 lg:px-6 transition-colors duration-200">
             {/* Left Section */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                 <button
                     onClick={onMenuClick}
-                    className="lg:hidden h-10 w-10 rounded-xl flex items-center justify-center hover:bg-[var(--bg-hover)] transition-all duration-200"
+                    className="lg:hidden h-9 w-9 rounded-lg flex items-center justify-center hover:bg-[var(--bg-hover)] transition-colors duration-150"
                 >
                     <Menu className="h-5 w-5 text-[var(--text-secondary)]" />
                 </button>
-                <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">{getPageTitle(pathname)}</h1>
+                <h1 className="text-lg font-semibold text-[var(--text-primary)]">{getPageTitle(pathname)}</h1>
             </div>
 
-            {/* Center - Search (Desktop) - Environment Aware */}
-            <div className="hidden md:flex flex-1 max-w-lg mx-12">
+            {/* Center - Search */}
+            <div className="hidden md:flex flex-1 max-w-md mx-8">
                 <div className={cn(
-                    "relative w-full transition-all duration-300",
-                    searchFocused ? "scale-[1.02] z-50" : "scale-100 z-0"
+                    "relative w-full transition-all duration-200",
+                    searchFocused && "z-50"
                 )}>
-                    {/* Search Overlay Background */}
                     <div className={cn(
-                        "absolute inset-0 bg-[var(--bg-secondary)] rounded-2xl transition-all duration-300 shadow-sm border border-[var(--border-subtle)]",
-                        searchFocused && "shadow-xl ring-2 ring-[var(--primary-blue)]/20 border-transparent"
+                        "absolute inset-0 rounded-xl transition-all duration-200",
+                        "bg-[var(--bg-secondary)] border border-[var(--border-subtle)]",
+                        searchFocused && "border-[var(--border-focus)] ring-1 ring-[var(--border-focus)]/20"
                     )} />
 
-                    <div className="relative flex items-center px-4 h-11">
+                    <div className="relative flex items-center px-3 h-10">
                         <Search className={cn(
-                            "h-4 w-4 mr-3 transition-colors duration-200 flex-shrink-0",
-                            searchFocused ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
+                            "h-4 w-4 mr-2.5 transition-colors duration-150 flex-shrink-0",
+                            searchFocused ? "text-[var(--text-secondary)]" : "text-[var(--text-muted)]"
                         )} />
                         <input
                             id="global-search-seller"
@@ -110,74 +106,69 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                             placeholder="Search shipments, orders..."
                             onFocus={() => setSearchFocused(true)}
                             onBlur={() => setSearchFocused(false)}
-                            className={cn(
-                                "flex-1 bg-transparent border-none outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
-                                "px-0"
-                            )}
+                            className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                         />
-                        <div className={cn(
-                            "flex items-center gap-1 transition-opacity duration-200",
+                        <kbd className={cn(
+                            "hidden lg:flex h-5 items-center justify-center px-1.5 text-[10px] font-medium text-[var(--text-muted)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded transition-opacity duration-150",
                             searchFocused ? "opacity-100" : "opacity-60"
-                        )}>
-                            <kbd className="hidden lg:flex h-5 items-center justify-center px-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded shadow-sm">⌘K</kbd>
-                        </div>
+                        )}>⌘K</kbd>
                     </div>
                 </div>
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
                 {/* Quick Actions */}
-                <div className="hidden lg:flex items-center gap-3 mr-2">
-                    {/* Wallet - Restored & Prominent */}
+                <div className="hidden lg:flex items-center gap-2">
+                    {/* Wallet */}
                     <Tooltip content="Manage Wallet" side="bottom">
                         <button
                             onClick={() => window.location.href = '/seller/financials'}
                             className={cn(
-                                "h-10 px-4 rounded-xl flex items-center gap-2.5 transition-all duration-200 group",
+                                "h-9 px-3 rounded-lg flex items-center gap-2 transition-colors duration-150",
                                 "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]",
-                                "border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/30"
+                                "border border-[var(--border-subtle)] hover:border-[var(--border-default)]"
                             )}
                         >
-                            <div className="p-1 rounded-lg bg-[var(--primary-blue)]/10 text-[var(--primary-blue)] group-hover:scale-110 transition-transform">
-                                <Wallet className="h-3.5 w-3.5" />
-                            </div>
+                            <Wallet className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
                             <div className="flex flex-col items-start leading-none">
-                                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">Balance</span>
-                                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">{formatCurrency(currentUser.walletBalance)}</span>
+                                <span className="text-[9px] uppercase font-semibold text-[var(--text-muted)] tracking-wide">Balance</span>
+                                <span className="text-xs font-semibold text-[var(--text-primary)] tabular-nums">{formatCurrency(currentUser.walletBalance)}</span>
                             </div>
                         </button>
                     </Tooltip>
 
-                    <Tooltip content="Create New Order">
+                    {/* Create Order */}
+                    <Tooltip content="Create New Order" side="bottom">
                         <button
                             onClick={() => window.location.href = '/seller/orders/create'}
-                            className="h-10 px-4 rounded-xl text-sm font-semibold text-white bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+                            className="h-9 px-3 rounded-lg text-xs font-semibold text-white bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] transition-colors duration-150 flex items-center gap-1.5"
                         >
-                            <Plus className="h-4 w-4" />
-                            <span className="hidden xl:inline">Create Order</span>
+                            <Plus className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">New Order</span>
                         </button>
                     </Tooltip>
 
-                    {/* Track - Icon Only */}
+                    {/* Track */}
                     <Tooltip content="Track Order" side="bottom">
                         <button
                             onClick={() => window.location.href = '/seller/tracking'}
-                            className="h-10 w-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--primary-blue)] border border-[var(--border-subtle)] transition-all duration-200"
+                            className="h-9 w-9 rounded-lg flex items-center justify-center text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] transition-colors duration-150"
                         >
-                            <Truck className="h-4.5 w-4.5" />
+                            <Truck className="h-4 w-4" />
                         </button>
                     </Tooltip>
                 </div>
 
-                <div className="h-8 w-px bg-[var(--border-subtle)] hidden lg:block" />
+                <div className="h-6 w-px bg-[var(--border-subtle)] hidden lg:block mx-1" />
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                     <ThemeToggle />
-                    <NotificationsDropdown />
+                    <NotificationCenter />
                     <ProfileDropdown user={currentUser} onSignOut={handleSignOut} />
                 </div>
             </div>
         </header>
     );
 }
+

@@ -13,7 +13,6 @@ import {
     sendCreated,
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
-import { objectIdSchema } from '../../../../shared/validation/commonSchemas';
 
 // Validation schemas
 const transitTimeSchema = z.object({

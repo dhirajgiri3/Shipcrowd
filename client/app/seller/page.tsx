@@ -8,16 +8,15 @@ import { AnimatedNumber } from '@/hooks/useCountUp';
 import {
     Activity,
     ArrowUpRight,
-    Box,
     CheckCircle2,
     DollarSign,
-    MapPin,
     Package,
     Settings,
     TrendingUp,
+    TrendingDown,
     Truck,
     Wallet,
-    Zap
+    Target
 } from 'lucide-react';
 import {
     AreaChart,
@@ -32,6 +31,7 @@ import {
     Cell
 } from 'recharts';
 import { useAuth } from '@/src/features/auth';
+import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
 import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
@@ -76,22 +76,22 @@ const orderStatusData = [
     { name: 'RTO', value: 85, color: '#EF4444' },
 ];
 
-const topProducts = [
-    { name: 'Wireless Earbuds', sales: 245, revenue: 122500, trend: 'up', change: '+12%' },
-    { name: 'Smart Watch', sales: 189, revenue: 283500, trend: 'up', change: '+8%' },
-    { name: 'Laptop Stand', sales: 156, revenue: 93600, trend: 'down', change: '-3%' },
-    { name: 'USB-C Hub', sales: 134, revenue: 67000, trend: 'up', change: '+15%' },
-    { name: 'Bluetooth Speaker', sales: 98, revenue: 73500, trend: 'up', change: '+5%' },
-];
+// Removed topProducts - replaced with Shipping Cost Analysis (more valuable for sellers)
 
 // --- COMPONENTS ---
 
-// 1. Stat Card with Sparkline
-function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data }: any) {
+// 1. Stat Card with Sparkline - Enhanced with clickability
+function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data, onClick }: any) {
+    const Component = onClick ? motion.button : motion.div;
+    
     return (
-        <motion.div
+        <Component
             variants={itemVariants}
-            className="relative overflow-hidden p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] group hover:shadow-xl transition-all duration-300"
+            onClick={onClick}
+            className={cn(
+                "relative overflow-hidden p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] group transition-all duration-300 w-full text-left",
+                onClick && "hover:border-[var(--primary-blue)]/50 hover:shadow-md cursor-pointer"
+            )}
         >
             <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
                 <Icon className="w-32 h-32" />
@@ -159,12 +159,13 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-        </motion.div>
+        </Component>
     );
 }
 
 export default function SellerDashboardPage() {
     const { user } = useAuth();
+    const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
 
     // Fetch seller actionable items
@@ -183,59 +184,105 @@ export default function SellerDashboardPage() {
         deliveryRate: 94.5
     };
 
+    // Get greeting based on time
+    const getGreeting = () => {
+        const hour = currentTime.getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 17) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
+    const totalActions = actionsData?.totalActions || 0;
+
     return (
         <div className="min-h-screen space-y-8 pb-10">
-            {/* 1. Top Navigation & Welcome */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-2"
-                    >
-                        <div className="px-2 py-1 rounded-md bg-[var(--primary-blue-soft)]/20 border border-[var(--primary-blue)]/20 flex items-center gap-2">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary-blue)]"></span>
-                            </span>
-                            Live System
-                        </div>
-                        <span className="text-[var(--text-muted)]">•</span>
-                        <span className="text-[var(--text-muted)]">{currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                    </motion.div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
-                    >
-                        Welcome back, {user?.name?.split(' ')[0] || 'Seller'}
-                    </motion.h1>
-                </div>
+            {/* 1. Enhanced Welcome Header */}
+            <motion.header
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--primary-blue-soft)]/30 via-[var(--bg-primary)] to-[var(--bg-primary)] border border-[var(--border-subtle)] p-6 sm:p-8"
+            >
+                {/* Decorative background elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary-blue)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-[var(--primary-blue)]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-                <div className="flex items-center gap-3">
-                    <DateRangePicker />
-                    <button className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors">
-                        <Settings className="w-5 h-5" />
-                    </button>
-                    <Link href="/seller/orders/create">
-                        <button className="px-4 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white shadow-lg shadow-blue-500/20 hover:bg-[var(--primary-blue-deep)] transition-colors flex items-center gap-2">
-                            <Package className="w-5 h-5" />
-                            <span className="font-medium">Create Order</span>
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2, type: "spring" }}
+                                className="px-3 py-1.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--primary-blue)]/20 flex items-center gap-2 shadow-sm"
+                            >
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
+                            </motion.div>
+                            <span className="text-xs text-[var(--text-muted)] font-medium">
+                                {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </span>
+                            {totalActions > 0 && (
+                                <motion.span
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/20"
+                                >
+                                    {totalActions} Action{totalActions !== 1 ? 's' : ''} Required
+                                </motion.span>
+                            )}
+                        </div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-4xl sm:text-5xl font-bold text-[var(--text-primary)] tracking-tight mb-2"
+                        >
+                            {getGreeting()}, {user?.name?.split(' ')[0] || 'Seller'}! 👋
+                        </motion.h1>
+                        <p className="text-base text-[var(--text-secondary)] max-w-2xl">
+                            {totalActions > 0 
+                                ? `You have ${totalActions} pending ${totalActions === 1 ? 'action' : 'actions'} that need your attention.`
+                                : "Everything looks great! Ready to ship some orders?"
+                            }
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        <DateRangePicker />
+                        <button 
+                            className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-all hover:shadow-sm"
+                            aria-label="Settings"
+                        >
+                            <Settings className="w-5 h-5" />
                         </button>
-                    </Link>
+                        <Link href="/seller/orders/create">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white hover:shadow-lg hover:shadow-blue-500/25 transition-all flex items-center gap-2 font-medium"
+                            >
+                                <Package className="w-5 h-5" />
+                                <span>Create Order</span>
+                            </motion.button>
+                        </Link>
+                    </div>
                 </div>
-            </header>
+            </motion.header>
 
             {/* 🎯 ACTIONS REQUIRED - Priority Section */}
-            <ActionsRequired
-                actions={actionsData?.items || []}
-                isLoading={actionsLoading}
-            />
+            {totalActions > 0 && (
+                <ActionsRequired
+                    actions={actionsData?.items || []}
+                    isLoading={actionsLoading}
+                />
+            )}
 
             {/* ⚡ QUICK CREATE - Fast Order Creation */}
             <QuickCreate />
 
-            {/* 2. Key Metrics Grid */}
+            {/* 2. Key Metrics Grid - Enhanced with better visual hierarchy */}
             <motion.section
                 variants={containerVariants}
                 initial="hidden"
@@ -251,6 +298,7 @@ export default function SellerDashboardPage() {
                     trendValue="+14.5%"
                     color="emerald"
                     data={revenueData.map(d => ({ value: d.revenue }))}
+                    onClick={() => router.push('/seller/analytics?tab=revenue')}
                 />
                 <StatCard
                     title="Total Orders"
@@ -261,6 +309,7 @@ export default function SellerDashboardPage() {
                     trendValue="+8.2%"
                     color="blue"
                     data={revenueData.map(d => ({ value: d.orders }))}
+                    onClick={() => router.push('/seller/orders')}
                 />
                 <StatCard
                     title="Active Shipments"
@@ -273,23 +322,22 @@ export default function SellerDashboardPage() {
                     data={[
                         { value: 320 }, { value: 325 }, { value: 332 }, { value: 340 }, { value: 338 }, { value: 342 }
                     ]}
+                    onClick={() => router.push('/seller/shipments?status=in_transit')}
                 />
                 <StatCard
                     title="Delivery Rate"
                     value={98.2}
                     subtext="Success Rate"
-                    icon={Zap}
+                    icon={Target}
                     trend="up"
                     trendValue="+0.8%"
                     color="amber"
                     data={[
                         { value: 97 }, { value: 97.5 }, { value: 98 }, { value: 97.8 }, { value: 98 }, { value: 98.2 }
                     ]}
+                    onClick={() => router.push('/seller/analytics?tab=performance')}
                 />
             </motion.section>
-
-            {/* 💡 SMART INSIGHTS - AI Powered Recommendations */}
-            <SmartInsights />
 
             {/* 3. Main Dashboard Content - Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -297,22 +345,27 @@ export default function SellerDashboardPage() {
                 {/* LEFT COLUMN (2/3) */}
                 <div className="lg:col-span-2 space-y-8">
 
-                    {/* Revenue Analytics Chart */}
+                    {/* Revenue Analytics Chart - Enhanced */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
+                        className="p-6 sm:p-8 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
                     >
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
-                                <p className="text-sm text-[var(--text-secondary)]">Income vs Orders Overview</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-2 rounded-xl bg-[var(--primary-blue-soft)]">
+                                        <TrendingUp className="w-5 h-5 text-[var(--primary-blue)]" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
+                                </div>
+                                <p className="text-sm text-[var(--text-secondary)] ml-12">Track your income and order trends</p>
                             </div>
-                            <div className="flex gap-2">
-                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">Daily</button>
-                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--primary-blue)] text-white">Weekly</button>
-                                <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">Monthly</button>
+                            <div className="flex gap-2 ml-12 sm:ml-0">
+                                <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors border border-[var(--border-subtle)]">Daily</button>
+                                <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary-blue)] text-white shadow-sm shadow-blue-500/20">Weekly</button>
+                                <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors border border-[var(--border-subtle)]">Monthly</button>
                             </div>
                         </div>
                         <div className="h-[350px] w-full">
@@ -343,50 +396,86 @@ export default function SellerDashboardPage() {
                         </div>
                     </motion.div>
 
-                    {/* Top Products Table */}
+                    {/* Shipping Cost Analysis - More Valuable than Top Products */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
+                        className="p-6 sm:p-8 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
                     >
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Top Products</h3>
-                                <p className="text-sm text-[var(--text-secondary)]">Best performing items this week</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-2 rounded-xl bg-emerald-500/10">
+                                        <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Shipping Cost Analysis</h3>
+                                </div>
+                                <p className="text-sm text-[var(--text-secondary)] ml-12">Track costs and optimize shipping expenses</p>
                             </div>
-                            <Link href="/seller/orders">
-                                <button className="text-sm font-medium text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1">
-                                    View All
+                            <Link href="/seller/financials">
+                                <button className="text-sm font-semibold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1 transition-colors px-3 py-1.5 rounded-lg hover:bg-[var(--primary-blue-soft)]/20">
+                                    View Details
                                     <ArrowUpRight className="w-4 h-4" />
                                 </button>
                             </Link>
                         </div>
 
-                        <div className="space-y-4">
-                            {topProducts.map((product, i) => (
-                                <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] flex items-center justify-center">
-                                            <Box className="w-5 h-5 text-[var(--text-muted)]" />
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-[var(--text-primary)] text-sm">{product.name}</p>
-                                            <p className="text-xs text-[var(--text-muted)]">{product.sales} sales</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(product.revenue)}</p>
-                                        <div className={cn(
-                                            "text-xs font-bold flex items-center gap-1",
-                                            product.trend === 'up' ? "text-emerald-500" : "text-rose-500"
-                                        )}>
-                                            <TrendingUp className={cn("w-3 h-3", product.trend === 'down' && "rotate-180")} />
-                                            {product.change}
-                                        </div>
-                                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
+                                <p className="text-xs font-medium text-[var(--text-secondary)] mb-1">Total Cost (30d)</p>
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-2xl font-bold text-[var(--text-primary)]">₹45,200</p>
+                                    <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
+                                        <TrendingUp className="w-3 h-3 rotate-180" />
+                                        12%
+                                    </span>
                                 </div>
-                            ))}
+                                <p className="text-xs text-[var(--text-muted)] mt-1">vs last month</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
+                                <p className="text-xs font-medium text-[var(--text-secondary)] mb-1">Cost per Order</p>
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-2xl font-bold text-[var(--text-primary)]">₹23.50</p>
+                                    <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
+                                        <TrendingUp className="w-3 h-3 rotate-180" />
+                                        8%
+                                    </span>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Average shipping cost</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
+                                <p className="text-xs font-medium text-[var(--text-secondary)] mb-1">Cost % Revenue</p>
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-2xl font-bold text-[var(--text-primary)]">8.2%</p>
+                                    <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
+                                        <TrendingUp className="w-3 h-3 rotate-180" />
+                                        1.2%
+                                    </span>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">of total revenue</p>
+                            </div>
+                        </div>
+
+                        {/* Cost Optimization Opportunity */}
+                        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-xl bg-emerald-500/20">
+                                    <TrendingDown className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-[var(--text-primary)] mb-1">Cost Savings Opportunity</p>
+                                    <p className="text-sm text-[var(--text-secondary)] mb-3">
+                                        Switch 15 orders to Delhivery for Zone B to save ₹1,200 this month
+                                    </p>
+                                    <Link href="/seller/orders?optimize=true">
+                                        <button className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors">
+                                            Optimize Now
+                                            <ArrowUpRight className="w-4 h-4" />
+                                        </button>
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
 
@@ -395,44 +484,31 @@ export default function SellerDashboardPage() {
                 {/* RIGHT COLUMN (1/3) */}
                 <div className="space-y-8">
 
-                    {/* Quick Actions */}
+                    {/* 💡 SMART INSIGHTS - Moved here for better flow */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
                     >
-                        <h3 className="font-bold text-[var(--text-primary)] mb-4">Quick Actions</h3>
-                        <div className="space-y-3">
-                            <Link href="/seller/orders/create">
-                                <button className="w-full p-4 rounded-2xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-colors flex items-center gap-3">
-                                    <Package className="w-5 h-5" />
-                                    <span className="font-medium">Create New Order</span>
-                                </button>
-                            </Link>
-                            <Link href="/seller/shipments">
-                                <button className="w-full p-4 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition-colors flex items-center gap-3">
-                                    <Truck className="w-5 h-5" />
-                                    <span className="font-medium">Track Shipments</span>
-                                </button>
-                            </Link>
-                            <Link href="/seller/warehouses">
-                                <button className="w-full p-4 rounded-2xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition-colors flex items-center gap-3">
-                                    <MapPin className="w-5 h-5" />
-                                    <span className="font-medium">Manage Warehouses</span>
-                                </button>
-                            </Link>
-                        </div>
+                        <SmartInsights />
                     </motion.div>
 
-                    {/* Order Status Distribution (Donut Chart) */}
+                    {/* Order Status Distribution (Donut Chart) - Clickable */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
+                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
                     >
-                        <h3 className="font-bold text-[var(--text-primary)] mb-6">Order Status</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-[var(--text-primary)]">Order Status</h3>
+                            <Link href="/seller/orders">
+                                <button className="text-xs font-semibold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1 transition-colors">
+                                    View All
+                                    <ArrowUpRight className="w-3 h-3" />
+                                </button>
+                            </Link>
+                        </div>
                         <div className="h-[250px] relative">
                             <ResponsiveContainer width="100%" height="100%">
                                 <RechartsPieChart>
@@ -446,7 +522,13 @@ export default function SellerDashboardPage() {
                                         dataKey="value"
                                     >
                                         {orderStatusData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={entry.color} 
+                                                strokeWidth={0}
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => router.push(`/seller/orders?status=${entry.name.toLowerCase().replace(' ', '_')}`)}
+                                            />
                                         ))}
                                     </Pie>
                                     <Tooltip
@@ -463,53 +545,66 @@ export default function SellerDashboardPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-3 mt-4">
                             {orderStatusData.map((status) => (
-                                <div key={status.name} className="flex items-center gap-2">
+                                <button
+                                    key={status.name}
+                                    onClick={() => router.push(`/seller/orders?status=${status.name.toLowerCase().replace(' ', '_')}`)}
+                                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors text-left group"
+                                >
                                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
-                                    <span className="text-xs font-medium text-[var(--text-secondary)]">{status.name}</span>
-                                </div>
+                                    <span className="text-xs font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">{status.name}</span>
+                                    <span className="ml-auto text-xs font-bold text-[var(--text-muted)]">{status.value}</span>
+                                </button>
                             ))}
                         </div>
                     </motion.div>
 
-                    {/* Recent Activity */}
+                    {/* Recent Activity - Enhanced with clickability */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
+                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
                                 <Activity className="w-5 h-5 text-[var(--primary-blue)]" />
                                 Recent Activity
                             </h3>
+                            <Link href="/seller/orders">
+                                <button className="text-xs font-semibold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1 transition-colors">
+                                    View All
+                                    <ArrowUpRight className="w-3 h-3" />
+                                </button>
+                            </Link>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {[
-                                { action: 'Order Placed', details: 'Order #ORD-892 placed', time: 'Just now', icon: Package, color: 'blue' },
-                                { action: 'Payment Received', details: '₹1,299 received via UPI', time: '2 min ago', icon: Wallet, color: 'emerald' },
-                                { action: 'Shipment Created', details: 'AWB generated for order', time: '12 min ago', icon: Truck, color: 'violet' },
-                                { action: 'Order Delivered', details: 'Successfully delivered', time: '40 min ago', icon: CheckCircle2, color: 'emerald' },
+                                { action: 'Order Placed', details: 'Order #ORD-892 placed', time: 'Just now', icon: Package, color: 'blue', link: '/seller/orders/ORD-892' },
+                                { action: 'Payment Received', details: '₹1,299 received via UPI', time: '2 min ago', icon: Wallet, color: 'emerald', link: '/seller/financials' },
+                                { action: 'Shipment Created', details: 'AWB generated for order', time: '12 min ago', icon: Truck, color: 'violet', link: '/seller/shipments' },
+                                { action: 'Order Delivered', details: 'Successfully delivered', time: '40 min ago', icon: CheckCircle2, color: 'emerald', link: '/seller/orders?status=delivered' },
                             ].map((item, i) => (
-                                <div key={i} className="flex gap-3 p-3 rounded-2xl hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
-                                    <div className={cn(
-                                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                        item.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                                            item.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                                                item.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
-                                                    "bg-amber-500/10 text-amber-500"
-                                    )}>
-                                        <item.icon className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <p className="text-sm font-bold text-[var(--text-primary)]">{item.action}</p>
-                                            <span className="text-[10px] font-medium text-[var(--text-muted)]">{item.time}</span>
+                                <Link key={i} href={item.link || '#'}>
+                                    <div className="flex gap-3 p-3 rounded-2xl hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)] cursor-pointer group">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110",
+                                            item.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
+                                                item.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
+                                                    item.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
+                                                        "bg-amber-500/10 text-amber-500"
+                                        )}>
+                                            <item.icon className="w-5 h-5" />
                                         </div>
-                                        <p className="text-xs text-[var(--text-secondary)] truncate">{item.details}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <p className="text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{item.action}</p>
+                                                <span className="text-[10px] font-medium text-[var(--text-muted)]">{item.time}</span>
+                                            </div>
+                                            <p className="text-xs text-[var(--text-secondary)] truncate">{item.details}</p>
+                                        </div>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </motion.div>

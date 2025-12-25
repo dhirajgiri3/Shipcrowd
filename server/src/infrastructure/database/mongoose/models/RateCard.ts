@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
 
 // Define the interface for RateCard document
 export interface IRateCard extends Document {
@@ -58,96 +59,120 @@ const RateCardSchema = new Schema<IRateCard>(
       ref: 'Company',
       required: true,
     },
-    baseRates: [
-      {
-        carrier: {
-          type: String,
-          required: true,
+    baseRates: {
+      type: [
+        {
+          carrier: {
+            type: String,
+            required: true,
+          },
+          serviceType: {
+            type: String,
+            required: true,
+          },
+          basePrice: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          minWeight: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          maxWeight: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
         },
-        serviceType: {
-          type: String,
-          required: true,
+      ],
+      validate: [
+        arrayLimit(1000),
+        'Maximum 1,000 base rates (supports complex pricing with many carriers)',
+      ],
+    },
+    weightRules: {
+      type: [
+        {
+          minWeight: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          maxWeight: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          pricePerKg: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          carrier: String,
+          serviceType: String,
         },
-        basePrice: {
-          type: Number,
-          required: true,
-          min: 0,
+      ],
+      validate: [
+        arrayLimit(1000),
+        'Maximum 1,000 weight rules (supports multiple weight slabs)',
+      ],
+    },
+    zoneRules: {
+      type: [
+        {
+          zoneId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Zone',
+            required: true,
+          },
+          carrier: {
+            type: String,
+            required: true,
+          },
+          serviceType: {
+            type: String,
+            required: true,
+          },
+          additionalPrice: {
+            type: Number,
+            required: true,
+          },
+          transitDays: Number,
         },
-        minWeight: {
-          type: Number,
-          required: true,
-          min: 0,
+      ],
+      validate: [
+        arrayLimit(1000),
+        'Maximum 1,000 zone rules (supports zone-specific pricing)',
+      ],
+    },
+    customerOverrides: {
+      type: [
+        {
+          customerId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+          },
+          customerGroup: String,
+          discountPercentage: {
+            type: Number,
+            min: 0,
+            max: 100,
+          },
+          flatDiscount: {
+            type: Number,
+            min: 0,
+          },
+          carrier: String,
+          serviceType: String,
         },
-        maxWeight: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-      },
-    ],
-    weightRules: [
-      {
-        minWeight: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        maxWeight: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        pricePerKg: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        carrier: String,
-        serviceType: String,
-      },
-    ],
-    zoneRules: [
-      {
-        zoneId: {
-          type: Schema.Types.ObjectId,
-          ref: 'Zone',
-          required: true,
-        },
-        carrier: {
-          type: String,
-          required: true,
-        },
-        serviceType: {
-          type: String,
-          required: true,
-        },
-        additionalPrice: {
-          type: Number,
-          required: true,
-        },
-        transitDays: Number,
-      },
-    ],
-    customerOverrides: [
-      {
-        customerId: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        customerGroup: String,
-        discountPercentage: {
-          type: Number,
-          min: 0,
-          max: 100,
-        },
-        flatDiscount: {
-          type: Number,
-          min: 0,
-        },
-        carrier: String,
-        serviceType: String,
-      },
-    ],
+      ],
+      validate: [
+        arrayLimit(500),
+        'Maximum 500 customer overrides (supports customer-specific discounts)',
+      ],
+    },
     effectiveDates: {
       startDate: {
         type: Date,

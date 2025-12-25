@@ -1,4 +1,18 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { arrayLimit } from '../../../../shared/utils/arrayValidators';
+
+/**
+ * CONCURRENCY WARNING:
+ * 
+ * This model is vulnerable to race conditions during concurrent status updates.
+ * Carrier webhooks firing simultaneously can overwrite each other's updates.
+ * 
+ * Recommended fix (Phase 2 - Controller Refactoring):
+ * - Add optimistic locking using version field (__v)
+ * - Use findOneAndUpdate with version check instead of save()
+ * 
+ * Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Race Conditions
+ */
 
 // Define the interface for Shipment document
 export interface IShipment extends Document {
@@ -199,24 +213,30 @@ const ShipmentSchema = new Schema<IShipment>(
         default: 'INR',
       },
     },
-    statusHistory: [
-      {
-        status: {
-          type: String,
-          required: true,
+    statusHistory: {
+      type: [
+        {
+          status: {
+            type: String,
+            required: true,
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+          location: String,
+          description: String,
+          updatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+          },
         },
-        timestamp: {
-          type: Date,
-          default: Date.now,
-        },
-        location: String,
-        description: String,
-        updatedBy: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      },
-    ],
+      ],
+      validate: [
+        arrayLimit(100),
+        'Maximum 100 status entries (prevents memory exhaustion from webhook storms)',
+      ],
+    },
     currentStatus: {
       type: String,
       required: true,
@@ -224,23 +244,29 @@ const ShipmentSchema = new Schema<IShipment>(
     },
     estimatedDelivery: Date,
     actualDelivery: Date,
-    documents: [
-      {
-        type: {
-          type: String,
-          enum: ['label', 'invoice', 'manifest'],
-          required: true,
+    documents: {
+      type: [
+        {
+          type: {
+            type: String,
+            enum: ['label', 'invoice', 'manifest'],
+            required: true,
+          },
+          url: {
+            type: String,
+            required: true,
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
         },
-        url: {
-          type: String,
-          required: true,
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
+      ],
+      validate: [
+        arrayLimit(50),
+        'Maximum 50 documents per shipment (prevents performance degradation)',
+      ],
+    },
     carrierDetails: {
       carrierTrackingNumber: String,
       carrierServiceType: String,

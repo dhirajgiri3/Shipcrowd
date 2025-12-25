@@ -14,6 +14,7 @@ import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthRequest } from '../../middleware/auth/auth';
 import mongoose from 'mongoose';
+import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';
 
 // Custom password validator
 const passwordValidator = (password: string, ctx: z.RefinementCtx) => {
@@ -82,8 +83,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     const validatedData = registerSchema.parse(req.body);
     const existingUser = await User.findOne({ email: validatedData.email });
     if (existingUser) {
-      res.status(400).json({ message: 'User already exists' });
-      return; // Return void
+      sendError(res, 'User already exists', 409, 'USER_EXISTS');
+      return;
     }
 
     // Check if there's an invitation token
@@ -101,7 +102,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       }).populate('companyId', 'name');
 
       if (!invitation) {
-        res.status(400).json({ message: 'Invalid or expired invitation token' });
+        sendError(res, 'Invalid or expired invitation token', 400, 'INVALID_INVITATION');
         return;
       }
 
@@ -153,17 +154,23 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       req
     );
 
-    res.status(201).json({
-      message: 'User registered successfully. Please check your email to verify your account.',
-      ...(companyId && { companyId: companyId.toString() })
-    });
+    sendCreated(
+      res,
+      { companyId: companyId?.toString() },
+      'User registered successfully. Please check your email to verify your account.'
+    );
   } catch (error) {
     logger.error('Registration error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return; // Return void
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
     }
-    next(error); // Pass other errors to error handling middleware
+    next(error);
   }
 };
 
@@ -178,8 +185,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const user = await User.findOne({ email: validatedData.email });
 
     if (!user) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return; // Return void
+      sendError(res, 'Invalid credentials', 401, 'INVALID_CREDENTIALS');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -187,36 +194,38 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     // Check if account is locked
     if (typedUser.security.lockUntil && typedUser.security.lockUntil > new Date()) {
       const minutesLeft = Math.ceil((typedUser.security.lockUntil.getTime() - new Date().getTime()) / (60 * 1000));
-      res.status(401).json({
-        message: `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
-        locked: true,
-        lockExpires: typedUser.security.lockUntil
-      });
+      sendError(
+        res,
+        `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
+        401,
+        'ACCOUNT_LOCKED'
+      );
       return;
     }
 
     if (!typedUser.isActive) {
-      res.status(401).json({ message: 'Account is not active. Please verify your email.' });
-      return; // Return void
+      sendError(res, 'Account is not active. Please verify your email.', 401, 'ACCOUNT_INACTIVE');
+      return;
     }
     if (typedUser.isDeleted) {
-      res.status(401).json({ message: 'Account has been deleted' });
-      return; // Return void
+      sendError(res, 'Account has been deleted', 401, 'ACCOUNT_DELETED');
+      return;
     }
 
     // Check if this is an OAuth-only user (no password set)
     if (!typedUser.password && typedUser.oauthProvider && typedUser.oauthProvider !== 'email') {
-      res.status(401).json({
-        message: `This account uses ${typedUser.oauthProvider} sign-in. Please use "Continue with ${typedUser.oauthProvider.charAt(0).toUpperCase() + typedUser.oauthProvider.slice(1)}" to login.`,
-        code: 'OAUTH_ACCOUNT',
-        provider: typedUser.oauthProvider
-      });
+      sendError(
+        res,
+        `This account uses ${typedUser.oauthProvider} sign-in. Please use "Continue with ${typedUser.oauthProvider.charAt(0).toUpperCase() + typedUser.oauthProvider.slice(1)}" to login.`,
+        401,
+        'OAUTH_ACCOUNT'
+      );
       return;
     }
 
     // Check if password exists before comparing
     if (!typedUser.password) {
-      res.status(401).json({ message: 'Invalid credentials' });
+      sendError(res, 'Invalid credentials', 401, 'INVALID_CREDENTIALS');
       return;
     }
 
@@ -266,16 +275,19 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       );
 
       if (typedUser.security.failedLoginAttempts >= 5) {
-        res.status(401).json({
-          message: 'Account is temporarily locked due to multiple failed login attempts. Please try again in 30 minutes.',
-          locked: true,
-          lockExpires: typedUser.security.lockUntil
-        });
+        sendError(
+          res,
+          'Account is temporarily locked due to multiple failed login attempts. Please try again in 30 minutes.',
+          401,
+          'ACCOUNT_LOCKED'
+        );
       } else {
-        res.status(401).json({
-          message: 'Invalid credentials',
-          attemptsLeft: 5 - typedUser.security.failedLoginAttempts
-        });
+        sendError(
+          res,
+          'Invalid credentials',
+          401,
+          'INVALID_CREDENTIALS'
+        );
       }
       return;
     }
@@ -336,8 +348,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
-    res.json({
-      message: 'Login successful',
+    sendSuccess(res, {
       user: {
         id: typedUser._id.toString(),
         name: typedUser.name,
@@ -345,14 +356,19 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
         role: typedUser.role,
         companyId: typedUser.companyId,
       },
-    });
+    }, 'Login successful');
   } catch (error) {
     logger.error('Login error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return; // Return void
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
     }
-    next(error); // Pass other errors to error handling middleware
+    next(error);
   }
 };
 
@@ -365,7 +381,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     // Validate that we have a refresh token from either cookies or body
     const token = req.cookies?.refreshToken || req.body?.refreshToken;
     if (!token) {
-      res.status(401).json({ message: 'Refresh token is required' });
+      sendError(res, 'Refresh token is required', 401, 'REFRESH_TOKEN_REQUIRED');
       return;
     }
 
@@ -373,15 +389,15 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       const payload = await verifyRefreshToken(token);
       const user = await User.findById(payload.userId);
       if (!user) {
-        res.status(401).json({ message: 'Invalid refresh token' });
-        return; // Return void
+        sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
+        return;
       }
       // Assert type after null check
       const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
       if (typedUser.security.tokenVersion !== payload.tokenVersion) {
-        res.status(401).json({ message: 'Invalid refresh token' });
-        return; // Return void
+        sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
+        return;
       }
 
       // Check if the session exists and is valid
@@ -393,7 +409,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       });
 
       if (!session) {
-        res.status(401).json({ message: 'Session expired or invalid' });
+        sendError(res, 'Session expired or invalid', 401, 'SESSION_EXPIRED');
         return;
       }
 
@@ -403,16 +419,12 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       const timeSinceActive = Date.now() - lastActiveTime;
 
       if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
-        // Revoke the session due to inactivity
         session.isRevoked = true;
         await session.save();
 
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
-        res.status(401).json({
-          message: 'Session expired due to inactivity',
-          code: 'SESSION_TIMEOUT'
-        });
+        sendError(res, 'Session expired due to inactivity', 401, 'SESSION_TIMEOUT');
         return;
       }
 
@@ -450,15 +462,14 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         req
       );
 
-      res.json({ message: 'Token refreshed' });
+      sendSuccess(res, null, 'Token refreshed');
     } catch (tokenError) {
       logger.error('Token verification error:', tokenError);
-      res.status(401).json({ message: 'Invalid refresh token' });
+      sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
     }
   } catch (error) {
     logger.error('Token refresh error:', error);
-    // Specific handling for refresh token errors
-    res.status(401).json({ message: 'Invalid refresh token' });
+    sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
   }
 };
 
@@ -472,9 +483,8 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
     const validatedData = resetPasswordRequestSchema.parse(req.body);
     const user = await User.findOne({ email: validatedData.email });
     if (!user) {
-      // Don't reveal user existence
-      res.json({ message: 'If your email is registered, you will receive a password reset link' });
-      return; // Return void
+      sendSuccess(res, null, 'If your email is registered, you will receive a password reset link');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -503,10 +513,15 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
   } catch (error) {
     logger.error('Password reset request error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return; // Return void
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
     }
-    next(error); // Pass other errors to error handling middleware
+    next(error);
   }
 };
 
@@ -524,8 +539,8 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
     });
 
     if (!user) {
-      res.status(400).json({ message: 'Invalid or expired reset token' });
-      return; // Return void
+      sendError(res, 'Invalid or expired reset token', 400, 'INVALID_RESET_TOKEN');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -550,14 +565,19 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
       req
     );
 
-    res.json({ message: 'Password has been reset successfully' });
+    sendSuccess(res, null, 'Password has been reset successfully');
   } catch (error) {
     logger.error('Password reset error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return; // Return void
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
     }
-    next(error); // Pass other errors to error handling middleware
+    next(error);
   }
 };
 
@@ -575,8 +595,8 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     });
 
     if (!user) {
-      res.status(400).json({ message: 'Invalid or expired verification token' });
-      return; // Return void
+      sendError(res, 'Invalid or expired verification token', 400, 'INVALID_VERIFICATION_TOKEN');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -596,14 +616,19 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
       req
     );
 
-    res.json({ message: 'Email verified successfully' });
+    sendSuccess(res, null, 'Email verified successfully');
   } catch (error) {
     logger.error('Email verification error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return; // Return void
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
     }
-    next(error); // Pass other errors to error handling middleware
+    next(error);
   }
 };
 
@@ -651,7 +676,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
       );
     }
 
-    res.json({ message: 'Logged out successfully' });
+    sendSuccess(res, null, 'Logged out successfully');
   } catch (error) {
     logger.error('Logout error:', error);
     next(error);
@@ -668,8 +693,7 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
     const user = await User.findOne({ email: validatedData.email });
 
     if (!user) {
-      // Don't reveal user existence
-      res.json({ message: 'If your email is registered, a new verification email will be sent' });
+      sendSuccess(res, null, 'If your email is registered, a new verification email will be sent');
       return;
     }
 
@@ -678,7 +702,7 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
 
     // If user is already active, no need to send verification email
     if (typedUser.isActive) {
-      res.json({ message: 'Your account is already verified' });
+      sendSuccess(res, null, 'Your account is already verified');
       return;
     }
 
@@ -709,7 +733,12 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
   } catch (error) {
     logger.error('Resend verification email error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -733,16 +762,21 @@ export const checkPasswordStrength = async (req: Request, res: Response, next: N
     // Evaluate password strength
     const strength = evaluatePasswordStrength(validatedData.password, userInputs);
 
-    res.json({
+    sendSuccess(res, {
       score: strength.score,
       feedback: strength.feedback,
       isStrong: strength.isStrong,
       requirements: PASSWORD_REQUIREMENTS,
-    });
+    }, 'Password strength evaluated');
   } catch (error) {
     logger.error('Password strength check error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -756,22 +790,18 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
   try {
     const authReq = req as AuthRequest;
     if (!authReq.user) {
-      const error = new Error('not authenticated') as any;
-      error.code = 'server/unauthorized';
-      res.status(401).json(formatError(error));
+      sendError(res, 'Authentication required', 401, 'AUTHENTICATION_REQUIRED');
       return;
     }
 
     const user = await User.findById(authReq.user._id).select('-password');
 
     if (!user) {
-      const error = new Error('user not found') as any;
-      error.code = 'server/not-found';
-      res.status(404).json(formatError(error));
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
       return;
     }
 
-    res.json({ user });
+    sendSuccess(res, { user }, 'User retrieved successfully');
   } catch (error) {
     logger.error('Get user error:', error);
     next(error);
@@ -853,7 +883,7 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
   try {
     const authReq = req as AuthRequest;
     if (!authReq.user) {
-      res.status(401).json({ message: 'Authentication required' });
+      sendError(res, 'Authentication required', 401, 'AUTHENTICATION_REQUIRED');
       return;
     }
 
@@ -865,7 +895,7 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
 
     const user = await User.findById(authReq.user._id);
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
       return;
     }
 
@@ -873,10 +903,7 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
 
     // Check if user already has a password
     if (typedUser.password) {
-      res.status(400).json({
-        message: 'Password already set. Use change password instead.',
-        code: 'PASSWORD_EXISTS'
-      });
+      sendError(res, 'Password already set. Use change password instead.', 400, 'PASSWORD_EXISTS');
       return;
     }
 
@@ -901,11 +928,16 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
       req
     );
 
-    res.json({ message: 'Password set successfully. You can now login with email and password.' });
+    sendSuccess(res, null, 'Password set successfully. You can now login with email and password.');
   } catch (error) {
     logger.error('Set password error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -940,23 +972,20 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
 
     // Check if user has a password (OAuth users who haven't set password should use set-password)
     if (!typedUser.password) {
-      res.status(400).json({
-        message: 'No password set. Please use set-password endpoint first.',
-        code: 'NO_PASSWORD'
-      });
+      sendError(res, 'No password set. Please use set-password endpoint first.', 400, 'NO_PASSWORD');
       return;
     }
 
     // Verify current password
     const isCurrentPasswordValid = await typedUser.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
-      res.status(401).json({ message: 'Current password is incorrect' });
+      sendError(res, 'Current password is incorrect', 401, 'INCORRECT_PASSWORD');
       return;
     }
 
     // Check new password is different
     if (currentPassword === newPassword) {
-      res.status(400).json({ message: 'New password must be different from current password' });
+      sendError(res, 'New password must be different from current password', 400, 'SAME_PASSWORD');
       return;
     }
 
@@ -981,14 +1010,18 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       req
     );
 
-    res.json({
-      message: 'Password changed successfully. Please login again with your new password.',
+    sendSuccess(res, {
       sessionInvalidated: true
-    });
+    }, 'Password changed successfully. Please login again with your new password.');
   } catch (error) {
     logger.error('Change password error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -1025,21 +1058,21 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
     if (typedUser.password) {
       const isPasswordValid = await typedUser.comparePassword(password);
       if (!isPasswordValid) {
-        res.status(401).json({ message: 'Invalid password' });
+        sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
         return;
       }
     }
 
     // Check if new email is same as current
     if (typedUser.email.toLowerCase() === newEmail.toLowerCase()) {
-      res.status(400).json({ message: 'New email is same as current email' });
+      sendError(res, 'New email is same as current email', 400, 'SAME_EMAIL');
       return;
     }
 
     // Check if new email already exists
     const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
     if (existingUser) {
-      res.status(409).json({ message: 'Email already in use' });
+      sendError(res, 'Email already in use', 409, 'EMAIL_IN_USE');
       return;
     }
 
@@ -1069,13 +1102,16 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
       req
     );
 
-    res.json({
-      message: `Verification email sent to ${newEmail}. Please check your inbox to confirm the change.`
-    });
+    sendSuccess(res, null, `Verification email sent to ${newEmail}. Please check your inbox to confirm the change.`);
   } catch (error) {
     logger.error('Change email error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
@@ -1099,14 +1135,14 @@ export const verifyEmailChange = async (req: Request, res: Response, next: NextF
     });
 
     if (!user) {
-      res.status(400).json({ message: 'Invalid or expired verification token' });
+      sendError(res, 'Invalid or expired verification token', 400, 'INVALID_VERIFICATION_TOKEN');
       return;
     }
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!typedUser.pendingEmailChange) {
-      res.status(400).json({ message: 'No pending email change' });
+      sendError(res, 'No pending email change', 400, 'NO_PENDING_CHANGE');
       return;
     }
 
@@ -1128,11 +1164,16 @@ export const verifyEmailChange = async (req: Request, res: Response, next: NextF
       req
     );
 
-    res.json({ message: 'Email changed successfully', newEmail });
+    sendSuccess(res, { newEmail }, 'Email changed successfully');
   } catch (error) {
     logger.error('Verify email change error:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
       return;
     }
     next(error);
