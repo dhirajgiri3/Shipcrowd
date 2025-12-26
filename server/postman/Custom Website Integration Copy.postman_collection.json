@@ -1,0 +1,550 @@
+{
+	"info": {
+		"_postman_id": "8099065f-20d2-42d6-a776-0253e605fabb",
+		"name": "Custom Website Integration Copy",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38760864",
+		"_collection_link": "https://lexi-wanda-282615.postman.co/workspace/Arun-Testing~5417f526-b3a8-4b78-8e83-3fc6556be87b/collection/38760864-8099065f-20d2-42d6-a776-0253e605fabb?action=share&source=collection_link&creator=38760864"
+	},
+	"item": [
+		{
+			"name": "Authentication Token",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\":\"+91xxxxxxxxx\",\n    \"password\":\"xxxxxxxxxxx\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/auth-token",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"auth-token"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "New Staging",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"+918860606061\",\n    \"password\": \"Velocity@123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/shiprocket/api/v1/auth-token",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"shiprocket",
+								"api",
+								"v1",
+								"auth-token"
+							]
+						}
+					},
+					"_postman_previewlanguage": "Text",
+					"header": [],
+					"cookie": [],
+					"body": ""
+				}
+			]
+		},
+		{
+			"name": "Forward Order Orchestration",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "16aPVwC64vxqPbTWKlFIxQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order_id\": \"ORDER-49\",\n    \"order_date\": \"2018-05-08 12:23\",\n    \"channel_id\": \"27202\",\n    \"billing_customer_name\": \"Saurabh\",\n    \"billing_last_name\": \"Jindal\",\n    \"billing_address\": \"Incubex, Velocity\",\n    \"billing_city\": \"Bangalore\",\n    \"billing_pincode\": \"560102\",\n    \"billing_state\": \"Karnataka\",\n    \"billing_country\": \"India\",\n    \"billing_email\": \"saurabh+123891@velocity.in\",\n    \"billing_phone\": \"8860697807\",\n    \"shipping_is_billing\": true,\n    \"print_label\": true,\n    \"order_items\": [\n        {\n            \"name\": \"T-shirt Round Neck\",\n            \"sku\": \"t-shirt-round1474\",\n            \"units\": 2,\n            \"selling_price\": 1000,\n            \"discount\": 100,\n            \"tax\": 10\n        },\n        {\n            \"name\": \"T-shirt Round Neck V2\",\n            \"sku\": \"t-shirt-V\",\n            \"units\": 10,\n            \"selling_price\": 100,\n            \"discount\": 10,\n            \"tax\": 10\n        }\n    ],\n    \"payment_method\": \"COD\",\n    \"sub_total\": 990,\n    \"length\": 100,\n    \"cod_collectible\": 990, // Added field to process the COD amount, remove this comment during testing.\n    \"breadth\": 50,\n    \"height\": 10,\n    \"weight\": 0.50,\n    \"pickup_location\": \"HomeNew\",\n    \"warehouse_id\": \"WHYYB5\", // Use this warehouse id, remove this comment during testing.\n    \"vendor_details\": {\n        \"email\": \"abcdd@abcdd.com\",\n        \"phone\": \"9879879879\",\n        \"name\": \"Coco Cookie\",\n        \"address\": \"Street 1\",\n        \"address_2\": \"\",\n        \"city\": \"delhi\",\n        \"state\": \"new delhi\",\n        \"country\": \"india\",\n        \"pin_code\": \"110077\",\n        \"pickup_location\": \"HomeNew\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://shazam.velocity.in/custom/api/v1/forward-order",
+					"protocol": "https",
+					"host": [
+						"shazam",
+						"velocity",
+						"in"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"forward-order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Forward Order",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "ro-1vlb3QGMQL2RytMiq7Q",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order_id\": \"ORDER-50\",\n    \"order_date\": \"2018-05-08 12:23\",\n    \"channel_id\": \"27202\",\n    \"billing_customer_name\": \"Saurabh\",\n    \"billing_last_name\": \"Jindal\",\n    \"billing_address\": \"Incubex, Velocity\",\n    \"billing_city\": \"Bangalore\",\n    \"billing_pincode\": \"560102\",\n    \"billing_state\": \"Karnataka\",\n    \"billing_country\": \"India\",\n    \"billing_email\": \"saurabh+123891@velocity.in\",\n    \"billing_phone\": \"8860697807\",\n    \"shipping_is_billing\": true,\n    \"print_label\": true,\n    \"order_items\": [\n        {\n            \"name\": \"T-shirt Round Neck\",\n            \"sku\": \"t-shirt-round1474\",\n            \"units\": 2,\n            \"selling_price\": 1000,\n            \"discount\": 100,\n            \"tax\": 10\n        },\n        {\n            \"name\": \"T-shirt Round Neck V2\",\n            \"sku\": \"t-shirt-V\",\n            \"units\": 10,\n            \"selling_price\": 100,\n            \"discount\": 10,\n            \"tax\": 10\n        }\n    ],\n    \"payment_method\": \"COD\",\n    \"sub_total\": 990,\n    \"length\": 100,\n    \"cod_collectible\": 990, // Added field to process the COD amount, remove this comment during testing.\n    \"breadth\": 50,\n    \"height\": 10,\n    \"weight\": 0.50,\n    \"pickup_location\": \"HomeNew\",\n    \"warehouse_id\": \"WHYYB5\", // Use this warehouse id, remove this comment during testing.\n    \"vendor_details\": {\n        \"email\": \"abcdd@abcdd.com\",\n        \"phone\": \"9879879879\",\n        \"name\": \"Coco Cookie\",\n        \"address\": \"Street 1\",\n        \"address_2\": \"\",\n        \"city\": \"delhi\",\n        \"state\": \"new delhi\",\n        \"country\": \"india\",\n        \"pin_code\": \"110077\",\n        \"pickup_location\": \"HomeNew\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/forward-order",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"forward-order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Order Update",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "q3EwDQeV0_EgCMvojQNWMg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order_id\": \"ORDER-49\",\n    \"order_date\": \"2018-05-08 12:23\",\n    \"channel_id\": \"27202\",\n    \"billing_customer_name\": \"Saurabh\",\n    \"billing_last_name\": \"Jindal\",\n    \"billing_address\": \"Incubex, Velocity\",\n    \"billing_city\": \"Bangalore\",\n    \"billing_pincode\": \"560102\",\n    \"billing_state\": \"Karnataka\",\n    \"billing_country\": \"India\",\n    \"billing_email\": \"saurabh+123891@velocity.in\",\n    \"billing_phone\": \"8860697807\",\n    \"shipping_is_billing\": true,\n    \"print_label\": true,\n    \"order_items\": [\n        {\n            \"name\": \"T-shirt Round Neck\",\n            \"sku\": \"t-shirt-round1474\",\n            \"units\": 2,\n            \"selling_price\": 1000,\n            \"discount\": 100,\n            \"tax\": 10\n        },\n        {\n            \"name\": \"T-shirt Round Neck V2\",\n            \"sku\": \"t-shirt-V\",\n            \"units\": 10,\n            \"selling_price\": 100,\n            \"discount\": 10,\n            \"tax\": 10\n        }\n    ],\n    \"payment_method\": \"COD\",\n    \"sub_total\": 990,\n    \"length\": 100,\n    \"cod_collectible\": 990, // Added field to process the COD amount, remove this comment during testing.\n    \"breadth\": 50,\n    \"height\": 10,\n    \"weight\": 0.50,\n    \"pickup_location\": \"HomeNew\",\n    \"warehouse_id\": \"WHYYB5\", // Use this warehouse id, remove this comment during testing.\n    \"vendor_details\": {\n        \"email\": \"abcdd@abcdd.com\",\n        \"phone\": \"9879879879\",\n        \"name\": \"Coco Cookie\",\n        \"address\": \"Street 1\",\n        \"address_2\": \"\",\n        \"city\": \"delhi\",\n        \"state\": \"new delhi\",\n        \"country\": \"india\",\n        \"pin_code\": \"110077\",\n        \"pickup_location\": \"HomeNew\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/order",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Forward Order Shipment",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "q3EwDQeV0_EgCMvojQNWMg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"shipment_id\":\"SHISCPSKNESPV\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/forward-order-shipment",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"forward-order-shipment"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Reverse Order Orchestration",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "16aPVwC64vxqPbTWKlFIxQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order_id\": \"r12157p4wfjfcwwwcwccbeffbwf92\",\n    \"order_date\": \"2022-02-16\",\n    \"channel_id\": \"2113680\",\n    \"pickup_customer_name\": \"Saurabh\",\n    \"pickup_last_name\": \"Jindal\",\n    \"company_name\": \"iorn pvt ltd\",\n    \"pickup_address\": \"Incubex, Velocity\",\n    \"pickup_address_2\": \"\",\n    \"pickup_city\": \"Bangalore\",\n    \"pickup_state\": \"Karnataka\",\n    \"pickup_country\": \"India\",\n    \"pickup_pincode\": \"560102\",\n    \"pickup_email\": \"saurabh+123891@velocity.in\",\n    \"pickup_phone\": \"8860697807\",\n    \"pickup_isd_code\": \"91\",\n    \"shipping_customer_name\": \"Jax\",\n    \"shipping_last_name\": \"Doe\",\n    \"shipping_address\": \"Castle\",\n    \"shipping_address_2\": \"Bridge\",\n    \"shipping_city\": \"Delhi\",\n    \"shipping_country\": \"India\",\n    \"shipping_pincode\": 110015,\n    \"shipping_state\": \"New Delhi\",\n    \"shipping_email\": \"kumar.abhishek@shiprocket.com\",\n    \"shipping_isd_code\": \"91\",\n    \"shipping_phone\": 8888888888,\n    \"warehouse_id\": \"WHYYB5\",\n    \"order_items\": [\n        {\n            \"name\": \"shoes\",\n            \"qc_enable\": true,\n            \"qc_product_name\": \"shoes\",\n            \"sku\": \"WSH234\",\n            \"units\": 1,\n            \"selling_price\": 100,\n            \"discount\": 0,\n            \"qc_brand\": \"Levi\",\n            \"qc_product_image\": \"https://assets.vogue.in/photos/5d7224d50ce95e0008696c55/2:3/w_2240,c_limit/Joker.jpg\"\n        }\n    ],\n    \"payment_method\": \"PREPAID\",\n    \"total_discount\": \"0\",\n    \"sub_total\": 400,\n    \"length\": 3,\n    \"breadth\": 1,\n    \"height\": 1,\n    \"weight\": 0.3,\n    \"request_pickup\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://shazam.velocity.in/custom/api/v1/reverse-order-orchestration",
+					"protocol": "https",
+					"host": [
+						"shazam",
+						"velocity",
+						"in"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"reverse-order-orchestration"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Reverse Order",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "16aPVwC64vxqPbTWKlFIxQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order_id\": \"r12157p4wfjfcwwwcwccbeffbwf92\",\n    \"order_date\": \"2022-02-16\",\n    \"channel_id\": \"2113680\",\n    \"pickup_customer_name\": \"Saurabh\",\n    \"pickup_last_name\": \"Jindal\",\n    \"company_name\": \"iorn pvt ltd\",\n    \"pickup_address\": \"Incubex, Velocity\",\n    \"pickup_address_2\": \"\",\n    \"pickup_city\": \"Bangalore\",\n    \"pickup_state\": \"Karnataka\",\n    \"pickup_country\": \"India\",\n    \"pickup_pincode\": \"560102\",\n    \"pickup_email\": \"saurabh+123891@velocity.in\",\n    \"pickup_phone\": \"8860697807\",\n    \"pickup_isd_code\": \"91\",\n    \"shipping_customer_name\": \"Jax\",\n    \"shipping_last_name\": \"Doe\",\n    \"shipping_address\": \"Castle\",\n    \"shipping_address_2\": \"Bridge\",\n    \"shipping_city\": \"Delhi\",\n    \"shipping_country\": \"India\",\n    \"shipping_pincode\": 110015,\n    \"shipping_state\": \"New Delhi\",\n    \"shipping_email\": \"kumar.abhishek@shiprocket.com\",\n    \"shipping_isd_code\": \"91\",\n    \"shipping_phone\": 8888888888,\n    \"warehouse_id\": \"WHYYB5\",\n    \"order_items\": [\n        {\n            \"name\": \"shoes\",\n            \"qc_enable\": true,\n            \"qc_product_name\": \"shoes\",\n            \"sku\": \"WSH234\",\n            \"units\": 1,\n            \"selling_price\": 100,\n            \"discount\": 0,\n            \"qc_brand\": \"Levi\",\n            \"qc_product_image\": \"https://assets.vogue.in/photos/5d7224d50ce95e0008696c55/2:3/w_2240,c_limit/Joker.jpg\"\n        }\n    ],\n    \"payment_method\": \"PREPAID\",\n    \"total_discount\": \"0\",\n    \"sub_total\": 400,\n    \"length\": 3,\n    \"breadth\": 1,\n    \"height\": 1,\n    \"weight\": 0.3,\n    \"request_pickup\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://shazam.velocity.in/custom/api/v1/reverse-order",
+					"protocol": "https",
+					"host": [
+						"shazam",
+						"velocity",
+						"in"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"reverse-order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Reverse Order Shipment",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "q3EwDQeV0_EgCMvojQNWMg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"return_id\": \"RETOYE5R6CAPD\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/reverse-order-shipment",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"reverse-order-shipment"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Tracking",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "16aPVwC64vxqPbTWKlFIxQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"awbs\": [\"84161310011340\"]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://shazam.velocity.in/custom/api/v1/order-tracking",
+					"protocol": "https",
+					"host": [
+						"shazam",
+						"velocity",
+						"in"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"order-tracking"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cancellation",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "16aPVwC64vxqPbTWKlFIxQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"awbs\": [\"84161310011340\"]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://shazam.velocity.in/custom/api/v1/cancel-order",
+					"protocol": "https",
+					"host": [
+						"shazam",
+						"velocity",
+						"in"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"cancel-order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Serviceability",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "CSZGVOjnS0HS5jb5qoauLw",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"from\":\"560068\",\n    \"to\":\"560068\",\n    \"payment_mode\":\"cod\",\n    \"shipment_type\":\"forward\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/serviceability",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"serviceability"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Warehouse",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "XKeyZlyDBKFEkE1zivosxg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Demo Warehouse\",\n    \"phone_number\": \"8860606061\",\n    \"email\": \"shipfast-clickpost@velocity.in\",\n    \"contact_person\": \"Raghuraj\",\n    \"address_attributes\": {\n        \"street_address\": \"Incubex HSR Layout (HSR6) #1504, 19th Main, 11th Cross Rd, opposite Decathlon, 1st Sector, HSR Layout\",\n        \"zip\": \"560102\",\n        \"city\": \"Bangalore\",\n        \"state\": \"Karnataka\",\n        \"country\": \"American Samoa\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/custom/api/v1/warehouse",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"warehouse"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Reports",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "CSZGVOjnS0HS5jb5qoauLw",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"start_date_time\":\"2022-01-01T00:00:00Z\",\n    \"end_date_time\":\"2025-07-30T00:00:00Z\",\n    \"shipment_type\": \"return\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://shazam.velocity.in/custom/api/v1/reports",
+					"protocol": "https",
+					"host": [
+						"shazam",
+						"velocity",
+						"in"
+					],
+					"path": [
+						"custom",
+						"api",
+						"v1",
+						"reports"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

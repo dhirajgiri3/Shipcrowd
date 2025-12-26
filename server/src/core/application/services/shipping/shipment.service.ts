@@ -5,6 +5,7 @@ import Warehouse from '../../../../infrastructure/database/mongoose/models/Wareh
 import { selectBestCarrier, CarrierSelectionResult } from './carrier.service';
 import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
+import { withTransaction } from '../../../../shared/utils/transactionHelper';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -266,7 +267,11 @@ export class ShipmentService {
     }
 
     /**
-     * Update shipment status with optimistic locking
+     * Update shipment status with optimistic locking and transaction support
+     *
+     * CRITICAL FIX (Phase 1): Wraps shipment + order updates in transaction
+     * to prevent data inconsistency when one operation fails.
+     *
      * @param args Status update parameters
      * @returns Updated shipment or error
      */
@@ -301,61 +306,100 @@ export class ShipmentService {
             };
         }
 
-        // Build status entry
-        const statusEntry = {
-            status: newStatus,
-            timestamp: new Date(),
-            location,
-            description,
-            updatedBy: new mongoose.Types.ObjectId(userId),
-        };
+        try {
+            // Wrap shipment + order update in transaction for atomicity
+            const updatedShipment = await withTransaction(async (session) => {
+                // Build status entry
+                const statusEntry = {
+                    status: newStatus,
+                    timestamp: new Date(),
+                    location,
+                    description,
+                    updatedBy: new mongoose.Types.ObjectId(userId),
+                };
 
-        // Build update data
-        const updateData: Record<string, any> = {
-            $set: { currentStatus: newStatus },
-            $push: { statusHistory: statusEntry },
-            $inc: { __v: 1 }
-        };
+                // Build update data
+                const updateData: Record<string, any> = {
+                    $set: { currentStatus: newStatus },
+                    $push: { statusHistory: statusEntry },
+                    $inc: { __v: 1 }
+                };
 
-        // Handle delivered status
-        if (newStatus === 'delivered') {
-            updateData.$set.actualDelivery = new Date();
-        }
+                // Handle delivered status
+                if (newStatus === 'delivered') {
+                    updateData.$set.actualDelivery = new Date();
+                }
 
-        // Handle NDR status
-        if (newStatus === 'ndr') {
-            const shipment = await Shipment.findById(shipmentId);
-            updateData.$set = {
-                ...updateData.$set,
-                'ndrDetails.ndrDate': new Date(),
-                'ndrDetails.ndrStatus': 'pending',
-                'ndrDetails.ndrAttempts': (shipment?.ndrDetails?.ndrAttempts || 0) + 1,
-                'ndrDetails.ndrReason': description,
-            };
-        }
+                // Handle NDR status
+                if (newStatus === 'ndr') {
+                    const shipment = await Shipment.findById(shipmentId).session(session);
+                    updateData.$set = {
+                        ...updateData.$set,
+                        'ndrDetails.ndrDate': new Date(),
+                        'ndrDetails.ndrStatus': 'pending',
+                        'ndrDetails.ndrAttempts': (shipment?.ndrDetails?.ndrAttempts || 0) + 1,
+                        'ndrDetails.ndrReason': description,
+                    };
+                }
 
-        // Update with optimistic locking
-        const updatedShipment = await Shipment.findOneAndUpdate(
-            {
-                _id: shipmentId,
-                __v: currentVersion
-            },
-            updateData,
-            { new: true }
-        );
+                // Update shipment with optimistic locking
+                const shipment = await Shipment.findOneAndUpdate(
+                    {
+                        _id: shipmentId,
+                        __v: currentVersion
+                    },
+                    updateData,
+                    { new: true, session }  // Use transaction session
+                );
 
-        if (!updatedShipment) {
+                if (!shipment) {
+                    throw new Error('CONCURRENT_MODIFICATION');
+                }
+
+                // Update related order status if needed (in same transaction)
+                const orderStatusMap: Record<string, string> = {
+                    'delivered': 'delivered',
+                    'rto': 'rto',
+                    'cancelled': 'cancelled',
+                    'in_transit': 'shipped',
+                };
+
+                const newOrderStatus = orderStatusMap[newStatus];
+                if (newOrderStatus && shipment.orderId) {
+                    await Order.findByIdAndUpdate(
+                        shipment.orderId,
+                        {
+                            currentStatus: newOrderStatus,
+                            $push: {
+                                statusHistory: {
+                                    status: newOrderStatus,
+                                    timestamp: new Date(),
+                                    comment: `Updated from shipment status: ${newStatus}`,
+                                    updatedBy: new mongoose.Types.ObjectId(userId),
+                                },
+                            },
+                        },
+                        { session }  // Same transaction session
+                    );
+                }
+
+                return shipment;
+            });
+
             return {
-                success: false,
-                error: 'Shipment was updated by another process. Please retry.',
-                code: 'CONCURRENT_MODIFICATION'
+                success: true,
+                shipment: updatedShipment
             };
+        } catch (error: any) {
+            if (error.message?.includes('CONCURRENT_MODIFICATION')) {
+                return {
+                    success: false,
+                    error: 'Shipment was updated by another process. Please retry.',
+                    code: 'CONCURRENT_MODIFICATION'
+                };
+            }
+            throw error;
         }
-
-        return {
-            success: true,
-            shipment: updatedShipment
-        };
     }
 
     /**

@@ -1,0 +1,293 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "axios": {
+      "name": "axios",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1108263,
+          "name": "axios",
+          "dependency": "axios",
+          "title": "Axios is vulnerable to DoS attack through lack of data size check",
+          "url": "https://github.com/advisories/GHSA-4hjh-wcwx-xvwj",
+          "severity": "high",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=1.0.0 <1.12.0"
+        }
+      ],
+      "effects": [],
+      "range": "1.0.0 - 1.11.0",
+      "nodes": [
+        "node_modules/axios"
+      ],
+      "fixAvailable": true
+    },
+    "body-parser": {
+      "name": "body-parser",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1110858,
+          "name": "body-parser",
+          "dependency": "body-parser",
+          "title": "body-parser is vulnerable to denial of service when url encoding is used",
+          "url": "https://github.com/advisories/GHSA-wqch-xfxh-vrr4",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-400"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=2.2.0 <2.2.1"
+        }
+      ],
+      "effects": [],
+      "range": "2.2.0",
+      "nodes": [
+        "node_modules/body-parser"
+      ],
+      "fixAvailable": true
+    },
+    "brace-expansion": {
+      "name": "brace-expansion",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1105443,
+          "name": "brace-expansion",
+          "dependency": "brace-expansion",
+          "title": "brace-expansion Regular Expression Denial of Service vulnerability",
+          "url": "https://github.com/advisories/GHSA-v6h2-p8h4-qcjw",
+          "severity": "low",
+          "cwe": [
+            "CWE-400"
+          ],
+          "cvss": {
+            "score": 3.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=1.0.0 <=1.1.11"
+        },
+        {
+          "source": 1105444,
+          "name": "brace-expansion",
+          "dependency": "brace-expansion",
+          "title": "brace-expansion Regular Expression Denial of Service vulnerability",
+          "url": "https://github.com/advisories/GHSA-v6h2-p8h4-qcjw",
+          "severity": "low",
+          "cwe": [
+            "CWE-400"
+          ],
+          "cvss": {
+            "score": 3.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=2.0.0 <=2.0.1"
+        }
+      ],
+      "effects": [],
+      "range": "1.0.0 - 1.1.11 || 2.0.0 - 2.0.1",
+      "nodes": [
+        "node_modules/brace-expansion",
+        "node_modules/filelist/node_modules/brace-expansion"
+      ],
+      "fixAvailable": true
+    },
+    "form-data": {
+      "name": "form-data",
+      "severity": "critical",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1109538,
+          "name": "form-data",
+          "dependency": "form-data",
+          "title": "form-data uses unsafe random function in form-data for choosing boundary",
+          "url": "https://github.com/advisories/GHSA-fjxv-7rqg-78g4",
+          "severity": "critical",
+          "cwe": [
+            "CWE-330"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=4.0.0 <4.0.4"
+        }
+      ],
+      "effects": [],
+      "range": "4.0.0 - 4.0.3",
+      "nodes": [
+        "node_modules/form-data"
+      ],
+      "fixAvailable": true
+    },
+    "js-yaml": {
+      "name": "js-yaml",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1109801,
+          "name": "js-yaml",
+          "dependency": "js-yaml",
+          "title": "js-yaml has prototype pollution in merge (<<)",
+          "url": "https://github.com/advisories/GHSA-mh29-5h37-fv8m",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": "<3.14.2"
+        }
+      ],
+      "effects": [],
+      "range": "<3.14.2",
+      "nodes": [
+        "node_modules/js-yaml"
+      ],
+      "fixAvailable": true
+    },
+    "morgan": {
+      "name": "morgan",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "on-headers"
+      ],
+      "effects": [],
+      "range": "1.6.0 - 1.10.0",
+      "nodes": [
+        "node_modules/morgan"
+      ],
+      "fixAvailable": true
+    },
+    "nodemailer": {
+      "name": "nodemailer",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1109804,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Email to an unintended domain can occur due to Interpretation Conflict",
+          "url": "https://github.com/advisories/GHSA-mm7p-fcc7-pg87",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<7.0.7"
+        },
+        {
+          "source": 1111074,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer’s addressparser is vulnerable to DoS caused by recursive calls",
+          "url": "https://github.com/advisories/GHSA-rcmh-qjqh-p98v",
+          "severity": "low",
+          "cwe": [
+            "CWE-703"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=7.0.10"
+        },
+        {
+          "source": 1111548,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer is vulnerable to DoS through Uncontrolled Recursion",
+          "url": "https://github.com/advisories/GHSA-46j5-6fg5-4gv3",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-674",
+            "CWE-703"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": "<7.0.11"
+        }
+      ],
+      "effects": [],
+      "range": "<=7.0.10",
+      "nodes": [
+        "node_modules/nodemailer"
+      ],
+      "fixAvailable": true
+    },
+    "on-headers": {
+      "name": "on-headers",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1106812,
+          "name": "on-headers",
+          "dependency": "on-headers",
+          "title": "on-headers is vulnerable to http response header manipulation",
+          "url": "https://github.com/advisories/GHSA-76c9-3jph-rj3q",
+          "severity": "low",
+          "cwe": [
+            "CWE-241"
+          ],
+          "cvss": {
+            "score": 3.4,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<1.1.0"
+        }
+      ],
+      "effects": [
+        "morgan"
+      ],
+      "range": "<1.1.0",
+      "nodes": [
+        "node_modules/on-headers"
+      ],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 3,
+      "moderate": 3,
+      "high": 1,
+      "critical": 1,
+      "total": 8
+    },
+    "dependencies": {
+      "prod": 236,
+      "dev": 382,
+      "optional": 28,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 617
+    }
+  }
+}

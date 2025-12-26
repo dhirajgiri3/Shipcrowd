@@ -27,6 +27,13 @@ router.get('/', authenticate, asyncHandler(shipmentController.getShipments));
 router.get('/tracking/:trackingNumber', authenticate, asyncHandler(shipmentController.trackShipment));
 
 /**
+ * @route GET /api/v1/shipments/public/track/:trackingNumber
+ * @desc Track a shipment by AWB/tracking number (Public)
+ * @access Public
+ */
+router.get('/public/track/:trackingNumber', asyncHandler(shipmentController.trackShipmentPublic));
+
+/**
  * @route GET /api/v1/shipments/:shipmentId
  * @desc Get a single shipment by ID
  * @access Private

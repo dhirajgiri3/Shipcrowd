@@ -1,0 +1,248 @@
+[
+  {
+    "timestamp": "2025-12-26T18:13:15.344Z",
+    "linesOfCode": {
+      "total": 24452,
+      "byFileType": {
+        "ts": 129,
+        "log": 2
+      },
+      "byDirectory": {
+        "config": 107,
+        "core": 5598,
+        "root": 184,
+        "infrastructure": 3326,
+        "presentation": 11249,
+        "scripts": 1334,
+        "shared": 2629,
+        "types": 25
+      }
+    },
+    "files": {
+      "total": 131,
+      "byExtension": {
+        "ts": 129,
+        "log": 2
+      }
+    },
+    "models": {
+      "total": 16,
+      "list": [
+        "/src/infrastructure/database/mongoose/models/AuditLog.ts",
+        "/src/infrastructure/database/mongoose/models/Company.ts",
+        "/src/infrastructure/database/mongoose/models/Coupon.ts",
+        "/src/infrastructure/database/mongoose/models/Integration.ts",
+        "/src/infrastructure/database/mongoose/models/KYC.ts",
+        "/src/infrastructure/database/mongoose/models/Order.ts",
+        "/src/infrastructure/database/mongoose/models/Permission.ts",
+        "/src/infrastructure/database/mongoose/models/RateCard.ts",
+        "/src/infrastructure/database/mongoose/models/Session.ts",
+        "/src/infrastructure/database/mongoose/models/Shipment.ts",
+        "/src/infrastructure/database/mongoose/models/TeamActivity.ts",
+        "/src/infrastructure/database/mongoose/models/TeamInvitation.ts",
+        "/src/infrastructure/database/mongoose/models/TeamPermission.ts",
+        "/src/infrastructure/database/mongoose/models/User.ts",
+        "/src/infrastructure/database/mongoose/models/Warehouse.ts",
+        "/src/infrastructure/database/mongoose/models/Zone.ts"
+      ]
+    },
+    "services": {
+      "total": 17,
+      "list": [
+        "/src/core/application/services/auth/oauth.service.ts",
+        "/src/core/application/services/auth/password.service.ts",
+        "/src/core/application/services/auth/session.service.ts",
+        "/src/core/application/services/communication/email.service.ts",
+        "/src/core/application/services/communication/notification.service.ts",
+        "/src/core/application/services/communication/sms.service.ts",
+        "/src/core/application/services/communication/whatsapp.service.ts",
+        "/src/core/application/services/integrations/deepvue.service.ts",
+        "/src/core/application/services/integrations/mocks/deepvue.mock.ts",
+        "/src/core/application/services/shipping/carrier.service.ts",
+        "/src/core/application/services/shipping/order.service.ts",
+        "/src/core/application/services/shipping/shipment.service.ts",
+        "/src/core/application/services/user/account.service.ts",
+        "/src/core/application/services/user/activity.service.ts",
+        "/src/core/application/services/user/emailChange.service.ts",
+        "/src/core/application/services/user/profile.service.ts",
+        "/src/core/application/services/user/recovery.service.ts"
+      ]
+    },
+    "controllers": {
+      "total": 19,
+      "list": [
+        "/src/presentation/http/controllers/auth/auth.controller.ts",
+        "/src/presentation/http/controllers/auth/recovery.controller.ts",
+        "/src/presentation/http/controllers/auth/session.controller.ts",
+        "/src/presentation/http/controllers/communication/email.controller.ts",
+        "/src/presentation/http/controllers/communication/notification.controller.ts",
+        "/src/presentation/http/controllers/communication/whatsapp.controller.ts",
+        "/src/presentation/http/controllers/identity/account.controller.ts",
+        "/src/presentation/http/controllers/identity/kyc.controller.ts",
+        "/src/presentation/http/controllers/identity/profile.controller.ts",
+        "/src/presentation/http/controllers/identity/user.controller.ts",
+        "/src/presentation/http/controllers/organization/company.controller.ts",
+        "/src/presentation/http/controllers/organization/team.controller.ts",
+        "/src/presentation/http/controllers/shipping/order.controller.ts",
+        "/src/presentation/http/controllers/shipping/ratecard.controller.ts",
+        "/src/presentation/http/controllers/shipping/shipment.controller.ts",
+        "/src/presentation/http/controllers/shipping/warehouse.controller.ts",
+        "/src/presentation/http/controllers/shipping/zone.controller.ts",
+        "/src/presentation/http/controllers/system/analytics.controller.ts",
+        "/src/presentation/http/controllers/system/audit.controller.ts"
+      ]
+    },
+    "routes": {
+      "total": 19,
+      "list": [
+        "/src/presentation/http/routes/v1/auth/auth.routes.ts",
+        "/src/presentation/http/routes/v1/auth/recovery.routes.ts",
+        "/src/presentation/http/routes/v1/auth/session.routes.ts",
+        "/src/presentation/http/routes/v1/communication/email.routes.ts",
+        "/src/presentation/http/routes/v1/communication/notification.routes.ts",
+        "/src/presentation/http/routes/v1/communication/whatsapp.routes.ts",
+        "/src/presentation/http/routes/v1/identity/account.routes.ts",
+        "/src/presentation/http/routes/v1/identity/kyc.routes.ts",
+        "/src/presentation/http/routes/v1/identity/profile.routes.ts",
+        "/src/presentation/http/routes/v1/identity/user.routes.ts",
+        "/src/presentation/http/routes/v1/organization/company.routes.ts",
+        "/src/presentation/http/routes/v1/organization/team.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/order.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/ratecard.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/shipment.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/warehouse.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/zone.routes.ts",
+        "/src/presentation/http/routes/v1/system/analytics.routes.ts",
+        "/src/presentation/http/routes/v1/system/audit.routes.ts"
+      ]
+    },
+    "tests": {
+      "total": 3,
+      "unitTests": 1,
+      "integrationTests": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T18:13:39.348Z",
+    "linesOfCode": {
+      "total": 24452,
+      "byFileType": {
+        "ts": 129,
+        "log": 2
+      },
+      "byDirectory": {
+        "config": 107,
+        "core": 5598,
+        "root": 184,
+        "infrastructure": 3326,
+        "presentation": 11249,
+        "scripts": 1334,
+        "shared": 2629,
+        "types": 25
+      }
+    },
+    "files": {
+      "total": 131,
+      "byExtension": {
+        "ts": 129,
+        "log": 2
+      }
+    },
+    "models": {
+      "total": 16,
+      "list": [
+        "/src/infrastructure/database/mongoose/models/AuditLog.ts",
+        "/src/infrastructure/database/mongoose/models/Company.ts",
+        "/src/infrastructure/database/mongoose/models/Coupon.ts",
+        "/src/infrastructure/database/mongoose/models/Integration.ts",
+        "/src/infrastructure/database/mongoose/models/KYC.ts",
+        "/src/infrastructure/database/mongoose/models/Order.ts",
+        "/src/infrastructure/database/mongoose/models/Permission.ts",
+        "/src/infrastructure/database/mongoose/models/RateCard.ts",
+        "/src/infrastructure/database/mongoose/models/Session.ts",
+        "/src/infrastructure/database/mongoose/models/Shipment.ts",
+        "/src/infrastructure/database/mongoose/models/TeamActivity.ts",
+        "/src/infrastructure/database/mongoose/models/TeamInvitation.ts",
+        "/src/infrastructure/database/mongoose/models/TeamPermission.ts",
+        "/src/infrastructure/database/mongoose/models/User.ts",
+        "/src/infrastructure/database/mongoose/models/Warehouse.ts",
+        "/src/infrastructure/database/mongoose/models/Zone.ts"
+      ]
+    },
+    "services": {
+      "total": 17,
+      "list": [
+        "/src/core/application/services/auth/oauth.service.ts",
+        "/src/core/application/services/auth/password.service.ts",
+        "/src/core/application/services/auth/session.service.ts",
+        "/src/core/application/services/communication/email.service.ts",
+        "/src/core/application/services/communication/notification.service.ts",
+        "/src/core/application/services/communication/sms.service.ts",
+        "/src/core/application/services/communication/whatsapp.service.ts",
+        "/src/core/application/services/integrations/deepvue.service.ts",
+        "/src/core/application/services/integrations/mocks/deepvue.mock.ts",
+        "/src/core/application/services/shipping/carrier.service.ts",
+        "/src/core/application/services/shipping/order.service.ts",
+        "/src/core/application/services/shipping/shipment.service.ts",
+        "/src/core/application/services/user/account.service.ts",
+        "/src/core/application/services/user/activity.service.ts",
+        "/src/core/application/services/user/emailChange.service.ts",
+        "/src/core/application/services/user/profile.service.ts",
+        "/src/core/application/services/user/recovery.service.ts"
+      ]
+    },
+    "controllers": {
+      "total": 19,
+      "list": [
+        "/src/presentation/http/controllers/auth/auth.controller.ts",
+        "/src/presentation/http/controllers/auth/recovery.controller.ts",
+        "/src/presentation/http/controllers/auth/session.controller.ts",
+        "/src/presentation/http/controllers/communication/email.controller.ts",
+        "/src/presentation/http/controllers/communication/notification.controller.ts",
+        "/src/presentation/http/controllers/communication/whatsapp.controller.ts",
+        "/src/presentation/http/controllers/identity/account.controller.ts",
+        "/src/presentation/http/controllers/identity/kyc.controller.ts",
+        "/src/presentation/http/controllers/identity/profile.controller.ts",
+        "/src/presentation/http/controllers/identity/user.controller.ts",
+        "/src/presentation/http/controllers/organization/company.controller.ts",
+        "/src/presentation/http/controllers/organization/team.controller.ts",
+        "/src/presentation/http/controllers/shipping/order.controller.ts",
+        "/src/presentation/http/controllers/shipping/ratecard.controller.ts",
+        "/src/presentation/http/controllers/shipping/shipment.controller.ts",
+        "/src/presentation/http/controllers/shipping/warehouse.controller.ts",
+        "/src/presentation/http/controllers/shipping/zone.controller.ts",
+        "/src/presentation/http/controllers/system/analytics.controller.ts",
+        "/src/presentation/http/controllers/system/audit.controller.ts"
+      ]
+    },
+    "routes": {
+      "total": 19,
+      "list": [
+        "/src/presentation/http/routes/v1/auth/auth.routes.ts",
+        "/src/presentation/http/routes/v1/auth/recovery.routes.ts",
+        "/src/presentation/http/routes/v1/auth/session.routes.ts",
+        "/src/presentation/http/routes/v1/communication/email.routes.ts",
+        "/src/presentation/http/routes/v1/communication/notification.routes.ts",
+        "/src/presentation/http/routes/v1/communication/whatsapp.routes.ts",
+        "/src/presentation/http/routes/v1/identity/account.routes.ts",
+        "/src/presentation/http/routes/v1/identity/kyc.routes.ts",
+        "/src/presentation/http/routes/v1/identity/profile.routes.ts",
+        "/src/presentation/http/routes/v1/identity/user.routes.ts",
+        "/src/presentation/http/routes/v1/organization/company.routes.ts",
+        "/src/presentation/http/routes/v1/organization/team.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/order.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/ratecard.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/shipment.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/warehouse.routes.ts",
+        "/src/presentation/http/routes/v1/shipping/zone.routes.ts",
+        "/src/presentation/http/routes/v1/system/analytics.routes.ts",
+        "/src/presentation/http/routes/v1/system/audit.routes.ts"
+      ]
+    },
+    "tests": {
+      "total": 3,
+      "unitTests": 1,
+      "integrationTests": 2
+    }
+  }
+]

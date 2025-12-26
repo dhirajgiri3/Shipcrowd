@@ -1,6 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
 import { arrayLimit } from '../../../../shared/utils/arrayValidators';
+import { fieldEncryption } from 'mongoose-field-encryption';
+import crypto from 'crypto';
 
 // Define the interface for User document
 export interface IUser extends Document {
@@ -302,7 +304,6 @@ UserSchema.index({ companyId: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isDeleted: 1 });
 UserSchema.index({ 'oauth.google.id': 1 });
-UserSchema.index({ googleId: 1 }, { sparse: true });
 
 // Missing indexes for token lookups (prevents full collection scan)
 UserSchema.index({ 'security.resetToken': 1 }, { sparse: true });
@@ -314,6 +315,27 @@ UserSchema.index({ companyId: 1, teamRole: 1 }); // Team filtering by role
 UserSchema.index({ email: 1, isActive: 1 }); // Login queries
 UserSchema.index({ companyId: 1, isDeleted: 1, createdAt: -1 }); // Team listing
 UserSchema.index({ companyId: 1, teamStatus: 1 }); // Team status filtering
+
+// ============================================================================
+// PHASE 1 CRITICAL: OAuth Token Encryption Plugin
+// ============================================================================
+// Encrypts OAuth access/refresh tokens to prevent account takeover if DB is breached
+//
+// Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Security: OAuth Tokens
+// ============================================================================
+
+// Add field-level encryption for OAuth tokens (uses same key as KYC encryption)
+// @ts-ignore - mongoose-field-encryption types are not perfectly compatible with Mongoose 8.x
+UserSchema.plugin(fieldEncryption, {
+  fields: [
+    'oauth.google.accessToken',
+    'oauth.google.refreshToken'
+  ],
+  secret: process.env.ENCRYPTION_KEY!,
+  saltGenerator: () => crypto.randomBytes(16).toString('hex'),
+  encryptOnSave: true,
+  decryptOnFind: true,
+});
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {

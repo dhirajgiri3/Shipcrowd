@@ -1,0 +1,754 @@
+{
+  "info": {
+    "name": "Shipcrowd KYC",
+    "description": "Comprehensive collection for testing Shipcrowd KYC verification system using DeepVue API. This collection includes endpoints for verifying PAN, Aadhaar, GSTIN, IFSC codes, and bank accounts, as well as managing KYC documents, approvals, and tracking KYC status.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "item": [
+    {
+      "name": "1. KYC Status Tracking",
+      "item": [
+        {
+          "name": "Get KYC Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "status"
+              ]
+            },
+            "description": "Get the current status of user's KYC verification process"
+          },
+          "response": []
+        },
+        {
+          "name": "Get KYC Verification History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "history"
+              ]
+            },
+            "description": "Get the history of KYC verification attempts and status changes"
+          },
+          "response": []
+        },
+        {
+          "name": "Get KYC Requirements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/requirements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "requirements"
+              ]
+            },
+            "description": "Get the list of required documents and information for KYC verification"
+          },
+          "response": []
+        },
+        {
+          "name": "Get KYC Verification Progress",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "progress"
+              ]
+            },
+            "description": "Get the progress of KYC verification process with percentage completion"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for tracking KYC verification status and history"
+    },
+    {
+      "name": "2. KYC Verification",
+      "item": [
+        {
+          "name": "Verify PAN Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"pan\": \"{{panNumber}}\",\n    \"name\": \"{{userName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/verify-pan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "verify-pan"
+              ]
+            },
+            "description": "Verify PAN card in real-time using DeepVue API"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Aadhaar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.verified) {",
+                  "    pm.environment.set('aadhaarVerified', true);",
+                  "    console.log('Aadhaar verification successful');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"aadhaar\": \"{{aadhaarNumber}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/verify-aadhaar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "verify-aadhaar"
+              ]
+            },
+            "description": "Verify Aadhaar in real-time using DeepVue API"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify GSTIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.verified) {",
+                  "    pm.environment.set('gstinVerified', true);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"gstin\": \"{{gstinNumber}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/verify-gstin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "verify-gstin"
+              ]
+            },
+            "description": "Verify GSTIN in real-time using DeepVue API"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify IFSC Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.verified) {",
+                  "    pm.environment.set('ifscVerified', true);",
+                  "    console.log('IFSC verification successful');",
+                  "    // Store bank details for later use",
+                  "    if (jsonData.data && jsonData.data.bankName) {",
+                  "        pm.environment.set('bankName', jsonData.data.bankName);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ifsc\": \"{{ifscCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/verify-ifsc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "verify-ifsc"
+              ]
+            },
+            "description": "Verify IFSC code in real-time using DeepVue API"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Bank Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.verified) {",
+                  "    pm.environment.set('bankAccountVerified', true);",
+                  "    console.log('Bank account verification successful');",
+                  "    ",
+                  "    // Store important details for later use",
+                  "    if (jsonData.data) {",
+                  "        if (jsonData.data.accountHolderName) {",
+                  "            pm.environment.set('accountHolderName', jsonData.data.accountHolderName);",
+                  "        }",
+                  "        if (jsonData.data.utr) {",
+                  "            pm.environment.set('bankUtr', jsonData.data.utr);",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountNumber\": \"{{accountNumber}}\",\n    \"ifsc\": \"{{ifscCode}}\",\n    \"accountHolderName\": \"{{accountHolderName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/verify-bank-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "verify-bank-account"
+              ]
+            },
+            "description": "Verify bank account in real-time using DeepVue API"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Agreement Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"agreed\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/agreement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "agreement"
+              ]
+            },
+            "description": "Update agreement acceptance status"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for KYC verification using DeepVue API"
+    },
+    {
+      "name": "3. User KYC Management",
+      "item": [
+        {
+          "name": "Submit KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"documents\": {\n        \"pan\": {\n            \"number\": \"{{panNumber}}\",\n            \"image\": \"base64-encoded-image-data\"\n        },\n        \"aadhaar\": {\n            \"number\": \"{{aadhaarNumber}}\",\n            \"frontImage\": \"base64-encoded-image-data\",\n            \"backImage\": \"base64-encoded-image-data\"\n        },\n        \"gstin\": {\n            \"number\": \"{{gstinNumber}}\"\n        },\n        \"bankAccount\": {\n            \"accountNumber\": \"{{accountNumber}}\",\n            \"ifscCode\": \"{{ifscCode}}\",\n            \"accountHolderName\": \"{{accountHolderName}}\",\n            \"bankName\": \"{{bankName}}\",\n            \"proofImage\": \"base64-encoded-image-data\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc"
+              ]
+            },
+            "description": "Submit KYC documents"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User KYC",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc"
+              ]
+            },
+            "description": "Get user's KYC details"
+          },
+          "response": []
+        },
+        {
+          "name": "Update KYC",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"documents\": {\n        \"pan\": {\n            \"number\": \"{{panNumber}}\",\n            \"image\": \"updated-base64-encoded-image-data\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc"
+              ]
+            },
+            "description": "Update specific KYC documents"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for user KYC management"
+    },
+    {
+      "name": "4. Admin KYC Management",
+      "item": [
+        {
+          "name": "Get All KYCs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "all"
+              ]
+            },
+            "description": "Get all KYCs (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get KYC by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/{{kycId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "{{kycId}}"
+              ]
+            },
+            "description": "Get a specific KYC by ID (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify KYC Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"documentType\": \"pan\",\n    \"verified\": true,\n    \"notes\": \"Document verified successfully\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/{{kycId}}/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "{{kycId}}",
+                "verify"
+              ]
+            },
+            "description": "Verify a KYC document (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Reject KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}",
+                "description": "CSRF token for protection"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"reason\": \"Documents are not clear\",\n    \"documentType\": \"pan\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/kyc/{{kycId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "{{kycId}}",
+                "reject"
+              ]
+            },
+            "description": "Reject a KYC submission (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get KYC Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "JWT access token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyc/statistics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyc",
+                "statistics"
+              ]
+            },
+            "description": "Get KYC verification statistics (admin only)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for admin KYC management"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Generate a CSRF token if not already set",
+          "if (!pm.environment.get('csrfToken')) {",
+          "    var uuid = require('uuid');",
+          "    pm.environment.set('csrfToken', uuid.v4());",
+          "}",
+          "",
+          "// Ensure user variables are set with valid test values",
+          "if (!pm.environment.get('userEmail')) {",
+          "    pm.environment.set('userEmail', 'business.cyperstudio@gmail.com');",
+          "}",
+          "if (!pm.environment.get('userPassword')) {",
+          "    pm.environment.set('userPassword', 'Password123!');",
+          "}",
+          "if (!pm.environment.get('userName')) {",
+          "    pm.environment.set('userName', 'Dhiraj Giri');",
+          "}",
+          "if (!pm.environment.get('panNumber')) {",
+          "    pm.environment.set('panNumber', 'DPYPG3276Q');",
+          "}",
+          "if (!pm.environment.get('aadhaarNumber')) {",
+          "    pm.environment.set('aadhaarNumber', '350405320859');",
+          "}",
+          "if (!pm.environment.get('gstinNumber')) {",
+          "    pm.environment.set('gstinNumber', '24DPYPG3276Q1ZW');",
+          "}",
+          "if (!pm.environment.get('accountNumber')) {",
+          "    pm.environment.set('accountNumber', '42387882206');",
+          "}",
+          "if (!pm.environment.get('ifscCode')) {",
+          "    pm.environment.set('ifscCode', 'SBIN0011022');",
+          "}",
+          "if (!pm.environment.get('accountHolderName')) {",
+          "    pm.environment.set('accountHolderName', 'Dhiraj Giri');",
+          "}",
+          "if (!pm.environment.get('bankName')) {",
+          "    pm.environment.set('bankName', 'State Bank of India');",
+          "}",
+          "",
+          "// Set Origin header to mimic request from frontend",
+          "const clientUrl = pm.environment.get('clientUrl') || 'http://localhost:3000';",
+          "pm.request.headers.add({",
+          "    key: 'Origin',",
+          "    value: clientUrl",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5005",
+      "type": "string",
+      "description": "Base URL for the Shipcrowd API server"
+    },
+    {
+      "key": "kycId",
+      "value": "your-kyc-id",
+      "type": "string",
+      "description": "ID of the KYC record to verify or reject (admin only)"
+    }
+  ]
+}

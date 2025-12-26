@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import bcrypt from 'bcrypt';
 
 // Define the interface for Session document
 export interface ISession extends Document {
@@ -22,6 +23,7 @@ export interface ISession extends Document {
   isRevoked: boolean;
   createdAt: Date;
   updatedAt: Date;
+  compareRefreshToken(candidateToken: string): Promise<boolean>;
 }
 
 // Create the Session schema
@@ -82,6 +84,28 @@ const SessionSchema = new Schema<ISession>(
 // Create indexes for efficient queries
 SessionSchema.index({ userId: 1, isRevoked: 1 });
 SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index for automatic cleanup
+
+// ============================================================================
+// PHASE 1 CRITICAL: Hash Refresh Tokens
+// ============================================================================
+// Hash refresh tokens before storage to prevent session hijacking if DB is breached
+// Similar to password hashing - tokens are never stored in plain text
+//
+// Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Security: Session Tokens
+// ============================================================================
+
+// Hash refresh token before saving
+SessionSchema.pre('save', async function(next) {
+    if (this.isModified('refreshToken')) {
+        this.refreshToken = await bcrypt.hash(this.refreshToken, 12);
+    }
+    next();
+});
+
+// Method to compare refresh token
+SessionSchema.methods.compareRefreshToken = async function(candidateToken: string): Promise<boolean> {
+    return bcrypt.compare(candidateToken, this.refreshToken);
+};
 
 // Create and export the Session model
 const Session = mongoose.model<ISession>('Session', SessionSchema);

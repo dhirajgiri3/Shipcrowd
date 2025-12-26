@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express';
 import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
 import Order from '../../../../infrastructure/database/mongoose/models/Order';
 import { AuthRequest } from '../../middleware/auth/auth';
@@ -330,6 +330,56 @@ export const deleteShipment = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
+export const trackShipmentPublic = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const { trackingNumber } = req.params;
+
+        // Basic format validation
+        const awbRegex = /^SHP-\d{8}-\d{4}$/;
+        if (!awbRegex.test(trackingNumber)) {
+            sendError(res, 'Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 400, 'INVALID_TRACKING_FORMAT');
+            return;
+        }
+
+        const shipment = await Shipment.findOne({
+            trackingNumber,
+            isDeleted: false,
+        })
+            .populate('orderId', 'orderNumber')
+            .select('trackingNumber carrier serviceType currentStatus statusHistory deliveryDetails estimatedDelivery actualDelivery createdAt')
+            .lean();
+
+        if (!shipment) {
+            sendError(res, 'Shipment not found', 404, 'SHIPMENT_NOT_FOUND');
+            return;
+        }
+
+        const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);
+
+        // Sanitize sensitive info for public view logic
+        const publicResponse = {
+            trackingNumber: shipment.trackingNumber,
+            carrier: shipment.carrier,
+            serviceType: shipment.serviceType,
+            currentStatus: shipment.currentStatus,
+            estimatedDelivery: shipment.estimatedDelivery,
+            actualDelivery: shipment.actualDelivery,
+            createdAt: shipment.createdAt,
+            recipient: {
+                // Only show City/State for privacy in public tracking
+                city: shipment.deliveryDetails.address.city,
+                state: shipment.deliveryDetails.address.state,
+            },
+            timeline,
+        };
+
+        sendSuccess(res, publicResponse, 'Shipment tracking information retrieved successfully');
+    } catch (error) {
+        logger.error('Error tracking shipment (public):', error);
+        next(error);
+    }
+};
+
 export default {
     createShipment,
     getShipments,
@@ -337,4 +387,5 @@ export default {
     trackShipment,
     updateShipmentStatus,
     deleteShipment,
+    trackShipmentPublic,
 };

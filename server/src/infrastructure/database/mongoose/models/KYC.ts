@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { arrayLimit } from '../../../../shared/utils/arrayValidators';
+import { fieldEncryption } from 'mongoose-field-encryption';
+import crypto from 'crypto';
 
 // Define the interface for KYC document
 export interface IKYC extends Document {
@@ -188,6 +190,37 @@ KYCSchema.index({ 'documents.gstin.number': 1 });
 
 // Compound indexes for common query patterns
 KYCSchema.index({ companyId: 1, status: 1 }); // Admin KYC filtering
+
+// ============================================================================
+// PHASE 1 CRITICAL: PII Encryption Plugin
+// ============================================================================
+// Encrypts sensitive Personally Identifiable Information (PII) at rest
+// to comply with GDPR, PCI-DSS, and IT Act 2000 regulations
+//
+// Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Security: Sensitive Data
+// ============================================================================
+
+// Validate encryption key exists at startup
+if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
+  throw new Error(
+    '❌ ENCRYPTION_KEY must be set in .env file (64+ hex characters).\n' +
+    '   Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+  );
+}
+
+// Add field-level encryption plugin
+// @ts-ignore - mongoose-field-encryption types are not perfectly compatible with Mongoose 8.x
+KYCSchema.plugin(fieldEncryption, {
+  fields: [
+    'documents.pan.number',
+    'documents.aadhaar.number',
+    'documents.bankAccount.accountNumber'
+  ],
+  secret: process.env.ENCRYPTION_KEY!,
+  saltGenerator: () => crypto.randomBytes(16).toString('hex'),
+  encryptOnSave: true,  // Automatically encrypt on save
+  decryptOnFind: true,  // Automatically decrypt on retrieval
+});
 
 // Create and export the KYC model
 const KYC = mongoose.model<IKYC>('KYC', KYCSchema);

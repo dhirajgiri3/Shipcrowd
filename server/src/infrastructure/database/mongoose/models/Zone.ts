@@ -111,6 +111,9 @@ ZoneSchema.index({ isDeleted: 1 });
 ZoneSchema.index({ companyId: 1, name: 1 }); // Zone lookup by company
 ZoneSchema.index({ companyId: 1, isDeleted: 1 }); // Active zones listing
 
+// Geospatial index for location-based queries
+ZoneSchema.index({ geographicalBoundaries: '2dsphere' }, { sparse: true }); // Geo queries for zone matching
+
 // Create and export the Zone model
 const Zone = mongoose.model<IZone>('Zone', ZoneSchema);
 export default Zone;
