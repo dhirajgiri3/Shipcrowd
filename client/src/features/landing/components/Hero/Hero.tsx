@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion"
 import { ArrowRight, TrendingUp, ShieldCheck, Truck, Home, Settings, CreditCard, LayoutGrid, ChevronDown, Plus, MoreHorizontal, Search, Bell, Package, Users, BarChart3, Activity } from "lucide-react"
-import { Button } from "@/src/shared/components/button"
+import { Button } from "@/components/ui/core/Button"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart, Bar } from 'recharts'
 import CountUp from 'react-countup'
 import { useInView } from 'react-intersection-observer'

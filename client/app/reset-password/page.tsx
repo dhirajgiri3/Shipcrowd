@@ -11,8 +11,8 @@ import { motion } from "framer-motion"
 import { ArrowRight, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
-import { Alert, AlertDescription } from "@/components/ui/Alert"
-import { LoadingButton } from "@/components/ui/LoadingButton"
+import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
+import { LoadingButton } from "@/components/ui/utility/LoadingButton"
 import { authApi } from "@/src/core/api/authApi"
 
 function ResetPasswordForm() {

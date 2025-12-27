@@ -2,9 +2,9 @@
 
 import { motion } from "framer-motion";
 import { AlertCircle, Package, Wallet, Shield, CheckCircle2 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/src/shared/components/card";
-import { Badge } from "@/src/shared/components/badge";
-import { Button } from "@/src/shared/components/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/core/Card";
+import { Badge } from "@/components/ui/core/Badge";
+import { Button } from "@/components/ui/core/Button";
 import { cn } from "@/src/shared/utils";
 import Link from "next/link";
 

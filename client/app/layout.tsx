@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth";
 import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
-import { Toaster } from "@/components/ui/Toaster";
+import { Toaster } from "@/components/ui/feedback/Toaster";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION

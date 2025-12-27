@@ -2,9 +2,9 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Badge } from '@/src/shared/components/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Badge } from '@/components/ui/core/Badge';
 import {
     GripVertical,
     Truck,
@@ -20,7 +20,7 @@ import {
     Info
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 
 // Mock courier priorities
 const mockCouriers = [

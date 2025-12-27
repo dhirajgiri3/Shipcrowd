@@ -95,3 +95,34 @@ export const isRetryableError = (error: any): boolean => {
         status === 504
     );
 };
+
+import { toast } from 'sonner';
+
+/**
+ * Handle API error with toast notification
+ */
+export const handleApiError = (error: any, context?: string): void => {
+    const prefix = context ? `${context}: ` : '';
+    const message = getErrorMessage(error);
+
+    toast.error(`${prefix}${message}`);
+
+    if (process.env.NODE_ENV === 'development') {
+        console.error('[API Error]', { context, error });
+    }
+};
+
+/**
+ * Show success toast
+ */
+export const showSuccessToast = (message: string): void => {
+    toast.success(message);
+};
+
+/**
+ * Show info toast
+ */
+export const showInfoToast = (message: string): void => {
+    toast.info(message);
+};
+

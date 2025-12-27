@@ -3,11 +3,11 @@ export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
-import { Modal } from '@/src/shared/components/Modal';
-import { useToast } from '@/src/shared/components/Toast';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Badge } from '@/components/ui/core/Badge';
+import { Modal } from '@/components/ui/feedback/Modal';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { formatDate, cn } from '@/src/shared/utils';
 import {
     Shield,

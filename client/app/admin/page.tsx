@@ -53,9 +53,9 @@ import {
     Cell
 } from 'recharts';
 import { useAuth } from '@/src/features/auth';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
-import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/components/admin/TopSellers';
 
 // --- ANIMATION VARIANTS ---

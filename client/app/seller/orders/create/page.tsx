@@ -16,12 +16,12 @@ import {
     Loader2,
     MapPin
 } from 'lucide-react';
-import { Button } from '@/src/shared/components/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
-import { Input } from '@/src/shared/components/Input';
+import { Button } from '@/components/ui/core/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
+import { Input } from '@/components/ui/core/Input';
 import { toast } from 'sonner';
 import { cn } from '@/src/shared/utils';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
 
 // API Hooks
 import { useCreateOrder, CreateOrderPayload } from '@/src/core/api/hooks/useOrders';

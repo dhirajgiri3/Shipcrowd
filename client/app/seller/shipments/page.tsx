@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MOCK_SHIPMENTS } from '@/lib/mockData';
-import { DataTable } from '@/src/shared/components/DataTable';
-import { Button } from '@/src/shared/components/button';
-import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { DataTable } from '@/components/ui/data/DataTable';
+import { Button } from '@/components/ui/core/Button';
+import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/components/admin/StatusBadge';

@@ -4,8 +4,6 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
 import { Search, ArrowRight, Loader2, AlertCircle, X, History, Box } from 'lucide-react';
 import { trackingApi, PublicTrackingResponse } from '@/src/core/api/trackingApi';
-import { toast } from 'sonner';
-import { Navigation, Footer } from '@/src/shared/components';
 import confetti from 'canvas-confetti';
 
 // Import new components
@@ -16,6 +14,7 @@ import { AnimatedTimeline } from './components/AnimatedTimeline';
 import { InteractiveMap } from './components/InteractiveMap';
 import { EasterEggs } from './components/EasterEggs';
 import { useSound } from './components/SoundManager';
+import { Navigation, Footer } from '@/components/ui';
 
 // Lazy load heavy 3D component
 const Package3D = lazy(() =>
@@ -32,12 +31,12 @@ interface RecentSearch {
 // Background Components
 const GridBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none bg-[var(--bg-secondary)]">
-    <div className="absolute inset-0 bg-[linear-gradient(to_right,#E2E8F0_1px,transparent_1px),linear-gradient(to_bottom,#E2E8F0_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40" />
-    <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_0%,transparent,white)]" />
+    <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border-subtle)_1px,transparent_1px),linear-gradient(to_bottom,var(--border-subtle)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30" />
+    <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_0%,transparent,var(--bg-secondary))]" />
     <motion.div
-      animate={{ opacity: [0.1, 0.3, 0.1], scale: [1, 1.1, 1] }}
-      transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-      className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primaryBlue/5 rounded-full blur-[100px]"
+      animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1] }}
+      transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+      className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[var(--primary-blue)]/5 rounded-full blur-[120px]"
     />
   </div>
 );
@@ -213,46 +212,46 @@ function TrackPageContent() {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--bg-secondary)] flex flex-col font-sans overflow-x-hidden selection:bg-blue-100 selection:text-blue-700">
+    <main className="min-h-screen bg-[var(--bg-secondary)] flex flex-col font-sans overflow-x-hidden selection:bg-[var(--primary-blue-soft)] selection:text-[var(--primary-blue)]">
       <Navigation />
       <GridBackground />
       <EasterEggs onEasterEggFound={(egg) => play('tada')} />
 
-      <div className="flex-grow relative z-10 flex flex-col items-center justify-center container mx-auto px-4 py-8">
+      <div className="flex-grow relative z-10 flex flex-col items-center justify-start container mx-auto px-4 pt-32 pb-16 min-h-screen">
         <motion.div
           layout
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className={`w-full max-w-4xl flex flex-col items-center ${shipment ? 'pt-8' : 'min-h-[60vh] justify-center'}`}
+          className={`w-full max-w-4xl flex flex-col items-center transition-all duration-500 ${shipment ? 'pt-0' : 'min-h-[50vh] justify-center'}`}
         >
           {/* Header */}
           <AnimatePresence>
             {!shipment && !isLoading && !error && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0, scale: 0.9, marginBottom: 0 }}
-                className="text-center mb-12"
+                exit={{ opacity: 0, height: 0, scale: 0.95, marginBottom: 0 }}
+                className="text-center mb-16"
               >
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[var(--border-subtle)] shadow-sm text-xs font-semibold text-[var(--primary-blue)] tracking-wider uppercase mb-6"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] shadow-[var(--shadow-xs)] text-xs font-bold text-[var(--primary-blue)] tracking-widest uppercase mb-8"
                 >
-                  <span className="relative flex h-2 w-2">
+                  <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary-blue)]" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--primary-blue)]" />
                   </span>
                   Live Tracking System
                 </motion.div>
-                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-[var(--text-primary)] mb-6">
+                <h1 className="text-6xl md:text-8xl font-bold tracking-tight text-[var(--text-primary)] mb-8 leading-[1.1]">
                   Where is your <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--primary-blue)] to-indigo-600">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] drop-shadow-sm">
                     Shipment?
                   </span>
                 </h1>
-                <p className="text-[var(--text-secondary)] text-lg max-w-lg mx-auto">
-                  Experience the next generation of logistics tracking with incredible animations and real-time updates.
+                <p className="text-[var(--text-secondary)] text-xl max-w-2xl mx-auto leading-relaxed">
+                  Experience the next generation of logistics tracking with <span className="text-[var(--text-primary)] font-medium">real-time precision</span> and beautiful insights.
                 </p>
               </motion.div>
             )}
@@ -271,29 +270,28 @@ function TrackPageContent() {
             <motion.form
               onSubmit={handleTrack}
               layoutId="search-container"
-              className={`relative bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200/60 transition-all duration-500 ease-out flex items-center p-2 overflow-hidden ${
-                isLoading ? 'ring-4 ring-[var(--primary-blue-soft)]' : 'hover:shadow-[0_30px_60px_-12px_rgba(37,37,255,0.15)] focus-within:ring-4 focus-within:ring-[var(--primary-blue-soft)]'
-              }`}
+              className={`relative bg-[var(--bg-elevated)] rounded-2xl shadow-[var(--shadow-lg)] border border-[var(--border-subtle)] transition-all duration-500 ease-out flex items-center p-2.5 overflow-hidden ${isLoading ? 'ring-2 ring-[var(--primary-blue)]' : 'hover:shadow-[var(--shadow-brand-lg)] hover:border-[var(--primary-blue-soft)] focus-within:ring-2 focus-within:ring-[var(--primary-blue)]'
+                }`}
               data-cursor="button"
             >
               {isLoading && (
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-100/30 to-transparent"
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--primary-blue-soft)]/20 to-transparent"
                   initial={{ x: '-100%' }}
                   animate={{ x: '100%' }}
-                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                 />
               )}
 
-              <div className="pl-4 text-slate-400 z-10">
-                <Search className="w-6 h-6" />
+              <div className="pl-5 text-[var(--text-muted)] z-10">
+                <Search className="w-6 h-6" strokeWidth={2.5} />
               </div>
               <input
                 type="text"
                 value={trackingNumber}
                 onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
-                placeholder="Enter AWB ID (try DEMO or ROCKET)"
-                className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-lg text-slate-800 placeholder:text-slate-300 font-semibold tracking-wide z-10"
+                placeholder="Enter AWB ID (e.g. DEMO)"
+                className="flex-1 bg-transparent border-none outline-none px-5 py-5 text-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-bold tracking-wide z-10"
                 disabled={isLoading}
               />
 
@@ -316,7 +314,7 @@ function TrackPageContent() {
                     whileTap={{ scale: 0.95 }}
                     type="submit"
                     disabled={!trackingNumber}
-                    className="bg-[var(--primary-blue)] text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 z-10"
+                    className="bg-[var(--primary-blue)] text-white p-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow-brand)] hover:bg-[var(--primary-blue-deep)] transition-colors z-10"
                     data-cursor="button"
                   >
                     <ArrowRight className="w-6 h-6" />
@@ -329,18 +327,18 @@ function TrackPageContent() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute -bottom-10 left-0 w-full text-center text-sm text-slate-400 font-medium"
+                className="absolute -bottom-14 left-0 w-full text-center text-sm font-medium text-[var(--text-tertiary)]"
               >
                 Try{' '}
                 <span
-                  className="text-[var(--primary-blue)] cursor-pointer hover:underline decoration-2"
+                  className="text-[var(--primary-blue)] cursor-pointer hover:underline decoration-2 underline-offset-4"
                   onClick={() => setTrackingNumber('DEMO')}
                 >
                   DEMO
                 </span>{' '}
                 or{' '}
                 <span
-                  className="text-[var(--primary-blue)] cursor-pointer hover:underline decoration-2"
+                  className="text-[var(--primary-blue)] cursor-pointer hover:underline decoration-2 underline-offset-4"
                   onClick={() => setTrackingNumber('ROCKET')}
                 >
                   ROCKET
@@ -374,23 +372,23 @@ function TrackPageContent() {
                         setTrackingNumber(search.number);
                         handleTrack(undefined, search.number);
                       }}
-                      className="group relative bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-[var(--primary-blue)] hover:shadow-md transition-all"
+                      className="group relative bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-[var(--primary-blue)] hover:shadow-[var(--shadow-sm)] transition-all"
                       data-cursor="card"
                     >
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-tertiary)] group-hover:bg-[var(--primary-blue-soft)] group-hover:text-[var(--primary-blue)] transition-colors">
                         <Box size={14} />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-700">{search.number}</span>
-                        <span className="text-[10px] font-medium text-slate-400 uppercase">
+                        <span className="text-sm font-bold text-[var(--text-primary)]">{search.number}</span>
+                        <span className="text-[10px] font-medium text-[var(--text-tertiary)] uppercase">
                           {search.status?.replace(/_/g, ' ') || 'Tracked recently'}
                         </span>
                       </div>
                       <button
                         onClick={e => removeFromRecent(e, search.number)}
-                        className="absolute -top-2 -right-2 bg-slate-100 hover:bg-slate-200 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute -top-2 -right-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <X size={10} className="text-slate-500" />
+                        <X size={10} className="text-[var(--text-secondary)]" />
                       </button>
                     </motion.div>
                   ))}
@@ -407,7 +405,7 @@ function TrackPageContent() {
               initial={{ opacity: 0, y: 10, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: 10, height: 0 }}
-              className="bg-red-50 border border-red-100 text-red-600 px-6 py-4 rounded-xl flex items-center gap-3 shadow-lg shadow-red-500/5 max-w-md mt-4"
+              className="bg-[var(--error-bg)] border border-[var(--error-border)] text-[var(--error)] px-6 py-4 rounded-xl flex items-center gap-3 shadow-[var(--shadow-sm)] max-w-md mt-4"
             >
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p className="font-medium">{error}</p>
@@ -436,9 +434,10 @@ function TrackPageContent() {
               </div>
 
               {/* 3D Package + Map */}
-              <div className="col-span-1 md:col-span-7 grid grid-cols-1 gap-4 h-auto md:h-[340px]">
-                <div className="h-[300px] md:h-full bg-gradient-to-br from-slate-50 to-slate-100 rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-                  <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-slate-400">Loading 3D...</div>}>
+              <div className="col-span-1 md:col-span-7 grid grid-cols-1 gap-6 h-auto md:h-[400px]">
+                <div className="h-[300px] md:h-full bg-[var(--bg-elevated)] rounded-[2rem] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] overflow-hidden relative group">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--primary-blue-soft)_0%,transparent_70%)] opacity-30 pointer-events-none" />
+                  <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] animate-pulse">Initializing 3D Environment...</div>}>
                     <Package3D status={shipment.currentStatus} />
                   </Suspense>
                 </div>

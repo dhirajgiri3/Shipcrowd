@@ -15,11 +15,11 @@ import {
     Area,
     Cell
 } from 'recharts';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
-import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
-import { useToast } from '@/src/shared/components/Toast';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Badge } from '@/components/ui/core/Badge';
+import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import {
     PackageX,

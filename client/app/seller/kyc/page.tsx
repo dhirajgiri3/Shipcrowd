@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Badge } from '@/components/ui/core/Badge';
 import { toast } from 'sonner';
 import {
     User,
@@ -28,8 +28,8 @@ import { cn } from '@/src/shared/utils';
 import { kycApi, KYCData } from '@/src/core/api';
 import { useAuth } from '@/src/features/auth';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { LoadingButton } from '@/components/ui/LoadingButton';
+import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
+import { LoadingButton } from '@/components/ui/utility/LoadingButton';
 
 // KYC Steps Configuration
 const kycSteps = [

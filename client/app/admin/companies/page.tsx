@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { companyApi, Company, CompanyStats } from '@/src/core/api/companyApi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function CompaniesPage() {
     const [companies, setCompanies] = useState<Company[]>([]);

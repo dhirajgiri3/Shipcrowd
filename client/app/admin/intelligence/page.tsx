@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Badge } from '@/src/shared/components/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Badge } from '@/components/ui/core/Badge';
 // Removed duplicate import
 import { MOCK_PREDICTIONS, MOCK_ANOMALIES, MOCK_AI_INSIGHTS } from '@/lib/mockData';
 import {

@@ -12,9 +12,9 @@ import {
     CheckCircle2,
     Star
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Badge } from '@/src/shared/components/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Badge } from '@/components/ui/core/Badge';
 import { cn } from '@/src/shared/utils';
 import Link from 'next/link';
 

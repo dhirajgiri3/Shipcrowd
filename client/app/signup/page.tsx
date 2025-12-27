@@ -20,8 +20,8 @@ import {
 import { useAuth } from "@/src/features/auth"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
-import { Alert, AlertDescription } from "@/components/ui/Alert"
-import { LoadingButton } from "@/components/ui/LoadingButton"
+import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
+import { LoadingButton } from "@/components/ui/utility/LoadingButton"
 
 export default function SignupPage() {
     const router = useRouter()

@@ -24,7 +24,7 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
 
   return (
     <motion.div
-      className={`bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[32px] p-8 border border-blue-100 shadow-lg overflow-hidden relative h-[400px] ${className}`}
+      className={`bg-gradient-to-br from-[var(--primary-blue-soft)]/50 to-[var(--bg-secondary)] rounded-[32px] p-8 border border-[var(--primary-blue-soft)] shadow-[var(--shadow-brand-sm)] overflow-hidden relative h-[400px] ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{
@@ -45,7 +45,7 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="0.5"
-                className="text-blue-300"
+                className="text-[var(--primary-blue-soft)]"
               />
             </pattern>
           </defs>
@@ -56,18 +56,18 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center shadow-[var(--shadow-brand)]">
             <Navigation size={20} />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-slate-900">Journey Map</h3>
-            <p className="text-sm text-slate-500">{uniqueLocations.length} stops</p>
+            <h3 className="text-xl font-bold text-[var(--text-primary)]">Journey Map</h3>
+            <p className="text-sm text-[var(--text-tertiary)]">{uniqueLocations.length} stops</p>
           </div>
         </div>
 
         <div className="text-right">
-          <div className="text-sm text-slate-500">Destination</div>
-          <div className="font-bold text-slate-900">
+          <div className="text-sm text-[var(--text-tertiary)]">Destination</div>
+          <div className="font-bold text-[var(--text-primary)]">
             {destination.city}, {destination.state}
           </div>
         </div>
@@ -85,13 +85,12 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
           >
             {/* Location Pin */}
             <motion.div
-              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
-                i === 0
-                  ? 'bg-blue-500 text-white'
+              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-[var(--shadow-lg)] ${i === 0
+                  ? 'bg-[var(--primary-blue)] text-white shadow-[var(--shadow-brand)]'
                   : i === uniqueLocations.length - 1
-                  ? 'bg-green-500 text-white'
-                  : 'bg-white text-blue-500 border-2 border-blue-200'
-              }`}
+                    ? 'bg-[var(--success)] text-white shadow-[0_0_20px_var(--success-bg)]'
+                    : 'bg-[var(--bg-elevated)] text-[var(--primary-blue)] border-2 border-[var(--primary-blue-soft)]'
+                }`}
               animate={{
                 scale: i === uniqueLocations.length - 1 ? [1, 1.1, 1] : 1,
               }}
@@ -106,10 +105,10 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
 
             {/* Location Label */}
             <div className="mt-3 text-center">
-              <div className="text-xs font-bold text-slate-700 max-w-[100px] truncate">
+              <div className="text-xs font-bold text-[var(--text-secondary)] max-w-[100px] truncate">
                 {location}
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">
+              <div className="text-[10px] text-[var(--text-tertiary)] mt-1">
                 {i === 0 ? 'Origin' : i === uniqueLocations.length - 1 ? 'Current' : `Stop ${i}`}
               </div>
             </div>
@@ -117,7 +116,7 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
             {/* Connecting Line */}
             {i < uniqueLocations.length - 1 && (
               <motion.div
-                className="absolute top-8 h-0.5 bg-blue-300"
+                className="absolute top-8 h-0.5 bg-[var(--primary-blue-soft)]"
                 style={{
                   left: `${((i + 0.5) / uniqueLocations.length) * 100}%`,
                   width: `${100 / uniqueLocations.length}%`,
@@ -146,7 +145,7 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
           repeatDelay: 2,
         }}
       >
-        <div className="w-8 h-8 bg-blue-500 rounded-lg shadow-lg flex items-center justify-center text-white">
+        <div className="w-8 h-8 bg-[var(--primary-blue)] rounded-lg shadow-[var(--shadow-brand)] flex items-center justify-center text-white">
           📦
         </div>
       </motion.div>

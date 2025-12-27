@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/admin/Sidebar';
 import { Header } from '@/components/admin/Header';
 import { ThemeProvider } from '@/components/shared/ThemeProvider';
-import { ToastProvider } from '@/src/shared/components/Toast';
+import { ToastProvider } from '@/components/ui/feedback/Toast';
 import { X } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
 

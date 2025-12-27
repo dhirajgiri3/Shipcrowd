@@ -40,39 +40,39 @@ const getStatusColor = (status: string) => {
   switch (normalizedStatus) {
     case 'DELIVERED':
       return {
-        bg: 'bg-emerald-500',
-        text: 'text-emerald-700',
-        border: 'border-emerald-200',
-        glow: 'shadow-emerald-500/30',
+        bg: 'bg-[var(--success)]',
+        text: 'text-[var(--text-success)]',
+        border: 'border-[var(--success-border)]',
+        glow: 'shadow-[0_0_20px_var(--success-bg)]',
       };
     case 'OUT_FOR_DELIVERY':
       return {
-        bg: 'bg-blue-600',
-        text: 'text-blue-700',
-        border: 'border-blue-200',
-        glow: 'shadow-blue-600/30',
+        bg: 'bg-[var(--primary-blue)]',
+        text: 'text-[var(--primary-blue)]',
+        border: 'border-[var(--primary-blue-soft)]',
+        glow: 'shadow-[var(--shadow-brand)]',
       };
     case 'IN_TRANSIT':
     case 'ARRIVED_AT_DESTINATION':
       return {
-        bg: 'bg-indigo-500',
-        text: 'text-indigo-700',
-        border: 'border-indigo-200',
-        glow: 'shadow-indigo-500/30',
+        bg: 'bg-[var(--primary-blue)]',
+        text: 'text-[var(--primary-blue)]',
+        border: 'border-[var(--primary-blue-soft)]',
+        glow: 'shadow-[var(--shadow-brand-sm)]',
       };
     case 'PICKED_UP':
       return {
-        bg: 'bg-amber-500',
-        text: 'text-amber-700',
-        border: 'border-amber-200',
-        glow: 'shadow-amber-500/30',
+        bg: 'bg-[var(--warning)]',
+        text: 'text-[var(--text-warning)]',
+        border: 'border-[var(--warning-border)]',
+        glow: 'shadow-[0_0_20px_var(--warning-bg)]',
       };
     default:
       return {
-        bg: 'bg-slate-400',
-        text: 'text-slate-700',
-        border: 'border-slate-200',
-        glow: 'shadow-slate-400/30',
+        bg: 'bg-[var(--text-muted)]',
+        text: 'text-[var(--text-secondary)]',
+        border: 'border-[var(--border-default)]',
+        glow: 'shadow-[var(--shadow-sm)]',
       };
   }
 };
@@ -80,7 +80,7 @@ const getStatusColor = (status: string) => {
 export function AnimatedTimeline({ events, className = '' }: AnimatedTimelineProps) {
   return (
     <motion.div
-      className={`bg-white rounded-3xl p-8 md:p-12 border border-slate-100 shadow-2xl ${className}`}
+      className={`bg-[var(--bg-elevated)] rounded-3xl p-8 md:p-12 border border-[var(--border-subtle)] shadow-[var(--shadow-xl)] ${className}`}
       initial={{ opacity: 0, y: 60 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -94,7 +94,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
       <div className="flex items-center justify-between mb-10">
         <div className="flex items-center gap-4">
           <motion.div
-            className="p-3 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 shadow-lg"
+            className="p-3 rounded-2xl bg-gradient-to-br from-[var(--primary-blue-soft)] to-[var(--bg-secondary)] text-[var(--primary-blue)] shadow-[var(--shadow-brand-sm)]"
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{
@@ -108,7 +108,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
           </motion.div>
           <div>
             <motion.h3
-              className="text-2xl font-black text-slate-900"
+              className="text-2xl font-black text-[var(--text-primary)]"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.8 }}
@@ -116,7 +116,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
               Delivery Journey
             </motion.h3>
             <motion.p
-              className="text-sm text-slate-500 font-medium"
+              className="text-sm text-[var(--text-tertiary)] font-medium"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.9 }}
@@ -128,7 +128,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
 
         {/* Status Badge */}
         <motion.div
-          className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100"
+          className="px-4 py-2 rounded-full bg-gradient-to-r from-[var(--primary-blue-soft)] to-[var(--bg-secondary)] border border-[var(--primary-blue-soft)]"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{
@@ -138,18 +138,18 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
             delay: 1,
           }}
         >
-          <span className="text-sm font-bold text-blue-700">Real-time Updates</span>
+          <span className="text-sm font-bold text-[var(--primary-blue)]">Real-time Updates</span>
         </motion.div>
       </div>
 
       {/* Timeline */}
       <div className="relative">
         {/* Vertical Line */}
-        <div className="absolute left-[44px] md:left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-indigo-200 to-transparent" />
+        <div className="absolute left-[44px] md:left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-[var(--border-subtle)] via-[var(--border-default)] to-transparent" />
 
         {/* Animated Progress Line */}
         <motion.div
-          className="absolute left-[44px] md:left-[52px] top-0 w-0.5 bg-gradient-to-b from-blue-600 to-indigo-600"
+          className="absolute left-[44px] md:left-[52px] top-0 w-0.5 bg-gradient-to-b from-[var(--primary-blue)] to-[var(--primary-blue-light)]"
           initial={{ height: 0 }}
           animate={{ height: '40%' }}
           transition={{
@@ -182,9 +182,9 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                 {/* Timeline Node */}
                 <motion.div
                   className={`
-                    relative z-10 flex-shrink-0 flex items-center justify-center
+                    activeNode
                     w-20 h-20 md:w-24 md:h-24 rounded-2xl
-                    ${isActive ? `${colors.bg} text-white shadow-2xl ${colors.glow}` : 'bg-white text-slate-400 border-2 border-slate-100'}
+                    ${isActive ? `${colors.bg} text-white shadow-2xl ${colors.glow}` : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border-2 border-[var(--border-subtle)]'}
                     transition-all duration-500
                   `}
                   whileHover={{ scale: isActive ? 1.1 : 1.05, rotate: isActive ? 5 : 0 }}
@@ -192,22 +192,22 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                   animate={
                     isActive
                       ? {
-                          scale: [1, 1.05, 1],
-                          boxShadow: [
-                            '0 20px 40px -10px rgba(0,0,0,0.1)',
-                            '0 25px 50px -10px rgba(37,99,235,0.3)',
-                            '0 20px 40px -10px rgba(0,0,0,0.1)',
-                          ],
-                        }
+                        scale: [1, 1.05, 1],
+                        boxShadow: [
+                          '0 20px 40px -10px rgba(0,0,0,0.1)',
+                          '0 25px 50px -10px rgba(37,99,235,0.3)',
+                          '0 20px 40px -10px rgba(0,0,0,0.1)',
+                        ],
+                      }
                       : {}
                   }
                   transition={
                     isActive
                       ? {
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: 'easeInOut',
-                        }
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }
                       : {}
                   }
                 >
@@ -216,7 +216,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                   {/* Active Pulse */}
                   {isActive && (
                     <motion.div
-                      className="absolute inset-0 rounded-2xl bg-blue-600/20"
+                      className="absolute inset-0 rounded-2xl bg-[var(--primary-blue)]/20"
                       animate={{
                         scale: [1, 1.2, 1],
                         opacity: [0.5, 0, 0.5],
@@ -235,9 +235,8 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                   {/* Title and Time */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
                     <motion.h4
-                      className={`text-xl md:text-2xl font-black ${
-                        isActive ? colors.text : 'text-slate-600'
-                      }`}
+                      className={`text-xl md:text-2xl font-black ${isActive ? colors.text : 'text-[var(--text-secondary)]'
+                        }`}
                       initial={{ opacity: 0 }}
                       whileInView={{ opacity: 1 }}
                       viewport={{ once: true }}
@@ -247,7 +246,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                     </motion.h4>
 
                     <motion.div
-                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 w-fit"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] w-fit"
                       initial={{ opacity: 0, scale: 0.8 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       viewport={{ once: true }}
@@ -258,8 +257,8 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                         delay: i * 0.1 + 1.5,
                       }}
                     >
-                      <Clock size={14} className="text-slate-400" />
-                      <span className="text-sm font-mono text-slate-600">
+                      <Clock size={14} className="text-[var(--text-tertiary)]" />
+                      <span className="text-sm font-mono text-[var(--text-secondary)]">
                         {new Date(event.timestamp).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -272,7 +271,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
 
                   {/* Description */}
                   <motion.p
-                    className="text-slate-600 leading-relaxed text-base md:text-lg max-w-2xl"
+                    className="text-[var(--text-secondary)] leading-relaxed text-base md:text-lg max-w-2xl"
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
@@ -284,7 +283,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                   {/* Location */}
                   {event.location && (
                     <motion.div
-                      className="flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 w-fit"
+                      className="flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-[var(--primary-blue-soft)]/30 border border-[var(--primary-blue-soft)] w-fit"
                       initial={{ opacity: 0, y: 10 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
@@ -295,8 +294,8 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                         delay: i * 0.1 + 1.7,
                       }}
                     >
-                      <MapPin size={16} className="text-blue-600" />
-                      <span className="text-sm font-bold text-blue-700">{event.location}</span>
+                      <MapPin size={16} className="text-[var(--primary-blue)]" />
+                      <span className="text-sm font-bold text-[var(--primary-blue)]">{event.location}</span>
                     </motion.div>
                   )}
                 </div>
@@ -308,13 +307,13 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
 
       {/* Footer Badge */}
       <motion.div
-        className="mt-10 pt-8 border-t border-slate-100"
+        className="mt-10 pt-8 border-t border-[var(--border-subtle)]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2 }}
       >
-        <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+        <div className="flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
+          <div className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
           <span className="font-medium">Live tracking active</span>
         </div>
       </motion.div>

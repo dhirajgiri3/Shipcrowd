@@ -2,9 +2,9 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Badge } from '@/components/ui/core/Badge';
 import {
     FileText,
     Search,
@@ -21,7 +21,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { motion } from 'framer-motion';
 
 // Mock shipment data for label

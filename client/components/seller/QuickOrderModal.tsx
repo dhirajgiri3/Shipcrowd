@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Package, Truck, MapPin, CreditCard, Loader2, CheckCircle2, ChevronRight, Weight } from "lucide-react";
-import { Button } from "@/src/shared/components/button";
-import { Input } from "@/src/shared/components/Input";
+import { Button } from "@/components/ui/core/Button";
+import { Input } from "@/components/ui/core/Input";
 import { useWarehouses } from "@/src/core/api/hooks/useWarehouses";
 import { useCreateOrder } from "@/src/core/api/hooks/useOrders";
-import { useToast } from "@/src/shared/components/Toast";
+import { useToast } from "@/components/ui/feedback/Toast";
 import { RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
 import { cn, formatCurrency } from "@/src/shared/utils";
 

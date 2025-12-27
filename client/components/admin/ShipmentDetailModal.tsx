@@ -1,14 +1,14 @@
 "use client";
 
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/feedback/Modal';
+import { Button } from '@/components/ui/core/Button';
+import { Badge } from '@/components/ui/core/Badge';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import {
     Package, MapPin, User, Phone, Mail, Truck, Calendar,
     IndianRupee, Copy, ExternalLink, Clock, FileText
 } from 'lucide-react';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Shipment } from '@/types/admin';
 

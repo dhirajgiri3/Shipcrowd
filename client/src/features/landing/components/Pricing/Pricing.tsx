@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, X, ChevronDown, Zap } from "lucide-react"
-import { Button } from "@/src/shared/components/button"
+import { Button } from "@/components/ui/core/Button"
 
 export default function Pricing() {
     const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly")
@@ -85,8 +85,8 @@ export default function Pricing() {
                         <button
                             onClick={() => setBillingCycle("monthly")}
                             className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${billingCycle === "monthly"
-                                    ? "text-white bg-primaryBlue shadow-md"
-                                    : "text-charcoal-600 hover:text-charcoal-900"
+                                ? "text-white bg-primaryBlue shadow-md"
+                                : "text-charcoal-600 hover:text-charcoal-900"
                                 }`}
                         >
                             Monthly
@@ -94,8 +94,8 @@ export default function Pricing() {
                         <button
                             onClick={() => setBillingCycle("annual")}
                             className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${billingCycle === "annual"
-                                    ? "text-white bg-primaryBlue shadow-md"
-                                    : "text-charcoal-600 hover:text-charcoal-900"
+                                ? "text-white bg-primaryBlue shadow-md"
+                                : "text-charcoal-600 hover:text-charcoal-900"
                                 }`}
                         >
                             Annual
@@ -116,8 +116,8 @@ export default function Pricing() {
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.1 }}
                             className={`relative p-8 rounded-3xl border transition-all duration-500 ${plan.popular
-                                    ? "bg-gradient-to-br from-primaryBlue to-indigo-600 text-white border-transparent shadow-2xl shadow-primaryBlue/20 scale-105 md:scale-110"
-                                    : "bg-white text-charcoal-950 border-charcoal-100 hover:border-primaryBlue/30 hover:shadow-xl"
+                                ? "bg-gradient-to-br from-primaryBlue to-indigo-600 text-white border-transparent shadow-2xl shadow-primaryBlue/20 scale-105 md:scale-110"
+                                : "bg-white text-charcoal-950 border-charcoal-100 hover:border-primaryBlue/30 hover:shadow-xl"
                                 }`}
                         >
                             {plan.popular && (
@@ -158,8 +158,8 @@ export default function Pricing() {
                                 {plan.features.map((feature, j) => (
                                     <li key={j} className="flex items-center gap-3 text-sm font-medium">
                                         <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${plan.popular
-                                                ? "bg-white/20 text-white"
-                                                : "bg-primaryBlue/10 text-primaryBlue"
+                                            ? "bg-white/20 text-white"
+                                            : "bg-primaryBlue/10 text-primaryBlue"
                                             }`}>
                                             <Check size={12} strokeWidth={3} />
                                         </div>
@@ -170,8 +170,8 @@ export default function Pricing() {
 
                             <Button
                                 className={`w-full h-12 text-base font-semibold rounded-xl transition-all duration-300 ${plan.popular
-                                        ? "bg-white text-primaryBlue hover:bg-charcoal-50 shadow-lg hover:shadow-xl"
-                                        : "bg-primaryBlue text-white hover:bg-primaryBlue/90"
+                                    ? "bg-white text-primaryBlue hover:bg-charcoal-50 shadow-lg hover:shadow-xl"
+                                    : "bg-primaryBlue text-white hover:bg-primaryBlue/90"
                                     }`}
                             >
                                 {plan.cta}

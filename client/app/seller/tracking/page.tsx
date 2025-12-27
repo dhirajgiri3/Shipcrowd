@@ -2,9 +2,9 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Badge } from '@/components/ui/core/Badge';
 import {
     Search,
     Package,
@@ -20,7 +20,7 @@ import {
     Plane,
     Box
 } from 'lucide-react';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/src/shared/utils';
 

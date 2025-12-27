@@ -8,26 +8,34 @@
  * import { Button, Card, Badge } from '@/components/ui';
  */
 
-// Core Components
-export { Button } from './Button';
-export type { ButtonProps } from './Button';
+// ============================================
+// CORE COMPONENTS (Foundational primitives)
+// ============================================
+export { Button } from './core/Button';
+export type { ButtonProps } from './core/Button';
 
-export { Badge, badgeVariants } from './Badge';
-export type { BadgeProps } from './Badge';
+export { Badge, badgeVariants } from './core/Badge';
+export type { BadgeProps } from './core/Badge';
 
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
-export type { CardProps } from './Card';
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './core/Card';
+export type { CardProps } from './core/Card';
 
-export { Input } from './Input';
-export type { InputProps } from './Input';
+export { Input } from './core/Input';
+export type { InputProps } from './core/Input';
 
-// Feedback Components
-export { Modal } from './Modal';
+// ============================================
+// FEEDBACK COMPONENTS (User notifications)
+// ============================================
+export { Alert } from './feedback/Alert';
+export { Modal } from './feedback/Modal';
+export { useToast } from './feedback/Toast';
+export { Toaster } from './feedback/Toaster';
+export { Tooltip } from './feedback/Tooltip';
 
-// Data Display
-export { DataTable } from './DataTable';
-
-// Loading States
+// ============================================
+// DATA COMPONENTS (Display & loading)
+// ============================================
+export { DataTable } from './data/DataTable';
 export {
     Skeleton,
     CardSkeleton,
@@ -36,11 +44,24 @@ export {
     NavSkeleton,
     PageHeaderSkeleton,
     PageSkeleton
-} from './Skeleton';
+} from './data/Skeleton';
 
-// Form Components
-export { Select } from './Select';
-export { DateRangePicker } from './DateRangePicker';
+// ============================================
+// FORM COMPONENTS (User input)
+// ============================================
+export { Select } from './form/Select';
+export { DateRangePicker } from './form/DateRangePicker';
+export { FormInput } from './form/FormInput';
+export { PasswordStrengthIndicator } from './form/PasswordStrengthIndicator';
 
-// Utility Components
-export { Tooltip } from './Tooltip';
+// ============================================
+// LAYOUT COMPONENTS (Page structure)
+// ============================================
+export { Navigation } from './layout/Navigation';
+export { Footer } from './layout/Footer';
+
+// ============================================
+// UTILITY COMPONENTS (Misc helpers)
+// ============================================
+export { RadialProgress } from './utility/RadialProgress';
+export { LoadingButton } from './utility/LoadingButton';

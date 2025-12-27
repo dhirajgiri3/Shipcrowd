@@ -2,7 +2,7 @@
 
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/src/shared/components/button';
+import { Button } from '@/components/ui/core/Button';
 import logger from '@/src/shared/utils/logger';
 
 interface Props {

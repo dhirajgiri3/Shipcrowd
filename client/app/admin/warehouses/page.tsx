@@ -3,10 +3,10 @@ export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Badge } from '@/src/shared/components/badge';
-import { Input } from '@/src/shared/components/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Badge } from '@/components/ui/core/Badge';
+import { Input } from '@/components/ui/core/Input';
 import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/lib/mockData';
 import {
     Warehouse,
@@ -23,7 +23,7 @@ import {
     Globe
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 
 export default function WarehousesPage() {
     const [search, setSearch] = useState('');

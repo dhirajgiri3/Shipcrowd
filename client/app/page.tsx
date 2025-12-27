@@ -1,4 +1,4 @@
-import { Navigation, Footer } from "@/src/shared/components";
+import { Navigation, Footer } from "@/components/ui";
 import Hero from "@/src/features/landing/components/Hero";
 import TrustBar from "@/src/features/landing/components/TrustBar";
 import ProblemSection from "@/src/features/landing/components/ProblemSection";

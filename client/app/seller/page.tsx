@@ -33,7 +33,7 @@ import {
 import { useAuth } from '@/src/features/auth';
 import { useRouter } from 'next/navigation';
 import { formatCurrency, cn } from '@/src/shared/utils';
-import { DateRangePicker } from '@/src/shared/components/DateRangePicker';
+import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
 import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
 import { ActionsRequired } from '@/components/seller/ActionsRequired';
 import { QuickCreate } from '@/components/seller/QuickCreate';

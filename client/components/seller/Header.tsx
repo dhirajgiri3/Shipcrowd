@@ -6,7 +6,7 @@ import { Search, Menu, Truck, Plus, Wallet } from 'lucide-react';
 import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { Tooltip } from '@/components/ui/feedback/Tooltip';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/src/features/auth';
 

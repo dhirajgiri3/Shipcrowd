@@ -19,7 +19,7 @@ export function useMagneticEffect(
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!elementRef.current) return;
 
-    const rect = elementRef.current.getBoundingRect();
+    const rect = elementRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 

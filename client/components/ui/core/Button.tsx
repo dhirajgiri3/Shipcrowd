@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
  */
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'link';
     size?: 'sm' | 'md' | 'lg' | 'icon';
     isLoading?: boolean;
 }
@@ -45,6 +45,9 @@ const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
                         // Danger - Red
                         'bg-[var(--error)] text-white hover:bg-[var(--error-light)] active:scale-[0.98] shadow-sm':
                             variant === 'danger',
+                        // Link - Text only with underline on hover
+                        'text-[var(--primary-blue)] underline-offset-4 hover:underline bg-transparent px-0 shadow-none':
+                            variant === 'link',
                     },
                     // Size styles
                     {

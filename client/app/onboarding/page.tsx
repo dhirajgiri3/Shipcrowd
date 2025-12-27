@@ -8,8 +8,8 @@ import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check, Loader2 } fr
 import { toast } from "sonner"
 import { useAuth } from "@/src/features/auth"
 import { companyApi, CreateCompanyData } from "@/src/core/api"
-import { LoadingButton } from "@/components/ui/LoadingButton"
-import { Alert, AlertDescription } from "@/components/ui/Alert"
+import { LoadingButton } from "@/components/ui/utility/LoadingButton"
+import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
 import { INDIAN_STATES, isValidGSTIN, isValidPAN, isValidPincode } from "@/src/shared"
 
 export default function OnboardingPage() {

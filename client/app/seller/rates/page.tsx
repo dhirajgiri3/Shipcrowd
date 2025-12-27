@@ -2,11 +2,11 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Select } from '@/src/shared/components/Select';
-import { Badge } from '@/src/shared/components/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Select } from '@/components/ui/form/Select';
+import { Badge } from '@/components/ui/core/Badge';
 import {
     Calculator,
     MapPin,
@@ -20,7 +20,7 @@ import {
     ArrowRight,
     RefreshCw
 } from 'lucide-react';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/shared/utils';
 import { getCourierLogo } from '@/lib/constants';
 
@@ -209,7 +209,7 @@ export default function RatesPage() {
                                     { label: 'COD', value: 'cod' },
                                 ]}
                                 value={formData.paymentMode}
-                                onChange={(value) => setFormData({ ...formData, paymentMode: value })}
+                                onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
                             />
                         </div>
 

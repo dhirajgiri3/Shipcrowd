@@ -1,6 +1,7 @@
+'use client';
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +17,7 @@ import { cn } from '@/lib/utils';
 interface DataTableProps<T> {
     columns: {
         header: string;
-        accessorKey: keyof T | ((row: T) => React.ReactNode);
+        accessorKey: keyof T | ((row: T) => React.ReactNode) | string;
         cell?: (row: T) => React.ReactNode;
         width?: string;
     }[];
@@ -107,7 +108,7 @@ export function DataTable<T extends { id: string | number }>({
                                     >
                                         {columns.map((col, idx) => (
                                             <td key={idx} className="px-6 py-4 text-[var(--text-primary)]">
-                                                {col.cell ? col.cell(row) : (row[col.accessorKey as keyof T] as React.ReactNode)}
+                                                {col.cell ? col.cell(row) : ((row as any)[col.accessorKey as string] as React.ReactNode)}
                                             </td>
                                         ))}
                                     </tr>

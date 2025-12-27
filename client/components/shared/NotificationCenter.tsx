@@ -13,8 +13,8 @@ import {
     DollarSign,
     Clock
 } from "lucide-react";
-import { Badge } from "@/src/shared/components/badge";
-import { Button } from "@/src/shared/components/button";
+import { Badge } from "@/components/ui/core/Badge";
+import { Button } from "@/components/ui/core/Button";
 import { cn } from "@/src/shared/utils";
 
 interface Notification {

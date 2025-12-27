@@ -1,20 +1,49 @@
 'use client';
 
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, useTexture } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
+import { AlertCircle } from 'lucide-react';
 
 interface Package3DProps {
   status: string;
   className?: string;
 }
 
+// Error Boundary for 3D Context
+class ThreeErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("3D Context Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400 p-6 rounded-[32px] border border-slate-100">
+          <AlertCircle className="w-8 h-8 mb-2 text-red-400 opacity-50" />
+          <p className="text-sm font-medium">3D Visualization Unavailable</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function RealisticPackageBox({ status }: { status: string }) {
   const boxRef = useRef<THREE.Group>(null);
   const lidRef = useRef<THREE.Group>(null);
-  const tapeRefs = useRef<THREE.Mesh[]>([]);
 
   // Cardboard material colors
   const cardboardColor = new THREE.Color('#C19A6B');
@@ -254,71 +283,73 @@ export function Package3D({ status, className = '' }: Package3DProps) {
         delay: 0.3,
       }}
     >
-      <Canvas
-        camera={{ position: [3.5, 2.5, 3.5], fov: 45 }}
-        gl={{
-          antialias: true,
-          alpha: true,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.2,
-        }}
-        shadows
-      >
-        {/* Lighting Setup for Realism */}
-        <ambientLight intensity={0.4} />
-        <directionalLight
-          position={[5, 8, 5]}
-          intensity={1.5}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={20}
-          shadow-camera-left={-5}
-          shadow-camera-right={5}
-          shadow-camera-top={5}
-          shadow-camera-bottom={-5}
-        />
-        <directionalLight position={[-5, 5, -5]} intensity={0.5} />
-        <spotLight
-          position={[0, 10, 0]}
-          angle={0.5}
-          penumbra={1}
-          intensity={0.8}
-          castShadow
-        />
+      <ThreeErrorBoundary>
+        <Canvas
+          camera={{ position: [3.5, 2.5, 3.5], fov: 45 }}
+          gl={{
+            antialias: true,
+            alpha: true,
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.2,
+          }}
+          shadows
+        >
+          {/* Lighting Setup for Realism */}
+          <ambientLight intensity={0.4} />
+          <directionalLight
+            position={[5, 8, 5]}
+            intensity={1.5}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-far={20}
+            shadow-camera-left={-5}
+            shadow-camera-right={5}
+            shadow-camera-top={5}
+            shadow-camera-bottom={-5}
+          />
+          <directionalLight position={[-5, 5, -5]} intensity={0.5} />
+          <spotLight
+            position={[0, 10, 0]}
+            angle={0.5}
+            penumbra={1}
+            intensity={0.8}
+            castShadow
+          />
 
-        {/* Hemisphere light for ambient realism */}
-        <hemisphereLight args={['#ffffff', '#666666', 0.6]} />
+          {/* Hemisphere light for ambient realism */}
+          <hemisphereLight args={['#ffffff', '#666666', 0.6]} />
 
-        {/* Realistic Package */}
-        <RealisticPackageBox status={status} />
+          {/* Realistic Package */}
+          <RealisticPackageBox status={status} />
 
-        {/* Contact Shadows for depth */}
-        <ContactShadows
-          position={[0, -1.05, 0]}
-          opacity={0.4}
-          scale={5}
-          blur={2}
-          far={4}
-        />
+          {/* Contact Shadows for depth */}
+          <ContactShadows
+            position={[0, -1.05, 0]}
+            opacity={0.4}
+            scale={5}
+            blur={2}
+            far={4}
+          />
 
-        {/* Studio Environment */}
-        <Environment preset="studio" />
+          {/* Studio Environment */}
+          <Environment preset="studio" />
 
-        {/* Orbit Controls */}
-        <OrbitControls
-          enableZoom={true}
-          enablePan={false}
-          minDistance={3}
-          maxDistance={8}
-          minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 2.2}
-          autoRotate
-          autoRotateSpeed={0.5}
-          dampingFactor={0.05}
-          rotateSpeed={0.5}
-        />
-      </Canvas>
+          {/* Orbit Controls */}
+          <OrbitControls
+            enableZoom={true}
+            enablePan={false}
+            minDistance={3}
+            maxDistance={8}
+            minPolarAngle={Math.PI / 6}
+            maxPolarAngle={Math.PI / 2.2}
+            autoRotate
+            autoRotateSpeed={0.5}
+            dampingFactor={0.05}
+            rotateSpeed={0.5}
+          />
+        </Canvas>
+      </ThreeErrorBoundary>
     </motion.div>
   );
 }

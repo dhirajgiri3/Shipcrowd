@@ -47,10 +47,10 @@ export function MorphingStatusHero({
   const statusInfo = useMemo((): StatusInfo => {
     const estDate = estimatedDelivery
       ? new Date(estimatedDelivery).toLocaleDateString(undefined, {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        })
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      })
       : '';
 
     const normalizedStatus = status.toUpperCase();
@@ -62,24 +62,24 @@ export function MorphingStatusHero({
           sub: actualDelivery
             ? `Delivered on ${new Date(actualDelivery).toLocaleDateString()}`
             : 'Package delivered safely',
-          color: 'text-emerald-700',
-          iconColor: 'text-emerald-600',
-          bgGradient: 'from-emerald-50 to-green-50',
-          progressGradient: 'from-emerald-500 via-emerald-400 to-green-400',
+          color: 'text-[var(--text-success)]',
+          iconColor: 'text-[var(--text-success)]',
+          bgGradient: 'from-[var(--success-bg)] to-[var(--bg-secondary)]',
+          progressGradient: 'from-[var(--success)] via-[var(--success-light)] to-[var(--success)]',
           icon: <CheckCircle className="w-12 h-12" strokeWidth={2.5} />,
-          accentColor: '#10B981',
+          accentColor: 'var(--success)',
         };
 
       case 'OUT_FOR_DELIVERY':
         return {
           text: 'Out for Delivery',
           sub: 'Your package will arrive today',
-          color: 'text-blue-700',
-          iconColor: 'text-blue-600',
-          bgGradient: 'from-blue-50 to-indigo-50',
-          progressGradient: 'from-blue-600 via-blue-500 to-indigo-500',
+          color: 'text-[var(--primary-blue)]',
+          iconColor: 'text-[var(--primary-blue)]',
+          bgGradient: 'from-[var(--primary-blue-soft)] to-[var(--bg-secondary)]',
+          progressGradient: 'from-[var(--primary-blue)] via-[var(--primary-blue-light)] to-[var(--primary-blue)]',
           icon: <Truck className="w-12 h-12" strokeWidth={2.5} />,
-          accentColor: '#2525FF',
+          accentColor: 'var(--primary-blue)',
         };
 
       case 'IN_TRANSIT':
@@ -87,24 +87,24 @@ export function MorphingStatusHero({
         return {
           text: normalizedStatus === 'ARRIVED_AT_DESTINATION' ? 'Arrived at Hub' : 'In Transit',
           sub: `Expected delivery: ${estDate}`,
-          color: 'text-indigo-700',
-          iconColor: 'text-indigo-600',
-          bgGradient: 'from-indigo-50 to-purple-50',
-          progressGradient: 'from-indigo-600 via-indigo-500 to-purple-500',
+          color: 'text-[var(--primary-blue)]',
+          iconColor: 'text-[var(--primary-blue)]',
+          bgGradient: 'from-[var(--primary-blue-soft)] to-[var(--bg-secondary)]',
+          progressGradient: 'from-[var(--primary-blue)] via-[var(--primary-blue-light)] to-[var(--primary-blue)]',
           icon: <MapPin className="w-12 h-12" strokeWidth={2.5} />,
-          accentColor: '#6366F1',
+          accentColor: 'var(--primary-blue)',
         };
 
       case 'PICKED_UP':
         return {
           text: 'Picked Up',
           sub: 'Package collected from origin',
-          color: 'text-amber-700',
-          iconColor: 'text-amber-600',
-          bgGradient: 'from-amber-50 to-orange-50',
-          progressGradient: 'from-amber-500 via-amber-400 to-orange-400',
+          color: 'text-[var(--text-warning)]',
+          iconColor: 'text-[var(--text-warning)]',
+          bgGradient: 'from-[var(--warning-bg)] to-[var(--bg-secondary)]',
+          progressGradient: 'from-[var(--warning)] via-[var(--warning-light)] to-[var(--warning)]',
           icon: <Package className="w-12 h-12" strokeWidth={2.5} />,
-          accentColor: '#F59E0B',
+          accentColor: 'var(--warning)',
         };
 
       case 'ORDER_CREATED':
@@ -112,24 +112,24 @@ export function MorphingStatusHero({
         return {
           text: 'Order Created',
           sub: 'Preparing for shipment',
-          color: 'text-slate-700',
-          iconColor: 'text-slate-600',
-          bgGradient: 'from-slate-50 to-gray-50',
-          progressGradient: 'from-slate-600 via-slate-500 to-gray-500',
+          color: 'text-[var(--text-secondary)]',
+          iconColor: 'text-[var(--text-secondary)]',
+          bgGradient: 'from-[var(--bg-tertiary)] to-[var(--bg-secondary)]',
+          progressGradient: 'from-[var(--gray-600)] via-[var(--gray-500)] to-[var(--gray-400)]',
           icon: <Box className="w-12 h-12" strokeWidth={2.5} />,
-          accentColor: '#64748B',
+          accentColor: 'var(--gray-500)',
         };
 
       default:
         return {
           text: status.replace(/_/g, ' '),
           sub: estDate ? `Expected ${estDate}` : 'Processing your shipment',
-          color: 'text-slate-700',
-          iconColor: 'text-slate-600',
-          bgGradient: 'from-slate-50 to-gray-50',
-          progressGradient: 'from-slate-600 via-slate-500 to-gray-500',
+          color: 'text-[var(--text-secondary)]',
+          iconColor: 'text-[var(--text-secondary)]',
+          bgGradient: 'from-[var(--bg-tertiary)] to-[var(--bg-secondary)]',
+          progressGradient: 'from-[var(--gray-600)] via-[var(--gray-500)] to-[var(--gray-400)]',
           icon: <Clock className="w-12 h-12" strokeWidth={2.5} />,
-          accentColor: '#64748B',
+          accentColor: 'var(--gray-500)',
         };
     }
   }, [status, estimatedDelivery, actualDelivery]);
@@ -165,7 +165,7 @@ export function MorphingStatusHero({
 
   return (
     <motion.div
-      className={`relative bg-gradient-to-br ${statusInfo.bgGradient} rounded-3xl p-8 border border-white/60 shadow-2xl overflow-hidden group ${className}`}
+      className={`relative bg-gradient-to-br ${statusInfo.bgGradient} rounded-3xl p-8 border border-[var(--border-subtle)] shadow-[var(--shadow-brand-sm)] overflow-hidden group ${className}`}
       style={{
         perspective: 1000,
         rotateX,
@@ -213,7 +213,7 @@ export function MorphingStatusHero({
       <div className="relative z-10">
         {/* Status Badge */}
         <motion.div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-white/60 shadow-sm mb-6"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-elevated)] backdrop-blur-sm border border-[var(--border-subtle)] shadow-sm mb-6"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{
@@ -244,7 +244,7 @@ export function MorphingStatusHero({
         {/* Icon and Title */}
         <div className="flex items-start gap-6 mb-6">
           <motion.div
-            className={`p-4 rounded-2xl bg-white/90 backdrop-blur-sm ${statusInfo.iconColor} shadow-lg`}
+            className={`p-4 rounded-2xl bg-[var(--bg-elevated)] backdrop-blur-sm ${statusInfo.iconColor} shadow-[var(--shadow-sm)]`}
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{
@@ -268,7 +268,7 @@ export function MorphingStatusHero({
               {statusInfo.text}
             </motion.h2>
             <motion.p
-              className="text-slate-600 font-medium text-base md:text-lg"
+              className="text-[var(--text-secondary)] font-medium text-base md:text-lg"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6 }}
@@ -281,7 +281,7 @@ export function MorphingStatusHero({
         {/* Progress Section */}
         <div className="mt-8">
           {/* Progress Bar */}
-          <div className="relative h-3 w-full bg-white/60 rounded-full overflow-hidden shadow-inner">
+          <div className="relative h-3 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden shadow-inner">
             <motion.div
               className={`absolute inset-y-0 left-0 bg-gradient-to-r ${statusInfo.progressGradient} rounded-full shadow-lg`}
               initial={{ width: 0 }}
@@ -310,7 +310,7 @@ export function MorphingStatusHero({
           {/* Progress Labels */}
           <div className="flex justify-between items-center mt-3">
             <motion.span
-              className="text-xs font-bold text-slate-400 uppercase tracking-wider"
+              className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
@@ -319,7 +319,7 @@ export function MorphingStatusHero({
             </motion.span>
 
             <motion.div
-              className={`px-3 py-1 rounded-full bg-white/80 backdrop-blur-sm ${statusInfo.color} font-bold text-sm shadow-sm`}
+              className={`px-3 py-1 rounded-full bg-[var(--bg-elevated)] backdrop-blur-sm ${statusInfo.color} font-bold text-sm shadow-sm`}
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{
@@ -333,7 +333,7 @@ export function MorphingStatusHero({
             </motion.div>
 
             <motion.span
-              className="text-xs font-bold text-slate-400 uppercase tracking-wider"
+              className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-wider"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}

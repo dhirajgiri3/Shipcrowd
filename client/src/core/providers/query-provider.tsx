@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from 'sonner';
 import { useState } from 'react';
 import { QUERY_CONFIG } from '../config/query-config';
 
@@ -31,28 +31,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
             {children}
             <Toaster
                 position="top-right"
-                toastOptions={{
-                    duration: 4000,
-                    style: {
-                        background: 'hsl(var(--background))',
-                        color: 'hsl(var(--foreground))',
-                        border: '1px solid hsl(var(--border))',
-                    },
-                    success: {
-                        iconTheme: {
-                            primary: 'hsl(var(--success))',
-                            secondary: 'white',
-                        },
-                    },
-                    error: {
-                        iconTheme: {
-                            primary: 'hsl(var(--destructive))',
-                            secondary: 'white',
-                        },
-                    },
-                }}
+                richColors
+                closeButton
+                theme="dark"
             />
             {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
         </QueryClientProvider>
     );
 }
+

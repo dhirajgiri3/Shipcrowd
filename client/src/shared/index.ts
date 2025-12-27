@@ -5,7 +5,8 @@
  */
 
 // Components
-export * from './components';
+// Components (migrated to @/components/ui)
+// export * from './components';
 
 // Hooks
 export * from './hooks';

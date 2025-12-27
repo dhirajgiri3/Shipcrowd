@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/shared/components/card';
-import { Button } from '@/src/shared/components/button';
-import { Input } from '@/src/shared/components/Input';
-import { Badge } from '@/src/shared/components/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
+import { Button } from '@/components/ui/core/Button';
+import { Input } from '@/components/ui/core/Input';
+import { Badge } from '@/components/ui/core/Badge';
 import {
     IndianRupee,
     Upload,
@@ -22,7 +22,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
-import { useToast } from '@/src/shared/components/Toast';
+import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/shared/utils';
 
 // Mock profit data
