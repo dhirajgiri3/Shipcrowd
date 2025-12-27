@@ -34,6 +34,13 @@ export interface IWarehouse extends Document {
   isActive: boolean;
   isDefault: boolean;
   isDeleted: boolean;
+  carrierDetails?: {
+    velocityWarehouseId?: string;
+    delhiveryWarehouseId?: string;
+    dtdcWarehouseId?: string;
+    xpressbeesWarehouseId?: string;
+    lastSyncedAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -111,6 +118,13 @@ const WarehouseSchema = new Schema<IWarehouse>(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    carrierDetails: {
+      velocityWarehouseId: String,
+      delhiveryWarehouseId: String,
+      dtdcWarehouseId: String,
+      xpressbeesWarehouseId: String,
+      lastSyncedAt: Date,
     },
   },
   {

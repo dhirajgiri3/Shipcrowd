@@ -6,6 +6,8 @@ import { selectBestCarrier, CarrierSelectionResult } from './carrier.service';
 import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
+import { CourierFactory } from '../courier/CourierFactory';
+import logger from '../../../../shared/utils/logger';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -162,13 +164,68 @@ export class ShipmentService {
         const totalWeight = this.calculateTotalWeight(order.products);
         const serviceType = payload.serviceType as 'express' | 'standard';
 
-        const { selectedOption, carrierResult } = this.selectCarrierForShipment({
-            totalWeight,
-            originPincode,
-            destinationPincode: order.customerInfo.address.postalCode,
-            serviceType,
-            carrierOverride: payload.carrierOverride
-        });
+        let selectedOption: any;
+        let carrierResult: CarrierSelectionResult | null = null;
+
+        // NEW: API-based carrier selection (feature flagged)
+        const useApiRates = (payload as any).useApiRates || process.env.USE_VELOCITY_API_RATES === 'true';
+
+        if (useApiRates) {
+            try {
+                logger.info('Using API-based carrier selection', {
+                    orderId: order._id.toString(),
+                    companyId: companyId.toString()
+                });
+
+                const provider = await CourierFactory.getProvider('velocity-shipfast', companyId);
+
+                const rates = await provider.getRates({
+                    origin: { pincode: originPincode },
+                    destination: { pincode: order.customerInfo.address.postalCode },
+                    package: {
+                        weight: totalWeight,
+                        length: 20,
+                        width: 15,
+                        height: 10
+                    },
+                    paymentMode: order.paymentMethod || 'prepaid'
+                });
+
+                if (rates && rates.length > 0) {
+                    selectedOption = {
+                        carrier: rates[0].serviceType || 'Velocity Shipfast',
+                        rate: rates[0].total,
+                        deliveryTime: rates[0].estimatedDeliveryDays || 3
+                    };
+
+                    logger.info('API rates fetched successfully', {
+                        orderId: order._id.toString(),
+                        carrier: selectedOption.carrier,
+                        rate: selectedOption.rate
+                    });
+                }
+            } catch (error) {
+                logger.warn('API rates failed, falling back to static selection', {
+                    orderId: order._id.toString(),
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+                // Fall through to static selection
+            }
+        }
+
+        // Fallback to static selection if API not used or failed
+        if (!selectedOption) {
+            const selection = this.selectCarrierForShipment({
+                totalWeight,
+                originPincode,
+                destinationPincode: order.customerInfo.address.postalCode,
+                serviceType,
+                carrierOverride: payload.carrierOverride
+            });
+
+            selectedOption = selection.selectedOption;
+            carrierResult = selection.carrierResult;
+        }
 
         // Calculate estimated delivery
         const estimatedDelivery = new Date();
@@ -249,7 +306,7 @@ export class ShipmentService {
                 selectedCarrier: selectedOption.carrier,
                 selectedRate: selectedOption.rate,
                 selectedDeliveryTime: selectedOption.deliveryTime,
-                alternativeOptions: carrierResult.alternativeOptions,
+                alternativeOptions: carrierResult?.alternativeOptions || [],
             },
             updatedOrder
         };
