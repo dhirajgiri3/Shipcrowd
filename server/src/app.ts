@@ -56,8 +56,16 @@ app.use(globalRateLimiter);
 // Apply security headers
 app.use(securityHeaders);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
+// Body parsing middleware with raw body capture for webhook signature verification
+app.use(express.json({
+    limit: '10mb',
+    verify: (req: any, res, buf, encoding) => {
+        // Store raw body for webhook signature verification
+        if (req.url.includes('/webhooks/')) {
+            req.rawBody = buf;
+        }
+    }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Cookie parser

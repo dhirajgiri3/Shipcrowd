@@ -19,6 +19,8 @@ import shipmentRoutes from './shipping/shipment.routes';
 import analyticsRoutes from './system/analytics.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
+// Webhook routes
+import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
 
 const router = express.Router();
 
@@ -53,6 +55,8 @@ router.use('/shipments', shipmentRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
+// Webhook routes
+router.use('/webhooks/velocity', velocityWebhookRoutes);
 
 export default router;
 

@@ -10,7 +10,10 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "seed": "npx tsx src/scripts/seed-demo-data.ts",
-    "verify-seed": "npx tsx src/scripts/verify-seed.ts"
+    "verify-seed": "npx tsx src/scripts/verify-seed.ts",
+    "test:velocity:live": "npx tsx src/scripts/testVelocityLive.ts",
+    "test:webhook:local": "npx tsx src/scripts/testWebhookLocal.ts",
+    "seed:velocity": "npx tsx src/scripts/seedVelocityIntegration.ts"
   },
   "keywords": [],
   "author": "",
