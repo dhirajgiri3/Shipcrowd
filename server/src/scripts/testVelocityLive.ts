@@ -58,6 +58,7 @@ async function setupIntegration(): Promise<void> {
     if (!integration) {
       integration = await Integration.create({
         companyId: TEST_COMPANY_ID,
+        type: 'courier',
         provider: 'velocity-shipfast',
         settings: {
           isActive: true,
