@@ -15,7 +15,7 @@ import mongoose from 'mongoose';
 import { ICourierAdapter } from '../../../../infrastructure/external/couriers/base/CourierAdapter';
 import { VelocityShipfastProvider } from '../../../../infrastructure/external/couriers/velocity';
 import Integration from '../../../../infrastructure/database/mongoose/models/Integration';
-import logger from '../../../../shared/utils/logger';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class CourierFactory {
   // Provider cache: Map<providerKey, providerInstance>

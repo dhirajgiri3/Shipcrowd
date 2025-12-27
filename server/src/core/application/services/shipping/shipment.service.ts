@@ -7,7 +7,7 @@ import { generateTrackingNumber, validateStatusTransition } from '../../../../sh
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { CourierFactory } from '../courier/CourierFactory';
-import logger from '../../../../shared/utils/logger';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShipmentService - Business logic for shipment management

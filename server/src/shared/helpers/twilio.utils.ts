@@ -1,5 +1,5 @@
 import twilio from 'twilio';
-import logger from './logger';
+import logger from '../logger/winston.logger';
 import dotenv from 'dotenv';
 
 dotenv.config();

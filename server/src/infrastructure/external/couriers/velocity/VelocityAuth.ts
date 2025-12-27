@@ -15,7 +15,7 @@ import mongoose from 'mongoose';
 import Integration from '../../../database/mongoose/models/Integration';
 import { encryptData, decryptData } from '../../../../shared/utils/encryption';
 import { VelocityAuthRequest, VelocityAuthResponse, VelocityError, VelocityErrorType } from './VelocityTypes';
-import logger from '../../../../shared/utils/logger';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class VelocityAuth {
   private baseUrl: string;

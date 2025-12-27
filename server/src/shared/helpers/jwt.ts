@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
 import crypto from 'crypto';
-import logger from './logger';
+import logger from '../logger/winston.logger';
 
 // Define token types
 export interface AccessTokenPayload {

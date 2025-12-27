@@ -47,7 +47,7 @@ import {
   retryWithBackoff,
   VelocityRateLimiters
 } from './VelocityErrorHandler';
-import logger from '../../../../shared/utils/logger';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class VelocityShipfastProvider extends BaseCourierAdapter {
   private auth: VelocityAuth;
@@ -153,7 +153,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
     if (!velocityWarehouseId) {
       logger.info('Warehouse not synced with Velocity, creating', {
-        warehouseId: warehouse._id.toString(),
+        warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
         warehouseName: warehouse.name
       });
 

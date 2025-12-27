@@ -11,7 +11,7 @@
 
 import { AxiosError } from 'axios';
 import { VelocityError, VelocityErrorType, VelocityAPIError } from './VelocityTypes';
-import logger from '../../../../shared/utils/logger';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Handle Velocity API errors and convert to VelocityError
