@@ -7,11 +7,13 @@
  * NOTE: This is a simplified test script for production deployment verification
  */
 
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import logger from '../shared/logger/winston.logger';
 import Integration from '../infrastructure/database/mongoose/models/Integration';
 import { VelocityShipfastProvider } from '../infrastructure/external/couriers/velocity/VelocityShipfastProvider';
 import { CourierShipmentData, CourierRateRequest } from '../infrastructure/external/couriers/base/CourierAdapter';
+import { encryptData } from '../shared/utils/encryption';
 
 // Test configuration
 const TEST_COMPANY_ID = new mongoose.Types.ObjectId();
@@ -65,8 +67,8 @@ async function setupIntegration(): Promise<void> {
           testMode: false
         },
         credentials: {
-          username: process.env.VELOCITY_USERNAME || '+918860606061',
-          password: process.env.VELOCITY_PASSWORD || 'Velocity@123'
+          username: encryptData(process.env.VELOCITY_USERNAME || '+918860606061'),
+          password: encryptData(process.env.VELOCITY_PASSWORD || 'Velocity@123')
         }
       });
       console.log(`${colors.green}✓${colors.reset} Created test integration`);

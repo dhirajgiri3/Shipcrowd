@@ -1,5 +1,5 @@
 import { IUserRepository } from '../../../domain/interfaces/repositories';
-import { UnauthorizedError, ValidationError } from '../../../shared/errors';
+import { AuthenticationError, ValidationError } from '../../../../shared/errors/AppError';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
@@ -33,13 +33,13 @@ export class LoginUserUseCase {
         // Find user by email
         const user = await this.userRepository.findByEmail(input.email);
         if (!user) {
-            throw new UnauthorizedError('Invalid credentials');
+            throw new AuthenticationError('Invalid credentials');
         }
 
         // Verify password
         const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
         if (!isPasswordValid) {
-            throw new UnauthorizedError('Invalid credentials');
+            throw new AuthenticationError('Invalid credentials');
         }
 
         // Generate JWT token
