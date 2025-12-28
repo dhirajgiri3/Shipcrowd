@@ -11,7 +11,16 @@ export type { ApiError } from './client';
 
 // Auth API
 export { authApi } from './authApi';
-export type { AuthUser, LoginCredentials, LoginResponse, RegisterData, RegisterResponse } from './authApi';
+export type {
+    AuthUser,
+    LoginCredentials,
+    LoginResponse,
+    RegisterData,
+    RegisterResponse,
+    ChangePasswordData,
+    ChangeEmailData,
+    PasswordStrengthResponse,
+} from './authApi';
 
 // Company API
 export { companyApi } from './companyApi';

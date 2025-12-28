@@ -10,6 +10,64 @@ export interface ApiError {
 }
 
 /**
+ * CSRF Token Manager
+ * Handles fetching and caching CSRF tokens
+ */
+class CSRFTokenManager {
+    private token: string | null = null;
+    private isFetching: boolean = false;
+    private fetchPromise: Promise<string> | null = null;
+
+    async getToken(): Promise<string> {
+        // Return cached token if available
+        if (this.token) {
+            return this.token;
+        }
+
+        // If already fetching, wait for that request
+        if (this.isFetching && this.fetchPromise) {
+            return this.fetchPromise;
+        }
+
+        // Fetch new token
+        this.isFetching = true;
+        this.fetchPromise = this.fetchNewToken();
+
+        try {
+            this.token = await this.fetchPromise;
+            return this.token;
+        } finally {
+            this.isFetching = false;
+            this.fetchPromise = null;
+        }
+    }
+
+    private async fetchNewToken(): Promise<string> {
+        try {
+            // Use a separate axios instance to avoid circular dependency
+            const response = await axios.get(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1'}/auth/csrf-token`,
+                { withCredentials: true }
+            );
+            return response.data.token || 'frontend-request'; // Fallback for dev
+        } catch (error) {
+            // Silently fail for public pages (like /track) - this is expected
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('[CSRF] Using fallback token for public page');
+            }
+            // Fallback to static token for development and public pages
+            return 'frontend-request';
+        }
+    }
+
+    clearToken() {
+        this.token = null;
+    }
+}
+
+const csrfManager = new CSRFTokenManager();
+
+/**
  * Create axios instance with configuration
  * Tokens are now stored in httpOnly cookies, not localStorage
  */
@@ -26,14 +84,28 @@ const createApiClient = (): AxiosInstance => {
     });
 
     /**
-     * Request interceptor: Log requests in development
+     * Request interceptor: Add CSRF token and log requests
      */
     client.interceptors.request.use(
-        (config: InternalAxiosRequestConfig) => {
+        async (config: InternalAxiosRequestConfig) => {
+            // Add CSRF token for state-changing requests
+            if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
+                // Check if CSRF token is already set (from function call)
+                if (!config.headers['X-CSRF-Token'] || config.headers['X-CSRF-Token'] === 'frontend-request') {
+                    try {
+                        const token = await csrfManager.getToken();
+                        config.headers['X-CSRF-Token'] = token;
+                    } catch (error) {
+                        console.warn('[CSRF] Could not fetch token, using fallback');
+                    }
+                }
+            }
+
             if (process.env.NODE_ENV === 'development') {
                 console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
                     params: config.params,
                     data: config.data,
+                    csrfToken: config.headers['X-CSRF-Token'] ? '***' : 'none',
                 });
             }
             return config;
@@ -96,10 +168,12 @@ const createApiClient = (): AxiosInstance => {
 
                     if (typeof window !== 'undefined') {
                         const currentPath = window.location.pathname;
-                        const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
 
-                        // Only redirect if not already on a public page
-                        if (!publicPaths.includes(currentPath) && !currentPath.startsWith('/verify-email')) {
+                        // Import check function - uses centralized routes config
+                        const { shouldNotRedirectOnAuthFailure } = await import('@/src/config/routes');
+
+                        // Only redirect if not on a public page
+                        if (!shouldNotRedirectOnAuthFailure(currentPath)) {
                             window.location.href = '/login';
                         }
                     }
@@ -218,4 +292,11 @@ export const apiClient = createApiClient();
  */
 export const isApiEnabled = (): boolean => {
     return process.env.NEXT_PUBLIC_API_ENABLED !== 'false';
+};
+
+/**
+ * Clear CSRF token (call on logout)
+ */
+export const clearCSRFToken = () => {
+    csrfManager.clearToken();
 };

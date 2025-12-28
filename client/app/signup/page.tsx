@@ -18,6 +18,7 @@ import {
     CheckCircle2,
 } from "lucide-react"
 import { useAuth } from "@/src/features/auth"
+import { GuestGuard } from "@/src/features/auth/components/AuthGuard"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
 import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
@@ -113,6 +114,7 @@ export default function SignupPage() {
     }
 
     return (
+        <GuestGuard redirectTo="/seller">
         <div className="flex min-h-screen">
             {/* Left Side - Form */}
             <motion.div
@@ -438,5 +440,6 @@ export default function SignupPage() {
                 </div>
             </div>
         </div>
+        </GuestGuard>
     )
 }

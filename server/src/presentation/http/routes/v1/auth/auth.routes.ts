@@ -9,7 +9,7 @@ import {
   emailVerificationRateLimiter
 } from '../../../middleware/system/rateLimiter';
 import { generateAuthTokens } from '../../../../../core/application/services/auth/oauth.service';
-import { Logger } from '../../../../../config/logger';
+import logger from '../../../../../shared/logger/winston.logger';
 
 const router = express.Router();
 
@@ -154,7 +154,7 @@ router.get('/google/callback',
       // Redirect to frontend (cookies are already set)
       res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/oauth-callback`);
     } catch (error) {
-      Logger.error('Error in Google callback:', error);
+      logger.error('Error in Google callback:', error);
       res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/login?error=google-auth-failed`);
     }
   }

@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/core/Button';
 import { Input } from '@/components/ui/core/Input';
 import { Badge } from '@/components/ui/core/Badge';
-import { User, Bell, Lock, Globe, CreditCard, Building2, Key, Loader2 } from 'lucide-react';
+import { User, Bell, Lock, Globe, CreditCard, Building2, Key, Loader2, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/feedback/Toast';
 import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks';
 
 export default function SettingsPage() {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('profile');
     const { addToast } = useToast();
 
@@ -59,14 +61,23 @@ export default function SettingsPage() {
     };
 
     const tabs = [
-        { id: 'profile', label: 'Profile', icon: User },
-        { id: 'company', label: 'Company', icon: Building2 },
-        { id: 'notifications', label: 'Notifications', icon: Bell },
-        { id: 'security', label: 'Security', icon: Lock },
-        { id: 'integrations', label: 'Integrations', icon: Globe },
-        { id: 'api', label: 'API Keys', icon: Key },
-        { id: 'billing', label: 'Billing', icon: CreditCard },
+        { id: 'profile', label: 'Profile', icon: User, path: null },
+        { id: 'company', label: 'Company', icon: Building2, path: null },
+        { id: 'security', label: 'Security', icon: Lock, path: '/seller/settings/security' },
+        { id: 'account', label: 'Account', icon: Shield, path: '/seller/settings/account' },
+        { id: 'notifications', label: 'Notifications', icon: Bell, path: null },
+        { id: 'integrations', label: 'Integrations', icon: Globe, path: null },
+        { id: 'api', label: 'API Keys', icon: Key, path: null },
+        { id: 'billing', label: 'Billing', icon: CreditCard, path: null },
     ];
+
+    const handleTabClick = (tab: typeof tabs[0]) => {
+        if (tab.path) {
+            router.push(tab.path);
+        } else {
+            setActiveTab(tab.id);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
@@ -76,12 +87,13 @@ export default function SettingsPage() {
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => handleTabClick(tab)}
                             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-[#2525FF]/5 text-[#2525FF] border border-[#2525FF]/10' : 'text-gray-600 hover:bg-[var(--bg-hover)] hover:text-gray-900'
                                 }`}
                         >
                             <tab.icon className="w-5 h-5" />
                             {tab.label}
+                            {tab.path && <Badge variant="success" className="ml-auto text-[10px]">New</Badge>}
                         </button>
                     ))}
                 </aside>
@@ -187,7 +199,7 @@ export default function SettingsPage() {
                     )}
 
                     {/* Placeholder for other tabs */}
-                    {!['profile', 'company'].includes(activeTab) && (
+                    {!['profile', 'company', 'security', 'account'].includes(activeTab) && (
                         <Card>
                             <CardContent className="py-12 flex flex-col items-center justify-center text-center">
                                 <div className="h-12 w-12 rounded-full bg-[var(--bg-tertary)] flex items-center justify-center mb-4">

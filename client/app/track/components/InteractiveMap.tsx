@@ -24,16 +24,15 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
 
   return (
     <motion.div
-      className={`bg-gradient-to-br from-[var(--primary-blue-soft)]/50 to-[var(--bg-secondary)] rounded-[32px] p-8 border border-[var(--primary-blue-soft)] shadow-[var(--shadow-brand-sm)] overflow-hidden relative h-[400px] ${className}`}
+      className={`bg-[var(--bg-elevated)] rounded-3xl p-6 md:p-8 border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] overflow-hidden relative min-h-[300px] md:h-[350px] ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{
         type: 'spring',
         stiffness: 150,
         damping: 25,
-        delay: 0.6,
+        delay: 0.5,
       }}
-      data-cursor="map"
     >
       {/* Abstract Map Background */}
       <div className="absolute inset-0 opacity-20">
@@ -54,61 +53,61 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
       </div>
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between mb-6">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center shadow-[var(--shadow-brand)]">
-            <Navigation size={20} />
+          <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue)] text-white flex items-center justify-center">
+            <Navigation size={18} />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-[var(--text-primary)]">Journey Map</h3>
-            <p className="text-sm text-[var(--text-tertiary)]">{uniqueLocations.length} stops</p>
+            <h3 className="text-lg md:text-xl font-bold text-[var(--text-primary)]">Journey Map</h3>
+            <p className="text-xs md:text-sm text-[var(--text-tertiary)]">{uniqueLocations.length} stop{uniqueLocations.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-sm text-[var(--text-tertiary)]">Destination</div>
-          <div className="font-bold text-[var(--text-primary)]">
+        <div className="text-left md:text-right">
+          <div className="text-xs text-[var(--text-tertiary)]">Destination</div>
+          <div className="font-bold text-sm md:text-base text-[var(--text-primary)]">
             {destination.city}, {destination.state}
           </div>
         </div>
       </div>
 
       {/* Route Visualization */}
-      <div className="relative z-10 flex items-center justify-around h-[250px]">
+      <div className="relative z-10 flex items-center justify-around min-h-[180px] md:h-[220px]">
         {uniqueLocations.map((location, i) => (
           <motion.div
             key={i}
             className="flex flex-col items-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 + i * 0.2 }}
+            transition={{ delay: 0.7 + i * 0.15 }}
           >
             {/* Location Pin */}
             <motion.div
-              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-[var(--shadow-lg)] ${i === 0
-                  ? 'bg-[var(--primary-blue)] text-white shadow-[var(--shadow-brand)]'
-                  : i === uniqueLocations.length - 1
-                    ? 'bg-[var(--success)] text-white shadow-[0_0_20px_var(--success-bg)]'
-                    : 'bg-[var(--bg-elevated)] text-[var(--primary-blue)] border-2 border-[var(--primary-blue-soft)]'
+              className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center border-2 ${i === 0
+                ? 'bg-[var(--primary-blue)] text-white border-[var(--primary-blue)]'
+                : i === uniqueLocations.length - 1
+                  ? 'bg-[var(--success)] text-white border-[var(--success)]'
+                  : 'bg-[var(--bg-elevated)] text-[var(--primary-blue)] border-[var(--border-default)]'
                 }`}
               animate={{
-                scale: i === uniqueLocations.length - 1 ? [1, 1.1, 1] : 1,
+                scale: i === 0 ? [1, 1.05, 1] : i === uniqueLocations.length - 1 ? [1, 1.05, 1] : 1,
               }}
               transition={{
                 duration: 2,
-                repeat: i === uniqueLocations.length - 1 ? Infinity : 0,
+                repeat: i === 0 || i === uniqueLocations.length - 1 ? Infinity : 0,
                 ease: 'easeInOut',
               }}
             >
-              <MapPin size={24} />
+              <MapPin size={i === 0 || i === uniqueLocations.length - 1 ? 22 : 18} />
             </motion.div>
 
             {/* Location Label */}
-            <div className="mt-3 text-center">
-              <div className="text-xs font-bold text-[var(--text-secondary)] max-w-[100px] truncate">
+            <div className="mt-3 text-center max-w-[80px] md:max-w-[120px]">
+              <div className="text-[10px] md:text-xs font-bold text-[var(--text-secondary)] truncate">
                 {location}
               </div>
-              <div className="text-[10px] text-[var(--text-tertiary)] mt-1">
+              <div className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] mt-1 font-medium">
                 {i === 0 ? 'Origin' : i === uniqueLocations.length - 1 ? 'Current' : `Stop ${i}`}
               </div>
             </div>
@@ -116,14 +115,14 @@ export function InteractiveMap({ locations, destination, className = '' }: Inter
             {/* Connecting Line */}
             {i < uniqueLocations.length - 1 && (
               <motion.div
-                className="absolute top-8 h-0.5 bg-[var(--primary-blue-soft)]"
+                className="absolute top-6 md:top-8 h-0.5 bg-[var(--primary-blue)]"
                 style={{
                   left: `${((i + 0.5) / uniqueLocations.length) * 100}%`,
                   width: `${100 / uniqueLocations.length}%`,
                 }}
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ delay: 1 + i * 0.2, duration: 0.5 }}
+                transition={{ delay: 0.9 + i * 0.15, duration: 0.5 }}
               />
             )}
           </motion.div>

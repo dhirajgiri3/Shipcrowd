@@ -6,14 +6,11 @@ import { Search, ArrowRight, Loader2, AlertCircle, X, History, Box } from 'lucid
 import { trackingApi, PublicTrackingResponse } from '@/src/core/api/trackingApi';
 import confetti from 'canvas-confetti';
 
-// Import new components
-import { SoundProvider } from './components/SoundManager';
-import { MagneticCursor } from './components/MagneticCursor';
+// Import components
 import { MorphingStatusHero } from './components/MorphingStatusHero';
 import { AnimatedTimeline } from './components/AnimatedTimeline';
 import { InteractiveMap } from './components/InteractiveMap';
 import { EasterEggs } from './components/EasterEggs';
-import { useSound } from './components/SoundManager';
 import { Navigation, Footer } from '@/components/ui';
 
 // Lazy load heavy 3D component
@@ -28,16 +25,14 @@ interface RecentSearch {
   status?: string;
 }
 
-// Background Components
+// Background Components - Minimal
 const GridBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none bg-[var(--bg-secondary)]">
-    <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border-subtle)_1px,transparent_1px),linear-gradient(to_bottom,var(--border-subtle)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30" />
-    <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_0%,transparent,var(--bg-secondary))]" />
-    <motion.div
-      animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1] }}
-      transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[var(--primary-blue)]/5 rounded-full blur-[120px]"
-    />
+    {/* Subtle grid pattern - no gradients */}
+    <div className="absolute inset-0 opacity-[0.02]" style={{
+      backgroundImage: 'radial-gradient(circle, var(--border-default) 1px, transparent 1px)',
+      backgroundSize: '40px 40px'
+    }} />
   </div>
 );
 
@@ -49,8 +44,6 @@ function TrackPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
-
-  const { play, vibrate } = useSound();
 
   // Mouse parallax effect
   const mouseX = useMotionValue(0);
@@ -82,7 +75,6 @@ function TrackPageContent() {
   // Confetti for delivered
   useEffect(() => {
     if (shipment?.currentStatus === 'DELIVERED' || shipment?.currentStatus === 'delivered') {
-      play('ding');
       const end = Date.now() + 1500;
       const colors = ['#2525FF', '#3B82F6', '#60A5FA'];
 
@@ -106,7 +98,7 @@ function TrackPageContent() {
         }
       })();
     }
-  }, [shipment, play]);
+  }, [shipment]);
 
   const addToRecent = (number: string, status?: string) => {
     setRecentSearches(prev => {
@@ -126,21 +118,63 @@ function TrackPageContent() {
     });
   };
 
-  const MOCK_SHIPMENT: PublicTrackingResponse = {
-    trackingNumber: 'SHP-20231225-8888',
-    carrier: 'BlueDart Express',
-    serviceType: 'Express Air',
-    currentStatus: 'OUT_FOR_DELIVERY',
-    estimatedDelivery: new Date(Date.now() + 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    recipient: { city: 'Mumbai', state: 'Maharashtra' },
-    timeline: [
-      { status: 'OUT_FOR_DELIVERY', timestamp: new Date().toISOString(), location: 'Mumbai, Maharashtra', description: 'Shipment is out for delivery. Agent: Rajesh Kumar (9988776655)' },
-      { status: 'ARRIVED_AT_DESTINATION', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Mumbai Hub', description: 'Shipment arrived at destination facility.' },
-      { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000).toISOString(), location: 'New Delhi', description: 'Shipment is in transit to destination.' },
-      { status: 'PICKED_UP', timestamp: new Date(Date.now() - 86400000 * 1.5).toISOString(), location: 'Gurgaon, Haryana', description: 'Shipment picked up from seller warehouse.' },
-      { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), description: 'Order has been created and is ready for processing.' },
-    ],
+  // Import mock data helper
+  const getMockShipmentByKeyword = (keyword: string): PublicTrackingResponse | null => {
+    const mockData = {
+      DEMO: {
+        trackingNumber: 'SHP-2025-0001',
+        carrier: 'BlueDart Express',
+        serviceType: 'Express Air',
+        currentStatus: 'OUT_FOR_DELIVERY',
+        estimatedDelivery: new Date().toISOString(),
+        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+        recipient: { city: 'Mumbai', state: 'Maharashtra' },
+        timeline: [
+          { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), location: 'Andheri West, Mumbai', description: 'Package is out for delivery. Estimated arrival by 6:00 PM today.' },
+          { status: 'ARRIVED_AT_DESTINATION', timestamp: new Date(Date.now() - 3600000 * 8).toISOString(), location: 'Mumbai Central Hub', description: 'Shipment arrived at destination facility and sorted for delivery.' },
+          { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000 - 3600000 * 14).toISOString(), location: 'Pune Distribution Center', description: 'Package in transit to destination city.' },
+          { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000 * 2 - 3600000 * 6).toISOString(), location: 'Bengaluru Sorting Facility', description: 'Processed through sorting facility.' },
+          { status: 'PICKED_UP', timestamp: new Date(Date.now() - 86400000 * 2 - 3600000 * 18).toISOString(), location: 'Koramangala, Bengaluru', description: 'Shipment picked up from seller warehouse.' },
+          { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 86400000 * 3).toISOString(), location: 'Bengaluru', description: 'Shipment order created and ready for pickup.' },
+        ],
+      },
+      DELIVERED: {
+        trackingNumber: 'SHP-2025-0002',
+        carrier: 'Delhivery',
+        serviceType: 'Standard Delivery',
+        currentStatus: 'DELIVERED',
+        estimatedDelivery: new Date(Date.now() - 86400000).toISOString(),
+        actualDelivery: new Date(Date.now() - 3600000 * 10).toISOString(),
+        createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+        recipient: { city: 'Delhi', state: 'Delhi' },
+        timeline: [
+          { status: 'DELIVERED', timestamp: new Date(Date.now() - 3600000 * 10).toISOString(), location: 'Connaught Place, Delhi', description: 'Package successfully delivered and signed by recipient.' },
+          { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 3600000 * 14).toISOString(), location: 'Karol Bagh Hub, Delhi', description: 'Out for delivery.' },
+          { status: 'ARRIVED_AT_DESTINATION', timestamp: new Date(Date.now() - 86400000 - 3600000 * 8).toISOString(), location: 'Delhi Regional Hub', description: 'Arrived at destination facility.' },
+          { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000 * 2 - 3600000 * 12).toISOString(), location: 'Jaipur Transit Hub', description: 'In transit via road transport.' },
+          { status: 'PICKED_UP', timestamp: new Date(Date.now() - 86400000 * 4 - 3600000 * 10).toISOString(), location: 'Andheri, Mumbai', description: 'Picked up from merchant location.' },
+          { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 86400000 * 5).toISOString(), location: 'Mumbai', description: 'Order created and confirmed.' },
+        ],
+      },
+      TRANSIT: {
+        trackingNumber: 'SHP-2025-0003',
+        carrier: 'DTDC Express',
+        serviceType: 'Economy Shipping',
+        currentStatus: 'IN_TRANSIT',
+        estimatedDelivery: new Date(Date.now() + 86400000 * 2).toISOString(),
+        createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+        recipient: { city: 'Hyderabad', state: 'Telangana' },
+        timeline: [
+          { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000 - 3600000 * 4).toISOString(), location: 'Vijayawada Junction', description: 'Package in transit to destination. On schedule.' },
+          { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000 * 2 - 3600000 * 8).toISOString(), location: 'Nellore Distribution Center', description: 'Processed through distribution center.' },
+          { status: 'PICKED_UP', timestamp: new Date(Date.now() - 86400000 * 3 - 3600000 * 20).toISOString(), location: 'Velachery, Chennai', description: 'Package collected from origin warehouse.' },
+          { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 86400000 * 4).toISOString(), location: 'Chennai', description: 'Shipment registered in system.' },
+        ],
+      },
+    };
+
+    const key = keyword.toUpperCase();
+    return (mockData as any)[key] || null;
   };
 
   const handleTrack = async (e?: React.FormEvent, overrideNumber?: string) => {
@@ -153,45 +187,47 @@ function TrackPageContent() {
     setHasSearched(true);
     setShipment(null);
 
-    play('whoosh');
-    vibrate(50);
+    // Check for mock/demo keywords
+    const mockKeywords = ['DEMO', 'DELIVERED', 'TRANSIT', 'ROCKET'];
+    const upperNumber = numberToTrack.trim().toUpperCase();
 
-    // DEMO MODE
-    if (numberToTrack.trim().toUpperCase() === 'DEMO') {
+    if (mockKeywords.includes(upperNumber)) {
       setTimeout(() => {
-        setShipment(MOCK_SHIPMENT);
-        addToRecent('DEMO', 'OUT_FOR_DELIVERY');
-        setIsLoading(false);
-        play('chime');
-      }, 1500);
-      return;
-    }
+        let mockShipment = getMockShipmentByKeyword(upperNumber);
 
-    // ROCKET Easter Egg
-    if (numberToTrack.trim().toUpperCase() === 'ROCKET') {
-      setTimeout(() => {
-        const rocketShipment = {
-          ...MOCK_SHIPMENT,
-          trackingNumber: 'ROCKET-001',
-          carrier: 'SpaceX Delivery',
-          serviceType: 'Orbital Express',
-          currentStatus: 'IN_TRANSIT',
-          timeline: [
-            { status: 'ORBITAL_INSERTION', timestamp: new Date().toISOString(), location: 'Low Earth Orbit', description: '🚀 Package achieved orbital velocity!' },
-            { status: 'LAUNCHED', timestamp: new Date(Date.now() - 3600000).toISOString(), location: 'Cape Canaveral', description: '🔥 Liftoff successful!' },
-          ],
-        };
-        setShipment(rocketShipment as any);
-        addToRecent('ROCKET', 'IN_TRANSIT');
+        // Special handling for ROCKET easter egg
+        if (upperNumber === 'ROCKET') {
+          mockShipment = {
+            trackingNumber: 'SPACE-X-042',
+            carrier: 'Interstellar Logistics',
+            serviceType: 'Orbital Express',
+            currentStatus: 'IN_TRANSIT',
+            estimatedDelivery: new Date().toISOString(),
+            createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+            recipient: { city: 'Low Earth Orbit', state: 'Space' },
+            timeline: [
+              { status: 'ORBITAL_INSERTION', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Package achieved orbital velocity! Approaching ISS docking port.' },
+              { status: 'STAGE_SEPARATION', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), location: '200 km altitude', description: '🔥 Stage 2 ignition successful. Entering orbital trajectory.' },
+              { status: 'LAUNCHED', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed! All systems nominal.' },
+              { status: 'PRE_LAUNCH', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Final countdown initiated. Weather conditions: GO.' },
+            ],
+          };
+
+          confetti({
+            particleCount: 200,
+            spread: 160,
+            origin: { y: 0.6 },
+            shapes: ['star'],
+            colors: ['#FFD700', '#FFA500', '#FF4500'],
+          });
+        }
+
+        if (mockShipment) {
+          setShipment(mockShipment);
+          addToRecent(upperNumber, mockShipment.currentStatus);
+        }
+
         setIsLoading(false);
-        play('tada');
-        confetti({
-          particleCount: 200,
-          spread: 160,
-          origin: { y: 0.6 },
-          shapes: ['star'],
-          colors: ['#FFD700', '#FFA500', '#FF4500'],
-        });
       }, 1500);
       return;
     }
@@ -200,22 +236,18 @@ function TrackPageContent() {
       const data = await trackingApi.trackShipment(numberToTrack.trim());
       setShipment(data);
       addToRecent(data.trackingNumber, data.currentStatus);
-      play('chime');
-      vibrate([50, 100, 50]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to find shipment');
-      play('error');
-      vibrate(200);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[var(--bg-secondary)] flex flex-col font-sans overflow-x-hidden selection:bg-[var(--primary-blue-soft)] selection:text-[var(--primary-blue)]">
+    <main className="min-h-screen bg-[var(--bg-primary)] flex flex-col font-sans overflow-x-hidden selection:bg-[var(--primary-blue)]/10 selection:text-[var(--primary-blue)]">
       <Navigation />
       <GridBackground />
-      <EasterEggs onEasterEggFound={(egg) => play('tada')} />
+      <EasterEggs onEasterEggFound={() => { }} />
 
       <div className="flex-grow relative z-10 flex flex-col items-center justify-start container mx-auto px-4 pt-32 pb-16 min-h-screen">
         <motion.div
@@ -227,32 +259,28 @@ function TrackPageContent() {
           <AnimatePresence>
             {!shipment && !isLoading && !error && (
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0, scale: 0.95, marginBottom: 0 }}
-                className="text-center mb-16"
+                exit={{ opacity: 0, height: 0, scale: 0.98, marginBottom: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="text-center mb-12"
               >
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] shadow-[var(--shadow-xs)] text-xs font-bold text-[var(--primary-blue)] tracking-widest uppercase mb-8"
+                <motion.h1
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.6 }}
+                  className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-[var(--text-primary)] mb-4"
                 >
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary-blue)] opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--primary-blue)]" />
-                  </span>
-                  Live Tracking System
-                </motion.div>
-                <h1 className="text-6xl md:text-8xl font-bold tracking-tight text-[var(--text-primary)] mb-8 leading-[1.1]">
-                  Where is your <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] drop-shadow-sm">
-                    Shipment?
-                  </span>
-                </h1>
-                <p className="text-[var(--text-secondary)] text-xl max-w-2xl mx-auto leading-relaxed">
-                  Experience the next generation of logistics tracking with <span className="text-[var(--text-primary)] font-medium">real-time precision</span> and beautiful insights.
-                </p>
+                  Track your shipment
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.6 }}
+                  className="text-[var(--text-secondary)] text-base md:text-lg max-w-md mx-auto"
+                >
+                  Enter your tracking number to get real-time updates
+                </motion.p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -260,90 +288,84 @@ function TrackPageContent() {
           {/* Search Bar */}
           <motion.div
             layout
-            style={{
-              perspective: 1000,
-              rotateX: !shipment && !hasSearched ? rotateX : 0,
-              rotateY: !shipment && !hasSearched ? rotateY : 0,
-            }}
-            className={`w-full max-w-xl relative z-30 ${shipment ? 'mb-8' : 'mb-0'}`}
+            className={`w-full max-w-2xl relative z-30 ${shipment ? 'mb-10' : 'mb-0'}`}
           >
             <motion.form
               onSubmit={handleTrack}
               layoutId="search-container"
-              className={`relative bg-[var(--bg-elevated)] rounded-2xl shadow-[var(--shadow-lg)] border border-[var(--border-subtle)] transition-all duration-500 ease-out flex items-center p-2.5 overflow-hidden ${isLoading ? 'ring-2 ring-[var(--primary-blue)]' : 'hover:shadow-[var(--shadow-brand-lg)] hover:border-[var(--primary-blue-soft)] focus-within:ring-2 focus-within:ring-[var(--primary-blue)]'
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className={`relative bg-[var(--bg-elevated)] rounded-2xl border transition-all duration-300 flex items-center overflow-hidden ${isLoading
+                ? 'border-[var(--border-focus)] shadow-[var(--shadow-sm)]'
+                : 'border-[var(--border-default)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-focus)] shadow-[var(--shadow-xs)]'
                 }`}
-              data-cursor="button"
             >
-              {isLoading && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--primary-blue-soft)]/20 to-transparent"
-                  initial={{ x: '-100%' }}
-                  animate={{ x: '100%' }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-                />
-              )}
 
-              <div className="pl-5 text-[var(--text-muted)] z-10">
-                <Search className="w-6 h-6" strokeWidth={2.5} />
+              <div className="pl-6 text-[var(--text-tertiary)]">
+                <Search className="w-5 h-5" strokeWidth={2} />
               </div>
               <input
                 type="text"
                 value={trackingNumber}
                 onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
-                placeholder="Enter AWB ID (e.g. DEMO)"
-                className="flex-1 bg-transparent border-none outline-none px-5 py-5 text-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-bold tracking-wide z-10"
+                placeholder="Enter tracking number"
+                className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-medium"
                 disabled={isLoading}
+                autoComplete="off"
+                spellCheck="false"
               />
 
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="wait">
                 {isLoading ? (
                   <motion.div
                     key="loader"
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="pr-4 z-10"
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="pr-3"
                   >
-                    <Loader2 className="w-6 h-6 text-[var(--primary-blue)] animate-spin" />
+                    <div className="px-5 py-2.5">
+                      <Loader2 className="w-5 h-5 text-[var(--primary-blue)] animate-spin" strokeWidth={2} />
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.button
                     key="button"
-                    layout
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={!trackingNumber}
-                    className="bg-[var(--primary-blue)] text-white p-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow-brand)] hover:bg-[var(--primary-blue-deep)] transition-colors z-10"
-                    data-cursor="button"
+                    className="mr-2 px-6 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-blue-deep)] transition-colors"
                   >
-                    <ArrowRight className="w-6 h-6" />
+                    Track
                   </motion.button>
                 )}
               </AnimatePresence>
             </motion.form>
 
             {!shipment && !isLoading && !recentSearches.length && (
-              <motion.p
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute -bottom-14 left-0 w-full text-center text-sm font-medium text-[var(--text-tertiary)]"
+                transition={{ delay: 0.5 }}
+                className="mt-3 text-center"
               >
-                Try{' '}
-                <span
-                  className="text-[var(--primary-blue)] cursor-pointer hover:underline decoration-2 underline-offset-4"
-                  onClick={() => setTrackingNumber('DEMO')}
-                >
-                  DEMO
-                </span>{' '}
-                or{' '}
-                <span
-                  className="text-[var(--primary-blue)] cursor-pointer hover:underline decoration-2 underline-offset-4"
-                  onClick={() => setTrackingNumber('ROCKET')}
-                >
-                  ROCKET
-                </span>
-              </motion.p>
+                <p className="text-xs text-[var(--text-tertiary)] mb-2">
+                  Try demo:
+                </p>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  {['DEMO', 'DELIVERED', 'TRANSIT'].map((keyword) => (
+                    <button
+                      key={keyword}
+                      onClick={() => setTrackingNumber(keyword)}
+                      className="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                    >
+                      {keyword}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
             )}
           </motion.div>
 
@@ -373,7 +395,6 @@ function TrackPageContent() {
                         handleTrack(undefined, search.number);
                       }}
                       className="group relative bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-[var(--primary-blue)] hover:shadow-[var(--shadow-sm)] transition-all"
-                      data-cursor="card"
                     >
                       <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-tertiary)] group-hover:bg-[var(--primary-blue-soft)] group-hover:text-[var(--primary-blue)] transition-colors">
                         <Box size={14} />
@@ -421,30 +442,56 @@ function TrackPageContent() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
               transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-              className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-12 gap-6 pb-20"
+              className="w-full max-w-7xl pb-20"
             >
-              {/* Status Hero */}
-              <div className="col-span-1 md:col-span-5">
-                <MorphingStatusHero
-                  trackingNumber={shipment.trackingNumber}
-                  status={shipment.currentStatus}
-                  estimatedDelivery={shipment.estimatedDelivery}
-                  actualDelivery={shipment.actualDelivery}
-                />
-              </div>
+              {/* Top Section: Status + 3D Box */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+                {/* Status Hero - Takes more space on desktop */}
+                <div className="lg:col-span-7">
+                  <MorphingStatusHero
+                    trackingNumber={shipment.trackingNumber}
+                    status={shipment.currentStatus}
+                    estimatedDelivery={shipment.estimatedDelivery}
+                    actualDelivery={shipment.actualDelivery}
+                  />
+                </div>
 
-              {/* 3D Package + Map */}
-              <div className="col-span-1 md:col-span-7 grid grid-cols-1 gap-6 h-auto md:h-[400px]">
-                <div className="h-[300px] md:h-full bg-[var(--bg-elevated)] rounded-[2rem] border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] overflow-hidden relative group">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--primary-blue-soft)_0%,transparent_70%)] opacity-30 pointer-events-none" />
-                  <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] animate-pulse">Initializing 3D Environment...</div>}>
-                    <Package3D status={shipment.currentStatus} />
-                  </Suspense>
+                {/* 3D Package Visualization */}
+                <div className="lg:col-span-5">
+                  <motion.div
+                    className="h-[350px] lg:h-full bg-gradient-to-br from-[var(--bg-elevated)] to-[var(--bg-secondary)] rounded-3xl border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] overflow-hidden relative group"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 25 }}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                  >
+                    {/* Ambient gradient overlay */}
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,var(--primary-blue-soft)_0%,transparent_70%)] opacity-20 pointer-events-none" />
+
+                    {/* 3D Canvas */}
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+                          <div className="w-16 h-16 rounded-2xl bg-[var(--primary-blue-soft)] animate-pulse" />
+                          <p className="text-sm font-medium text-[var(--text-muted)] animate-pulse">
+                            Loading 3D View...
+                          </p>
+                        </div>
+                      }
+                    >
+                      <Package3D status={shipment.currentStatus} />
+                    </Suspense>
+
+                    {/* Status Badge Overlay */}
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-[var(--bg-elevated)]/90 backdrop-blur-md border border-[var(--border-subtle)] shadow-lg z-10">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">3D View</span>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
 
               {/* Journey Map */}
-              <div className="col-span-1 md:col-span-12">
+              <div className="mb-6">
                 <InteractiveMap
                   locations={shipment.timeline}
                   destination={shipment.recipient}
@@ -452,7 +499,7 @@ function TrackPageContent() {
               </div>
 
               {/* Timeline */}
-              <div className="col-span-1 md:col-span-12">
+              <div>
                 <AnimatedTimeline events={shipment.timeline} />
               </div>
             </motion.div>
@@ -465,12 +512,7 @@ function TrackPageContent() {
   );
 }
 
-// Main Export with Providers
+// Main Export
 export default function TrackPage() {
-  return (
-    <SoundProvider>
-      <MagneticCursor />
-      <TrackPageContent />
-    </SoundProvider>
-  );
+  return <TrackPageContent />;
 }

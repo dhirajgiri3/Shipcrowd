@@ -1,0 +1,439 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/src/features/auth';
+import { Button } from '@/components/ui/buttons/Button';
+import { Input } from '@/components/ui/forms/Input';
+import { Card } from '@/components/ui/layout/Card';
+import { toast } from 'sonner';
+import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+
+export default function SecuritySettingsPage() {
+    const { user, changePassword, sessions, loadSessions, revokeSession, revokeAllSessions, checkPasswordStrength } = useAuth();
+
+    // Password change state
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState<any>(null);
+
+    // Session management state
+    const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+    const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+    const [isRevokingAll, setIsRevokingAll] = useState(false);
+
+    // Load sessions on mount
+    useEffect(() => {
+        handleLoadSessions();
+    }, []);
+
+    // Check password strength as user types
+    useEffect(() => {
+        if (newPassword.length >= 8) {
+            const timer = setTimeout(async () => {
+                const strength = await checkPasswordStrength(newPassword);
+                setPasswordStrength(strength);
+            }, 500);
+            return () => clearTimeout(timer);
+        } else {
+            setPasswordStrength(null);
+        }
+    }, [newPassword, checkPasswordStrength]);
+
+    const handleLoadSessions = async () => {
+        setIsLoadingSessions(true);
+        try {
+            await loadSessions();
+        } catch (error) {
+            toast.error('Failed to load sessions');
+        } finally {
+            setIsLoadingSessions(false);
+        }
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Validation
+        if (newPassword !== confirmPassword) {
+            toast.error('New passwords do not match');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters');
+            return;
+        }
+
+        if (passwordStrength && passwordStrength.score < 2) {
+            toast.error('Password is too weak. Please choose a stronger password.');
+            return;
+        }
+
+        setIsChangingPassword(true);
+        try {
+            const result = await changePassword({
+                currentPassword,
+                newPassword,
+            });
+
+            if (result.success) {
+                toast.success(result.message || 'Password changed successfully');
+                // Clear form
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordStrength(null);
+            } else {
+                toast.error(result.error || 'Failed to change password');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to change password');
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+    const handleRevokeSession = async (sessionId: string) => {
+        if (!confirm('Are you sure you want to revoke this session? You will be logged out from that device.')) {
+            return;
+        }
+
+        setRevokingSessionId(sessionId);
+        try {
+            const result = await revokeSession(sessionId);
+            if (result.success) {
+                toast.success(result.message || 'Session revoked successfully');
+            } else {
+                toast.error(result.error || 'Failed to revoke session');
+            }
+        } catch (error) {
+            toast.error('Failed to revoke session');
+        } finally {
+            setRevokingSessionId(null);
+        }
+    };
+
+    const handleRevokeAllSessions = async () => {
+        if (!confirm('Are you sure you want to sign out from all other devices? This will revoke all sessions except your current one.')) {
+            return;
+        }
+
+        setIsRevokingAll(true);
+        try {
+            const result = await revokeAllSessions();
+            if (result.success) {
+                toast.success(result.message || `Revoked ${result.revokedCount} sessions`);
+            } else {
+                toast.error(result.error || 'Failed to revoke sessions');
+            }
+        } catch (error) {
+            toast.error('Failed to revoke sessions');
+        } finally {
+            setIsRevokingAll(false);
+        }
+    };
+
+    const getDeviceIcon = (type: string) => {
+        switch (type) {
+            case 'mobile':
+                return <Smartphone className="h-5 w-5" />;
+            case 'tablet':
+                return <Smartphone className="h-5 w-5" />;
+            default:
+                return <Shield className="h-5 w-5" />;
+        }
+    };
+
+    const getPasswordStrengthColor = (score: number) => {
+        switch (score) {
+            case 0:
+            case 1:
+                return 'text-red-500';
+            case 2:
+                return 'text-orange-500';
+            case 3:
+                return 'text-yellow-500';
+            case 4:
+                return 'text-green-500';
+            default:
+                return 'text-gray-500';
+        }
+    };
+
+    const getPasswordStrengthLabel = (strength: string) => {
+        switch (strength) {
+            case 'weak':
+                return 'Weak';
+            case 'fair':
+                return 'Fair';
+            case 'good':
+                return 'Good';
+            case 'strong':
+                return 'Strong';
+            default:
+                return '';
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)]">Security Settings</h1>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">
+                    Manage your password, active sessions, and security preferences
+                </p>
+            </div>
+
+            {/* Password Management */}
+            <Card className="p-6">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                        <Lock className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Change Password</h2>
+                        <p className="text-sm text-[var(--text-secondary)]">
+                            Update your password to keep your account secure
+                        </p>
+                    </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                    {/* Current Password */}
+                    <div>
+                        <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+                            Current Password
+                        </label>
+                        <div className="relative">
+                            <Input
+                                type={showCurrentPassword ? 'text' : 'password'}
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                placeholder="Enter your current password"
+                                required
+                                disabled={isChangingPassword}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                                {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div>
+                        <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+                            New Password
+                        </label>
+                        <div className="relative">
+                            <Input
+                                type={showNewPassword ? 'text' : 'password'}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter your new password"
+                                required
+                                disabled={isChangingPassword}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+
+                        {/* Password Strength Indicator */}
+                        {passwordStrength && (
+                            <div className="mt-2 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all ${
+                                                passwordStrength.score === 0 ? 'bg-red-500 w-1/4' :
+                                                passwordStrength.score === 1 ? 'bg-red-500 w-2/4' :
+                                                passwordStrength.score === 2 ? 'bg-orange-500 w-3/4' :
+                                                passwordStrength.score === 3 ? 'bg-yellow-500 w-3/4' :
+                                                'bg-green-500 w-full'
+                                            }`}
+                                        />
+                                    </div>
+                                    <span className={`text-xs font-medium ${getPasswordStrengthColor(passwordStrength.score)}`}>
+                                        {getPasswordStrengthLabel(passwordStrength.strength)}
+                                    </span>
+                                </div>
+
+                                {passwordStrength.feedback.warning && (
+                                    <p className="text-xs text-orange-500 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        {passwordStrength.feedback.warning}
+                                    </p>
+                                )}
+
+                                {passwordStrength.feedback.suggestions.length > 0 && (
+                                    <ul className="text-xs text-[var(--text-secondary)] space-y-1">
+                                        {passwordStrength.feedback.suggestions.map((suggestion: string, index: number) => (
+                                            <li key={index}>• {suggestion}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div>
+                        <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+                            Confirm New Password
+                        </label>
+                        <div className="relative">
+                            <Input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Confirm your new password"
+                                required
+                                disabled={isChangingPassword}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                            <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                        )}
+                    </div>
+
+                    <Button
+                        type="submit"
+                        disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                        loading={isChangingPassword}
+                        className="w-full sm:w-auto"
+                    >
+                        Change Password
+                    </Button>
+                </form>
+            </Card>
+
+            {/* Active Sessions */}
+            <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-500/10 rounded-lg">
+                            <Smartphone className="h-5 w-5 text-green-500" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Active Sessions</h2>
+                            <p className="text-sm text-[var(--text-secondary)]">
+                                Manage where you're logged in
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleLoadSessions}
+                            disabled={isLoadingSessions}
+                        >
+                            Refresh
+                        </Button>
+                        {sessions.length > 1 && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleRevokeAllSessions}
+                                disabled={isRevokingAll}
+                                loading={isRevokingAll}
+                            >
+                                Sign Out All Devices
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {isLoadingSessions ? (
+                    <div className="text-center py-8 text-[var(--text-secondary)]">
+                        Loading sessions...
+                    </div>
+                ) : sessions.length === 0 ? (
+                    <div className="text-center py-8 text-[var(--text-secondary)]">
+                        No active sessions found
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {sessions.map((session) => (
+                            <div
+                                key={session._id}
+                                className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]"
+                            >
+                                <div className="flex items-center gap-4 flex-1">
+                                    <div className="text-[var(--text-secondary)]">
+                                        {getDeviceIcon(session.deviceInfo.type)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-medium text-[var(--text-primary)] truncate">
+                                                {session.deviceInfo.browser || 'Unknown Browser'} on {session.deviceInfo.os || 'Unknown OS'}
+                                            </p>
+                                            {/* Current session indicator would go here */}
+                                        </div>
+                                        <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-secondary)]">
+                                            <span>{session.ip}</span>
+                                            {session.location?.city && (
+                                                <span>• {session.location.city}, {session.location.country}</span>
+                                            )}
+                                            <span>• Last active {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRevokeSession(session._id)}
+                                    disabled={revokingSessionId === session._id}
+                                    loading={revokingSessionId === session._id}
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                >
+                                    Revoke
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </Card>
+
+            {/* Security Info */}
+            <Card className="p-6 bg-blue-500/5 border-blue-500/20">
+                <div className="flex gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-2">
+                        <p className="text-sm font-medium text-[var(--text-primary)]">
+                            Security Best Practices
+                        </p>
+                        <ul className="text-xs text-[var(--text-secondary)] space-y-1">
+                            <li>• Use a strong, unique password that you don't use elsewhere</li>
+                            <li>• Regularly review your active sessions and revoke suspicious ones</li>
+                            <li>• Never share your password with anyone</li>
+                            <li>• Enable two-factor authentication for extra security (coming soon)</li>
+                        </ul>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+}

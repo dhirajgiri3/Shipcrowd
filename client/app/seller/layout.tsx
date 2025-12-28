@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/seller/Sidebar';
 import { Header } from '@/components/seller/Header';
 import { ThemeProvider } from '@/components/shared/ThemeProvider';
 import { ToastProvider } from '@/components/ui/feedback/Toast';
+import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
 import { X } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
 
@@ -16,9 +17,14 @@ export default function SellerLayout({
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <ThemeProvider>
-            <ToastProvider>
-                <div className="min-h-screen bg-[var(--bg-secondary)]">
+        <AuthGuard
+            requireCompany
+            allowedRoles={['seller', 'admin']}
+            redirectTo="/login"
+        >
+            <ThemeProvider>
+                <ToastProvider>
+                    <div className="min-h-screen bg-[var(--bg-secondary)]">
                     {/* Mobile sidebar overlay */}
                     {sidebarOpen && (
                         <div
@@ -58,5 +64,6 @@ export default function SellerLayout({
                 </div>
             </ToastProvider>
         </ThemeProvider>
+        </AuthGuard>
     );
 }

@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-import { motion, useAnimation } from 'framer-motion';
-import { Truck, MapPin, Clock, Package, CheckCircle, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Truck, MapPin, Clock, Package, CheckCircle } from 'lucide-react';
 
 interface TimelineEvent {
   status: string;
@@ -80,7 +79,7 @@ const getStatusColor = (status: string) => {
 export function AnimatedTimeline({ events, className = '' }: AnimatedTimelineProps) {
   return (
     <motion.div
-      className={`bg-[var(--bg-elevated)] rounded-3xl p-8 md:p-12 border border-[var(--border-subtle)] shadow-[var(--shadow-xl)] ${className}`}
+      className={`bg-[var(--bg-elevated)] rounded-3xl p-6 md:p-10 border border-[var(--border-subtle)] shadow-[var(--shadow-sm)] ${className}`}
       initial={{ opacity: 0, y: 60 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -90,66 +89,34 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
         delay: 0.6,
       }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-10">
-        <div className="flex items-center gap-4">
-          <motion.div
-            className="p-3 rounded-2xl bg-gradient-to-br from-[var(--primary-blue-soft)] to-[var(--bg-secondary)] text-[var(--primary-blue)] shadow-[var(--shadow-brand-sm)]"
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{
-              type: 'spring',
-              stiffness: 200,
-              damping: 15,
-              delay: 0.7,
-            }}
-          >
-            <Clock size={24} strokeWidth={2.5} />
-          </motion.div>
-          <div>
-            <motion.h3
-              className="text-2xl font-black text-[var(--text-primary)]"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8 }}
-            >
-              Delivery Journey
-            </motion.h3>
-            <motion.p
-              className="text-sm text-[var(--text-tertiary)] font-medium"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.9 }}
-            >
-              {events.length} milestone{events.length !== 1 ? 's' : ''} tracked
-            </motion.p>
-          </div>
-        </div>
-
-        {/* Status Badge */}
-        <motion.div
-          className="px-4 py-2 rounded-full bg-gradient-to-r from-[var(--primary-blue-soft)] to-[var(--bg-secondary)] border border-[var(--primary-blue-soft)]"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{
-            type: 'spring',
-            stiffness: 300,
-            damping: 20,
-            delay: 1,
-          }}
+      {/* Header - Minimal */}
+      <div className="flex items-center justify-between mb-8">
+        <motion.h3
+          className="text-xl md:text-2xl font-semibold text-[var(--text-primary)]"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.5 }}
         >
-          <span className="text-sm font-bold text-[var(--primary-blue)]">Real-time Updates</span>
-        </motion.div>
+          Tracking history
+        </motion.h3>
+        <motion.span
+          className="text-sm text-[var(--text-tertiary)]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          {events.length} update{events.length !== 1 ? 's' : ''}
+        </motion.span>
       </div>
 
       {/* Timeline */}
       <div className="relative">
         {/* Vertical Line */}
-        <div className="absolute left-[44px] md:left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-[var(--border-subtle)] via-[var(--border-default)] to-transparent" />
+        <div className="absolute left-[44px] md:left-[52px] top-0 bottom-0 w-0.5 bg-[var(--border-subtle)]" />
 
         {/* Animated Progress Line */}
         <motion.div
-          className="absolute left-[44px] md:left-[52px] top-0 w-0.5 bg-gradient-to-b from-[var(--primary-blue)] to-[var(--primary-blue-light)]"
+          className="absolute left-[44px] md:left-[52px] top-0 w-0.5 bg-[var(--primary-blue)]"
           initial={{ height: 0 }}
           animate={{ height: '40%' }}
           transition={{
@@ -182,7 +149,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                 {/* Timeline Node */}
                 <motion.div
                   className={`
-                    activeNode
+                    flex items-center justify-center
                     w-20 h-20 md:w-24 md:h-24 rounded-2xl
                     ${isActive ? `${colors.bg} text-white shadow-2xl ${colors.glow}` : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border-2 border-[var(--border-subtle)]'}
                     transition-all duration-500
@@ -192,12 +159,7 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                   animate={
                     isActive
                       ? {
-                        scale: [1, 1.05, 1],
-                        boxShadow: [
-                          '0 20px 40px -10px rgba(0,0,0,0.1)',
-                          '0 25px 50px -10px rgba(37,99,235,0.3)',
-                          '0 20px 40px -10px rgba(0,0,0,0.1)',
-                        ],
+                        scale: [1, 1.03, 1],
                       }
                       : {}
                   }
@@ -216,10 +178,10 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
                   {/* Active Pulse */}
                   {isActive && (
                     <motion.div
-                      className="absolute inset-0 rounded-2xl bg-[var(--primary-blue)]/20"
+                      className="absolute inset-0 rounded-2xl bg-[var(--primary-blue)]/10"
                       animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [0.5, 0, 0.5],
+                        scale: [1, 1.15, 1],
+                        opacity: [0.3, 0, 0.3],
                       }}
                       transition={{
                         duration: 2,
@@ -305,18 +267,6 @@ export function AnimatedTimeline({ events, className = '' }: AnimatedTimelinePro
         </div>
       </div>
 
-      {/* Footer Badge */}
-      <motion.div
-        className="mt-10 pt-8 border-t border-[var(--border-subtle)]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-      >
-        <div className="flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
-          <div className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
-          <span className="font-medium">Live tracking active</span>
-        </div>
-      </motion.div>
     </motion.div>
   );
 }
