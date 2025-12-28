@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
-import { Search, ArrowRight, Loader2, AlertCircle, X, History, Box } from 'lucide-react';
+import { Search, ArrowRight, AlertCircle, X, History, Box } from 'lucide-react';
 import { trackingApi, PublicTrackingResponse } from '@/src/core/api/trackingApi';
 import confetti from 'canvas-confetti';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -12,7 +12,8 @@ import { MorphingStatusHero } from './components/MorphingStatusHero';
 import { AnimatedTimeline } from './components/AnimatedTimeline';
 import { InteractiveMap } from './components/InteractiveMap';
 import { EasterEggs } from './components/EasterEggs';
-import { Navigation, Footer } from '@/components/ui';
+import { Navigation, Footer, Loader } from '@/components/ui';
+import { useLoader } from '@/hooks';
 
 // Lazy load heavy 3D component
 const Package3D = lazy(() =>
@@ -43,12 +44,17 @@ function TrackPageContent() {
   const router = useRouter();
 
   const [trackingNumber, setTrackingNumber] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [shipment, setShipment] = useState<PublicTrackingResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [autoTrackNumber, setAutoTrackNumber] = useState<string | null>(null);
+
+  // Use smart loader with flash prevention
+  const { isLoading, showLoader, startLoading, stopLoading } = useLoader({
+    minDelay: 300,    // Don't show if completes < 300ms
+    minDisplay: 800,  // If shown, keep visible ≥ 800ms for smooth UX
+  });
 
   // Mouse parallax effect
   const mouseX = useMotionValue(0);
@@ -113,31 +119,142 @@ function TrackPageContent() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []); // Only run once on mount
 
-  // Confetti for delivered
+
+  // Modern Celebration Effect for Delivered Status
   useEffect(() => {
     if (shipment?.currentStatus === 'DELIVERED' || shipment?.currentStatus === 'delivered') {
-      const end = Date.now() + 1500;
-      const colors = ['#2525FF', '#3B82F6', '#60A5FA'];
+      const duration = 3000; // 3 seconds celebration
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
 
-      (function frame() {
+      // Ultra-vibrant premium colors for celebration
+      const colors = [
+        '#0066FF', // Electric blue
+        '#00D4FF', // Cyan
+        '#7B68EE', // Medium slate blue
+        '#FF1493', // Deep pink
+        '#FF6B35', // Vivid orange
+        '#FFD60A', // Vibrant yellow
+        '#00FF87', // Spring green
+        '#FF3366', // Neon pink
+        '#9D4EDD', // Purple
+        '#06FFA5', // Mint green
+        '#FE6F5E', // Coral
+        '#FFFFFF', // Pure white for contrast
+      ];
+
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min;
+      }
+
+      // Stage 1: Initial Fireworks Burst (0-800ms)
+      setTimeout(() => {
         confetti({
-          particleCount: 3,
+          ...defaults,
+          particleCount: 100,
+          spread: 120,
+          origin: { y: 0.6 },
+          colors,
+          shapes: ['circle', 'square'],
+          scalar: 1.2,
+        });
+      }, 0);
+
+      // Stage 2: Side Rockets (200ms)
+      setTimeout(() => {
+        confetti({
+          ...defaults,
+          particleCount: 50,
           angle: 60,
           spread: 55,
-          origin: { x: 0 },
+          origin: { x: 0, y: 0.7 },
           colors,
+          shapes: ['star'],
+          scalar: 1.5,
         });
         confetti({
-          particleCount: 3,
+          ...defaults,
+          particleCount: 50,
           angle: 120,
           spread: 55,
-          origin: { x: 1 },
+          origin: { x: 1, y: 0.7 },
           colors,
+          shapes: ['star'],
+          scalar: 1.5,
         });
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
+      }, 200);
+
+      // Stage 3: Sparkle Shower (400ms)
+      setTimeout(() => {
+        confetti({
+          ...defaults,
+          particleCount: 80,
+          spread: 80,
+          origin: { y: 0.4 },
+          colors: ['#FFD60A', '#FF6B35', '#FF1493', '#00D4FF', '#FFFFFF'],
+          shapes: ['circle'],
+          scalar: 0.8,
+          ticks: 100,
+        });
+      }, 400);
+
+      // Stage 4: Continuous celebration stream (600ms-3000ms)
+      const interval = setInterval(() => {
+        if (Date.now() > animationEnd) {
+          clearInterval(interval);
+          return;
         }
-      })();
+
+        // Random confetti bursts from random positions
+        confetti({
+          particleCount: randomInRange(15, 30),
+          angle: randomInRange(55, 125),
+          spread: randomInRange(50, 70),
+          origin: {
+            x: randomInRange(0.1, 0.9),
+            y: randomInRange(0.5, 0.8),
+          },
+          colors,
+          shapes: ['circle', 'square', 'star'],
+          scalar: randomInRange(0.8, 1.4),
+          ticks: randomInRange(50, 100),
+          gravity: randomInRange(0.8, 1.2),
+          drift: randomInRange(-0.5, 0.5),
+        });
+      }, 250);
+
+      // Stage 5: Grand Finale (2500ms)
+      setTimeout(() => {
+        // Bottom-up explosion
+        confetti({
+          ...defaults,
+          particleCount: 120,
+          spread: 160,
+          startVelocity: 55,
+          origin: { y: 0.9 },
+          colors,
+          shapes: ['circle', 'square', 'star'],
+          scalar: 1.5,
+          ticks: 80,
+        });
+
+        // Top sparkles
+        setTimeout(() => {
+          confetti({
+            particleCount: 100,
+            spread: 360,
+            startVelocity: 25,
+            origin: { y: 0.3 },
+            colors: ['#FFD60A', '#FF1493', '#00D4FF', '#06FFA5', '#FFFFFF'],
+            shapes: ['star'],
+            scalar: 1.2,
+            ticks: 120,
+          });
+        }, 150);
+      }, 2500);
+
+      // Cleanup
+      return () => clearInterval(interval);
     }
   }, [shipment]);
 
@@ -223,7 +340,7 @@ function TrackPageContent() {
     const numberToTrack = overrideNumber || trackingNumber;
     if (!numberToTrack.trim()) return;
 
-    setIsLoading(true);
+    startLoading();
     setError(null);
     setHasSearched(true);
     setShipment(null);
@@ -257,13 +374,78 @@ function TrackPageContent() {
             ],
           };
 
-          confetti({
-            particleCount: 200,
-            spread: 160,
-            origin: { y: 0.6 },
-            shapes: ['star'],
-            colors: ['#FFD700', '#FFA500', '#FF4500'],
-          });
+          // Space-themed Rocket Celebration 🚀
+          const rocketColors = ['#FFD60A', '#FF6B35', '#FF3366', '#FF1493', '#00D4FF', '#FFFFFF'];
+
+          // Stage 1: Launch trail from bottom (0ms)
+          setTimeout(() => {
+            for (let i = 0; i < 5; i++) {
+              setTimeout(() => {
+                confetti({
+                  particleCount: 30,
+                  angle: 90,
+                  spread: 30,
+                  origin: { x: 0.5, y: 1 },
+                  colors: ['#FF3366', '#FF6B35', '#FFD60A'],
+                  shapes: ['circle'],
+                  scalar: 1.2,
+                  startVelocity: 60,
+                  ticks: 100,
+                  gravity: 0.5,
+                });
+              }, i * 100);
+            }
+          }, 0);
+
+          // Stage 2: Orbital explosion burst (600ms)
+          setTimeout(() => {
+            confetti({
+              particleCount: 150,
+              spread: 360,
+              origin: { x: 0.5, y: 0.3 },
+              colors: rocketColors,
+              shapes: ['star', 'circle'],
+              scalar: 1.5,
+              startVelocity: 45,
+              ticks: 120,
+            });
+          }, 600);
+
+          // Stage 3: Star field sparkles (800ms)
+          setTimeout(() => {
+            confetti({
+              particleCount: 100,
+              spread: 180,
+              origin: { y: 0.2 },
+              colors: ['#FFFFFF', '#FFD60A', '#00D4FF', '#06FFA5'],
+              shapes: ['star'],
+              scalar: 0.8,
+              ticks: 150,
+              gravity: 0.3,
+            });
+          }, 800);
+
+          // Stage 4: Side thrusters (1000ms)
+          setTimeout(() => {
+            confetti({
+              particleCount: 50,
+              angle: 45,
+              spread: 45,
+              origin: { x: 0.2, y: 0.4 },
+              colors: rocketColors,
+              shapes: ['circle', 'square'],
+              scalar: 1.3,
+            });
+            confetti({
+              particleCount: 50,
+              angle: 135,
+              spread: 45,
+              origin: { x: 0.8, y: 0.4 },
+              colors: rocketColors,
+              shapes: ['circle', 'square'],
+              scalar: 1.3,
+            });
+          }, 1000);
         }
 
         if (mockShipment) {
@@ -271,7 +453,7 @@ function TrackPageContent() {
           addToRecent(upperNumber, mockShipment.currentStatus);
         }
 
-        setIsLoading(false);
+        stopLoading();
       }, 1500);
       return;
     }
@@ -283,7 +465,7 @@ function TrackPageContent() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to find shipment');
     } finally {
-      setIsLoading(false);
+      stopLoading();
     }
   };
 
@@ -313,7 +495,7 @@ function TrackPageContent() {
         >
           {/* Header */}
           <AnimatePresence>
-            {!shipment && !isLoading && !error && (
+            {!shipment && !showLoader && !error && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -342,92 +524,98 @@ function TrackPageContent() {
           </AnimatePresence>
 
           {/* Search Bar */}
-          <motion.div
-            layout
-            className={`w-full max-w-2xl relative z-30 ${shipment ? 'mb-10' : 'mb-0'}`}
-          >
-            <motion.form
-              onSubmit={handleTrack}
-              layoutId="search-container"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className={`relative bg-[var(--bg-elevated)] rounded-2xl border transition-all duration-300 flex items-center overflow-hidden ${isLoading
-                ? 'border-[var(--border-focus)] shadow-[var(--shadow-sm)]'
-                : 'border-[var(--border-default)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-focus)] shadow-[var(--shadow-xs)]'
-                }`}
-            >
+          <AnimatePresence>
+            {!showLoader && (
+              <motion.div
+                layout
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className={`w-full max-w-2xl relative z-30 ${shipment ? 'mb-10' : 'mb-0'}`}
+              >
+                <motion.form
+                  onSubmit={handleTrack}
+                  layoutId="search-container"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className={`relative bg-[var(--bg-elevated)] rounded-2xl border transition-all duration-300 flex items-center overflow-hidden ${'border-[var(--border-default)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-focus)] shadow-[var(--shadow-xs)]'
+                    }`}
+                >
+                  <div className="pl-6 text-[var(--text-tertiary)]">
+                    <Search className="w-5 h-5" strokeWidth={2} />
+                  </div>
+                  <input
+                    type="text"
+                    value={trackingNumber}
+                    onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
+                    placeholder="Enter tracking number"
+                    className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-medium"
+                    disabled={isLoading}
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
 
-              <div className="pl-6 text-[var(--text-tertiary)]">
-                <Search className="w-5 h-5" strokeWidth={2} />
-              </div>
-              <input
-                type="text"
-                value={trackingNumber}
-                onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
-                placeholder="Enter tracking number"
-                className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-medium"
-                disabled={isLoading}
-                autoComplete="off"
-                spellCheck="false"
-              />
-
-              <AnimatePresence mode="wait">
-                {isLoading ? (
-                  <motion.div
-                    key="loader"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="pr-3"
-                  >
-                    <div className="px-5 py-2.5">
-                      <Loader2 className="w-5 h-5 text-[var(--primary-blue)] animate-spin" strokeWidth={2} />
-                    </div>
-                  </motion.div>
-                ) : (
                   <motion.button
-                    key="button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    disabled={!trackingNumber}
+                    disabled={!trackingNumber || isLoading}
                     className="mr-2 px-6 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-blue-deep)] transition-colors"
                   >
                     Track
                   </motion.button>
-                )}
-              </AnimatePresence>
-            </motion.form>
+                </motion.form>
 
-            {!shipment && !isLoading && !recentSearches.length && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-3 text-center"
-              >
-                <p className="text-xs text-[var(--text-tertiary)] mb-2">
-                  Try demo:
-                </p>
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  {['DEMO', 'DELIVERED', 'TRANSIT'].map((keyword) => (
-                    <button
-                      key={keyword}
-                      onClick={() => setTrackingNumber(keyword)}
-                      className="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
-                    >
-                      {keyword}
-                    </button>
-                  ))}
-                </div>
+                {!shipment && !recentSearches.length && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="mt-3 text-center"
+                  >
+                    <p className="text-xs text-[var(--text-tertiary)] mb-2">
+                      Try demo:
+                    </p>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      {['DEMO', 'DELIVERED', 'TRANSIT'].map((keyword) => (
+                        <button
+                          key={keyword}
+                          onClick={() => setTrackingNumber(keyword)}
+                          className="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                        >
+                          {keyword}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             )}
-          </motion.div>
+          </AnimatePresence>
+
+          {/* Branded Truck Loader */}
+          <AnimatePresence>
+            {showLoader && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-2xl"
+              >
+                <Loader
+                  variant="truck"
+                  size="lg"
+                  message="Tracking your package..."
+                  centered
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Recent Searches */}
           <AnimatePresence>
-            {!shipment && !isLoading && recentSearches.length > 0 && (
+            {!shipment && !showLoader && recentSearches.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

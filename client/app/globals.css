@@ -752,6 +752,94 @@ body {
       }
    }
 
+   /* ========================================
+      LOADER ANIMATIONS
+      ======================================== */
+
+   /* Truck Animation - Suspension bounce */
+   @keyframes truck-suspension {
+      0% {
+         transform: translateY(0px);
+      }
+
+      50% {
+         transform: translateY(3px);
+      }
+
+      100% {
+         transform: translateY(0px);
+      }
+   }
+
+   .animate-truck-suspension {
+      animation: truck-suspension 1s linear infinite;
+   }
+
+   /* Truck Animation - Road scrolling */
+   @keyframes truck-road {
+      0% {
+         transform: translateX(0px);
+      }
+
+      100% {
+         transform: translateX(-350px);
+      }
+   }
+
+   .animate-truck-road {
+      animation: truck-road 1.4s linear infinite;
+   }
+
+   /* Truck Animation - Wheel rotation */
+   @keyframes truck-wheel {
+      0% {
+         transform: rotate(0deg);
+      }
+
+      100% {
+         transform: rotate(360deg);
+      }
+   }
+
+   .animate-truck-wheel {
+      animation: truck-wheel 1s linear infinite;
+   }
+
+   /* Spinner - Circular rotation */
+   .animate-spin {
+      animation: spin 1s linear infinite;
+   }
+
+   @keyframes spin {
+      0% {
+         transform: rotate(0deg);
+      }
+
+      100% {
+         transform: rotate(360deg);
+      }
+   }
+
+   /* Dots - Bounce animation */
+   @keyframes dots-bounce {
+
+      0%,
+      80%,
+      100% {
+         transform: scale(0);
+         opacity: 0.5;
+      }
+
+      40% {
+         transform: scale(1);
+         opacity: 1;
+      }
+   }
+
+   .animate-dots-bounce {
+      animation: dots-bounce 1.4s infinite ease-in-out;
+   }
+
    /* Premium Scrollbar */
    .scrollbar-premium::-webkit-scrollbar {
       width: 8px;

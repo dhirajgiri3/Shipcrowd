@@ -13,7 +13,6 @@ import {
     Truck,
     Package,
     AlertCircle,
-    Loader2,
     MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/core/Button';
@@ -570,11 +569,7 @@ export default function CreateOrderPage() {
                                     disabled={createOrderMutation.isPending}
                                     className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20 w-40"
                                 >
-                                    {createOrderMutation.isPending ? (
-                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
-                                    ) : (
-                                        "Create Order"
-                                    )}
+                                    {createOrderMutation.isPending ? 'Creating...' : "Create Order"}
                                 </Button>
                             ) : (
                                 <Button

@@ -4,9 +4,10 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { CheckCircle2, XCircle, Loader2, Clock, Mail } from "lucide-react"
+import { CheckCircle2, XCircle, Clock, Mail } from "lucide-react"
 import { authApi } from "@/src/core/api/authApi"
 import { toast } from "sonner"
+import { Loader } from "@/components/ui"
 
 function VerifyEmailContent() {
     const searchParams = useSearchParams()
@@ -101,7 +102,7 @@ function VerifyEmailContent() {
 
             {status === "loading" && (
                 <div className="space-y-4">
-                    <Loader2 className="w-12 h-12 mx-auto text-primaryBlue animate-spin" />
+                    <Loader variant="spinner" size="lg" />
                     <h1 className="text-xl font-bold text-gray-900">Verifying your email...</h1>
                     <p className="text-gray-600">Please wait while we verify your email address.</p>
                 </div>
@@ -171,7 +172,6 @@ function VerifyEmailContent() {
                         >
                             {isResending ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                     Resending...
                                 </>
                             ) : (
@@ -205,9 +205,9 @@ function VerifyEmailContent() {
                         >
                             {isResending ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                     Resending...
                                 </>
+
                             ) : (
                                 <>
                                     <Mail className="w-4 h-4 mr-2" />
@@ -233,7 +233,7 @@ export default function VerifyEmailPage() {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
             <Suspense fallback={
                 <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
-                    <Loader2 className="w-12 h-12 mx-auto text-primaryBlue animate-spin" />
+                    <Loader variant="spinner" size="lg" />
                     <p className="mt-4 text-gray-600">Loading...</p>
                 </div>
             }>

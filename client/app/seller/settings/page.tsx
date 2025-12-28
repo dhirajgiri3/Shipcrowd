@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/core/Button';
 import { Input } from '@/components/ui/core/Input';
 import { Badge } from '@/components/ui/core/Badge';
-import { User, Bell, Lock, Globe, CreditCard, Building2, Key, Loader2, Shield } from 'lucide-react';
+import { User, Bell, Lock, Globe, CreditCard, Building2, Key, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/feedback/Toast';
 import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks';
+import { Loader } from '@/components/ui';
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -109,7 +110,7 @@ export default function SettingsPage() {
                             <CardContent className="space-y-4">
                                 {profileLoading ? (
                                     <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                        <Loader variant="spinner" size="lg" />
                                     </div>
                                 ) : (
                                     <>
@@ -153,7 +154,7 @@ export default function SettingsPage() {
                             <CardContent className="space-y-4">
                                 {companyLoading ? (
                                     <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                        <Loader variant="spinner" size="lg" />
                                     </div>
                                 ) : (
                                     <>

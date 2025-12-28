@@ -245,7 +245,7 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
     try {
       // Slow, subtle rotation for presentation
       if (boxRef.current) {
-        boxRef.current.rotation.y += delta * 0.05;
+        boxRef.current.rotation.y += delta * 0.0625;
       }
 
       // Animate each flap with spring physics
@@ -839,6 +839,32 @@ function StudioLighting() {
 }
 
 // ============================================================================
+// CAMERA SETUP - Ensures proper camera orientation on mount and reload
+// ============================================================================
+
+function CameraSetup() {
+  const { camera } = useThree();
+  const hasSetup = useRef(false);
+
+  useEffect(() => {
+    // Force camera to look at box center on mount/reload
+    camera.lookAt(0, 1.25, 0);
+    camera.updateProjectionMatrix();
+    hasSetup.current = true;
+  }, [camera]);
+
+  // Ensure it stays locked for the first few frames to prevent race conditions
+  useFrame((state) => {
+    if (state.clock.elapsedTime < 0.1) {
+      // Only for first 100ms
+      camera.lookAt(0, 1.25, 0);
+    }
+  });
+
+  return null;
+}
+
+// ============================================================================
 // POST-PROCESSING EFFECTS
 // ============================================================================
 
@@ -969,8 +995,8 @@ export function Package3D({ status, className = '' }: Package3DProps) {
       <ThreeErrorBoundary onRetry={handleRetry}>
         <Canvas
           camera={{
-            position: [5, 3.5, 5],
-            fov: 45,
+            position: [6, 4, 6],
+            fov: 35,
             near: CAMERA_CONFIG.near,
             far: CAMERA_CONFIG.far,
           }}
@@ -992,12 +1018,17 @@ export function Package3D({ status, className = '' }: Package3DProps) {
             gl.setClearColor('#000000', 0);
             gl.shadowMap.enabled = true;
             gl.shadowMap.type = THREE.PCFSoftShadowMap;
-            // Look at actual box center
-            camera.lookAt(0, BOX_DIMENSIONS.height / 2, 0);
+            // Look at exact center of box for proper framing
+            const boxCenter = new THREE.Vector3(0, 1.25, 0);
+            camera.lookAt(boxCenter);
+            camera.updateProjectionMatrix();
           }}
         >
           {/* Studio Lighting */}
           <StudioLighting />
+
+          {/* Camera Setup - Ensures proper orientation on mount/reload */}
+          <CameraSetup />
 
           {/* Photorealistic Box */}
           <PhotorealisticBox status={status} />
@@ -1021,7 +1052,7 @@ export function Package3D({ status, className = '' }: Package3DProps) {
             maxPolarAngle={Math.PI / 2.2}
             autoRotate={false}
             rotateSpeed={0.5}
-            target={[0, BOX_DIMENSIONS.height / 2, 0]}
+            target={[0, 1.25, 0]}
           />
         </Canvas>
       </ThreeErrorBoundary>

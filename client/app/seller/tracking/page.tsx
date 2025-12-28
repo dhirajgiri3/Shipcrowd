@@ -10,15 +10,18 @@ import {
     Package,
     MapPin,
     Calendar,
-    Truck,
-    CheckCircle2,
     Clock,
-    AlertTriangle,
-    ArrowRight,
-    Loader2,
-    History,
+    CheckCircle2,
+    AlertCircle,
+    Truck,
+    ChevronRight,
+    RefreshCw,
+    Copy,
+    Info,
     Plane,
-    Box
+    AlertTriangle,
+    Box,
+    History
 } from 'lucide-react';
 import { useToast } from '@/components/ui/feedback/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -142,7 +145,7 @@ export default function TrackingPage() {
                             disabled={isTracking}
                             className="h-16 px-10 rounded-[20px] bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20 text-lg font-bold transition-all hover:scale-105"
                         >
-                            {isTracking ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Track'}
+                            {isTracking ? 'Tracking...' : 'Track'}
                         </Button>
                     </div>
                 </div>

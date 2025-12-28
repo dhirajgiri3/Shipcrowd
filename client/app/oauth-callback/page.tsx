@@ -4,6 +4,7 @@ import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
+import { Loader } from '@/components/ui';
 
 function OAuthCallbackContent() {
     const router = useRouter();
@@ -60,9 +61,7 @@ function OAuthCallbackContent() {
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
             <div className="text-center">
                 <div className="relative w-16 h-16 mx-auto mb-6">
-                    {/* Animated loading spinner */}
-                    <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-primaryBlue border-t-transparent rounded-full animate-spin"></div>
+                    <Loader variant="spinner" size="xl" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">
                     {authChecked ? 'Redirecting to dashboard...' : 'Completing your sign-in...'}
@@ -80,7 +79,7 @@ export default function OAuthCallbackPage() {
         <Suspense
             fallback={
                 <div className="flex min-h-screen items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primaryBlue"></div>
+                    <Loader variant="spinner" size="lg" />
                 </div>
             }
         >

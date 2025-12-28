@@ -5,20 +5,27 @@ import { cn } from '@/lib/utils';
  * 
  * Use for loading states to prevent layout shift (CLS).
  * Uses design system tokens for consistent styling.
+ * Improved with shimmer animation from globals.css.
  */
 
 interface SkeletonProps {
     className?: string;
+    /** Use shimmer animation instead of pulse */
+    shimmer?: boolean;
+    /** Delay animation start (useful for stagger effects) */
+    delay?: number;
 }
 
-// Base skeleton with pulse animation
-export function Skeleton({ className }: SkeletonProps) {
+// Base skeleton with shimmer/pulse animation
+export function Skeleton({ className, shimmer = true, delay = 0 }: SkeletonProps) {
     return (
         <div
             className={cn(
-                "animate-pulse rounded-[--radius-lg] bg-[--color-gray-200]",
+                'rounded-[var(--radius-lg)]',
+                shimmer ? 'skeleton' : 'animate-pulse bg-[var(--bg-tertiary)]',
                 className
             )}
+            style={delay > 0 ? { animationDelay: `${delay}ms` } : undefined}
         />
     );
 }

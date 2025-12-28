@@ -17,7 +17,6 @@ import {
     ArrowLeft,
     ArrowRight,
     AlertCircle,
-    Loader2,
     CheckCircle,
     XCircle,
     ShieldCheck,
@@ -30,6 +29,7 @@ import { useAuth } from '@/src/features/auth';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
 import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
 import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { Loader } from '@/components/ui';
 
 // KYC Steps Configuration
 const kycSteps = [
@@ -348,8 +348,8 @@ export default function KycPage() {
     const VerificationBadge = ({ status }: { status: VerificationStatus }) => {
         if (status.loading) {
             return (
-                <div className="flex items-center gap-2 text-xs font-medium text-[var(--primary-blue)] animate-pulse">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <div className="flex items-center gap-2 text-xs font-medium text-[var(--primary-blue)]">
+                    <Loader variant="dots" size="sm" />
                     Checking...
                 </div>
             );
@@ -377,7 +377,7 @@ export default function KycPage() {
     if (isLoading || authLoading) {
         return (
             <div className="min-h-[600px] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                <Loader variant="spinner" size="lg" />
             </div>
         );
     }
@@ -683,9 +683,7 @@ export default function KycPage() {
                                                         disabled={!formData.accountNumber || !formData.ifscCode || bankVerification.loading}
                                                         className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white px-6"
                                                     >
-                                                        {bankVerification.loading ? (
-                                                            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...</>
-                                                        ) : 'Verify Account'}
+                                                        {bankVerification.loading ? 'Verifying...' : 'Verify Account'}
                                                     </Button>
                                                 )}
 

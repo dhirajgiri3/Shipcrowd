@@ -7,18 +7,20 @@ import { Input } from '@/components/ui/core/Input';
 import { Badge } from '@/components/ui/core/Badge';
 import {
     FileText,
-    Search,
     Download,
     Printer,
-    Package,
-    MapPin,
-    Phone,
-    Truck,
-    QrCode,
+    Search,
+    Filter,
+    RefreshCw,
     Copy,
-    CheckCircle,
-    ArrowRight,
-    Loader2
+    ExternalLink,
+    CheckCircle2,
+    AlertCircle,
+    Clock,
+    Package,
+    Truck,
+    Phone,
+    QrCode
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
 import { useToast } from '@/components/ui/feedback/Toast';
@@ -156,7 +158,7 @@ export default function ShippingLabelPage() {
                             disabled={isSearching}
                             className="h-12 px-8 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20"
                         >
-                            {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Search'}
+                            {isSearching ? 'Searching...' : 'Search'}
                         </Button>
                     </div>
                 </div>

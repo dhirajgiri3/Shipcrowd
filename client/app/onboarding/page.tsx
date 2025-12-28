@@ -4,11 +4,13 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check, Loader2, Mail, CheckCircle2, AlertCircle, Save, PartyPopper } from "lucide-react"
+import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check, Mail, CheckCircle2, AlertCircle, Save, PartyPopper } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/src/features/auth"
+import { Input } from "@/components/ui/forms/Input";
+import { Textarea } from "@/components/ui/forms/Textarea";
+import { Loader, LoadingButton } from "@/components/ui";
 import { companyApi, CreateCompanyData } from "@/src/core/api"
-import { LoadingButton } from "@/components/ui/utility/LoadingButton"
 import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
 import { INDIAN_STATES, isValidGSTIN, isValidPAN, isValidPincode } from "@/src/shared"
 
@@ -216,7 +218,7 @@ export default function OnboardingPage() {
     if (authLoading || !isAuthenticated || user?.companyId) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-primaryBlue animate-spin" />
+                <Loader variant="spinner" size="lg" />
             </div>
         )
     }
@@ -243,7 +245,7 @@ export default function OnboardingPage() {
                                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                             >
                                 {isSavingDraft ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    <Loader variant="spinner" size="sm" />
                                 ) : (
                                     <Save className="w-3 h-3" />
                                 )}
