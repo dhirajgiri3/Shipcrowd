@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'leaflet/dist/leaflet.css';
 
 /* Strict: Dont use gradient in our UI
    Dont use Primary Blue color aggresiveky in our ui design, use it sparingly and thoughfully

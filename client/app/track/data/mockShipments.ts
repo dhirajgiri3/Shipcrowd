@@ -1,6 +1,6 @@
 /**
  * Comprehensive Mock Data for Track Page Testing
- * Covers all possible states and edge cases
+ * Rich India-specific data with detailed timelines
  */
 
 export interface MockShipmentData {
@@ -13,16 +13,22 @@ export interface MockShipmentData {
   createdAt: string;
   weight?: string;
   dimensions?: string;
+  packageType?: string;
+  packageValue?: string;
   recipient: {
     name?: string;
     city: string;
     state: string;
     postalCode?: string;
+    address?: string;
+    contact?: string;
   };
   sender?: {
     name?: string;
     city: string;
     state: string;
+    address?: string;
+    contact?: string;
   };
   timeline: Array<{
     status: string;
@@ -31,6 +37,7 @@ export interface MockShipmentData {
     description?: string;
     agentName?: string;
     agentContact?: string;
+    facilityType?: string;
   }>;
 }
 
@@ -41,429 +48,390 @@ const daysFromNow = (days: number) =>
   new Date(Date.now() + days * 86400000).toISOString();
 
 export const MOCK_SHIPMENTS: Record<string, MockShipmentData> = {
-  // 1. OUT FOR DELIVERY - Most exciting state
+  // 1. OUT FOR DELIVERY - Dev Panchal (Delhi to Haryana)
   DEMO: {
-    trackingNumber: 'SHP-2025-0001',
+    trackingNumber: 'SHP-DLH-2025-0001',
     carrier: 'BlueDart Express',
-    serviceType: 'Express Air',
+    serviceType: 'Express Air - Same Day',
     currentStatus: 'OUT_FOR_DELIVERY',
     estimatedDelivery: new Date().toISOString(),
-    createdAt: daysAgo(3),
-    weight: '2.5 kg',
-    dimensions: '30 × 25 × 15 cm',
+    createdAt: daysAgo(2),
+    weight: '3.5 kg',
+    dimensions: '40 × 30 × 25 cm',
+    packageType: 'Electronics',
+    packageValue: '₹45,999',
     recipient: {
-      name: 'Rajesh Kumar',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      postalCode: '400001',
+      name: 'Dev Panchal',
+      city: 'Gurgaon',
+      state: 'Haryana',
+      postalCode: '122001',
+      address: 'Sector 29, DLF Phase 3, Gurgaon, Haryana',
+      contact: '+91 98765 43210',
     },
     sender: {
-      name: 'TechStore India',
-      city: 'Bengaluru',
-      state: 'Karnataka',
+      name: 'TechZone India Pvt Ltd',
+      city: 'New Delhi',
+      state: 'Delhi',
+      address: 'Nehru Place, South Delhi, New Delhi - 110019',
+      contact: '+91 11 2654 8899',
     },
     timeline: [
       {
         status: 'OUT_FOR_DELIVERY',
         timestamp: daysAgo(0, 2),
-        location: 'Andheri West, Mumbai',
-        description: 'Package is out for delivery. Estimated arrival by 6:00 PM today.',
-        agentName: 'Suresh Patil',
-        agentContact: '+91 98765 43210',
+        location: 'Udyog Vihar, Sector 18, Gurgaon',
+        description: 'Package out for delivery. Your package will reach you by 5:00 PM today. Delivery partner: Rakesh Kumar.',
+        agentName: 'Rakesh Kumar',
+        agentContact: '+91 98123 45678',
+        facilityType: 'Delivery Hub',
       },
       {
         status: 'ARRIVED_AT_DESTINATION',
         timestamp: daysAgo(0, 8),
-        location: 'Mumbai Central Hub',
-        description: 'Shipment arrived at destination facility and sorted for delivery.',
+        location: 'BlueDart Gurgaon Regional Hub, Sector 37',
+        description: 'Shipment arrived at destination facility. Package sorted and assigned to delivery partner.',
+        facilityType: 'Regional Hub',
       },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(1, 14),
-        location: 'Pune Distribution Center',
-        description: 'Package in transit to destination city.',
-      },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(2, 6),
-        location: 'Bengaluru Sorting Facility',
-        description: 'Processed through sorting facility.',
-      },
-      {
-        status: 'PICKED_UP',
-        timestamp: daysAgo(2, 18),
-        location: 'Koramangala, Bengaluru',
-        description: 'Shipment picked up from seller warehouse.',
-        agentName: 'Venkatesh M.',
-      },
-      {
-        status: 'ORDER_CREATED',
-        timestamp: daysAgo(3),
-        location: 'Bengaluru',
-        description: 'Shipment order created and ready for pickup.',
-      },
-    ],
-  },
-
-  // 2. DELIVERED - Success state
-  DELIVERED: {
-    trackingNumber: 'SHP-2025-0002',
-    carrier: 'Delhivery',
-    serviceType: 'Standard Delivery',
-    currentStatus: 'DELIVERED',
-    estimatedDelivery: daysAgo(1),
-    actualDelivery: daysAgo(0, 10),
-    createdAt: daysAgo(5),
-    weight: '1.2 kg',
-    dimensions: '25 × 20 × 10 cm',
-    recipient: {
-      name: 'Priya Sharma',
-      city: 'Delhi',
-      state: 'Delhi',
-      postalCode: '110001',
-    },
-    sender: {
-      name: 'Fashion Hub',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-    },
-    timeline: [
-      {
-        status: 'DELIVERED',
-        timestamp: daysAgo(0, 10),
-        location: 'Connaught Place, Delhi',
-        description: 'Package successfully delivered and signed by recipient.',
-        agentName: 'Amit Singh',
-        agentContact: '+91 98123 45678',
-      },
-      {
-        status: 'OUT_FOR_DELIVERY',
-        timestamp: daysAgo(0, 14),
-        location: 'Karol Bagh Hub, Delhi',
-        description: 'Out for delivery.',
-      },
-      {
-        status: 'ARRIVED_AT_DESTINATION',
-        timestamp: daysAgo(1, 8),
-        location: 'Delhi Regional Hub',
-        description: 'Arrived at destination facility.',
-      },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(2, 12),
-        location: 'Jaipur Transit Hub',
-        description: 'In transit via road transport.',
-      },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(3, 16),
-        location: 'Mumbai Processing Center',
-        description: 'Processed and dispatched.',
-      },
-      {
-        status: 'PICKED_UP',
-        timestamp: daysAgo(4, 10),
-        location: 'Andheri, Mumbai',
-        description: 'Picked up from merchant location.',
-      },
-      {
-        status: 'ORDER_CREATED',
-        timestamp: daysAgo(5),
-        location: 'Mumbai',
-        description: 'Order created and confirmed.',
-      },
-    ],
-  },
-
-  // 3. IN TRANSIT - Mid-journey
-  TRANSIT: {
-    trackingNumber: 'SHP-2025-0003',
-    carrier: 'DTDC Express',
-    serviceType: 'Economy Shipping',
-    currentStatus: 'IN_TRANSIT',
-    estimatedDelivery: daysFromNow(2),
-    createdAt: daysAgo(4),
-    weight: '5.8 kg',
-    dimensions: '45 × 35 × 25 cm',
-    recipient: {
-      name: 'Ananya Reddy',
-      city: 'Hyderabad',
-      state: 'Telangana',
-      postalCode: '500001',
-    },
-    sender: {
-      name: 'Electronics World',
-      city: 'Chennai',
-      state: 'Tamil Nadu',
-    },
-    timeline: [
       {
         status: 'IN_TRANSIT',
         timestamp: daysAgo(1, 4),
-        location: 'Vijayawada Junction',
-        description: 'Package in transit to destination. On schedule.',
+        location: 'NH-48 (Delhi-Gurgaon Expressway)',
+        description: 'Package in transit via express highway route. Expected arrival at Gurgaon hub shortly.',
+        facilityType: 'Transit Route',
       },
       {
         status: 'IN_TRANSIT',
-        timestamp: daysAgo(2, 8),
-        location: 'Nellore Distribution Center',
-        description: 'Processed through distribution center.',
-      },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(3, 6),
-        location: 'Chennai Sorting Hub',
-        description: 'Sorted and dispatched to next facility.',
+        timestamp: daysAgo(1, 12),
+        location: 'IGI Airport Cargo Terminal 3, New Delhi',
+        description: 'Package cleared customs and loaded for ground transport to destination.',
+        facilityType: 'Airport Cargo',
       },
       {
         status: 'PICKED_UP',
-        timestamp: daysAgo(3, 20),
-        location: 'Velachery, Chennai',
-        description: 'Package collected from origin warehouse.',
-        agentName: 'Karthik R.',
-      },
-      {
-        status: 'ORDER_CREATED',
-        timestamp: daysAgo(4),
-        location: 'Chennai',
-        description: 'Shipment registered in system.',
-      },
-    ],
-  },
-
-  // 4. PICKED UP - Early stage
-  PICKED: {
-    trackingNumber: 'SHP-2025-0004',
-    carrier: 'Ecom Express',
-    serviceType: 'Surface Delivery',
-    currentStatus: 'PICKED_UP',
-    estimatedDelivery: daysFromNow(5),
-    createdAt: daysAgo(1),
-    weight: '0.8 kg',
-    dimensions: '20 × 15 × 8 cm',
-    recipient: {
-      name: 'Vikram Malhotra',
-      city: 'Chandigarh',
-      state: 'Chandigarh',
-      postalCode: '160001',
-    },
-    sender: {
-      name: 'Book Paradise',
-      city: 'Jaipur',
-      state: 'Rajasthan',
-    },
-    timeline: [
-      {
-        status: 'PICKED_UP',
-        timestamp: daysAgo(0, 6),
-        location: 'Malviya Nagar, Jaipur',
-        description: 'Shipment successfully picked up and on its way to processing facility.',
-        agentName: 'Ramesh Kumar',
-        agentContact: '+91 97654 32109',
-      },
-      {
-        status: 'ORDER_CREATED',
-        timestamp: daysAgo(1),
-        location: 'Jaipur',
-        description: 'New shipment order created by merchant.',
-      },
-    ],
-  },
-
-  // 5. ORDER CREATED - Initial stage
-  CREATED: {
-    trackingNumber: 'SHP-2025-0005',
-    carrier: 'XpressBees',
-    serviceType: 'Standard Shipping',
-    currentStatus: 'ORDER_CREATED',
-    estimatedDelivery: daysFromNow(7),
-    createdAt: daysAgo(0, 2),
-    weight: '3.2 kg',
-    dimensions: '35 × 30 × 20 cm',
-    recipient: {
-      name: 'Sneha Gupta',
-      city: 'Kolkata',
-      state: 'West Bengal',
-      postalCode: '700001',
-    },
-    sender: {
-      name: 'Home Decor Studio',
-      city: 'Ahmedabad',
-      state: 'Gujarat',
-    },
-    timeline: [
-      {
-        status: 'ORDER_CREATED',
-        timestamp: daysAgo(0, 2),
-        location: 'Ahmedabad',
-        description: 'Shipment order created. Awaiting pickup from seller.',
-      },
-    ],
-  },
-
-  // 6. DELAYED - Exception state
-  DELAYED: {
-    trackingNumber: 'SHP-2025-0006',
-    carrier: 'India Post',
-    serviceType: 'Speed Post',
-    currentStatus: 'DELAYED',
-    estimatedDelivery: daysFromNow(1),
-    createdAt: daysAgo(8),
-    weight: '1.5 kg',
-    dimensions: '28 × 22 × 12 cm',
-    recipient: {
-      name: 'Arjun Menon',
-      city: 'Kochi',
-      state: 'Kerala',
-      postalCode: '682001',
-    },
-    sender: {
-      name: 'Gadget Store',
-      city: 'Pune',
-      state: 'Maharashtra',
-    },
-    timeline: [
-      {
-        status: 'DELAYED',
-        timestamp: daysAgo(1, 6),
-        location: 'Ernakulam Sorting Office',
-        description: 'Shipment delayed due to weather conditions. Will resume transit shortly.',
-      },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(3, 10),
-        location: 'Kozhikode Transit Center',
-        description: 'Package in transit.',
-      },
-      {
-        status: 'IN_TRANSIT',
-        timestamp: daysAgo(5, 14),
-        location: 'Bengaluru Mail Hub',
-        description: 'Processed through mail hub.',
-      },
-      {
-        status: 'PICKED_UP',
-        timestamp: daysAgo(7, 8),
-        location: 'Wakad, Pune',
-        description: 'Picked up from origin.',
-      },
-      {
-        status: 'ORDER_CREATED',
-        timestamp: daysAgo(8),
-        location: 'Pune',
-        description: 'Order registered.',
-      },
-    ],
-  },
-
-  // 7. EXCEPTION - Error state
-  EXCEPTION: {
-    trackingNumber: 'SHP-2025-0007',
-    carrier: 'FedEx India',
-    serviceType: 'Priority Overnight',
-    currentStatus: 'EXCEPTION',
-    estimatedDelivery: daysFromNow(1),
-    createdAt: daysAgo(2),
-    weight: '0.5 kg',
-    dimensions: '15 × 12 × 5 cm',
-    recipient: {
-      name: 'Kavya Nair',
-      city: 'Thiruvananthapuram',
-      state: 'Kerala',
-      postalCode: '695001',
-    },
-    sender: {
-      name: 'Medical Supplies Co.',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-    },
-    timeline: [
-      {
-        status: 'EXCEPTION',
-        timestamp: daysAgo(0, 8),
-        location: 'Thiruvananthapuram Hub',
-        description: 'Delivery attempted but recipient unavailable. Will reattempt delivery.',
-        agentName: 'Sunil Kumar',
-        agentContact: '+91 94567 89012',
-      },
-      {
-        status: 'OUT_FOR_DELIVERY',
-        timestamp: daysAgo(0, 12),
-        location: 'Thiruvananthapuram',
-        description: 'Out for delivery.',
-      },
-      {
-        status: 'ARRIVED_AT_DESTINATION',
-        timestamp: daysAgo(1, 6),
-        location: 'Thiruvananthapuram Regional Hub',
-        description: 'Arrived at destination.',
-      },
-      {
-        status: 'IN_TRANSIT',
         timestamp: daysAgo(1, 18),
-        location: 'Kochi Airport',
-        description: 'Air transit.',
-      },
-      {
-        status: 'PICKED_UP',
-        timestamp: daysAgo(2, 4),
-        location: 'Kurla, Mumbai',
-        description: 'Express pickup completed.',
+        location: 'Nehru Place Electronic Market, New Delhi',
+        description: 'Shipment picked up from merchant warehouse by our field executive.',
+        agentName: 'Vikas Sharma',
+        agentContact: '+91 11 2654 8899',
+        facilityType: 'Pickup Point',
       },
       {
         status: 'ORDER_CREATED',
         timestamp: daysAgo(2),
-        location: 'Mumbai',
-        description: 'Priority shipment created.',
+        location: 'TechZone India - Nehru Place, New Delhi',
+        description: 'Express shipment order created. Priority processing initiated for same-day delivery.',
+        facilityType: 'Origin',
       },
     ],
   },
 
-  // 8. ROCKET - Easter Egg (Space theme)
-  ROCKET: {
-    trackingNumber: 'SPACE-X-042',
-    carrier: 'Interstellar Logistics',
-    serviceType: 'Orbital Express',
-    currentStatus: 'IN_TRANSIT',
-    estimatedDelivery: daysFromNow(0),
-    createdAt: daysAgo(0, 4),
-    weight: '50 kg',
-    dimensions: '100 × 80 × 60 cm',
+  // 2. DELIVERED - Premium delivery to Mumbai
+  DELIVERED: {
+    trackingNumber: 'SHP-MUM-2025-0002',
+    carrier: 'Delhivery Premium',
+    serviceType: 'Prime Express - Next Day',
+    currentStatus: 'DELIVERED',
+    estimatedDelivery: daysAgo(1),
+    actualDelivery: daysAgo(0, 9),
+    createdAt: daysAgo(4),
+    weight: '2.2 kg',
+    dimensions: '35 × 28 × 18 cm',
+    packageType: 'Fashion & Lifestyle',
+    packageValue: '₹12,499',
     recipient: {
-      name: 'ISS Commander',
-      city: 'Low Earth Orbit',
-      state: 'Space',
-      postalCode: 'LEO-001',
+      name: 'Priya Sharma',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      postalCode: '400050',
+      address: 'Apartment 502, Oberoi Sky Heights, Lokhandwala, Andheri West',
+      contact: '+91 98765 12345',
     },
     sender: {
-      name: 'Earth Supply Co.',
-      city: 'Cape Canaveral',
-      state: 'Florida',
+      name: 'Myntra Fashion Studio',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      address: 'Bellandur, Outer Ring Road, Bengaluru - 560103',
+      contact: '1800-208-9898',
+    },
+    timeline: [
+      {
+        status: 'DELIVERED',
+        timestamp: daysAgo(0, 9),
+        location: 'Lokhandwala Complex, Andheri West, Mumbai',
+        description: 'Package delivered successfully and signed by recipient. Thank you for choosing Delhivery!',
+        agentName: 'Santosh Patil',
+        agentContact: '+91 98234 56789',
+        facilityType: 'Delivery Point',
+      },
+      {
+        status: 'OUT_FOR_DELIVERY',
+        timestamp: daysAgo(0, 14),
+        location: 'Delhivery Andheri Hub, MIDC Area',
+        description: 'Package loaded in delivery vehicle. 2 stops before your address.',
+        agentName: 'Santosh Patil',
+        facilityType: 'Delivery Hub',
+      },
+      {
+        status: 'ARRIVED_AT_DESTINATION',
+        timestamp: daysAgo(1, 6),
+        location: 'Mumbai Central Distribution Center, BKC',
+        description: 'Arrived at Mumbai facility. Package processed through automated sorting system.',
+        facilityType: 'Distribution Center',
+      },
+      {
+        status: 'IN_TRANSIT',
+        timestamp: daysAgo(2, 8),
+        location: 'Pune Logistics Park, Chakan',
+        description: 'Package in transit. Temperature controlled transport for premium items.',
+        facilityType: 'Logistics Park',
+      },
+      {
+        status: 'IN_TRANSIT',
+        timestamp: daysAgo(2, 20),
+        location: 'Bengaluru Airport Cargo Complex',
+        description: 'Package dispatched via air freight. Flight BX-4521 departed at 10:45 PM.',
+        facilityType: 'Air Cargo',
+      },
+      {
+        status: 'PICKED_UP',
+        timestamp: daysAgo(3, 10),
+        location: 'Myntra Fulfillment Center, Bellandur, Bengaluru',
+        description: 'Package collected from seller warehouse. Quality check completed.',
+        agentName: 'Kiran Kumar',
+        facilityType: 'Warehouse',
+      },
+      {
+        status: 'ORDER_CREATED',
+        timestamp: daysAgo(4),
+        location: 'Bengaluru',
+        description: 'Premium order created. Priority processing and express handling applied.',
+        facilityType: 'Origin',
+      },
+    ],
+  },
+
+  // 3. IN TRANSIT - Chennai to Bangalore tech delivery
+  TRANSIT: {
+    trackingNumber: 'SHP-CHN-2025-0003',
+    carrier: 'DTDC Express Logistics',
+    serviceType: 'Surface Express - 3-4 Days',
+    currentStatus: 'IN_TRANSIT',
+    estimatedDelivery: daysFromNow(2),
+    createdAt: daysAgo(3),
+    weight: '8.5 kg',
+    dimensions: '55 × 40 × 35 cm',
+    packageType: 'Computer Hardware',
+    packageValue: '₹78,999',
+    recipient: {
+      name: 'Ananya Reddy',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      postalCode: '560034',
+      address: 'HSR Layout, Sector 2, Bengaluru',
+      contact: '+91 99876 54321',
+    },
+    sender: {
+      name: 'Elcot IT Components',
+      city: 'Chennai',
+      state: 'Tamil Nadu',
+      address: 'Tidel Park, IT Corridor, Taramani, Chennai - 600113',
+      contact: '+91 44 2254 0000',
+    },
+    timeline: [
+      {
+        status: 'IN_TRANSIT',
+        timestamp: daysAgo(0, 6),
+        location: 'Hosur Toll Plaza, Tamil Nadu-Karnataka Border',
+        description: 'Package crossed state border. Continuing journey to Bengaluru on NH-44.',
+        facilityType: 'Interstate Transit',
+      },
+      {
+        status: 'IN_TRANSIT',
+        timestamp: daysAgo(1, 4),
+        location: 'DTDC Vellore Hub, NH-48',
+        description: 'Package processed through hub. Scanning and documentation completed. On schedule.',
+        facilityType: 'Transit Hub',
+      },
+      {
+        status: 'IN_TRANSIT',
+        timestamp: daysAgo(2, 8),
+        location: 'Chennai Central Sorting Facility, Ambattur',
+        description: 'Package sorted and loaded for interstate transport. Vehicle departed at 11:30 PM.',
+        facilityType: 'Sorting Facility',
+      },
+      {
+        status: 'PICKED_UP',
+        timestamp: daysAgo(2, 18),
+        location: 'Tidel Park, Taramani, Chennai',
+        description: 'Shipment collected from seller. Fragile handling instructions applied.',
+        agentName: 'Murugan K.',
+        agentContact: '+91 98410 12345',
+        facilityType: 'Pickup Point',
+      },
+      {
+        status: 'ORDER_CREATED',
+        timestamp: daysAgo(3),
+        location: 'Chennai',
+        description: 'B2B shipment order created for computer hardware. Insurance coverage: ₹80,000.',
+        facilityType: 'Origin',
+      },
+    ],
+  },
+
+  // 4. PICKED UP - Jaipur to Chandigarh
+  PICKED: {
+    trackingNumber: 'SHP-JAI-2025-0004',
+    carrier: 'Ecom Express - Regional',
+    serviceType: 'Standard Ground Shipping',
+    currentStatus: 'PICKED_UP',
+    estimatedDelivery: daysFromNow(4),
+    createdAt: daysAgo(0, 12),
+    weight: '1.5 kg',
+    dimensions: '28 × 22 × 8 cm',
+    packageType: 'Books & Stationery',
+    packageValue: '₹2,499',
+    recipient: {
+      name: 'Vikram Malhotra',
+      city: 'Chandigarh',
+      state: 'Chandigarh',
+      postalCode: '160017',
+      address: 'Sector 17-B, Near Piccadilly Square, Chandigarh',
+      contact: '+91 98765 00001',
+    },
+    sender: {
+      name: 'Jaipur Book House',
+      city: 'Jaipur',
+      state: 'Rajasthan',
+      address: 'MI Road, Near Panch Batti, Jaipur - 302001',
+      contact: '+91 141 237 0000',
+    },
+    timeline: [
+      {
+        status: 'PICKED_UP',
+        timestamp: daysAgo(0, 4),
+        location: 'MI Road Commercial Area, Jaipur',
+        description: 'Package successfully picked up from bookstore. On its way to our sorting facility.',
+        agentName: 'Ramesh Choudhary',
+        agentContact: '+91 98290 12345',
+        facilityType: 'Pickup Point',
+      },
+      {
+        status: 'ORDER_CREATED',
+        timestamp: daysAgo(0, 12),
+        location: 'Jaipur',
+        description: 'New shipment order registered. Standard delivery timeline: 4-5 business days.',
+        facilityType: 'Origin',
+      },
+    ],
+  },
+
+  // 5. ORDER CREATED - Fresh order
+  CREATED: {
+    trackingNumber: 'SHP-AHM-2025-0005',
+    carrier: 'XpressBees Logistics',
+    serviceType: 'Economy Shipping - 6-8 Days',
+    currentStatus: 'ORDER_CREATED',
+    estimatedDelivery: daysFromNow(7),
+    createdAt: daysAgo(0, 3),
+    weight: '4.8 kg',
+    dimensions: '45 × 35 × 30 cm',
+    packageType: 'Home Decor',
+    packageValue: '₹8,999',
+    recipient: {
+      name: 'Sneha Gupta',
+      city: 'Kolkata',
+      state: 'West Bengal',
+      postalCode: '700019',
+      address: 'Park Street Area, Near South City Mall, Kolkata',
+      contact: '+91 98765 99999',
+    },
+    sender: {
+      name: 'Gujarat Handicrafts Emporium',
+      city: 'Ahmedabad',
+      state: 'Gujarat',
+      address: 'CG Road, Navrangpura, Ahmedabad - 380009',
+      contact: '+91 79 2640 0000',
+    },
+    timeline: [
+      {
+        status: 'ORDER_CREATED',
+        timestamp: daysAgo(0, 3),
+        location: 'Ahmedabad',
+        description: 'Shipment created and registered in our system. Pickup scheduled for tomorrow morning.',
+        facilityType: 'Origin',
+      },
+    ],
+  },
+
+  // 6. ROCKET - Easter Egg (ISRO Space theme)
+  ROCKET: {
+    trackingNumber: 'ISRO-PSLV-C58',
+    carrier: 'Indian Space Research Organisation',
+    serviceType: 'Orbital Deployment',
+    currentStatus: 'IN_TRANSIT',
+    estimatedDelivery: daysFromNow(0),
+    createdAt: daysAgo(0, 6),
+    weight: '1,750 kg',
+    dimensions: '4.2m × 2.8m diameter',
+    packageType: 'Satellite Payload',
+    packageValue: '₹450 Crores',
+    recipient: {
+      name: 'Mission Control',
+      city: 'Low Earth Orbit',
+      state: 'Space',
+      postalCode: 'LEO-650',
+      address: '650 km above Earth surface',
+      contact: 'Ground Station Bengaluru',
+    },
+    sender: {
+      name: 'ISRO Satellite Centre',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      address: 'Airport Road, Vimanapura Post, Bengaluru - 560017',
+      contact: '+91 80 2508 4000',
     },
     timeline: [
       {
         status: 'ORBITAL_INSERTION',
         timestamp: daysAgo(0, 1),
-        location: '400 km above Earth',
-        description: '🚀 Package achieved orbital velocity! Approaching ISS docking port.',
+        location: '650 km altitude, Sun-synchronous orbit',
+        description: '🛰️ Satellite deployed successfully! Solar panels deployed. All systems nominal. Establishing communication link.',
+        facilityType: 'Low Earth Orbit',
       },
       {
         status: 'STAGE_SEPARATION',
         timestamp: daysAgo(0, 2),
-        location: '200 km altitude',
-        description: '🔥 Stage 2 ignition successful. Entering orbital trajectory.',
+        location: '420 km altitude, ascending',
+        description: '🚀 Fourth stage burn complete. Coasting phase initiated. Preparing for payload deployment.',
+        facilityType: 'Upper Atmosphere',
       },
       {
-        status: 'LAUNCHED',
+        status: 'THIRD_STAGE',
         timestamp: daysAgo(0, 3),
-        location: 'Launch Complex 39A',
-        description: '🔥 Liftoff confirmed! All systems nominal. T+ 00:00:05',
+        location: '180 km altitude',
+        description: '🔥 Third stage ignition successful. Vehicle on nominal trajectory. All parameters green.',
+        facilityType: 'Mesosphere',
+      },
+      {
+        status: 'LIFTOFF',
+        timestamp: daysAgo(0, 4),
+        location: 'First Launch Pad, Satish Dhawan Space Centre',
+        description: '🚀 LIFTOFF! PSLV-C58 has cleared the launch tower. All six strap-ons functioning perfectly!',
+        facilityType: 'Sriharikota, Andhra Pradesh',
+      },
+      {
+        status: 'FINAL_COUNTDOWN',
+        timestamp: daysAgo(0, 5),
+        location: 'Satish Dhawan Space Centre, Sriharikota',
+        description: '⚡ T-10 minutes and counting. All systems GO. Weather conditions: Excellent. Wind speed: 8 km/h.',
+        facilityType: 'Launch Complex',
       },
       {
         status: 'PRE_LAUNCH',
-        timestamp: daysAgo(0, 4),
-        location: 'Cape Canaveral Space Force Station',
-        description: '⚡ Final countdown initiated. Weather conditions: GO.',
+        timestamp: daysAgo(0, 6),
+        location: 'Vehicle Assembly Building, Sriharikota',
+        description: '🇮🇳 Final integration complete. Payload mated with launch vehicle. Mission: Success probable.',
+        facilityType: 'Preparation Area',
       },
     ],
   },

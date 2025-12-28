@@ -12,6 +12,14 @@ import KYC, { IKYC } from './KYC';
 import Permission, { IPermission } from './Permission';
 import TeamInvitation, { ITeamInvitation } from './TeamInvitation';
 
+// Week 5: Warehouse Workflow Models
+import WarehouseZone, { IWarehouseZone } from './WarehouseZone';
+import WarehouseLocation, { IWarehouseLocation } from './WarehouseLocation';
+import PickList, { IPickList, IPickListItem } from './PickList';
+import Inventory, { IInventory } from './Inventory';
+import PackingStation, { IPackingStation } from './PackingStation';
+import StockMovement, { IStockMovement } from './StockMovement';
+
 // Export models
 export {
   User,
@@ -27,6 +35,13 @@ export {
   KYC,
   Permission,
   TeamInvitation,
+  // Week 5: Warehouse Workflow Models
+  WarehouseZone,
+  WarehouseLocation,
+  PickList,
+  Inventory,
+  PackingStation,
+  StockMovement,
 };
 
 // Export interfaces
@@ -44,4 +59,12 @@ export type {
   IKYC,
   IPermission,
   ITeamInvitation,
+  // Week 5: Warehouse Workflow Interfaces
+  IWarehouseZone,
+  IWarehouseLocation,
+  IPickList,
+  IPickListItem,
+  IInventory,
+  IPackingStation,
+  IStockMovement,
 };

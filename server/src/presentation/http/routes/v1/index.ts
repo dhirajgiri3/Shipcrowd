@@ -21,6 +21,8 @@ import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
 // Webhook routes
 import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
+// Week 5: Warehouse Workflow Routes
+import warehouseWorkflowRoutes from './warehouse';
 
 const router = express.Router();
 
@@ -57,6 +59,8 @@ router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
 // Webhook routes
 router.use('/webhooks/velocity', velocityWebhookRoutes);
+// Week 5: Warehouse Workflow Routes (picking, packing, inventory)
+router.use('/warehouse', warehouseWorkflowRoutes);
 
 export default router;
 

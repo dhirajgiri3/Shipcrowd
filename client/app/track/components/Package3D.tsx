@@ -124,20 +124,20 @@ class ThreeErrorBoundary extends Component<
 
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400 p-6 rounded-[32px] border border-slate-100 gap-4">
-          <AlertCircle className="w-8 h-8 text-red-400 opacity-50" />
-          <p className="text-sm font-medium">3D Visualization Unavailable</p>
-          <p className="text-xs text-slate-400 text-center max-w-xs">
-            {this.state.errorCount >= 3
-              ? 'Unable to render 3D graphics after multiple attempts.'
-              : 'Unable to render 3D graphics.'}
-          </p>
-          <button
-            onClick={this.handleManualRetry}
-            className="mt-2 px-4 py-2 bg-[var(--primary-blue)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity"
-          >
-            Try Again
-          </button>
+        <div className="w-full h-full flex items-center justify-center bg-[var(--bg-elevated)] relative overflow-hidden group">
+          <img
+            src="/images/3D/3d-box.png"
+            alt="Package View"
+            className="w-3/4 h-3/4 object-contain opacity-90 transition-transform duration-700 group-hover:scale-105"
+          />
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+            <button
+              onClick={this.handleManualRetry}
+              className="px-4 py-2 bg-[var(--bg-elevated)]/80 backdrop-blur-md border border-[var(--border-default)] rounded-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--primary-blue)] transition-colors shadow-sm"
+            >
+              Tap to load 3D view
+            </button>
+          </div>
         </div>
       );
     }
@@ -971,10 +971,12 @@ export function Package3D({ status, className = '' }: Package3DProps) {
 
   if (!webglAvailable) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400 p-6 rounded-[32px] border border-slate-100">
-        <AlertCircle className="w-8 h-8 mb-2 text-amber-400 opacity-50" />
-        <p className="text-sm font-medium">WebGL not supported</p>
-        <p className="text-xs text-slate-400 mt-1">3D visualization requires WebGL</p>
+      <div className="w-full h-full flex items-center justify-center bg-[var(--bg-elevated)] overflow-hidden">
+        <img
+          src="/images/3D/3d-box.png"
+          alt="Package View"
+          className="w-3/4 h-3/4 object-contain"
+        />
       </div>
     );
   }
@@ -982,7 +984,10 @@ export function Package3D({ status, className = '' }: Package3DProps) {
   return (
     <motion.div
       key={retryKey}
-      className={`w-full h-full ${className}`}
+      className={`w-full h-full relative ${className}`}
+      style={{
+        background: 'radial-gradient(circle at center, rgba(241, 245, 249, 0.6) 0%, rgba(255, 255, 255, 0) 70%)'
+      }}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{

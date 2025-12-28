@@ -8,7 +8,8 @@ import {
     Building2,
     MapPin,
     CheckCircle,
-    ChevronDown
+    ChevronDown,
+    Clock
 } from 'lucide-react';
 
 interface TimelineEvent {
@@ -95,153 +96,123 @@ export function HorizontalTimeline({
 
     return (
         <motion.div
-            className={`bg-[var(--bg-elevated)] rounded-2xl p-6 md:p-8 border border-[var(--border-default)] ${className}`}
+            className={`bg-[var(--bg-elevated)] rounded-[24px] p-6 md:p-8 border border-[var(--border-default)] ${className}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="text-lg font-bold text-slate-800">
                     Shipment Journey
                 </h3>
-                <span className="text-xs text-[var(--text-tertiary)]">
-                    {timelineSteps.filter(s => s.status === 'completed').length + (timelineSteps.some(s => s.status === 'current') ? 1 : 0)} of {timelineSteps.length} steps
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-slate-100 text-slate-500">
+                    Step {timelineSteps.findIndex(s => s.status === 'current') + 1} of {timelineSteps.length}
                 </span>
             </div>
 
-            {/* Horizontal Timeline */}
-            <div className="relative">
-                {/* Progress Line Background */}
-                <div className="absolute top-5 left-0 right-0 h-0.5 bg-[var(--bg-tertiary)]" />
+            {/* --- DESKTOP VIEW (Horizontal) --- */}
+            <div className="hidden md:block relative">
+                {/* Background Line */}
+                <div className="absolute top-5 left-0 right-0 h-1 bg-slate-100 rounded-full" />
 
-                {/* Progress Line Active */}
+                {/* Active Progress Line */}
                 <motion.div
-                    className="absolute top-5 left-0 h-0.5 bg-[var(--primary-blue)]"
-                    initial={{ width: 0 }}
+                    className="absolute top-5 left-0 h-1 bg-blue-600 rounded-full origin-left"
+                    initial={{ scaleX: 0 }}
                     animate={{
-                        width: `${((timelineSteps.findIndex(s => s.status === 'current') + 1) / timelineSteps.length) * 100}%`
+                        scaleX: (timelineSteps.findIndex(s => s.status === 'current') + 0.5) / (timelineSteps.length - 1)
                     }}
-                    transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    transition={{ duration: 1, delay: 0.5, ease: "circOut" }}
                 />
 
-                {/* Steps */}
                 <div className="relative flex justify-between">
                     {timelineSteps.map((step, index) => (
-                        <motion.div
-                            key={step.id}
-                            className="flex flex-col items-center"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 + index * 0.1, duration: 0.3 }}
-                        >
-                            {/* Step Circle */}
-                            <motion.button
-                                onClick={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
+                        <div key={step.id} className="flex flex-col items-center relative z-10">
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2 + (index * 0.1) }}
                                 className={`
-                  relative z-10 w-10 h-10 rounded-full flex items-center justify-center
-                  transition-all duration-200 cursor-pointer
-                  ${step.status === 'completed'
-                                        ? 'bg-[var(--primary-blue)] text-white'
-                                        : step.status === 'current'
-                                            ? 'bg-[var(--primary-blue)] text-white ring-4 ring-[var(--primary-blue-soft)]'
-                                            : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-2 border-[var(--border-default)]'
-                                    }
-                `}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.95 }}
+                                    w-10 h-10 rounded-full flex items-center justify-center border-4
+                                    ${step.status === 'completed' ? 'bg-blue-600 border-white text-white' :
+                                        step.status === 'current' ? 'bg-white border-blue-600 text-blue-600 shadow-lg' :
+                                            'bg-slate-100 border-white text-slate-300'}
+                                `}
                             >
-                                {step.status === 'completed' ? (
-                                    <CheckCircle className="w-5 h-5" strokeWidth={2.5} />
-                                ) : (
-                                    step.icon
-                                )}
+                                {step.status === 'completed' ? <CheckCircle className="w-5 h-5" /> : step.icon}
+                            </motion.div>
 
-                                {/* Current Step Pulse */}
-                                {step.status === 'current' && (
-                                    <motion.div
-                                        className="absolute inset-0 rounded-full bg-[var(--primary-blue)]"
-                                        animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-                                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                                    />
-                                )}
-                            </motion.button>
-
-                            {/* Step Label */}
-                            <div className="mt-3 text-center max-w-[80px]">
-                                <span className={`text-[10px] md:text-xs font-medium block ${step.status === 'pending'
-                                        ? 'text-[var(--text-muted)]'
-                                        : 'text-[var(--text-secondary)]'
-                                    }`}>
+                            <div className="mt-3 text-center">
+                                <p className={`text-xs font-bold ${step.status === 'pending' ? 'text-slate-400' : 'text-slate-800'}`}>
                                     {step.label}
-                                </span>
-
-                                {step.timestamp && step.status !== 'pending' && (
-                                    <span className="text-[9px] text-[var(--text-tertiary)] block mt-0.5">
-                                        {formatTime(step.timestamp)}
-                                    </span>
+                                </p>
+                                {step.timestamp && (
+                                    <p className="text-[10px] text-slate-500 mt-1">{formatTime(step.timestamp)}</p>
                                 )}
                             </div>
-
-                            {/* Expand Indicator */}
-                            {step.location && (
-                                <motion.div
-                                    className={`mt-1 ${expandedStep === step.id ? 'rotate-180' : ''}`}
-                                    animate={{ rotate: expandedStep === step.id ? 180 : 0 }}
-                                >
-                                    <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
-                                </motion.div>
-                            )}
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
             </div>
 
-            {/* Expanded Details */}
-            {expandedStep && (
+            {/* --- MOBILE VIEW (Vertical) --- */}
+            <div className="md:hidden space-y-0 relative pl-4">
+                {/* Vertical Line */}
+                <div className="absolute top-2 bottom-6 left-[27px] w-0.5 bg-slate-100" />
+
+                {/* Active Vertical Line - Calculate height based on current step */}
                 <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-6 pt-4 border-t border-[var(--border-subtle)]"
-                >
-                    {(() => {
-                        const step = timelineSteps.find(s => s.id === expandedStep);
-                        const event = events.find(e =>
-                            e.status.toUpperCase() === expandedStep ||
-                            (e.status.toUpperCase() === 'CREATED' && expandedStep === 'ORDER_CREATED')
-                        );
+                    className="absolute top-2 left-[27px] w-0.5 bg-blue-600 origin-top"
+                    initial={{ scaleY: 0 }}
+                    animate={{ scaleY: 1 }}
+                    style={{
+                        height: `${(timelineSteps.findIndex(s => s.status === 'current') / (timelineSteps.length - 1)) * 100}%`
+                    }}
+                    transition={{ duration: 1.2, delay: 0.5, ease: "circOut" }}
+                />
 
-                        if (!step || !event) return null;
+                {timelineSteps.map((step, index) => (
+                    <div key={step.id} className="relative flex items-start gap-4 pb-8 last:pb-0">
+                        {/* Dot/Icon */}
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.1 + (index * 0.1) }}
+                            className={`
+                                relative z-10 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 border-2
+                                ${step.status === 'completed' ? 'bg-blue-600 border-blue-600 text-white' :
+                                    step.status === 'current' ? 'bg-white border-blue-600 text-blue-600 ring-4 ring-blue-50' :
+                                        'bg-white border-slate-200 text-slate-300'}
+                             `}
+                        >
+                            {step.status === 'completed' ? <CheckCircle className="w-3 h-3" /> :
+                                step.status === 'current' ? <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" /> :
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />}
+                        </motion.div>
 
-                        return (
-                            <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center text-[var(--primary-blue)]">
-                                    {step.icon}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                        {/* Content */}
+                        <div className={`flex-1 pt-0.5 ${step.status === 'pending' ? 'opacity-50' : ''}`}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className={`text-sm font-bold ${step.status === 'current' ? 'text-blue-600' : 'text-slate-800'}`}>
                                         {step.label}
                                     </p>
-                                    {event.location && (
-                                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                                            📍 {event.location}
-                                        </p>
-                                    )}
-                                    {event.description && (
-                                        <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                                            {event.description}
-                                        </p>
-                                    )}
-                                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                        {formatTime(event.timestamp)}
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        {step.location || (step.status === 'current' ? 'Processing...' : '')}
                                     </p>
                                 </div>
+                                {step.timestamp && (
+                                    <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded">
+                                        {formatTime(step.timestamp).split(',')[0]}
+                                    </span>
+                                )}
                             </div>
-                        );
-                    })()}
-                </motion.div>
-            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
         </motion.div>
     );
 }

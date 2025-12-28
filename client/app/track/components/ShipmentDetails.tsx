@@ -35,14 +35,24 @@ export function ShipmentDetails({
         }
     };
 
+    // Carrier Logo Mapping
+    const getCarrierLogo = (name: string) => {
+        const n = name.toLowerCase();
+        if (n.includes('bluedart')) return '/logos/blue-dart.png';
+        if (n.includes('fedex')) return '/logos/fedex.png';
+        if (n.includes('dhl')) return '/logos/dhl.png';
+        if (n.includes('delhivery')) return '/logos/delhivery.png';
+        if (n.includes('shadowfax')) return '/logos/shadowfax.png';
+        if (n.includes('xpressbees')) return '/logos/xpressbees.png';
+        if (n.includes('ekart')) return '/logos/ekart.png';
+        return null;
+    };
+
+    const carrierLogo = getCarrierLogo(carrier);
+
     const details = [
         {
             icon: <Truck className="w-4 h-4" />,
-            label: 'Carrier',
-            value: carrier
-        },
-        {
-            icon: <Package className="w-4 h-4" />,
             label: 'Service',
             value: serviceType
         },
@@ -66,21 +76,34 @@ export function ShipmentDetails({
             transition={{ duration: 0.4, delay: 0.3 }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                    Shipment Details
-                </h3>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    {carrierLogo ? (
+                        <div className="h-12 w-36 relative flex items-center justify-start">
+                            <img
+                                src={carrierLogo}
+                                alt={carrier}
+                                className="h-full w-full object-contain object-left"
+                            />
+                        </div>
+                    ) : (
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                            Shipment Details
+                        </h3>
+                    )}
+                </div>
+
                 <button
                     onClick={handleCopy}
-                    className="group flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+                    className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors"
                 >
-                    <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-                        {trackingNumber.slice(0, 12)}...
+                    <span className="text-[10px] font-mono text-slate-500">
+                        {trackingNumber}
                     </span>
                     {copied ? (
-                        <Check className="w-3 h-3 text-[var(--success)]" />
+                        <Check className="w-3 h-3 text-emerald-500" />
                     ) : (
-                        <Copy className="w-3 h-3 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]" />
+                        <Copy className="w-3 h-3 text-slate-400 group-hover:text-slate-600" />
                     )}
                 </button>
             </div>

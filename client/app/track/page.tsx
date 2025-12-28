@@ -10,7 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 // Import components
 import { StatusCard } from './components/StatusCard';
 import { HorizontalTimeline } from './components/HorizontalTimeline';
-import { JourneyMap } from './components/JourneyMap';
+import { JourneyMapLeaflet } from './components/JourneyMapLeaflet';
 import { ShipmentDetails } from './components/ShipmentDetails';
 import { DeliveryInfo } from './components/DeliveryInfo';
 import { EasterEggs } from './components/EasterEggs';
@@ -73,15 +73,6 @@ function TrackPageContent() {
 
   // Load recent searches and check URL/localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('recent_shipment_searches');
-    if (saved) {
-      try {
-        setRecentSearches(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse recent searches', e);
-      }
-    }
-
     const awbFromUrl = searchParams.get('awb');
     if (awbFromUrl) {
       setTrackingNumber(awbFromUrl);
@@ -89,16 +80,10 @@ function TrackPageContent() {
       return;
     }
 
-    if (saved) {
-      try {
-        const searches = JSON.parse(saved) as RecentSearch[];
-        if (searches.length > 0) {
-          setTrackingNumber(searches[0].number);
-        }
-      } catch (e) {
-        console.error('Failed to parse localStorage', e);
-      }
-    }
+    // Default to DEMO for testing
+    setTrackingNumber('DEMO');
+    setAutoTrackNumber('DEMO');
+
   }, []);
 
   // Celebration Effect for Delivered Status
@@ -333,31 +318,38 @@ function TrackPageContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className={`w-full relative bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-default)] hover:border-[var(--border-hover)] focus-within:border-[var(--primary-blue)] transition-colors shadow-[var(--shadow-sm)] flex items-center overflow-hidden ${shipment ? 'max-w-xl' : ''
-                  }`}
+                className={`w-full relative group ${shipment ? 'max-w-xl' : ''}`}
               >
-                <div className="pl-5 text-[var(--text-tertiary)]">
-                  <Search className="w-5 h-5" strokeWidth={2} />
+                {/* Gradient border container */}
+                <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-r from-[var(--primary-blue)]/20 via-[var(--primary-blue)]/40 to-[var(--primary-blue)]/20 group-hover:from-[var(--primary-blue)]/40 group-hover:via-[var(--primary-blue)]/60 group-hover:to-[var(--primary-blue)]/40 group-focus-within:from-[var(--primary-blue)] group-focus-within:via-[var(--primary-blue)] group-focus-within:to-[var(--primary-blue)] transition-all duration-300">
+                  <div className="relative bg-[var(--bg-elevated)] rounded-2xl flex items-center overflow-hidden">
+                    {/* Glow effect on focus */}
+                    <div className="absolute inset-0 opacity-0 group-focus-within:opacity-100 bg-gradient-to-r from-transparent via-[var(--primary-blue)]/5 to-transparent transition-opacity duration-300 pointer-events-none" />
+
+                    <div className="pl-5 text-[var(--text-tertiary)] group-focus-within:text-[var(--primary-blue)] transition-colors duration-200 z-10">
+                      <Search className="w-5 h-5" strokeWidth={2} />
+                    </div>
+                    <input
+                      type="text"
+                      value={trackingNumber}
+                      onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
+                      placeholder="Enter tracking number"
+                      className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-medium z-10"
+                      disabled={isLoading}
+                      autoComplete="off"
+                      spellCheck="false"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      disabled={!trackingNumber || isLoading}
+                      className="mr-2 px-5 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-blue-deep)] transition-colors z-10"
+                    >
+                      Track
+                    </motion.button>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={trackingNumber}
-                  onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
-                  placeholder="Enter tracking number"
-                  className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-medium"
-                  disabled={isLoading}
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={!trackingNumber || isLoading}
-                  className="mr-2 px-5 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-blue-deep)] transition-colors"
-                >
-                  Track
-                </motion.button>
               </motion.form>
             )}
           </AnimatePresence>
@@ -480,19 +472,16 @@ function TrackPageContent() {
                   actualDelivery={shipment.actualDelivery}
                 />
 
-                {/* 3D Package - Prominent */}
+                {/* 3D Package - Full Container Size */}
                 <motion.div
-                  className="h-[320px] lg:h-auto lg:min-h-[320px] bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-default)] overflow-hidden relative"
+                  className="relative h-[400px] lg:h-auto lg:min-h-[500px] w-full"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.15 }}
                 >
-                  {/* Subtle ambient background */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,var(--primary-blue-soft)_0%,transparent_70%)] opacity-10 pointer-events-none" />
-
                   <Suspense
                     fallback={
-                      <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-full h-full flex items-center justify-center bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-default)]">
                         <div className="w-16 h-16 rounded-2xl bg-[var(--bg-tertiary)] animate-pulse" />
                       </div>
                     }
@@ -500,9 +489,9 @@ function TrackPageContent() {
                     <Package3D status={shipment.currentStatus} />
                   </Suspense>
 
-                  {/* Label */}
-                  <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-[var(--bg-elevated)]/90 backdrop-blur-sm border border-[var(--border-subtle)]">
-                    <span className="text-xs font-medium text-[var(--text-secondary)]">3D View</span>
+                  {/* Overlay Badge - Floating Style */}
+                  <div className="absolute top-0 right-0 z-10 px-4 py-2">
+                    <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Interactive 3D</span>
                   </div>
                 </motion.div>
               </div>
@@ -517,12 +506,13 @@ function TrackPageContent() {
 
               {/* Journey Map */}
               <div className="mb-6">
-                <JourneyMap
+                <JourneyMapLeaflet
                   locations={shipment.timeline}
                   destination={shipment.recipient}
                   currentStatus={shipment.currentStatus}
                 />
               </div>
+
 
               {/* Bottom Row: Shipment Details + Delivery Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
