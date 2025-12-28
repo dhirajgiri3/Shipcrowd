@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
 import { Search, ArrowRight, Loader2, AlertCircle, X, History, Box } from 'lucide-react';
 import { trackingApi, PublicTrackingResponse } from '@/src/core/api/trackingApi';
 import confetti from 'canvas-confetti';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 // Import components
 import { MorphingStatusHero } from './components/MorphingStatusHero';
@@ -38,12 +39,16 @@ const GridBackground = () => (
 
 // Main Tracking Page Component
 function TrackPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [trackingNumber, setTrackingNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [shipment, setShipment] = useState<PublicTrackingResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [autoTrackNumber, setAutoTrackNumber] = useState<string | null>(null);
 
   // Mouse parallax effect
   const mouseX = useMotionValue(0);
@@ -51,13 +56,49 @@ function TrackPageContent() {
   const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [2, -2]), { stiffness: 150, damping: 20 });
   const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-2, 2]), { stiffness: 150, damping: 20 });
 
+  // Update URL with tracking number
+  const updateURL = useCallback((awb: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (awb) {
+      params.set('awb', awb);
+    } else {
+      params.delete('awb');
+    }
+    router.replace(`/track?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  // Load recent searches and check URL/localStorage on mount
   useEffect(() => {
+    // Load recent searches
     const saved = localStorage.getItem('recent_shipment_searches');
     if (saved) {
       try {
         setRecentSearches(JSON.parse(saved));
       } catch (e) {
         console.error('Failed to parse recent searches', e);
+      }
+    }
+
+    // Check URL parameter first
+    const awbFromUrl = searchParams.get('awb');
+    if (awbFromUrl) {
+      setTrackingNumber(awbFromUrl);
+      setAutoTrackNumber(awbFromUrl);
+      return;
+    }
+
+    // Fallback to last search from localStorage (only pre-fill, don't auto-track)
+    if (saved) {
+      try {
+        const searches = JSON.parse(saved) as RecentSearch[];
+        if (searches.length > 0) {
+          const lastSearch = searches[0].number;
+          setTrackingNumber(lastSearch);
+          // Only set autoTrackNumber if you want to auto-track last search
+          // setAutoTrackNumber(lastSearch);
+        }
+      } catch (e) {
+        console.error('Failed to parse localStorage', e);
       }
     }
 
@@ -70,7 +111,7 @@ function TrackPageContent() {
 
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY, shipment]);
+  }, []); // Only run once on mount
 
   // Confetti for delivered
   useEffect(() => {
@@ -187,6 +228,9 @@ function TrackPageContent() {
     setHasSearched(true);
     setShipment(null);
 
+    // Update URL with tracking number
+    updateURL(numberToTrack.trim());
+
     // Check for mock/demo keywords
     const mockKeywords = ['DEMO', 'DELIVERED', 'TRANSIT', 'ROCKET'];
     const upperNumber = numberToTrack.trim().toUpperCase();
@@ -242,6 +286,18 @@ function TrackPageContent() {
       setIsLoading(false);
     }
   };
+
+  // Auto-trigger tracking when autoTrackNumber is set (from URL on mount)
+  useEffect(() => {
+    if (autoTrackNumber && !shipment && !isLoading) {
+      // Small delay to let UI settle
+      const timer = setTimeout(() => {
+        handleTrack(undefined, autoTrackNumber);
+        setAutoTrackNumber(null); // Clear to prevent re-triggering
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoTrackNumber]); // Only depend on autoTrackNumber
 
   return (
     <main className="min-h-screen bg-[var(--bg-primary)] flex flex-col font-sans overflow-x-hidden selection:bg-[var(--primary-blue)]/10 selection:text-[var(--primary-blue)]">

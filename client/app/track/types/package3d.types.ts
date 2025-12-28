@@ -376,34 +376,34 @@ export const SPRING_PHYSICS = {
  */
 export const FLAP_ANGLES: Record<string, FlapAngles> = {
   DELIVERED: {
-    front: Math.PI * 0.9,
-    back: Math.PI * 0.9,
-    left: Math.PI * 0.85,
-    right: Math.PI * 0.85,
+    front: Math.PI * 0.445,   // 80° - front flap (down), elevated ~10° from 90°
+    back: Math.PI * 0.425,    // 76° - back flap (down), elevated ~10° from 86°
+    left: Math.PI * 0.65,     // 117° - left/right open more (up, unchanged)
+    right: Math.PI * 0.65,    // 117° - left/right open more (up, unchanged)
   },
   OUT_FOR_DELIVERY: {
-    front: Math.PI * 0.6,
-    back: Math.PI * 0.5,
-    left: Math.PI * 0.55,
-    right: Math.PI * 0.55,
+    front: Math.PI * 0.295,   // 53° - partially open (down), elevated ~10°
+    back: Math.PI * 0.265,    // 48° (down), elevated ~10°
+    left: Math.PI * 0.45,     // 81° (up, unchanged)
+    right: Math.PI * 0.45,    // 81° (up, unchanged)
   },
   IN_TRANSIT: {
-    front: Math.PI * 0.3,
-    back: Math.PI * 0.25,
-    left: Math.PI * 0.3,
-    right: Math.PI * 0.3,
+    front: Math.PI * 0.145,   // 26° - slightly open (down), elevated ~10°
+    back: Math.PI * 0.125,    // 22° (down), elevated ~10°
+    left: Math.PI * 0.25,     // 45° (up, unchanged)
+    right: Math.PI * 0.25,    // 45° (up, unchanged)
   },
   ARRIVED_AT_DESTINATION: {
-    front: Math.PI * 0.4,
-    back: Math.PI * 0.35,
-    left: Math.PI * 0.4,
-    right: Math.PI * 0.4,
+    front: Math.PI * 0.245,   // 44° (down), elevated ~10°
+    back: Math.PI * 0.225,    // 40° (down), elevated ~10°
+    left: Math.PI * 0.38,     // 68° (up, unchanged)
+    right: Math.PI * 0.38,    // 68° (up, unchanged)
   },
   PICKED_UP: {
-    front: Math.PI * 0.25,
-    back: Math.PI * 0.2,
-    left: Math.PI * 0.25,
-    right: Math.PI * 0.25,
+    front: Math.PI * 0.095,   // 17° - just starting (down), elevated ~10°
+    back: Math.PI * 0.075,    // 13° (down), elevated ~10°
+    left: Math.PI * 0.18,     // 32° (up, unchanged)
+    right: Math.PI * 0.18,    // 32° (up, unchanged)
   },
   ORDER_CREATED: {
     front: 0,

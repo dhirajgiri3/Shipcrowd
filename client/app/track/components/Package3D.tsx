@@ -61,12 +61,14 @@ import {
 // ============================================================================
 
 class ThreeErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; errorMessage: string }
+  { children: ReactNode; onRetry?: () => void },
+  { hasError: boolean; errorMessage: string; errorCount: number; retrying: boolean }
 > {
-  constructor(props: { children: ReactNode }) {
+  private retryTimeoutId: NodeJS.Timeout | null = null;
+
+  constructor(props: { children: ReactNode; onRetry?: () => void }) {
     super(props);
-    this.state = { hasError: false, errorMessage: '' };
+    this.state = { hasError: false, errorMessage: '', errorCount: 0, retrying: false };
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -79,17 +81,63 @@ class ThreeErrorBoundary extends Component<
     if (error.message.includes('WebGL')) {
       console.error('WebGL initialization failed. Your browser or device may not support WebGL.');
     }
+
+    // Increment error count
+    this.setState(prev => ({ errorCount: prev.errorCount + 1 }));
+
+    // Auto-retry for transient errors (max 3 attempts)
+    if (this.state.errorCount < 3 && !error.message.includes('not support')) {
+      console.log(`Attempting to recover (attempt ${this.state.errorCount + 1}/3)...`);
+      this.setState({ retrying: true });
+
+      this.retryTimeoutId = setTimeout(() => {
+        this.setState({ hasError: false, errorMessage: '', retrying: false });
+        if (this.props.onRetry) {
+          this.props.onRetry();
+        }
+      }, 1000);
+    }
   }
 
+  componentWillUnmount() {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+    }
+  }
+
+  handleManualRetry = () => {
+    this.setState({ hasError: false, errorMessage: '', errorCount: 0, retrying: false });
+    if (this.props.onRetry) {
+      this.props.onRetry();
+    }
+  };
+
   render() {
+    if (this.state.retrying) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--primary-blue-soft)] animate-pulse" />
+          <p className="text-sm font-medium text-[var(--text-muted)] animate-pulse">Recovering 3D View...</p>
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400 p-6 rounded-[32px] border border-slate-100">
-          <AlertCircle className="w-8 h-8 mb-2 text-red-400 opacity-50" />
+        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-400 p-6 rounded-[32px] border border-slate-100 gap-4">
+          <AlertCircle className="w-8 h-8 text-red-400 opacity-50" />
           <p className="text-sm font-medium">3D Visualization Unavailable</p>
-          <p className="text-xs text-slate-400 mt-2 text-center max-w-xs">
-            Unable to render 3D graphics. Try refreshing the page.
+          <p className="text-xs text-slate-400 text-center max-w-xs">
+            {this.state.errorCount >= 3
+              ? 'Unable to render 3D graphics after multiple attempts.'
+              : 'Unable to render 3D graphics.'}
           </p>
+          <button
+            onClick={this.handleManualRetry}
+            className="mt-2 px-4 py-2 bg-[var(--primary-blue)] text-white text-xs rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Try Again
+          </button>
         </div>
       );
     }
@@ -168,6 +216,30 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
     });
   }, [targetAngles]);
 
+  // WebGL context loss/recovery handling
+  useEffect(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.warn('WebGL context lost. Attempting to recover...');
+    };
+
+    const handleContextRestored = () => {
+      console.log('WebGL context restored successfully.');
+      // Textures and materials will be automatically recreated on next render
+    };
+
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored);
+
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+    };
+  }, []);
+
   // Animation loop - spring physics for flaps
   useFrame((state, delta) => {
     try {
@@ -181,6 +253,7 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
         const flap = flapStates.current[flapName];
         const flapMesh = flapRefs.current[flapName];
 
+        // Safety check: ensure mesh exists before accessing it
         if (!flapMesh) return;
 
         // Spring physics
@@ -190,26 +263,29 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
         flap.currentAngle += flap.velocity;
 
         // Apply rotation based on flap position
-        // Front/back flaps rotate around X axis (open forwards/backwards)
-        // Left/right flaps rotate around Z axis (open sideways)
+        // Front/back flaps rotate around X axis (open inward/downward into the box)
+        // Left/right flaps rotate around Z axis (open upward/away from sides)
+        // Directions swapped to keep side decorative elements visible
         if (flapName === 'front') {
-          flapMesh.rotation.x = flap.currentAngle;
-        } else if (flapName === 'back') {
           flapMesh.rotation.x = -flap.currentAngle;
+        } else if (flapName === 'back') {
+          flapMesh.rotation.x = flap.currentAngle;
         } else if (flapName === 'left') {
-          flapMesh.rotation.z = -flap.currentAngle;
-        } else if (flapName === 'right') {
           flapMesh.rotation.z = flap.currentAngle;
+        } else if (flapName === 'right') {
+          flapMesh.rotation.z = -flap.currentAngle;
         }
       });
     } catch (error) {
+      // Don't crash the whole component on animation errors
       console.error('Animation frame error:', error);
     }
   });
 
-  // Dispose textures on unmount
+  // Dispose textures and materials on unmount
   useEffect(() => {
     return () => {
+      // Dispose all textures
       disposeTextures(
         textures.cardboardBase,
         textures.normalMap,
@@ -219,8 +295,26 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
         textures.tapeBubbles,
         textures.tapeWrinkles
       );
+
+      // Dispose materials
+      if (materials.cardboard) {
+        materials.cardboard.dispose();
+      }
+      if (materials.tape) {
+        materials.tape.dispose();
+      }
+
+      // Dispose geometries from flap meshes
+      Object.values(flapRefs.current).forEach((mesh) => {
+        if (mesh && mesh.geometry) {
+          mesh.geometry.dispose();
+        }
+      });
+
+      // Clear refs
+      flapRefs.current = {};
     };
-  }, [textures]);
+  }, [textures, materials]);
 
   // Inner glow color based on status
   const innerGlowColor = STATUS_COLORS[status.toUpperCase()] || STATUS_COLORS.DEFAULT;
@@ -266,6 +360,29 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
           />
         </mesh>
 
+        {/* HANDLE WITH CARE icon on Front Face (bottom) */}
+        <group position={[0, BOX_DIMENSIONS.height / 2 - 0.7, BOX_DIMENSIONS.width / 2 + 0.01]}>
+          {/* Two hands holding symbol */}
+          <mesh position={[-0.15, 0, 0.01]}>
+            <planeGeometry args={[0.12, 0.18]} />
+            <meshStandardMaterial color="#3B82F6" />
+          </mesh>
+          <mesh position={[0.15, 0, 0.01]}>
+            <planeGeometry args={[0.12, 0.18]} />
+            <meshStandardMaterial color="#3B82F6" />
+          </mesh>
+          {/* Center box being held */}
+          <mesh position={[0, 0.05, 0.01]}>
+            <planeGeometry args={[0.15, 0.15]} />
+            <meshStandardMaterial color="#3B82F6" />
+          </mesh>
+          {/* Text bar below */}
+          <mesh position={[0, -0.25, 0.01]}>
+            <planeGeometry args={[0.6, 0.06]} />
+            <meshStandardMaterial color="#475569" />
+          </mesh>
+        </group>
+
         {/* Back Face (facing -Z) - with rounded edges */}
         <RoundedBox
           args={[BOX_DIMENSIONS.length, BOX_DIMENSIONS.height, BOX_DIMENSIONS.wallThickness]}
@@ -277,6 +394,55 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
         >
           <primitive object={materials.cardboard} attach="material" />
         </RoundedBox>
+
+        {/* Barcode on Back Face */}
+        <group position={[0, BOX_DIMENSIONS.height / 2, -BOX_DIMENSIONS.width / 2 - 0.01]} rotation={[0, Math.PI, 0]}>
+          {/* Barcode background */}
+          <mesh position={[0, 0, 0.01]}>
+            <planeGeometry args={[1.2, 0.6]} />
+            <meshStandardMaterial color="#FFFFFF" />
+          </mesh>
+          {/* Barcode bars - simplified representation */}
+          {[...Array(15)].map((_, i) => (
+            <mesh key={i} position={[-0.5 + i * 0.07, 0.1, 0.02]}>
+              <planeGeometry args={[0.04, 0.4]} />
+              <meshStandardMaterial color="#000000" />
+            </mesh>
+          ))}
+          {/* Barcode number text bar */}
+          <mesh position={[0, -0.25, 0.02]}>
+            <planeGeometry args={[1.0, 0.08]} />
+            <meshStandardMaterial color="#333333" />
+          </mesh>
+        </group>
+
+        {/* DO NOT STACK icon on Back Face (top) */}
+        <group position={[0, BOX_DIMENSIONS.height / 2 + 0.7, -BOX_DIMENSIONS.width / 2 - 0.01]} rotation={[0, Math.PI, 0]}>
+          {/* Square background */}
+          <mesh position={[0, 0, 0.01]}>
+            <planeGeometry args={[0.5, 0.5]} />
+            <meshStandardMaterial color="#FFFFFF" transparent opacity={0.9} />
+          </mesh>
+          {/* Red border */}
+          <mesh position={[0, 0, 0.015]}>
+            <ringGeometry args={[0.22, 0.25, 4]} />
+            <meshStandardMaterial color="#DC2626" />
+          </mesh>
+          {/* Boxes stacked icon (simplified) */}
+          <mesh position={[0, 0.05, 0.02]}>
+            <planeGeometry args={[0.15, 0.08]} />
+            <meshStandardMaterial color="#DC2626" />
+          </mesh>
+          <mesh position={[0, -0.05, 0.02]}>
+            <planeGeometry args={[0.15, 0.08]} />
+            <meshStandardMaterial color="#DC2626" />
+          </mesh>
+          {/* Diagonal slash */}
+          <mesh position={[0, 0, 0.025]} rotation={[0, 0, Math.PI / 4]}>
+            <planeGeometry args={[0.35, 0.04]} />
+            <meshStandardMaterial color="#DC2626" />
+          </mesh>
+        </group>
 
         {/* Left Face (facing -X) - with rounded edges */}
         <RoundedBox
@@ -349,38 +515,64 @@ function PhotorealisticBox({ status, trackingNumber = 'SC-2025-00001' }: Photore
           </mesh>
         </group>
 
-        {/* Vertical Tape Strip on Front - center seam */}
+        {/* TAPE PLACEMENT - Realistic box sealing */}
+
+        {/* Main center seam tape wrapping front-to-back */}
         <mesh position={[0, BOX_DIMENSIONS.height / 2, BOX_DIMENSIONS.width / 2 + 0.003]} castShadow>
-          <boxGeometry args={[0.15, BOX_DIMENSIONS.height * 0.9, 0.002]} />
+          <boxGeometry args={[0.15, BOX_DIMENSIONS.height + 0.2, 0.001]} />
           <meshStandardMaterial
             color="#D4A86A"
             transparent
-            opacity={0.7}
-            roughness={0.2}
+            opacity={0.65}
+            roughness={0.25}
             metalness={0.0}
           />
         </mesh>
 
-        {/* Horizontal Tape Strip on Front - H pattern */}
-        <mesh position={[0, BOX_DIMENSIONS.height * 0.7, BOX_DIMENSIONS.width / 2 + 0.003]} castShadow>
-          <boxGeometry args={[BOX_DIMENSIONS.length * 0.8, 0.12, 0.002]} />
+        {/* Center tape on back face (continuous from front) */}
+        <mesh position={[0, BOX_DIMENSIONS.height / 2, -BOX_DIMENSIONS.width / 2 - 0.003]} castShadow>
+          <boxGeometry args={[0.15, BOX_DIMENSIONS.height + 0.2, 0.001]} />
           <meshStandardMaterial
             color="#D4A86A"
             transparent
-            opacity={0.7}
-            roughness={0.2}
+            opacity={0.65}
+            roughness={0.25}
             metalness={0.0}
           />
         </mesh>
 
-        {/* Bottom Tape Strip sealing the box */}
-        <mesh position={[0, 0.003, BOX_DIMENSIONS.width / 2 + 0.003]} castShadow>
-          <boxGeometry args={[BOX_DIMENSIONS.length * 0.9, 0.12, 0.002]} />
+        {/* Bottom edge tape wrapping around (front to bottom) */}
+        <mesh position={[0, 0.05, BOX_DIMENSIONS.width / 2]} rotation={[-Math.PI / 4, 0, 0]} castShadow>
+          <boxGeometry args={[BOX_DIMENSIONS.length * 0.85, 0.15, 0.001]} />
           <meshStandardMaterial
             color="#D4A86A"
             transparent
-            opacity={0.7}
-            roughness={0.2}
+            opacity={0.6}
+            roughness={0.25}
+            metalness={0.0}
+          />
+        </mesh>
+
+        {/* Side reinforcement tape (left side) */}
+        <mesh position={[-BOX_DIMENSIONS.length / 2 - 0.003, BOX_DIMENSIONS.height * 0.6, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow>
+          <boxGeometry args={[BOX_DIMENSIONS.width * 0.4, 0.12, 0.001]} />
+          <meshStandardMaterial
+            color="#D4A86A"
+            transparent
+            opacity={0.55}
+            roughness={0.25}
+            metalness={0.0}
+          />
+        </mesh>
+
+        {/* Side reinforcement tape (right side) */}
+        <mesh position={[BOX_DIMENSIONS.length / 2 + 0.003, BOX_DIMENSIONS.height * 0.6, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
+          <boxGeometry args={[BOX_DIMENSIONS.width * 0.4, 0.12, 0.001]} />
+          <meshStandardMaterial
+            color="#D4A86A"
+            transparent
+            opacity={0.55}
+            roughness={0.25}
             metalness={0.0}
           />
         </mesh>
@@ -621,15 +813,26 @@ function StudioLighting() {
       {/* Soft environment for realistic reflections */}
       <Environment preset="apartment" background={false} environmentIntensity={0.15} />
 
-      {/* Contact Shadow - very soft and subtle */}
+      {/* Primary Contact Shadow - natural and realistic */}
       <ContactShadows
-        position={[0, -0.01, 0]}
-        opacity={0.35}
-        scale={8}
-        blur={3}
-        far={5}
+        position={[0, 0, 0]}
+        opacity={0.5}
+        scale={10}
+        blur={2.5}
+        far={4}
+        resolution={1024}
+        color="#1a1a1a"
+      />
+
+      {/* Secondary soft shadow for depth */}
+      <ContactShadows
+        position={[0, 0.005, 0]}
+        opacity={0.2}
+        scale={12}
+        blur={4}
+        far={6}
         resolution={512}
-        color="#64748b"
+        color="#3a3a3a"
       />
     </>
   );
@@ -708,6 +911,7 @@ function PostProcessing() {
 export function Package3D({ status, className = '' }: Package3DProps) {
   const [webglAvailable, setWebglAvailable] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const perfConfig = useMemo(() => getPerformanceConfig(), []);
 
   useEffect(() => {
@@ -724,6 +928,10 @@ export function Package3D({ status, className = '' }: Package3DProps) {
       setWebglAvailable(false);
     }
   }, []);
+
+  const handleRetry = () => {
+    setRetryKey(prev => prev + 1);
+  };
 
   // Prevent SSR issues
   if (!isMounted) {
@@ -747,6 +955,7 @@ export function Package3D({ status, className = '' }: Package3DProps) {
 
   return (
     <motion.div
+      key={retryKey}
       className={`w-full h-full ${className}`}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -757,7 +966,7 @@ export function Package3D({ status, className = '' }: Package3DProps) {
         delay: 0.3,
       }}
     >
-      <ThreeErrorBoundary>
+      <ThreeErrorBoundary onRetry={handleRetry}>
         <Canvas
           camera={{
             position: [5, 3.5, 5],

@@ -31,71 +31,100 @@ import {
  * Uses simplex noise for natural-looking color variation
  */
 export function generateCardboardTexture(config?: Partial<TextureConfig>): THREE.CanvasTexture {
-  const width = config?.width || TEXTURE_RESOLUTIONS.cardboardBase.width;
-  const height = config?.height || TEXTURE_RESOLUTIONS.cardboardBase.height;
-  const baseColor = config?.baseColor || CARDBOARD_MATERIAL.baseColor;
+  try {
+    const width = config?.width || TEXTURE_RESOLUTIONS.cardboardBase.width;
+    const height = config?.height || TEXTURE_RESOLUTIONS.cardboardBase.height;
+    const baseColor = config?.baseColor || CARDBOARD_MATERIAL.baseColor;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-  // Base color fill
-  ctx.fillStyle = baseColor;
-  ctx.fillRect(0, 0, width, height);
-
-  // Apply luminance variation using simplex noise (5-10%)
-  const noise2D = createNoise2D();
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-
-      // Multi-octave noise for natural variation
-      const noiseValue =
-        noise2D(x * 0.01, y * 0.01) * 0.5 +
-        noise2D(x * 0.03, y * 0.03) * 0.3 +
-        noise2D(x * 0.08, y * 0.08) * 0.2;
-
-      // Map to 5-10% luminance variation
-      const variation = noiseValue * 0.1; // -10% to +10%
-
-      data[idx] = Math.min(255, Math.max(0, data[idx] * (1 + variation))); // R
-      data[idx + 1] = Math.min(255, Math.max(0, data[idx + 1] * (1 + variation))); // G
-      data[idx + 2] = Math.min(255, Math.max(0, data[idx + 2] * (1 + variation))); // B
+    if (!ctx) {
+      console.warn('Failed to get canvas context for cardboard texture, using fallback');
+      return createFallbackTexture();
     }
+
+    // Base color fill
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(0, 0, width, height);
+
+    // Apply luminance variation using simplex noise (5-10%)
+    const noise2D = createNoise2D();
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+
+        // Multi-octave noise for natural variation
+        const noiseValue =
+          noise2D(x * 0.01, y * 0.01) * 0.5 +
+          noise2D(x * 0.03, y * 0.03) * 0.3 +
+          noise2D(x * 0.08, y * 0.08) * 0.2;
+
+        // Map to 5-10% luminance variation
+        const variation = noiseValue * 0.1; // -10% to +10%
+
+        data[idx] = Math.min(255, Math.max(0, data[idx] * (1 + variation))); // R
+        data[idx + 1] = Math.min(255, Math.max(0, data[idx + 1] * (1 + variation))); // G
+        data[idx + 2] = Math.min(255, Math.max(0, data[idx + 2] * (1 + variation))); // B
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    // Add fiber direction (horizontal lines with slight variation)
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = 0.1;
+
+    for (let i = 0; i < 200; i++) {
+      const y = Math.random() * height;
+      const fiberNoise = noise2D(i * 0.1, y * 0.01);
+      const opacity = 0.02 + Math.random() * 0.03;
+
+      ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+      ctx.lineWidth = 0.5 + Math.random() * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y + fiberNoise * 20);
+      ctx.stroke();
+    }
+
+    // Reset composite operation
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    texture.needsUpdate = true;
+
+    return texture;
+  } catch (error) {
+    console.error('Error generating cardboard texture:', error);
+    return createFallbackTexture();
   }
+}
 
-  ctx.putImageData(imageData, 0, 0);
+/**
+ * Creates a simple fallback texture when generation fails
+ */
+function createFallbackTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
 
-  // Add fiber direction (horizontal lines with slight variation)
-  ctx.globalCompositeOperation = 'overlay';
-  ctx.globalAlpha = 0.1;
-
-  for (let i = 0; i < 200; i++) {
-    const y = Math.random() * height;
-    const fiberNoise = noise2D(i * 0.1, y * 0.01);
-    const opacity = 0.02 + Math.random() * 0.03;
-
-    ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
-    ctx.lineWidth = 0.5 + Math.random() * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y + fiberNoise * 20);
-    ctx.stroke();
+  if (ctx) {
+    ctx.fillStyle = CARDBOARD_MATERIAL.baseColor;
+    ctx.fillRect(0, 0, 256, 256);
   }
-
-  // Reset composite operation
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1.0;
 
   const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(2, 2);
   texture.needsUpdate = true;
-
   return texture;
 }
 
