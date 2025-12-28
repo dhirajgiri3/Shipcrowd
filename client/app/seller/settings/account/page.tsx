@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/src/features/auth';
-import { Button } from '@/components/ui/buttons/Button';
-import { Input } from '@/components/ui/forms/Input';
-import { Card } from '@/components/ui/layout/Card';
+import { Button, Input, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { Mail, ShieldCheck, Key, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
@@ -155,7 +153,7 @@ export default function AccountSettingsPage() {
                                 <Button
                                     type="submit"
                                     disabled={isChangingEmail}
-                                    loading={isChangingEmail}
+                                    isLoading={isChangingEmail}
                                     size="sm"
                                 >
                                     Send Verification Email
@@ -261,7 +259,7 @@ export default function AccountSettingsPage() {
                             </p>
                         </div>
                         <Button
-                            variant="destructive"
+                            variant="danger"
                             size="sm"
                             onClick={() => setShowDeleteConfirm(true)}
                         >
@@ -300,7 +298,7 @@ export default function AccountSettingsPage() {
 
                         <div className="flex items-center gap-2">
                             <Button
-                                variant="destructive"
+                                variant="danger"
                                 size="sm"
                                 onClick={handleDeleteAccount}
                                 disabled={deleteConfirmText !== 'DELETE'}
@@ -331,7 +329,7 @@ export default function AccountSettingsPage() {
                             Account Information
                         </p>
                         <div className="text-xs text-[var(--text-secondary)] space-y-1">
-                            <p>• Your account was created on {user?.createdAt ? new Date(user.createdAt as any).toLocaleDateString() : 'N/A'}</p>
+                            <p>• Your account was created on {(user as any)?.createdAt ? new Date((user as any).createdAt).toLocaleDateString() : 'N/A'}</p>
                             <p>• Your email is {user?.isEmailVerified ? 'verified' : 'not verified'}</p>
                             <p>• Your account status is {user?.isActive ? 'active' : 'inactive'}</p>
                         </div>

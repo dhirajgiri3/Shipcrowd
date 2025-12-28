@@ -161,9 +161,16 @@ export function StatusCard({
             {/* Tracking Number Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <button
+                    <div
                         onClick={handleCopyTracking}
-                        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] transition-colors"
+                        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer select-none"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                handleCopyTracking();
+                            }
+                        }}
                     >
                         <span className="text-xs font-mono font-medium text-[var(--text-secondary)]">
                             {trackingNumber}
@@ -189,7 +196,7 @@ export function StatusCard({
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                    </button>
+                    </div>
                 </div>
 
                 {carrier && (

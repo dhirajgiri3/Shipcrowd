@@ -425,7 +425,7 @@ export const MOCK_SHIPMENTS: Record<string, MockShipmentData> = {
     carrier: 'Interstellar Logistics',
     serviceType: 'Orbital Express',
     currentStatus: 'IN_TRANSIT',
-    estimatedDelivery: daysFromNow(0, 0),
+    estimatedDelivery: daysFromNow(0),
     createdAt: daysAgo(0, 4),
     weight: '50 kg',
     dimensions: '100 × 80 × 60 cm',

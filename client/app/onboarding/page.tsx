@@ -7,8 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check, Mail, CheckCircle2, AlertCircle, Save, PartyPopper } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/src/features/auth"
-import { Input } from "@/components/ui/forms/Input";
-import { Textarea } from "@/components/ui/forms/Textarea";
+import { Input, Textarea } from '@/components/ui';
 import { Loader, LoadingButton } from "@/components/ui";
 import { companyApi, CreateCompanyData } from "@/src/core/api"
 import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"

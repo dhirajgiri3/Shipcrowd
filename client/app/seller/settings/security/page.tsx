@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/src/features/auth';
-import { Button } from '@/components/ui/buttons/Button';
-import { Input } from '@/components/ui/forms/Input';
-import { Card } from '@/components/ui/layout/Card';
+import { Button, Input, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+// import { formatDistanceToNow } from 'date-fns';
 
 export default function SecuritySettingsPage() {
     const { user, changePassword, sessions, loadSessions, revokeSession, revokeAllSessions, checkPasswordStrength } = useAuth();
@@ -259,13 +257,12 @@ export default function SecuritySettingsPage() {
                                 <div className="flex items-center gap-2">
                                     <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full transition-all ${
-                                                passwordStrength.score === 0 ? 'bg-red-500 w-1/4' :
+                                            className={`h-full transition-all ${passwordStrength.score === 0 ? 'bg-red-500 w-1/4' :
                                                 passwordStrength.score === 1 ? 'bg-red-500 w-2/4' :
-                                                passwordStrength.score === 2 ? 'bg-orange-500 w-3/4' :
-                                                passwordStrength.score === 3 ? 'bg-yellow-500 w-3/4' :
-                                                'bg-green-500 w-full'
-                                            }`}
+                                                    passwordStrength.score === 2 ? 'bg-orange-500 w-3/4' :
+                                                        passwordStrength.score === 3 ? 'bg-yellow-500 w-3/4' :
+                                                            'bg-green-500 w-full'
+                                                }`}
                                         />
                                     </div>
                                     <span className={`text-xs font-medium ${getPasswordStrengthColor(passwordStrength.score)}`}>
@@ -321,7 +318,7 @@ export default function SecuritySettingsPage() {
                     <Button
                         type="submit"
                         disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                        loading={isChangingPassword}
+                        isLoading={isChangingPassword}
                         className="w-full sm:w-auto"
                     >
                         Change Password
@@ -354,11 +351,11 @@ export default function SecuritySettingsPage() {
                         </Button>
                         {sessions.length > 1 && (
                             <Button
-                                variant="destructive"
+                                variant="danger"
                                 size="sm"
                                 onClick={handleRevokeAllSessions}
                                 disabled={isRevokingAll}
-                                loading={isRevokingAll}
+                                isLoading={isRevokingAll}
                             >
                                 Sign Out All Devices
                             </Button>
@@ -397,7 +394,7 @@ export default function SecuritySettingsPage() {
                                             {session.location?.city && (
                                                 <span>• {session.location.city}, {session.location.country}</span>
                                             )}
-                                            <span>• Last active {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}</span>
+                                            <span>• Last active {new Date(session.lastActive).toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -406,7 +403,7 @@ export default function SecuritySettingsPage() {
                                     size="sm"
                                     onClick={() => handleRevokeSession(session._id)}
                                     disabled={revokingSessionId === session._id}
-                                    loading={revokingSessionId === session._id}
+                                    isLoading={revokingSessionId === session._id}
                                     className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                 >
                                     Revoke

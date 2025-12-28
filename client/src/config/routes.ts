@@ -31,6 +31,7 @@ export const PUBLIC_ROUTES = [
     '/pricing',                 // Pricing page
     '/terms',                   // Terms of service
     '/privacy',                 // Privacy policy
+    '/loader-test',             // Loader test page
 ] as const;
 
 /**

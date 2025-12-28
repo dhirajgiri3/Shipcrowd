@@ -274,14 +274,16 @@ export default function Hero() {
                                     {/* Carrier Logos Row */}
                                     <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar mask-linear-fade flex-shrink-0">
                                         {[
-                                            { name: "DHL", logo: "https://logo.clearbit.com/dhl.com" },
-                                            { name: "FedEx", logo: "https://logo.clearbit.com/fedex.com" },
-                                            { name: "UPS", logo: "https://logo.clearbit.com/ups.com" },
-                                            { name: "BlueDart", logo: "https://logo.clearbit.com/bluedart.com" },
-                                            { name: "DTDC", logo: "https://logo.clearbit.com/dtdc.in" },
-                                            { name: "Delhivery", logo: "https://logo.clearbit.com/delhivery.com" },
-                                            { name: "Shiprocket", logo: "https://logo.clearbit.com/shiprocket.in" },
-                                            { name: "Ecom Express", logo: "https://logo.clearbit.com/ecomexpress.in" }
+                                            { name: "Delhivery", logo: "/logos/delhivery.png" },
+                                            { name: "BlueDart", logo: "/logos/blue-dart.png" },
+                                            { name: "DHL", logo: "/logos/dhl.png" },
+                                            { name: "FedEx", logo: "/logos/fedex.png" },
+                                            { name: "DTDC", logo: "/logos/dtdc.png" },
+                                            { name: "Ecom Express", logo: "/logos/ecom-express.png" },
+                                            { name: "Ekart", logo: "/logos/ekart.png" },
+                                            { name: "XpressBees", logo: "/logos/xpressbees.png" },
+                                            { name: "Shadowfax", logo: "/logos/shadowfax.png" },
+                                            { name: "India Post", logo: "/logos/india-post.png" }
                                         ].map((carrier, i) => (
                                             <motion.div
                                                 key={i}

@@ -23,6 +23,9 @@ export type { CardProps } from './core/Card';
 export { Input } from './core/Input';
 export type { InputProps } from './core/Input';
 
+export { Textarea } from './core/Textarea';
+export type { TextareaProps } from './core/Textarea';
+
 // ============================================
 // FEEDBACK COMPONENTS (User notifications)
 // ============================================
