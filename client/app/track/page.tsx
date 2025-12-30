@@ -147,9 +147,9 @@ function TrackPageContent() {
         carrier: 'BlueDart Express',
         serviceType: 'Express Air',
         currentStatus: 'OUT_FOR_DELIVERY',
-        estimatedDelivery: new Date().toISOString(),
+        estimatedDelivery: new Date(Date.now() + 3600000 * 6).toISOString(), // 6 hours from now
         createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-        recipient: { city: 'Mumbai', state: 'Maharashtra' },
+        recipient: { name: 'Rahul Giri', city: 'Mumbai', state: 'Maharashtra' },
         timeline: [
           { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), location: 'Andheri West, Mumbai', description: 'Package is out for delivery.' },
           { status: 'ARRIVED_AT_DESTINATION', timestamp: new Date(Date.now() - 3600000 * 8).toISOString(), location: 'Mumbai Central Hub', description: 'Arrived at destination facility.' },
@@ -166,7 +166,7 @@ function TrackPageContent() {
         estimatedDelivery: new Date(Date.now() - 86400000).toISOString(),
         actualDelivery: new Date(Date.now() - 3600000 * 10).toISOString(),
         createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-        recipient: { city: 'Delhi', state: 'Delhi' },
+        recipient: { name: 'Ananya Singh', city: 'Delhi', state: 'Delhi' },
         timeline: [
           { status: 'DELIVERED', timestamp: new Date(Date.now() - 3600000 * 10).toISOString(), location: 'Connaught Place, Delhi', description: 'Delivered successfully.' },
           { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 3600000 * 14).toISOString(), location: 'Karol Bagh Hub, Delhi', description: 'Out for delivery.' },
@@ -183,7 +183,7 @@ function TrackPageContent() {
         currentStatus: 'IN_TRANSIT',
         estimatedDelivery: new Date(Date.now() + 86400000 * 2).toISOString(),
         createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-        recipient: { city: 'Hyderabad', state: 'Telangana' },
+        recipient: { name: 'Vihaan Sharma', city: 'Hyderabad', state: 'Telangana' },
         timeline: [
           { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000).toISOString(), location: 'Vijayawada Junction', description: 'Package in transit.' },
           { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), location: 'Nellore Distribution', description: 'Processed at center.' },
@@ -320,13 +320,13 @@ function TrackPageContent() {
                 exit={{ opacity: 0 }}
                 className={`w-full relative group ${shipment ? 'max-w-xl' : ''}`}
               >
-                {/* Gradient border container */}
-                <div className="relative p-[1.5px] rounded-2xl bg-gradient-to-r from-[var(--primary-blue)]/20 via-[var(--primary-blue)]/40 to-[var(--primary-blue)]/20 group-hover:from-[var(--primary-blue)]/40 group-hover:via-[var(--primary-blue)]/60 group-hover:to-[var(--primary-blue)]/40 group-focus-within:from-[var(--primary-blue)] group-focus-within:via-[var(--primary-blue)] group-focus-within:to-[var(--primary-blue)] transition-all duration-300">
-                  <div className="relative bg-[var(--bg-elevated)] rounded-2xl flex items-center overflow-hidden">
-                    {/* Glow effect on focus */}
-                    <div className="absolute inset-0 opacity-0 group-focus-within:opacity-100 bg-gradient-to-r from-transparent via-[var(--primary-blue)]/5 to-transparent transition-opacity duration-300 pointer-events-none" />
+                {/* Input container with border */}
+                <div className="relative rounded-[var(--radius-2xl)] border-2 border-[var(--border-default)] group-hover:border-[var(--border-hover)] group-focus-within:border-[var(--border-focus)] transition-all duration-[var(--duration-base)] bg-[var(--bg-elevated)]">
+                  {/* Subtle focus glow effect */}
+                  <div className="absolute inset-0 opacity-0 group-focus-within:opacity-100 bg-[var(--primary-blue-soft)] rounded-[var(--radius-2xl)] -z-10 blur-xl transition-opacity duration-[var(--duration-slow)] pointer-events-none" />
 
-                    <div className="pl-5 text-[var(--text-tertiary)] group-focus-within:text-[var(--primary-blue)] transition-colors duration-200 z-10">
+                  <div className="relative flex items-center overflow-hidden">
+                    <div className="pl-5 text-[var(--text-tertiary)] group-focus-within:text-[var(--primary-blue)] transition-colors duration-[var(--duration-base)] z-10">
                       <Search className="w-5 h-5" strokeWidth={2} />
                     </div>
                     <input
@@ -334,7 +334,7 @@ function TrackPageContent() {
                       value={trackingNumber}
                       onChange={e => setTrackingNumber(e.target.value.toUpperCase())}
                       placeholder="Enter tracking number"
-                      className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] font-medium z-10"
+                      className="flex-1 bg-transparent border-none outline-none px-4 py-4 text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-medium z-10"
                       disabled={isLoading}
                       autoComplete="off"
                       spellCheck="false"
@@ -344,7 +344,7 @@ function TrackPageContent() {
                       whileTap={{ scale: 0.98 }}
                       type="submit"
                       disabled={!trackingNumber || isLoading}
-                      className="mr-2 px-5 py-2.5 rounded-xl bg-[var(--primary-blue)] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--primary-blue-deep)] transition-colors z-10"
+                      className="mr-2 px-5 py-2.5 rounded-[var(--radius-xl)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--btn-primary-bg-hover)] active:bg-[var(--btn-primary-bg-active)] transition-colors duration-[var(--duration-base)] z-10"
                     >
                       Track
                     </motion.button>
@@ -461,7 +461,7 @@ function TrackPageContent() {
               className="w-full max-w-6xl"
             >
               {/* Top Row: Status Card + 3D Box */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
                 {/* Status Card */}
                 <StatusCard
                   trackingNumber={shipment.trackingNumber}
@@ -470,28 +470,39 @@ function TrackPageContent() {
                   serviceType={shipment.serviceType}
                   estimatedDelivery={shipment.estimatedDelivery}
                   actualDelivery={shipment.actualDelivery}
+                  destinationCity={shipment.recipient?.city}
+                  destinationState={shipment.recipient?.state}
                 />
 
-                {/* 3D Package - Full Container Size */}
+                {/* 3D Package - Visual Stage Container */}
                 <motion.div
-                  className="relative h-[400px] lg:h-auto lg:min-h-[500px] w-full"
+                  className="relative min-h-[400px] lg:min-h-[500px] w-full flex items-center justify-center bg-[var(--bg-secondary)] rounded-[var(--radius-3xl)] border border-[var(--border-default)] overflow-hidden"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.15 }}
                 >
-                  <Suspense
-                    fallback={
-                      <div className="w-full h-full flex items-center justify-center bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-default)]">
-                        <div className="w-16 h-16 rounded-2xl bg-[var(--bg-tertiary)] animate-pulse" />
-                      </div>
-                    }
-                  >
-                    <Package3D status={shipment.currentStatus} />
-                  </Suspense>
+                  {/* Subtle Grid Pattern */}
+                  <div
+                    className="absolute inset-0 opacity-[0.02]"
+                    style={{
+                      backgroundImage: 'radial-gradient(circle, var(--text-primary) 1px, transparent 1px)',
+                      backgroundSize: '24px 24px'
+                    }}
+                  />
 
-                  {/* Overlay Badge - Floating Style */}
-                  <div className="absolute top-0 right-0 z-10 px-4 py-2">
-                    <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Interactive 3D</span>
+                  {/* 3D Canvas */}
+                  <div className="w-full h-full relative z-10">
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-20 h-20 rounded-[var(--radius-2xl)] bg-[var(--primary-blue-soft)] animate-pulse flex items-center justify-center">
+                            <div className="w-8 h-8 border-3 border-[var(--primary-blue)] border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        </div>
+                      }
+                    >
+                      <Package3D status={shipment.currentStatus} />
+                    </Suspense>
                   </div>
                 </motion.div>
               </div>

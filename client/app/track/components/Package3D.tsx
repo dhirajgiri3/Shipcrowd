@@ -22,7 +22,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Float, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
 import { AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Import utilities
 import {
@@ -937,7 +937,11 @@ function PostProcessing() {
 export function Package3D({ status, className = '' }: Package3DProps) {
   const [webglAvailable, setWebglAvailable] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [showHint, setShowHint] = useState(true);
+  const [isInteracting, setIsInteracting] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const perfConfig = useMemo(() => getPerformanceConfig(), []);
 
   useEffect(() => {
@@ -953,38 +957,89 @@ export function Package3D({ status, className = '' }: Package3DProps) {
     } catch (e) {
       setWebglAvailable(false);
     }
+
+    // Delay canvas initialization to ensure container is properly sized
+    const timer = setTimeout(() => {
+      setCanvasReady(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const handleRetry = () => {
     setRetryKey(prev => prev + 1);
+    setCanvasReady(false);
+    setTimeout(() => setCanvasReady(true), 100);
+  };
+
+  // Hide hint after user starts interacting
+  useEffect(() => {
+    if (isInteracting && showHint) {
+      const timer = setTimeout(() => setShowHint(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isInteracting, showHint]);
+
+  // Get status-specific information
+  const getStatusInfo = () => {
+    const normalizedStatus = status.toUpperCase();
+    switch (normalizedStatus) {
+      case 'DELIVERED':
+        return { emoji: '🎉', text: 'Package Delivered!', color: 'text-emerald-600' };
+      case 'OUT_FOR_DELIVERY':
+        return { emoji: '🚚', text: 'Out for Delivery', color: 'text-blue-600' };
+      case 'IN_TRANSIT':
+        return { emoji: '✈️', text: 'In Transit', color: 'text-sky-600' };
+      case 'PICKED_UP':
+        return { emoji: '📦', text: 'Picked Up', color: 'text-amber-600' };
+      default:
+        return { emoji: '📋', text: 'Order Created', color: 'text-slate-600' };
+    }
   };
 
   // Prevent SSR issues
   if (!isMounted) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--primary-blue-soft)] animate-pulse" />
-        <p className="text-sm font-medium text-[var(--text-muted)] animate-pulse">Loading 3D View...</p>
+      <div className="w-full h-full min-h-[400px] flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100">
+        <div className="w-16 h-16 rounded-2xl bg-blue-100 animate-pulse" />
+        <p className="text-sm font-medium text-slate-400 animate-pulse">Loading 3D View...</p>
       </div>
     );
   }
 
   if (!webglAvailable) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-[var(--bg-elevated)] overflow-hidden">
+      <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-gradient-to-br from-slate-50 to-white overflow-hidden rounded-2xl border border-slate-100">
         <img
           src="/images/3D/3d-box.png"
           alt="Package View"
-          className="w-3/4 h-3/4 object-contain"
+          className="w-3/4 h-3/4 object-contain drop-shadow-xl"
+          onError={(e) => {
+            console.error('Fallback image failed to load');
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
         />
+      </div>
+    );
+  }
+
+  // Show loading state until canvas is ready
+  if (!canvasReady) {
+    return (
+      <div className="w-full h-full min-h-[400px] flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100">
+        <div className="w-20 h-20 rounded-2xl bg-blue-100 animate-pulse flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+        <p className="text-sm font-medium text-slate-500">Initializing 3D...</p>
       </div>
     );
   }
 
   return (
     <motion.div
+      ref={containerRef}
       key={retryKey}
-      className={`w-full h-full relative ${className}`}
+      className={`w-full h-full min-h-[400px] relative ${className}`}
       style={{
         background: 'radial-gradient(circle at center, rgba(241, 245, 249, 0.6) 0%, rgba(255, 255, 255, 0) 70%)'
       }}
@@ -994,13 +1049,40 @@ export function Package3D({ status, className = '' }: Package3DProps) {
         type: 'spring',
         stiffness: 260,
         damping: 20,
-        delay: 0.3,
+        delay: 0.1,
       }}
+      onMouseDown={() => setIsInteracting(true)}
+      onTouchStart={() => setIsInteracting(true)}
     >
+  {/* Status Badge - Top Right */}
+      <motion.div
+        className="absolute top-4 right-4 z-20"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        <div className="px-3 py-1.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-default)] backdrop-blur-sm flex items-center gap-2">
+          <span className="text-base">{getStatusInfo().emoji}</span>
+          <span className={`text-xs font-semibold ${getStatusInfo().color}`}>{getStatusInfo().text}</span>
+        </div>
+      </motion.div>
+
+      {/* Viewing Tip - Bottom Right */}
+      <motion.div
+        className="absolute bottom-4 right-4 z-20"
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: isInteracting ? 0.7 : 1, x: 0 }}
+        transition={{ delay: 0.9 }}
+      >
+        <div className="px-3 py-1.5 rounded-full bg-[var(--bg-tooltip)] text-[var(--text-tooltip)] text-[10px] font-medium backdrop-blur-sm shadow-sm flex items-center gap-1.5">
+          <span>Interactive 3D Model</span>
+        </div>
+      </motion.div>
+
       <ThreeErrorBoundary onRetry={handleRetry}>
         <Canvas
           camera={{
-            position: [6, 4, 6],
+            position: [10, 6, 10],
             fov: 35,
             near: CAMERA_CONFIG.near,
             far: CAMERA_CONFIG.far,
@@ -1045,19 +1127,21 @@ export function Package3D({ status, className = '' }: Package3DProps) {
             </Suspense>
           )} */}
 
-          {/* Orbit Controls - Centered on box */}
+          {/* Enhanced Orbit Controls - Better user experience */}
           <OrbitControls
             enableZoom={true}
             enablePan={false}
             enableDamping={true}
-            dampingFactor={0.1}
+            dampingFactor={0.05}
             minDistance={4}
-            maxDistance={12}
+            maxDistance={14}
             minPolarAngle={Math.PI / 6}
-            maxPolarAngle={Math.PI / 2.2}
+            maxPolarAngle={Math.PI / 2}
             autoRotate={false}
-            rotateSpeed={0.5}
+            rotateSpeed={0.8}
+            zoomSpeed={0.5}
             target={[0, 1.25, 0]}
+            makeDefault
           />
         </Canvas>
       </ThreeErrorBoundary>

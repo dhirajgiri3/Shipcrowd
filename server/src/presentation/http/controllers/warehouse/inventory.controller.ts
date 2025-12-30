@@ -5,7 +5,7 @@
  */
 
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '@/shared/types/express';
+import { AuthRequest } from '../../middleware/auth/auth';
 import InventoryService from '@/core/application/services/warehouse/InventoryService';
 import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
 import {
@@ -26,6 +26,7 @@ import {
     markDamagedSchema,
     checkAvailabilitySchema,
 } from '@/shared/validation/warehouse.schemas';
+import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
 // Note: InventoryService is now static
 
@@ -35,24 +36,26 @@ import {
  */
 async function createInventory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const validation = createInventorySchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { companyId, userId } = req.user!;
         const inventory = await InventoryService.createInventory({
             ...validation.data,
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'create',
             'inventory',
-            inventory._id.toString(),
+            String(inventory._id),
             { sku: inventory.sku },
             req
         );
@@ -69,18 +72,21 @@ async function createInventory(req: AuthRequest, res: Response, next: NextFuncti
  */
 async function getInventoryList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const { warehouseId, sku, status, category, lowStockOnly, page = '1', limit = '20' } = req.query;
-        const { companyId } = req.user!;
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
+        const { warehouseId, sku, status, category, lowStockOnly } = req.query;
+        const pagination = parsePagination(req.query);
 
         const result = await InventoryService.getInventoryList({
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
             warehouseId: warehouseId as string,
             sku: sku as string,
             status: status as string,
             category: category as string,
             lowStockOnly: lowStockOnly === 'true',
-            page: parseInt(page as string, 10),
-            limit: parseInt(limit as string, 10),
+            page: pagination.page,
+            limit: pagination.limit,
         });
 
         sendPaginated(res, result.data, result.pagination, 'Inventory list retrieved');
@@ -96,6 +102,8 @@ async function getInventoryList(req: AuthRequest, res: Response, next: NextFunct
 async function getInventoryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'inventory')) return;
+
         const inventory = await InventoryService.getInventoryById(id);
 
         if (!inventory) {
@@ -135,25 +143,27 @@ async function getInventoryBySKU(req: AuthRequest, res: Response, next: NextFunc
  */
 async function receiveStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const validation = receiveStockSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { userId, companyId } = req.user!;
         const result = await InventoryService.receiveStock({
             ...validation.data,
-            companyId: companyId.toString(),
-            performedBy: userId.toString(),
+            companyId: auth.companyId,
+            performedBy: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'inventory',
-            result.inventory._id.toString(),
+            String(result.inventory._id),
             { action: 'receive_stock', quantity: validation.data.quantity, sku: validation.data.sku },
             req
         );
@@ -170,23 +180,27 @@ async function receiveStock(req: AuthRequest, res: Response, next: NextFunction)
  */
 async function adjustStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'inventory')) return;
+
         const validation = adjustStockSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { userId, companyId } = req.user!;
         const result = await InventoryService.adjustStock({
             inventoryId: id,
             ...validation.data,
-            performedBy: userId.toString(),
+            performedBy: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'inventory',
             id,
@@ -207,17 +221,19 @@ async function adjustStock(req: AuthRequest, res: Response, next: NextFunction):
 async function reserveStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'inventory')) return;
+
         const validation = reserveStockSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { userId } = req.user!;
+        const { _id } = req.user!;
         const inventory = await InventoryService.reserveStock({
             inventoryId: id,
             ...validation.data,
-            reservedBy: userId.toString(),
+            reservedBy: _id.toString(),
         });
 
         sendSuccess(res, inventory, 'Stock reserved');
@@ -240,14 +256,14 @@ async function releaseReservation(req: AuthRequest, res: Response, next: NextFun
         }
 
         const { quantity, orderId, reason } = validation.data;
-        const { userId } = req.user!;
+        const { _id } = req.user!;
 
         const inventory = await InventoryService.releaseReservation({
             inventoryId: id,
             quantity,
             orderId,
             reason,
-            releasedBy: userId.toString(),
+            releasedBy: _id.toString(),
         });
 
         sendSuccess(res, inventory, 'Reservation released');
@@ -262,23 +278,27 @@ async function releaseReservation(req: AuthRequest, res: Response, next: NextFun
  */
 async function transferStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'inventory')) return;
+
         const validation = transferStockSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { userId, companyId } = req.user!;
         const result = await InventoryService.transferStock({
             inventoryId: id,
             ...validation.data,
-            performedBy: userId.toString(),
+            performedBy: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'inventory',
             id,
@@ -298,7 +318,12 @@ async function transferStock(req: AuthRequest, res: Response, next: NextFunction
  */
 async function markDamaged(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'inventory')) return;
+
         const validation = markDamagedSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -306,7 +331,6 @@ async function markDamaged(req: AuthRequest, res: Response, next: NextFunction):
         }
 
         const { locationId, quantity, reason, notes } = validation.data;
-        const { userId, companyId } = req.user!;
 
         const result = await InventoryService.markDamaged({
             inventoryId: id,
@@ -314,12 +338,12 @@ async function markDamaged(req: AuthRequest, res: Response, next: NextFunction):
             quantity,
             reason,
             notes,
-            performedBy: userId.toString(),
+            performedBy: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'inventory',
             id,
@@ -339,23 +363,27 @@ async function markDamaged(req: AuthRequest, res: Response, next: NextFunction):
  */
 async function cycleCount(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'inventory')) return;
+
         const validation = cycleCountSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { userId, companyId } = req.user!;
         const result = await InventoryService.cycleCount({
             inventoryId: id,
             ...validation.data,
-            performedBy: userId.toString(),
+            performedBy: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'inventory',
             id,
@@ -396,8 +424,10 @@ async function checkAvailability(req: AuthRequest, res: Response, next: NextFunc
  */
 async function getLowStockAlerts(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const { companyId } = req.user!;
-        const alerts = await InventoryService.getLowStockAlerts(companyId.toString());
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
+        const alerts = await InventoryService.getLowStockAlerts(auth.companyId);
 
         sendSuccess(res, alerts, 'Low stock alerts retrieved');
     } catch (error) {
@@ -411,18 +441,21 @@ async function getLowStockAlerts(req: AuthRequest, res: Response, next: NextFunc
  */
 async function getMovements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const { warehouseId, inventoryId, type, startDate, endDate, page = '1', limit = '20' } = req.query;
-        const { companyId } = req.user!;
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
+        const { warehouseId, inventoryId, type, startDate, endDate } = req.query;
+        const pagination = parsePagination(req.query);
 
         const result = await InventoryService.getMovements({
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
             warehouseId: warehouseId as string,
             inventoryId: inventoryId as string,
             type: type as string,
             startDate: startDate ? new Date(startDate as string) : undefined,
             endDate: endDate ? new Date(endDate as string) : undefined,
-            page: parseInt(page as string, 10),
-            limit: parseInt(limit as string, 10),
+            page: pagination.page,
+            limit: pagination.limit,
         });
 
         sendPaginated(res, result.data, result.pagination, 'Movements retrieved');

@@ -6,7 +6,7 @@
 
 import mongoose from 'mongoose';
 import PickList, { IPickList, IPickListItem } from '@/infrastructure/database/mongoose/models/PickList';
-import Order from '@/infrastructure/database/mongoose/models/Order';
+import Order, { IOrder } from '@/infrastructure/database/mongoose/models/Order';
 import WarehouseLocation from '@/infrastructure/database/mongoose/models/WarehouseLocation';
 import Inventory from '@/infrastructure/database/mongoose/models/Inventory';
 import {
@@ -23,69 +23,104 @@ import {
     IPaginatedResult,
 } from '@/core/domain/interfaces/warehouse/IPickingService';
 import { AppError } from '@/shared/errors/AppError';
+import logger from '@/shared/logger/winston.logger';
 
 export default class PickingService {
     static async createPickList(data: ICreatePickListDTO): Promise<IPickList> {
-        const orders = await Order.find({
-            _id: { $in: data.orderIds },
-            status: { $in: ['CONFIRMED', 'PROCESSING'] },
-            companyId: data.companyId,
-        });
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        if (orders.length === 0) {
-            throw new AppError('No valid orders found for picking', 400);
-        }
+        try {
+            const orders = await Order.find({
+                _id: { $in: data.orderIds },
+                status: { $in: ['CONFIRMED', 'PROCESSING'] },
+                companyId: data.companyId,
+            }).session(session);
 
-        const pickListItems: IPickListItem[] = [];
-
-        for (const order of orders) {
-            for (const item of order.items || []) {
-                const location = await this.findOptimalLocation(item.sku, data.warehouseId, item.quantity);
-
-                if (!location) {
-                    throw new AppError(`No stock found for SKU ${item.sku}`, 400);
-                }
-
-                pickListItems.push({
-                    orderId: order._id,
-                    orderItemId: item._id,
-                    orderNumber: order.orderNumber,
-                    sku: item.sku,
-                    productName: item.productName || item.name,
-                    locationId: location._id,
-                    locationCode: location.locationCode,
-                    zone: location.locationCode.split('-')[0],
-                    aisle: location.aisle,
-                    quantityRequired: item.quantity,
-                    quantityPicked: 0,
-                    quantityShort: 0,
-                    status: 'PENDING',
-                    barcodeScanned: false,
-                    sequence: 0,
-                } as IPickListItem);
+            if (orders.length === 0) {
+                throw new AppError('No valid orders found for picking', 'NO_VALID_ORDERS', 400);
             }
+
+            const pickListItems: IPickListItem[] = [];
+
+            // FIX: Batch load all locations upfront to avoid N+1 query problem  
+            const allSkus = orders.flatMap(o =>
+                (o.products || []).map(p => p.sku).filter((sku): sku is string => Boolean(sku))
+            );
+            const locationMap = await this.batchFindOptimalLocations(
+                allSkus,
+                data.warehouseId,
+                session || null
+            );
+
+            for (const order of orders) {
+                for (const product of order.products || []) {
+                    if (!product.sku) continue; // Skip products without SKU
+
+                    const location = locationMap.get(product.sku);
+                    if (!location) {
+                        throw new AppError(`No stock found for SKU ${product.sku}`, 'STOCK_NOT_FOUND', 400);
+                    }
+
+                    pickListItems.push({
+                        orderId: order._id,
+                        orderItemId: order._id, // Use order ID as fallback since products don't have individual IDs
+                        orderNumber: order.orderNumber,
+                        sku: product.sku,
+                        productName: product.name,
+                        locationId: location._id,
+                        locationCode: location.locationCode,
+                        zone: location.locationCode?.includes('-')
+                            ? location.locationCode.split('-')[0]
+                            : (location.locationCode || 'UNKNOWN'),
+                        aisle: location.aisle,
+                        quantityRequired: product.quantity,
+                        quantityPicked: 0,
+                        quantityShort: 0,
+                        status: 'PENDING',
+                        barcodeScanned: false,
+                        sequence: 0,
+                    } as IPickListItem);
+                }
+            }
+
+            const optimizedItems = this.optimizeByStrategy(pickListItems, data.pickingStrategy);
+            const pickListNumber = await this.generatePickListNumber();
+
+            const [pickList] = await PickList.create([{
+                warehouseId: data.warehouseId,
+                companyId: data.companyId,
+                pickListNumber,
+                orders: data.orderIds,
+                items: optimizedItems,
+                pickingStrategy: data.pickingStrategy,
+                priority: data.priority || 'MEDIUM',
+                status: data.assignTo ? 'ASSIGNED' : 'PENDING',
+                assignedTo: data.assignTo,
+                assignedAt: data.assignTo ? new Date() : undefined,
+                estimatedPickTime: this.estimatePickTime(optimizedItems),
+                notes: data.notes,
+                scheduledAt: data.scheduledAt,
+            }], { session });
+
+            await session.commitTransaction();
+
+            logger.info('Pick list created successfully', {
+                pickListNumber,
+                warehouseId: String(data.warehouseId),
+                orderCount: data.orderIds.length,
+                itemCount: optimizedItems.length,
+                strategy: data.pickingStrategy,
+                assignedTo: data.assignTo ? String(data.assignTo) : 'unassigned',
+            });
+
+            return pickList;
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        const optimizedItems = this.optimizeByStrategy(pickListItems, data.pickingStrategy);
-        const pickListNumber = await this.generatePickListNumber();
-
-        const [pickList] = await PickList.create([{
-            warehouseId: data.warehouseId,
-            companyId: data.companyId,
-            pickListNumber,
-            orders: data.orderIds,
-            items: optimizedItems,
-            pickingStrategy: data.pickingStrategy,
-            priority: data.priority || 'MEDIUM',
-            status: data.assignTo ? 'ASSIGNED' : 'PENDING',
-            assignedTo: data.assignTo,
-            assignedAt: data.assignTo ? new Date() : undefined,
-            estimatedPickTime: this.estimatePickTime(optimizedItems),
-            notes: data.notes,
-            scheduledAt: data.scheduledAt,
-        }]);
-
-        return pickList;
     }
 
     static async getPickListById(id: string): Promise<IPickList | null> {
@@ -117,19 +152,27 @@ export default class PickingService {
 
     static async assignPickList(data: IAssignPickListDTO): Promise<IPickList> {
         const pickList = await PickList.findById(data.pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         pickList.assignedTo = new mongoose.Types.ObjectId(data.pickerId);
         pickList.assignedBy = new mongoose.Types.ObjectId(data.assignedBy);
         pickList.assignedAt = new Date();
         pickList.status = 'ASSIGNED';
         await pickList.save();
+
+        logger.info('Pick list assigned to picker', {
+            pickListId: String(data.pickListId),
+            pickListNumber: pickList.pickListNumber,
+            pickerId: data.pickerId,
+            assignedBy: data.assignedBy,
+        });
+
         return pickList;
     }
 
     static async unassignPickList(pickListId: string): Promise<IPickList> {
         const pickList = await PickList.findById(pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         pickList.assignedTo = undefined;
         pickList.assignedBy = undefined;
@@ -141,7 +184,7 @@ export default class PickingService {
 
     static async startPicking(data: IStartPickingDTO): Promise<IPickList> {
         const pickList = await PickList.findById(data.pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         pickList.status = 'IN_PROGRESS';
         pickList.startedAt = new Date();
@@ -151,10 +194,10 @@ export default class PickingService {
 
     static async pickItem(data: IPickItemDTO): Promise<IPickList> {
         const pickList = await PickList.findById(data.pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         const item = pickList.items.find((i) => i._id?.toString() === data.itemId);
-        if (!item) throw new AppError('Item not found', 404);
+        if (!item) throw new AppError('Item not found', 'ITEM_NOT_FOUND', 404);
 
         item.quantityPicked = data.quantityPicked;
         item.barcodeScanned = data.barcodeScanned;
@@ -168,10 +211,10 @@ export default class PickingService {
 
     static async skipItem(pickListId: string, itemId: string, reason: string): Promise<IPickList> {
         const pickList = await PickList.findById(pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         const item = pickList.items.find((i) => i._id?.toString() === itemId);
-        if (!item) throw new AppError('Item not found', 404);
+        if (!item) throw new AppError('Item not found', 'ITEM_NOT_FOUND', 404);
 
         item.status = 'SKIPPED';
         item.reason = reason;
@@ -181,28 +224,50 @@ export default class PickingService {
 
     static async completePickList(data: ICompletePickListDTO): Promise<IPickList> {
         const pickList = await PickList.findById(data.pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         pickList.status = 'COMPLETED';
         pickList.completedAt = new Date();
         pickList.pickerNotes = data.pickerNotes;
         await pickList.save();
+
+        const stats = {
+            totalItems: pickList.items.length,
+            picked: pickList.items.filter(i => i.status === 'PICKED').length,
+            short: pickList.items.filter(i => i.status === 'SHORT_PICK').length,
+        };
+
+        logger.info('Pick list completed', {
+            pickListId: String(data.pickListId),
+            pickListNumber: pickList.pickListNumber,
+            ...stats,
+            duration: pickList.startedAt ? Date.now() - pickList.startedAt.getTime() : null,
+        });
+
         return pickList;
     }
 
     static async cancelPickList(data: ICancelPickListDTO): Promise<IPickList> {
         const pickList = await PickList.findById(data.pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         pickList.status = 'CANCELLED';
         pickList.exceptions.push(`Cancelled by ${data.cancelledBy}: ${data.reason}`);
         await pickList.save();
+
+        logger.warn('Pick list cancelled', {
+            pickListId: String(data.pickListId),
+            pickListNumber: pickList.pickListNumber,
+            reason: data.reason,
+            cancelledBy: data.cancelledBy,
+        });
+
         return pickList;
     }
 
     static async verifyPickList(data: IVerifyPickListDTO): Promise<IPickList> {
         const pickList = await PickList.findById(data.pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
 
         pickList.verificationStatus = data.passed ? 'PASSED' : 'FAILED';
         pickList.verifiedBy = new mongoose.Types.ObjectId(data.verifierId);
@@ -215,7 +280,7 @@ export default class PickingService {
 
     static async optimizePickPath(pickListId: string): Promise<IPickListItem[]> {
         const pickList = await PickList.findById(pickListId);
-        if (!pickList) throw new AppError('Pick list not found', 404);
+        if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
         const optimized = this.optimizeByStrategy(pickList.items as IPickListItem[], pickList.pickingStrategy);
         pickList.items = optimized as any;
         await pickList.save();
@@ -272,6 +337,34 @@ export default class PickingService {
 
     static estimatePickTime(items: IPickListItem[]): number {
         return Math.ceil(items.length * 0.5);
+    }
+
+    /**
+     * Batch find optimal locations for multiple SKUs (prevents N+1 query problem)
+     * @returns Map of SKU -> Location for O(1) lookups
+     */
+    private static async batchFindOptimalLocations(
+        skus: string[],
+        warehouseId: string,
+        session?: mongoose.ClientSession | null
+    ): Promise<Map<string, any>> {
+        const locations = await WarehouseLocation.find({
+            warehouseId,
+            currentSKU: { $in: skus },
+            currentStock: { $gt: 0 },
+            status: 'OCCUPIED',
+        })
+            .sort({ isPickFace: -1, pickPriority: 1 })
+            .session(session);
+
+        // Group by SKU, keeping the first (best) location for each
+        const locationMap = new Map();
+        for (const location of locations) {
+            if (!locationMap.has(location.currentSKU)) {
+                locationMap.set(location.currentSKU, location);
+            }
+        }
+        return locationMap;
     }
 
     private static async findOptimalLocation(sku: string, warehouseId: string, quantity: number): Promise<any> {

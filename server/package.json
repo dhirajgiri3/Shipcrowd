@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.cjs",
   "scripts": {
-    "dev": "ts-node-dev src/index.ts",
+    "dev": "ts-node-dev -r tsconfig-paths/register src/index.ts",
     "build": "tsc",
     "start": "node server.cjs",
     "test": "jest",
@@ -39,6 +39,7 @@
     "nodemailer": "^7.0.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
     "twilio": "^5.5.2",
     "ua-parser-js": "^2.0.3",
     "winston": "^3.17.0",

@@ -1,6 +1,7 @@
 import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './system/auditLog';
 import auth, { authenticate, authorize, checkCompany, loginRateLimiter, csrfProtection } from './auth/auth';
 import permissions, { checkPermission, getUserPermissions } from './auth/permissions';
+import { requireCompany } from './auth/company';
 
 export {
   auditLog,
@@ -11,6 +12,11 @@ export {
   authenticate,
   authorize,
   checkCompany,
+  /**
+   * @deprecated Use guardChecks helper instead. Will be removed in v2.0.
+   * This middleware is kept for backward compatibility only.
+   */
+  requireCompany,
   loginRateLimiter,
   csrfProtection,
   permissions,

@@ -27,7 +27,7 @@ export const createPickListSchema = z.object({
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
     assignTo: z.string().optional(),
     notes: z.string().optional(),
-    scheduledAt: z.string().datetime().optional(),
+    scheduledAt: z.string().datetime().optional().transform(val => val ? new Date(val) : undefined),
 });
 
 export const assignPickListSchema = z.object({
@@ -165,7 +165,7 @@ export const receiveStockSchema = z.object({
     unitCost: z.number().optional(),
     batchNumber: z.string().optional(),
     lotNumber: z.string().optional(),
-    expiryDate: z.string().datetime().optional(),
+    expiryDate: z.string().datetime().optional().transform(val => val ? new Date(val) : undefined),
     notes: z.string().optional(),
 });
 

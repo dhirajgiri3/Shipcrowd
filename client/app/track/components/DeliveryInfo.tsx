@@ -49,7 +49,7 @@ export function DeliveryInfo({
 
     return (
         <motion.div
-            className={`bg-[var(--bg-elevated)] rounded-2xl p-5 md:p-6 border border-[var(--border-default)] ${className}`}
+            className={`bg-white rounded-2xl p-5 md:p-6 border border-slate-200 ${className}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.35 }}

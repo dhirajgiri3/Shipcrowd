@@ -5,7 +5,7 @@
  */
 
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '@/shared/types/express';
+import { AuthRequest } from '../../middleware/auth/auth';
 import PickingService from '@/core/application/services/warehouse/PickingService';
 import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
 import {
@@ -24,6 +24,7 @@ import {
     cancelPickListSchema,
     verifyPickListSchema,
 } from '@/shared/validation/warehouse.schemas';
+import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
 // Note: PickingService is now static, no instantiation needed
 
@@ -33,24 +34,26 @@ import {
  */
 async function createPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const validation = createPickListSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { companyId, userId } = req.user!;
         const pickList = await PickingService.createPickList({
             ...validation.data,
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'create',
             'picklist',
-            pickList._id.toString(),
+            String(pickList._id),
             { pickListNumber: pickList.pickListNumber },
             req
         );
@@ -67,17 +70,20 @@ async function createPickList(req: AuthRequest, res: Response, next: NextFunctio
  */
 async function getPickLists(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const { warehouseId, status, assignedTo, priority, page = '1', limit = '20' } = req.query;
-        const { companyId } = req.user!;
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
+        const { warehouseId, status, assignedTo, priority } = req.query;
+        const pagination = parsePagination(req.query);
 
         const result = await PickingService.getPickLists({
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
             warehouseId: warehouseId as string,
             status: status as string,
             assignedTo: assignedTo as string,
             priority: priority as string,
-            page: parseInt(page as string, 10),
-            limit: parseInt(limit as string, 10),
+            page: pagination.page,
+            limit: pagination.limit,
         });
 
         sendPaginated(res, result.data, result.pagination, 'Pick lists retrieved');
@@ -93,6 +99,8 @@ async function getPickLists(req: AuthRequest, res: Response, next: NextFunction)
 async function getPickListById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const pickList = await PickingService.getPickListById(id);
 
         if (!pickList) {
@@ -112,11 +120,13 @@ async function getPickListById(req: AuthRequest, res: Response, next: NextFuncti
  */
 async function getMyPickLists(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { status } = req.query;
-        const { userId } = req.user!;
 
         const pickLists = await PickingService.getPickListsByPicker(
-            userId.toString(),
+            auth.userId,
             status as string
         );
 
@@ -132,23 +142,27 @@ async function getMyPickLists(req: AuthRequest, res: Response, next: NextFunctio
  */
 async function assignPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const validation = assignPickListSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { userId, companyId } = req.user!;
         const pickList = await PickingService.assignPickList({
             pickListId: id,
             pickerId: validation.data.pickerId,
-            assignedBy: userId.toString(),
+            assignedBy: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'picklist',
             id,
@@ -168,17 +182,20 @@ async function assignPickList(req: AuthRequest, res: Response, next: NextFunctio
  */
 async function startPicking(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'pick list')) return;
 
         const pickList = await PickingService.startPicking({
             pickListId: id,
-            pickerId: userId.toString(),
+            pickerId: auth.userId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'picklist',
             id,
@@ -199,6 +216,8 @@ async function startPicking(req: AuthRequest, res: Response, next: NextFunction)
 async function pickItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const validation = pickItemSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -224,7 +243,12 @@ async function pickItem(req: AuthRequest, res: Response, next: NextFunction): Pr
  */
 async function skipItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const validation = skipItemSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -232,13 +256,12 @@ async function skipItem(req: AuthRequest, res: Response, next: NextFunction): Pr
         }
 
         const { itemId, reason } = validation.data;
-        const { userId, companyId } = req.user!;
 
         const pickList = await PickingService.skipItem(id, itemId, reason);
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'picklist',
             id,
@@ -258,8 +281,12 @@ async function skipItem(req: AuthRequest, res: Response, next: NextFunction): Pr
  */
 async function completePickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const validation = completePickListSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -270,13 +297,13 @@ async function completePickList(req: AuthRequest, res: Response, next: NextFunct
 
         const pickList = await PickingService.completePickList({
             pickListId: id,
-            pickerId: userId.toString(),
+            pickerId: auth.userId,
             pickerNotes,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'picklist',
             id,
@@ -296,8 +323,12 @@ async function completePickList(req: AuthRequest, res: Response, next: NextFunct
  */
 async function cancelPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const validation = cancelPickListSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -308,13 +339,13 @@ async function cancelPickList(req: AuthRequest, res: Response, next: NextFunctio
 
         const pickList = await PickingService.cancelPickList({
             pickListId: id,
-            cancelledBy: userId.toString(),
+            cancelledBy: auth.userId,
             reason,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'picklist',
             id,
@@ -334,8 +365,12 @@ async function cancelPickList(req: AuthRequest, res: Response, next: NextFunctio
  */
 async function verifyPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'pick list')) return;
+
         const validation = verifyPickListSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -346,14 +381,14 @@ async function verifyPickList(req: AuthRequest, res: Response, next: NextFunctio
 
         const pickList = await PickingService.verifyPickList({
             pickListId: id,
-            verifierId: userId.toString(),
+            verifierId: auth.userId,
             passed,
             notes,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'picklist',
             id,

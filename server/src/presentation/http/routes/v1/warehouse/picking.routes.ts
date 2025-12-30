@@ -6,12 +6,11 @@
 
 import { Router } from 'express';
 import pickingController from '@/presentation/http/controllers/warehouse/picking.controller';
-import { authenticate } from '@/presentation/http/middleware/auth.middleware';
-import { authorize } from '@/presentation/http/middleware/authorize.middleware';
+import { authenticate, authorize } from '@/presentation/http/middleware';
 
 const router = Router();
 
-// All routes require authentication
+// All routes require authentication (company context enforced in controllers)
 router.use(authenticate);
 
 // Pick list management

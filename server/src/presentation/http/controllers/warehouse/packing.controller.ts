@@ -5,7 +5,7 @@
  */
 
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '@/shared/types/express';
+import { AuthRequest } from '../../middleware/auth/auth';
 import PackingService from '@/core/application/services/warehouse/PackingService';
 import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
 import {
@@ -26,6 +26,7 @@ import {
     completePackingSessionSchema,
     cancelPackingSessionSchema,
 } from '@/shared/validation/warehouse.schemas';
+import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
 // Note: PackingService is now static
 
@@ -35,24 +36,26 @@ import {
  */
 async function createStation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const validation = createPackingStationSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { companyId, userId } = req.user!;
         const station = await PackingService.createStation({
             ...validation.data,
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'create',
             'packing_station',
-            station._id.toString(),
+            String(station._id),
             { stationCode: station.stationCode },
             req
         );
@@ -69,16 +72,19 @@ async function createStation(req: AuthRequest, res: Response, next: NextFunction
  */
 async function getStations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const { warehouseId, status, type, page = '1', limit = '20' } = req.query;
-        const { companyId } = req.user!;
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
+        const { warehouseId, status, type } = req.query;
+        const pagination = parsePagination(req.query);
 
         const result = await PackingService.getStations({
-            companyId: companyId.toString(),
+            companyId: auth.companyId,
             warehouseId: warehouseId as string,
             status: status as string,
             type: type as string,
-            page: parseInt(page as string, 10),
-            limit: parseInt(limit as string, 10),
+            page: pagination.page,
+            limit: pagination.limit,
         });
 
         sendPaginated(res, result.data, result.pagination, 'Packing stations retrieved');
@@ -94,6 +100,8 @@ async function getStations(req: AuthRequest, res: Response, next: NextFunction):
 async function getStationById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const station = await PackingService.getStationById(id);
 
         if (!station) {
@@ -128,22 +136,26 @@ async function getAvailableStations(req: AuthRequest, res: Response, next: NextF
  */
 async function assignPacker(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = assignPackerSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
             return;
         }
 
-        const { companyId, userId } = req.user!;
         const station = await PackingService.assignPacker({
             stationId: id,
             packerId: validation.data.packerId,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,
@@ -163,14 +175,17 @@ async function assignPacker(req: AuthRequest, res: Response, next: NextFunction)
  */
 async function unassignPacker(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'packing station')) return;
 
         const station = await PackingService.unassignPacker(id);
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,
@@ -190,16 +205,20 @@ async function unassignPacker(req: AuthRequest, res: Response, next: NextFunctio
  */
 async function setOffline(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = setStationOfflineSchema.safeParse(req.body);
         const reason = validation.success ? validation.data.reason : undefined;
-        const { userId, companyId } = req.user!;
 
         const station = await PackingService.setStationOffline(id, reason);
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,
@@ -219,14 +238,17 @@ async function setOffline(req: AuthRequest, res: Response, next: NextFunction): 
  */
 async function setOnline(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'packing station')) return;
 
         const station = await PackingService.setStationOnline(id);
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,
@@ -246,8 +268,12 @@ async function setOnline(req: AuthRequest, res: Response, next: NextFunction): P
  */
 async function startSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = startPackingSessionSchema.safeParse(req.body);
 
         if (!validation.success) {
@@ -257,13 +283,13 @@ async function startSession(req: AuthRequest, res: Response, next: NextFunction)
 
         const station = await PackingService.startPackingSession({
             stationId: id,
-            packerId: userId.toString(),
+            packerId: auth.userId,
             ...validation.data,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,
@@ -284,6 +310,8 @@ async function startSession(req: AuthRequest, res: Response, next: NextFunction)
 async function packItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = packItemSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -308,6 +336,8 @@ async function packItem(req: AuthRequest, res: Response, next: NextFunction): Pr
 async function createPackage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = createPackageSchema.safeParse(req.body);
 
         if (!validation.success) {
@@ -333,6 +363,8 @@ async function createPackage(req: AuthRequest, res: Response, next: NextFunction
 async function verifyWeight(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = verifyWeightSchema.safeParse(req.body);
 
         if (!validation.success) {
@@ -357,8 +389,12 @@ async function verifyWeight(req: AuthRequest, res: Response, next: NextFunction)
  */
 async function completeSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
+        if (!validateObjectId(id, res, 'packing station')) return;
+
         const validation = completePackingSessionSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -369,13 +405,13 @@ async function completeSession(req: AuthRequest, res: Response, next: NextFuncti
 
         const station = await PackingService.completePackingSession({
             stationId: id,
-            packerId: userId.toString(),
+            packerId: auth.userId,
             notes,
         });
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,
@@ -395,8 +431,10 @@ async function completeSession(req: AuthRequest, res: Response, next: NextFuncti
  */
 async function cancelSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
+        const auth = guardChecks(req, res);
+        if (!auth) return;
+
         const { id } = req.params;
-        const { userId, companyId } = req.user!;
         const validation = cancelPackingSessionSchema.safeParse(req.body);
         if (!validation.success) {
             sendValidationError(res, validation.error.errors);
@@ -408,8 +446,8 @@ async function cancelSession(req: AuthRequest, res: Response, next: NextFunction
         const station = await PackingService.cancelPackingSession(id, reason);
 
         await createAuditLog(
-            userId.toString(),
-            companyId.toString(),
+            auth.userId,
+            auth.companyId,
             'update',
             'packing_station',
             id,

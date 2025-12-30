@@ -70,7 +70,7 @@ export function ShipmentDetails({
 
     return (
         <motion.div
-            className={`bg-[var(--bg-elevated)] rounded-2xl p-5 md:p-6 border border-[var(--border-default)] ${className}`}
+            className={`bg-[var(--bg-elevated)] rounded-[var(--radius-2xl)] p-5 md:p-6 border border-[var(--border-default)] ${className}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
@@ -95,15 +95,15 @@ export function ShipmentDetails({
 
                 <button
                     onClick={handleCopy}
-                    className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] transition-colors duration-[var(--duration-base)]"
                 >
-                    <span className="text-[10px] font-mono text-slate-500">
+                    <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
                         {trackingNumber}
                     </span>
                     {copied ? (
-                        <Check className="w-3 h-3 text-emerald-500" />
+                        <Check className="w-3 h-3 text-[var(--success)]" />
                     ) : (
-                        <Copy className="w-3 h-3 text-slate-400 group-hover:text-slate-600" />
+                        <Copy className="w-3 h-3 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]" />
                     )}
                 </button>
             </div>
@@ -118,7 +118,7 @@ export function ShipmentDetails({
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 + index * 0.05 }}
                     >
-                        <div className="w-7 h-7 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
+                        <div className="w-7 h-7 rounded-[var(--radius-lg)] bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
                             {detail.icon}
                         </div>
                         <div className="min-w-0">

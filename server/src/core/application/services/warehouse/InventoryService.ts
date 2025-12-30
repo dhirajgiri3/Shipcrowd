@@ -18,11 +18,12 @@ import {
     IPaginatedResult,
 } from '@/core/domain/interfaces/warehouse/IInventoryService';
 import { AppError } from '@/shared/errors/AppError';
+import logger from '@/shared/logger/winston.logger';
 
 export default class InventoryService {
     static async createInventory(data: ICreateInventoryDTO): Promise<IInventory> {
         const existing = await Inventory.findOne({ warehouseId: data.warehouseId, sku: data.sku });
-        if (existing) throw new AppError('Inventory already exists for this SKU', 400);
+        if (existing) throw new AppError('Inventory already exists for this SKU', 'INVENTORY_EXISTS', 400);
 
         return Inventory.create({
             ...data,
@@ -34,7 +35,7 @@ export default class InventoryService {
 
     static async updateInventory(data: any): Promise<IInventory> {
         const inventory = await Inventory.findByIdAndUpdate(data.inventoryId, data, { new: true });
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
         return inventory;
     }
 
@@ -69,94 +70,157 @@ export default class InventoryService {
 
     static async discontinueInventory(inventoryId: string): Promise<IInventory> {
         const inventory = await Inventory.findById(inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
         inventory.status = 'DISCONTINUED';
         await inventory.save();
         return inventory;
     }
 
     static async receiveStock(data: IReceiveStockDTO): Promise<{ inventory: IInventory; movement: IStockMovement }> {
-        let inventory = await Inventory.findOne({ warehouseId: data.warehouseId, sku: data.sku });
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        if (!inventory) {
-            inventory = await Inventory.create({
+        try {
+            let inventory = await Inventory.findOne({
+                warehouseId: data.warehouseId,
+                sku: data.sku
+            }).session(session);
+
+            if (!inventory) {
+                [inventory] = await Inventory.create([{
+                    warehouseId: data.warehouseId,
+                    companyId: data.companyId,
+                    sku: data.sku,
+                    productName: data.sku,
+                    onHand: data.quantity,
+                }], { session });
+            } else {
+                inventory.onHand += data.quantity;
+                await inventory.save({ session });
+            }
+
+            const [movement] = await StockMovement.create([{
                 warehouseId: data.warehouseId,
                 companyId: data.companyId,
+                movementNumber: await this.generateMovementNumber(),
+                type: 'RECEIVE',
+                direction: 'IN',
                 sku: data.sku,
-                productName: data.sku,
-                onHand: data.quantity,
-            });
-        } else {
-            inventory.onHand += data.quantity;
-            await inventory.save();
+                productName: inventory.productName,
+                inventoryId: inventory._id,
+                quantity: data.quantity,
+                previousQuantity: inventory.onHand - data.quantity,
+                newQuantity: inventory.onHand,
+                toLocationId: data.locationId,
+                reason: 'Stock received',
+                performedBy: data.performedBy,
+                status: 'COMPLETED',
+            }], { session });
+
+            await session.commitTransaction();
+            return { inventory, movement };
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        const movement = await StockMovement.create({
-            warehouseId: data.warehouseId,
-            companyId: data.companyId,
-            movementNumber: await this.generateMovementNumber(),
-            type: 'RECEIVE',
-            direction: 'IN',
-            sku: data.sku,
-            productName: inventory.productName,
-            inventoryId: inventory._id,
-            quantity: data.quantity,
-            previousQuantity: inventory.onHand - data.quantity,
-            newQuantity: inventory.onHand,
-            toLocationId: data.locationId,
-            reason: 'Stock received',
-            performedBy: data.performedBy,
-            status: 'COMPLETED',
-        });
-
-        return { inventory, movement };
     }
 
     static async adjustStock(data: IAdjustStockDTO): Promise<{ inventory: IInventory; movement: IStockMovement }> {
-        const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        const previousQty = inventory.onHand;
-        inventory.onHand += data.quantity;
-        await inventory.save();
+        try {
+            const inventory = await Inventory.findById(data.inventoryId).session(session);
+            if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
-        const movement = await StockMovement.create({
-            warehouseId: inventory.warehouseId,
-            companyId: inventory.companyId,
-            movementNumber: await this.generateMovementNumber(),
-            type: 'ADJUSTMENT',
-            direction: data.quantity > 0 ? 'IN' : 'OUT',
-            sku: inventory.sku,
-            productName: inventory.productName,
-            inventoryId: inventory._id,
-            quantity: data.quantity,
-            previousQuantity: previousQty,
-            newQuantity: inventory.onHand,
-            reason: data.reason,
-            performedBy: data.performedBy,
-            status: 'COMPLETED',
-        });
+            const previousQty = inventory.onHand;
+            inventory.onHand += data.quantity;
+            await inventory.save({ session });
 
-        return { inventory, movement };
+            const [movement] = await StockMovement.create([{
+                warehouseId: inventory.warehouseId,
+                companyId: inventory.companyId,
+                movementNumber: await this.generateMovementNumber(),
+                type: 'ADJUSTMENT',
+                direction: data.quantity > 0 ? 'IN' : 'OUT',
+                sku: inventory.sku,
+                productName: inventory.productName,
+                inventoryId: inventory._id,
+                quantity: data.quantity,
+                previousQuantity: previousQty,
+                newQuantity: inventory.onHand,
+                reason: data.reason,
+                performedBy: data.performedBy,
+                status: 'COMPLETED',
+            }], { session });
+
+            await session.commitTransaction();
+            return { inventory, movement };
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
     static async reserveStock(data: IReserveStockDTO): Promise<IInventory> {
         const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
-        const available = inventory.onHand - inventory.reserved;
+        // FIX: Use virtual field which correctly includes damaged stock
+        // available = onHand - reserved - damaged (not just onHand - reserved)
+        const available = inventory.available; // Uses virtual: Math.max(0, onHand - reserved - damaged)
         if (available < data.quantity) {
-            throw new AppError('Insufficient stock available', 400);
+            logger.warn('Stock reservation failed - insufficient stock', {
+                inventoryId: data.inventoryId,
+                sku: inventory.sku,
+                requested: data.quantity,
+                available,
+            });
+            throw new AppError(
+                `Insufficient stock available. Requested: ${data.quantity}, Available: ${available}`,
+                'INSUFFICIENT_STOCK',
+                400
+            );
         }
 
-        inventory.reserved += data.quantity;
-        await inventory.save();
-        return inventory;
+        // OPTIMISTIC LOCKING: Use findOneAndUpdate with version check
+        const updated = await Inventory.findOneAndUpdate(
+            {
+                _id: data.inventoryId,
+                __v: inventory.__v
+            },
+            {
+                $inc: { reserved: data.quantity, __v: 1 }
+            },
+            { new: true }
+        );
+
+        if (!updated) {
+            throw new AppError(
+                'Inventory was updated by another process. Please retry.',
+                'CONCURRENT_MODIFICATION',
+                409
+            );
+        }
+
+        logger.info('Stock reserved successfully', {
+            inventoryId: String(updated._id),
+            sku: updated.sku,
+            quantityReserved: data.quantity,
+            newReserved: updated.reserved,
+            newAvailable: updated.available,
+        });
+
+        return updated;
     }
 
     static async releaseReservation(data: any): Promise<IInventory> {
         const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
         inventory.reserved = Math.max(0, inventory.reserved - data.quantity);
         await inventory.save();
@@ -165,11 +229,53 @@ export default class InventoryService {
 
     static async pickStock(data: IPickStockDTO): Promise<{ inventory: IInventory; movement: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
-        inventory.onHand -= data.quantity;
-        inventory.reserved = Math.max(0, inventory.reserved - data.quantity);
-        await inventory.save();
+        // FIX: Validate we have enough stock to pick (prevents negative onHand)
+        if (inventory.onHand < data.quantity) {
+            logger.warn('Stock pick failed - insufficient stock', {
+                inventoryId: data.inventoryId,
+                sku: inventory.sku,
+                requested: data.quantity,
+                onHand: inventory.onHand,
+            });
+            throw new AppError(
+                `Insufficient stock to pick. Requested: ${data.quantity}, On hand: ${inventory.onHand}`,
+                'INSUFFICIENT_STOCK',
+                400
+            );
+        }
+
+        const previousOnHand = inventory.onHand;
+
+        // OPTIMISTIC LOCKING: Use findOneAndUpdate with version check
+        const updated = await Inventory.findOneAndUpdate(
+            {
+                _id: data.inventoryId,
+                __v: inventory.__v
+            },
+            {
+                $inc: { onHand: -data.quantity, __v: 1 },
+                $set: { reserved: Math.max(0, inventory.reserved - data.quantity) }
+            },
+            { new: true }
+        );
+
+        if (!updated) {
+            throw new AppError(
+                'Inventory was updated by another process. Please retry.',
+                'CONCURRENT_MODIFICATION',
+                409
+            );
+        }
+
+        logger.info('Stock picked successfully', {
+            inventoryId: String(updated._id),
+            sku: updated.sku,
+            quantityPicked: data.quantity,
+            previousOnHand,
+            newOnHand: updated.onHand,
+        });
 
         const movement = await StockMovement.create({
             warehouseId: inventory.warehouseId,
@@ -199,7 +305,7 @@ export default class InventoryService {
 
     static async transferStock(data: any): Promise<{ inventory: IInventory; movement: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
         const movement = await StockMovement.create({
             warehouseId: inventory.warehouseId,
@@ -225,7 +331,7 @@ export default class InventoryService {
 
     static async markDamaged(data: any): Promise<{ inventory: IInventory; movement: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
         inventory.damaged += data.quantity;
         inventory.onHand -= data.quantity;
@@ -253,7 +359,7 @@ export default class InventoryService {
 
     static async cycleCount(data: any): Promise<{ inventory: IInventory; movement?: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
-        if (!inventory) throw new AppError('Inventory not found', 404);
+        if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
         const variance = data.countedQuantity - data.systemQuantity;
 
@@ -311,10 +417,10 @@ export default class InventoryService {
         });
 
         return inventories.map((inv) => ({
-            inventoryId: inv._id.toString(),
+            inventoryId: String(inv._id),
             sku: inv.sku,
             productName: inv.productName,
-            warehouseId: inv.warehouseId.toString(),
+            warehouseId: String(inv.warehouseId),
             warehouseName: 'Warehouse',
             currentStock: inv.onHand - inv.reserved,
             reorderPoint: inv.reorderPoint,
