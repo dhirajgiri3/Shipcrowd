@@ -7,6 +7,7 @@
 import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/RTOEvent';
 import NDREvent from '../../../../infrastructure/database/mongoose/models/NDREvent';
 import WhatsAppService from '../../../../infrastructure/integrations/communication/WhatsAppService';
+import WarehouseNotificationService from '../warehouse/WarehouseNotificationService';
 import logger from '../../../../shared/logger/winston.logger';
 
 interface RTOResult {
@@ -186,19 +187,21 @@ export default class RTOService {
         logger.info('Order status updated', { orderId, status });
     }
 
-    /**
-     * Notify warehouse of incoming return
-     */
     private static async notifyWarehouse(
         warehouseId: string,
         rtoEvent: IRTOEvent
     ): Promise<void> {
-        // TODO: Send warehouse notification
-        logger.info('Warehouse notified of incoming RTO', {
+        await WarehouseNotificationService.notifyRTOIncoming(
+            String(rtoEvent._id),
             warehouseId,
-            reverseAwb: rtoEvent.reverseAwb,
-            expectedDate: rtoEvent.expectedReturnDate,
-        });
+            {
+                awb: rtoEvent.shipment.toString(), // TODO: Get actual AWB from shipment
+                reverseAwb: rtoEvent.reverseAwb,
+                expectedReturnDate: rtoEvent.expectedReturnDate || new Date(), // Fallback to current date
+                rtoReason: rtoEvent.rtoReason,
+                requiresQC: true, // Always require QC for RTO
+            }
+        );
     }
 
     /**

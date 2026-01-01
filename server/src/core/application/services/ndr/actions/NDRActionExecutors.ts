@@ -9,6 +9,7 @@ import CallLog from '../../../../../infrastructure/database/mongoose/models/Call
 import ExotelClient from '../../../../../infrastructure/integrations/communication/ExotelClient';
 import WhatsAppService from '../../../../../infrastructure/integrations/communication/WhatsAppService';
 import OpenAIService from '../../../../../infrastructure/integrations/ai/OpenAIService';
+import TokenService from '../../../../../shared/services/TokenService';
 import logger from '../../../../../shared/logger/winston.logger';
 
 interface ActionResult {
@@ -252,18 +253,24 @@ export class NDRActionExecutors {
         try {
             const { ndrEvent, customer } = context;
 
-            // Generate magic link token (24-hour expiry)
-            const token = this.generateAddressUpdateToken(String(ndrEvent._id));
-            const updateUrl = `${process.env.BASE_URL || 'https://shipcrowd.com'}/update-address/${token}`;
+            // Generate magic link token using TokenService (48-hour expiry)
+            const shipmentId = String(ndrEvent.shipment);
+            const ndrEventId = String(ndrEvent._id);
+            const token = TokenService.generateAddressUpdateToken(shipmentId, ndrEventId);
+            const updateUrl = `${process.env.BASE_URL || 'https://shipcrowd.com'}/public/update-address/${token}`;
 
             // Send via WhatsApp with update link
             const message = `Hi ${customer.name},
 
-Please update your delivery address for order #${context.orderId}:
+We attempted to deliver your order but encountered an address issue.
 
+Please update your delivery address:
 ${updateUrl}
 
-This link expires in 24 hours.
+✓ Secure link (expires in 48 hours)
+✓ We'll retry delivery immediately after update
+
+Need help? Reply to this message.
 
 -Shipcrowd`;
 
@@ -374,15 +381,7 @@ This link expires in 24 hours.
         }
     }
 
-    /**
-     * Generate address update token
-     */
-    private static generateAddressUpdateToken(ndrEventId: string): string {
-        // Simple token - in production, use JWT
-        const timestamp = Date.now();
-        const data = `${ndrEventId}:${timestamp}`;
-        return Buffer.from(data).toString('base64url');
-    }
+    // Note: generateAddressUpdateToken removed - now using TokenService.generateAddressUpdateToken()
 
     /**
      * Record action result in NDR event
