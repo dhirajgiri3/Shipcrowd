@@ -9,7 +9,7 @@ import CallLog from '../../../../../infrastructure/database/mongoose/models/Call
 import ExotelClient from '../../../../../infrastructure/integrations/communication/ExotelClient';
 import WhatsAppService from '../../../../../infrastructure/integrations/communication/WhatsAppService';
 import OpenAIService from '../../../../../infrastructure/integrations/ai/OpenAIService';
-import TokenService from '../../../../../shared/services/TokenService';
+import TokenService from '../../../../../shared/services/token.service';
 import logger from '../../../../../shared/logger/winston.logger';
 
 interface ActionResult {

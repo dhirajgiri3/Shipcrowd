@@ -5,14 +5,14 @@
 import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/NDRActionExecutors';
 import ExotelClient from '../../../../src/infrastructure/integrations/communication/ExotelClient';
 import WhatsAppService from '../../../../src/infrastructure/integrations/communication/WhatsAppService';
-import TokenService from '../../../../src/shared/services/TokenService';
+import TokenService from '../../../../src/shared/services/token.service';
 import { createTestNDREvent } from '../../../fixtures/ndrFactory';
 import mongoose from 'mongoose';
 
 // Mock external services
 jest.mock('../../../../src/infrastructure/integrations/communication/ExotelClient');
 jest.mock('../../../../src/infrastructure/integrations/communication/WhatsAppService');
-jest.mock('../../../../src/shared/services/TokenService');
+jest.mock('../../../../src/shared/services/token.service');
 
 describe('NDRActionExecutors', () => {
     const mockContext = {
@@ -37,12 +37,12 @@ describe('NDRActionExecutors', () => {
     describe('executeCallCustomer', () => {
         it('should call customer successfully via Exotel', async () => {
             const mockCallSid = 'CALL123';
-            (ExotelClient.prototype.makeCall as jest.Mock).mockResolvedValue({
+            (ExotelClient.prototype.initiateCall as jest.Mock).mockResolvedValue({
                 sid: mockCallSid,
                 status: 'queued',
             });
 
-            const result = await NDRActionExecutors['executeCallCustomer'](mockContext, {});
+            const result = await NDRActionExecutors['executeCallCustomer'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('call_customer');
@@ -51,11 +51,11 @@ describe('NDRActionExecutors', () => {
         });
 
         it('should handle failed call attempt', async () => {
-            (ExotelClient.prototype.makeCall as jest.Mock).mockRejectedValue(
+            (ExotelClient.prototype.initiateCall as jest.Mock).mockRejectedValue(
                 new Error('Call failed')
             );
 
-            const result = await NDRActionExecutors['executeCallCustomer'](mockContext, {});
+            const result = await NDRActionExecutors['executeCallCustomer'](mockContext as any, {});
 
             expect(result.success).toBe(false);
             expect(result.result).toBe('failed');
@@ -64,11 +64,11 @@ describe('NDRActionExecutors', () => {
 
         it('should use custom agent number from config', async () => {
             const customAgentNumber = '+919999999999';
-            await NDRActionExecutors['executeCallCustomer'](mockContext, {
+            await NDRActionExecutors['executeCallCustomer'](mockContext as any, {
                 agentNumber: customAgentNumber,
             });
 
-            expect(ExotelClient.prototype.makeCall).toHaveBeenCalledWith(
+            expect(ExotelClient.prototype.initiateCall).toHaveBeenCalledWith(
                 mockContext.customer.phone,
                 customAgentNumber
             );
@@ -82,7 +82,7 @@ describe('NDRActionExecutors', () => {
                 status: 'sent',
             });
 
-            const result = await NDRActionExecutors['executeSendWhatsApp'](mockContext, {});
+            const result = await NDRActionExecutors['executeSendWhatsApp'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('send_whatsapp');
@@ -94,7 +94,7 @@ describe('NDRActionExecutors', () => {
                 new Error('Message failed')
             );
 
-            const result = await NDRActionExecutors['executeSendWhatsApp'](mockContext, {});
+            const result = await NDRActionExecutors['executeSendWhatsApp'](mockContext as any, {});
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Message failed');
@@ -102,7 +102,7 @@ describe('NDRActionExecutors', () => {
 
         it('should use custom message template', async () => {
             const customTemplate = 'custom_template';
-            await NDRActionExecutors['executeSendWhatsApp'](mockContext, {
+            await NDRActionExecutors['executeSendWhatsApp'](mockContext as any, {
                 templateName: customTemplate,
             });
 
@@ -117,7 +117,7 @@ describe('NDRActionExecutors', () => {
 
     describe('executeSendEmail', () => {
         it('should send email successfully', async () => {
-            const result = await NDRActionExecutors['executeSendEmail'](mockContext, {});
+            const result = await NDRActionExecutors['executeSendEmail'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('send_email');
@@ -133,7 +133,7 @@ describe('NDRActionExecutors', () => {
                 },
             };
 
-            const result = await NDRActionExecutors['executeSendEmail'](contextNoEmail, {});
+            const result = await NDRActionExecutors['executeSendEmail'](contextNoEmail as any, {});
 
             expect(result.result).toBe('skipped');
             expect(result.metadata?.reason).toBe('No email provided');
@@ -150,7 +150,7 @@ describe('NDRActionExecutors', () => {
                 messageId: 'MSG123',
             });
 
-            const result = await NDRActionExecutors['executeUpdateAddress'](mockContext, {});
+            const result = await NDRActionExecutors['executeUpdateAddress'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('update_address');
@@ -167,7 +167,7 @@ describe('NDRActionExecutors', () => {
                 throw new Error('Token generation failed');
             });
 
-            const result = await NDRActionExecutors['executeUpdateAddress'](mockContext, {});
+            const result = await NDRActionExecutors['executeUpdateAddress'](mockContext as any, {});
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Token generation failed');
@@ -176,7 +176,7 @@ describe('NDRActionExecutors', () => {
 
     describe('executeRequestReattempt', () => {
         it('should request courier reattempt successfully', async () => {
-            const result = await NDRActionExecutors['executeRequestReattempt'](mockContext, {});
+            const result = await NDRActionExecutors['executeRequestReattempt'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('request_reattempt');
@@ -184,7 +184,7 @@ describe('NDRActionExecutors', () => {
         });
 
         it('should include AWB in metadata', async () => {
-            const result = await NDRActionExecutors['executeRequestReattempt'](mockContext, {});
+            const result = await NDRActionExecutors['executeRequestReattempt'](mockContext as any, {});
 
             expect(result.metadata?.awb).toBe(mockContext.ndrEvent.awb);
         });
@@ -192,7 +192,7 @@ describe('NDRActionExecutors', () => {
 
     describe('executeTriggerRTO', () => {
         it('should trigger RTO successfully', async () => {
-            const result = await NDRActionExecutors['executeTriggerRTO'](mockContext, {});
+            const result = await NDRActionExecutors['executeTriggerRTO'](mockContext as any, {});
 
             expect(result.success).toBe(true);
             expect(result.actionType).toBe('trigger_rto');
@@ -200,7 +200,7 @@ describe('NDRActionExecutors', () => {
         });
 
         it('should include RTO reason in metadata', async () => {
-            const result = await NDRActionExecutors['executeTriggerRTO'](mockContext, {
+            const result = await NDRActionExecutors['executeTriggerRTO'](mockContext as any, {
                 rtoReason: 'ndr_unresolved',
             });
 
@@ -210,18 +210,18 @@ describe('NDRActionExecutors', () => {
 
     describe('executeAction - Router', () => {
         it('should route to correct executor for call_customer', async () => {
-            (ExotelClient.prototype.makeCall as jest.Mock).mockResolvedValue({
+            (ExotelClient.prototype.initiateCall as jest.Mock).mockResolvedValue({
                 sid: 'CALL123',
             });
 
             const result = await NDRActionExecutors.executeAction(
                 'call_customer',
-                mockContext,
+                mockContext as any,
                 {}
             );
 
             expect(result.actionType).toBe('call_customer');
-            expect(ExotelClient.prototype.makeCall).toHaveBeenCalled();
+            expect(ExotelClient.prototype.initiateCall).toHaveBeenCalled();
         });
 
         it('should route to correct executor for send_whatsapp', async () => {
@@ -231,7 +231,7 @@ describe('NDRActionExecutors', () => {
 
             const result = await NDRActionExecutors.executeAction(
                 'send_whatsapp',
-                mockContext,
+                mockContext as any,
                 {}
             );
 
@@ -241,7 +241,7 @@ describe('NDRActionExecutors', () => {
         it('should handle unknown action type', async () => {
             const result = await NDRActionExecutors.executeAction(
                 'unknown_action',
-                mockContext,
+                mockContext as any,
                 {}
             );
 

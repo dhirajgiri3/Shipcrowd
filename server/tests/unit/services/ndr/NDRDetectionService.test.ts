@@ -68,14 +68,16 @@ describe('NDRDetectionService', () => {
     });
 
     describe('detectNDRFromTracking', () => {
-        const mockShipment: Partial<IShipment> = {
+        const mockShipment: Partial<IShipment> & { awb?: string } = {
             _id: '507f1f77bcf86cd799439011' as any,
             trackingNumber: 'TRK123456',
+            awb: 'TRK123456',
             companyId: '507f1f77bcf86cd799439012' as any,
             orderId: '507f1f77bcf86cd799439013' as any,
         };
 
         const mockTrackingUpdate = {
+            awb: 'TRK123456',
             status: 'failed_delivery',
             remarks: 'Customer not available',
             location: 'Mumbai',
@@ -83,71 +85,77 @@ describe('NDRDetectionService', () => {
         };
 
         it('should create NDR event when tracking status indicates failure', async () => {
-            // Mock countDocuments to return 0 (no duplicates)
+            // Mock findOne to return null (no duplicates)
+            (NDREvent.findOne as jest.Mock).mockResolvedValue(null);
+            // Mock countDocuments for attempt calculation
             (NDREvent.countDocuments as jest.Mock).mockResolvedValue(0);
 
-            // Mock create
+            // Mock createNDREvent
             const mockNDREvent = {
                 _id: 'ndr123',
                 shipment: mockShipment._id,
-                awb: mockShipment.trackingNumber,
+                awb: 'TRK123456',
                 ndrReason: 'Customer not available',
                 attemptNumber: 1,
                 save: jest.fn().mockResolvedValue(true),
             };
-            (NDREvent.create as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.createNDREvent as jest.Mock).mockResolvedValue(mockNDREvent);
 
             const result = await NDRDetectionService.detectNDRFromTracking(
                 mockTrackingUpdate,
-                mockShipment as IShipment
+                mockShipment as any
             );
 
             expect(result).toBeDefined();
-            expect(NDREvent.create).toHaveBeenCalled();
+            expect(result.isNDR).toBe(true);
+            expect(result.ndrEvent).toBeDefined();
+            expect(NDREvent.createNDREvent).toHaveBeenCalled();
         });
 
         it('should not create duplicate NDR within 24 hours', async () => {
-            // Mock countDocuments to return 1 (duplicate exists)
-            (NDREvent.countDocuments as jest.Mock).mockResolvedValue(1);
+            // Mock findOne to return an existing NDR (duplicate exists)
+            (NDREvent.findOne as jest.Mock).mockResolvedValue({
+                _id: 'existing-ndr',
+            });
 
             const result = await NDRDetectionService.detectNDRFromTracking(
                 mockTrackingUpdate,
-                mockShipment as IShipment
+                mockShipment as any
             );
 
-            expect(result).toBeNull();
-            expect(NDREvent.create).not.toHaveBeenCalled();
+            expect(result.isNDR).toBe(true);
+            expect(result.reason).toBe('Duplicate NDR');
+            expect(NDREvent.createNDREvent).not.toHaveBeenCalled();
         });
 
         it('should increment attempt number for repeated NDRs', async () => {
-            // Mock findOne to return existing NDR with attemptNumber 1
-            (NDREvent.findOne as jest.Mock).mockResolvedValue({
-                attemptNumber: 1,
-            });
+            // Mock findOne to return null (no duplicates within 24h)
+            (NDREvent.findOne as jest.Mock).mockResolvedValue(null);
 
-            // Mock countDocuments to return 0 (allow creation)
-            (NDREvent.countDocuments as jest.Mock).mockResolvedValue(0);
+            // Mock countDocuments to return 1 (one previous NDR exists)
+            (NDREvent.countDocuments as jest.Mock).mockResolvedValue(1);
 
             const mockNDREvent = {
                 _id: 'ndr124',
                 attemptNumber: 2,
                 save: jest.fn().mockResolvedValue(true),
             };
-            (NDREvent.create as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.createNDREvent as jest.Mock).mockResolvedValue(mockNDREvent);
 
             const result = await NDRDetectionService.detectNDRFromTracking(
                 mockTrackingUpdate,
-                mockShipment as IShipment
+                mockShipment as any
             );
 
             expect(result).toBeDefined();
-            expect(result?.attemptNumber).toBe(2);
+            expect(result.ndrEvent?.attemptNumber).toBe(2);
         });
 
         it('should auto-calculate resolution deadline (48 hours from detection)', async () => {
             const now = new Date();
             const expectedDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
+            (NDREvent.findOne as jest.Mock).mockResolvedValue(null);
             (NDREvent.countDocuments as jest.Mock).mockResolvedValue(0);
 
             const mockNDREvent = {
@@ -155,16 +163,17 @@ describe('NDRDetectionService', () => {
                 resolutionDeadline: expectedDeadline,
                 save: jest.fn().mockResolvedValue(true),
             };
-            (NDREvent.create as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.createNDREvent as jest.Mock).mockResolvedValue(mockNDREvent);
 
             const result = await NDRDetectionService.detectNDRFromTracking(
                 mockTrackingUpdate,
-                mockShipment as IShipment
+                mockShipment as any
             );
 
             expect(result).toBeDefined();
+            expect(result.ndrEvent).toBeDefined();
             // Check deadline is approximately 48 hours from now (within 1 minute tolerance)
-            const deadlineDiff = result?.resolutionDeadline.getTime() - now.getTime();
+            const deadlineDiff = result.ndrEvent!.resolutionDeadline.getTime() - now.getTime();
             expect(deadlineDiff).toBeGreaterThan(47.9 * 60 * 60 * 1000);
             expect(deadlineDiff).toBeLessThan(48.1 * 60 * 60 * 1000);
         });

@@ -1,12 +1,12 @@
-import NDRDetectionService from '../../../src/core/application/services/ndr/NDRDetectionService';
-import NDRClassificationService from '../../../src/core/application/services/ndr/NDRClassificationService';
-import NDRResolutionService from '../../../src/core/application/services/ndr/NDRResolutionService';
-import RTOService from '../../../src/core/application/services/rto/RTOService';
-import NDREvent from '../../../src/infrastructure/database/mongoose/models/NDREvent';
-import NDRWorkflow from '../../../src/infrastructure/database/mongoose/models/NDRWorkflow';
+import NDRDetectionService from '@/core/application/services/ndr/NDRDetectionService';
+import NDRClassificationService from '@/core/application/services/ndr/NDRClassificationService';
+import NDRResolutionService from '@/core/application/services/ndr/NDRResolutionService';
+import RTOService from '@/core/application/services/rto/RTOService';
+import NDREvent from '@/infrastructure/database/mongoose/models/NDREvent';
+import NDRWorkflow from '@/infrastructure/database/mongoose/models/NDRWorkflow';
 
-jest.mock('../../../src/infrastructure/database/mongoose/models/NDREvent');
-jest.mock('../../../src/infrastructure/database/mongoose/models/NDRWorkflow');
+jest.mock('@/infrastructure/database/mongoose/models/NDREvent');
+jest.mock('@/infrastructure/database/mongoose/models/NDRWorkflow');
 
 describe('NDR/RTO Integration Tests', () => {
     describe('Complete NDR Resolution Flow', () => {
@@ -14,12 +14,13 @@ describe('NDR/RTO Integration Tests', () => {
             // 1. Detection
             const mockShipment = {
                 _id: 'ship123',
-                trackingNumber: 'TRK123',
+                awb: 'TRK123',
                 companyId: 'comp123',
                 orderId: 'order123',
             };
 
             const trackingUpdate = {
+                awb: 'TRK123',
                 status: 'failed_delivery',
                 remarks: 'Customer not available',
                 timestamp: new Date(),
@@ -28,27 +29,31 @@ describe('NDR/RTO Integration Tests', () => {
             const mockNDREvent = {
                 _id: 'ndr123',
                 shipment: mockShipment._id,
+                awb: 'TRK123',
                 ndrReason: 'Customer not available',
-                ndrType: undefined,
+                ndrType: 'keyword' as any, // Will be updated after classification
                 status: 'detected',
                 save: jest.fn().mockResolvedValue(true),
             };
 
             (NDREvent.countDocuments as jest.Mock).mockResolvedValue(0);
-            (NDREvent.create as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.createNDREvent as jest.Mock).mockResolvedValue(mockNDREvent);
             (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.findOne as jest.Mock).mockResolvedValue(null);
 
-            const ndrEvent = await NDRDetectionService.detectNDRFromTracking(
+            const result = await NDRDetectionService.detectNDRFromTracking(
                 trackingUpdate,
                 mockShipment as any
             );
 
-            expect(ndrEvent).toBeDefined();
-            expect(ndrEvent?.status).toBe('detected');
+            expect(result).toBeDefined();
+            expect(result.isNDR).toBe(true);
+            expect(result.ndrEvent).toBeDefined();
+            expect(result.ndrEvent?.status).toBe('detected');
 
             // 2. Classification
             mockNDREvent.ndrType = 'customer_unavailable';
-            await NDRClassificationService.classifyAndUpdate(String(ndrEvent?._id));
+            await NDRClassificationService.classifyAndUpdate(String(result.ndrEvent?._id));
 
             expect(mockNDREvent.ndrType).toBe('customer_unavailable');
 
@@ -78,6 +83,9 @@ describe('NDR/RTO Integration Tests', () => {
             const mockNDREvent = {
                 _id: 'ndr124',
                 shipment: 'ship124',
+                company: 'comp124',
+                order: 'order124',
+                ndrType: 'address_issue',
                 status: 'in_resolution',
                 resolutionDeadline: new Date(Date.now() - 1000), // Expired
             };
@@ -90,15 +98,16 @@ describe('NDR/RTO Integration Tests', () => {
                 },
             };
 
-            (NDREvent.find as jest.Mock).mockResolvedValue([mockNDREvent]);
+            (NDREvent.getExpiredNDRs as jest.Mock).mockResolvedValue([mockNDREvent]);
             (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(mockWorkflow);
 
             // 2. Check deadlines (would trigger RTO)
-            await NDRResolutionService.checkResolutionDeadlines();
+            const processed = await NDRResolutionService.checkResolutionDeadlines();
 
             // 3. RTO would be triggered automatically
             // RTOService.triggerRTO would be called
             expect(mockNDREvent).toBeDefined();
+            expect(NDREvent.getExpiredNDRs).toHaveBeenCalled();
         });
     });
 

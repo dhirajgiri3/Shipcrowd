@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import TokenService from '../../../../shared/services/TokenService';
+import TokenService from '../../../../shared/services/token.service';
 import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
 import NDREvent from '../../../../infrastructure/database/mongoose/models/NDREvent';
 import { AppError } from '../../../../shared/errors/AppError';

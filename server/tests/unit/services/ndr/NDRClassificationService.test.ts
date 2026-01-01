@@ -23,13 +23,15 @@ describe('NDRClassificationService', () => {
                 _id: 'ndr123',
                 ndrReason: 'wrong address provided',
                 courierRemarks: 'Address not found',
+                ndrReasonClassified: '',
+                ndrType: '' as any,
                 save: jest.fn().mockResolvedValue(true),
             };
             (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
 
             await NDRClassificationService.classifyAndUpdate('ndr123');
 
-            expect(mockNDREvent.ndrReasonClassified).toBe('address_issue');
+            expect(mockNDREvent.ndrReasonClassified).toBe('Address is incorrect or incomplete');
             expect(mockNDREvent.ndrType).toBe('address_issue');
             expect(mockNDREvent.save).toHaveBeenCalled();
         });
@@ -44,13 +46,15 @@ describe('NDRClassificationService', () => {
                 _id: 'ndr124',
                 ndrReason: 'customer not available',
                 courierRemarks: 'Phone switched off',
+                ndrReasonClassified: '',
+                ndrType: '' as any,
                 save: jest.fn().mockResolvedValue(true),
             };
             (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
 
             await NDRClassificationService.classifyAndUpdate('ndr124');
 
-            expect(mockNDREvent.ndrReasonClassified).toBe('customer_unavailable');
+            expect(mockNDREvent.ndrReasonClassified).toBe('Customer was not available to receive delivery');
             expect(mockNDREvent.ndrType).toBe('customer_unavailable');
         });
 
@@ -64,13 +68,15 @@ describe('NDRClassificationService', () => {
                 _id: 'ndr125',
                 ndrReason: 'customer refused package',
                 courierRemarks: 'Rejected delivery',
+                ndrReasonClassified: '',
+                ndrType: '' as any,
                 save: jest.fn().mockResolvedValue(true),
             };
             (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
 
             await NDRClassificationService.classifyAndUpdate('ndr125');
 
-            expect(mockNDREvent.ndrReasonClassified).toBe('refused');
+            expect(mockNDREvent.ndrReasonClassified).toBe('Customer refused to accept the package');
             expect(mockNDREvent.ndrType).toBe('refused');
         });
 
@@ -84,6 +90,8 @@ describe('NDRClassificationService', () => {
                 _id: 'ndr126',
                 ndrReason: 'wrong address',
                 courierRemarks: 'Address incomplete',
+                ndrReasonClassified: '',
+                ndrType: '' as any,
                 save: jest.fn().mockResolvedValue(true),
             };
             (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
@@ -106,6 +114,8 @@ describe('NDRClassificationService', () => {
                 _id: 'ndr127',
                 ndrReason: 'delivery failed',
                 courierRemarks: 'Customer not reachable',
+                ndrReasonClassified: '',
+                ndrType: '' as any,
                 save: jest.fn().mockResolvedValue(true),
             };
             (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
@@ -133,7 +143,10 @@ describe('NDRClassificationService', () => {
                 },
             ];
 
-            (NDREvent.find as jest.Mock).mockResolvedValue(mockNDREvents);
+            const mockFindResult = {
+                limit: jest.fn().mockResolvedValue(mockNDREvents)
+            };
+            (NDREvent.find as jest.Mock).mockReturnValue(mockFindResult);
 
             // Mock classifyAndUpdate
             const classifySpy = jest.spyOn(NDRClassificationService, 'classifyAndUpdate')
@@ -141,7 +154,7 @@ describe('NDRClassificationService', () => {
 
             const result = await NDRClassificationService.batchClassify(10);
 
-            expect(result.classified).toBe(2);
+            expect(result).toBe(2);
             expect(classifySpy).toHaveBeenCalledTimes(2);
         });
     });
