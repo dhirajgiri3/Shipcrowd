@@ -6,7 +6,7 @@
 
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth/auth';
-import PickingService from '@/core/application/services/warehouse/PickingService';
+import * as pickingService from '@/core/application/services/warehouse';
 import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
 import {
     sendSuccess,
@@ -26,8 +26,6 @@ import {
 } from '@/shared/validation/warehouse.schemas';
 import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
-// Note: PickingService is now static, no instantiation needed
-
 /**
  * Create a new pick list
  * POST /api/v1/picking/pick-lists
@@ -43,7 +41,7 @@ async function createPickList(req: AuthRequest, res: Response, next: NextFunctio
             return;
         }
 
-        const pickList = await PickingService.createPickList({
+        const pickList = await pickingService.createPickList({
             ...validation.data,
             companyId: auth.companyId,
         });
@@ -76,7 +74,7 @@ async function getPickLists(req: AuthRequest, res: Response, next: NextFunction)
         const { warehouseId, status, assignedTo, priority } = req.query;
         const pagination = parsePagination(req.query);
 
-        const result = await PickingService.getPickLists({
+        const result = await pickingService.getPickLists({
             companyId: auth.companyId,
             warehouseId: warehouseId as string,
             status: status as string,
@@ -101,7 +99,7 @@ async function getPickListById(req: AuthRequest, res: Response, next: NextFuncti
         const { id } = req.params;
         if (!validateObjectId(id, res, 'pick list')) return;
 
-        const pickList = await PickingService.getPickListById(id);
+        const pickList = await pickingService.getPickListById(id);
 
         if (!pickList) {
             sendError(res, 'Pick list not found', 404, 'PICKLIST_NOT_FOUND');
@@ -125,7 +123,7 @@ async function getMyPickLists(req: AuthRequest, res: Response, next: NextFunctio
 
         const { status } = req.query;
 
-        const pickLists = await PickingService.getPickListsByPicker(
+        const pickLists = await pickingService.getPickListsByPicker(
             auth.userId,
             status as string
         );
@@ -154,7 +152,7 @@ async function assignPickList(req: AuthRequest, res: Response, next: NextFunctio
             return;
         }
 
-        const pickList = await PickingService.assignPickList({
+        const pickList = await pickingService.assignPickList({
             pickListId: id,
             pickerId: validation.data.pickerId,
             assignedBy: auth.userId,
@@ -188,7 +186,7 @@ async function startPicking(req: AuthRequest, res: Response, next: NextFunction)
         const { id } = req.params;
         if (!validateObjectId(id, res, 'pick list')) return;
 
-        const pickList = await PickingService.startPicking({
+        const pickList = await pickingService.startPicking({
             pickListId: id,
             pickerId: auth.userId,
         });
@@ -224,7 +222,7 @@ async function pickItem(req: AuthRequest, res: Response, next: NextFunction): Pr
             return;
         }
 
-        const pickList = await PickingService.pickItem({
+        const pickList = await pickingService.pickItem({
             pickListId: id,
             ...validation.data,
         });
@@ -257,7 +255,7 @@ async function skipItem(req: AuthRequest, res: Response, next: NextFunction): Pr
 
         const { itemId, reason } = validation.data;
 
-        const pickList = await PickingService.skipItem(id, itemId, reason);
+        const pickList = await pickingService.skipItem(id, itemId, reason);
 
         await createAuditLog(
             auth.userId,
@@ -295,7 +293,7 @@ async function completePickList(req: AuthRequest, res: Response, next: NextFunct
 
         const { pickerNotes } = validation.data;
 
-        const pickList = await PickingService.completePickList({
+        const pickList = await pickingService.completePickList({
             pickListId: id,
             pickerId: auth.userId,
             pickerNotes,
@@ -337,7 +335,7 @@ async function cancelPickList(req: AuthRequest, res: Response, next: NextFunctio
 
         const { reason } = validation.data;
 
-        const pickList = await PickingService.cancelPickList({
+        const pickList = await pickingService.cancelPickList({
             pickListId: id,
             cancelledBy: auth.userId,
             reason,
@@ -379,7 +377,7 @@ async function verifyPickList(req: AuthRequest, res: Response, next: NextFunctio
 
         const { passed, notes } = validation.data;
 
-        const pickList = await PickingService.verifyPickList({
+        const pickList = await pickingService.verifyPickList({
             pickListId: id,
             verifierId: auth.userId,
             passed,
@@ -409,7 +407,7 @@ async function verifyPickList(req: AuthRequest, res: Response, next: NextFunctio
 async function getNextItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        const item = await PickingService.suggestNextItem(id);
+        const item = await pickingService.suggestNextItem(id);
 
         sendSuccess(res, item, item ? 'Next item suggested' : 'No more items');
     } catch (error) {
@@ -426,7 +424,7 @@ async function getPickerStats(req: AuthRequest, res: Response, next: NextFunctio
         const { pickerId } = req.params;
         const { startDate, endDate } = req.query;
 
-        const stats = await PickingService.getPickerStats(
+        const stats = await pickingService.getPickerStats(
             pickerId,
             new Date(startDate as string || Date.now() - 7 * 24 * 60 * 60 * 1000),
             new Date(endDate as string || Date.now())
@@ -447,7 +445,7 @@ async function getWarehouseStats(req: AuthRequest, res: Response, next: NextFunc
         const { warehouseId } = req.params;
         const { startDate, endDate } = req.query;
 
-        const stats = await PickingService.getPickListStats(
+        const stats = await pickingService.getPickListStats(
             warehouseId,
             new Date(startDate as string || Date.now() - 7 * 24 * 60 * 60 * 1000),
             new Date(endDate as string || Date.now())

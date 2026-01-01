@@ -8,13 +8,20 @@ import StockMovement, { IStockMovement } from '@/infrastructure/database/mongoos
 import WarehouseLocation from '@/infrastructure/database/mongoose/models/WarehouseLocation';
 import {
     ICreateInventoryDTO,
+    IUpdateInventoryDTO,
     IReceiveStockDTO,
     IAdjustStockDTO,
     IReserveStockDTO,
+    IReleaseReservationDTO,
     IPickStockDTO,
+    ITransferStockDTO,
+    IMarkDamagedDTO,
+    ICycleCountDTO,
     IInventoryQueryOptions,
+    IStockMovementQueryOptions,
     ILowStockAlert,
     IInventoryStats,
+    IMovementSummary,
     IPaginatedResult,
 } from '@/core/domain/interfaces/warehouse/IInventoryService';
 import { AppError } from '@/shared/errors/AppError';
@@ -33,7 +40,7 @@ export default class InventoryService {
         });
     }
 
-    static async updateInventory(data: any): Promise<IInventory> {
+    static async updateInventory(data: IUpdateInventoryDTO): Promise<IInventory> {
         const inventory = await Inventory.findByIdAndUpdate(data.inventoryId, data, { new: true });
         if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
         return inventory;
@@ -56,7 +63,11 @@ export default class InventoryService {
         const filter: any = {};
         if (options.warehouseId) filter.warehouseId = options.warehouseId;
         if (options.companyId) filter.companyId = options.companyId;
-        if (options.sku) filter.sku = new RegExp(options.sku, 'i');
+        if (options.sku) {
+            // Escape special regex characters to prevent ReDoS attacks
+            const escapedSku = options.sku.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            filter.sku = { $regex: escapedSku, $options: 'i' };
+        }
         if (options.status) filter.status = options.status;
         if (options.category) filter.category = options.category;
 
@@ -218,7 +229,7 @@ export default class InventoryService {
         return updated;
     }
 
-    static async releaseReservation(data: any): Promise<IInventory> {
+    static async releaseReservation(data: IReleaseReservationDTO): Promise<IInventory> {
         const inventory = await Inventory.findById(data.inventoryId);
         if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
@@ -287,8 +298,8 @@ export default class InventoryService {
             productName: inventory.productName,
             inventoryId: inventory._id,
             quantity: -data.quantity,
-            previousQuantity: inventory.onHand + data.quantity,
-            newQuantity: inventory.onHand,
+            previousQuantity: previousOnHand,
+            newQuantity: updated.onHand,
             fromLocationId: data.locationId,
             orderId: data.orderId,
             orderNumber: data.orderNumber,
@@ -300,10 +311,10 @@ export default class InventoryService {
             status: 'COMPLETED',
         });
 
-        return { inventory, movement };
+        return { inventory: updated, movement };
     }
 
-    static async transferStock(data: any): Promise<{ inventory: IInventory; movement: IStockMovement }> {
+    static async transferStock(data: ITransferStockDTO): Promise<{ inventory: IInventory; movement: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
         if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
@@ -329,7 +340,7 @@ export default class InventoryService {
         return { inventory, movement };
     }
 
-    static async markDamaged(data: any): Promise<{ inventory: IInventory; movement: IStockMovement }> {
+    static async markDamaged(data: IMarkDamagedDTO): Promise<{ inventory: IInventory; movement: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
         if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
@@ -357,7 +368,7 @@ export default class InventoryService {
         return { inventory, movement };
     }
 
-    static async cycleCount(data: any): Promise<{ inventory: IInventory; movement?: IStockMovement }> {
+    static async cycleCount(data: ICycleCountDTO): Promise<{ inventory: IInventory; movement?: IStockMovement }> {
         const inventory = await Inventory.findById(data.inventoryId);
         if (!inventory) throw new AppError('Inventory not found', 'INVENTORY_NOT_FOUND', 404);
 
@@ -428,7 +439,7 @@ export default class InventoryService {
         }));
     }
 
-    static async getMovements(options: any): Promise<IPaginatedResult<IStockMovement>> {
+    static async getMovements(options: IStockMovementQueryOptions): Promise<IPaginatedResult<IStockMovement>> {
         const { page = 1, limit = 20 } = options;
         const filter: any = {};
         if (options.warehouseId) filter.warehouseId = options.warehouseId;
@@ -476,7 +487,8 @@ export default class InventoryService {
 
     static async generateMovementNumber(): Promise<string> {
         const year = new Date().getFullYear();
-        const count = await StockMovement.countDocuments();
-        return `SM-${year}-${(count + 1).toString().padStart(6, '0')}`;
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        return `SM-${year}-${timestamp}-${random}`;
     }
 }

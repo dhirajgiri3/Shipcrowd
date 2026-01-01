@@ -6,7 +6,7 @@
 
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth/auth';
-import PackingService from '@/core/application/services/warehouse/PackingService';
+import * as packingService from '@/core/application/services/warehouse';
 import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
 import {
     sendSuccess,
@@ -28,8 +28,6 @@ import {
 } from '@/shared/validation/warehouse.schemas';
 import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
-// Note: PackingService is now static
-
 /**
  * Create packing station
  * POST /api/v1/packing/stations
@@ -45,7 +43,7 @@ async function createStation(req: AuthRequest, res: Response, next: NextFunction
             return;
         }
 
-        const station = await PackingService.createStation({
+        const station = await packingService.createStation({
             ...validation.data,
             companyId: auth.companyId,
         });
@@ -78,7 +76,7 @@ async function getStations(req: AuthRequest, res: Response, next: NextFunction):
         const { warehouseId, status, type } = req.query;
         const pagination = parsePagination(req.query);
 
-        const result = await PackingService.getStations({
+        const result = await packingService.getStations({
             companyId: auth.companyId,
             warehouseId: warehouseId as string,
             status: status as string,
@@ -102,7 +100,7 @@ async function getStationById(req: AuthRequest, res: Response, next: NextFunctio
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
 
-        const station = await PackingService.getStationById(id);
+        const station = await packingService.getStationById(id);
 
         if (!station) {
             sendError(res, 'Packing station not found', 404, 'STATION_NOT_FOUND');
@@ -122,7 +120,7 @@ async function getStationById(req: AuthRequest, res: Response, next: NextFunctio
 async function getAvailableStations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId } = req.params;
-        const stations = await PackingService.getAvailableStations(warehouseId);
+        const stations = await packingService.getAvailableStations(warehouseId);
 
         sendSuccess(res, stations, 'Available stations retrieved');
     } catch (error) {
@@ -148,7 +146,7 @@ async function assignPacker(req: AuthRequest, res: Response, next: NextFunction)
             return;
         }
 
-        const station = await PackingService.assignPacker({
+        const station = await packingService.assignPacker({
             stationId: id,
             packerId: validation.data.packerId,
         });
@@ -181,7 +179,7 @@ async function unassignPacker(req: AuthRequest, res: Response, next: NextFunctio
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
 
-        const station = await PackingService.unassignPacker(id);
+        const station = await packingService.unassignPacker(id);
 
         await createAuditLog(
             auth.userId,
@@ -214,7 +212,7 @@ async function setOffline(req: AuthRequest, res: Response, next: NextFunction): 
         const validation = setStationOfflineSchema.safeParse(req.body);
         const reason = validation.success ? validation.data.reason : undefined;
 
-        const station = await PackingService.setStationOffline(id, reason);
+        const station = await packingService.setStationOffline(id, reason);
 
         await createAuditLog(
             auth.userId,
@@ -244,7 +242,7 @@ async function setOnline(req: AuthRequest, res: Response, next: NextFunction): P
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
 
-        const station = await PackingService.setStationOnline(id);
+        const station = await packingService.setStationOnline(id);
 
         await createAuditLog(
             auth.userId,
@@ -281,7 +279,7 @@ async function startSession(req: AuthRequest, res: Response, next: NextFunction)
             return;
         }
 
-        const station = await PackingService.startPackingSession({
+        const station = await packingService.startPackingSession({
             stationId: id,
             packerId: auth.userId,
             ...validation.data,
@@ -318,7 +316,7 @@ async function packItem(req: AuthRequest, res: Response, next: NextFunction): Pr
             return;
         }
 
-        const station = await PackingService.packItem({
+        const station = await packingService.packItem({
             stationId: id,
             ...validation.data,
         });
@@ -345,7 +343,7 @@ async function createPackage(req: AuthRequest, res: Response, next: NextFunction
             return;
         }
 
-        const pkg = await PackingService.createPackage({
+        const pkg = await packingService.createPackage({
             stationId: id,
             ...validation.data,
         });
@@ -372,7 +370,7 @@ async function verifyWeight(req: AuthRequest, res: Response, next: NextFunction)
             return;
         }
 
-        const result = await PackingService.verifyWeight({
+        const result = await packingService.verifyWeight({
             stationId: id,
             ...validation.data,
         });
@@ -403,7 +401,7 @@ async function completeSession(req: AuthRequest, res: Response, next: NextFuncti
 
         const { notes } = validation.data;
 
-        const station = await PackingService.completePackingSession({
+        const station = await packingService.completePackingSession({
             stationId: id,
             packerId: auth.userId,
             notes,
@@ -443,7 +441,7 @@ async function cancelSession(req: AuthRequest, res: Response, next: NextFunction
 
         const { reason } = validation.data;
 
-        const station = await PackingService.cancelPackingSession(id, reason);
+        const station = await packingService.cancelPackingSession(id, reason);
 
         await createAuditLog(
             auth.userId,
@@ -468,7 +466,7 @@ async function cancelSession(req: AuthRequest, res: Response, next: NextFunction
 async function getPackageLabel(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id, packageNumber } = req.params;
-        const labelUrl = await PackingService.generatePackageLabel(id, parseInt(packageNumber, 10));
+        const labelUrl = await packingService.generatePackageLabel(id, parseInt(packageNumber, 10));
 
         sendSuccess(res, { labelUrl }, 'Label generated');
     } catch (error) {
@@ -485,7 +483,7 @@ async function getStationStats(req: AuthRequest, res: Response, next: NextFuncti
         const { stationId } = req.params;
         const { startDate, endDate } = req.query;
 
-        const stats = await PackingService.getStationStats(
+        const stats = await packingService.getStationStats(
             stationId,
             new Date(startDate as string || Date.now() - 7 * 24 * 60 * 60 * 1000),
             new Date(endDate as string || Date.now())

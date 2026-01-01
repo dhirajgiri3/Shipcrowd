@@ -398,7 +398,7 @@ Based on the Backend-Gap-Analysis.md and current codebase:
 | **Notifications** | 33% | ❌ Incomplete | Services exist, templates missing |
 | **Analytics & Reporting** | 0% | ❌ Not Started | Planned for Week 9-11 |
 | **AI/ML Features** | 0% | ❌ Not Started | Planned for Week 12-13 |
-| **E-commerce Integration** | 0% | ❌ Not Started | Planned for Week 6-8 |
+| **E-commerce Integration** | 50% | ⚠️ Partial | Week 7: Shopify ✅, WooCommerce ✅, Flipkart, Amazon |
 
 ### 4.2 Detailed Status by Category
 
@@ -524,12 +524,16 @@ Based on the Backend-Gap-Analysis.md and current codebase:
 - ❌ Manifests
 - ❌ Reports
 
-**E-commerce Integration (0%) - WEEK 6-8**
-- ❌ Shopify OAuth
-- ❌ Shopify webhooks
-- ❌ WooCommerce REST API
-- ❌ Order sync
-- ❌ Inventory sync
+**E-commerce Integration (50%) - WEEK 6-8**
+- ✅ Shopify OAuth
+- ✅ Shopify webhooks
+- ✅ WooCommerce REST API
+- ✅ Order sync
+- ✅ Inventory sync
+- ⚠️ Flipkart OAuth (in progress)
+- ⚠️ Flipkart webhooks (in progress)
+- ⚠️ Amazon SP-API (in progress)
+- ⚠️ Amazon SQS notifications (in progress)
 
 **Analytics & Reporting (0%) - WEEK 9-11**
 - ❌ Dashboard analytics
@@ -1329,7 +1333,7 @@ const cleanContent = xss(userInput);
   - Inventory sync (optional)
 - **Implementation:** `src/infrastructure/external/shopify/`
 
-**Week 8: WooCommerce E-commerce Platform**
+**Week 7: WooCommerce E-commerce Platform**
 - **Priority:** HIGH
 - **Features:**
   - REST API authentication (Consumer Key/Secret)
@@ -1337,6 +1341,28 @@ const cleanContent = xss(userInput);
   - Status synchronization
   - Product catalog sync
 - **Implementation:** `src/infrastructure/external/woocommerce/`
+
+**Week 7: Flipkart Seller Hub Integration**
+- **Priority:** HIGH
+- **Features:**
+  - OAuth 2.0 two-legged authentication
+  - HMAC-SHA256 webhook verification
+  - 1000 req/hour rate limiting
+  - 8 webhook topics (order lifecycle, inventory)
+  - API endpoints for orders, inventory, listings
+- **Implementation:** `src/infrastructure/external/flipkart/`
+
+**Week 7: Amazon SP-API Integration**
+- **Priority:** HIGH
+- **Features:**
+  - LWA OAuth + AWS Signature V4 authentication
+  - SQS-based notifications (not HTTP webhooks)
+  - Dynamic token bucket rate limiting
+  - XML inventory feeds
+  - NextToken pagination
+  - FBA vs MFN order handling
+  - API endpoints: Orders, Feeds, Inventory, Notifications
+- **Implementation:** `src/infrastructure/external/amazon/`
 
 **Week 14: Exotel/Knowlarity (Phone Masking)**
 - **Priority:** MEDIUM

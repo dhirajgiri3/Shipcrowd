@@ -1,9 +1,14 @@
 /**
- * Warehouse Services Index
- * 
- * Exports all warehouse-related services for easy importing.
+ * Warehouse Services - Barrel Export
+ *
+ * Centralized exports for all warehouse service functions
  */
 
-export { default as PickingService } from './PickingService';
-export { default as PackingService } from './PackingService';
-export { default as InventoryService } from './InventoryService';
+// Inventory Service
+export * from './inventory.service';
+
+// Picking Service
+export * from './picking.service';
+
+// Packing Service
+export * from './packing.service';

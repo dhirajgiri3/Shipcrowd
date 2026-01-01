@@ -331,8 +331,9 @@ export default class PickingService {
 
     static async generatePickListNumber(): Promise<string> {
         const year = new Date().getFullYear();
-        const count = await PickList.countDocuments();
-        return `PL-${year}-${(count + 1).toString().padStart(5, '0')}`;
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        return `PL-${year}-${timestamp}-${random}`;
     }
 
     static estimatePickTime(items: IPickListItem[]): number {
@@ -355,7 +356,7 @@ export default class PickingService {
             status: 'OCCUPIED',
         })
             .sort({ isPickFace: -1, pickPriority: 1 })
-            .session(session);
+            .session(session || null);
 
         // Group by SKU, keeping the first (best) location for each
         const locationMap = new Map();

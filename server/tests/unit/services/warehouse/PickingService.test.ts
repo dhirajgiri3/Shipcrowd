@@ -3,13 +3,11 @@
  * Tests for picking workflows managed by PickingService
  */
 import mongoose from 'mongoose';
-import PickingService from '../../../../src/core/application/services/warehouse/PickingService';
+import * as PickingService from '../../../../src/core/application/services/warehouse';
 import PickList from '../../../../src/infrastructure/database/mongoose/models/PickList';
 // Factories
 import { createTestPickList } from '../../../fixtures/pickingFactory';
 import { createTestUser } from '../../../fixtures/userFactory';
-// Verified imports
-// Note: PickingService uses static methods, so we don't need to instantiate it
 
 describe('Picking Service', () => {
     describe('Pick List Creation', () => {

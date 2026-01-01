@@ -3,7 +3,7 @@
  * Tests for inventory management and stock movements
  */
 import mongoose from 'mongoose';
-import InventoryService from '../../../../src/core/application/services/warehouse/InventoryService';
+import * as InventoryService from '../../../../src/core/application/services/warehouse';
 import Inventory from '../../../../src/infrastructure/database/mongoose/models/Inventory';
 import StockMovement from '../../../../src/infrastructure/database/mongoose/models/StockMovement';
 import { createTestInventory } from '../../../fixtures/inventoryFactory';

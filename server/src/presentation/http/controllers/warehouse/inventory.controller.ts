@@ -6,7 +6,7 @@
 
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth/auth';
-import InventoryService from '@/core/application/services/warehouse/InventoryService';
+import * as inventoryService from '@/core/application/services/warehouse';
 import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
 import {
     sendSuccess,
@@ -28,8 +28,6 @@ import {
 } from '@/shared/validation/warehouse.schemas';
 import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers/controller.helpers';
 
-// Note: InventoryService is now static
-
 /**
  * Create inventory record
  * POST /api/v1/inventory
@@ -45,7 +43,7 @@ async function createInventory(req: AuthRequest, res: Response, next: NextFuncti
             return;
         }
 
-        const inventory = await InventoryService.createInventory({
+        const inventory = await inventoryService.createInventory({
             ...validation.data,
             companyId: auth.companyId,
         });
@@ -78,7 +76,7 @@ async function getInventoryList(req: AuthRequest, res: Response, next: NextFunct
         const { warehouseId, sku, status, category, lowStockOnly } = req.query;
         const pagination = parsePagination(req.query);
 
-        const result = await InventoryService.getInventoryList({
+        const result = await inventoryService.getInventoryList({
             companyId: auth.companyId,
             warehouseId: warehouseId as string,
             sku: sku as string,
@@ -104,7 +102,7 @@ async function getInventoryById(req: AuthRequest, res: Response, next: NextFunct
         const { id } = req.params;
         if (!validateObjectId(id, res, 'inventory')) return;
 
-        const inventory = await InventoryService.getInventoryById(id);
+        const inventory = await inventoryService.getInventoryById(id);
 
         if (!inventory) {
             sendError(res, 'Inventory not found', 404, 'INVENTORY_NOT_FOUND');
@@ -124,7 +122,7 @@ async function getInventoryById(req: AuthRequest, res: Response, next: NextFunct
 async function getInventoryBySKU(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId, sku } = req.params;
-        const inventory = await InventoryService.getInventoryBySKU(warehouseId, sku);
+        const inventory = await inventoryService.getInventoryBySKU(warehouseId, sku);
 
         if (!inventory) {
             sendError(res, 'Inventory not found', 404, 'INVENTORY_NOT_FOUND');
@@ -152,7 +150,7 @@ async function receiveStock(req: AuthRequest, res: Response, next: NextFunction)
             return;
         }
 
-        const result = await InventoryService.receiveStock({
+        const result = await inventoryService.receiveStock({
             ...validation.data,
             companyId: auth.companyId,
             performedBy: auth.userId,
@@ -192,7 +190,7 @@ async function adjustStock(req: AuthRequest, res: Response, next: NextFunction):
             return;
         }
 
-        const result = await InventoryService.adjustStock({
+        const result = await inventoryService.adjustStock({
             inventoryId: id,
             ...validation.data,
             performedBy: auth.userId,
@@ -230,7 +228,7 @@ async function reserveStock(req: AuthRequest, res: Response, next: NextFunction)
         }
 
         const { _id } = req.user!;
-        const inventory = await InventoryService.reserveStock({
+        const inventory = await inventoryService.reserveStock({
             inventoryId: id,
             ...validation.data,
             reservedBy: _id.toString(),
@@ -258,7 +256,7 @@ async function releaseReservation(req: AuthRequest, res: Response, next: NextFun
         const { quantity, orderId, reason } = validation.data;
         const { _id } = req.user!;
 
-        const inventory = await InventoryService.releaseReservation({
+        const inventory = await inventoryService.releaseReservation({
             inventoryId: id,
             quantity,
             orderId,
@@ -290,7 +288,7 @@ async function transferStock(req: AuthRequest, res: Response, next: NextFunction
             return;
         }
 
-        const result = await InventoryService.transferStock({
+        const result = await inventoryService.transferStock({
             inventoryId: id,
             ...validation.data,
             performedBy: auth.userId,
@@ -332,7 +330,7 @@ async function markDamaged(req: AuthRequest, res: Response, next: NextFunction):
 
         const { locationId, quantity, reason, notes } = validation.data;
 
-        const result = await InventoryService.markDamaged({
+        const result = await inventoryService.markDamaged({
             inventoryId: id,
             locationId,
             quantity,
@@ -375,7 +373,7 @@ async function cycleCount(req: AuthRequest, res: Response, next: NextFunction): 
             return;
         }
 
-        const result = await InventoryService.cycleCount({
+        const result = await inventoryService.cycleCount({
             inventoryId: id,
             ...validation.data,
             performedBy: auth.userId,
@@ -411,7 +409,7 @@ async function checkAvailability(req: AuthRequest, res: Response, next: NextFunc
 
         const { warehouseId, items } = validation.data;
 
-        const result = await InventoryService.checkStockAvailability(warehouseId, items);
+        const result = await inventoryService.checkStockAvailability(warehouseId, items);
         sendSuccess(res, result, 'Stock availability checked');
     } catch (error) {
         next(error);
@@ -427,7 +425,7 @@ async function getLowStockAlerts(req: AuthRequest, res: Response, next: NextFunc
         const auth = guardChecks(req, res);
         if (!auth) return;
 
-        const alerts = await InventoryService.getLowStockAlerts(auth.companyId);
+        const alerts = await inventoryService.getLowStockAlerts(auth.companyId);
 
         sendSuccess(res, alerts, 'Low stock alerts retrieved');
     } catch (error) {
@@ -447,7 +445,7 @@ async function getMovements(req: AuthRequest, res: Response, next: NextFunction)
         const { warehouseId, inventoryId, type, startDate, endDate } = req.query;
         const pagination = parsePagination(req.query);
 
-        const result = await InventoryService.getMovements({
+        const result = await inventoryService.getMovements({
             companyId: auth.companyId,
             warehouseId: warehouseId as string,
             inventoryId: inventoryId as string,
@@ -471,7 +469,7 @@ async function getMovements(req: AuthRequest, res: Response, next: NextFunction)
 async function getInventoryStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId } = req.params;
-        const stats = await InventoryService.getInventoryStats(warehouseId);
+        const stats = await inventoryService.getInventoryStats(warehouseId);
 
         sendSuccess(res, stats, 'Inventory stats retrieved');
     } catch (error) {
@@ -488,7 +486,7 @@ async function getMovementSummary(req: AuthRequest, res: Response, next: NextFun
         const { warehouseId } = req.params;
         const { startDate, endDate } = req.query;
 
-        const summary = await InventoryService.getMovementSummary(
+        const summary = await inventoryService.getMovementSummary(
             warehouseId,
             new Date(startDate as string || Date.now() - 7 * 24 * 60 * 60 * 1000),
             new Date(endDate as string || Date.now())

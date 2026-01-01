@@ -21,8 +21,16 @@ import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
 // Webhook routes
 import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
+import shopifyWebhookRoutes from './webhooks/shopify.routes';
+import woocommerceWebhookRoutes from './webhooks/woocommerce.webhook.routes';
+import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
 // Week 5: Warehouse Workflow Routes
 import warehouseWorkflowRoutes from './warehouse';
+// Week 7: Marketplace Integrations (Flipkart, Amazon)
+import integrationsRoutes from './integrations';
+// Week 8: NDR/RTO Automation
+import ndrRoutes from './ndr/ndr.routes';
+import rtoRoutes from './rto/rto.routes';
 
 const router = express.Router();
 
@@ -57,11 +65,17 @@ router.use('/shipments', shipmentRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
-// Webhook routes
+// Webhook routes (platform-specific, HMAC verified)
 router.use('/webhooks/velocity', velocityWebhookRoutes);
+router.use('/webhooks/shopify', shopifyWebhookRoutes);
+router.use('/webhooks/woocommerce', woocommerceWebhookRoutes);
+router.use('/webhooks/flipkart', flipkartWebhookRoutes);
 // Week 5: Warehouse Workflow Routes (picking, packing, inventory)
 router.use('/warehouse', warehouseWorkflowRoutes);
+// Week 7: Marketplace Integrations (Shopify, WooCommerce, Flipkart, Amazon)
+router.use('/integrations', integrationsRoutes);
+// Week 8: NDR/RTO Automation
+router.use('/ndr', ndrRoutes);
+router.use('/rto', rtoRoutes);
 
 export default router;
-
-

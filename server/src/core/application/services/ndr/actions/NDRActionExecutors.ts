@@ -1,0 +1,411 @@
+/**
+ * NDRActionExecutors
+ *
+ * Execute specific workflow actions for NDR resolution.
+ */
+
+import NDREvent, { INDREvent, INDRResolutionAction } from '../../../../../infrastructure/database/mongoose/models/NDREvent';
+import CallLog from '../../../../../infrastructure/database/mongoose/models/CallLog';
+import ExotelClient from '../../../../../infrastructure/integrations/communication/ExotelClient';
+import WhatsAppService from '../../../../../infrastructure/integrations/communication/WhatsAppService';
+import OpenAIService from '../../../../../infrastructure/integrations/ai/OpenAIService';
+import logger from '../../../../../shared/logger/winston.logger';
+
+interface ActionResult {
+    success: boolean;
+    actionType: string;
+    result: 'success' | 'failed' | 'pending' | 'skipped';
+    metadata?: Record<string, any>;
+    error?: string;
+}
+
+interface CustomerInfo {
+    name: string;
+    phone: string;
+    email?: string;
+}
+
+interface ActionContext {
+    ndrEvent: INDREvent;
+    customer: CustomerInfo;
+    orderId: string;
+    companyId: string;
+}
+
+export class NDRActionExecutors {
+    private static exotel = new ExotelClient();
+    private static whatsapp = new WhatsAppService();
+
+    /**
+     * Execute action by type
+     */
+    static async executeAction(
+        actionType: string,
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        switch (actionType) {
+            case 'call_customer':
+                return this.executeCallCustomer(context, actionConfig);
+            case 'send_whatsapp':
+                return this.executeSendWhatsApp(context, actionConfig);
+            case 'send_email':
+                return this.executeSendEmail(context, actionConfig);
+            case 'update_address':
+                return this.executeUpdateAddress(context, actionConfig);
+            case 'request_reattempt':
+                return this.executeRequestReattempt(context, actionConfig);
+            case 'trigger_rto':
+                return this.executeTriggerRTO(context, actionConfig);
+            default:
+                logger.warn('Unknown action type', { actionType });
+                return {
+                    success: false,
+                    actionType,
+                    result: 'failed',
+                    error: `Unknown action type: ${actionType}`,
+                };
+        }
+    }
+
+    /**
+     * Call customer via Exotel
+     */
+    static async executeCallCustomer(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent, customer, companyId } = context;
+
+            // Initiate call
+            const callResult = await this.exotel.initiateCall(
+                customer.phone,
+                actionConfig.callbackUrl,
+                JSON.stringify({ ndrEventId: ndrEvent._id, orderId: context.orderId })
+            );
+
+            if (!callResult.success) {
+                return {
+                    success: false,
+                    actionType: 'call_customer',
+                    result: 'failed',
+                    error: callResult.error,
+                };
+            }
+
+            // Log call
+            await CallLog.create({
+                ndrEvent: ndrEvent._id,
+                shipment: ndrEvent.shipment,
+                customer: { name: customer.name, phone: customer.phone },
+                callSid: callResult.callSid!,
+                callProvider: 'exotel',
+                status: 'initiated',
+                direction: 'outbound',
+                company: companyId,
+            });
+
+            // Update NDR event
+            ndrEvent.customerContacted = true;
+            await ndrEvent.save();
+
+            return {
+                success: true,
+                actionType: 'call_customer',
+                result: 'success',
+                metadata: { callSid: callResult.callSid },
+            };
+        } catch (error: any) {
+            logger.error('Call customer action failed', {
+                error: error.message,
+                ndrEventId: context.ndrEvent._id,
+            });
+
+            return {
+                success: false,
+                actionType: 'call_customer',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Send WhatsApp notification
+     */
+    static async executeSendWhatsApp(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent, customer } = context;
+
+            // Generate personalized message if OpenAI is available
+            let message: string;
+            if (OpenAIService.isConfigured() && actionConfig.useAI !== false) {
+                const generated = await OpenAIService.generateCustomerMessage(
+                    ndrEvent.ndrType,
+                    customer.name,
+                    context.orderId,
+                    ndrEvent.ndrReason
+                );
+                message = generated.message;
+            } else {
+                // Use default NDR notification
+                message = ''; // Will use default in sendNDRNotification
+            }
+
+            const result = message
+                ? await this.whatsapp.sendMessage(customer.phone, message)
+                : await this.whatsapp.sendNDRNotification(
+                    customer.phone,
+                    customer.name,
+                    context.orderId,
+                    ndrEvent.ndrReason
+                );
+
+            if (!result.success) {
+                return {
+                    success: false,
+                    actionType: 'send_whatsapp',
+                    result: 'failed',
+                    error: result.error,
+                };
+            }
+
+            // Update NDR event
+            ndrEvent.customerContacted = true;
+            await ndrEvent.save();
+
+            return {
+                success: true,
+                actionType: 'send_whatsapp',
+                result: 'success',
+                metadata: { messageId: result.messageId },
+            };
+        } catch (error: any) {
+            logger.error('Send WhatsApp action failed', {
+                error: error.message,
+                ndrEventId: context.ndrEvent._id,
+            });
+
+            return {
+                success: false,
+                actionType: 'send_whatsapp',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Send email notification
+     */
+    static async executeSendEmail(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent, customer } = context;
+
+            if (!customer.email) {
+                return {
+                    success: false,
+                    actionType: 'send_email',
+                    result: 'skipped',
+                    error: 'No email address available',
+                };
+            }
+
+            // TODO: Integrate with existing email service
+            // For now, log the intent
+            logger.info('Email notification queued', {
+                to: customer.email,
+                ndrEventId: ndrEvent._id,
+                template: actionConfig.template || 'ndr_notification',
+            });
+
+            return {
+                success: true,
+                actionType: 'send_email',
+                result: 'pending',
+                metadata: { email: customer.email, template: actionConfig.template },
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                actionType: 'send_email',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Send address update magic link
+     */
+    static async executeUpdateAddress(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent, customer } = context;
+
+            // Generate magic link token (24-hour expiry)
+            const token = this.generateAddressUpdateToken(String(ndrEvent._id));
+            const updateUrl = `${process.env.BASE_URL || 'https://shipcrowd.com'}/update-address/${token}`;
+
+            // Send via WhatsApp with update link
+            const message = `Hi ${customer.name},
+
+Please update your delivery address for order #${context.orderId}:
+
+${updateUrl}
+
+This link expires in 24 hours.
+
+-Shipcrowd`;
+
+            const result = await this.whatsapp.sendMessage(customer.phone, message);
+
+            return {
+                success: result.success,
+                actionType: 'update_address',
+                result: result.success ? 'success' : 'failed',
+                metadata: { token, updateUrl, messageId: result.messageId },
+                error: result.error,
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                actionType: 'update_address',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Request courier reattempt
+     */
+    static async executeRequestReattempt(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent } = context;
+
+            // TODO: Integrate with courier API to request reattempt
+            // For now, mark as pending for manual action
+            logger.info('Reattempt request queued', {
+                ndrEventId: ndrEvent._id,
+                awb: ndrEvent.awb,
+            });
+
+            return {
+                success: true,
+                actionType: 'request_reattempt',
+                result: 'pending',
+                metadata: { awb: ndrEvent.awb, requiresManualAction: true },
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                actionType: 'request_reattempt',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Trigger RTO
+     */
+    static async executeTriggerRTO(
+        context: ActionContext,
+        actionConfig: Record<string, any>
+    ): Promise<ActionResult> {
+        try {
+            const { ndrEvent, customer } = context;
+
+            // Import RTOService dynamically to avoid circular dependency
+            const RTOServiceModule = await import('../../rto/RTOService.js') as any;
+            const RTOService = RTOServiceModule.default;
+
+            // Trigger RTO
+            const rtoResult = await RTOService.triggerRTO(
+                ndrEvent.shipment.toString(),
+                'ndr_unresolved',
+                String(ndrEvent._id),
+                'auto'
+            );
+
+            // Notify customer
+            await this.whatsapp.sendRTONotification(
+                customer.phone,
+                customer.name,
+                context.orderId,
+                'Delivery attempts exhausted',
+                rtoResult.reverseAwb
+            );
+
+            // Update NDR status
+            await ndrEvent.triggerRTO();
+
+            return {
+                success: true,
+                actionType: 'trigger_rto',
+                result: 'success',
+                metadata: { rtoEventId: rtoResult.rtoEventId, reverseAwb: rtoResult.reverseAwb },
+            };
+        } catch (error: any) {
+            logger.error('Trigger RTO action failed', {
+                error: error.message,
+                ndrEventId: context.ndrEvent._id,
+            });
+
+            return {
+                success: false,
+                actionType: 'trigger_rto',
+                result: 'failed',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Generate address update token
+     */
+    private static generateAddressUpdateToken(ndrEventId: string): string {
+        // Simple token - in production, use JWT
+        const timestamp = Date.now();
+        const data = `${ndrEventId}:${timestamp}`;
+        return Buffer.from(data).toString('base64url');
+    }
+
+    /**
+     * Record action result in NDR event
+     */
+    static async recordActionResult(
+        ndrEventId: string,
+        actionResult: ActionResult,
+        executedBy: string
+    ): Promise<void> {
+        const action: INDRResolutionAction = {
+            action: actionResult.actionType,
+            actionType: actionResult.actionType as any,
+            takenAt: new Date(),
+            takenBy: executedBy,
+            result: actionResult.result,
+            metadata: actionResult.metadata,
+        };
+
+        await NDREvent.findByIdAndUpdate(ndrEventId, {
+            $push: { resolutionActions: action },
+            $set: { status: actionResult.result === 'success' ? 'in_resolution' : 'detected' },
+        });
+    }
+}
+
+export default NDRActionExecutors;

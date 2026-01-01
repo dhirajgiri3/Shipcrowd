@@ -52,9 +52,18 @@ export interface IOrder extends Document {
   };
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   paymentMethod?: 'cod' | 'prepaid';
-  source: 'manual' | 'shopify' | 'woocommerce' | 'api';
+  source: 'manual' | 'shopify' | 'woocommerce' | 'flipkart' | 'amazon' | 'api';
   sourceId?: string;
+  externalOrderNumber?: string; // Display order number from external platform (e.g., WooCommerce order #1234)
   warehouseId?: mongoose.Types.ObjectId;
+  // E-commerce platform specific fields
+  woocommerceStoreId?: mongoose.Types.ObjectId;
+  woocommerceOrderId?: number;
+  flipkartStoreId?: mongoose.Types.ObjectId;
+  flipkartOrderId?: string;
+  amazonStoreId?: mongoose.Types.ObjectId;
+  amazonOrderId?: string;
+  fulfillmentType?: 'FBA' | 'MFN' | null;
   statusHistory: Array<{
     status: string;
     timestamp: Date;
@@ -176,13 +185,35 @@ const OrderSchema = new Schema<IOrder>(
     },
     source: {
       type: String,
-      enum: ['manual', 'shopify', 'woocommerce', 'api'],
+      enum: ['manual', 'shopify', 'woocommerce', 'flipkart', 'amazon', 'api'],
       default: 'manual',
     },
     sourceId: String,
+    externalOrderNumber: String,
     warehouseId: {
       type: Schema.Types.ObjectId,
       ref: 'Warehouse',
+    },
+    // E-commerce platform specific fields
+    woocommerceStoreId: {
+      type: Schema.Types.ObjectId,
+      ref: 'WooCommerceStore',
+    },
+    woocommerceOrderId: Number,
+    flipkartStoreId: {
+      type: Schema.Types.ObjectId,
+      ref: 'FlipkartStore',
+    },
+    flipkartOrderId: String,
+    amazonStoreId: {
+      type: Schema.Types.ObjectId,
+      ref: 'AmazonStore',
+    },
+    amazonOrderId: String,
+    fulfillmentType: {
+      type: String,
+      enum: ['FBA', 'MFN', null],
+      default: null,
     },
     statusHistory: {
       type: [
@@ -259,6 +290,14 @@ OrderSchema.index({ companyId: 1, createdAt: -1 }); // Orders page listing (most
 OrderSchema.index({ companyId: 1, currentStatus: 1, createdAt: -1 }); // Status filtering with date sort
 OrderSchema.index({ companyId: 1, paymentStatus: 1 }); // Payment status filtering
 OrderSchema.index({ companyId: 1, paymentMethod: 1 }); // COD vs Prepaid filtering
+
+// E-commerce integration indexes
+OrderSchema.index({ source: 1, sourceId: 1, companyId: 1 }, { unique: true, sparse: true }); // Shopify order lookup and duplicate prevention
+OrderSchema.index({ companyId: 1, flipkartOrderId: 1 }, { sparse: true, unique: true }); // Flipkart order lookup and duplicate prevention
+OrderSchema.index({ flipkartStoreId: 1, currentStatus: 1 }); // Flipkart store filtering with status
+OrderSchema.index({ companyId: 1, amazonOrderId: 1 }, { sparse: true, unique: true }); // Amazon order lookup and duplicate prevention
+OrderSchema.index({ amazonStoreId: 1, currentStatus: 1 }); // Amazon store filtering with status
+OrderSchema.index({ fulfillmentType: 1 }); // For FBA/MFN filtering
 
 // Pre-save hook to ensure the first status is added to history
 OrderSchema.pre('save', function (next) {

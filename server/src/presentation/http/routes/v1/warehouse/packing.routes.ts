@@ -1,14 +1,36 @@
 /**
  * Packing Routes
- * 
+ *
  * API routes for packing station and packing workflow operations
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import packingController from '@/presentation/http/controllers/warehouse/packing.controller';
 import { authenticate, authorize } from '@/presentation/http/middleware';
 
 const router = Router();
+
+// Rate limiting for packing operations
+const packingGeneralLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Max 100 requests per window
+    message: 'Too many packing requests from this IP, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Stricter rate limiting for packing session operations (real-time warehouse floor operations)
+const packOperationLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 50, // Max 50 pack operations per minute
+    message: 'Too many pack operations, please slow down',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Apply general rate limiter to all routes
+router.use(packingGeneralLimiter);
 
 // All routes require authentication (company context enforced in controllers)
 router.use(authenticate);
@@ -25,12 +47,12 @@ router.post('/stations/:id/unassign', authorize(['admin', 'warehouse_manager']),
 router.post('/stations/:id/offline', authorize(['admin', 'warehouse_manager']), packingController.setOffline);
 router.post('/stations/:id/online', authorize(['admin', 'warehouse_manager']), packingController.setOnline);
 
-// Packing session operations (packer role)
-router.post('/stations/:id/session/start', authorize(['admin', 'warehouse_manager', 'packer']), packingController.startSession);
-router.post('/stations/:id/pack', authorize(['admin', 'warehouse_manager', 'packer']), packingController.packItem);
-router.post('/stations/:id/packages', authorize(['admin', 'warehouse_manager', 'packer']), packingController.createPackage);
-router.post('/stations/:id/verify-weight', authorize(['admin', 'warehouse_manager', 'packer']), packingController.verifyWeight);
-router.post('/stations/:id/session/complete', authorize(['admin', 'warehouse_manager', 'packer']), packingController.completeSession);
+// Packing session operations (packer role) - with stricter rate limiting
+router.post('/stations/:id/session/start', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.startSession);
+router.post('/stations/:id/pack', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.packItem);
+router.post('/stations/:id/packages', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.createPackage);
+router.post('/stations/:id/verify-weight', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.verifyWeight);
+router.post('/stations/:id/session/complete', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.completeSession);
 router.post('/stations/:id/session/cancel', authorize(['admin', 'warehouse_manager', 'packer']), packingController.cancelSession);
 
 // Labels

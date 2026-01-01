@@ -1,0 +1,520 @@
+/**
+ * WooCommerce Controller
+ *
+ * Handles WooCommerce store management API endpoints:
+ * - Store installation (connect new store)
+ * - List connected stores
+ * - Get store details
+ * - Test connection
+ * - Disconnect store
+ * - Pause/resume sync
+ * - Refresh credentials
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/WooCommerceOAuthService';
+import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/WooCommerceStore';
+import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/WooCommerceOrderSyncJob';
+import { AppError } from '../../../../shared/errors/AppError';
+import logger from '../../../../shared/logger/winston.logger';
+
+export default class WooCommerceController {
+  /**
+   * Install WooCommerce store
+   * POST /api/v1/integrations/woocommerce/install
+   *
+   * Body:
+   * {
+   *   "storeUrl": "https://example.com",
+   *   "consumerKey": "ck_...",
+   *   "consumerSecret": "cs_...",
+   *   "storeName": "My Store" (optional)
+   * }
+   */
+  static async installStore(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { storeUrl, consumerKey, consumerSecret, storeName } = req.body;
+      const companyId = req.user?.companyId;
+
+      // Validation
+      if (!storeUrl || !consumerKey || !consumerSecret) {
+        throw new AppError(
+          'Store URL, consumer key, and consumer secret are required',
+          'VALIDATION_ERROR',
+          400
+        );
+      }
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Validate store URL format
+      let normalizedUrl = storeUrl.trim();
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = `https://${normalizedUrl}`;
+      }
+
+      // Install store
+      const store = await WooCommerceOAuthService.installStore({
+        companyId,
+        storeUrl: normalizedUrl,
+        consumerKey,
+        consumerSecret,
+        storeName,
+      });
+
+      logger.info('WooCommerce store installed via API', {
+        storeId: store._id,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'WooCommerce store connected successfully',
+        store: {
+          id: store._id,
+          storeUrl: store.storeUrl,
+          storeName: store.storeName,
+          currency: store.currency,
+          isActive: store.isActive,
+          webhooksRegistered: store.webhooks.length,
+          installedAt: store.installedAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List connected WooCommerce stores
+   * GET /api/v1/integrations/woocommerce/stores
+   */
+  static async listStores(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      const stores = await WooCommerceOAuthService.getActiveStores(companyId);
+
+      res.json({
+        success: true,
+        count: stores.length,
+        stores: stores.map((store) => ({
+          id: store._id,
+          storeUrl: store.storeUrl,
+          storeName: store.storeName,
+          currency: store.currency,
+          wcVersion: store.wcVersion,
+          isActive: store.isActive,
+          isPaused: store.isPaused,
+          installedAt: store.installedAt,
+          syncConfig: store.syncConfig,
+          stats: store.stats,
+          activeWebhooksCount: store.webhooks.filter((w: any) => w.isActive).length,
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get store details
+   * GET /api/v1/integrations/woocommerce/stores/:id
+   */
+  static async getStoreDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      }).select('-consumerKey -consumerSecret');
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      res.json({
+        success: true,
+        store: {
+          id: store._id,
+          storeUrl: store.storeUrl,
+          storeName: store.storeName,
+          apiVersion: store.apiVersion,
+          wpVersion: store.wpVersion,
+          wcVersion: store.wcVersion,
+          currency: store.currency,
+          timezone: store.timezone,
+          isActive: store.isActive,
+          isPaused: store.isPaused,
+          installedAt: store.installedAt,
+          uninstalledAt: store.uninstalledAt,
+          syncConfig: store.syncConfig,
+          stats: store.stats,
+          webhooks: store.webhooks.map((webhook: any) => ({
+            topic: webhook.topic,
+            address: webhook.address,
+            isActive: webhook.isActive,
+            createdAt: webhook.createdAt,
+            lastDeliveryAt: webhook.lastDeliveryAt,
+          })),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Test WooCommerce store connection
+   * POST /api/v1/integrations/woocommerce/stores/:id/test
+   */
+  static async testConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Test connection
+      const connected = await WooCommerceOAuthService.testConnection(
+        store.storeUrl,
+        store.decryptConsumerKey(),
+        store.decryptConsumerSecret()
+      );
+
+      res.json({
+        success: true,
+        connected,
+        message: connected ? 'Connection is valid' : 'Connection failed',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Disconnect WooCommerce store
+   * DELETE /api/v1/integrations/woocommerce/stores/:id
+   */
+  static async disconnectStore(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Disconnect store
+      await WooCommerceOAuthService.disconnectStore(id);
+
+      logger.info('WooCommerce store disconnected via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.json({
+        success: true,
+        message: 'WooCommerce store disconnected successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Pause sync for a store
+   * POST /api/v1/integrations/woocommerce/stores/:id/pause
+   */
+  static async pauseSync(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Pause sync
+      await WooCommerceOAuthService.pauseSync(id);
+
+      logger.info('WooCommerce sync paused via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.json({
+        success: true,
+        message: 'Sync paused successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Resume sync for a store
+   * POST /api/v1/integrations/woocommerce/stores/:id/resume
+   */
+  static async resumeSync(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Resume sync
+      await WooCommerceOAuthService.resumeSync(id);
+
+      logger.info('WooCommerce sync resumed via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.json({
+        success: true,
+        message: 'Sync resumed successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Refresh store credentials
+   * PUT /api/v1/integrations/woocommerce/stores/:id/credentials
+   *
+   * Body:
+   * {
+   *   "consumerKey": "ck_...",
+   *   "consumerSecret": "cs_..."
+   * }
+   */
+  static async refreshCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { consumerKey, consumerSecret } = req.body;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      if (!consumerKey || !consumerSecret) {
+        throw new AppError(
+          'Consumer key and consumer secret are required',
+          'VALIDATION_ERROR',
+          400
+        );
+      }
+
+      // Verify ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Refresh credentials
+      await WooCommerceOAuthService.refreshConnection(id, consumerKey, consumerSecret);
+
+      logger.info('WooCommerce credentials refreshed via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.json({
+        success: true,
+        message: 'Credentials updated successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Re-register webhooks for a store
+   * POST /api/v1/integrations/woocommerce/stores/:id/webhooks/register
+   */
+  static async registerWebhooks(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Register webhooks
+      const results = await WooCommerceOAuthService.registerWebhooks(id);
+
+      const successCount = results.filter((r) => r.success).length;
+
+      logger.info('WooCommerce webhooks registered via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+        success: successCount,
+        total: results.length,
+      });
+
+      res.json({
+        success: true,
+        message: `Registered ${successCount} out of ${results.length} webhooks`,
+        results: results.map((r) => ({
+          topic: r.topic,
+          success: r.success,
+          error: r.error,
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Trigger manual order sync
+   * POST /api/v1/integrations/woocommerce/stores/:id/sync/orders
+   *
+   * Body (optional):
+   * {
+   *   "hoursBack": 24 (sync orders from last N hours)
+   * }
+   */
+  static async syncOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { hoursBack } = req.body;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Trigger manual sync
+      const jobId = await WooCommerceOrderSyncJob.triggerManualSync(id, hoursBack);
+
+      logger.info('WooCommerce manual order sync triggered via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+        jobId,
+        hoursBack,
+      });
+
+      res.json({
+        success: true,
+        message: 'Order sync queued successfully',
+        jobId,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get order sync job status
+   * GET /api/v1/integrations/woocommerce/sync/jobs/:jobId
+   */
+  static async getSyncJobStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { jobId } = req.params;
+
+      const status = await WooCommerceOrderSyncJob.getJobStatus(jobId);
+
+      if (!status) {
+        throw new AppError('Job not found', 'JOB_NOT_FOUND', 404);
+      }
+
+      res.json({
+        success: true,
+        job: status,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
