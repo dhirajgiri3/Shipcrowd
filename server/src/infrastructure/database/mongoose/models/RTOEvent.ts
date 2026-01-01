@@ -19,7 +19,7 @@ export interface IRTOEvent extends Document {
     order: mongoose.Types.ObjectId;
     reverseShipment?: mongoose.Types.ObjectId;
     reverseAwb?: string;
-    rtoReason: 'ndr_unresolved' | 'customer_cancellation' | 'qc_failure' | 'refused' | 'other';
+    rtoReason: 'ndr_unresolved' | 'customer_cancellation' | 'qc_failure' | 'refused' | 'damaged_in_transit' | 'incorrect_product' | 'other';
     ndrEvent?: mongoose.Types.ObjectId;
     triggeredBy: 'auto' | 'manual';
     triggeredByUser?: string;
@@ -51,8 +51,17 @@ interface IRTOEventModel extends Model<IRTOEvent> {
 const QCResultSchema = new Schema<IQCResult>(
     {
         passed: { type: Boolean, required: true },
-        remarks: { type: String },
-        images: { type: [String], default: [] },
+        remarks: { type: String, maxlength: 2000 },
+        images: {
+            type: [String],
+            default: [],
+            validate: {
+                validator: function (v: string[]) {
+                    return v.length <= 20; // Prevent DoS via massive image arrays
+                },
+                message: 'QC images array cannot exceed 20 items'
+            }
+        },
         inspectedBy: { type: String },
         inspectedAt: { type: Date },
     },
@@ -82,7 +91,7 @@ const RTOEventSchema = new Schema<IRTOEvent>(
         },
         rtoReason: {
             type: String,
-            enum: ['ndr_unresolved', 'customer_cancellation', 'qc_failure', 'refused', 'other'],
+            enum: ['ndr_unresolved', 'customer_cancellation', 'qc_failure', 'refused', 'damaged_in_transit', 'incorrect_product', 'other'],
             required: true,
             index: true,
         },
@@ -182,25 +191,63 @@ RTOEventSchema.statics.getByShipment = async function (
     return this.findOne({ shipment: shipmentId }).populate('shipment order ndrEvent');
 };
 
-// Methods
-RTOEventSchema.methods.updateReturnStatus = function (
+// Methods with optimistic locking
+RTOEventSchema.methods.updateReturnStatus = async function (
     status: string,
     metadata?: Record<string, any>
 ) {
-    this.returnStatus = status;
+    const currentVersion = this.__v;
+    const updateData: any = {
+        returnStatus: status,
+        $inc: { __v: 1 }
+    };
+
     if (status === 'delivered_to_warehouse') {
-        this.actualReturnDate = new Date();
+        updateData.actualReturnDate = new Date();
     }
+
     if (metadata) {
-        this.metadata = { ...this.metadata, ...metadata };
+        updateData.metadata = { ...this.metadata, ...metadata };
     }
-    return this.save();
+
+    const result = await this.model('RTOEvent').findOneAndUpdate(
+        { _id: this._id, __v: currentVersion },
+        updateData,
+        { new: true }
+    );
+
+    if (!result) {
+        throw new Error('Document was modified by another process. Please reload and try again.');
+    }
+
+    // Update current instance
+    this.returnStatus = result.returnStatus;
+    this.actualReturnDate = result.actualReturnDate;
+    this.metadata = result.metadata;
+    this.__v = result.__v;
+    return this;
 };
 
-RTOEventSchema.methods.recordQC = function (result: IQCResult) {
-    this.qcResult = result;
-    this.returnStatus = 'qc_completed';
-    return this.save();
+RTOEventSchema.methods.recordQC = async function (result: IQCResult) {
+    const currentVersion = this.__v;
+    const updateResult = await this.model('RTOEvent').findOneAndUpdate(
+        { _id: this._id, __v: currentVersion },
+        {
+            qcResult: result,
+            returnStatus: 'qc_completed',
+            $inc: { __v: 1 }
+        },
+        { new: true }
+    );
+
+    if (!updateResult) {
+        throw new Error('Document was modified by another process. Please reload and try again.');
+    }
+
+    this.qcResult = updateResult.qcResult;
+    this.returnStatus = updateResult.returnStatus;
+    this.__v = updateResult.__v;
+    return this;
 };
 
 const RTOEvent = mongoose.model<IRTOEvent, IRTOEventModel>('RTOEvent', RTOEventSchema);

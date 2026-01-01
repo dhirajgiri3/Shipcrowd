@@ -88,6 +88,16 @@ export interface IShipment extends Document {
     ndrResolutionDate?: Date;
     ndrComments?: string;
   };
+  rtoDetails?: {
+    rtoInitiatedDate?: Date;
+    rtoReason?: string;
+    rtoExpectedDate?: Date;
+    rtoActualDate?: Date;
+    rtoStatus?: 'initiated' | 'in_transit' | 'delivered_to_warehouse' | 'qc_pending' | 'qc_completed' | 'restocked' | 'disposed';
+    rtoTrackingNumber?: string;
+    rtoShippingCost?: number;
+    qcPassed?: boolean;
+  };
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -286,6 +296,19 @@ const ShipmentSchema = new Schema<IShipment>(
       },
       ndrResolutionDate: Date,
       ndrComments: String,
+    },
+    rtoDetails: {
+      rtoInitiatedDate: Date,
+      rtoReason: String,
+      rtoExpectedDate: Date,
+      rtoActualDate: Date,
+      rtoStatus: {
+        type: String,
+        enum: ['initiated', 'in_transit', 'delivered_to_warehouse', 'qc_pending', 'qc_completed', 'restocked', 'disposed'],
+      },
+      rtoTrackingNumber: String,
+      rtoShippingCost: Number,
+      qcPassed: Boolean,
     },
     isDeleted: {
       type: Boolean,

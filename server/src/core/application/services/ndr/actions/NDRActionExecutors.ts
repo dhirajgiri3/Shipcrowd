@@ -251,12 +251,12 @@ export class NDRActionExecutors {
         actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
-            const { ndrEvent, customer } = context;
+            const { ndrEvent, customer, companyId } = context;
 
             // Generate magic link token using TokenService (48-hour expiry)
             const shipmentId = String(ndrEvent.shipment);
             const ndrEventId = String(ndrEvent._id);
-            const token = TokenService.generateAddressUpdateToken(shipmentId, ndrEventId);
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId, ndrEventId);
             const updateUrl = `${process.env.BASE_URL || 'https://shipcrowd.com'}/public/update-address/${token}`;
 
             // Send via WhatsApp with update link

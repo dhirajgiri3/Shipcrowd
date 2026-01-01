@@ -6,6 +6,8 @@ import { AppError } from '../../../../shared/errors/AppError';
 import WhatsAppService from '../../../../infrastructure/integrations/communication/WhatsAppService';
 import WarehouseNotificationService from '../../../../core/application/services/warehouse/WarehouseNotificationService';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { publicAddressUpdateSchema } from '../../../../shared/validation/ndr-schemas';
 
 /**
  * AddressUpdateController
@@ -26,12 +28,17 @@ export class AddressUpdateController {
             const { token } = req.params;
 
             // Verify token
-            const { shipmentId, ndrEventId } = TokenService.verifyAddressUpdateToken(token);
+            const { shipmentId, ndrEventId, companyId } = TokenService.verifyAddressUpdateToken(token);
 
             // Load shipment details
             const shipment = await Shipment.findById(shipmentId);
             if (!shipment) {
                 throw new AppError('Shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            }
+
+            // Verify multi-tenancy: ensure shipment belongs to the company in the token
+            if (String(shipment.companyId) !== companyId) {
+                throw new AppError('Access denied', 'ACCESS_DENIED', 403);
             }
 
             // Load NDR event if exists
@@ -71,20 +78,33 @@ export class AddressUpdateController {
     static async updateAddress(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { token } = req.params;
-            const { address, phone } = req.body;
 
-            // Validate input
-            if (!address || !address.line1 || !address.city || !address.state || !address.postalCode) {
-                throw new AppError('Complete address required', 'INVALID_ADDRESS', 400);
+            // Validate request body with Zod
+            const validation = publicAddressUpdateSchema.safeParse(req.body);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
             }
 
+            const { newAddress: address, customerPhone: phone } = validation.data;
+
             // Verify token
-            const { shipmentId, ndrEventId } = TokenService.verifyAddressUpdateToken(token);
+            const { shipmentId, ndrEventId, companyId } = TokenService.verifyAddressUpdateToken(token);
 
             // Load shipment
             const shipment = await Shipment.findById(shipmentId);
             if (!shipment) {
                 throw new AppError('Shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            }
+
+            // Verify multi-tenancy: ensure shipment belongs to the company in the token
+            if (String(shipment.companyId) !== companyId) {
+                throw new AppError('Access denied', 'ACCESS_DENIED', 403);
             }
 
             // Store old address for warehouse notification

@@ -62,7 +62,7 @@ describe('RTOService', () => {
                 'manual'
             );
 
-            expect(updateStatusSpy).toHaveBeenCalled with ('RTO_INITIATED');
+            expect(updateStatusSpy).toHaveBeenCalledWith('RTO_INITIATED');
         });
 
         it('should notify warehouse of incoming return', async () => {

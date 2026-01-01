@@ -8,6 +8,9 @@ import NDREvent, { INDREvent } from '../../../../infrastructure/database/mongoos
 import NDRWorkflow, { INDRWorkflow, IWorkflowAction } from '../../../../infrastructure/database/mongoose/models/NDRWorkflow';
 import NDRActionExecutors from './actions/NDRActionExecutors';
 import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/AppError';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
+import mongoose from 'mongoose';
 
 interface CustomerInfo {
     name: string;
@@ -206,7 +209,7 @@ export default class NDRResolutionService {
                     );
                 }
             } else {
-                // Escalate instead
+                // Escalate
                 await this.escalateNDR(String(latest._id), 'Resolution deadline passed');
             }
         }
@@ -220,43 +223,114 @@ export default class NDRResolutionService {
         resolution: string,
         resolvedBy: string
     ): Promise<void> {
-        const ndrEvent = await NDREvent.findById(ndrEventId);
+        try {
+            logger.info('Attempting to resolve NDR', { ndrEventId, resolvedBy });
 
-        if (!ndrEvent) {
-            throw new Error('NDR event not found');
+            const ndrEvent = await NDREvent.findById(ndrEventId);
+
+            if (!ndrEvent) {
+                throw new AppError('NDR event not found', 'NDR_NOT_FOUND', 404);
+            }
+
+            if (ndrEvent.status === 'resolved') {
+                throw new AppError('NDR already resolved', 'NDR_ALREADY_RESOLVED', 400);
+            }
+
+            if (ndrEvent.status === 'rto_triggered') {
+                throw new AppError('NDR already has RTO triggered', 'NDR_RTO_TRIGGERED', 400);
+            }
+
+            await ndrEvent.markResolved(resolvedBy, resolution);
+
+            // Audit log
+            await createAuditLog(
+                resolvedBy,
+                String(ndrEvent.company),
+                'update',
+                'ndr_event',
+                ndrEventId,
+                {
+                    action: 'resolve_ndr',
+                    resolution,
+                    previousStatus: ndrEvent.status,
+                    newStatus: 'resolved',
+                }
+            );
+
+            logger.info('NDR manually resolved', {
+                ndrEventId,
+                resolution,
+                resolvedBy,
+            });
+        } catch (error: any) {
+            logger.error('Failed to resolve NDR', {
+                ndrEventId,
+                resolvedBy,
+                error: error.message,
+                stack: error.stack,
+            });
+            throw error;
         }
-
-        if (ndrEvent.status === 'resolved' || ndrEvent.status === 'rto_triggered') {
-            throw new Error('NDR already resolved or RTO triggered');
-        }
-
-        await ndrEvent.markResolved(resolvedBy, resolution);
-
-        logger.info('NDR manually resolved', {
-            ndrEventId,
-            resolution,
-            resolvedBy,
-        });
     }
 
     /**
      * Escalate NDR
      */
     static async escalateNDR(ndrEventId: string, reason: string): Promise<void> {
-        const ndrEvent = await NDREvent.findById(ndrEventId);
+        try {
+            logger.info('Attempting to escalate NDR', { ndrEventId, reason });
 
-        if (!ndrEvent) {
-            throw new Error('NDR event not found');
+            const ndrEvent = await NDREvent.findById(ndrEventId);
+
+            if (!ndrEvent) {
+                throw new AppError('NDR event not found', 'NDR_NOT_FOUND', 404);
+            }
+
+            if (ndrEvent.status === 'resolved') {
+                throw new AppError('Cannot escalate resolved NDR', 'NDR_ALREADY_RESOLVED', 400);
+            }
+
+            if (ndrEvent.status === 'rto_triggered') {
+                throw new AppError('Cannot escalate NDR with RTO triggered', 'NDR_RTO_TRIGGERED', 400);
+            }
+
+            if (ndrEvent.status === 'escalated') {
+                logger.warn('NDR already escalated', { ndrEventId });
+                return;
+            }
+
+            await ndrEvent.escalate();
+
+            // Audit log
+            await createAuditLog(
+                'system',
+                String(ndrEvent.company),
+                'update',
+                'ndr_event',
+                ndrEventId,
+                {
+                    action: 'escalate_ndr',
+                    reason,
+                    previousStatus: ndrEvent.status,
+                    newStatus: 'escalated',
+                }
+            );
+
+            // TODO: Send escalation notification to supervisor
+
+            logger.info('NDR escalated', {
+                ndrEventId,
+                reason,
+            });
+        } catch (error: any) {
+            logger.error('Failed to escalate NDR', {
+                ndrEventId,
+                reason,
+                error: error.message,
+                stack: error.stack,
+            });
+            throw error;
         }
-
-        await ndrEvent.escalate();
-
-        // TODO: Send escalation notification to supervisor
-
-        logger.info('NDR escalated', {
-            ndrEventId,
-            reason,
-        });
     }
 
     /**

@@ -11,12 +11,14 @@ import { AppError } from '../errors/AppError';
 interface AddressUpdateTokenPayload {
     shipmentId: string;
     ndrEventId?: string;
+    companyId: string;
     purpose: 'address_update';
 }
 
 interface TokenVerificationResult {
     shipmentId: string;
     ndrEventId?: string;
+    companyId: string;
 }
 
 export class TokenService {
@@ -29,10 +31,11 @@ export class TokenService {
     /**
      * Generate magic link token for address update
      */
-    static generateAddressUpdateToken(shipmentId: string, ndrEventId?: string): string {
+    static generateAddressUpdateToken(shipmentId: string, companyId: string, ndrEventId?: string): string {
         const payload: AddressUpdateTokenPayload = {
             shipmentId,
             ndrEventId,
+            companyId,
             purpose: 'address_update',
         };
 
@@ -61,13 +64,14 @@ export class TokenService {
             }) as AddressUpdateTokenPayload;
 
             // Validate payload structure
-            if (!decoded.shipmentId || decoded.purpose !== 'address_update') {
+            if (!decoded.shipmentId || !decoded.companyId || decoded.purpose !== 'address_update') {
                 throw new AppError('Invalid token payload', 'INVALID_TOKEN', 401);
             }
 
             return {
                 shipmentId: decoded.shipmentId,
                 ndrEventId: decoded.ndrEventId,
+                companyId: decoded.companyId,
             };
         } catch (error: any) {
             if (error instanceof jwt.TokenExpiredError) {

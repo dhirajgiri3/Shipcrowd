@@ -126,6 +126,12 @@ const NDREventSchema = new Schema<INDREvent>(
         resolutionActions: {
             type: [ResolutionActionSchema],
             default: [],
+            validate: {
+                validator: function(v: INDRResolutionAction[]) {
+                    return v.length <= 100; // Prevent DoS via massive arrays
+                },
+                message: 'Resolution actions array cannot exceed 100 items'
+            }
         },
         customerContacted: {
             type: Boolean,
@@ -222,32 +228,98 @@ NDREventSchema.statics.getExpiredNDRs = async function (): Promise<INDREvent[]> 
     }).populate('shipment order');
 };
 
-// Methods
-NDREventSchema.methods.addResolutionAction = function (action: INDRResolutionAction) {
-    this.resolutionActions.push(action);
-    return this.save();
+// Methods with optimistic locking
+NDREventSchema.methods.addResolutionAction = async function (action: INDRResolutionAction) {
+    const currentVersion = this.__v;
+    const result = await this.model('NDREvent').findOneAndUpdate(
+        { _id: this._id, __v: currentVersion },
+        {
+            $push: { resolutionActions: action },
+            $inc: { __v: 1 }
+        },
+        { new: true }
+    );
+
+    if (!result) {
+        throw new Error('Document was modified by another process. Please reload and try again.');
+    }
+
+    // Update current instance with new data
+    this.resolutionActions = result.resolutionActions;
+    this.__v = result.__v;
+    return this;
 };
 
-NDREventSchema.methods.markResolved = function (
+NDREventSchema.methods.markResolved = async function (
     resolvedBy: string,
     method: string
 ) {
-    this.status = 'resolved';
-    this.resolvedAt = new Date();
-    this.resolvedBy = resolvedBy;
-    this.resolutionMethod = method;
-    return this.save();
+    const currentVersion = this.__v;
+    const result = await this.model('NDREvent').findOneAndUpdate(
+        { _id: this._id, __v: currentVersion },
+        {
+            status: 'resolved',
+            resolvedAt: new Date(),
+            resolvedBy,
+            resolutionMethod: method,
+            $inc: { __v: 1 }
+        },
+        { new: true }
+    );
+
+    if (!result) {
+        throw new Error('Document was modified by another process. Please reload and try again.');
+    }
+
+    // Update current instance
+    this.status = result.status;
+    this.resolvedAt = result.resolvedAt;
+    this.resolvedBy = result.resolvedBy;
+    this.resolutionMethod = result.resolutionMethod;
+    this.__v = result.__v;
+    return this;
 };
 
-NDREventSchema.methods.escalate = function () {
-    this.status = 'escalated';
-    return this.save();
+NDREventSchema.methods.escalate = async function () {
+    const currentVersion = this.__v;
+    const result = await this.model('NDREvent').findOneAndUpdate(
+        { _id: this._id, __v: currentVersion },
+        {
+            status: 'escalated',
+            $inc: { __v: 1 }
+        },
+        { new: true }
+    );
+
+    if (!result) {
+        throw new Error('Document was modified by another process. Please reload and try again.');
+    }
+
+    this.status = result.status;
+    this.__v = result.__v;
+    return this;
 };
 
-NDREventSchema.methods.triggerRTO = function () {
-    this.status = 'rto_triggered';
-    this.autoRtoTriggered = true;
-    return this.save();
+NDREventSchema.methods.triggerRTO = async function () {
+    const currentVersion = this.__v;
+    const result = await this.model('NDREvent').findOneAndUpdate(
+        { _id: this._id, __v: currentVersion },
+        {
+            status: 'rto_triggered',
+            autoRtoTriggered: true,
+            $inc: { __v: 1 }
+        },
+        { new: true }
+    );
+
+    if (!result) {
+        throw new Error('Document was modified by another process. Please reload and try again.');
+    }
+
+    this.status = result.status;
+    this.autoRtoTriggered = result.autoRtoTriggered;
+    this.__v = result.__v;
+    return this;
 };
 
 const NDREvent = mongoose.model<INDREvent, INDREventModel>('NDREvent', NDREventSchema);

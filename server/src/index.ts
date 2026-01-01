@@ -25,6 +25,11 @@ const startServer = async (): Promise<void> => {
         // Initialize Scheduler
         initializeScheduler();
 
+        // Initialize NDR/RTO Background Jobs
+        const { NDRResolutionJob } = await import('./infrastructure/jobs/NDRResolutionJob.js');
+        await NDRResolutionJob.initialize();
+        logger.info('NDR/RTO background jobs initialized');
+
         // Start listening
         app.listen(PORT, () => {
             logger.info(`Server running on port ${PORT}`);

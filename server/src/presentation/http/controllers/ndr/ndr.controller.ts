@@ -12,6 +12,15 @@ import NDRClassificationService from '../../../../core/application/services/ndr/
 import NDRResolutionService from '../../../../core/application/services/ndr/NDRResolutionService';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/NDRAnalyticsService';
 import { AppError } from '../../../../shared/errors';
+import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import {
+    listNDREventsQuerySchema,
+    resolveNDRSchema,
+    escalateNDRSchema,
+    getNDRAnalyticsQuerySchema,
+    getNDRTrendsQuerySchema,
+    getTopNDRReasonsQuerySchema,
+} from '../../../../shared/validation/ndr-schemas';
 import winston from 'winston';
 
 export class NDRController {
@@ -26,14 +35,26 @@ export class NDRController {
                 throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
             }
 
+            // Validate query parameters
+            const validation = listNDREventsQuerySchema.safeParse(req.query);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
+            }
+
             const {
                 status,
                 ndrType,
-                page = '1',
-                limit = '20',
-                sortBy = 'detectedAt',
-                sortOrder = 'desc',
-            } = req.query;
+                page,
+                limit,
+                sortBy,
+                sortOrder,
+            } = validation.data;
 
             const filter: any = { company: companyId };
 
@@ -45,15 +66,13 @@ export class NDRController {
                 filter.ndrType = ndrType;
             }
 
-            const pageNum = parseInt(page as string, 10);
-            const limitNum = parseInt(limit as string, 10);
-            const skip = (pageNum - 1) * limitNum;
+            const skip = (page - 1) * limit;
 
             const [events, total] = await Promise.all([
                 NDREvent.find(filter)
-                    .sort({ [sortBy as string]: sortOrder === 'asc' ? 1 : -1 })
+                    .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
                     .skip(skip)
-                    .limit(limitNum)
+                    .limit(limit)
                     .populate('shipment order'),
                 NDREvent.countDocuments(filter),
             ]);
@@ -62,10 +81,10 @@ export class NDRController {
                 success: true,
                 data: events,
                 pagination: {
-                    page: pageNum,
-                    limit: limitNum,
+                    page,
+                    limit,
                     total,
-                    pages: Math.ceil(total / limitNum),
+                    pages: Math.ceil(total / limit),
                 },
             });
         } catch (error) {
@@ -105,13 +124,22 @@ export class NDRController {
     static async resolveNDR(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const { resolution } = req.body;
             const userId = req.user?._id;
             const companyId = req.user?.companyId;
 
-            if (!resolution) {
-                throw new AppError('Resolution details required', 'VALIDATION_ERROR', 400);
+            // Validate request body
+            const validation = resolveNDRSchema.safeParse(req.body);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
             }
+
+            const { resolution, notes, resolutionMethod } = validation.data;
 
             // Verify ownership
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
@@ -137,8 +165,21 @@ export class NDRController {
     static async escalateNDR(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params;
-            const { reason } = req.body;
             const companyId = req.user?.companyId;
+
+            // Validate request body
+            const validation = escalateNDRSchema.safeParse(req.body);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
+            }
+
+            const { reason, escalateTo, priority, notes } = validation.data;
 
             // Verify ownership
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
@@ -146,7 +187,7 @@ export class NDRController {
                 throw new AppError('NDR event not found', 'NOT_FOUND', 404);
             }
 
-            await NDRResolutionService.escalateNDR(id, reason || 'Manual escalation');
+            await NDRResolutionService.escalateNDR(id, reason);
 
             res.status(200).json({
                 success: true,
@@ -193,13 +234,25 @@ export class NDRController {
                 throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
             }
 
-            const { startDate, endDate } = req.query;
+            // Validate query parameters
+            const validation = getNDRAnalyticsQuerySchema.safeParse(req.query);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
+            }
+
+            const { startDate, endDate, ndrType } = validation.data;
 
             let dateRange;
             if (startDate && endDate) {
                 dateRange = {
-                    start: new Date(startDate as string),
-                    end: new Date(endDate as string),
+                    start: new Date(startDate),
+                    end: new Date(endDate),
                 };
             }
 
@@ -247,17 +300,29 @@ export class NDRController {
                 throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
             }
 
-            const { startDate, endDate, groupBy = 'day' } = req.query;
+            // Validate query parameters
+            const validation = getNDRTrendsQuerySchema.safeParse(req.query);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
+            }
+
+            const { startDate, endDate, groupBy } = validation.data;
 
             const dateRange = {
-                start: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                end: endDate ? new Date(endDate as string) : new Date(),
+                start: startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                end: endDate ? new Date(endDate) : new Date(),
             };
 
             const trends = await NDRAnalyticsService.getNDRTrends(
                 companyId,
                 dateRange,
-                groupBy as 'day' | 'week' | 'month'
+                groupBy
             );
 
             res.status(200).json({
@@ -302,11 +367,23 @@ export class NDRController {
                 throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
             }
 
-            const { limit = '10' } = req.query;
+            // Validate query parameters
+            const validation = getTopNDRReasonsQuerySchema.safeParse(req.query);
+            if (!validation.success) {
+                const errors = validation.error.errors.map(err => ({
+                    code: 'VALIDATION_ERROR',
+                    message: err.message,
+                    field: err.path.join('.'),
+                }));
+                sendValidationError(res, errors);
+                return;
+            }
+
+            const { limit, startDate, endDate } = validation.data;
 
             const reasons = await NDRAnalyticsService.getTopNDRReasons(
                 companyId,
-                parseInt(limit as string, 10)
+                limit
             );
 
             res.status(200).json({

@@ -6,9 +6,13 @@
 
 import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/RTOEvent';
 import NDREvent from '../../../../infrastructure/database/mongoose/models/NDREvent';
+import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
+import Order from '../../../../infrastructure/database/mongoose/models/Order';
 import WhatsAppService from '../../../../infrastructure/integrations/communication/WhatsAppService';
 import WarehouseNotificationService from '../warehouse/WarehouseNotificationService';
 import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/AppError';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
 
 interface RTOResult {
     success: boolean;
@@ -38,7 +42,7 @@ export default class RTOService {
      */
     static async triggerRTO(
         shipmentId: string,
-        reason: 'ndr_unresolved' | 'customer_cancellation' | 'qc_failure' | 'refused' | 'other',
+        reason: 'ndr_unresolved' | 'customer_cancellation' | 'qc_failure' | 'refused' | 'damaged_in_transit' | 'incorrect_product' | 'other',
         ndrEventId?: string,
         triggeredBy: 'auto' | 'manual' = 'manual',
         triggeredByUser?: string
@@ -70,7 +74,7 @@ export default class RTOService {
             const rtoCharges = await this.calculateRTOCharges(shipment);
 
             // Create RTO event
-            const rtoEvent = await RTOEvent.create({
+            let rtoEvent = await RTOEvent.create({
                 shipment: shipmentId,
                 order: shipment.orderId,
                 reverseAwb,
@@ -87,6 +91,29 @@ export default class RTOService {
 
             // Update order status
             await this.updateOrderStatus(shipment.orderId, 'RTO_INITIATED');
+
+            // Audit log
+            await createAuditLog(
+                triggeredByUser || 'system',
+                String(shipment.companyId),
+                'create',
+                'rto_event',
+                String(rtoEvent._id),
+                {
+                    action: 'trigger_rto',
+                    shipmentId,
+                    reason,
+                    triggeredBy,
+                    rtoCharges: rtoEvent.rtoCharges,
+                }
+            );
+
+            // Update shipment status
+            await Shipment.findByIdAndUpdate(shipmentId, {
+                currentStatus: 'rto_initiated',
+                'rtoDetails.rtoInitiatedDate': new Date(),
+                'rtoDetails.rtoReason': reason,
+            });
 
             // Update NDR event if applicable
             if (ndrEventId) {
@@ -278,18 +305,34 @@ export default class RTOService {
         status: string,
         metadata?: Record<string, any>
     ): Promise<void> {
-        const rtoEvent = await RTOEvent.findById(rtoEventId);
+        try {
+            logger.info('Attempting to update RTO status', { rtoEventId, status });
 
-        if (!rtoEvent) {
-            throw new Error('RTO event not found');
+            const rtoEvent = await RTOEvent.findById(rtoEventId);
+
+            if (!rtoEvent) {
+                throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
+            }
+
+            const previousStatus = rtoEvent.returnStatus;
+
+            await rtoEvent.updateReturnStatus(status, metadata);
+
+            logger.info('RTO status updated successfully', {
+                rtoEventId,
+                previousStatus,
+                newStatus: status,
+                metadata,
+            });
+        } catch (error: any) {
+            logger.error('Failed to update RTO status', {
+                rtoEventId,
+                status,
+                error: error.message,
+                stack: error.stack,
+            });
+            throw error;
         }
-
-        await rtoEvent.updateReturnStatus(status, metadata);
-
-        logger.info('RTO status updated', {
-            rtoEventId,
-            status,
-        });
     }
 
     /**
@@ -299,21 +342,45 @@ export default class RTOService {
         rtoEventId: string,
         qcResult: { passed: boolean; remarks?: string; images?: string[]; inspectedBy: string }
     ): Promise<void> {
-        const rtoEvent = await RTOEvent.findById(rtoEventId);
+        try {
+            logger.info('Attempting to record QC result', { rtoEventId, passed: qcResult.passed });
 
-        if (!rtoEvent) {
-            throw new Error('RTO event not found');
+            const rtoEvent = await RTOEvent.findById(rtoEventId);
+
+            if (!rtoEvent) {
+                throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
+            }
+
+            if (rtoEvent.returnStatus !== 'delivered_to_warehouse' && rtoEvent.returnStatus !== 'qc_pending') {
+                throw new AppError(
+                    'RTO must be delivered to warehouse before QC',
+                    'INVALID_RTO_STATUS',
+                    400
+                );
+            }
+
+            if (rtoEvent.qcResult) {
+                logger.warn('QC already recorded, overwriting', { rtoEventId });
+            }
+
+            await rtoEvent.recordQC({
+                ...qcResult,
+                inspectedAt: new Date(),
+            });
+
+            logger.info('QC result recorded successfully', {
+                rtoEventId,
+                passed: qcResult.passed,
+                inspectedBy: qcResult.inspectedBy,
+            });
+        } catch (error: any) {
+            logger.error('Failed to record QC result', {
+                rtoEventId,
+                error: error.message,
+                stack: error.stack,
+            });
+            throw error;
         }
-
-        await rtoEvent.recordQC({
-            ...qcResult,
-            inspectedAt: new Date(),
-        });
-
-        logger.info('QC result recorded', {
-            rtoEventId,
-            passed: qcResult.passed,
-        });
     }
 
     /**
