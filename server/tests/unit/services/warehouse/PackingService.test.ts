@@ -44,7 +44,7 @@ describe('Packing Service', () => {
             });
 
             expect(assigned.status).toBe('OCCUPIED');
-            expect(assigned.assignedTo.toString()).toBe(packer._id.toString());
+            expect(assigned.assignedTo?.toString()).toBe(packer._id.toString());
         });
 
         it('should fail assignment if station occupied', async () => {
@@ -107,7 +107,7 @@ describe('Packing Service', () => {
             });
 
             const item = result.currentSession?.items.find((i: any) => i.sku === 'SKU-A');
-            expect(item.packed).toBe(1);
+            expect(item?.packed).toBe(1);
         });
     });
 

@@ -21,6 +21,7 @@ export interface CreateInventoryOptions {
     status?: 'ACTIVE' | 'DISCONTINUED' | 'LOW_STOCK' | 'OUT_OF_STOCK';
     onHand?: number;
     initialQuantity?: number;
+    reserved?: number;
 }
 
 /**

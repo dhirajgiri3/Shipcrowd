@@ -1,4 +1,4 @@
-import TokenService from '../../../src/shared/services/TokenService';
+import TokenService from '../../../src/shared/services/token.service';
 import { AppError } from '../../../src/shared/errors/AppError';
 
 describe('TokenService', () => {
@@ -10,7 +10,8 @@ describe('TokenService', () => {
     describe('generateAddressUpdateToken', () => {
         it('should generate a valid JWT token with shipmentId', () => {
             const shipmentId = '507f1f77bcf86cd799439011';
-            const token = TokenService.generateAddressUpdateToken(shipmentId);
+            const companyId = '507f1f77bcf86cd799439013';
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId);
 
             expect(token).toBeDefined();
             expect(typeof token).toBe('string');
@@ -19,8 +20,9 @@ describe('TokenService', () => {
 
         it('should generate a valid JWT token with shipmentId and ndrEventId', () => {
             const shipmentId = '507f1f77bcf86cd799439011';
+            const companyId = '507f1f77bcf86cd799439013';
             const ndrEventId = '507f1f77bcf86cd799439012';
-            const token = TokenService.generateAddressUpdateToken(shipmentId, ndrEventId);
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId, ndrEventId);
 
             expect(token).toBeDefined();
             expect(typeof token).toBe('string');
@@ -31,13 +33,15 @@ describe('TokenService', () => {
     describe('verifyAddressUpdateToken', () => {
         it('should verify and decode a valid token', () => {
             const shipmentId = '507f1f77bcf86cd799439011';
+            const companyId = '507f1f77bcf86cd799439013';
             const ndrEventId = '507f1f77bcf86cd799439012';
-            const token = TokenService.generateAddressUpdateToken(shipmentId, ndrEventId);
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId, ndrEventId);
 
             const result = TokenService.verifyAddressUpdateToken(token);
 
             expect(result).toBeDefined();
             expect(result.shipmentId).toBe(shipmentId);
+            expect(result.companyId).toBe(companyId);
             expect(result.ndrEventId).toBe(ndrEventId);
         });
 
@@ -55,7 +59,8 @@ describe('TokenService', () => {
 
         it('should throw error for invalidated token', () => {
             const shipmentId = '507f1f77bcf86cd799439011';
-            const token = TokenService.generateAddressUpdateToken(shipmentId);
+            const companyId = '507f1f77bcf86cd799439013';
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId);
 
             // Invalidate the token
             TokenService.invalidateToken(token);
@@ -73,7 +78,8 @@ describe('TokenService', () => {
     describe('invalidateToken', () => {
         it('should invalidate a token successfully', () => {
             const shipmentId = '507f1f77bcf86cd799439011';
-            const token = TokenService.generateAddressUpdateToken(shipmentId);
+            const companyId = '507f1f77bcf86cd799439013';
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId);
 
             // Verify token works before invalidation
             expect(() => {
@@ -91,7 +97,8 @@ describe('TokenService', () => {
 
         it('should check if token is invalidated', () => {
             const shipmentId = '507f1f77bcf86cd799439011';
-            const token = TokenService.generateAddressUpdateToken(shipmentId);
+            const companyId = '507f1f77bcf86cd799439013';
+            const token = TokenService.generateAddressUpdateToken(shipmentId, companyId);
 
             expect(TokenService.isTokenInvalidated(token)).toBe(false);
 
@@ -103,8 +110,8 @@ describe('TokenService', () => {
 
     describe('clearInvalidatedTokens', () => {
         it('should clear all invalidated tokens', () => {
-            const token1 = TokenService.generateAddressUpdateToken('id1');
-            const token2 = TokenService.generateAddressUpdateToken('id2');
+            const token1 = TokenService.generateAddressUpdateToken('id1', 'comp1');
+            const token2 = TokenService.generateAddressUpdateToken('id2', 'comp2');
 
             TokenService.invalidateToken(token1);
             TokenService.invalidateToken(token2);

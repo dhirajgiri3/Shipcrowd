@@ -21,7 +21,7 @@ describe('Picking Service', () => {
             const found = await PickingService.getPickListById(pickList._id.toString());
 
             expect(found).toBeDefined();
-            expect(found?._id.toString()).toBe(pickList._id.toString());
+            expect((found?._id as any)?.toString()).toBe(pickList._id.toString());
             expect(found?.status).toBe('PENDING');
         });
 
@@ -52,7 +52,7 @@ describe('Picking Service', () => {
             });
 
             expect(updated.status).toBe('ASSIGNED');
-            expect(updated.assignedTo.toString()).toBe(picker._id.toString());
+            expect(updated.assignedTo?.toString()).toBe(picker._id.toString());
         });
 
         it('should fail if pick list does not exist', async () => {
@@ -97,9 +97,9 @@ describe('Picking Service', () => {
             });
 
             const pickedItem = updated.items.find((i: any) => i._id.toString() === itemToPick._id.toString());
-            expect(pickedItem.quantityPicked).toBe(itemToPick.quantityRequired);
-            expect(pickedItem.status).toBe('PICKED');
-            expect(pickedItem.barcodeScanned).toBe(true);
+            expect(pickedItem?.quantityPicked).toBe(itemToPick.quantityRequired);
+            expect(pickedItem?.status).toBe('PICKED');
+            expect(pickedItem?.barcodeScanned).toBe(true);
         });
 
         it('should mark item as short pick if quantity mismatch', async () => {
@@ -115,8 +115,8 @@ describe('Picking Service', () => {
             });
 
             const pickedItem = updated.items.find((i: any) => i._id.toString() === itemToPick._id.toString());
-            expect(pickedItem.status).toBe('SHORT_PICK');
-            expect(pickedItem.reason).toBe('Damaged');
+            expect(pickedItem?.status).toBe('SHORT_PICK');
+            expect(pickedItem?.reason).toBe('Damaged');
         });
     });
 
