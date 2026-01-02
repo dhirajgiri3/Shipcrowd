@@ -4,6 +4,7 @@
  * Provides customer statistics, lifetime value, and retention metrics.
  */
 
+import mongoose from 'mongoose';
 import Order from '../../../../infrastructure/database/mongoose/models/Order.js';
 import AnalyticsService, { DateRange } from './AnalyticsService.js';
 import logger from '../../../../shared/logger/winston.logger.js';
@@ -54,16 +55,29 @@ export default class CustomerAnalyticsService {
             const stats = results[0] || { totalCustomers: 0, repeatCustomers: 0 };
 
             // Get new customers in date range (first order in this period)
+            // OPTIMIZED: Uses index on customerInfo.phone + companyId + createdAt
             let newCustomers = 0;
             if (dateRange) {
                 const newCustomerResult = await Order.aggregate([
-                    AnalyticsService.buildMatchStage(companyId, undefined, { isDeleted: false }),
+                    // First, get ALL orders (no date filter yet) - but only fields we need
+                    {
+                        $match: {
+                            companyId: new mongoose.Types.ObjectId(companyId),
+                            isDeleted: false
+                        }
+                    },
+                    // Sort by phone + date (uses index)
+                    {
+                        $sort: { 'customerInfo.phone': 1, createdAt: 1 }
+                    },
+                    // Group by phone and get FIRST order date
                     {
                         $group: {
                             _id: '$customerInfo.phone',
-                            firstOrder: { $min: '$createdAt' }
+                            firstOrder: { $first: '$createdAt' }
                         }
                     },
+                    // NOW filter by first order date (much smaller dataset)
                     {
                         $match: {
                             firstOrder: { $gte: dateRange.start, $lte: dateRange.end }

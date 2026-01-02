@@ -67,8 +67,14 @@ export const exportToCSV = async (
         // Upload to Cloudinary if configured, otherwise stream directly
         if (CloudinaryStorageService.isConfigured()) {
             const result = await CloudinaryStorageService.uploadFile(buffer, filename, 'csv');
+
+            // Generate signed URL with 24-hour expiry for security
+            const signedUrl = CloudinaryStorageService.getSignedUrl(result.publicId, 86400); // 24 hours
+            const expiresAt = new Date(Date.now() + 86400 * 1000);
+
             sendSuccess(res, {
-                downloadUrl: result.secureUrl,
+                downloadUrl: signedUrl,  // Use signed URL, not permanent public URL
+                expiresAt: expiresAt.toISOString(),
                 filename,
                 format: 'csv',
                 recordCount: data.length
@@ -123,8 +129,14 @@ export const exportToExcel = async (
 
         if (CloudinaryStorageService.isConfigured()) {
             const result = await CloudinaryStorageService.uploadFile(buffer, filename, 'xlsx');
+
+            // Generate signed URL with 24-hour expiry for security
+            const signedUrl = CloudinaryStorageService.getSignedUrl(result.publicId, 86400);
+            const expiresAt = new Date(Date.now() + 86400 * 1000);
+
             sendSuccess(res, {
-                downloadUrl: result.secureUrl,
+                downloadUrl: signedUrl,  // Use signed URL, not permanent public URL
+                expiresAt: expiresAt.toISOString(),
                 filename,
                 format: 'xlsx',
                 recordCount: data.length
@@ -179,8 +191,14 @@ export const exportToPDF = async (
 
         if (CloudinaryStorageService.isConfigured()) {
             const result = await CloudinaryStorageService.uploadFile(buffer, filename, 'pdf');
+
+            // Generate signed URL with 24-hour expiry for security
+            const signedUrl = CloudinaryStorageService.getSignedUrl(result.publicId, 86400);
+            const expiresAt = new Date(Date.now() + 86400 * 1000);
+
             sendSuccess(res, {
-                downloadUrl: result.secureUrl,
+                downloadUrl: signedUrl,  // Use signed URL, not permanent public URL
+                expiresAt: expiresAt.toISOString(),
                 filename,
                 format: 'pdf',
                 recordCount: data.length
@@ -204,6 +222,7 @@ async function fetchData(
     dataType: 'orders' | 'shipments',
     filters?: ExportRequestBody['filters']
 ): Promise<any[]> {
+    const MAX_EXPORT_RECORDS = 10000;
     const companyObjectId = new mongoose.Types.ObjectId(companyId);
     const query: any = { companyId: companyObjectId, isDeleted: false };
 
@@ -218,10 +237,27 @@ async function fetchData(
         query.currentStatus = { $in: filters.status };
     }
 
+    // Check total count before fetching to warn user if truncation will occur
+    const Model = dataType === 'orders' ? Order : Shipment;
+    const totalCount = await Model.countDocuments(query);
+
+    if (totalCount > MAX_EXPORT_RECORDS) {
+        logger.warn('Export exceeds limit', {
+            companyId,
+            dataType,
+            totalCount,
+            limit: MAX_EXPORT_RECORDS
+        });
+        throw new Error(
+            `Export contains ${totalCount} records, which exceeds the maximum of ${MAX_EXPORT_RECORDS}. ` +
+            `Please apply filters to reduce the dataset size.`
+        );
+    }
+
     if (dataType === 'orders') {
         const orders = await Order.find(query)
             .sort({ createdAt: -1 })
-            .limit(10000)
+            .limit(MAX_EXPORT_RECORDS)
             .lean();
 
         return orders.map((o: any) => ({
@@ -236,7 +272,7 @@ async function fetchData(
     } else {
         const shipments = await Shipment.find(query)
             .sort({ createdAt: -1 })
-            .limit(10000)
+            .limit(MAX_EXPORT_RECORDS)
             .lean();
 
         return shipments.map((s: any) => ({

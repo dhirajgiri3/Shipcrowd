@@ -337,6 +337,10 @@ ShipmentSchema.index({ companyId: 1, carrier: 1 }); // Carrier filtering
 ShipmentSchema.index({ 'ndrDetails.ndrStatus': 1, companyId: 1 }); // NDR management dashboard
 ShipmentSchema.index({ companyId: 1, 'paymentDetails.type': 1 }); // COD vs Prepaid filtering
 
+// Analytics indexes (Week 9)
+ShipmentSchema.index({ companyId: 1, currentStatus: 1, actualDelivery: -1 }); // Delivery time analytics for completed shipments
+ShipmentSchema.index({ companyId: 1, carrier: 1, createdAt: -1 }); // Carrier performance analytics over time
+
 // Pre-save hook to ensure the first status is added to history
 ShipmentSchema.pre('save', function (next) {
   const shipment = this;

@@ -130,14 +130,68 @@ export class ScheduledReportJob {
                 format as 'csv' | 'xlsx' | 'pdf'
             );
 
+            // Generate signed URL with 7-day expiry for scheduled reports
+            const signedUrl = CloudinaryStorageService.getSignedUrl(uploadResult.publicId, 7 * 24 * 3600);
+            const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+
             logger.info('Scheduled report generated and uploaded', {
                 reportConfigId,
                 filename,
                 url: uploadResult.secureUrl
             });
 
-            // TODO: Send email to recipients with download link
-            // This would integrate with an email service
+            // Send email to recipients with download link
+            if (config.schedule?.recipients?.length) {
+                const EmailService = (await import('../../core/application/services/communication/email.service.js')).default;
+
+                const emailSubject = `Scheduled Report: ${config.name}`;
+                const emailHtml = `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #333;">Your Scheduled Report is Ready</h2>
+                        <p>Hello,</p>
+                        <p>Your scheduled report "<strong>${config.name}</strong>" has been generated successfully.</p>
+
+                        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p style="margin: 5px 0;"><strong>Report Type:</strong> ${config.reportType}</p>
+                            <p style="margin: 5px 0;"><strong>Format:</strong> ${format.toUpperCase()}</p>
+                            <p style="margin: 5px 0;"><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                            <p style="margin: 5px 0;"><strong>Expires:</strong> ${expiresAt.toLocaleString()}</p>
+                        </div>
+
+                        <p>
+                            <a href="${signedUrl}"
+                               style="display: inline-block; background-color: #4CAF50; color: white; padding: 12px 24px;
+                                      text-decoration: none; border-radius: 4px; font-weight: bold;">
+                                Download Report
+                            </a>
+                        </p>
+
+                        <p style="color: #666; font-size: 12px;">
+                            Note: This download link will expire in 7 days for security purposes.
+                        </p>
+
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        <p style="color: #999; font-size: 11px;">
+                            This is an automated email from Shipcrowd Analytics. Please do not reply to this message.
+                        </p>
+                    </div>
+                `;
+
+                // Send to all recipients
+                for (const recipient of config.schedule.recipients) {
+                    try {
+                        await EmailService.sendEmail(recipient, emailSubject, emailHtml);
+                        logger.info('Scheduled report email sent', { recipient, reportConfigId });
+                    } catch (emailError: any) {
+                        logger.error('Failed to send scheduled report email', {
+                            recipient,
+                            reportConfigId,
+                            error: emailError.message
+                        });
+                        // Continue with other recipients even if one fails
+                    }
+                }
+            }
         }
 
         // Update last run time

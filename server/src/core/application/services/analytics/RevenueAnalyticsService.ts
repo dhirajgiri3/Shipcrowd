@@ -6,6 +6,7 @@
 
 import Order from '../../../../infrastructure/database/mongoose/models/Order.js';
 import WalletTransaction from '../../../../infrastructure/database/mongoose/models/WalletTransaction.js';
+import WalletService from '../wallet/WalletService.js';
 import AnalyticsService, { DateRange } from './AnalyticsService.js';
 import logger from '../../../../shared/logger/winston.logger.js';
 import mongoose from 'mongoose';
@@ -83,6 +84,9 @@ export default class RevenueAnalyticsService {
 
     /**
      * Get wallet statistics
+     *
+     * NOTE: Always uses the ACTUAL current balance from WalletService.getBalance(),
+     * not the lastBalance from filtered transactions (which would be incorrect if dateRange is provided).
      */
     static async getWalletStats(companyId: string, dateRange?: DateRange): Promise<WalletStats> {
         try {
@@ -90,6 +94,9 @@ export default class RevenueAnalyticsService {
             const dateFilter = dateRange ? {
                 createdAt: { $gte: dateRange.start, $lte: dateRange.end }
             } : {};
+
+            // Get actual current balance from WalletService (not from filtered transactions)
+            const balanceResult = await WalletService.getBalance(companyId);
 
             const [stats] = await WalletTransaction.aggregate([
                 {
@@ -107,15 +114,14 @@ export default class RevenueAnalyticsService {
                         totalDebits: {
                             $sum: { $cond: [{ $eq: ['$type', 'debit'] }, '$amount', 0] }
                         },
-                        transactionCount: { $sum: 1 },
-                        lastBalance: { $last: '$balanceAfter' }
+                        transactionCount: { $sum: 1 }
                     }
                 }
             ]);
 
             if (!stats) {
                 return {
-                    currentBalance: 0,
+                    currentBalance: balanceResult.balance,
                     totalCredits: 0,
                     totalDebits: 0,
                     transactionCount: 0
@@ -123,7 +129,7 @@ export default class RevenueAnalyticsService {
             }
 
             return {
-                currentBalance: Math.round(stats.lastBalance * 100) / 100,
+                currentBalance: balanceResult.balance,  // Always use actual balance from Company wallet
                 totalCredits: Math.round(stats.totalCredits * 100) / 100,
                 totalDebits: Math.round(stats.totalDebits * 100) / 100,
                 transactionCount: stats.transactionCount

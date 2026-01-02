@@ -299,6 +299,10 @@ OrderSchema.index({ companyId: 1, amazonOrderId: 1 }, { sparse: true, unique: tr
 OrderSchema.index({ amazonStoreId: 1, currentStatus: 1 }); // Amazon store filtering with status
 OrderSchema.index({ fulfillmentType: 1 }); // For FBA/MFN filtering
 
+// Analytics indexes (Week 9)
+OrderSchema.index({ companyId: 1, createdAt: -1, paymentMethod: 1 }); // Revenue analytics by payment method over time
+OrderSchema.index({ 'customerInfo.phone': 1, companyId: 1, createdAt: -1 }); // Customer lifetime value and repeat purchase tracking
+
 // Pre-save hook to ensure the first status is added to history
 OrderSchema.pre('save', function (next) {
   const order = this;
