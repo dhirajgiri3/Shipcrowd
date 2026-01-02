@@ -50,24 +50,6 @@ export default class AnalyticsService {
     }
 
     /**
-     * Calculate growth percentage between two values
-     */
-    static calculateGrowth(current: number, previous: number): number {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return Math.round(((current - previous) / previous) * 100 * 10) / 10;
-    }
-
-    /**
-     * Get default date range (last 30 days)
-     */
-    static getDefaultDateRange(): DateRange {
-        return {
-            start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-            end: new Date()
-        };
-    }
-
-    /**
      * Build match stage for aggregation pipeline
      */
     static buildMatchStage(companyId: string, dateRange?: DateRange, additionalFilters: Record<string, any> = {}): any {

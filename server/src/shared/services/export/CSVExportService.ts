@@ -15,41 +15,38 @@ export interface CSVColumn {
 
 export default class CSVExportService {
     /**
+     * Format a single cell value for CSV
+     */
+    private static formatCell(value: any, formatter?: (v: any) => string): string {
+        if (formatter) {
+            value = formatter(value);
+        }
+
+        if (value === null || value === undefined) {
+            return '""';
+        }
+
+        if (typeof value === 'string') {
+            value = value.replace(/"/g, '""');
+            return `"${value}"`;
+        }
+
+        if (value instanceof Date) {
+            return `"${value.toISOString()}"`;
+        }
+
+        return String(value);
+    }
+
+    /**
      * Export data to CSV buffer
      */
     static async exportToCSV(data: any[], columns: CSVColumn[]): Promise<Buffer> {
         try {
-            // Build header row
             const headers = columns.map(col => `"${col.header}"`).join(',');
-
-            // Build data rows
-            const rows = data.map(row => {
-                return columns.map(col => {
-                    let value = row[col.key];
-
-                    if (col.formatter) {
-                        value = col.formatter(value);
-                    }
-
-                    // Handle null/undefined
-                    if (value === null || value === undefined) {
-                        return '""';
-                    }
-
-                    // Handle strings with special characters
-                    if (typeof value === 'string') {
-                        value = value.replace(/"/g, '""');
-                        return `"${value}"`;
-                    }
-
-                    // Handle dates
-                    if (value instanceof Date) {
-                        return `"${value.toISOString()}"`;
-                    }
-
-                    return String(value);
-                }).join(',');
-            });
+            const rows = data.map(row =>
+                columns.map(col => this.formatCell(row[col.key], col.formatter)).join(',')
+            );
 
             const csv = [headers, ...rows].join('\n');
             return Buffer.from(csv, 'utf-8');
@@ -60,7 +57,7 @@ export default class CSVExportService {
     }
 
     /**
-     * Stream CSV directly to response (for smaller datasets)
+     * Stream CSV directly to response
      */
     static streamCSVResponse(
         res: Response,
@@ -72,35 +69,11 @@ export default class CSVExportService {
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-            // Write header
             const headers = columns.map(col => `"${col.header}"`).join(',');
             res.write(headers + '\n');
 
-            // Write data rows
             data.forEach(row => {
-                const rowData = columns.map(col => {
-                    let value = row[col.key];
-
-                    if (col.formatter) {
-                        value = col.formatter(value);
-                    }
-
-                    if (value === null || value === undefined) {
-                        return '""';
-                    }
-
-                    if (typeof value === 'string') {
-                        value = value.replace(/"/g, '""');
-                        return `"${value}"`;
-                    }
-
-                    if (value instanceof Date) {
-                        return `"${value.toISOString()}"`;
-                    }
-
-                    return String(value);
-                }).join(',');
-
+                const rowData = columns.map(col => this.formatCell(row[col.key], col.formatter)).join(',');
                 res.write(rowData + '\n');
             });
 

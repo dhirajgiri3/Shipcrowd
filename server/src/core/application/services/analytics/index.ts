@@ -11,3 +11,5 @@ export { default as ShipmentAnalyticsService } from './ShipmentAnalyticsService.
 export { default as RevenueAnalyticsService } from './RevenueAnalyticsService.js';
 export { default as CustomerAnalyticsService } from './CustomerAnalyticsService.js';
 export { default as InventoryAnalyticsService } from './InventoryAnalyticsService.js';
+export { default as ReportBuilderService } from './ReportBuilderService.js';
+

@@ -547,7 +547,16 @@ export const getRevenueStats = async (
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
         const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
+        // Check cache
+        const cacheKey = `analytics:revenue:${auth.companyId}:${startDate || 'all'}:${endDate || 'all'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Revenue stats (cached)');
+            return;
+        }
+
         const stats = await RevenueAnalyticsService.getRevenueStats(auth.companyId!, dateRange);
+        cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Revenue stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching revenue stats:', error);
@@ -572,7 +581,16 @@ export const getWalletStats = async (
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
         const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
+        // Check cache
+        const cacheKey = `analytics:wallet:${auth.companyId}:${startDate || 'all'}:${endDate || 'all'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Wallet stats (cached)');
+            return;
+        }
+
         const stats = await RevenueAnalyticsService.getWalletStats(auth.companyId!, dateRange);
+        cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Wallet stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching wallet stats:', error);
@@ -597,7 +615,16 @@ export const getCustomerStats = async (
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
         const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
+        // Check cache
+        const cacheKey = `analytics:customer:${auth.companyId}:${startDate || 'all'}:${endDate || 'all'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Customer stats (cached)');
+            return;
+        }
+
         const stats = await CustomerAnalyticsService.getCustomerStats(auth.companyId!, dateRange);
+        cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Customer stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching customer stats:', error);
@@ -623,7 +650,16 @@ export const getTopCustomers = async (
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
         const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
+        // Check cache
+        const cacheKey = `analytics:topcustomers:${auth.companyId}:${limit}:${startDate || 'all'}:${endDate || 'all'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Top customers (cached)');
+            return;
+        }
+
         const customers = await CustomerAnalyticsService.getTopCustomers(auth.companyId!, dateRange, limit);
+        cacheService.set(cacheKey, customers, 300);
         sendSuccess(res, customers, 'Top customers retrieved successfully');
     } catch (error) {
         logger.error('Error fetching top customers:', error);
@@ -645,7 +681,17 @@ export const getInventoryStats = async (
         if (!auth) return;
 
         const warehouseId = req.query.warehouseId as string | undefined;
+
+        // Check cache
+        const cacheKey = `analytics:inventory:${auth.companyId}:${warehouseId || 'all'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Inventory stats (cached)');
+            return;
+        }
+
         const stats = await InventoryAnalyticsService.getStockLevels(auth.companyId!, warehouseId);
+        cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Inventory stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching inventory stats:', error);
@@ -671,7 +717,16 @@ export const getTopProducts = async (
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
         const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
 
+        // Check cache
+        const cacheKey = `analytics:topproducts:${auth.companyId}:${limit}:${startDate || 'all'}:${endDate || 'all'}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Top products (cached)');
+            return;
+        }
+
         const products = await OrderAnalyticsService.getTopProducts(auth.companyId!, dateRange, limit);
+        cacheService.set(cacheKey, products, 300);
         sendSuccess(res, products, 'Top products retrieved successfully');
     } catch (error) {
         logger.error('Error fetching top products:', error);

@@ -5,6 +5,7 @@
  */
 
 import { Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth/auth.js';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers.js';
 import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper.js';
@@ -17,14 +18,17 @@ import PDFExportService from '../../../../shared/services/export/PDFExportServic
 import CloudinaryStorageService from '../../../../infrastructure/storage/CloudinaryStorageService.js';
 import mongoose from 'mongoose';
 
-interface ExportRequestBody {
-    dataType: 'orders' | 'shipments';
-    filters?: {
-        startDate?: string;
-        endDate?: string;
-        status?: string[];
-    };
-}
+// Validation schema for export requests
+const exportRequestSchema = z.object({
+    dataType: z.enum(['orders', 'shipments']),
+    filters: z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        status: z.array(z.string()).optional()
+    }).optional()
+});
+
+type ExportRequestBody = z.infer<typeof exportRequestSchema>;
 
 /**
  * Export to CSV
@@ -39,7 +43,13 @@ export const exportToCSV = async (
         const auth = guardChecks(req, res, { requireCompany: true });
         if (!auth) return;
 
-        const { dataType, filters } = req.body as ExportRequestBody;
+        const validation = exportRequestSchema.safeParse(req.body);
+        if (!validation.success) {
+            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
+            return;
+        }
+
+        const { dataType, filters } = validation.data;
         const data = await fetchData(auth.companyId!, dataType, filters);
 
         if (data.length === 0) {
@@ -87,7 +97,13 @@ export const exportToExcel = async (
         const auth = guardChecks(req, res, { requireCompany: true });
         if (!auth) return;
 
-        const { dataType, filters } = req.body as ExportRequestBody;
+        const validation = exportRequestSchema.safeParse(req.body);
+        if (!validation.success) {
+            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
+            return;
+        }
+
+        const { dataType, filters } = validation.data;
         const data = await fetchData(auth.companyId!, dataType, filters);
 
         if (data.length === 0) {
@@ -95,7 +111,9 @@ export const exportToExcel = async (
             return;
         }
 
-        const columns = ExcelExportService.getOrderColumns();
+        const columns = dataType === 'orders'
+            ? ExcelExportService.getOrderColumns()
+            : ExcelExportService.getShipmentColumns();
         const buffer = await ExcelExportService.exportToExcel(data, columns, {
             title: `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Report`,
             sheetName: dataType.charAt(0).toUpperCase() + dataType.slice(1)
@@ -135,7 +153,13 @@ export const exportToPDF = async (
         const auth = guardChecks(req, res, { requireCompany: true });
         if (!auth) return;
 
-        const { dataType, filters } = req.body as ExportRequestBody;
+        const validation = exportRequestSchema.safeParse(req.body);
+        if (!validation.success) {
+            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
+            return;
+        }
+
+        const { dataType, filters } = validation.data;
         const data = await fetchData(auth.companyId!, dataType, filters);
 
         if (data.length === 0) {
@@ -143,7 +167,9 @@ export const exportToPDF = async (
             return;
         }
 
-        const columns = PDFExportService.getOrderColumns();
+        const columns = dataType === 'orders'
+            ? PDFExportService.getOrderColumns()
+            : PDFExportService.getShipmentColumns();
         const buffer = await PDFExportService.exportToPDF(data, columns, {
             title: `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Report`,
             subtitle: `Generated for your company`

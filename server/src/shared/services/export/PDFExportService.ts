@@ -151,4 +151,15 @@ export default class PDFExportService {
             { header: 'Date', key: 'createdAt', width: 15 }
         ];
     }
+
+    static getShipmentColumns(): PDFColumn[] {
+        return [
+            { header: 'Tracking #', key: 'trackingNumber', width: 25 },
+            { header: 'Carrier', key: 'carrier', width: 20 },
+            { header: 'Status', key: 'currentStatus', width: 20 },
+            { header: 'Created', key: 'createdAt', width: 17 },
+            { header: 'Delivered', key: 'actualDelivery', width: 18 }
+        ];
+    }
 }
+

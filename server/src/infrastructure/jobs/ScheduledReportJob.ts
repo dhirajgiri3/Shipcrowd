@@ -1,0 +1,267 @@
+/**
+ * Scheduled Report Job
+ *
+ * Background job for generating and sending scheduled reports.
+ * Follows the same pattern as NDRResolutionJob.
+ */
+
+import { Job } from 'bullmq';
+import ReportConfig from '../database/mongoose/models/ReportConfig';
+import ReportBuilderService from '../../core/application/services/analytics/ReportBuilderService';
+import CSVExportService from '../../shared/services/export/CSVExportService';
+import ExcelExportService from '../../shared/services/export/ExcelExportService';
+import PDFExportService from '../../shared/services/export/PDFExportService';
+import CloudinaryStorageService from '../storage/CloudinaryStorageService';
+import QueueManager from '../queue/QueueManager';
+import logger from '../../shared/logger/winston.logger';
+
+interface ScheduledReportJobData {
+    reportConfigId: string;
+    companyId: string;
+    type?: 'generate' | 'send';
+}
+
+export class ScheduledReportJob {
+    private static readonly QUEUE_NAME = 'scheduled-reports';
+
+    /**
+     * Initialize the job worker
+     */
+    static async initialize(): Promise<void> {
+        await QueueManager.registerWorker({
+            queueName: this.QUEUE_NAME,
+            processor: this.processJob.bind(this),
+            concurrency: 3,
+        });
+
+        // Schedule daily check for reports that need to run
+        await this.scheduleReportChecker();
+
+        logger.info('Scheduled report worker initialized');
+    }
+
+    /**
+     * Process job
+     */
+    private static async processJob(job: Job<ScheduledReportJobData>): Promise<any> {
+        const { reportConfigId, companyId, type = 'generate' } = job.data;
+
+        logger.info('Processing scheduled report job', {
+            jobId: job.id,
+            reportConfigId,
+            type,
+        });
+
+        try {
+            switch (type) {
+                case 'generate':
+                    await this.generateReport(reportConfigId, companyId);
+                    break;
+
+                default:
+                    logger.warn('Unknown job type', { type });
+            }
+
+            return { success: true };
+        } catch (error: any) {
+            logger.error('Scheduled report job failed', {
+                jobId: job.id,
+                reportConfigId,
+                error: error.message,
+            });
+
+            throw error;
+        }
+    }
+
+    /**
+     * Generate scheduled report
+     */
+    private static async generateReport(reportConfigId: string, companyId: string): Promise<void> {
+        const config = await ReportConfig.findOne({
+            _id: reportConfigId,
+            company: companyId,
+            'schedule.enabled': true
+        });
+
+        if (!config) {
+            logger.warn('Report config not found or disabled', { reportConfigId });
+            return;
+        }
+
+        // Build the report
+        const reportResult = await ReportBuilderService.buildReport(reportConfigId, companyId);
+
+        // Export to configured format
+        const format = config.schedule?.format || 'excel';
+        let buffer: Buffer;
+        let filename: string;
+
+        const flatData = this.flattenReportData(reportResult.data);
+
+        switch (format) {
+            case 'csv':
+                buffer = await CSVExportService.exportToCSV(flatData, CSVExportService.getOrderColumns());
+                filename = `${config.name}_${Date.now()}.csv`;
+                break;
+
+            case 'pdf':
+                buffer = await PDFExportService.exportToPDF(flatData, PDFExportService.getOrderColumns(), {
+                    title: config.name
+                });
+                filename = `${config.name}_${Date.now()}.pdf`;
+                break;
+
+            case 'excel':
+            default:
+                buffer = await ExcelExportService.exportToExcel(flatData, ExcelExportService.getOrderColumns(), {
+                    title: config.name,
+                    sheetName: config.reportType
+                });
+                filename = `${config.name}_${Date.now()}.xlsx`;
+                break;
+        }
+
+        // Upload to Cloudinary if configured
+        if (CloudinaryStorageService.isConfigured()) {
+            const uploadResult = await CloudinaryStorageService.uploadFile(
+                buffer,
+                filename,
+                format as 'csv' | 'xlsx' | 'pdf'
+            );
+
+            logger.info('Scheduled report generated and uploaded', {
+                reportConfigId,
+                filename,
+                url: uploadResult.secureUrl
+            });
+
+            // TODO: Send email to recipients with download link
+            // This would integrate with an email service
+        }
+
+        // Update last run time
+        await ReportConfig.updateOne(
+            { _id: reportConfigId },
+            { $set: { 'schedule.lastRun': new Date() } }
+        );
+    }
+
+    /**
+     * Flatten nested report data for export
+     */
+    private static flattenReportData(data: any): any[] {
+        if (Array.isArray(data)) {
+            return data;
+        }
+
+        // If data has a stats object, return it as single row
+        if (data.stats) {
+            return [data.stats];
+        }
+
+        // If data has trends, return those
+        if (data.trends && Array.isArray(data.trends)) {
+            return data.trends;
+        }
+
+        // Fallback: wrap in array
+        return [data];
+    }
+
+    /**
+     * Queue report generation
+     */
+    static async queueReportGeneration(reportConfigId: string, companyId: string): Promise<void> {
+        await QueueManager.addJob(
+            this.QUEUE_NAME,
+            `report-${reportConfigId}-${Date.now()}`,
+            {
+                reportConfigId,
+                companyId,
+                type: 'generate',
+            }
+        );
+    }
+
+    /**
+     * Schedule daily report checker
+     */
+    private static async scheduleReportChecker(): Promise<void> {
+        // Run every hour to check for due reports
+        await QueueManager.addJob(
+            this.QUEUE_NAME,
+            'report-checker',
+            { type: 'check' as any },
+            {
+                repeat: {
+                    pattern: '0 * * * *' // Every hour
+                }
+            }
+        );
+    }
+
+    /**
+     * Check for reports that need to run
+     */
+    static async checkDueReports(): Promise<number> {
+        const now = new Date();
+        let count = 0;
+
+        // Find all enabled scheduled reports
+        const configs = await ReportConfig.find({
+            'schedule.enabled': true
+        }).lean();
+
+        for (const config of configs) {
+            if (this.shouldRunReport(config, now)) {
+                await this.queueReportGeneration(
+                    config._id.toString(),
+                    config.company.toString()
+                );
+                count++;
+            }
+        }
+
+        if (count > 0) {
+            logger.info(`Queued ${count} scheduled reports`);
+        }
+
+        return count;
+    }
+
+    /**
+     * Determine if a report should run based on schedule
+     */
+    private static shouldRunReport(config: any, now: Date): boolean {
+        const schedule = config.schedule;
+        if (!schedule?.enabled) return false;
+
+        const lastRun = schedule.lastRun ? new Date(schedule.lastRun) : null;
+
+        switch (schedule.frequency) {
+            case 'daily':
+                // Run if never run or last run was yesterday or earlier
+                if (!lastRun) return true;
+                return now.getDate() !== lastRun.getDate();
+
+            case 'weekly':
+                // Run on Mondays if last run was more than 6 days ago
+                if (now.getDay() !== 1) return false;
+                if (!lastRun) return true;
+                const daysSinceLastRun = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60 * 24);
+                return daysSinceLastRun >= 6;
+
+            case 'monthly':
+                // Run on 1st of month
+                if (now.getDate() !== 1) return false;
+                if (!lastRun) return true;
+                return now.getMonth() !== lastRun.getMonth();
+
+            default:
+                return false;
+        }
+    }
+}
+
+export default ScheduledReportJob;

@@ -175,4 +175,15 @@ export default class ExcelExportService {
             { header: 'Created', key: 'createdAt', width: 12 }
         ];
     }
+
+    static getShipmentColumns(): ExcelColumn[] {
+        return [
+            { header: 'Tracking Number', key: 'trackingNumber', width: 18 },
+            { header: 'Carrier', key: 'carrier', width: 15 },
+            { header: 'Status', key: 'currentStatus', width: 12 },
+            { header: 'Created', key: 'createdAt', width: 12 },
+            { header: 'Delivered', key: 'actualDelivery', width: 12 }
+        ];
+    }
 }
+
