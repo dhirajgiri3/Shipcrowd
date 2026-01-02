@@ -77,5 +77,8 @@ router.use('/integrations', integrationsRoutes);
 // Week 8: NDR/RTO Automation
 router.use('/ndr', ndrRoutes);
 router.use('/rto', rtoRoutes);
+// Week 9: Analytics Export
+import exportRoutes from './analytics/export.routes';
+router.use('/export', exportRoutes);
 
 export default router;

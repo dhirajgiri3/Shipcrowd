@@ -147,7 +147,8 @@ export class NDRController {
                 throw new AppError('NDR event not found', 'NOT_FOUND', 404);
             }
 
-            await NDRResolutionService.resolveNDR(id, resolution, userId || 'system');
+            // Issue #15: Now passing all validated fields to service
+            await NDRResolutionService.resolveNDR(id, resolution, userId || 'system', notes);
 
             res.status(200).json({
                 success: true,
@@ -187,7 +188,8 @@ export class NDRController {
                 throw new AppError('NDR event not found', 'NOT_FOUND', 404);
             }
 
-            await NDRResolutionService.escalateNDR(id, reason);
+            // Issue #15: Now passing all validated fields to service
+            await NDRResolutionService.escalateNDR(id, reason, priority, escalateTo);
 
             res.status(200).json({
                 success: true,

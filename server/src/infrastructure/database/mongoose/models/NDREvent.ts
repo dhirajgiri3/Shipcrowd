@@ -44,6 +44,7 @@ export interface INDREvent extends Document {
     order: mongoose.Types.ObjectId;
     classificationConfidence?: number;
     classificationSource: 'openai' | 'keyword' | 'manual';
+    idempotencyKey?: string; // For RTO trigger idempotency
     createdAt: Date;
     updatedAt: Date;
     // Methods
@@ -127,7 +128,7 @@ const NDREventSchema = new Schema<INDREvent>(
             type: [ResolutionActionSchema],
             default: [],
             validate: {
-                validator: function(v: INDRResolutionAction[]) {
+                validator: function (v: INDRResolutionAction[]) {
                     return v.length <= 100; // Prevent DoS via massive arrays
                 },
                 message: 'Resolution actions array cannot exceed 100 items'
@@ -180,6 +181,14 @@ const NDREventSchema = new Schema<INDREvent>(
             enum: ['openai', 'keyword', 'manual'],
             default: 'keyword',
         },
+        // IDEMPOTENCY KEY for RTO triggering (Issue #5)
+        // Prevents duplicate RTO triggers from same NDR event
+        idempotencyKey: {
+            type: String,
+            unique: true,
+            sparse: true, // Only enforce uniqueness when key is present
+            index: true,
+        },
     },
     {
         timestamps: true,
@@ -192,6 +201,8 @@ NDREventSchema.index({ company: 1, status: 1 });
 NDREventSchema.index({ company: 1, detectedAt: -1 });
 NDREventSchema.index({ resolutionDeadline: 1, status: 1 });
 NDREventSchema.index({ awb: 1, detectedAt: -1 });
+// Issue #16: Compound index for deadline checks (cron job optimization)
+NDREventSchema.index({ company: 1, resolutionDeadline: 1, autoRtoTriggered: 1 });
 
 // Static: Create NDR event with auto-calculated deadline
 NDREventSchema.statics.createNDREvent = async function (

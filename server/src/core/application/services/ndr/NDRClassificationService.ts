@@ -70,8 +70,13 @@ export default class NDRClassificationService {
 
     /**
      * Batch classify unclassified NDRs
+     * Issue #13: Concurrent batch processing (was sequential)
+     * Before: 50 NDRs × 200ms = 10+ seconds
+     * After: 50 NDRs / 10 batches × 200ms = ~1 second
      */
     static async batchClassify(limit: number = 50): Promise<number> {
+        const BATCH_SIZE = 10; // Process 10 NDRs concurrently
+
         const unclassifiedNDRs = await NDREvent.find({
             $or: [
                 { ndrReasonClassified: { $exists: false } },
@@ -80,25 +85,38 @@ export default class NDRClassificationService {
         }).limit(limit);
 
         let classified = 0;
+        let failed = 0;
 
-        for (const ndr of unclassifiedNDRs) {
-            try {
-                await this.classifyAndUpdate(String(ndr._id));
-                classified++;
+        // Process in batches of BATCH_SIZE concurrently
+        for (let i = 0; i < unclassifiedNDRs.length; i += BATCH_SIZE) {
+            const batch = unclassifiedNDRs.slice(i, i + BATCH_SIZE);
 
-                // Rate limiting - wait 200ms between API calls
+            const results = await Promise.allSettled(
+                batch.map((ndr) => this.classifyAndUpdate(String(ndr._id)))
+            );
+
+            results.forEach((result) => {
+                if (result.status === 'fulfilled') {
+                    classified++;
+                } else {
+                    failed++;
+                    logger.error('Batch classification error', {
+                        error: result.reason?.message || String(result.reason),
+                    });
+                }
+            });
+
+            // Rate limiting between batches - wait 200ms
+            if (i + BATCH_SIZE < unclassifiedNDRs.length) {
                 await new Promise((resolve) => setTimeout(resolve, 200));
-            } catch (error: any) {
-                logger.error('Batch classification error', {
-                    ndrId: ndr._id,
-                    error: error.message,
-                });
             }
         }
 
         logger.info('Batch classification completed', {
             total: unclassifiedNDRs.length,
             classified,
+            failed,
+            batchSize: BATCH_SIZE,
         });
 
         return classified;

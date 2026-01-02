@@ -151,7 +151,7 @@ class CacheService {
      * Generate cache key for analytics
      */
     static analyticsKey(
-        type: 'seller' | 'admin' | 'orders' | 'shipments',
+        type: 'seller' | 'admin' | 'orders' | 'shipments' | 'revenue' | 'customer' | 'inventory' | 'reports',
         companyId: string,
         params: Record<string, any>
     ): string {
@@ -162,7 +162,21 @@ class CacheService {
 
         return `analytics:${type}:${companyId}:${paramStr}`;
     }
+
+    /**
+     * Get recommended TTL for analytics type (in seconds)
+     */
+    static getTTL(type: 'dashboard' | 'trends' | 'stats' | 'reports'): number {
+        const ttls: Record<string, number> = {
+            dashboard: 300,   // 5 minutes
+            trends: 900,      // 15 minutes
+            stats: 1800,      // 30 minutes
+            reports: 3600     // 1 hour
+        };
+        return ttls[type] || 300;
+    }
 }
+
 
 // Singleton instance
 const cacheService = new CacheService(1000);

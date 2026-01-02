@@ -33,4 +33,38 @@ router.get('/orders', authenticate, asyncHandler(analyticsController.getOrderTre
  */
 router.get('/shipments', authenticate, asyncHandler(analyticsController.getShipmentPerformance));
 
+// ============================================
+// Week 9: New Analytics Routes
+// ============================================
+
+/**
+ * Revenue Analytics
+ */
+router.get('/revenue/stats', authenticate, asyncHandler(analyticsController.getRevenueStats));
+router.get('/revenue/wallet', authenticate, asyncHandler(analyticsController.getWalletStats));
+
+/**
+ * Customer Analytics
+ */
+router.get('/customers/stats', authenticate, asyncHandler(analyticsController.getCustomerStats));
+router.get('/customers/top', authenticate, asyncHandler(analyticsController.getTopCustomers));
+
+/**
+ * Inventory Analytics
+ */
+router.get('/inventory/stats', authenticate, asyncHandler(analyticsController.getInventoryStats));
+
+/**
+ * Order Analytics - Additional
+ */
+router.get('/orders/top-products', authenticate, asyncHandler(analyticsController.getTopProducts));
+
+/**
+ * Report Builder
+ */
+router.get('/reports', authenticate, asyncHandler(analyticsController.listReportConfigs));
+router.post('/reports/build', authenticate, asyncHandler(analyticsController.buildCustomReport));
+router.post('/reports/save', authenticate, asyncHandler(analyticsController.saveReportConfig));
+router.delete('/reports/:id', authenticate, asyncHandler(analyticsController.deleteReportConfig));
+
 export default router;

@@ -47,6 +47,12 @@ export interface ICompany extends Document {
     notificationPhone?: string;
     autoGenerateInvoice?: boolean;
   };
+  wallet: {
+    balance: number;
+    currency: string;
+    lastUpdated?: Date;
+    lowBalanceThreshold: number;
+  };
 
   status: 'pending_verification' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
   isActive: boolean;
@@ -132,6 +138,22 @@ const CompanySchema = new Schema<ICompany>(
         default: true,
       },
     },
+    wallet: {
+      balance: {
+        type: Number,
+        default: 0,
+        min: [0, 'Wallet balance cannot be negative'],
+      },
+      currency: {
+        type: String,
+        default: 'INR',
+      },
+      lastUpdated: Date,
+      lowBalanceThreshold: {
+        type: Number,
+        default: 500,
+      },
+    },
 
     status: {
       type: String,
@@ -149,6 +171,7 @@ const CompanySchema = new Schema<ICompany>(
   },
   {
     timestamps: true,
+    versionKey: true, // Enable optimistic locking for concurrent updates
   }
 );
 

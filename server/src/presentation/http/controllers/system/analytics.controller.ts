@@ -519,9 +519,292 @@ export const getShipmentPerformance = async (
     }
 };
 
+// ============================================
+// Week 9: New Analytics Endpoints
+// ============================================
+
+import RevenueAnalyticsService from '../../../../core/application/services/analytics/RevenueAnalyticsService.js';
+import CustomerAnalyticsService from '../../../../core/application/services/analytics/CustomerAnalyticsService.js';
+import InventoryAnalyticsService from '../../../../core/application/services/analytics/InventoryAnalyticsService.js';
+import OrderAnalyticsService from '../../../../core/application/services/analytics/OrderAnalyticsService.js';
+import ReportBuilderService from '../../../../core/application/services/analytics/ReportBuilderService.js';
+import { buildReportSchema, saveReportConfigSchema } from '../../../../shared/validation/analytics-schemas.js';
+
+/**
+ * Get revenue statistics
+ * @route GET /api/v1/analytics/revenue/stats
+ */
+export const getRevenueStats = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
+
+        const stats = await RevenueAnalyticsService.getRevenueStats(auth.companyId!, dateRange);
+        sendSuccess(res, stats, 'Revenue stats retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching revenue stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get wallet statistics
+ * @route GET /api/v1/analytics/revenue/wallet
+ */
+export const getWalletStats = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
+
+        const stats = await RevenueAnalyticsService.getWalletStats(auth.companyId!, dateRange);
+        sendSuccess(res, stats, 'Wallet stats retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching wallet stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get customer statistics
+ * @route GET /api/v1/analytics/customers/stats
+ */
+export const getCustomerStats = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
+
+        const stats = await CustomerAnalyticsService.getCustomerStats(auth.companyId!, dateRange);
+        sendSuccess(res, stats, 'Customer stats retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching customer stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get top customers
+ * @route GET /api/v1/analytics/customers/top
+ */
+export const getTopCustomers = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const limit = parseInt(req.query.limit as string) || 10;
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
+
+        const customers = await CustomerAnalyticsService.getTopCustomers(auth.companyId!, dateRange, limit);
+        sendSuccess(res, customers, 'Top customers retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching top customers:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get inventory statistics
+ * @route GET /api/v1/analytics/inventory/stats
+ */
+export const getInventoryStats = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const warehouseId = req.query.warehouseId as string | undefined;
+        const stats = await InventoryAnalyticsService.getStockLevels(auth.companyId!, warehouseId);
+        sendSuccess(res, stats, 'Inventory stats retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching inventory stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get top products
+ * @route GET /api/v1/analytics/orders/top-products
+ */
+export const getTopProducts = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const limit = parseInt(req.query.limit as string) || 10;
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
+
+        const products = await OrderAnalyticsService.getTopProducts(auth.companyId!, dateRange, limit);
+        sendSuccess(res, products, 'Top products retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching top products:', error);
+        next(error);
+    }
+};
+
+/**
+ * Build custom report
+ * @route POST /api/v1/analytics/reports/build
+ */
+export const buildCustomReport = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const validation = buildReportSchema.safeParse(req.body);
+        if (!validation.success) {
+            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
+            return;
+        }
+
+        const { reportType, filters, metrics, groupBy } = validation.data;
+        const report = await ReportBuilderService.buildCustomReport(
+            auth.companyId!,
+            reportType,
+            filters as any,
+            metrics,
+            groupBy as any
+        );
+
+        sendSuccess(res, report, 'Report generated successfully');
+    } catch (error) {
+        logger.error('Error building custom report:', error);
+        next(error);
+    }
+};
+
+/**
+ * Save report configuration
+ * @route POST /api/v1/analytics/reports/save
+ */
+export const saveReportConfig = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const validation = saveReportConfigSchema.safeParse(req.body);
+        if (!validation.success) {
+            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
+            return;
+        }
+
+        const config = await ReportBuilderService.saveReportConfig(
+            validation.data as any,
+            auth.userId!,
+            auth.companyId!
+        );
+
+        sendSuccess(res, config, 'Report configuration saved successfully');
+    } catch (error) {
+        logger.error('Error saving report config:', error);
+        next(error);
+    }
+};
+
+/**
+ * List saved report configurations
+ * @route GET /api/v1/analytics/reports
+ */
+export const listReportConfigs = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+
+        const result = await ReportBuilderService.listReportConfigs(auth.companyId!, page, limit);
+        sendSuccess(res, result, 'Report configurations retrieved successfully');
+    } catch (error) {
+        logger.error('Error listing report configs:', error);
+        next(error);
+    }
+};
+
+/**
+ * Delete report configuration
+ * @route DELETE /api/v1/analytics/reports/:id
+ */
+export const deleteReportConfig = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, res, { requireCompany: true });
+        if (!auth) return;
+
+        await ReportBuilderService.deleteReportConfig(req.params.id, auth.companyId!);
+        sendSuccess(res, null, 'Report configuration deleted successfully');
+    } catch (error) {
+        logger.error('Error deleting report config:', error);
+        next(error);
+    }
+};
+
 export default {
     getSellerDashboard,
     getAdminDashboard,
     getOrderTrends,
     getShipmentPerformance,
+    // Week 9: New endpoints
+    getRevenueStats,
+    getWalletStats,
+    getCustomerStats,
+    getTopCustomers,
+    getInventoryStats,
+    getTopProducts,
+    buildCustomReport,
+    saveReportConfig,
+    listReportConfigs,
+    deleteReportConfig,
 };

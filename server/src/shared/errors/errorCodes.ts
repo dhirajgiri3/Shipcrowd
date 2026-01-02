@@ -36,6 +36,10 @@ export enum ErrorCode {
     BIZ_LIMIT_EXCEEDED = 'BIZ_LIMIT_EXCEEDED',
     BIZ_OPERATION_FAILED = 'BIZ_OPERATION_FAILED',
 
+    // Concurrency errors (BIZ_)
+    BIZ_VERSION_CONFLICT = 'BIZ_VERSION_CONFLICT',
+    BIZ_OPTIMISTIC_LOCK_FAILURE = 'BIZ_OPTIMISTIC_LOCK_FAILURE',
+
     // Resource errors (RES_)
     RES_USER_NOT_FOUND = 'RES_USER_NOT_FOUND',
     RES_COMPANY_NOT_FOUND = 'RES_COMPANY_NOT_FOUND',
@@ -99,6 +103,10 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.BIZ_INVALID_STATE]: 400,
     [ErrorCode.BIZ_LIMIT_EXCEEDED]: 400,
     [ErrorCode.BIZ_OPERATION_FAILED]: 400,
+
+    // Concurrency errors (409)
+    [ErrorCode.BIZ_VERSION_CONFLICT]: 409,
+    [ErrorCode.BIZ_OPTIMISTIC_LOCK_FAILURE]: 409,
 
     // Resource errors (404)
     [ErrorCode.RES_USER_NOT_FOUND]: 404,

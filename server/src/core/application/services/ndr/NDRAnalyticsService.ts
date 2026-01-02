@@ -300,14 +300,104 @@ export default class NDRAnalyticsService {
 
     /**
      * Get NDR rate by courier
+     * Joins NDREvent with Shipment to get carrier info and calculates NDR rates
      */
     static async getNDRByCourier(
-        companyId: string
+        companyId: string,
+        dateRange?: DateRange
     ): Promise<Record<string, { total: number; ndrCount: number; ndrRate: number }>> {
-        // This would require joining with Shipment model
-        // For now, return placeholder
-        logger.info('getNDRByCourier requires shipment join - returning placeholder');
-        return {};
+        // First, get total shipments per carrier
+        const shipmentMatchFilter: any = { companyId };
+        const ndrMatchFilter: any = { company: companyId };
+
+        if (dateRange) {
+            shipmentMatchFilter.createdAt = {
+                $gte: dateRange.start,
+                $lte: dateRange.end,
+            };
+            ndrMatchFilter.detectedAt = {
+                $gte: dateRange.start,
+                $lte: dateRange.end,
+            };
+        }
+
+        // Import Shipment model dynamically to avoid circular dependencies
+        const ShipmentModule = await import('../../../../infrastructure/database/mongoose/models/Shipment.js') as any;
+        const Shipment = ShipmentModule.default;
+
+        // Get total shipments by carrier
+        const totalShipmentsByCarrier = await Shipment.aggregate([
+            { $match: shipmentMatchFilter },
+            {
+                $group: {
+                    _id: '$carrier',
+                    total: { $sum: 1 },
+                },
+            },
+        ]);
+
+        // Get NDR counts by carrier using aggregation with lookup
+        const ndrByCarrier = await NDREvent.aggregate([
+            { $match: ndrMatchFilter },
+            {
+                $lookup: {
+                    from: 'shipments',
+                    localField: 'shipment',
+                    foreignField: '_id',
+                    as: 'shipmentData',
+                },
+            },
+            { $unwind: '$shipmentData' },
+            {
+                $group: {
+                    _id: '$shipmentData.carrier',
+                    ndrCount: { $sum: 1 },
+                },
+            },
+        ]);
+
+        // Build result map
+        const result: Record<string, { total: number; ndrCount: number; ndrRate: number }> = {};
+
+        // Initialize with total shipments
+        totalShipmentsByCarrier.forEach((item: { _id: string; total: number }) => {
+            if (item._id) {
+                result[item._id] = {
+                    total: item.total,
+                    ndrCount: 0,
+                    ndrRate: 0,
+                };
+            }
+        });
+
+        // Add NDR counts
+        ndrByCarrier.forEach((item: { _id: string; ndrCount: number }) => {
+            if (item._id) {
+                if (!result[item._id]) {
+                    result[item._id] = {
+                        total: 0,
+                        ndrCount: item.ndrCount,
+                        ndrRate: 0,
+                    };
+                } else {
+                    result[item._id].ndrCount = item.ndrCount;
+                }
+            }
+        });
+
+        // Calculate NDR rates
+        Object.keys(result).forEach((carrier) => {
+            const { total, ndrCount } = result[carrier];
+            result[carrier].ndrRate = total > 0 ? Math.round((ndrCount / total) * 100 * 100) / 100 : 0;
+        });
+
+        logger.info('getNDRByCourier completed', {
+            companyId,
+            carriersAnalyzed: Object.keys(result).length,
+            dateRange: dateRange ? { start: dateRange.start, end: dateRange.end } : 'all time',
+        });
+
+        return result;
     }
 
     /**

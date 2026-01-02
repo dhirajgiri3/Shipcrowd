@@ -202,6 +202,7 @@ export class NDRActionExecutors {
 
     /**
      * Send email notification
+     * Issue #17: Integrated with existing EmailService
      */
     static async executeSendEmail(
         context: ActionContext,
@@ -219,21 +220,56 @@ export class NDRActionExecutors {
                 };
             }
 
-            // TODO: Integrate with existing email service
-            // For now, log the intent
-            logger.info('Email notification queued', {
+            // Import email service
+            const EmailService = (await import('../../communication/email.service.js')).default;
+
+            // Send NDR notification email
+            const subject = `Update on your order ${context.orderId}`;
+            const htmlContent = `
+                <h2>Delivery Update</h2>
+                <p>Dear ${customer.name},</p>
+                <p>We attempted to deliver your order but encountered an issue:</p>
+                <blockquote><strong>${ndrEvent.ndrReason || 'Delivery unsuccessful'}</strong></blockquote>
+                <p>Our team is working to resolve this. We will attempt delivery again soon.</p>
+                <p>Order ID: <strong>${context.orderId}</strong></p>
+                <p>If you have any questions, please reply to this email.</p>
+                <p>Thank you for your patience.</p>
+                <p>- The Shipcrowd Team</p>
+            `;
+
+            const sent = await EmailService.sendEmail(
+                customer.email,
+                subject,
+                htmlContent,
+                `Delivery update for order ${context.orderId}: ${ndrEvent.ndrReason}` // Plain text fallback
+            );
+
+            if (!sent) {
+                return {
+                    success: false,
+                    actionType: 'send_email',
+                    result: 'failed',
+                    error: 'Failed to send email',
+                };
+            }
+
+            logger.info('NDR email notification sent', {
                 to: customer.email,
                 ndrEventId: ndrEvent._id,
-                template: actionConfig.template || 'ndr_notification',
+                orderId: context.orderId,
             });
 
             return {
                 success: true,
                 actionType: 'send_email',
-                result: 'pending',
-                metadata: { email: customer.email, template: actionConfig.template },
+                result: 'success',
+                metadata: { email: customer.email, orderId: context.orderId },
             };
         } catch (error: any) {
+            logger.error('Send email action failed', {
+                error: error.message,
+                ndrEventId: context.ndrEvent._id,
+            });
             return {
                 success: false,
                 actionType: 'send_email',

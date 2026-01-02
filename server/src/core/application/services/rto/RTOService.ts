@@ -4,15 +4,18 @@
  * Manages Return To Origin workflow.
  */
 
+import mongoose from 'mongoose';
 import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/RTOEvent';
 import NDREvent from '../../../../infrastructure/database/mongoose/models/NDREvent';
 import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
 import Order from '../../../../infrastructure/database/mongoose/models/Order';
 import WhatsAppService from '../../../../infrastructure/integrations/communication/WhatsAppService';
 import WarehouseNotificationService from '../warehouse/WarehouseNotificationService';
+import WalletService from '../wallet/WalletService';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/AppError';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
+import { getRateLimiter } from '../../../../infrastructure/cache/RateLimiter';
 
 interface RTOResult {
     success: boolean;
@@ -37,6 +40,45 @@ interface ShipmentInfo {
 export default class RTOService {
     private static whatsapp = new WhatsAppService();
 
+    // Issue #A (Audit Fix): Redis-based distributed rate limiting
+    private static rateLimiter = getRateLimiter();
+    private static readonly RTO_RATE_LIMIT = 10; // Max RTOs per minute per company
+    private static readonly RTO_RATE_WINDOW_SECONDS = 60; // 1 minute
+
+    /**
+     * Check rate limit for RTO triggers
+     * Issue #A: Uses Redis for distributed rate limiting with in-memory fallback
+     */
+    private static async checkRateLimit(companyId: string): Promise<{ allowed: boolean; retryAfter?: number }> {
+        try {
+            const result = await this.rateLimiter.checkLimit(
+                `rto:${companyId}`,
+                this.RTO_RATE_LIMIT,
+                this.RTO_RATE_WINDOW_SECONDS
+            );
+
+            if (!result.allowed) {
+                logger.warn('RTO rate limit exceeded', {
+                    companyId,
+                    limit: this.RTO_RATE_LIMIT,
+                    retryAfter: result.retryAfter,
+                });
+            }
+
+            return {
+                allowed: result.allowed,
+                retryAfter: result.retryAfter,
+            };
+        } catch (error: any) {
+            logger.error('Rate limit check failed, allowing request', {
+                companyId,
+                error: error.message,
+            });
+            // On error, allow the request (fail-open for availability)
+            return { allowed: true };
+        }
+    }
+
     /**
      * Trigger RTO for a shipment
      */
@@ -47,117 +89,266 @@ export default class RTOService {
         triggeredBy: 'auto' | 'manual' = 'manual',
         triggeredByUser?: string
     ): Promise<RTOResult> {
+        // Import mongoose for transactions
+        const mongoose = await import('mongoose');
+        const session = await mongoose.default.startSession();
+
         try {
+            // Start transaction for atomic RTO creation (Issue #9)
+            session.startTransaction();
+
             // Get shipment details
             const shipment = await this.getShipmentInfo(shipmentId);
 
             if (!shipment) {
+                await session.abortTransaction();
                 return { success: false, error: 'Shipment not found' };
             }
 
-            // Validate shipment can be RTO'd
+            // Validate shipment can be RTO'd (FIRST - fast check)
             const validation = this.validateRTOEligibility(shipment);
             if (!validation.eligible) {
+                await session.abortTransaction();
                 return { success: false, error: validation.reason };
             }
 
-            // Check for existing RTO
-            const existingRTO = await RTOEvent.getByShipment(shipmentId);
-            if (existingRTO) {
-                return { success: false, error: 'RTO already triggered for this shipment' };
+            // Calculate RTO charges
+            const rtoCharges = await this.calculateRTOCharges(shipment);
+
+            // CRITICAL FIX (Issue #2): Check wallet balance BEFORE creating RTO
+            // This prevents "zombie RTOs" - RTOs created without payment
+            const hasBalance = await WalletService.hasMinimumBalance(shipment.companyId, rtoCharges);
+
+            if (!hasBalance) {
+                await session.abortTransaction();
+                const { balance } = await WalletService.getBalance(shipment.companyId);
+                logger.warn('Insufficient wallet balance for RTO', {
+                    shipmentId,
+                    companyId: shipment.companyId,
+                    requiredAmount: rtoCharges,
+                    currentBalance: balance,
+                });
+                return {
+                    success: false,
+                    error: `Insufficient wallet balance. Required: ₹${rtoCharges}, Current: ₹${balance}`,
+                };
+            }
+
+            // Issue #A (Audit Fix #5): Check rate limit AFTER validation
+            // Only count valid, payable requests against rate limit quota
+            const rateLimitCheck = await this.checkRateLimit(shipment.companyId);
+            if (!rateLimitCheck.allowed) {
+                await session.abortTransaction();
+                return {
+                    success: false,
+                    error: `Rate limit exceeded. Max ${this.RTO_RATE_LIMIT} RTOs per minute. Retry after ${rateLimitCheck.retryAfter} seconds.`,
+                };
+            }
+
+
+            // IDEMPOTENCY CHECK (Issue #5): Prevent duplicate RTO triggers from same NDR
+            let idempotencyKey: string | undefined;
+            if (ndrEventId) {
+                idempotencyKey = `ndr-${ndrEventId}-rto`;
+
+                // Check if this idempotency key was already used
+                const existingNDR = await NDREvent.findOne({ idempotencyKey }).session(session);
+                if (existingNDR && existingNDR.status === 'rto_triggered') {
+                    await session.abortTransaction();
+                    logger.warn('Duplicate RTO trigger attempt from NDR event', {
+                        ndrEventId,
+                        idempotencyKey,
+                        existingNDR: existingNDR._id,
+                    });
+                    return {
+                        success: false,
+                        error: 'RTO already triggered for this NDR event',
+                    };
+                }
+
+                // Mark NDR with idempotency key to prevent future duplicates
+                await NDREvent.findByIdAndUpdate(
+                    ndrEventId,
+                    { idempotencyKey },
+                    { session }
+                );
             }
 
             // Create reverse shipment via courier API
             const reverseAwb = await this.createReverseShipment(shipment);
 
-            // Calculate RTO charges
-            const rtoCharges = await this.calculateRTOCharges(shipment);
+            // Create RTO event (Issue #4: unique index will prevent duplicates)
+            let rtoEvent;
+            try {
+                rtoEvent = await RTOEvent.create(
+                    [
+                        {
+                            shipment: shipmentId,
+                            order: shipment.orderId,
+                            reverseAwb,
+                            rtoReason: reason,
+                            ndrEvent: ndrEventId,
+                            triggeredBy,
+                            triggeredByUser,
+                            rtoCharges,
+                            warehouse: shipment.warehouseId,
+                            expectedReturnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+                            company: shipment.companyId,
+                            returnStatus: 'initiated',
+                            chargesDeducted: false, // Will be set to true after successful wallet deduction
+                        },
+                    ],
+                    { session }
+                );
+            } catch (error: any) {
+                await session.abortTransaction();
+                // Handle duplicate key error from unique index (Issue #4)
+                if (error.code === 11000) {
+                    logger.warn('Duplicate RTO attempt detected', { shipmentId });
+                    return {
+                        success: false,
+                        error: 'RTO already triggered for this shipment',
+                    };
+                }
+                throw error;
+            }
 
-            // Create RTO event
-            let rtoEvent = await RTOEvent.create({
-                shipment: shipmentId,
-                order: shipment.orderId,
-                reverseAwb,
-                rtoReason: reason,
-                ndrEvent: ndrEventId,
-                triggeredBy,
-                triggeredByUser,
+            // Deduct RTO charges from wallet (ATOMIC within SAME transaction)
+            // FIX #3: Pass session for true ACID compliance - wallet deduction is now
+            // part of the same transaction as RTO creation
+            const walletResult = await WalletService.handleRTOCharge(
+                shipment.companyId,
+                String(rtoEvent[0]._id),
                 rtoCharges,
-                warehouse: shipment.warehouseId,
-                expectedReturnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-                company: shipment.companyId,
-                returnStatus: 'initiated',
-            });
+                shipment.awb,
+                session // Pass session for transaction isolation
+            );
 
-            // Update order status
+            if (!walletResult.success) {
+                // If wallet deduction fails, ABORT entire transaction (no zombie RTO)
+                await session.abortTransaction();
+                logger.error('Failed to deduct RTO charges, aborting RTO creation', {
+                    shipmentId,
+                    companyId: shipment.companyId,
+                    rtoCharges,
+                    error: walletResult.error,
+                });
+                return {
+                    success: false,
+                    error: `Failed to deduct RTO charges: ${walletResult.error}`,
+                };
+            }
+
+            // Mark charges as deducted
+            rtoEvent[0].chargesDeducted = true;
+            rtoEvent[0].chargesDeductedAt = new Date();
+            await rtoEvent[0].save({ session });
+
+            // Update shipment status within transaction
+            await Shipment.findByIdAndUpdate(
+                shipmentId,
+                {
+                    currentStatus: 'rto_initiated',
+                    'rtoDetails.rtoInitiatedDate': new Date(),
+                    'rtoDetails.rtoReason': reason,
+                },
+                { session }
+            );
+
+            // Update NDR event if applicable
+            if (ndrEventId) {
+                await NDREvent.findByIdAndUpdate(
+                    ndrEventId,
+                    {
+                        status: 'rto_triggered',
+                        autoRtoTriggered: triggeredBy === 'auto',
+                    },
+                    { session }
+                );
+            }
+
+            // Commit transaction - ALL operations succeeded
+            await session.commitTransaction();
+
+            // Update order status (outside transaction - not critical)
             await this.updateOrderStatus(shipment.orderId, 'RTO_INITIATED');
 
-            // Audit log
+            // Audit log (outside transaction)
             await createAuditLog(
                 triggeredByUser || 'system',
                 String(shipment.companyId),
                 'create',
                 'rto_event',
-                String(rtoEvent._id),
+                String(rtoEvent[0]._id),
                 {
                     action: 'trigger_rto',
                     shipmentId,
                     reason,
                     triggeredBy,
-                    rtoCharges: rtoEvent.rtoCharges,
+                    rtoCharges: rtoEvent[0].rtoCharges,
+                    walletDeducted: true,
                 }
             );
 
-            // Update shipment status
-            await Shipment.findByIdAndUpdate(shipmentId, {
-                currentStatus: 'rto_initiated',
-                'rtoDetails.rtoInitiatedDate': new Date(),
-                'rtoDetails.rtoReason': reason,
-            });
-
-            // Update NDR event if applicable
-            if (ndrEventId) {
-                await NDREvent.findByIdAndUpdate(ndrEventId, {
-                    status: 'rto_triggered',
-                    autoRtoTriggered: triggeredBy === 'auto',
+            // Notify warehouse (async, outside transaction)
+            try {
+                await this.notifyWarehouse(shipment.warehouseId, rtoEvent[0]);
+                await RTOEvent.findByIdAndUpdate(rtoEvent[0]._id, {
+                    warehouseNotified: true,
                 });
+            } catch (notifyError: any) {
+                logger.error('Failed to notify warehouse', {
+                    rtoEventId: rtoEvent[0]._id,
+                    error: notifyError.message,
+                });
+                // Don't fail the RTO for notification failures
             }
 
-            // Notify warehouse
-            await this.notifyWarehouse(shipment.warehouseId, rtoEvent);
-            rtoEvent.warehouseNotified = true;
-            await rtoEvent.save();
-
-            // Notify customer
+            // Notify customer (async, outside transaction)
             if (shipment.customer?.phone) {
-                await this.notifyCustomer(shipment.customer, shipment.orderId, reason, reverseAwb);
-                rtoEvent.customerNotified = true;
-                await rtoEvent.save();
+                try {
+                    await this.notifyCustomer(shipment.customer, shipment.orderId, reason, reverseAwb);
+                    await RTOEvent.findByIdAndUpdate(rtoEvent[0]._id, {
+                        customerNotified: true,
+                    });
+                } catch (notifyError: any) {
+                    logger.error('Failed to notify customer', {
+                        rtoEventId: rtoEvent[0]._id,
+                        error: notifyError.message,
+                    });
+                    // Don't fail the RTO for notification failures
+                }
             }
 
             logger.info('RTO triggered successfully', {
-                rtoEventId: rtoEvent._id,
+                rtoEventId: rtoEvent[0]._id,
                 shipmentId,
                 reason,
                 triggeredBy,
                 reverseAwb,
+                chargesDeducted: rtoCharges,
+                newWalletBalance: walletResult.newBalance,
             });
 
             return {
                 success: true,
-                rtoEventId: String(rtoEvent._id),
+                rtoEventId: String(rtoEvent[0]._id),
                 reverseAwb,
             };
         } catch (error: any) {
+            await session.abortTransaction();
             logger.error('Failed to trigger RTO', {
                 shipmentId,
                 error: error.message,
+                stack: error.stack,
             });
 
             return {
                 success: false,
                 error: error.message,
             };
+        } finally {
+            session.endSession();
         }
     }
 
@@ -212,6 +403,39 @@ export default class RTOService {
     private static async updateOrderStatus(orderId: string, status: string): Promise<void> {
         // TODO: Use OrderService to update
         logger.info('Order status updated', { orderId, status });
+    }
+
+    /**
+     * Deduct RTO charges from company wallet
+     */
+    private static async deductRTOCharges(
+        companyId: string,
+        rtoEventId: string,
+        amount: number,
+        shipmentAwb?: string
+    ): Promise<{ success: boolean; newBalance?: number; error?: string }> {
+        try {
+            const result = await WalletService.handleRTOCharge(
+                companyId,
+                rtoEventId,
+                amount,
+                shipmentAwb
+            );
+
+            return result;
+        } catch (error: any) {
+            logger.error('Error deducting RTO charges', {
+                companyId,
+                rtoEventId,
+                amount,
+                error: error.message,
+            });
+
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
     }
 
     private static async notifyWarehouse(

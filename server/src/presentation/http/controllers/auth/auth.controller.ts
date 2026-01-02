@@ -413,8 +413,8 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
-      // Check for inactivity timeout (8 hours)
-      const INACTIVITY_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
+      // Check for inactivity timeout (Issue #27: Use env variable)
+      const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(8 * 60 * 60 * 1000)); // Default 8 hours
       const lastActiveTime = session.lastActive?.getTime() || session.createdAt.getTime();
       const timeSinceActive = Date.now() - lastActiveTime;
 

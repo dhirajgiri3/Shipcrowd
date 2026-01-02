@@ -150,6 +150,15 @@ export class RTOController {
             );
 
             if (!result.success) {
+                // Issue #A: Add Retry-After header for rate limit errors (RFC 7231)
+                if (result.error?.includes('Rate limit exceeded')) {
+                    const retryAfterMatch = result.error.match(/Retry after (\d+) seconds/);
+                    if (retryAfterMatch) {
+                        const retryAfter = parseInt(retryAfterMatch[1], 10);
+                        res.set('Retry-After', String(retryAfter));
+                        throw new AppError(result.error, 'RATE_LIMIT_EXCEEDED', 429);
+                    }
+                }
                 throw new AppError(result.error || 'Failed to trigger RTO', 'RTO_ERROR', 400);
             }
 

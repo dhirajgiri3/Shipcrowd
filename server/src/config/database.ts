@@ -10,9 +10,9 @@ const MONGODB_URI =
 
 // Database connection options
 const options = {
-  maxPoolSize: 10, // Maintain up to 10 socket connections
-  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE || '10'), // Maintain up to 10 socket connections
+  serverSelectionTimeoutMS: parseInt(process.env.DB_SERVER_TIMEOUT_MS || '5000'), // Keep trying to send operations for 5 seconds
+  socketTimeoutMS: parseInt(process.env.DB_SOCKET_TIMEOUT_MS || '45000'), // Close sockets after 45 seconds of inactivity
 };
 
 // Connect to MongoDB

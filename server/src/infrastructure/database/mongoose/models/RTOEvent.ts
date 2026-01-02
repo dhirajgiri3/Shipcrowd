@@ -159,6 +159,15 @@ const RTOEventSchema = new Schema<IRTOEvent>(
         },
         metadata: {
             type: Schema.Types.Mixed,
+            // Issue #34: Validate metadata size (10KB max)
+            validate: {
+                validator: function (v: any) {
+                    if (!v) return true;
+                    const size = JSON.stringify(v).length;
+                    return size <= 10240; // 10KB limit
+                },
+                message: 'Metadata size exceeds 10KB limit',
+            },
         },
     },
     {
@@ -167,10 +176,43 @@ const RTOEventSchema = new Schema<IRTOEvent>(
     }
 );
 
+// State transition validation (Issue #10)
+const RTO_STATUS_TRANSITIONS: Record<string, string[]> = {
+    initiated: ['in_transit', 'delivered_to_warehouse'],
+    in_transit: ['delivered_to_warehouse'],
+    delivered_to_warehouse: ['qc_pending'],
+    qc_pending: ['qc_completed'],
+    qc_completed: ['restocked', 'disposed'],
+    restocked: [],
+    disposed: [],
+};
+
+// Helper method to validate state transitions
+RTOEventSchema.methods.canTransitionTo = function (newStatus: string): boolean {
+    const currentStatus = this.returnStatus;
+    const allowedTransitions = RTO_STATUS_TRANSITIONS[currentStatus] || [];
+    return allowedTransitions.includes(newStatus);
+};
+
 // Indexes
 RTOEventSchema.index({ company: 1, returnStatus: 1 });
 RTOEventSchema.index({ company: 1, triggeredAt: -1 });
 RTOEventSchema.index({ warehouse: 1, returnStatus: 1 });
+
+// CRITICAL: Unique partial index to prevent duplicate RTOs (Issue #4)
+// Prevents multiple active RTOs for same shipment at database level
+RTOEventSchema.index(
+    { shipment: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            returnStatus: {
+                $in: ['initiated', 'in_transit', 'delivered_to_warehouse', 'qc_pending', 'qc_completed']
+            }
+        },
+        name: 'unique_active_rto_per_shipment'
+    }
+);
 
 // Static: Get pending RTOs for company
 RTOEventSchema.statics.getPendingRTOs = async function (
@@ -196,6 +238,14 @@ RTOEventSchema.methods.updateReturnStatus = async function (
     status: string,
     metadata?: Record<string, any>
 ) {
+    // STATE TRANSITION VALIDATION (Issue #10)
+    if (!this.canTransitionTo(status)) {
+        throw new Error(
+            `Invalid state transition from '${this.returnStatus}' to '${status}'. ` +
+            `Allowed transitions: ${RTO_STATUS_TRANSITIONS[this.returnStatus]?.join(', ') || 'none'}`
+        );
+    }
+
     const currentVersion = this.__v;
     const updateData: any = {
         returnStatus: status,
