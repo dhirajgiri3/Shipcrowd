@@ -1,9 +1,9 @@
-import RTOService from '../../../../src/core/application/services/rto/RTOService';
-import RTOEvent from '../../../../src/infrastructure/database/mongoose/models/RTOEvent';
-import WarehouseNotificationService from '../../../../src/core/application/services/warehouse/WarehouseNotificationService';
+import RTOService from '../../../../src/core/application/services/rto/rto.service';
+import { RTOEvent } from '../../../../src/infrastructure/database/mongoose/models';
+import WarehouseNotificationService from '../../../../src/core/application/services/warehouse/warehouse-notification.service';
 
-jest.mock('../../../../src/infrastructure/database/mongoose/models/RTOEvent');
-jest.mock('../../../../src/core/application/services/warehouse/WarehouseNotificationService');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model');
+jest.mock('../../../../src/core/application/services/warehouse/warehouse-notification.service');
 
 describe('RTOService', () => {
     beforeEach(() => {
@@ -46,7 +46,7 @@ describe('RTOService', () => {
                 },
             };
 
-            const charges = await RTOService.calculateRTOCharges(mockShipment as any);
+            const charges = (RTOService as any).calculateRTOCharges(mockShipment as any);
 
             expect(charges).toBeGreaterThan(0);
             expect(typeof charges).toBe('number');

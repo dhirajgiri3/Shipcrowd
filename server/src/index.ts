@@ -7,6 +7,8 @@ import app from './app';
 import connectDB from './config/database';
 import { initializeScheduler } from './config/scheduler';
 import logger from './shared/logger/winston.logger';
+import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-resolution.job';
+import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 
 // Load environment variables
 dotenv.config();
@@ -26,9 +28,12 @@ const startServer = async (): Promise<void> => {
         initializeScheduler();
 
         // Initialize NDR/RTO Background Jobs
-        const { NDRResolutionJob } = await import('./infrastructure/jobs/NDRResolutionJob.js');
         await NDRResolutionJob.initialize();
         logger.info('NDR/RTO background jobs initialized');
+
+        // Initialize Commission System Event Handlers
+        initializeCommissionEventHandlers();
+        logger.info('Commission event handlers initialized');
 
         // Start listening
         app.listen(PORT, () => {

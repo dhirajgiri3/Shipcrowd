@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import User from '../../../../infrastructure/database/mongoose/models/User';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/AuditLog';
+import { User } from '../../../../infrastructure/database/mongoose/models';
+import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import {
   sendSuccess,
   sendError,

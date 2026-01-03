@@ -6,9 +6,9 @@
 
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { authenticate } from '../../../middleware/auth/auth.js';
-import exportController from '../../../controllers/analytics/export.controller.js';
-import asyncHandler from '../../../../../shared/utils/asyncHandler.js';
+import { authenticate } from '../../../middleware/auth/auth';
+import exportController from '../../../controllers/analytics/export.controller';
+import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = express.Router();
 

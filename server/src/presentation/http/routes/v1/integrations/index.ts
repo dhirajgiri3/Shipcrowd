@@ -3,8 +3,8 @@ import shopifyRoutes from './shopify.routes';
 import woocommerceRoutes from './woocommerce.routes';
 import flipkartRoutes from './flipkart.routes';
 import amazonRoutes from './amazon.routes';
-import flipkartProductMappingRoutes from './flipkartProductMapping.routes';
-import productMappingRoutes from './productMapping.routes';
+import flipkartProductMappingRoutes from './flipkart-product-mapping.routes';
+import productMappingRoutes from './product-mapping.routes';
 
 /**
  * Integrations Routes Index

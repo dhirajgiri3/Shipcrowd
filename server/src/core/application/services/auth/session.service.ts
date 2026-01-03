@@ -1,10 +1,10 @@
 import { Request } from 'express';
 import mongoose from 'mongoose';
 import * as UAParser from 'ua-parser-js';
-import Session, { ISession } from '../../../../infrastructure/database/mongoose/models/Session';
+import { Session, ISession } from '../../../../infrastructure/database/mongoose/models';
 import { verifyRefreshToken } from '../../../../shared/helpers/jwt';
 import logger from '../../../../shared/logger/winston.logger';
-import { DatabaseError, AuthenticationError } from '../../../../shared/errors/AppError';
+import { DatabaseError, AuthenticationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**

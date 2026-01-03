@@ -1,11 +1,11 @@
-import NDRResolutionService from '../../../../src/core/application/services/ndr/NDRResolutionService';
-import NDREvent from '../../../../src/infrastructure/database/mongoose/models/NDREvent';
-import NDRWorkflow from '../../../../src/infrastructure/database/mongoose/models/NDRWorkflow';
-import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/NDRActionExecutors';
+import NDRResolutionService from '../../../../src/core/application/services/ndr/ndr-resolution.service';
+import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
+import { NDRWorkflow } from '../../../../src/infrastructure/database/mongoose/models';
+import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
 
-jest.mock('../../../../src/infrastructure/database/mongoose/models/NDREvent');
-jest.mock('../../../../src/infrastructure/database/mongoose/models/NDRWorkflow');
-jest.mock('../../../../src/core/application/services/ndr/actions/NDRActionExecutors');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-workflow.model');
+jest.mock('../../../../src/core/application/services/ndr/actions/ndr-action-executors');
 
 describe('NDRResolutionService', () => {
     beforeEach(() => {

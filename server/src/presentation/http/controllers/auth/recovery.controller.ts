@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth/auth';
-import User from '../../../../infrastructure/database/mongoose/models/User';
+import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
   setupSecurityQuestions,
   setupBackupEmail,
@@ -9,7 +9,7 @@ import {
 } from '../../../../core/application/services/user/recovery.service';
 import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
 import { sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
 

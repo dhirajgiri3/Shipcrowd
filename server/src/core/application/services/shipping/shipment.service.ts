@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
-import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
-import Order from '../../../../infrastructure/database/mongoose/models/Order';
-import Warehouse from '../../../../infrastructure/database/mongoose/models/Warehouse';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import { selectBestCarrier, CarrierSelectionResult } from './carrier.service';
 import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
-import { CourierFactory } from '../courier/CourierFactory';
+import { CourierFactory } from '../courier/courier.factory';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

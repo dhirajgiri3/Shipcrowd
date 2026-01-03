@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import TeamPermission from '../../../../infrastructure/database/mongoose/models/TeamPermission';
-import User from '../../../../infrastructure/database/mongoose/models/User';
+import { TeamPermission } from '../../../../infrastructure/database/mongoose/models';
+import { User } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from './auth';
 import logger from '../../../../shared/logger/winston.logger';
 

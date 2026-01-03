@@ -2,14 +2,14 @@
  * WalletService Unit Tests
  */
 
-import WalletService from '@/core/application/services/wallet/WalletService';
-import Company from '@/infrastructure/database/mongoose/models/Company';
-import WalletTransaction from '@/infrastructure/database/mongoose/models/WalletTransaction';
+import WalletService from '@/core/application/services/wallet/wallet.service';
+import { Company } from '../../../../src/infrastructure/database/mongoose/models';
+import { WalletTransaction } from '../../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
 
 // Mock the models
-jest.mock('@/infrastructure/database/mongoose/models/Company');
-jest.mock('@/infrastructure/database/mongoose/models/WalletTransaction');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/organization/core/company.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/finance/wallets/wallet-transaction.model');
 jest.mock('@/shared/logger/winston.logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),

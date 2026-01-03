@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { AddressUpdateController } from '../../controllers/public/AddressUpdateController';
+import { AddressUpdateController } from '../../controllers/public/address-update.controller';
 
 const router = Router();
 

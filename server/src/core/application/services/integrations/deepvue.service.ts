@@ -8,7 +8,7 @@ import {
   mockBankAccountResponse,
   mockIfscResponse
 } from './mocks/deepvue.mock';
-import { ExternalServiceError } from '../../../../shared/errors/AppError';
+import { ExternalServiceError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 dotenv.config();

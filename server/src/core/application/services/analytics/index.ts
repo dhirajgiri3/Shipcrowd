@@ -4,12 +4,12 @@
  * Exports all analytics services for easy importing.
  */
 
-export { default as AnalyticsService } from './AnalyticsService.js';
-export type { DateRange } from './AnalyticsService.js';
-export { default as OrderAnalyticsService } from './OrderAnalyticsService.js';
-export { default as ShipmentAnalyticsService } from './ShipmentAnalyticsService.js';
-export { default as RevenueAnalyticsService } from './RevenueAnalyticsService.js';
-export { default as CustomerAnalyticsService } from './CustomerAnalyticsService.js';
-export { default as InventoryAnalyticsService } from './InventoryAnalyticsService.js';
-export { default as ReportBuilderService } from './ReportBuilderService.js';
+export { default as AnalyticsService } from './analytics.service';
+export type { DateRange } from './analytics.service';
+export { default as OrderAnalyticsService } from './order-analytics.service';
+export { default as ShipmentAnalyticsService } from './shipment-analytics.service';
+export { default as RevenueAnalyticsService } from './revenue-analytics.service';
+export { default as CustomerAnalyticsService } from './customer-analytics.service';
+export { default as InventoryAnalyticsService } from './inventory-analytics.service';
+export { default as ReportBuilderService } from './report-builder.service';
 

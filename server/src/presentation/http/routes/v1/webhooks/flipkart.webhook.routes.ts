@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import express from 'express';
 import FlipkartWebhookController from '../../../controllers/webhooks/flipkart.webhook.controller';
-import { verifyFlipkartWebhook, rawBodyParser } from '../../../middleware/webhooks/flipkartWebhookAuth';
+import { verifyFlipkartWebhook, rawBodyParser } from '../../../middleware/webhooks/flipkart-webhook-auth.middleware';
 
 /**
  * Flipkart Webhook Routes

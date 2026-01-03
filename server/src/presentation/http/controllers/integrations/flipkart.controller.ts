@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import FlipkartOAuthService from '../../../../core/application/services/flipkart/FlipkartOAuthService';
-import { AppError } from '../../../../shared/errors/AppError';
+import FlipkartOAuthService from '../../../../core/application/services/flipkart/flipkart-oauth.service';
+import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 
 /**
@@ -136,7 +136,7 @@ export class FlipkartController {
       const { id } = req.params;
       const companyId = req.user?.companyId;
 
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
         companyId,
@@ -177,7 +177,7 @@ export class FlipkartController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
         companyId,
@@ -217,7 +217,7 @@ export class FlipkartController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findById(id).select('+apiKey +apiSecret');
 
       if (!store || String(store.companyId) !== String(companyId)) {
@@ -252,7 +252,7 @@ export class FlipkartController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
         companyId,
@@ -291,7 +291,7 @@ export class FlipkartController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({
         _id: id,
         companyId,

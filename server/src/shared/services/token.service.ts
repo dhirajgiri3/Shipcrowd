@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { AppError } from '../errors/AppError';
+import { AppError } from '../errors/app.error';
 
 /**
  * TokenService

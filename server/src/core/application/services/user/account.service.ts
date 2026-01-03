@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 import crypto from 'crypto';
-import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
-import Session from '../../../../infrastructure/database/mongoose/models/Session';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
+import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
+import { Session } from '../../../../infrastructure/database/mongoose/models';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
-import { NotFoundError, DatabaseError } from '../../../../shared/errors/AppError';
+import { NotFoundError, DatabaseError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**

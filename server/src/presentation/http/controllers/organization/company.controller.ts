@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import Company, { ICompany } from '../../../../infrastructure/database/mongoose/models/Company';
-import User from '../../../../infrastructure/database/mongoose/models/User';
-import TeamInvitation from '../../../../infrastructure/database/mongoose/models/TeamInvitation';
+import { Company, ICompany } from '../../../../infrastructure/database/mongoose/models';
+import { User } from '../../../../infrastructure/database/mongoose/models';
+import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken } from '../../../../shared/helpers/jwt';
 import { sendOwnerInvitationEmail } from '../../../../core/application/services/communication/email.service';
 import mongoose from 'mongoose';

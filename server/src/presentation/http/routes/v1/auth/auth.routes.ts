@@ -7,7 +7,7 @@ import {
   registrationRateLimiter,
   passwordResetRateLimiter,
   emailVerificationRateLimiter
-} from '../../../middleware/system/rateLimiter';
+} from '../../../middleware/system/rate-limiter.middleware';
 import { generateAuthTokens } from '../../../../../core/application/services/auth/oauth.service';
 import logger from '../../../../../shared/logger/winston.logger';
 

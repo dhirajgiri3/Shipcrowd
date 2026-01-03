@@ -1,10 +1,10 @@
 import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import KYC from '../../../../infrastructure/database/mongoose/models/KYC';
-import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
+import { KYC } from '../../../../infrastructure/database/mongoose/models';
+import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from '../../middleware/auth/auth';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
 import deepvueService from '../../../../core/application/services/integrations/deepvue.service';

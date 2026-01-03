@@ -6,7 +6,7 @@
  */
 
 // Export everything from IPickingService (including IPaginatedResult)
-export * from './IPickingService';
+export * from './picking.interface.service';
 
 // Export specific items from IPackingService (excluding IPaginatedResult)
 export type {
@@ -23,7 +23,7 @@ export type {
     IPackingStationStats,
     IWeightVerificationResult,
     IPackingService,
-} from './IPackingService';
+} from './packing.interface.service';
 
 // Export specific items from IInventoryService (excluding IPaginatedResult)
 export type {
@@ -45,4 +45,4 @@ export type {
     IInventoryStats,
     IMovementSummary,
     IInventoryService,
-} from './IInventoryService';
+} from './inventory.interface.service';

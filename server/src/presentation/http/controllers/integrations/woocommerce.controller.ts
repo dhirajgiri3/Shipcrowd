@@ -12,10 +12,10 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/WooCommerceOAuthService';
-import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/WooCommerceStore';
-import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/WooCommerceOrderSyncJob';
-import { AppError } from '../../../../shared/errors/AppError';
+import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/woocommerce-oauth.service';
+import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
+import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/woocommerce/woocommerce-order-sync.job';
+import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
 export default class WooCommerceController {

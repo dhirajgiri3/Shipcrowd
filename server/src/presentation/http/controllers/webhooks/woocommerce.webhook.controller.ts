@@ -6,7 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import WooCommerceWebhookService from '../../../../core/application/services/woocommerce/WooCommerceWebhookService';
+import WooCommerceWebhookService from '../../../../core/application/services/woocommerce/woocommerce-webhook.service';
 import logger from '../../../../shared/logger/winston.logger';
 
 export default class WooCommerceWebhookController {

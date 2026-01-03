@@ -15,12 +15,12 @@ import { configurePassport } from './config/passport';
 import v1Routes from './presentation/http/routes/v1';
 
 // Import middleware
-import { securityHeaders } from './presentation/http/middleware/system/securityHeaders';
-import { globalRateLimiter } from './presentation/http/middleware/system/rateLimiter';
+import { securityHeaders } from './presentation/http/middleware/system/security-headers.middleware';
+import { globalRateLimiter } from './presentation/http/middleware/system/rate-limiter.middleware';
 
 // Import shared utilities
 import logger from './shared/logger/winston.logger';
-import { AppError, normalizeError } from './shared/errors/AppError';
+import { AppError, normalizeError } from './shared/errors/app.error';
 
 // Initialize Express app
 const app: Express = express();

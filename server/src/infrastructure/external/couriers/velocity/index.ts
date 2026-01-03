@@ -3,13 +3,13 @@
  * Export all public modules
  */
 
-export { VelocityShipfastProvider } from './VelocityShipfastProvider';
-export { VelocityAuth } from './VelocityAuth';
-export { VelocityMapper } from './VelocityMapper';
+export { VelocityShipfastProvider } from './velocity-shipfast.provider';
+export { VelocityAuth } from './velocity.auth';
+export { VelocityMapper } from './velocity.mapper';
 export {
   handleVelocityError,
   retryWithBackoff,
   RateLimiter,
   VelocityRateLimiters
-} from './VelocityErrorHandler';
-export * from './VelocityTypes';
+} from './velocity-error-handler';
+export * from './velocity.types';

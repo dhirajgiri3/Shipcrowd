@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth/auth';
-import User from '../../../../infrastructure/database/mongoose/models/User';
-import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/emailChange.service';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { User } from '../../../../infrastructure/database/mongoose/models';
+import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/email-change.service';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
 

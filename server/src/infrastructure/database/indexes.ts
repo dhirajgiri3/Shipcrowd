@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
-import Order from './mongoose/models/Order';
-import Shipment from './mongoose/models/Shipment';
-import RateCard from './mongoose/models/RateCard';
-import Zone from './mongoose/models/Zone';
-import Warehouse from './mongoose/models/Warehouse';
-import User from './mongoose/models/User';
-import Company from './mongoose/models/Company';
+import {
+    Order,
+    Shipment,
+    RateCard,
+    Zone,
+    Warehouse,
+    User,
+    Company
+} from './mongoose/models';
 import logger from '../../shared/logger/winston.logger';
 
 /**

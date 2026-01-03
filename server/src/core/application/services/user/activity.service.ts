@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import TeamActivity from '../../../../infrastructure/database/mongoose/models/TeamActivity';
+import { TeamActivity } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

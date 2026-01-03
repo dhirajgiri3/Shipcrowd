@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
 // Import models - these will be registered after connection
-import User from '../../../../src/infrastructure/database/mongoose/models/User';
+import { User } from '../../../../src/infrastructure/database/mongoose/models';
 import { createTestUser } from '../../../fixtures/userFactory';
 import { generateAuthToken } from '../../../setup/testHelpers';
 

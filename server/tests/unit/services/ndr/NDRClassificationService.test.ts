@@ -1,10 +1,10 @@
-import NDRClassificationService from '../../../../src/core/application/services/ndr/NDRClassificationService';
-import OpenAIService from '../../../../src/infrastructure/integrations/ai/OpenAIService';
-import NDREvent from '../../../../src/infrastructure/database/mongoose/models/NDREvent';
+import NDRClassificationService from '../../../../src/core/application/services/ndr/ndr-classification.service';
+import OpenAIService from '../../../../src/infrastructure/external/ai/openai/openai.service';
+import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
 
 // Mock OpenAI Service
-jest.mock('../../../../src/infrastructure/integrations/ai/OpenAIService');
-jest.mock('../../../../src/infrastructure/database/mongoose/models/NDREvent');
+jest.mock('../../../../src/infrastructure/external/ai/openai/openai.service');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/ndr-event.model');
 
 describe('NDRClassificationService', () => {
     beforeEach(() => {

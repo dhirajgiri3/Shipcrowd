@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import WebhookEvent from '../../../../infrastructure/database/mongoose/models/WebhookEvent';
-import QueueManager from '../../../../infrastructure/queue/QueueManager';
+import { WebhookEvent } from '../../../../infrastructure/database/mongoose/models';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import winston from 'winston';
 import crypto from 'crypto';
 

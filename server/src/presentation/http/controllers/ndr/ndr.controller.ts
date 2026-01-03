@@ -5,12 +5,12 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import NDREvent from '../../../../infrastructure/database/mongoose/models/NDREvent';
-import NDRWorkflow from '../../../../infrastructure/database/mongoose/models/NDRWorkflow';
-import NDRDetectionService from '../../../../core/application/services/ndr/NDRDetectionService';
-import NDRClassificationService from '../../../../core/application/services/ndr/NDRClassificationService';
-import NDRResolutionService from '../../../../core/application/services/ndr/NDRResolutionService';
-import NDRAnalyticsService from '../../../../core/application/services/ndr/NDRAnalyticsService';
+import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { NDRWorkflow } from '../../../../infrastructure/database/mongoose/models';
+import NDRDetectionService from '../../../../core/application/services/ndr/ndr-detection.service';
+import NDRClassificationService from '../../../../core/application/services/ndr/ndr-classification.service';
+import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
+import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
 import { AppError } from '../../../../shared/errors';
 import { sendValidationError } from '../../../../shared/utils/responseHelper';
 import {

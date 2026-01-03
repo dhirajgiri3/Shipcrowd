@@ -2,7 +2,7 @@
  * ExcelExportService Unit Tests
  */
 
-import ExcelExportService from '../../../../src/shared/services/export/ExcelExportService';
+import ExcelExportService from '../../../../src/core/application/services/analytics/export/excel-export.service';
 
 describe('ExcelExportService', () => {
     describe('exportToExcel', () => {
