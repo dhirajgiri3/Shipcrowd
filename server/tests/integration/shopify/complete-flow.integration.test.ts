@@ -3,10 +3,10 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import app from '../../../src/app';
-import ShopifyStore from '../../../src/infrastructure/database/mongoose/models/ShopifyStore';
-import ProductMapping from '../../../src/infrastructure/database/mongoose/models/ProductMapping';
-import Order from '../../../src/infrastructure/database/mongoose/models/Order';
-import QueueManager from '../../../src/infrastructure/queue/QueueManager';
+import ShopifyStore from '../../../src/infrastructure/database/mongoose/models/shopify-store.model';
+import ProductMapping from '../../../src/infrastructure/database/mongoose/models/product-mapping.model';
+import Order from '../../../src/infrastructure/database/mongoose/models/order.model';
+import QueueManager from '../../../src/infrastructure/queue/queue.manager';
 
 /**
  * Integration Test: Complete Shopify Integration Flow

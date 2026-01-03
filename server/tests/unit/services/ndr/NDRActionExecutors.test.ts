@@ -2,16 +2,16 @@
  * NDRActionExecutors Unit Tests
  * Tests for all NDR action execution methods
  */
-import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/NDRActionExecutors';
-import ExotelClient from '../../../../src/infrastructure/integrations/communication/ExotelClient';
-import WhatsAppService from '../../../../src/infrastructure/integrations/communication/WhatsAppService';
+import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
+import ExotelClient from '../../../../src/infrastructure/integrations/communication/exotel.client';
+import WhatsAppService from '../../../../src/infrastructure/integrations/communication/whatsapp.service';
 import TokenService from '../../../../src/shared/services/token.service';
 import { createTestNDREvent } from '../../../fixtures/ndrFactory';
 import mongoose from 'mongoose';
 
 // Mock external services
-jest.mock('../../../../src/infrastructure/integrations/communication/ExotelClient');
-jest.mock('../../../../src/infrastructure/integrations/communication/WhatsAppService');
+jest.mock('../../../../src/infrastructure/integrations/communication/exotel.client');
+jest.mock('../../../../src/infrastructure/integrations/communication/whatsapp.service');
 jest.mock('../../../../src/shared/services/token.service');
 
 describe('NDRActionExecutors', () => {

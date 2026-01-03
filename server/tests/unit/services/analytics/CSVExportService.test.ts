@@ -2,7 +2,7 @@
  * CSVExportService Unit Tests
  */
 
-import CSVExportService from '../../../../src/shared/services/export/CSVExportService';
+import CSVExportService from '../../../../src/shared/services/export/csv-export.service';
 
 describe('CSVExportService', () => {
     describe('exportToCSV', () => {

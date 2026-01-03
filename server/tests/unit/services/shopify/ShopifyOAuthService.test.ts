@@ -1,13 +1,13 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import ShopifyOAuthService from '../../../../src/core/application/services/shopify/ShopifyOAuthService';
-import ShopifyStore from '../../../../src/infrastructure/database/mongoose/models/ShopifyStore';
-import ShopifyClient from '../../../../src/infrastructure/external/shopify/ShopifyClient';
-import { AppError } from '../../../../src/shared/errors/AppError';
+import ShopifyOAuthService from '../../../../src/core/application/services/shopify/shopify-oauth.service';
+import ShopifyStore from '../../../../src/infrastructure/database/mongoose/models/shopify-store.model';
+import ShopifyClient from '../../../../src/infrastructure/external/shopify/shopify.client';
+import { AppError } from '../../../../src/shared/errors/app.error';
 import crypto from 'crypto';
 
 // Mock dependencies
-jest.mock('../../../../src/infrastructure/database/mongoose/models/ShopifyStore');
-jest.mock('../../../../src/infrastructure/external/shopify/ShopifyClient');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/shopify-store.model');
+jest.mock('../../../../src/infrastructure/external/shopify/shopify.client');
 
 describe('ShopifyOAuthService', () => {
   const mockCompanyId = '507f1f77bcf86cd799439011';

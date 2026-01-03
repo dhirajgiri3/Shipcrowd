@@ -10,9 +10,9 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import logger from '../shared/logger/winston.logger';
-import Integration from '../infrastructure/database/mongoose/models/Integration';
-import { VelocityShipfastProvider } from '../infrastructure/external/couriers/velocity/VelocityShipfastProvider';
-import { CourierShipmentData, CourierRateRequest } from '../infrastructure/external/couriers/base/CourierAdapter';
+import Integration from '../infrastructure/database/mongoose/models/integration.model';
+import { VelocityShipfastProvider } from '../infrastructure/external/couriers/velocity/velocity-shipfast.provider';
+import { CourierShipmentData, CourierRateRequest } from '../infrastructure/external/couriers/base/courier.adapter';
 import { encryptData } from '../shared/utils/encryption';
 
 // Test configuration

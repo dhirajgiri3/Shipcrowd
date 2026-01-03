@@ -6,16 +6,16 @@
 
 import { Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { AuthRequest } from '../../middleware/auth/auth.js';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers.js';
-import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import Order from '../../../../infrastructure/database/mongoose/models/Order.js';
-import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment.js';
-import CSVExportService from '../../../../shared/services/export/CSVExportService.js';
-import ExcelExportService from '../../../../shared/services/export/ExcelExportService.js';
-import PDFExportService from '../../../../shared/services/export/PDFExportService.js';
-import CloudinaryStorageService from '../../../../infrastructure/storage/CloudinaryStorageService.js';
+import { AuthRequest } from '../../middleware/auth/auth';
+import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
+import logger from '../../../../shared/logger/winston.logger';
+import Order from '../../../../infrastructure/database/mongoose/models/order.model';
+import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
+import CSVExportService from '../../../../shared/services/export/csv-export.service';
+import ExcelExportService from '../../../../shared/services/export/excel-export.service';
+import PDFExportService from '../../../../shared/services/export/pdf-export.service';
+import CloudinaryStorageService from '../../../../infrastructure/storage/cloudinary-storage.service';
 import mongoose from 'mongoose';
 
 // Validation schema for export requests

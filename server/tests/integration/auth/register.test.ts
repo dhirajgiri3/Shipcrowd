@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../../../src/app';
-import User from '../../../src/infrastructure/database/mongoose/models/User';
+import User from '../../../src/infrastructure/database/mongoose/models/user.model';
 
 describe('POST /api/v1/auth/register', () => {
 

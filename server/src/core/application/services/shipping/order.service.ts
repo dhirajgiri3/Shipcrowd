@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
-import Order from '../../../../infrastructure/database/mongoose/models/Order';
+import Order from '../../../../infrastructure/database/mongoose/models/order.model';
 import { generateOrderNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
+import eventBus from '../../../../shared/events/eventBus.js';
 
 /**
  * OrderService - Business logic for order management
@@ -47,6 +48,7 @@ export class OrderService {
             warehouseId?: string;
             notes?: string;
             tags?: string[];
+            salesRepId?: string; // NEW: optional sales rep assignment
         };
     }) {
         const { companyId, payload } = args;
@@ -72,9 +74,19 @@ export class OrderService {
             notes: payload.notes,
             tags: payload.tags,
             shippingDetails: { shippingCost: 0 },
+            salesRepresentative: payload.salesRepId ? new mongoose.Types.ObjectId(payload.salesRepId) : undefined,
         });
 
         await order.save();
+
+        // Emit order.created event
+        eventBus.emitEvent('order.created', {
+            orderId: order._id.toString(),
+            companyId: companyId.toString(),
+            orderNumber: order.orderNumber,
+            salesRepId: payload.salesRepId,
+        });
+
         return order;
     }
 

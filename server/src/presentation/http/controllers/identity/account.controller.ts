@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth/auth';
-import User from '../../../../infrastructure/database/mongoose/models/User';
+import User from '../../../../infrastructure/database/mongoose/models/user.model';
 import {
   deactivateAccount,
   reactivateAccount,

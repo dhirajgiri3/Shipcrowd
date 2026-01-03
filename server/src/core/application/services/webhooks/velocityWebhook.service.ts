@@ -6,13 +6,13 @@
 
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
-import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
+import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,
   WebhookEventHandler
-} from '../../../../infrastructure/external/couriers/velocity/VelocityWebhookTypes';
-import { VELOCITY_STATUS_MAP } from '../../../../infrastructure/external/couriers/velocity/VelocityTypes';
+} from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
+import { VELOCITY_STATUS_MAP } from '../../../../infrastructure/external/couriers/velocity/velocity.types';
 
 export class VelocityWebhookService implements WebhookEventHandler {
   /**

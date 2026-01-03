@@ -13,8 +13,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import FlipkartStore from '../../../../infrastructure/database/mongoose/models/FlipkartStore';
-import { AppError } from '../../../../shared/errors/AppError';
+import FlipkartStore from '../../../../infrastructure/database/mongoose/models/flipkart-store.model';
+import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

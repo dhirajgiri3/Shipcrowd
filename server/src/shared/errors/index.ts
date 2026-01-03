@@ -19,7 +19,7 @@ export {
     DatabaseError,
     isOperationalError,
     normalizeError,
-} from './AppError';
+} from './app.error';
 
 // Legacy error utilities (for backward compatibility)
 export {

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import Order from '../../../../infrastructure/database/mongoose/models/Order';
+import Order from '../../../../infrastructure/database/mongoose/models/order.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';

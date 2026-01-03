@@ -1,7 +1,7 @@
 import request from 'supertest';
 import TokenService from '@/shared/services/token.service';
-import Shipment from '@/infrastructure/database/mongoose/models/Shipment';
-import NDREvent from '@/infrastructure/database/mongoose/models/NDREvent';
+import Shipment from '@/infrastructure/database/mongoose/models/shipment.model';
+import NDREvent from '@/infrastructure/database/mongoose/models/ndr-event.model';
 
 // This would typically be tested with a full Express app instance
 // For now, we'll test the core logic through unit tests

@@ -1,12 +1,12 @@
-import NDRDetectionService from '@/core/application/services/ndr/NDRDetectionService';
-import NDRClassificationService from '@/core/application/services/ndr/NDRClassificationService';
-import NDRResolutionService from '@/core/application/services/ndr/NDRResolutionService';
-import RTOService from '@/core/application/services/rto/RTOService';
-import NDREvent from '@/infrastructure/database/mongoose/models/NDREvent';
-import NDRWorkflow from '@/infrastructure/database/mongoose/models/NDRWorkflow';
+import NDRDetectionService from '@/core/application/services/ndr/ndr-detection.service';
+import NDRClassificationService from '@/core/application/services/ndr/ndr-classification.service';
+import NDRResolutionService from '@/core/application/services/ndr/ndr-resolution.service';
+import RTOService from '@/core/application/services/rto/rto.service';
+import NDREvent from '@/infrastructure/database/mongoose/models/ndr-event.model';
+import NDRWorkflow from '@/infrastructure/database/mongoose/models/ndr-workflow.model';
 
-jest.mock('@/infrastructure/database/mongoose/models/NDREvent');
-jest.mock('@/infrastructure/database/mongoose/models/NDRWorkflow');
+jest.mock('@/infrastructure/database/mongoose/models/ndr-event.model');
+jest.mock('@/infrastructure/database/mongoose/models/ndr-workflow.model');
 
 describe('NDR/RTO Integration Tests', () => {
     describe('Complete NDR Resolution Flow', () => {

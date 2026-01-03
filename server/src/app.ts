@@ -20,7 +20,7 @@ import { globalRateLimiter } from './presentation/http/middleware/system/rateLim
 
 // Import shared utilities
 import logger from './shared/logger/winston.logger';
-import { AppError, normalizeError } from './shared/errors/AppError';
+import { AppError, normalizeError } from './shared/errors/app.error';
 
 // Initialize Express app
 const app: Express = express();

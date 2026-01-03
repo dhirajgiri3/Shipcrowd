@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import ShopifyStore from '../../../../infrastructure/database/mongoose/models/ShopifyStore';
-import { AppError } from '../../../../shared/errors/AppError';
+import ShopifyStore from '../../../../infrastructure/database/mongoose/models/shopify-store.model';
+import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 
 /**

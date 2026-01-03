@@ -6,13 +6,13 @@
  */
 
 import logger from '../../../../shared/logger/winston.logger';
-import WebhookDeadLetter from '../../../../infrastructure/database/mongoose/models/WebhookDeadLetter';
+import WebhookDeadLetter from '../../../../infrastructure/database/mongoose/models/webhook-dead-letter.model';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,
   WebhookRetryConfig,
   DEFAULT_WEBHOOK_RETRY_CONFIG
-} from '../../../../infrastructure/external/couriers/velocity/VelocityWebhookTypes';
+} from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
 import { VelocityWebhookService } from './velocityWebhook.service';
 
 export class WebhookRetryService {

@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import Order from '../../../../infrastructure/database/mongoose/models/Order';
-import Shipment from '../../../../infrastructure/database/mongoose/models/Shipment';
+import Order from '../../../../infrastructure/database/mongoose/models/order.model';
+import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
@@ -523,12 +523,12 @@ export const getShipmentPerformance = async (
 // Week 9: New Analytics Endpoints
 // ============================================
 
-import RevenueAnalyticsService from '../../../../core/application/services/analytics/RevenueAnalyticsService.js';
-import CustomerAnalyticsService from '../../../../core/application/services/analytics/CustomerAnalyticsService.js';
-import InventoryAnalyticsService from '../../../../core/application/services/analytics/InventoryAnalyticsService.js';
-import OrderAnalyticsService from '../../../../core/application/services/analytics/OrderAnalyticsService.js';
-import ReportBuilderService from '../../../../core/application/services/analytics/ReportBuilderService.js';
-import { buildReportSchema, saveReportConfigSchema } from '../../../../shared/validation/analytics-schemas.js';
+import RevenueAnalyticsService from '../../../../core/application/services/analytics/revenue-analytics.service';
+import CustomerAnalyticsService from '../../../../core/application/services/analytics/customer-analytics.service';
+import InventoryAnalyticsService from '../../../../core/application/services/analytics/inventory-analytics.service';
+import OrderAnalyticsService from '../../../../core/application/services/analytics/order-analytics.service';
+import ReportBuilderService from '../../../../core/application/services/analytics/report-builder.service';
+import { buildReportSchema, saveReportConfigSchema } from '../../../../shared/validation/analytics-schemas';
 
 /**
  * Get revenue statistics

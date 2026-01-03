@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
+import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
 import logger from '../../../../shared/logger/winston.logger';
 import crypto from 'crypto';

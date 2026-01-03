@@ -1,8 +1,8 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import User from '../../../src/infrastructure/database/mongoose/models/User';
-import Session from '../../../src/infrastructure/database/mongoose/models/Session';
+import User from '../../../src/infrastructure/database/mongoose/models/user.model';
+import Session from '../../../src/infrastructure/database/mongoose/models/session.model';
 import mongoose from 'mongoose';
 
 // Helper to extract error message from response

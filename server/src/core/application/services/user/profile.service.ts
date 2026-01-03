@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
+import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import logger from '../../../../shared/logger/winston.logger';
 
 // Define required fields for different user roles

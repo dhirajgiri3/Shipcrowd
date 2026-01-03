@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import ProductMappingService from '../../../../core/application/services/shopify/ProductMappingService';
-import ShopifyInventorySyncService from '../../../../core/application/services/shopify/ShopifyInventorySyncService';
-import { AppError } from '../../../../shared/errors/AppError';
+import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
+import ShopifyInventorySyncService from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
+import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 
 /**
@@ -39,7 +39,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -76,7 +76,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -122,7 +122,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -162,7 +162,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership via ProductMapping
-      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/ProductMapping').default;
+      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
       const mapping = await ProductMapping.findById(mappingId);
 
       if (!mapping) {
@@ -201,7 +201,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -245,7 +245,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -279,7 +279,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -309,7 +309,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/ProductMapping').default;
+      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
       const mapping = await ProductMapping.findById(mappingId);
 
       if (!mapping) {
@@ -349,7 +349,7 @@ export class ProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/ProductMapping').default;
+      const ProductMapping = require('../../../../infrastructure/database/mongoose/models/product-mapping.model').default;
       const mapping = await ProductMapping.findById(mappingId);
 
       if (!mapping) {

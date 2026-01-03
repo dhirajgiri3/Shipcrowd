@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import Warehouse, { IWarehouse } from '../../../../infrastructure/database/mongoose/models/Warehouse';
-import User from '../../../../infrastructure/database/mongoose/models/User';
-import Company from '../../../../infrastructure/database/mongoose/models/Company';
+import Warehouse, { IWarehouse } from '../../../../infrastructure/database/mongoose/models/warehouse.model';
+import User from '../../../../infrastructure/database/mongoose/models/user.model';
+import Company from '../../../../infrastructure/database/mongoose/models/company.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';

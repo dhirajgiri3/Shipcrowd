@@ -4,7 +4,7 @@
  */
 import mongoose from 'mongoose';
 import * as PickingService from '../../../../src/core/application/services/warehouse';
-import PickList from '../../../../src/infrastructure/database/mongoose/models/PickList';
+import PickList from '../../../../src/infrastructure/database/mongoose/models/pick-list.model';
 // Factories
 import { createTestPickList } from '../../../fixtures/pickingFactory';
 import { createTestUser } from '../../../fixtures/userFactory';

@@ -1,4 +1,4 @@
-import User from '../database/mongoose/models/User';
+import User from '../database/mongoose/models/user.model';
 import { permanentlyDeleteAccount } from '../../core/application/services/user/account.service';
 import logger from '../../shared/logger/winston.logger';
 import mongoose from 'mongoose';

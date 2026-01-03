@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose, { Document, Schema, UpdateQuery } from 'mongoose'; // Import Document, Schema, UpdateQuery
-import AuditLog from '../../../../infrastructure/database/mongoose/models/AuditLog';
+import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthRequest } from '../../../../types/express';
 

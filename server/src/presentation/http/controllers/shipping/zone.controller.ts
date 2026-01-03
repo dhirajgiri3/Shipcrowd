@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import Zone, { IZone } from '../../../../infrastructure/database/mongoose/models/Zone';
+import Zone, { IZone } from '../../../../infrastructure/database/mongoose/models/zone.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';

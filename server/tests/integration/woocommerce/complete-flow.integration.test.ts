@@ -3,10 +3,10 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import app from '../../../src/app';
-import WooCommerceStore from '../../../src/infrastructure/database/mongoose/models/WooCommerceStore';
-import WooCommerceProductMapping from '../../../src/infrastructure/database/mongoose/models/WooCommerceProductMapping';
-import Order from '../../../src/infrastructure/database/mongoose/models/Order';
-import QueueManager from '../../../src/infrastructure/queue/QueueManager';
+import WooCommerceStore from '../../../src/infrastructure/database/mongoose/models/woocommerce-store.model';
+import WooCommerceProductMapping from '../../../src/infrastructure/database/mongoose/models/woocommerce-product-mapping.model';
+import Order from '../../../src/infrastructure/database/mongoose/models/order.model';
+import QueueManager from '../../../src/infrastructure/queue/queue.manager';
 import crypto from 'crypto';
 
 /**

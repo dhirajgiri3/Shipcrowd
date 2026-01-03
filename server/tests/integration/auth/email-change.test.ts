@@ -1,7 +1,7 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import User from '../../../src/infrastructure/database/mongoose/models/User';
+import User from '../../../src/infrastructure/database/mongoose/models/user.model';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 

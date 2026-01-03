@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import User from '../../../../infrastructure/database/mongoose/models/User';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/AuditLog';
+import User from '../../../../infrastructure/database/mongoose/models/user.model';
+import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';

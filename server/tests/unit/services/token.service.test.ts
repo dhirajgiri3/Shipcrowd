@@ -1,5 +1,5 @@
 import TokenService from '../../../src/shared/services/token.service';
-import { AppError } from '../../../src/shared/errors/AppError';
+import { AppError } from '../../../src/shared/errors/app.error';
 
 describe('TokenService', () => {
     beforeEach(() => {

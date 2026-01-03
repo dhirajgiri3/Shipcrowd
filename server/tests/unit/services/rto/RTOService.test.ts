@@ -1,9 +1,9 @@
-import RTOService from '../../../../src/core/application/services/rto/RTOService';
-import RTOEvent from '../../../../src/infrastructure/database/mongoose/models/RTOEvent';
-import WarehouseNotificationService from '../../../../src/core/application/services/warehouse/WarehouseNotificationService';
+import RTOService from '../../../../src/core/application/services/rto/rto.service';
+import RTOEvent from '../../../../src/infrastructure/database/mongoose/models/rto-event.model';
+import WarehouseNotificationService from '../../../../src/core/application/services/warehouse/warehouse-notification.service';
 
-jest.mock('../../../../src/infrastructure/database/mongoose/models/RTOEvent');
-jest.mock('../../../../src/core/application/services/warehouse/WarehouseNotificationService');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/rto-event.model');
+jest.mock('../../../../src/core/application/services/warehouse/warehouse-notification.service');
 
 describe('RTOService', () => {
     beforeEach(() => {

@@ -19,14 +19,14 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Import models
-import Company from '../infrastructure/database/mongoose/models/Company';
-import User from '../infrastructure/database/mongoose/models/User';
-import Warehouse from '../infrastructure/database/mongoose/models/Warehouse';
-import Order from '../infrastructure/database/mongoose/models/Order';
-import Shipment from '../infrastructure/database/mongoose/models/Shipment';
-import Zone from '../infrastructure/database/mongoose/models/Zone';
-import RateCard from '../infrastructure/database/mongoose/models/RateCard';
-import KYC from '../infrastructure/database/mongoose/models/KYC';
+import Company from '../infrastructure/database/mongoose/models/company.model';
+import User from '../infrastructure/database/mongoose/models/user.model';
+import Warehouse from '../infrastructure/database/mongoose/models/warehouse.model';
+import Order from '../infrastructure/database/mongoose/models/order.model';
+import Shipment from '../infrastructure/database/mongoose/models/shipment.model';
+import Zone from '../infrastructure/database/mongoose/models/zone.model';
+import RateCard from '../infrastructure/database/mongoose/models/rate-card.model';
+import KYC from '../infrastructure/database/mongoose/models/kyc.model';
 
 // Import carrier selection algorithm
 import { selectBestCarrier } from '../core/application/services/shipping/carrier.service';

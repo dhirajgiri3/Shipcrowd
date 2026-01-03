@@ -13,7 +13,7 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Integration from '../infrastructure/database/mongoose/models/Integration';
+import Integration from '../infrastructure/database/mongoose/models/integration.model';
 import { encryptData } from '../shared/utils/encryption';
 
 // Load environment variables

@@ -2,10 +2,10 @@
  * ReportBuilderService Unit Tests
  */
 
-import ReportBuilderService from '../../../../src/core/application/services/analytics/ReportBuilderService';
+import ReportBuilderService from '../../../../src/core/application/services/analytics/report-builder.service';
 
 // Mock all analytics services
-jest.mock('../../../../src/core/application/services/analytics/OrderAnalyticsService', () => ({
+jest.mock('../../../../src/core/application/services/analytics/order-analytics.service', () => ({
     default: {
         getOrderStats: jest.fn().mockResolvedValue({ totalOrders: 100 }),
         getOrderTrends: jest.fn().mockResolvedValue([]),

@@ -10,8 +10,8 @@ import {
   retryWithBackoff,
   RateLimiter,
   VelocityRateLimiters
-} from '../../../src/infrastructure/external/couriers/velocity/VelocityErrorHandler';
-import { VelocityError } from '../../../src/infrastructure/external/couriers/velocity/VelocityTypes';
+} from '../../../src/infrastructure/external/couriers/velocity/velocity-error-handler';
+import { VelocityError } from '../../../src/infrastructure/external/couriers/velocity/velocity.types';
 
 describe('VelocityErrorHandler', () => {
   describe('handleVelocityError()', () => {

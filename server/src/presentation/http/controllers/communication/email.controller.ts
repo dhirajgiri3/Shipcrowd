@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth/auth';
-import User from '../../../../infrastructure/database/mongoose/models/User';
+import User from '../../../../infrastructure/database/mongoose/models/user.model';
 import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/emailChange.service';
 import { createAuditLog } from '../../middleware/system/auditLog';
 import logger from '../../../../shared/logger/winston.logger';

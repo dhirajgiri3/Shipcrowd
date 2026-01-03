@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import WebhookEvent from '../../../../infrastructure/database/mongoose/models/WebhookEvent';
-import ShopifyWebhookService from '../../../../core/application/services/shopify/ShopifyWebhookService';
-import QueueManager from '../../../../infrastructure/queue/QueueManager';
+import WebhookEvent from '../../../../infrastructure/database/mongoose/models/webhook-event.model';
+import ShopifyWebhookService from '../../../../core/application/services/shopify/shopify-webhook.service';
+import QueueManager from '../../../../infrastructure/queue/queue.manager';
 import winston from 'winston';
 
 /**

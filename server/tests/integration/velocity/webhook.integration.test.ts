@@ -9,10 +9,10 @@ import request from 'supertest';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import app from '../../../src/app';
-import Shipment from '../../../src/infrastructure/database/mongoose/models/Shipment';
-import Order from '../../../src/infrastructure/database/mongoose/models/Order';
-import WebhookDeadLetter from '../../../src/infrastructure/database/mongoose/models/WebhookDeadLetter';
-import { VelocityWebhookPayload } from '../../../src/infrastructure/external/couriers/velocity/VelocityWebhookTypes';
+import Shipment from '../../../src/infrastructure/database/mongoose/models/shipment.model';
+import Order from '../../../src/infrastructure/database/mongoose/models/order.model';
+import WebhookDeadLetter from '../../../src/infrastructure/database/mongoose/models/webhook-dead-letter.model';
+import { VelocityWebhookPayload } from '../../../src/infrastructure/external/couriers/velocity/velocity-webhook.types';
 
 const WEBHOOK_SECRET = process.env.VELOCITY_WEBHOOK_SECRET || 'default-webhook-secret-change-me';
 

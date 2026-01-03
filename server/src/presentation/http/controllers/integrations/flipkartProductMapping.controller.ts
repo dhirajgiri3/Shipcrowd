@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import FlipkartProductMappingService from '../../../../core/application/services/flipkart/FlipkartProductMappingService';
-import FlipkartInventorySyncService from '../../../../core/application/services/flipkart/FlipkartInventorySyncService';
-import { AppError } from '../../../../shared/errors/AppError';
+import FlipkartProductMappingService from '../../../../core/application/services/flipkart/flipkart-product-mapping.service';
+import FlipkartInventorySyncService from '../../../../core/application/services/flipkart/flipkart-inventory-sync.service';
+import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 
 /**
@@ -39,7 +39,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -76,7 +76,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -122,7 +122,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -162,7 +162,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership via FlipkartProductMapping
-      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/FlipkartProductMapping').default;
+      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model').default;
       const mapping = await FlipkartProductMapping.findById(mappingId);
 
       if (!mapping) {
@@ -201,7 +201,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -245,7 +245,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -279,7 +279,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/FlipkartStore').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -309,7 +309,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/FlipkartProductMapping').default;
+      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model').default;
       const mapping = await FlipkartProductMapping.findById(mappingId);
 
       if (!mapping) {
@@ -349,7 +349,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/FlipkartProductMapping').default;
+      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model').default;
       const mapping = await FlipkartProductMapping.findById(mappingId);
 
       if (!mapping) {

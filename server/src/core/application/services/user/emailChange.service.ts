@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
+import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';

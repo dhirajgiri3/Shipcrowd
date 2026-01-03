@@ -1,8 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import KYC from '../../../../infrastructure/database/mongoose/models/KYC';
-import User, { IUser } from '../../../../infrastructure/database/mongoose/models/User';
+import KYC from '../../../../infrastructure/database/mongoose/models/kyc.model';
+import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import { createAuditLog } from '../../middleware/system/auditLog';
 import { formatError } from '../../../../shared/errors/error-messages';

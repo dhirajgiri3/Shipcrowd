@@ -6,8 +6,8 @@
  */
 
 import mongoose from 'mongoose';
-import { VelocityAuth } from '../../../src/infrastructure/external/couriers/velocity/VelocityAuth';
-import Integration from '../../../src/infrastructure/database/mongoose/models/Integration';
+import { VelocityAuth } from '../../../src/infrastructure/external/couriers/velocity/velocity.auth';
+import Integration from '../../../src/infrastructure/database/mongoose/models/integration.model';
 import { encryptData, decryptData } from '../../../src/shared/utils/encryption';
 import axios from 'axios';
 
@@ -28,7 +28,7 @@ const mockAxiosInstance = {
 } as any;
 
 // Mock Integration model
-jest.mock('../../../src/infrastructure/database/mongoose/models/Integration');
+jest.mock('../../../src/infrastructure/database/mongoose/models/integration.model');
 const MockedIntegration = Integration as jest.Mocked<typeof Integration>;
 
 // Mock encryption utilities

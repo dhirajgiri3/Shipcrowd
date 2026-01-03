@@ -7,7 +7,7 @@
 
 import { Response, NextFunction } from 'express';
 import { VelocityWebhookService } from '../../../../core/application/services/webhooks/velocityWebhook.service';
-import { VelocityWebhookPayload } from '../../../../infrastructure/external/couriers/velocity/VelocityWebhookTypes';
+import { VelocityWebhookPayload } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
 import { WebhookRequest } from '../../middleware/webhooks/velocityWebhookAuth';
 import logger from '../../../../shared/logger/winston.logger';
 

@@ -47,6 +47,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pdfkit": "^0.17.2",
+    "razorpay": "^2.9.6",
     "tsconfig-paths": "^4.2.0",
     "twilio": "^5.5.2",
     "ua-parser-js": "^2.0.3",

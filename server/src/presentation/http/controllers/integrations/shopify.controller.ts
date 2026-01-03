@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import ShopifyOAuthService from '../../../../core/application/services/shopify/ShopifyOAuthService';
-import { AppError } from '../../../../shared/errors/AppError';
+import ShopifyOAuthService from '../../../../core/application/services/shopify/shopify-oauth.service';
+import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 
 /**
@@ -166,7 +166,7 @@ export class ShopifyController {
       const { id } = req.params;
       const companyId = req.user?.companyId;
 
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,
@@ -211,7 +211,7 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,
@@ -251,7 +251,7 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,
@@ -285,7 +285,7 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,
@@ -324,7 +324,7 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/ShopifyStore').default;
+      const ShopifyStore = require('../../../../infrastructure/database/mongoose/models/shopify-store.model').default;
       const store = await ShopifyStore.findOne({
         _id: id,
         companyId,

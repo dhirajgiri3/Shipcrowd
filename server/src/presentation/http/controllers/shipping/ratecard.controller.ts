@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import RateCard, { IRateCard } from '../../../../infrastructure/database/mongoose/models/RateCard';
-import Zone from '../../../../infrastructure/database/mongoose/models/Zone';
+import RateCard, { IRateCard } from '../../../../infrastructure/database/mongoose/models/rate-card.model';
+import Zone from '../../../../infrastructure/database/mongoose/models/zone.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/auditLog';
