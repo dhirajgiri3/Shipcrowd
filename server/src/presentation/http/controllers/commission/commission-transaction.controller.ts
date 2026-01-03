@@ -13,9 +13,9 @@ import { Request, Response, NextFunction } from 'express';
 import {
     CommissionCalculationService,
     CommissionApprovalService,
-} from '../../../../core/application/services/commission/index.js';
-import { AppError } from '../../../../shared/errors/index.js';
-import { sendValidationError } from '../../../../shared/utils/responseHelper.js';
+} from '../../../../core/application/services/commission/index';
+import { AppError } from '../../../../shared/errors/index';
+import { sendValidationError } from '../../../../shared/utils/responseHelper';
 import {
     listTransactionsQuerySchema,
     approveTransactionSchema,
@@ -25,8 +25,8 @@ import {
     addAdjustmentSchema,
     bulkCalculateSchema,
     idParamSchema,
-} from '../../../../shared/validation/commission-schemas.js';
-import logger from '../../../../shared/logger/winston.logger.js';
+} from '../../../../shared/validation/commission-schemas';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class CommissionTransactionController {
     /**

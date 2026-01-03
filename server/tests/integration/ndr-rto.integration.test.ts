@@ -2,8 +2,8 @@ import NDRDetectionService from '@/core/application/services/ndr/ndr-detection.s
 import NDRClassificationService from '@/core/application/services/ndr/ndr-classification.service';
 import NDRResolutionService from '@/core/application/services/ndr/ndr-resolution.service';
 import RTOService from '@/core/application/services/rto/rto.service';
-import NDREvent from '@/infrastructure/database/mongoose/models/ndr-event.model';
-import NDRWorkflow from '@/infrastructure/database/mongoose/models/ndr-workflow.model';
+import { NDREvent } from '@/infrastructure/database/mongoose/models';
+import { NDRWorkflow } from '@/infrastructure/database/mongoose/models';
 
 jest.mock('@/infrastructure/database/mongoose/models/ndr-event.model');
 jest.mock('@/infrastructure/database/mongoose/models/ndr-workflow.model');

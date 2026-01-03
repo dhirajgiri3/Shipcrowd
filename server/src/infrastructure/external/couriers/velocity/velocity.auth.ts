@@ -12,7 +12,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import mongoose from 'mongoose';
-import Integration from '../../../database/mongoose/models/integration.model';
+import Integration from '../../../database/mongoose/models/system/integrations/integration.model';
 import { encryptData, decryptData } from '../../../../shared/utils/encryption';
 import { VelocityAuthRequest, VelocityAuthResponse, VelocityError, VelocityErrorType } from './velocity.types';
 import logger from '../../../../shared/logger/winston.logger';

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import FlipkartProductMappingController from '../../../controllers/integrations/flipkartProductMapping.controller';
+import FlipkartProductMappingController from '../../../controllers/integrations/flipkart-product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
 

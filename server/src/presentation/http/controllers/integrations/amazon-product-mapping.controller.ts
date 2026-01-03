@@ -15,7 +15,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import AmazonProductMappingService from '../../../../core/application/services/amazon/amazon-product-mapping.service';
-import AmazonStore from '../../../../infrastructure/database/mongoose/models/amazon-store.model';
+import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 

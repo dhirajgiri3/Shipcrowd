@@ -1,9 +1,9 @@
 import NDRDetectionService from '../../../../src/core/application/services/ndr/ndr-detection.service';
-import NDREvent from '../../../../src/infrastructure/database/mongoose/models/ndr-event.model';
-import { IShipment } from '../../../../src/infrastructure/database/mongoose/models/shipment.model';
+import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
+import { IShipment } from '../../../../src/infrastructure/database/mongoose/models';
 
 // Mock the NDREvent model
-jest.mock('../../../../src/infrastructure/database/mongoose/models/ndr-event.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model');
 
 describe('NDRDetectionService', () => {
     beforeEach(() => {

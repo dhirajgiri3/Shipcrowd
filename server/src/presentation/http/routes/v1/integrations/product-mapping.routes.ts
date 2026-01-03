@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import ProductMappingController from '../../../controllers/integrations/productMapping.controller';
+import ProductMappingController from '../../../controllers/integrations/product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
 

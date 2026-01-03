@@ -10,14 +10,14 @@
  */
 
 import mongoose from 'mongoose';
-import Payout, { IPayout } from '../../../../infrastructure/database/mongoose/models/payout.model.js';
-import CommissionTransaction from '../../../../infrastructure/database/mongoose/models/commission-transaction.model.js';
-import SalesRepresentative from '../../../../infrastructure/database/mongoose/models/sales-representative.model.js';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model.js';
-import RazorpayPayoutProvider from '../../../../infrastructure/payment/razorpay/RazorpayPayoutProvider.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { AppError } from '../../../../shared/errors/index.js';
-import eventBus from '../../../../shared/events/eventBus.js';
+import { Payout, IPayout } from '../../../../infrastructure/database/mongoose/models';
+import { CommissionTransaction } from '../../../../infrastructure/database/mongoose/models';
+import { SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
+import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
+import RazorpayPayoutProvider from '../../../../infrastructure/payment/razorpay/RazorpayPayoutProvider';
+import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/index';
+import eventBus from '../../../../shared/events/eventBus';
 
 // DTOs
 export interface InitiatePayoutDTO {

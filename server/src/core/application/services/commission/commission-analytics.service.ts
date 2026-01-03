@@ -9,10 +9,10 @@
  */
 
 import mongoose from 'mongoose';
-import CommissionTransaction from '../../../../infrastructure/database/mongoose/models/commission-transaction.model.js';
-import Payout from '../../../../infrastructure/database/mongoose/models/payout.model.js';
-import SalesRepresentative from '../../../../infrastructure/database/mongoose/models/sales-representative.model.js';
-import logger from '../../../../shared/logger/winston.logger.js';
+import { CommissionTransaction } from '../../../../infrastructure/database/mongoose/models';
+import { Payout } from '../../../../infrastructure/database/mongoose/models';
+import { SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
 
 export interface CommissionMetrics {
     totalCommission: number;

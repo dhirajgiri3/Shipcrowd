@@ -1,6 +1,6 @@
-import FlipkartStore from '../../../../infrastructure/database/mongoose/models/flipkart-store.model';
-import FlipkartSyncLog from '../../../../infrastructure/database/mongoose/models/flipkart-sync-log.model';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
+import { FlipkartStore } from '../../../../infrastructure/database/mongoose/models';
+import { FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 

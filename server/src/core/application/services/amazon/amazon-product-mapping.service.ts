@@ -11,8 +11,8 @@
  * - FBA/MFN fulfillment type tracking
  */
 
-import AmazonStore from '../../../../infrastructure/database/mongoose/models/amazon-store.model';
-import AmazonProductMapping from '../../../../infrastructure/database/mongoose/models/amazon-product-mapping.model';
+import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
+import { AmazonProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
 import AmazonOAuthService from './amazon-oauth.service';
 import { AppError } from '../../../../shared/errors/app.error';

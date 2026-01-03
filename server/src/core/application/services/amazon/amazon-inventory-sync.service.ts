@@ -12,9 +12,9 @@
  * - Comprehensive error handling
  */
 
-import AmazonStore from '../../../../infrastructure/database/mongoose/models/amazon-store.model';
-import AmazonProductMapping, { IAmazonProductMapping } from '../../../../infrastructure/database/mongoose/models/amazon-product-mapping.model';
-import AmazonSyncLog from '../../../../infrastructure/database/mongoose/models/amazon-sync-log.model';
+import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
+import { AmazonProductMapping, IAmazonProductMapping } from '../../../../infrastructure/database/mongoose/models';
+import { AmazonSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
 import AmazonOAuthService from './amazon-oauth.service';
 import { AppError } from '../../../../shared/errors/app.error';

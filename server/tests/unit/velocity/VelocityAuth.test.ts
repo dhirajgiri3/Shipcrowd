@@ -7,7 +7,7 @@
 
 import mongoose from 'mongoose';
 import { VelocityAuth } from '../../../src/infrastructure/external/couriers/velocity/velocity.auth';
-import Integration from '../../../src/infrastructure/database/mongoose/models/integration.model';
+import { Integration } from '../../../src/infrastructure/database/mongoose/models';
 import { encryptData, decryptData } from '../../../src/shared/utils/encryption';
 import axios from 'axios';
 
@@ -28,7 +28,7 @@ const mockAxiosInstance = {
 } as any;
 
 // Mock Integration model
-jest.mock('../../../src/infrastructure/database/mongoose/models/integration.model');
+jest.mock('../../../src/infrastructure/database/mongoose/models/system/integrations/integration.model');
 const MockedIntegration = Integration as jest.Mocked<typeof Integration>;
 
 // Mock encryption utilities
@@ -221,266 +221,266 @@ describe('VelocityAuth', () => {
     });
   });
 
-describe('getValidToken()', () => {
-  it('should return cached token if valid', async () => {
-    const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000); // 5 hours from now
+  describe('getValidToken()', () => {
+    it('should return cached token if valid', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000); // 5 hours from now
 
-    // Set cache manually
-    (auth as any).tokenCache = {
-      token: mockToken,
-      expiresAt: futureExpiry
-    };
-
-    const token = await auth.getValidToken();
-
-    expect(token).toBe(mockToken);
-    expect(MockedIntegration.findOne).not.toHaveBeenCalled();
-  });
-
-  it('should fetch from DB if cache expired', async () => {
-    const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000);
-
-    const mockIntegration = {
-      _id: new mongoose.Types.ObjectId(),
-      companyId: testCompanyId,
-      provider: 'velocity-shipfast',
-      credentials: {
-        accessToken: mockEncryptedToken
-      },
-      metadata: {
-        tokenExpiresAt: futureExpiry
-      }
-    };
-
-    MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-
-    const token = await auth.getValidToken();
-
-    expect(token).toBe(mockToken);
-    expect(MockedIntegration.findOne).toHaveBeenCalled();
-    expect(mockedDecrypt).toHaveBeenCalledWith(mockEncryptedToken);
-  });
-
-  it('should authenticate if no stored token', async () => {
-    const mockIntegration = {
-      _id: new mongoose.Types.ObjectId(),
-      companyId: testCompanyId,
-      provider: 'velocity-shipfast',
-      credentials: {
-        username: 'encrypted-username',
-        password: 'encrypted-password'
-      },
-      metadata: {}
-    };
-
-    MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-
-    const mockResponse = {
-      data: {
+      // Set cache manually
+      (auth as any).tokenCache = {
         token: mockToken,
-        expires_in: 86400
-      }
-    };
+        expiresAt: futureExpiry
+      };
 
-    mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
+      const token = await auth.getValidToken();
 
-    const token = await auth.getValidToken();
+      expect(token).toBe(mockToken);
+      expect(MockedIntegration.findOne).not.toHaveBeenCalled();
+    });
 
-    expect(token).toBe(mockToken);
-    expect(mockAxiosInstance.post).toHaveBeenCalled();
-  });
+    it('should fetch from DB if cache expired', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000);
 
-  it('should refresh token if expiring soon (proactive refresh)', async () => {
-    const soonExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes (< 1 hour)
-
-    const mockIntegration = {
-      _id: new mongoose.Types.ObjectId(),
-      companyId: testCompanyId,
-      provider: 'velocity-shipfast',
-      credentials: {
-        username: 'encrypted-username',
-        password: 'encrypted-password',
-        accessToken: mockEncryptedToken
-      },
-      metadata: {
-        tokenExpiresAt: soonExpiry
-      }
-    };
-
-    MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-
-    const mockResponse = {
-      data: {
-        token: 'new-mock-token',
-        expires_in: 86400
-      }
-    };
-
-    mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
-    mockedDecrypt.mockReturnValue('new-mock-token');
-
-    const token = await auth.getValidToken();
-
-    expect(token).toBe('new-mock-token');
-    expect(mockAxiosInstance.post).toHaveBeenCalled(); // Should re-authenticate
-  });
-
-  it('should cache token after fetching from DB', async () => {
-    const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000);
-
-    const mockIntegration = {
-      _id: new mongoose.Types.ObjectId(),
-      companyId: testCompanyId,
-      provider: 'velocity-shipfast',
-      credentials: {
-        accessToken: mockEncryptedToken
-      },
-      metadata: {
-        tokenExpiresAt: futureExpiry
-      }
-    };
-
-    MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-
-    await auth.getValidToken();
-
-    // Second call should use cache
-    await auth.getValidToken();
-
-    expect(MockedIntegration.findOne).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('refreshToken()', () => {
-  it('should force refresh token', async () => {
-    const mockIntegration = {
-      _id: new mongoose.Types.ObjectId(),
-      companyId: testCompanyId,
-      provider: 'velocity-shipfast',
-      credentials: {
-        username: 'encrypted-username',
-        password: 'encrypted-password'
-      },
-      metadata: {}
-    };
-
-    MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-
-    const mockResponse = {
-      data: {
-        token: 'refreshed-token',
-        expires_in: 86400
-      }
-    };
-
-    mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
-    mockedDecrypt.mockReturnValue('refreshed-token');
-
-    const token = await auth.refreshToken();
-
-    expect(token).toBe('refreshed-token');
-    expect(mockAxiosInstance.post).toHaveBeenCalled();
-  });
-
-  it('should clear cache after refresh', async () => {
-    // Set cache
-    (auth as any).tokenCache = {
-      token: 'old-token',
-      expiresAt: new Date(Date.now() + 1000)
-    };
-
-    const mockIntegration = {
-      _id: new mongoose.Types.ObjectId(),
-      companyId: testCompanyId,
-      provider: 'velocity-shipfast',
-      credentials: {
-        username: 'encrypted-username',
-        password: 'encrypted-password'
-      },
-      metadata: {}
-    };
-
-    MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
-
-    const mockResponse = {
-      data: {
-        token: 'new-token',
-        expires_in: 86400
-      }
-    };
-
-    mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
-    mockedDecrypt.mockReturnValue('new-token');
-
-    await auth.refreshToken();
-
-    // Cache should be updated with new token
-    expect((auth as any).tokenCache.token).toBe('new-token');
-  });
-});
-
-describe('clearToken()', () => {
-  it('should clear cache and DB token', async () => {
-    // Set cache
-    (auth as any).tokenCache = {
-      token: mockToken,
-      expiresAt: new Date()
-    };
-
-    MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue({});
-
-    await auth.clearToken();
-
-    expect((auth as any).tokenCache).toBeNull();
-    expect(MockedIntegration.findOneAndUpdate).toHaveBeenCalledWith(
-      {
+      const mockIntegration = {
+        _id: new mongoose.Types.ObjectId(),
         companyId: testCompanyId,
-        type: 'courier',
-        provider: 'velocity-shipfast'
-      },
-      {
-        $unset: {
-          'credentials.accessToken': '',
-          'metadata.tokenExpiresAt': '',
-          'metadata.lastTokenRefresh': ''
+        provider: 'velocity-shipfast',
+        credentials: {
+          accessToken: mockEncryptedToken
+        },
+        metadata: {
+          tokenExpiresAt: futureExpiry
         }
-      }
-    );
+      };
+
+      MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
+
+      const token = await auth.getValidToken();
+
+      expect(token).toBe(mockToken);
+      expect(MockedIntegration.findOne).toHaveBeenCalled();
+      expect(mockedDecrypt).toHaveBeenCalledWith(mockEncryptedToken);
+    });
+
+    it('should authenticate if no stored token', async () => {
+      const mockIntegration = {
+        _id: new mongoose.Types.ObjectId(),
+        companyId: testCompanyId,
+        provider: 'velocity-shipfast',
+        credentials: {
+          username: 'encrypted-username',
+          password: 'encrypted-password'
+        },
+        metadata: {}
+      };
+
+      MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
+
+      const mockResponse = {
+        data: {
+          token: mockToken,
+          expires_in: 86400
+        }
+      };
+
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
+
+      const token = await auth.getValidToken();
+
+      expect(token).toBe(mockToken);
+      expect(mockAxiosInstance.post).toHaveBeenCalled();
+    });
+
+    it('should refresh token if expiring soon (proactive refresh)', async () => {
+      const soonExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes (< 1 hour)
+
+      const mockIntegration = {
+        _id: new mongoose.Types.ObjectId(),
+        companyId: testCompanyId,
+        provider: 'velocity-shipfast',
+        credentials: {
+          username: 'encrypted-username',
+          password: 'encrypted-password',
+          accessToken: mockEncryptedToken
+        },
+        metadata: {
+          tokenExpiresAt: soonExpiry
+        }
+      };
+
+      MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
+
+      const mockResponse = {
+        data: {
+          token: 'new-mock-token',
+          expires_in: 86400
+        }
+      };
+
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
+      mockedDecrypt.mockReturnValue('new-mock-token');
+
+      const token = await auth.getValidToken();
+
+      expect(token).toBe('new-mock-token');
+      expect(mockAxiosInstance.post).toHaveBeenCalled(); // Should re-authenticate
+    });
+
+    it('should cache token after fetching from DB', async () => {
+      const futureExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000);
+
+      const mockIntegration = {
+        _id: new mongoose.Types.ObjectId(),
+        companyId: testCompanyId,
+        provider: 'velocity-shipfast',
+        credentials: {
+          accessToken: mockEncryptedToken
+        },
+        metadata: {
+          tokenExpiresAt: futureExpiry
+        }
+      };
+
+      MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
+
+      await auth.getValidToken();
+
+      // Second call should use cache
+      await auth.getValidToken();
+
+      expect(MockedIntegration.findOne).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it('should handle missing integration gracefully', async () => {
-    MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+  describe('refreshToken()', () => {
+    it('should force refresh token', async () => {
+      const mockIntegration = {
+        _id: new mongoose.Types.ObjectId(),
+        companyId: testCompanyId,
+        provider: 'velocity-shipfast',
+        credentials: {
+          username: 'encrypted-username',
+          password: 'encrypted-password'
+        },
+        metadata: {}
+      };
 
-    await expect(auth.clearToken()).resolves.not.toThrow();
-    expect((auth as any).tokenCache).toBeNull();
-  });
-});
+      MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
 
-describe('Token Validity Checks', () => {
-  it('should consider token valid if expiry > 1 hour away', () => {
-    const futureExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
-    const isValid = (auth as any).isTokenValid(futureExpiry);
-    expect(isValid).toBe(true);
+      const mockResponse = {
+        data: {
+          token: 'refreshed-token',
+          expires_in: 86400
+        }
+      };
+
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
+      mockedDecrypt.mockReturnValue('refreshed-token');
+
+      const token = await auth.refreshToken();
+
+      expect(token).toBe('refreshed-token');
+      expect(mockAxiosInstance.post).toHaveBeenCalled();
+    });
+
+    it('should clear cache after refresh', async () => {
+      // Set cache
+      (auth as any).tokenCache = {
+        token: 'old-token',
+        expiresAt: new Date(Date.now() + 1000)
+      };
+
+      const mockIntegration = {
+        _id: new mongoose.Types.ObjectId(),
+        companyId: testCompanyId,
+        provider: 'velocity-shipfast',
+        credentials: {
+          username: 'encrypted-username',
+          password: 'encrypted-password'
+        },
+        metadata: {}
+      };
+
+      MockedIntegration.findOne = jest.fn().mockResolvedValue(mockIntegration);
+
+      const mockResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 86400
+        }
+      };
+
+      mockAxiosInstance.post.mockResolvedValueOnce(mockResponse);
+      mockedDecrypt.mockReturnValue('new-token');
+
+      await auth.refreshToken();
+
+      // Cache should be updated with new token
+      expect((auth as any).tokenCache.token).toBe('new-token');
+    });
   });
 
-  it('should consider token invalid if expiry < 1 hour away', () => {
-    const soonExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-    const isValid = (auth as any).isTokenValid(soonExpiry);
-    expect(isValid).toBe(false);
+  describe('clearToken()', () => {
+    it('should clear cache and DB token', async () => {
+      // Set cache
+      (auth as any).tokenCache = {
+        token: mockToken,
+        expiresAt: new Date()
+      };
+
+      MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue({});
+
+      await auth.clearToken();
+
+      expect((auth as any).tokenCache).toBeNull();
+      expect(MockedIntegration.findOneAndUpdate).toHaveBeenCalledWith(
+        {
+          companyId: testCompanyId,
+          type: 'courier',
+          provider: 'velocity-shipfast'
+        },
+        {
+          $unset: {
+            'credentials.accessToken': '',
+            'metadata.tokenExpiresAt': '',
+            'metadata.lastTokenRefresh': ''
+          }
+        }
+      );
+    });
+
+    it('should handle missing integration gracefully', async () => {
+      MockedIntegration.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      await expect(auth.clearToken()).resolves.not.toThrow();
+      expect((auth as any).tokenCache).toBeNull();
+    });
   });
 
-  it('should consider token invalid if already expired', () => {
-    const pastExpiry = new Date(Date.now() - 60 * 1000); // 1 minute ago
-    const isValid = (auth as any).isTokenValid(pastExpiry);
-    expect(isValid).toBe(false);
-  });
+  describe('Token Validity Checks', () => {
+    it('should consider token valid if expiry > 1 hour away', () => {
+      const futureExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+      const isValid = (auth as any).isTokenValid(futureExpiry);
+      expect(isValid).toBe(true);
+    });
 
-  it('should consider token invalid at exactly 1 hour before expiry', () => {
-    const oneHourExpiry = new Date(Date.now() + 60 * 60 * 1000); // Exactly 1 hour
-    const isValid = (auth as any).isTokenValid(oneHourExpiry);
-    expect(isValid).toBe(false);
+    it('should consider token invalid if expiry < 1 hour away', () => {
+      const soonExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+      const isValid = (auth as any).isTokenValid(soonExpiry);
+      expect(isValid).toBe(false);
+    });
+
+    it('should consider token invalid if already expired', () => {
+      const pastExpiry = new Date(Date.now() - 60 * 1000); // 1 minute ago
+      const isValid = (auth as any).isTokenValid(pastExpiry);
+      expect(isValid).toBe(false);
+    });
+
+    it('should consider token invalid at exactly 1 hour before expiry', () => {
+      const oneHourExpiry = new Date(Date.now() + 60 * 60 * 1000); // Exactly 1 hour
+      const isValid = (auth as any).isTokenValid(oneHourExpiry);
+      expect(isValid).toBe(false);
+    });
   });
-});
 
   describe('Error Handling', () => {
     it('should handle network errors during authentication', async () => {

@@ -1,78 +1,126 @@
 // Auto-generated barrel export for mongoose models
-// Uses new dot-case naming convention
+// Uses new dot-case naming convention and granular domain structure
 
-// Core Models
-export * from './user.model';
-export * from './company.model';
-export * from './session.model';
-export * from './permission.model';
-export * from './kyc.model';
+// IAM (Identity & Access)
+export { default as User } from './iam/users/user.model';
+export * from './iam/users/user.model';
+export { default as Session } from './iam/users/session.model';
+export * from './iam/users/session.model';
+export { default as Permission } from './iam/access/permission.model';
+export * from './iam/access/permission.model';
+export { default as TeamPermission } from './iam/access/team-permission.model';
+export * from './iam/access/team-permission.model';
+export { default as TeamInvitation } from './iam/access/team-invitation.model';
+export * from './iam/access/team-invitation.model';
 
-// Shipping Models
-export * from './shipment.model';
-export * from './order.model';
-export * from './rate-card.model';
-export * from './zone.model';
-export * from './warehouse.model';
-export * from './warehouse-location.model';
-export * from './warehouse-zone.model';
+// Organization
+export { default as Company } from './organization/core/company.model';
+export * from './organization/core/company.model';
+export { default as KYC } from './organization/core/kyc.model';
+export * from './organization/core/kyc.model';
+export { default as TeamActivity } from './organization/teams/team-activity.model';
+export * from './organization/teams/team-activity.model';
 
-// Inventory & Warehouse
-export * from './inventory.model';
-export * from './pick-list.model';
-export * from './packing-station.model';
-export * from './stock-movement.model';
+// CRM
+export { default as Lead } from './crm/leads/lead.model';
+export * from './crm/leads/lead.model';
+export { default as SalesRepresentative } from './crm/sales/sales-representative.model';
+export * from './crm/sales/sales-representative.model';
+export { default as CallLog } from './crm/sales/call-log.model';
+export * from './crm/sales/call-log.model';
 
-// NDR & RTO
-export * from './ndr-event.model';
-export * from './ndr-workflow.model';
-export * from './rto-event.model';
+// Marketing
+export { default as Coupon } from './marketing/promotions/coupon.model';
+export * from './marketing/promotions/coupon.model';
 
-// Wallet & Billing
-export * from './wallet-transaction.model';
-export * from './coupon.model';
+// Finance
+export { default as Payout } from './finance/payouts/payout.model';
+export * from './finance/payouts/payout.model';
+export { default as WalletTransaction } from './finance/wallets/wallet-transaction.model';
+export * from './finance/wallets/wallet-transaction.model';
+export { default as CommissionRule } from './finance/commission/commission-rule.model';
+export * from './finance/commission/commission-rule.model';
+export { default as CommissionTransaction } from './finance/commission/commission-transaction.model';
+export * from './finance/commission/commission-transaction.model';
+export { default as CommissionAdjustment } from './finance/commission/commission-adjustment.model';
+export * from './finance/commission/commission-adjustment.model';
 
-// Commission & Sales
-export * from './commission-rule.model';
-export * from './commission-transaction.model';
-export * from './commission-adjustment.model';
-export * from './sales-representative.model';
-export * from './payout.model';
-export * from './lead.model';
+// Logistics - Inventory
+export { default as Inventory } from './logistics/inventory/store/inventory.model';
+export * from './logistics/inventory/store/inventory.model';
+export { default as StockMovement } from './logistics/inventory/tracking/stock-movement.model';
+export * from './logistics/inventory/tracking/stock-movement.model';
 
-// Integrations
-export * from './integration.model';
-export * from './product-mapping.model';
-export * from './webhook-event.model';
-export * from './webhook-dead-letter.model';
+// Logistics - Warehouse
+export { default as Warehouse } from './logistics/warehouse/structure/warehouse.model';
+export * from './logistics/warehouse/structure/warehouse.model';
+export { default as WarehouseLocation } from './logistics/warehouse/structure/warehouse-location.model';
+export * from './logistics/warehouse/structure/warehouse-location.model';
+export { default as WarehouseZone } from './logistics/warehouse/structure/warehouse-zone.model';
+export * from './logistics/warehouse/structure/warehouse-zone.model';
+export { default as PackingStation } from './logistics/warehouse/activities/packing-station.model';
+export * from './logistics/warehouse/activities/packing-station.model';
+export { default as PickList } from './logistics/warehouse/activities/pick-list.model';
+export * from './logistics/warehouse/activities/pick-list.model';
 
-// Shopify
-export * from './shopify-store.model';
-export * from './shopify-sync-log.model';
+// Logistics - Shipping
+export { default as Shipment } from './logistics/shipping/core/shipment.model';
+export * from './logistics/shipping/core/shipment.model';
+export { default as Zone } from './logistics/shipping/configuration/zone.model';
+export * from './logistics/shipping/configuration/zone.model';
+export { default as RateCard } from './logistics/shipping/configuration/rate-card.model';
+export * from './logistics/shipping/configuration/rate-card.model';
+export { default as RTOEvent } from './logistics/shipping/exceptions/rto-event.model';
+export * from './logistics/shipping/exceptions/rto-event.model';
+export { default as NDREvent } from './logistics/shipping/exceptions/ndr-event.model';
+export * from './logistics/shipping/exceptions/ndr-event.model';
+export { default as NDRWorkflow } from './logistics/shipping/exceptions/ndr-workflow.model';
+export * from './logistics/shipping/exceptions/ndr-workflow.model';
 
-// WooCommerce
-export * from './woocommerce-store.model';
-export * from './woocommerce-product-mapping.model';
-export * from './woocommerce-sync-log.model';
+// Orders
+export { default as Order } from './orders/core/order.model';
+export * from './orders/core/order.model';
 
-// Amazon
-export * from './amazon-store.model';
-export * from './amazon-product-mapping.model';
-export * from './amazon-sync-log.model';
+// Marketplaces - Amazon
+export { default as AmazonStore } from './marketplaces/amazon/amazon-store.model';
+export * from './marketplaces/amazon/amazon-store.model';
+export { default as AmazonSyncLog } from './marketplaces/amazon/amazon-sync-log.model';
+export * from './marketplaces/amazon/amazon-sync-log.model';
+export { default as AmazonProductMapping } from './marketplaces/amazon/amazon-product-mapping.model';
+export * from './marketplaces/amazon/amazon-product-mapping.model';
 
-// Flipkart
-export * from './flipkart-store.model';
-export * from './flipkart-product-mapping.model';
-export * from './flipkart-sync-log.model';
+// Marketplaces - Flipkart
+export { default as FlipkartStore } from './marketplaces/flipkart/flipkart-store.model';
+export * from './marketplaces/flipkart/flipkart-store.model';
+export { default as FlipkartSyncLog } from './marketplaces/flipkart/flipkart-sync-log.model';
+export * from './marketplaces/flipkart/flipkart-sync-log.model';
+export { default as FlipkartProductMapping } from './marketplaces/flipkart/flipkart-product-mapping.model';
+export * from './marketplaces/flipkart/flipkart-product-mapping.model';
 
-// Team & Activity
-export * from './team-activity.model';
-export * from './team-invitation.model';
-export * from './team-permission.model';
+// Marketplaces - Shopify
+export { default as ShopifyStore } from './marketplaces/shopify/shopify-store.model';
+export * from './marketplaces/shopify/shopify-store.model';
+export { default as ShopifySyncLog } from './marketplaces/shopify/shopify-sync-log.model';
+export * from './marketplaces/shopify/shopify-sync-log.model';
+export { default as ShopifyProductMapping } from './marketplaces/shopify/shopify-product-mapping.model';
+export * from './marketplaces/shopify/shopify-product-mapping.model';
 
-// Communication
-export * from './call-log.model';
+// Marketplaces - WooCommerce
+export { default as WooCommerceStore } from './marketplaces/woocommerce/woocommerce-store.model';
+export * from './marketplaces/woocommerce/woocommerce-store.model';
+export { default as WooCommerceSyncLog } from './marketplaces/woocommerce/woocommerce-sync-log.model';
+export * from './marketplaces/woocommerce/woocommerce-sync-log.model';
+export { default as WooCommerceProductMapping } from './marketplaces/woocommerce/woocommerce-product-mapping.model';
+export * from './marketplaces/woocommerce/woocommerce-product-mapping.model';
 
 // System
-export * from './audit-log.model';
-export * from './report-config.model';
+export { default as Integration } from './system/integrations/integration.model';
+export * from './system/integrations/integration.model';
+export { default as WebhookEvent } from './system/integrations/webhook-event.model';
+export * from './system/integrations/webhook-event.model';
+export { default as WebhookDeadLetter } from './system/integrations/webhook-dead-letter.model';
+export * from './system/integrations/webhook-dead-letter.model';
+export { default as AuditLog } from './system/audit/audit-log.model';
+export * from './system/audit/audit-log.model';
+export { default as ReportConfig } from './system/reporting/report-config.model';
+export * from './system/reporting/report-config.model';

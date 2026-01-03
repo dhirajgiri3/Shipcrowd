@@ -1,6 +1,6 @@
 import { Response, NextFunction, Request } from 'express';
-import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';

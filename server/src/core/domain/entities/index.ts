@@ -1,2 +1,2 @@
-export * from './user.entity.js';
-export * from './shipment.entity.js';
+export * from './user.entity';
+export * from './shipment.entity';

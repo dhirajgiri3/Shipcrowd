@@ -8,13 +8,14 @@
  */
 
 import mongoose from 'mongoose';
-import CommissionTransaction, {
+import {
+    CommissionTransaction,
     ICommissionTransaction,
-} from '../../../../infrastructure/database/mongoose/models/commission-transaction.model.js';
-import CommissionAdjustment from '../../../../infrastructure/database/mongoose/models/commission-adjustment.model.js';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { AppError } from '../../../../shared/errors/index.js';
+    CommissionAdjustment,
+    AuditLog
+} from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/index';
 
 // DTOs
 export interface ApproveTransactionDTO {

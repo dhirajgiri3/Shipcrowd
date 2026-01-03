@@ -4,8 +4,8 @@
  * Orchestrates NDR resolution workflows.
  */
 
-import NDREvent, { INDREvent } from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
-import NDRWorkflow, { INDRWorkflow, IWorkflowAction } from '../../../../infrastructure/database/mongoose/models/ndr-workflow.model';
+import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { NDRWorkflow, INDRWorkflow, IWorkflowAction } from '../../../../infrastructure/database/mongoose/models';
 import NDRActionExecutors from './actions/ndr-action-executors';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';

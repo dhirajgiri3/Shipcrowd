@@ -1,13 +1,13 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import ShopifyOAuthService from '../../../../src/core/application/services/shopify/shopify-oauth.service';
-import ShopifyStore from '../../../../src/infrastructure/database/mongoose/models/shopify-store.model';
-import ShopifyClient from '../../../../src/infrastructure/external/shopify/shopify.client';
+import { ShopifyStore } from '../../../../src/infrastructure/database/mongoose/models';
+import ShopifyClient from '../../../../src/infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../src/shared/errors/app.error';
 import crypto from 'crypto';
 
 // Mock dependencies
-jest.mock('../../../../src/infrastructure/database/mongoose/models/shopify-store.model');
-jest.mock('../../../../src/infrastructure/external/shopify/shopify.client');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model');
+jest.mock('../../../../src/infrastructure/external/ecommerce/shopify/shopify.client');
 
 describe('ShopifyOAuthService', () => {
   const mockCompanyId = '507f1f77bcf86cd799439011';
@@ -171,16 +171,26 @@ describe('ShopifyOAuthService', () => {
 
       // Mock ShopifyClient
       const mockClient = {
-        getShopInfo: jest.fn().mockResolvedValue(mockShopInfo),
-        post: jest.fn().mockResolvedValue({ webhook: { id: 123 } }),
+        getShopInfo: jest.fn<any>().mockResolvedValue(mockShopInfo),
+        post: jest.fn<any>().mockResolvedValue({ webhook: { id: 123 } }),
       };
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
       // Mock ShopifyStore.findOne to return null (new store)
-      (ShopifyStore.findOne as any) = jest.fn().mockResolvedValue(null);
+      (ShopifyStore.findOne as any) = jest.fn<any>().mockResolvedValue(null);
+      // Mock findById for registerWebhooks call
+      (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
+        select: jest.fn<any>().mockResolvedValue({
+          _id: mockStoreId,
+          shopDomain: mockShopDomain,
+          webhooks: [],
+          decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
+          save: jest.fn<any>().mockResolvedValue(true)
+        })
+      });
 
       // Mock ShopifyStore constructor and save
-      const mockSave = jest.fn().mockResolvedValue(true);
+      const mockSave = jest.fn<any>().mockResolvedValue(true);
       const mockStoreInstance = {
         _id: mockStoreId,
         webhooks: [],
@@ -212,21 +222,27 @@ describe('ShopifyOAuthService', () => {
       };
 
       const mockClient = {
-        getShopInfo: jest.fn().mockResolvedValue(mockShopInfo),
-        post: jest.fn().mockResolvedValue({ webhook: { id: 123 } }),
+        getShopInfo: jest.fn<any>().mockResolvedValue(mockShopInfo),
+        post: jest.fn<any>().mockResolvedValue({ webhook: { id: 123 } }),
       };
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
-      const mockSave = jest.fn().mockResolvedValue(true);
+      const mockSave = jest.fn<any>().mockResolvedValue(true);
       const mockExistingStore = {
         _id: mockStoreId,
         accessToken: 'old_token',
         shopName: 'Old Name',
         webhooks: [],
         save: mockSave,
+        decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
       };
 
-      (ShopifyStore.findOne as any) = jest.fn().mockResolvedValue(mockExistingStore);
+      (ShopifyStore.findOne as any) = jest.fn<any>().mockResolvedValue(mockExistingStore);
+
+      // Mock findById for registerWebhooks call
+      (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
+        select: jest.fn<any>().mockResolvedValue(mockExistingStore)
+      });
 
       await ShopifyOAuthService.installStore({
         shop: mockShopDomain,
@@ -247,14 +263,14 @@ describe('ShopifyOAuthService', () => {
         shopDomain: mockShopDomain,
         webhooks: [],
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
-      const mockPost = jest.fn().mockResolvedValue({
+      const mockPost = jest.fn<any>().mockResolvedValue({
         webhook: { id: 123, topic: 'orders/create' },
       });
 
@@ -269,7 +285,7 @@ describe('ShopifyOAuthService', () => {
       expect(mockPost).toHaveBeenCalledTimes(8);
 
       // Verify webhook topics
-      const topics = mockPost.mock.calls.map((call) => call[1].webhook.topic);
+      const topics = mockPost.mock.calls.map((call) => (call[1] as any).webhook.topic);
       expect(topics).toContain('orders/create');
       expect(topics).toContain('orders/updated');
       expect(topics).toContain('orders/cancelled');
@@ -286,11 +302,11 @@ describe('ShopifyOAuthService', () => {
         shopDomain: mockShopDomain,
         webhooks: [],
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const duplicateError = new Error('Webhook already exists');
@@ -302,7 +318,7 @@ describe('ShopifyOAuthService', () => {
         },
       };
 
-      const mockPost = jest.fn().mockRejectedValue(duplicateError);
+      const mockPost = jest.fn<any>().mockRejectedValue(duplicateError);
       const mockClient = { post: mockPost };
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
@@ -325,15 +341,15 @@ describe('ShopifyOAuthService', () => {
         shopDomain: mockShopDomain,
         webhooks: mockWebhooks,
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
         isActive: true,
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
-      const mockDelete = jest.fn().mockResolvedValue(true);
+      const mockDelete = jest.fn<any>().mockResolvedValue(true);
       const mockClient = { delete: mockDelete };
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
@@ -347,7 +363,7 @@ describe('ShopifyOAuthService', () => {
 
     test('should throw error if store not found', async () => {
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(null),
+        select: jest.fn<any>().mockResolvedValue(null),
       });
 
       await expect(
@@ -362,16 +378,16 @@ describe('ShopifyOAuthService', () => {
         _id: mockStoreId,
         shopDomain: mockShopDomain,
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
         isActive: true,
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockClient = {
-        testConnection: jest.fn().mockResolvedValue(true),
+        testConnection: jest.fn<any>().mockResolvedValue(true),
       };
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
@@ -386,16 +402,16 @@ describe('ShopifyOAuthService', () => {
         _id: mockStoreId,
         shopDomain: mockShopDomain,
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
         isActive: true,
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockClient = {
-        testConnection: jest.fn().mockResolvedValue(false),
+        testConnection: jest.fn<any>().mockResolvedValue(false),
       };
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
@@ -415,7 +431,7 @@ describe('ShopifyOAuthService', () => {
       ];
 
       (ShopifyStore.find as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStores),
+        select: jest.fn<any>().mockResolvedValue(mockStores),
       });
 
       const stores = await ShopifyOAuthService.getActiveStores(mockCompanyId);
@@ -433,10 +449,10 @@ describe('ShopifyOAuthService', () => {
       const mockStore = {
         _id: mockStoreId,
         isPaused: false,
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
       };
 
-      (ShopifyStore.findById as any) = jest.fn().mockResolvedValue(mockStore);
+      (ShopifyStore.findById as any) = jest.fn<any>().mockResolvedValue(mockStore);
 
       await ShopifyOAuthService.togglePauseSync(mockStoreId, true);
 
@@ -448,10 +464,10 @@ describe('ShopifyOAuthService', () => {
       const mockStore = {
         _id: mockStoreId,
         isPaused: true,
-        save: jest.fn().mockResolvedValue(true),
+        save: jest.fn<any>().mockResolvedValue(true),
       };
 
-      (ShopifyStore.findById as any) = jest.fn().mockResolvedValue(mockStore);
+      (ShopifyStore.findById as any) = jest.fn<any>().mockResolvedValue(mockStore);
 
       await ShopifyOAuthService.togglePauseSync(mockStoreId, false);
 

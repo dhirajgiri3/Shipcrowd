@@ -17,9 +17,9 @@
  * 4. Log sync result
  */
 
-import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/woocommerce-store.model';
-import WooCommerceProductMapping from '../../../../infrastructure/database/mongoose/models/woocommerce-product-mapping.model';
-import WooCommerceSyncLog from '../../../../infrastructure/database/mongoose/models/woocommerce-sync-log.model';
+import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
+import { WooCommerceProductMapping } from '../../../../infrastructure/database/mongoose/models';
+import { WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';

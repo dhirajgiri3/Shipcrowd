@@ -5,10 +5,10 @@
  */
 
 import mongoose from 'mongoose';
-import PickList, { IPickList, IPickListItem } from '@/infrastructure/database/mongoose/models/pick-list.model';
-import Order, { IOrder } from '@/infrastructure/database/mongoose/models/order.model';
-import WarehouseLocation from '@/infrastructure/database/mongoose/models/warehouse-location.model';
-import Inventory from '@/infrastructure/database/mongoose/models/inventory.model';
+import { PickList, IPickList, IPickListItem } from '@/infrastructure/database/mongoose/models';
+import { Order, IOrder } from '@/infrastructure/database/mongoose/models';
+import { WarehouseLocation } from '@/infrastructure/database/mongoose/models';
+import { Inventory } from '@/infrastructure/database/mongoose/models';
 import {
     ICreatePickListDTO,
     IAssignPickListDTO,

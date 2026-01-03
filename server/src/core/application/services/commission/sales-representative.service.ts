@@ -9,15 +9,16 @@
  */
 
 import mongoose from 'mongoose';
-import SalesRepresentative, {
+import {
+    SalesRepresentative,
     ISalesRepresentative,
     SalesRepRole,
     SalesRepStatus,
-} from '../../../../infrastructure/database/mongoose/models/sales-representative.model.js';
-import User from '../../../../infrastructure/database/mongoose/models/user.model.js';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { AppError } from '../../../../shared/errors/index.js';
+    User,
+    AuditLog
+} from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/index';
 
 // DTOs
 export interface CreateSalesRepDTO {

@@ -312,12 +312,13 @@ describe('VelocityErrorHandler', () => {
       });
 
       const promise = retryWithBackoff(mockFn, 3, 1000, 'Test');
+      const assumption = expect(promise).rejects.toThrow();
 
       // Advance through all retries
       await jest.advanceTimersByTimeAsync(1500); // First retry
-      await jest.advanceTimersByTimeAsync(2500); // Second retry
+      await jest.advanceTimersByTimeAsync(3000); // Second retry (2000ms + jitter)
 
-      await expect(promise).rejects.toThrow();
+      await assumption;
 
       expect(mockFn).toHaveBeenCalledTimes(3);
     });
@@ -332,11 +333,12 @@ describe('VelocityErrorHandler', () => {
       const mockFn = jest.fn().mockRejectedValue(finalError);
 
       const promise = retryWithBackoff(mockFn, 3, 100, 'Test');
+      const assumption = expect(promise).rejects.toThrow(finalError);
 
       // Fast-forward through all retries
       await jest.advanceTimersByTimeAsync(800);
 
-      await expect(promise).rejects.toThrow(finalError);
+      await assumption;
       expect(mockFn).toHaveBeenCalledTimes(3);
     });
 
@@ -355,11 +357,12 @@ describe('VelocityErrorHandler', () => {
       );
 
       const promise = retryWithBackoff(mockFn, 5, 100, 'Test');
+      const assumption = expect(promise).rejects.toThrow();
 
       // Fast-forward through all retries
       await jest.advanceTimersByTimeAsync(3200);
 
-      await expect(promise).rejects.toThrow();
+      await assumption;
       expect(mockFn).toHaveBeenCalledTimes(5);
     });
 

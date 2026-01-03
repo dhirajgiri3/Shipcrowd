@@ -10,7 +10,7 @@
  * - Auto-calculate resolution deadline
  */
 
-import NDREvent, { INDREvent } from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
+import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';
 import NDRClassificationService from './ndr-classification.service';
 import logger from '../../../../shared/logger/winston.logger';
 

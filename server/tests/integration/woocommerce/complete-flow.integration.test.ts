@@ -3,10 +3,10 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import app from '../../../src/app';
-import WooCommerceStore from '../../../src/infrastructure/database/mongoose/models/woocommerce-store.model';
-import WooCommerceProductMapping from '../../../src/infrastructure/database/mongoose/models/woocommerce-product-mapping.model';
-import Order from '../../../src/infrastructure/database/mongoose/models/order.model';
-import QueueManager from '../../../src/infrastructure/queue/queue.manager';
+import { WooCommerceStore } from '../../../src/infrastructure/database/mongoose/models';
+import { WooCommerceProductMapping } from '../../../src/infrastructure/database/mongoose/models';
+import { Order } from '../../../src/infrastructure/database/mongoose/models';
+import QueueManager from '../../../src/infrastructure/utilities/queue-manager';
 import crypto from 'crypto';
 
 /**
@@ -109,7 +109,7 @@ describe('WooCommerce Integration - Complete Flow', () => {
         },
       });
 
-      storeId = store._id.toString();
+      storeId = (store._id as any).toString();
 
       expect(store).toBeDefined();
       expect(store.storeUrl).toBe(storeUrl);

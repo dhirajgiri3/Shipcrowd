@@ -5,7 +5,7 @@ import userRoutes from './identity/user.routes';
 import companyRoutes from './organization/company.routes';
 import whatsappRoutes from './communication/whatsapp.routes';
 import kycRoutes from './identity/kyc.routes';
-import warehouseRoutes from './shipping/warehouse.routes';
+import warehouseRoutes from './warehouses/warehouse.routes';
 import teamRoutes from './organization/team.routes';
 import sessionRoutes from './auth/session.routes';
 import auditRoutes from './system/audit.routes';
@@ -25,7 +25,7 @@ import shopifyWebhookRoutes from './webhooks/shopify.routes';
 import woocommerceWebhookRoutes from './webhooks/woocommerce.webhook.routes';
 import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
 // Week 5: Warehouse Workflow Routes
-import warehouseWorkflowRoutes from './warehouse';
+import warehouseWorkflowRoutes from './warehouses';
 // Week 7: Marketplace Integrations (Flipkart, Amazon)
 import integrationsRoutes from './integrations';
 // Week 8: NDR/RTO Automation

@@ -5,8 +5,8 @@
  */
 
 import { Router } from 'express';
-import { CommissionTransactionController } from '../../../controllers/commission/index.js';
-import { authenticate, authorize } from '../../../middleware/index.js';
+import { CommissionTransactionController } from '../../../controllers/commission/index';
+import { authenticate, authorize } from '../../../middleware/index';
 
 const router = Router();
 

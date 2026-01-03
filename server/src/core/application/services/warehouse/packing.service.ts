@@ -3,7 +3,7 @@
  */
 
 import mongoose from 'mongoose';
-import PackingStation, { IPackingStation, IPackage } from '@/infrastructure/database/mongoose/models/packing-station.model';
+import { PackingStation, IPackingStation, IPackage } from '@/infrastructure/database/mongoose/models';
 import {
     ICreatePackingStationDTO,
     IUpdatePackingStationDTO,

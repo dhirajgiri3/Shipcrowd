@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import companyController from '../../../controllers/organization/company.controller';
-import warehouseController from '../../../controllers/shipping/warehouse.controller';
+import warehouseController from '../../../controllers/warehouse/warehouse.controller';
 import teamController from '../../../controllers/organization/team.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';

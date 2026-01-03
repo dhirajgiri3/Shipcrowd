@@ -5,7 +5,7 @@
  * Handles pick list creation, assignment, picking operations, and completion.
  */
 
-import { IPickList, IPickListItem } from '@/infrastructure/database/mongoose/models/pick-list.model';
+import { IPickList, IPickListItem } from '@/infrastructure/database/mongoose/models';
 
 // =========================================
 // DTOs for Picking Service

@@ -25,7 +25,7 @@ import {
   CourierRateRequest,
   CourierRateResponse
 } from '../base/courier.adapter';
-import Warehouse from '../../../database/mongoose/models/warehouse.model';
+import Warehouse from '../../../database/mongoose/models/logistics/warehouse/structure/warehouse.model';
 import {
   VelocityForwardOrderRequest,
   VelocityShipmentResponse,

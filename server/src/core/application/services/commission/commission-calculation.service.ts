@@ -9,15 +9,16 @@
  */
 
 import mongoose from 'mongoose';
-import CommissionTransaction, {
+import {
+    CommissionTransaction,
     ICommissionTransaction,
-} from '../../../../infrastructure/database/mongoose/models/commission-transaction.model.js';
-import CommissionRule from '../../../../infrastructure/database/mongoose/models/commission-rule.model.js';
-import SalesRepresentative from '../../../../infrastructure/database/mongoose/models/sales-representative.model.js';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model.js';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { AppError } from '../../../../shared/errors/index.js';
+    CommissionRule,
+    SalesRepresentative,
+    Order,
+    AuditLog
+} from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/index';
 
 // Event types
 export type OrderEvent = 'order.created' | 'order.cancelled' | 'order.updated';

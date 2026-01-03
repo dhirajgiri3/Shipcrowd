@@ -4,8 +4,8 @@
  * Execute specific workflow actions for NDR resolution.
  */
 
-import NDREvent, { INDREvent, INDRResolutionAction } from '../../../../../infrastructure/database/mongoose/models/ndr-event.model';
-import CallLog from '../../../../../infrastructure/database/mongoose/models/call-log.model';
+import { NDREvent, INDREvent, INDRResolutionAction } from '../../../../../infrastructure/database/mongoose/models';
+import { CallLog } from '../../../../../infrastructure/database/mongoose/models';
 import ExotelClient from '../../../../../infrastructure/external/communication/exotel/exotel.client';
 import WhatsAppService from '../../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import OpenAIService from '../../../../../infrastructure/external/ai/openai/openai.service';

@@ -4,7 +4,7 @@
  * Orchestrates report generation, saving, and retrieval.
  */
 
-import ReportConfig, { IReportConfig } from '../../../../infrastructure/database/mongoose/models/report-config.model';
+import { ReportConfig, IReportConfig } from '../../../../infrastructure/database/mongoose/models';
 import OrderAnalyticsService from './order-analytics.service';
 import ShipmentAnalyticsService from './shipment-analytics.service';
 import RevenueAnalyticsService from './revenue-analytics.service';

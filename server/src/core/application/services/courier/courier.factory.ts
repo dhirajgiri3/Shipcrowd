@@ -14,7 +14,7 @@
 import mongoose from 'mongoose';
 import { ICourierAdapter } from '../../../../infrastructure/external/couriers/base/courier.adapter';
 import { VelocityShipfastProvider } from '../../../../infrastructure/external/couriers/velocity';
-import Integration from '../../../../infrastructure/database/mongoose/models/integration.model';
+import { Integration } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
 export class CourierFactory {

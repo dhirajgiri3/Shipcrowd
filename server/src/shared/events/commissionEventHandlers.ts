@@ -4,9 +4,9 @@
  * Subscribes to order/RTO events and triggers commission calculations
  */
 
-import { CommissionCalculationService } from '../../core/application/services/commission/index.js';
-import eventBus, { OrderEventPayload, RTOEventPayload } from '../events/eventBus.js';
-import logger from '../logger/winston.logger.js';
+import { CommissionCalculationService } from '../../core/application/services/commission/index';
+import eventBus, { OrderEventPayload, RTOEventPayload } from '../events/eventBus';
+import logger from '../logger/winston.logger';
 
 /**
  * Initialize commission event listeners

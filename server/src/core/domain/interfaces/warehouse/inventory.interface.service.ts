@@ -5,8 +5,8 @@
  * Handles stock tracking, reservations, movements, and alerts.
  */
 
-import { IInventory } from '@/infrastructure/database/mongoose/models/inventory.model';
-import { IStockMovement } from '@/infrastructure/database/mongoose/models/stock-movement.model';
+import { IInventory } from '@/infrastructure/database/mongoose/models';
+import { IStockMovement } from '@/infrastructure/database/mongoose/models';
 
 // =========================================
 // DTOs for Inventory Service

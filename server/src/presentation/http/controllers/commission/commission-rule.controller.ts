@@ -8,9 +8,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import CommissionRuleService from '../../../../core/application/services/commission/CommissionRuleService.js';
-import { AppError } from '../../../../shared/errors/index.js';
-import { sendValidationError } from '../../../../shared/utils/responseHelper.js';
+import CommissionRuleService from '../../../../core/application/services/commission/commission-rule.service';
+import { AppError } from '../../../../shared/errors/index';
+import { sendValidationError } from '../../../../shared/utils/responseHelper';
 import {
     createCommissionRuleSchema,
     updateCommissionRuleSchema,
@@ -18,8 +18,8 @@ import {
     testRuleSchema,
     idParamSchema,
     orderIdParamSchema,
-} from '../../../../shared/validation/commission-schemas.js';
-import logger from '../../../../shared/logger/winston.logger.js';
+} from '../../../../shared/validation/commission-schemas';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class CommissionRuleController {
     /**

@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, authorize } from '../../../middleware/auth/auth';
-import analyticsController from '../../../controllers/system/analytics.controller';
+import analyticsController from '../../../controllers/analytics/analytics.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
 const router = express.Router();

@@ -5,7 +5,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import RTOEvent from '../../../../infrastructure/database/mongoose/models/rto-event.model';
+import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import RTOService from '../../../../core/application/services/rto/rto.service';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
 import { AppError } from '../../../../shared/errors';

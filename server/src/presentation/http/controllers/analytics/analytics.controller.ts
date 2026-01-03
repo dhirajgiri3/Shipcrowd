@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';

@@ -1,4 +1,4 @@
-import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './system/auditLog';
+import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './system/audit-log.middleware';
 import auth, { authenticate, authorize, checkCompany, loginRateLimiter, csrfProtection } from './auth/auth';
 import permissions, { checkPermission, getUserPermissions } from './auth/permissions';
 import { requireCompany } from './auth/company';

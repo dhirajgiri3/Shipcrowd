@@ -3,8 +3,8 @@
  */
 
 import { Router } from 'express';
-import { PayoutController } from '../../../controllers/commission/index.js';
-import { authenticate, authorize } from '../../../middleware/index.js';
+import { PayoutController } from '../../../controllers/commission/index';
+import { authenticate, authorize } from '../../../middleware/index';
 
 const router = Router();
 

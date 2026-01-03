@@ -3,10 +3,10 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import app from '../../../src/app';
-import ShopifyStore from '../../../src/infrastructure/database/mongoose/models/shopify-store.model';
-import ProductMapping from '../../../src/infrastructure/database/mongoose/models/product-mapping.model';
-import Order from '../../../src/infrastructure/database/mongoose/models/order.model';
-import QueueManager from '../../../src/infrastructure/queue/queue.manager';
+import { ShopifyStore } from '../../../src/infrastructure/database/mongoose/models';
+import { ShopifyProductMapping as ProductMapping } from '../../../src/infrastructure/database/mongoose/models';
+import { Order } from '../../../src/infrastructure/database/mongoose/models';
+import QueueManager from '../../../src/infrastructure/utilities/queue-manager';
 
 /**
  * Integration Test: Complete Shopify Integration Flow
@@ -97,7 +97,7 @@ describe('Shopify Integration - Complete Flow', () => {
         isActive: true,
       });
 
-      storeId = store._id.toString();
+      storeId = (store._id as any).toString();
 
       expect(store).toBeDefined();
       expect(store.shopDomain).toBe(shopDomain);

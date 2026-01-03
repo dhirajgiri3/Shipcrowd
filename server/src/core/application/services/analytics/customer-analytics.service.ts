@@ -5,7 +5,7 @@
  */
 
 import mongoose from 'mongoose';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
 import AnalyticsService, { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
 

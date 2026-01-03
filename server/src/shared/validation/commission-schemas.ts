@@ -92,7 +92,7 @@ export const conditionsSchema = z.object({
     return true;
 }, { message: 'Max order value must be >= min order value' });
 
-export const createCommissionRuleSchema = z.object({
+const commissionRuleBaseSchema = z.object({
     name: z.string()
         .min(3, 'Rule name must be at least 3 characters')
         .max(100, 'Rule name cannot exceed 100 characters')
@@ -122,7 +122,9 @@ export const createCommissionRuleSchema = z.object({
     // Validity period
     effectiveFrom: z.string().datetime('Invalid date format'),
     effectiveTo: z.string().datetime('Invalid date format').optional(),
-})
+});
+
+export const createCommissionRuleSchema = commissionRuleBaseSchema
     .refine(data => {
         // Percentage rate required for percentage/revenue-share
         if (data.ruleType === 'percentage' || data.ruleType === 'revenue-share') {
@@ -154,7 +156,7 @@ export const createCommissionRuleSchema = z.object({
 
 export type CreateCommissionRuleInput = z.infer<typeof createCommissionRuleSchema>;
 
-export const updateCommissionRuleSchema = createCommissionRuleSchema.partial();
+export const updateCommissionRuleSchema = commissionRuleBaseSchema.partial();
 export type UpdateCommissionRuleInput = z.infer<typeof updateCommissionRuleSchema>;
 
 export const listRulesQuerySchema = paginationSchema.extend({

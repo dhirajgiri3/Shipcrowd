@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import AmazonProductMappingController from '../../../controllers/integrations/amazonProductMapping.controller';
+import AmazonProductMappingController from '../../../controllers/integrations/amazon-product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
 

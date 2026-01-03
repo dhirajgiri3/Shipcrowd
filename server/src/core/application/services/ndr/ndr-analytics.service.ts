@@ -4,8 +4,8 @@
  * NDR/RTO metrics and analytics.
  */
 
-import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
-import RTOEvent from '../../../../infrastructure/database/mongoose/models/rto-event.model';
+import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
 interface DateRange {
@@ -322,7 +322,7 @@ export default class NDRAnalyticsService {
         }
 
         // Import Shipment model dynamically to avoid circular dependencies
-        const ShipmentModule = await import('../../../../infrastructure/database/mongoose/models/shipment.model.js') as any;
+        const ShipmentModule = await import('../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model.js') as any;
         const Shipment = ShipmentModule.default;
 
         // Get total shipments by carrier

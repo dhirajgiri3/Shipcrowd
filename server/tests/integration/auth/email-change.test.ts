@@ -1,7 +1,7 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import User from '../../../src/infrastructure/database/mongoose/models/user.model';
+import { User } from '../../../src/infrastructure/database/mongoose/models';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 
@@ -41,7 +41,7 @@ describe('Email Change Flow', () => {
             .set('X-CSRF-Token', 'frontend-request')
             .expect(200);
 
-        const cookies = loginResponse.headers['set-cookie'];
+        const cookies = loginResponse.headers['set-cookie'] as unknown as string[];
         authToken = cookies.find((c: string) => c.startsWith('accessToken='))?.split(';')[0].split('=')[1] || '';
     });
 
@@ -61,9 +61,9 @@ describe('Email Change Flow', () => {
 
             // Verify pending email change was set
             const user = await User.findById(testUser._id);
-            expect(user!.security.pendingEmailChange).toBe(newEmail);
-            expect(user!.security.emailChangeToken).toBeTruthy();
-            expect(user!.security.emailChangeTokenExpiry).toBeTruthy();
+            expect(user!.pendingEmailChange!.email).toBe(newEmail);
+            expect(user!.pendingEmailChange!.token).toBeTruthy();
+            expect(user!.pendingEmailChange!.tokenExpiry).toBeTruthy();
 
             // Original email should not change yet
             expect(user!.email).toBe(testEmail);
@@ -85,7 +85,7 @@ describe('Email Change Flow', () => {
             // Verify email was not changed
             const user = await User.findById(testUser._id);
             expect(user!.email).toBe(testEmail);
-            expect(user!.security.pendingEmailChange).toBeUndefined();
+            expect(user!.pendingEmailChange).toBeUndefined();
         });
 
         it('should reject duplicate email (already exists)', async () => {
@@ -190,7 +190,7 @@ describe('Email Change Flow', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            const firstToken = (await User.findById(testUser._id))!.security.emailChangeToken;
+            const firstToken = (await User.findById(testUser._id))!.pendingEmailChange!.token;
 
             // Initiate second email change
             await request(app)
@@ -204,8 +204,8 @@ describe('Email Change Flow', () => {
                 .expect(200);
 
             const user = await User.findById(testUser._id);
-            expect(user!.security.pendingEmailChange).toBe(newEmail);
-            expect(user!.security.emailChangeToken).not.toBe(firstToken);
+            expect(user!.pendingEmailChange!.email).toBe(newEmail);
+            expect(user!.pendingEmailChange!.token).not.toBe(firstToken);
         });
 
         it.skip('should enforce rate limiting (3 attempts per hour)', async () => {
@@ -252,7 +252,7 @@ describe('Email Change Flow', () => {
                 .expect(200);
 
             const user = await User.findById(testUser._id);
-            emailChangeToken = user!.security.emailChangeToken!;
+            emailChangeToken = user!.pendingEmailChange!.token;
         });
 
         it('should complete email change with valid token', async () => {
@@ -269,9 +269,7 @@ describe('Email Change Flow', () => {
             expect(user!.email).toBe(newEmail);
 
             // Verify pending fields were cleared
-            expect(user!.security.pendingEmailChange).toBeUndefined();
-            expect(user!.security.emailChangeToken).toBeUndefined();
-            expect(user!.security.emailChangeTokenExpiry).toBeUndefined();
+            expect(user!.pendingEmailChange).toBeUndefined();
         });
 
         it('should reject invalid token', async () => {
@@ -291,7 +289,7 @@ describe('Email Change Flow', () => {
         it('should reject expired token', async () => {
             // Set token expiry to past
             await User.findByIdAndUpdate(testUser._id, {
-                'security.emailChangeTokenExpiry': new Date(Date.now() - 1000),
+                'pendingEmailChange.tokenExpiry': new Date(Date.now() - 1000),
             });
 
             const response = await request(app)
@@ -330,13 +328,15 @@ describe('Email Change Flow', () => {
             const upperEmail = 'UPPERCASE@EXAMPLE.COM';
 
             await User.findByIdAndUpdate(testUser._id, {
-                'security.pendingEmailChange': upperEmail,
-                'security.emailChangeToken': crypto.randomBytes(32).toString('hex'),
-                'security.emailChangeTokenExpiry': new Date(Date.now() + 60 * 60 * 1000),
+                'pendingEmailChange': {
+                    email: upperEmail,
+                    token: crypto.randomBytes(32).toString('hex'),
+                    tokenExpiry: new Date(Date.now() + 60 * 60 * 1000)
+                }
             });
 
             const user = await User.findById(testUser._id);
-            const token = user!.security.emailChangeToken!;
+            const token = user!.pendingEmailChange!.token;
 
             await request(app)
                 .post('/api/v1/auth/verify-email-change')
@@ -403,7 +403,7 @@ describe('Email Change Flow', () => {
             const user = await User.findById(testUser._id);
 
             // Token should be hex string of appropriate length
-            expect(user!.security.emailChangeToken).toMatch(/^[a-f0-9]{64}$/);
+            expect(user!.pendingEmailChange!.token).toMatch(/^[a-f0-9]{64}$/);
         });
 
         it('should set token expiry to 1 hour', async () => {
@@ -418,7 +418,7 @@ describe('Email Change Flow', () => {
                 .expect(200);
 
             const user = await User.findById(testUser._id);
-            const expiryTime = user!.security.emailChangeTokenExpiry!.getTime();
+            const expiryTime = user!.pendingEmailChange!.tokenExpiry.getTime();
             const expectedExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
 
             // Should be within 10 seconds of expected expiry
@@ -437,7 +437,7 @@ describe('Email Change Flow', () => {
                 .expect(200);
 
             expect(response.body).not.toHaveProperty('emailChangeToken');
-            expect(response.body.user?.security?.emailChangeToken).toBeUndefined();
+            expect(response.body.user?.pendingEmailChange?.token).toBeUndefined();
         });
 
         it('should log email change event', async () => {
@@ -453,7 +453,7 @@ describe('Email Change Flow', () => {
                 .expect(200);
 
             const user = await User.findById(testUser._id);
-            const token = user!.security.emailChangeToken!;
+            const token = user!.pendingEmailChange!.token;
 
             await request(app)
                 .post('/api/v1/auth/verify-email-change')
@@ -491,7 +491,7 @@ describe('Email Change Flow', () => {
 
             // Only one pending email change should exist
             const user = await User.findById(testUser._id);
-            expect(user!.security.pendingEmailChange).toBeDefined();
+            expect(user!.pendingEmailChange).toBeDefined();
         });
 
         it('should handle malformed verification token gracefully', async () => {

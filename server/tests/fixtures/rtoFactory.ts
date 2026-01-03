@@ -14,6 +14,7 @@ export interface CreateTestRTOEventOptions {
     rtoCharges?: number;
     reverseAwb?: string;
     warehouseId?: mongoose.Types.ObjectId | string;
+    actualReturnDate?: Date;
 }
 
 /**

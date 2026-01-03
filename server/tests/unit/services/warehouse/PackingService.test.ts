@@ -3,7 +3,7 @@
  * Tests for packing stations and session management
  */
 import mongoose from 'mongoose';
-import * as PackingService from '../../../../src/core/application/services/warehouse';
+import { PackingService } from '../../../../src/core/application/services/warehouse';
 import { createTestPackingStation } from '../../../fixtures/packingFactory';
 import { createTestUser } from '../../../fixtures/userFactory';
 

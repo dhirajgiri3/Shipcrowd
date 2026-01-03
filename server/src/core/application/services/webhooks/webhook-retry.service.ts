@@ -6,7 +6,7 @@
  */
 
 import logger from '../../../../shared/logger/winston.logger';
-import WebhookDeadLetter from '../../../../infrastructure/database/mongoose/models/webhook-dead-letter.model';
+import { WebhookDeadLetter } from '../../../../infrastructure/database/mongoose/models';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,

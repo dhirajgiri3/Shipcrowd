@@ -1,8 +1,8 @@
 import request from 'supertest';
 import app from '../../../src/app';
 
-import User from '../../../src/infrastructure/database/mongoose/models/user.model';
-import Session from '../../../src/infrastructure/database/mongoose/models/session.model';
+import { User } from '../../../src/infrastructure/database/mongoose/models';
+import { Session } from '../../../src/infrastructure/database/mongoose/models';
 import mongoose from 'mongoose';
 
 // Helper to extract error message from response
@@ -43,7 +43,7 @@ describe('Session Management', () => {
             .expect(200);
 
         // Extract tokens from cookies
-        const cookies = loginResponse.headers['set-cookie'];
+        const cookies = loginResponse.headers['set-cookie'] as unknown as string[];
         authToken = cookies.find((c: string) => c.startsWith('accessToken='))?.split(';')[0].split('=')[1] || '';
         refreshToken = cookies.find((c: string) => c.startsWith('refreshToken='))?.split(';')[0].split('=')[1] || '';
     });
@@ -155,7 +155,7 @@ describe('Session Management', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            const otherCookies = otherLoginResponse.headers['set-cookie'];
+            const otherCookies = otherLoginResponse.headers['set-cookie'] as unknown as string[];
             const otherToken = otherCookies.find((c: string) => c.startsWith('accessToken='))?.split(';')[0].split('=')[1] || '';
 
             // Get other user's sessions
@@ -321,9 +321,9 @@ describe('Session Management', () => {
 
             // Session tokens should be hashed (not plain text)
             const session = sessions[0];
-            expect(session.token).toBeDefined();
-            expect(session.token).not.toBe(refreshToken);
-            expect(session.token.length).toBeGreaterThan(32); // Hashed token should be longer
+            expect(session.refreshToken).toBeDefined();
+            expect(session.refreshToken).not.toBe(refreshToken);
+            expect(session.refreshToken.length).toBeGreaterThan(32); // Hashed token should be longer
         });
 
         it('should not expose sensitive session data in API response', async () => {

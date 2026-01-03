@@ -4,7 +4,7 @@
  * Classifies NDR reasons using OpenAI with keyword fallback.
  */
 
-import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
+import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
 import OpenAIService from '../../../../infrastructure/external/ai/openai/openai.service';
 import logger from '../../../../shared/logger/winston.logger';
 

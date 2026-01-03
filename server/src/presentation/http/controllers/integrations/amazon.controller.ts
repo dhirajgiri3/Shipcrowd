@@ -17,7 +17,7 @@
 import { Request, Response, NextFunction } from 'express';
 import AmazonOAuthService from '../../../../core/application/services/amazon/amazon-oauth.service';
 import AmazonOrderSyncService from '../../../../core/application/services/amazon/amazon-order-sync.service';
-import AmazonStore from '../../../../infrastructure/database/mongoose/models/amazon-store.model';
+import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 

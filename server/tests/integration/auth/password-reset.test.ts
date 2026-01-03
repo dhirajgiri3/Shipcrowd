@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../../../src/app';
-import User from '../../../src/infrastructure/database/mongoose/models/user.model';
+import { User } from '../../../src/infrastructure/database/mongoose/models';
 import crypto from 'crypto';
 
 // Helper to extract error message from response

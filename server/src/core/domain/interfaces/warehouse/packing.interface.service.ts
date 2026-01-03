@@ -5,7 +5,7 @@
  * Handles packing station management, packing sessions, and package creation.
  */
 
-import { IPackingStation, IPackage, IPackingSession } from '@/infrastructure/database/mongoose/models/packing-station.model';
+import { IPackingStation, IPackage, IPackingSession } from '@/infrastructure/database/mongoose/models';
 
 // =========================================
 // DTOs for Packing Service

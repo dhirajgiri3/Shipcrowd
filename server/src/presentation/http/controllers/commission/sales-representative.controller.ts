@@ -9,17 +9,17 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import SalesRepresentativeService from '../../../../core/application/services/commission/SalesRepresentativeService.js';
-import { AppError } from '../../../../shared/errors/index.js';
-import { sendValidationError } from '../../../../shared/utils/responseHelper.js';
+import SalesRepresentativeService from '../../../../core/application/services/commission/sales-representative.service';
+import { AppError } from '../../../../shared/errors/index';
+import { sendValidationError } from '../../../../shared/utils/responseHelper';
 import {
     createSalesRepSchema,
     updateSalesRepSchema,
     listSalesRepsQuerySchema,
     assignTerritorySchema,
     idParamSchema,
-} from '../../../../shared/validation/commission-schemas.js';
-import logger from '../../../../shared/logger/winston.logger.js';
+} from '../../../../shared/validation/commission-schemas';
+import logger from '../../../../shared/logger/winston.logger';
 
 export class SalesRepresentativeController {
     /**

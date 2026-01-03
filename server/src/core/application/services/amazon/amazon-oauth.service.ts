@@ -12,7 +12,7 @@
  * - Auto-pause on repeated failures
  */
 
-import AmazonStore, { IAmazonStore } from '../../../../infrastructure/database/mongoose/models/amazon-store.model';
+import { AmazonStore, IAmazonStore } from '../../../../infrastructure/database/mongoose/models';
 import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';

@@ -5,7 +5,7 @@
  */
 
 import { Response } from 'express';
-import logger from '../../../../../../shared/logger/winston.logger';
+import logger from '../../../../../shared/logger/winston.logger';
 
 export interface CSVColumn {
     header: string;

@@ -7,7 +7,7 @@ import app from './app';
 import connectDB from './config/database';
 import { initializeScheduler } from './config/scheduler';
 import logger from './shared/logger/winston.logger';
-import { NDRResolutionJob } from './infrastructure/jobs/ndr-resolution.job';
+import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-resolution.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 
 // Load environment variables

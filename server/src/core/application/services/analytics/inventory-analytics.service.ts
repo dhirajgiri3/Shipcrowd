@@ -4,8 +4,8 @@
  * Provides stock level analysis and slow-moving product detection.
  */
 
-import Inventory from '../../../../infrastructure/database/mongoose/models/inventory.model';
-import StockMovement from '../../../../infrastructure/database/mongoose/models/stock-movement.model';
+import { Inventory } from '../../../../infrastructure/database/mongoose/models';
+import { StockMovement } from '../../../../infrastructure/database/mongoose/models';
 import AnalyticsService from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';

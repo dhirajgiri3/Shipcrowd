@@ -3,14 +3,14 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { CommissionAnalyticsService } from '../../../../core/application/services/commission/index.js';
-import { AppError } from '../../../../shared/errors/index.js';
-import { sendValidationError } from '../../../../shared/utils/responseHelper.js';
+import { CommissionAnalyticsService } from '../../../../core/application/services/commission/index';
+import { AppError } from '../../../../shared/errors/index';
+import { sendValidationError } from '../../../../shared/utils/responseHelper';
 import {
     analyticsDateRangeSchema,
     generateReportSchema,
     topPerformersQuerySchema,
-} from '../../../../shared/validation/commission-schemas.js';
+} from '../../../../shared/validation/commission-schemas';
 
 export class CommissionAnalyticsController {
     /**

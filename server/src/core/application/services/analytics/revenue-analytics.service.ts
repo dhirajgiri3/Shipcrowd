@@ -4,8 +4,8 @@
  * Provides revenue statistics, wallet analytics, and COD remittance tracking.
  */
 
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import WalletTransaction from '../../../../infrastructure/database/mongoose/models/wallet-transaction.model';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { WalletTransaction } from '../../../../infrastructure/database/mongoose/models';
 import WalletService from '../wallet/wallet.service';
 import AnalyticsService, { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';

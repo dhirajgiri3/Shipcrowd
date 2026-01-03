@@ -5,8 +5,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
-import NDRWorkflow from '../../../../infrastructure/database/mongoose/models/ndr-workflow.model';
+import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { NDRWorkflow } from '../../../../infrastructure/database/mongoose/models';
 import NDRDetectionService from '../../../../core/application/services/ndr/ndr-detection.service';
 import NDRClassificationService from '../../../../core/application/services/ndr/ndr-classification.service';
 import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';

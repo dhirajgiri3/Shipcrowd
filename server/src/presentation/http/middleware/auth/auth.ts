@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { verifyAccessToken } from '../../../../shared/helpers/jwt';
-import User from '../../../../infrastructure/database/mongoose/models/user.model';
+import { User } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from '../../../../types/express';
 import logger from '../../../../shared/logger/winston.logger';
 

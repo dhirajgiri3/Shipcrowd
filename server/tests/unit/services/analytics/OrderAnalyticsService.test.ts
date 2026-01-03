@@ -5,7 +5,7 @@
 import OrderAnalyticsService from '../../../../src/core/application/services/analytics/order-analytics.service';
 
 // Mock dependencies
-jest.mock('../../../../src/infrastructure/database/mongoose/models/order.model', () => ({
+jest.mock('../../../../src/infrastructure/database/mongoose/models/orders/core/order.model', () => ({
     aggregate: jest.fn()
 }));
 
@@ -15,7 +15,7 @@ jest.mock('../../../../src/shared/logger/winston.logger', () => ({
     debug: jest.fn()
 }));
 
-import Order from '../../../../src/infrastructure/database/mongoose/models/order.model';
+import { Order } from '../../../../src/infrastructure/database/mongoose/models';
 
 describe('OrderAnalyticsService', () => {
     const mockCompanyId = '507f1f77bcf86cd799439011';

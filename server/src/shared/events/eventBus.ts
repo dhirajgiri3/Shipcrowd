@@ -11,7 +11,7 @@
  */
 
 import { EventEmitter } from 'events';
-import logger from '../logger/winston.logger.js';
+import logger from '../logger/winston.logger';
 
 // Event types
 export type AppEvent =

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import WebhookEvent from '../../../../infrastructure/database/mongoose/models/webhook-event.model';
+import { WebhookEvent } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyWebhookService from '../../../../core/application/services/shopify/shopify-webhook.service';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import winston from 'winston';

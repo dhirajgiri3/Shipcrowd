@@ -1,15 +1,16 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import ShopifyOrderSyncService from '../../../../src/core/application/services/shopify/ShopifyOrderSyncService';
-import ShopifyStore from '../../../../src/infrastructure/database/mongoose/models/ShopifyStore';
-import ShopifySyncLog from '../../../../src/infrastructure/database/mongoose/models/ShopifySyncLog';
-import Order from '../../../../src/infrastructure/database/mongoose/models/Order';
-import ShopifyClient from '../../../../src/infrastructure/external/shopify/ShopifyClient';
+import ShopifyOrderSyncService from '../../../../src/core/application/services/shopify/shopify-order-sync.service';
+import { ShopifyStore, ShopifySyncLog, Order } from '../../../../src/infrastructure/database/mongoose/models';
+import ShopifyClient from '../../../../src/infrastructure/external/ecommerce/shopify/shopify.client';
 
 // Mock dependencies
-jest.mock('../../../../src/infrastructure/database/mongoose/models/ShopifyStore');
-jest.mock('../../../../src/infrastructure/database/mongoose/models/ShopifySyncLog');
-jest.mock('../../../../src/infrastructure/database/mongoose/models/Order');
-jest.mock('../../../../src/infrastructure/external/shopify/ShopifyClient');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/marketplaces/shopify/shopify-sync-log.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/orders/core/order.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/marketplaces/shopify/shopify-sync-log.model');
+jest.mock('../../../../src/infrastructure/database/mongoose/models/orders/core/order.model');
+jest.mock('../../../../src/infrastructure/external/ecommerce/shopify/shopify.client');
 
 describe('ShopifyOrderSyncService', () => {
   const mockStoreId = '507f1f77bcf86cd799439011';
@@ -76,24 +77,24 @@ describe('ShopifyOrderSyncService', () => {
         companyId: mockCompanyId,
         isActive: true,
         isPaused: false,
-        decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        updateSyncStatus: jest.fn().mockResolvedValue(true),
-        incrementSyncStats: jest.fn().mockResolvedValue(true),
+        decryptAccessToken: jest.fn<any>().mockReturnValue(mockAccessToken),
+        updateSyncStatus: jest.fn<any>().mockResolvedValue(true),
+        incrementSyncStats: jest.fn<any>().mockResolvedValue(true),
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockSyncLog = {
         _id: 'sync-log-123',
-        completeSyncWithErrors: jest.fn().mockResolvedValue(true),
+        completeSyncWithErrors: jest.fn<any>().mockResolvedValue(true),
       };
 
-      (ShopifySyncLog.create as any) = jest.fn().mockResolvedValue(mockSyncLog);
+      (ShopifySyncLog.create as any) = jest.fn<any>().mockResolvedValue(mockSyncLog);
 
       const mockClient = {
-        get: jest.fn().mockResolvedValue({
+        get: jest.fn<any>().mockResolvedValue({
           orders: [mockShopifyOrder],
         }),
       };
@@ -101,8 +102,8 @@ describe('ShopifyOrderSyncService', () => {
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
       // Mock Order.findOne to return null (new order)
-      (Order.findOne as any) = jest.fn().mockResolvedValue(null);
-      (Order.create as any) = jest.fn().mockResolvedValue({
+      (Order.findOne as any) = jest.fn<any>().mockResolvedValue(null);
+      (Order.create as any) = jest.fn<any>().mockResolvedValue({
         _id: 'order-123',
         orderNumber: 'SHOPIFY-1001',
       });
@@ -124,7 +125,7 @@ describe('ShopifyOrderSyncService', () => {
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const result = await ShopifyOrderSyncService.syncOrders(mockStoreId);
@@ -141,7 +142,7 @@ describe('ShopifyOrderSyncService', () => {
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       await expect(ShopifyOrderSyncService.syncOrders(mockStoreId)).rejects.toThrow(
@@ -157,23 +158,23 @@ describe('ShopifyOrderSyncService', () => {
         isActive: true,
         isPaused: false,
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        updateSyncStatus: jest.fn().mockResolvedValue(true),
-        incrementSyncStats: jest.fn().mockResolvedValue(true),
+        updateSyncStatus: jest.fn<any>().mockResolvedValue(true),
+        incrementSyncStats: jest.fn<any>().mockResolvedValue(true),
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockSyncLog = {
         _id: 'sync-log-123',
-        completeSyncWithErrors: jest.fn().mockResolvedValue(true),
+        completeSyncWithErrors: jest.fn<any>().mockResolvedValue(true),
       };
 
-      (ShopifySyncLog.create as any) = jest.fn().mockResolvedValue(mockSyncLog);
+      (ShopifySyncLog.create as any) = jest.fn<any>().mockResolvedValue(mockSyncLog);
 
       const mockClient = {
-        get: jest.fn().mockResolvedValue({
+        get: jest.fn<any>().mockResolvedValue({
           orders: [mockShopifyOrder],
         }),
       };
@@ -187,7 +188,7 @@ describe('ShopifyOrderSyncService', () => {
         updatedAt: new Date(),
       };
 
-      (Order.findOne as any) = jest.fn().mockResolvedValue(mockExistingOrder);
+      (Order.findOne as any) = jest.fn<any>().mockResolvedValue(mockExistingOrder);
 
       const result = await ShopifyOrderSyncService.syncOrders(mockStoreId);
 
@@ -310,23 +311,23 @@ describe('ShopifyOrderSyncService', () => {
         isActive: true,
         isPaused: false,
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        updateSyncStatus: jest.fn().mockResolvedValue(true),
-        incrementSyncStats: jest.fn().mockResolvedValue(true),
+        updateSyncStatus: jest.fn<any>().mockResolvedValue(true),
+        incrementSyncStats: jest.fn<any>().mockResolvedValue(true),
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockSyncLog = {
         _id: 'sync-log-123',
-        completeSyncWithErrors: jest.fn().mockResolvedValue(true),
+        completeSyncWithErrors: jest.fn<any>().mockResolvedValue(true),
       };
 
-      (ShopifySyncLog.create as any) = jest.fn().mockResolvedValue(mockSyncLog);
+      (ShopifySyncLog.create as any) = jest.fn<any>().mockResolvedValue(mockSyncLog);
 
       const mockClient = {
-        get: jest.fn().mockResolvedValue({ orders: [] }),
+        get: jest.fn<any>().mockResolvedValue({ orders: [] }),
       };
 
       (ShopifyClient as any).mockImplementation(() => mockClient);
@@ -349,23 +350,23 @@ describe('ShopifyOrderSyncService', () => {
         isActive: true,
         isPaused: false,
         decryptAccessToken: jest.fn().mockReturnValue(mockAccessToken),
-        updateSyncStatus: jest.fn().mockResolvedValue(true),
-        incrementSyncStats: jest.fn().mockResolvedValue(true),
+        updateSyncStatus: jest.fn<any>().mockResolvedValue(true),
+        incrementSyncStats: jest.fn<any>().mockResolvedValue(true),
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockSyncLog = {
         _id: 'sync-log-123',
-        completeSyncWithErrors: jest.fn().mockResolvedValue(true),
+        completeSyncWithErrors: jest.fn<any>().mockResolvedValue(true),
       };
 
-      (ShopifySyncLog.create as any) = jest.fn().mockResolvedValue(mockSyncLog);
+      (ShopifySyncLog.create as any) = jest.fn<any>().mockResolvedValue(mockSyncLog);
 
       const mockClient = {
-        get: jest.fn().mockResolvedValue({ orders: [] }),
+        get: jest.fn<any>().mockResolvedValue({ orders: [] }),
       };
 
       (ShopifyClient as any).mockImplementation(() => mockClient);
@@ -386,17 +387,17 @@ describe('ShopifyOrderSyncService', () => {
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockClient = {
-        get: jest.fn().mockResolvedValue({ order: mockShopifyOrder }),
+        get: jest.fn<any>().mockResolvedValue({ order: mockShopifyOrder }),
       };
 
       (ShopifyClient as any).mockImplementation(() => mockClient);
 
-      (Order.findOne as any) = jest.fn().mockResolvedValue(null);
-      (Order.create as any) = jest.fn().mockResolvedValue({
+      (Order.findOne as any) = jest.fn<any>().mockResolvedValue(null);
+      (Order.create as any) = jest.fn<any>().mockResolvedValue({
         _id: 'order-123',
         orderNumber: 'SHOPIFY-1001',
       });
@@ -416,11 +417,11 @@ describe('ShopifyOrderSyncService', () => {
       };
 
       (ShopifyStore.findById as any) = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockStore),
+        select: jest.fn<any>().mockResolvedValue(mockStore),
       });
 
       const mockClient = {
-        get: jest.fn().mockResolvedValue({ order: null }),
+        get: jest.fn<any>().mockResolvedValue({ order: null }),
       };
 
       (ShopifyClient as any).mockImplementation(() => mockClient);

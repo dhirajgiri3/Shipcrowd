@@ -3,9 +3,9 @@
  */
 
 import mongoose from 'mongoose';
-import Inventory, { IInventory } from '@/infrastructure/database/mongoose/models/inventory.model';
-import StockMovement, { IStockMovement } from '@/infrastructure/database/mongoose/models/stock-movement.model';
-import WarehouseLocation from '@/infrastructure/database/mongoose/models/warehouse-location.model';
+import { Inventory, IInventory } from '@/infrastructure/database/mongoose/models';
+import { StockMovement, IStockMovement } from '@/infrastructure/database/mongoose/models';
+import { WarehouseLocation } from '@/infrastructure/database/mongoose/models';
 import {
     ICreateInventoryDTO,
     IUpdateInventoryDTO,

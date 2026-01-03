@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/rto-event.model';
-import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
-import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
+import { RTOEvent, IRTOEvent } from '../../../../infrastructure/database/mongoose/models';
+import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
 import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
 import WalletService from '../wallet/wallet.service';
@@ -10,7 +10,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { getRateLimiter } from '../../../../infrastructure/utilities/rate-limiter';
-import eventBus from '../../../../shared/events/eventBus.js';
+import eventBus from '../../../../shared/events/eventBus';
 
 interface RTOResult {
     success: boolean;

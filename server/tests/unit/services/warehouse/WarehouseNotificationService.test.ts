@@ -1,7 +1,7 @@
 import WarehouseNotificationService from '../../../../src/core/application/services/warehouse/warehouse-notification.service';
-import WhatsAppService from '../../../../src/infrastructure/integrations/communication/whatsapp.service';
+import WhatsAppService from '../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service';
 
-jest.mock('../../../../src/infrastructure/integrations/communication/whatsapp.service');
+jest.mock('../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service');
 
 describe('WarehouseNotificationService', () => {
     beforeEach(() => {

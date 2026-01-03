@@ -6,14 +6,15 @@
  */
 
 import mongoose from 'mongoose';
-import CommissionRule, {
+import {
+    CommissionRule,
     ICommissionRule,
     RuleType,
-} from '../../../../infrastructure/database/mongoose/models/commission-rule.model.js';
-import AuditLog from '../../../../infrastructure/database/mongoose/models/audit-log.model.js';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model.js';
-import logger from '../../../../shared/logger/winston.logger.js';
-import { AppError } from '../../../../shared/errors/index.js';
+    AuditLog,
+    Order
+} from '../../../../infrastructure/database/mongoose/models';
+import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/index';
 
 // DTOs and types
 export interface CreateRuleDTO {

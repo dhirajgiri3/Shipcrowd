@@ -9,8 +9,8 @@
 import mongoose from 'mongoose';
 import { VelocityShipfastProvider } from '../../../src/infrastructure/external/couriers/velocity/velocity-shipfast.provider';
 import { CourierFactory } from '../../../src/core/application/services/courier/courier.factory';
-import Integration from '../../../src/infrastructure/database/mongoose/models/integration.model';
-import Warehouse from '../../../src/infrastructure/database/mongoose/models/warehouse.model';
+import { Integration } from '../../../src/infrastructure/database/mongoose/models';
+import { Warehouse } from '../../../src/infrastructure/database/mongoose/models';
 import { encryptData } from '../../../src/shared/utils/encryption';
 import axios from 'axios';
 import { CourierShipmentData } from '../../../src/infrastructure/external/couriers/base/courier.adapter';

@@ -14,7 +14,7 @@
  * Merchants generate API keys manually in their WooCommerce settings.
  */
 
-import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/woocommerce-store.model';
+import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { WooCommerceWebhook } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';

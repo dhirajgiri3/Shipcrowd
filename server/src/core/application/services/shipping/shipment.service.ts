@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
-import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import Warehouse from '../../../../infrastructure/database/mongoose/models/warehouse.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order } from '../../../../infrastructure/database/mongoose/models';
+import { Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import { selectBestCarrier, CarrierSelectionResult } from './carrier.service';
 import { generateTrackingNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';

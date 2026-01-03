@@ -14,7 +14,7 @@ jest.mock('../../../../src/core/application/services/analytics/order-analytics.s
     }
 }));
 
-jest.mock('../../../../src/core/application/services/analytics/ShipmentAnalyticsService', () => ({
+jest.mock('../../../../src/core/application/services/analytics/shipment-analytics.service', () => ({
     default: {
         getShipmentStats: jest.fn().mockResolvedValue({ total: 50 }),
         getCourierPerformance: jest.fn().mockResolvedValue([]),
@@ -22,7 +22,7 @@ jest.mock('../../../../src/core/application/services/analytics/ShipmentAnalytics
     }
 }));
 
-jest.mock('../../../../src/core/application/services/analytics/RevenueAnalyticsService', () => ({
+jest.mock('../../../../src/core/application/services/analytics/revenue-analytics.service', () => ({
     default: {
         getRevenueStats: jest.fn().mockResolvedValue({ totalRevenue: 10000 }),
         getWalletStats: jest.fn().mockResolvedValue({}),
@@ -30,7 +30,7 @@ jest.mock('../../../../src/core/application/services/analytics/RevenueAnalyticsS
     }
 }));
 
-jest.mock('../../../../src/core/application/services/analytics/CustomerAnalyticsService', () => ({
+jest.mock('../../../../src/core/application/services/analytics/customer-analytics.service', () => ({
     default: {
         getCustomerStats: jest.fn().mockResolvedValue({ totalCustomers: 25 }),
         getTopCustomers: jest.fn().mockResolvedValue([]),
@@ -38,23 +38,23 @@ jest.mock('../../../../src/core/application/services/analytics/CustomerAnalytics
     }
 }));
 
-jest.mock('../../../../src/core/application/services/analytics/InventoryAnalyticsService', () => ({
+jest.mock('../../../../src/core/application/services/analytics/inventory-analytics.service', () => ({
     default: {
         getStockLevels: jest.fn().mockResolvedValue({ totalSKUs: 100 }),
         getSlowMovingProducts: jest.fn().mockResolvedValue([])
     }
 }));
 
-jest.mock('../../../../src/infrastructure/database/mongoose/models/ReportConfig', () => {
+jest.mock('../../../../src/infrastructure/database/mongoose/models/system/reporting/report-config.model', () => {
     const mockSave = jest.fn().mockResolvedValue(true);
     const mockModel = jest.fn().mockImplementation((data) => ({
         ...data,
         save: mockSave
     }));
-    mockModel.findOne = jest.fn();
-    mockModel.find = jest.fn();
-    mockModel.countDocuments = jest.fn();
-    mockModel.deleteOne = jest.fn();
+    (mockModel as any).findOne = jest.fn();
+    (mockModel as any).find = jest.fn();
+    (mockModel as any).countDocuments = jest.fn();
+    (mockModel as any).deleteOne = jest.fn();
     return { default: mockModel };
 });
 

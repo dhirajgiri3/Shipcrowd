@@ -6,7 +6,7 @@
 
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
-import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,

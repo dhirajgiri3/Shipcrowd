@@ -5,11 +5,11 @@
  */
 
 import { Router } from 'express';
-import commissionRulesRouter from './commission-rules.routes.js';
-import salesRepresentativesRouter from './sales-representatives.routes.js';
-import commissionTransactionsRouter from './commission-transactions.routes.js';
-import payoutsRouter from './payouts.routes.js';
-import analyticsRouter from './analytics.routes.js';
+import commissionRulesRouter from './commission-rules.routes';
+import salesRepresentativesRouter from './sales-representatives.routes';
+import commissionTransactionsRouter from './commission-transactions.routes';
+import payoutsRouter from './payouts.routes';
+import analyticsRouter from './analytics.routes';
 
 const router = Router();
 

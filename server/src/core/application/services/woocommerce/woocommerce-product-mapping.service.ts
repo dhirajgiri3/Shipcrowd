@@ -11,8 +11,8 @@
  * - Mapping statistics
  */
 
-import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/woocommerce-store.model';
-import WooCommerceProductMapping from '../../../../infrastructure/database/mongoose/models/woocommerce-product-mapping.model';
+import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
+import { WooCommerceProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import {
   WooCommerceProduct,

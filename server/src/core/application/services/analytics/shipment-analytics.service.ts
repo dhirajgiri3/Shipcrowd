@@ -4,7 +4,7 @@
  * Provides shipment statistics, courier performance, and delivery analysis.
  */
 
-import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import AnalyticsService, { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
 

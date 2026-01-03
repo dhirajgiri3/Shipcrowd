@@ -6,12 +6,13 @@
  */
 
 import mongoose from 'mongoose';
-import Company from '../../../../infrastructure/database/mongoose/models/company.model';
-import WalletTransaction, {
+import { Company } from '../../../../infrastructure/database/mongoose/models';
+import {
+    WalletTransaction,
     IWalletTransaction,
     TransactionType,
     TransactionReason,
-} from '../../../../infrastructure/database/mongoose/models/wallet-transaction.model';
+} from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
