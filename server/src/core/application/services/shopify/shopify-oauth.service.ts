@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import ShopifyStore from '../../../../infrastructure/database/mongoose/models/shopify-store.model';
-import ShopifyClient from '../../../../infrastructure/external/shopify/shopify.client';
+import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 

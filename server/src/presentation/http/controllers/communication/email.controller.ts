@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth/auth';
 import User from '../../../../infrastructure/database/mongoose/models/user.model';
 import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/emailChange.service';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
 

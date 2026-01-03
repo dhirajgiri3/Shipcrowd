@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import WooCommerceWebhookController from '../../../controllers/webhooks/woocommerce.webhook.controller';
-import { rawBodyParser, verifyWooCommerceWebhook } from '../../../middleware/webhooks/woocommerceWebhookAuth';
+import { rawBodyParser, verifyWooCommerceWebhook } from '../../../middleware/webhooks/woocommerce-webhook-auth.middleware';
 
 const router = Router();
 

@@ -1,4 +1,4 @@
-import WhatsAppService from '../../../../infrastructure/integrations/communication/whatsapp.service';
+import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**

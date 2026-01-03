@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
-import logger from '../../../shared/logger/winston.logger';
+import logger from '../../../shared/../../../../shared/logger/winston.logger';
 
 interface ExotelCallResponse {
     CallSid: string;

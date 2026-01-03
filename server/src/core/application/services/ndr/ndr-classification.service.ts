@@ -5,7 +5,7 @@
  */
 
 import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
-import OpenAIService from '../../../../infrastructure/integrations/ai/openai.service';
+import OpenAIService from '../../../../infrastructure/external/ai/openai/openai.service';
 import logger from '../../../../shared/logger/winston.logger';
 
 export default class NDRClassificationService {

@@ -6,9 +6,9 @@
 
 import NDREvent, { INDREvent, INDRResolutionAction } from '../../../../../infrastructure/database/mongoose/models/ndr-event.model';
 import CallLog from '../../../../../infrastructure/database/mongoose/models/call-log.model';
-import ExotelClient from '../../../../../infrastructure/integrations/communication/exotel.client';
-import WhatsAppService from '../../../../../infrastructure/integrations/communication/whatsapp.service';
-import OpenAIService from '../../../../../infrastructure/integrations/ai/openai.service';
+import ExotelClient from '../../../../../infrastructure/external/communication/exotel/exotel.client';
+import WhatsAppService from '../../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
+import OpenAIService from '../../../../../infrastructure/external/ai/openai/openai.service';
 import TokenService from '../../../../../shared/services/token.service';
 import logger from '../../../../../shared/logger/winston.logger';
 

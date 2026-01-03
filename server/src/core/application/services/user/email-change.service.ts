@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendEmailChangeVerification, sendEmailChangeNotification } from '../communication/email.service';

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import Zone, { IZone } from '../../../../infrastructure/database/mongoose/models/zone.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 import {
     sendSuccess,

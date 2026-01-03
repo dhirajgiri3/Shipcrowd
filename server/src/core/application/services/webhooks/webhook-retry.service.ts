@@ -13,7 +13,7 @@ import {
   WebhookRetryConfig,
   DEFAULT_WEBHOOK_RETRY_CONFIG
 } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
-import { VelocityWebhookService } from './velocityWebhook.service';
+import { VelocityWebhookService } from './velocity-webhook.service';
 
 export class WebhookRetryService {
   private config: WebhookRetryConfig;

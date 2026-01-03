@@ -7,7 +7,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth/auth';
 import InventoryService from '@/core/application/services/warehouse/inventory.service';
-import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
+import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
     sendSuccess,
     sendError,

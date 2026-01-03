@@ -19,8 +19,8 @@
  */
 
 import { Job, Queue, Worker } from 'bullmq';
-import QueueManager from '../queue/queue.manager';
-import RedisConnection from '../queue/redis.connection';
+import QueueManager from '../utilities/queue-manager';
+import RedisConnection from '../utilities/redis.connection';
 import FlipkartOrderSyncService from '../../core/application/services/flipkart/flipkart-order-sync.service';
 import FlipkartStore from '../database/mongoose/models/flipkart-store.model';
 import logger from '../../shared/logger/winston.logger';

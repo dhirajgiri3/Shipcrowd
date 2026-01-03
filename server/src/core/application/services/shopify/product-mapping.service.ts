@@ -1,6 +1,6 @@
 import ShopifyStore from '../../../../infrastructure/database/mongoose/models/shopify-store.model';
 import ProductMapping from '../../../../infrastructure/database/mongoose/models/product-mapping.model';
-import ShopifyClient from '../../../../infrastructure/external/shopify/shopify.client';
+import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 import { Parser } from 'json2csv';

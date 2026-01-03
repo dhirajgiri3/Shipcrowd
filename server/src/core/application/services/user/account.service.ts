@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import Session from '../../../../infrastructure/database/mongoose/models/session.model';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
 import { NotFoundError, DatabaseError } from '../../../../shared/errors/app.error';

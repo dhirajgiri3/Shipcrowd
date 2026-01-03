@@ -12,10 +12,10 @@ import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper'
 import logger from '../../../../shared/logger/winston.logger';
 import Order from '../../../../infrastructure/database/mongoose/models/order.model';
 import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
-import CSVExportService from '../../../../shared/services/export/csv-export.service';
-import ExcelExportService from '../../../../shared/services/export/excel-export.service';
-import PDFExportService from '../../../../shared/services/export/pdf-export.service';
-import CloudinaryStorageService from '../../../../infrastructure/storage/cloudinary-storage.service';
+import CSVExportService from '../../../../core/application/services/analytics/export/csv-export.service';
+import ExcelExportService from '../../../../core/application/services/analytics/export/excel-export.service';
+import PDFExportService from '../../../../core/application/services/analytics/export/pdf-export.service';
+import CloudinaryStorageService from '../../../../infrastructure/external/storage/cloudinary/cloudinary-storage.service';
 import mongoose from 'mongoose';
 
 // Validation schema for export requests

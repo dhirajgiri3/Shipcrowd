@@ -8,11 +8,11 @@
 import { Job } from 'bullmq';
 import ReportConfig from '../database/mongoose/models/report-config.model';
 import ReportBuilderService from '../../core/application/services/analytics/report-builder.service';
-import CSVExportService from '../../shared/services/export/csv-export.service';
-import ExcelExportService from '../../shared/services/export/excel-export.service';
-import PDFExportService from '../../shared/services/export/pdf-export.service';
-import CloudinaryStorageService from '../storage/cloudinary-storage.service';
-import QueueManager from '../queue/queue.manager';
+import CSVExportService from '../../core/application/services/analytics/export/csv-export.service';
+import ExcelExportService from '../../core/application/services/analytics/export/excel-export.service';
+import PDFExportService from '../../core/application/services/analytics/export/pdf-export.service';
+import CloudinaryStorageService from '../external/storage/cloudinary/cloudinary-storage.service';
+import QueueManager from '../utilities/queue-manager';
 import logger from '../../shared/logger/winston.logger';
 
 interface ScheduledReportJobData {

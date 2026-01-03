@@ -9,7 +9,7 @@ import NDRWorkflow, { INDRWorkflow, IWorkflowAction } from '../../../../infrastr
 import NDRActionExecutors from './actions/ndr-action-executors';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 
 interface CustomerInfo {
@@ -148,7 +148,7 @@ export default class NDRResolutionService {
         action: IWorkflowAction
     ): Promise<void> {
         // Import job dynamically
-        const QueueManagerModule = await import('../../../../infrastructure/queue/queue.manager.js') as any;
+        const QueueManagerModule = await import('../../../../infrastructure/utilities/queue-manager.js') as any;
         const QueueManager = QueueManagerModule.default;
 
         await QueueManager.addJob(

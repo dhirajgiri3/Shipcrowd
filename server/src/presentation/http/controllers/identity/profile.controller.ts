@@ -6,7 +6,7 @@ import {
   updateProfileCompletionStatus,
   getProfileCompletionSuggestions
 } from '../../../../core/application/services/user/profile.service';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import {
   sendSuccess,

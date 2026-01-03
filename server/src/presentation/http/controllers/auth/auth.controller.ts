@@ -5,7 +5,7 @@ import passport from 'passport';
 import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import TeamInvitation from '../../../../infrastructure/database/mongoose/models/team-invitation.model';
 import Session from '../../../../infrastructure/database/mongoose/models/session.model';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../../../core/application/services/communication/email.service';
 import { createSession, updateSessionActivity, revokeSession, getUserSessions, revokeAllSessions } from '../../../../core/application/services/auth/session.service';

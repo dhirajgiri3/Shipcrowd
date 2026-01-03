@@ -9,7 +9,7 @@ import {
 } from '../../../../core/application/services/user/recovery.service';
 import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
 import { sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
 

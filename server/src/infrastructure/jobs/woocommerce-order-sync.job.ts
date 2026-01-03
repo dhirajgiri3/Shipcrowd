@@ -19,8 +19,8 @@
  */
 
 import { Job, Queue, Worker } from 'bullmq';
-import QueueManager from '../queue/queue.manager';
-import RedisConnection from '../queue/redis.connection';
+import QueueManager from '../utilities/queue-manager';
+import RedisConnection from '../utilities/redis.connection';
 import WooCommerceOrderSyncService from '../../core/application/services/woocommerce/woocommerce-order-sync.service';
 import WooCommerceStore from '../database/mongoose/models/woocommerce-store.model';
 import logger from '../../shared/logger/winston.logger';

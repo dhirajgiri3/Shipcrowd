@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import express from 'express';
 import ShopifyWebhookController from '../../../controllers/webhooks/shopify.webhook.controller';
-import { verifyShopifyWebhook, captureRawBody } from '../../../middleware/webhooks/shopifyWebhookAuth';
+import { verifyShopifyWebhook, captureRawBody } from '../../../middleware/webhooks/shopify-webhook-auth.middleware';
 
 /**
  * Shopify Webhook Routes

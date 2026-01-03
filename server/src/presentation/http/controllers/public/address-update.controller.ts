@@ -3,7 +3,7 @@ import TokenService from '../../../../shared/services/token.service';
 import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
 import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
 import { AppError } from '../../../../shared/errors/app.error';
-import WhatsAppService from '../../../../infrastructure/integrations/communication/whatsapp.service';
+import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import WarehouseNotificationService from '../../../../core/application/services/warehouse/warehouse-notification.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendValidationError } from '../../../../shared/utils/responseHelper';

@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import KYC from '../../../../infrastructure/database/mongoose/models/kyc.model';
 import User, { IUser } from '../../../../infrastructure/database/mongoose/models/user.model';
 import { AuthRequest } from '../../middleware/auth/auth';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
 import deepvueService from '../../../../core/application/services/integrations/deepvue.service';

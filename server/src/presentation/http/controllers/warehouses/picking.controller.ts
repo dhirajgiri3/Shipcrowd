@@ -7,7 +7,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middleware/auth/auth';
 import PickingService from "@/core/application/services/warehouse/picking.service";
-import { createAuditLog } from '@/presentation/http/middleware/system/auditLog';
+import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
     sendSuccess,
     sendError,

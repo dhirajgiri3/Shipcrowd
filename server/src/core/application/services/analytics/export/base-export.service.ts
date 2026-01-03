@@ -5,7 +5,7 @@
  * for CSV, Excel, and PDF export services.
  */
 
-import logger from '../../logger/winston.logger';
+import logger from '../../../../../../shared/logger/winston.logger';
 
 export interface BaseColumn {
     header: string;

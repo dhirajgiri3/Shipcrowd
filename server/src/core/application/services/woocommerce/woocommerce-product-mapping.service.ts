@@ -13,11 +13,11 @@
 
 import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/woocommerce-store.model';
 import WooCommerceProductMapping from '../../../../infrastructure/database/mongoose/models/woocommerce-product-mapping.model';
-import WooCommerceClient from '../../../../infrastructure/integrations/ecommerce/woocommerce/woocommerce.client';
+import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import {
   WooCommerceProduct,
   WooCommerceProductVariation,
-} from '../../../../infrastructure/integrations/ecommerce/woocommerce/woocommerce.types';
+} from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { Parser } from 'json2csv';

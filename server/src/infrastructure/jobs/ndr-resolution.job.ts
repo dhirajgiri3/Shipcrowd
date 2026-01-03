@@ -8,7 +8,7 @@ import { Job } from 'bullmq';
 import NDREvent from '../database/mongoose/models/ndr-event.model';
 import NDRWorkflow from '../database/mongoose/models/ndr-workflow.model';
 import NDRResolutionService from '../../core/application/services/ndr/ndr-resolution.service';
-import QueueManager from '../queue/queue.manager';
+import QueueManager from '../utilities/queue-manager';
 import winston from 'winston';
 
 interface NDRResolutionJobData {

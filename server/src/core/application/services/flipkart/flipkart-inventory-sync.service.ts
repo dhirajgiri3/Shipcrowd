@@ -1,7 +1,7 @@
 import FlipkartStore from '../../../../infrastructure/database/mongoose/models/flipkart-store.model';
 import FlipkartProductMapping from '../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model';
 import FlipkartSyncLog from '../../../../infrastructure/database/mongoose/models/flipkart-sync-log.model';
-import FlipkartClient from '../../../../infrastructure/external/flipkart/flipkart.client';
+import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 

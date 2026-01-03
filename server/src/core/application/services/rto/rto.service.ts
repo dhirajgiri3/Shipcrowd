@@ -3,13 +3,13 @@ import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoos
 import NDREvent from '../../../../infrastructure/database/mongoose/models/ndr-event.model';
 import Shipment from '../../../../infrastructure/database/mongoose/models/shipment.model';
 import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import WhatsAppService from '../../../../infrastructure/integrations/communication/whatsapp.service';
+import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
 import WalletService from '../wallet/wallet.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
-import { createAuditLog } from '../../../../presentation/http/middleware/system/auditLog';
-import { getRateLimiter } from '../../../../infrastructure/cache/rate.limiter';
+import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
+import { getRateLimiter } from '../../../../infrastructure/utilities/rate-limiter';
 import eventBus from '../../../../shared/events/eventBus.js';
 
 interface RTOResult {

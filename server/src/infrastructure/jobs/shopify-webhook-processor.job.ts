@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import QueueManager from '../queue/queue.manager';
+import QueueManager from '../utilities/queue-manager';
 import WebhookEvent from '../database/mongoose/models/webhook-event.model';
 import ShopifyWebhookService from '../../core/application/services/shopify/shopify-webhook.service';
 import winston from 'winston';

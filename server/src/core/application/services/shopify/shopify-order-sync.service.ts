@@ -1,7 +1,7 @@
 import ShopifyStore from '../../../../infrastructure/database/mongoose/models/shopify-store.model';
 import ShopifySyncLog from '../../../../infrastructure/database/mongoose/models/shopify-sync-log.model';
 import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import ShopifyClient from '../../../../infrastructure/external/shopify/shopify.client';
+import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 

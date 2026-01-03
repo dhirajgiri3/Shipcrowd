@@ -9,7 +9,7 @@ import {
   cancelScheduledDeletion,
   permanentlyDeleteAccount
 } from '../../../../core/application/services/user/account.service';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import {
   sendSuccess,

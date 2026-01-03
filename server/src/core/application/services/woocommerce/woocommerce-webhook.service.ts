@@ -17,7 +17,7 @@
 import WooCommerceOrderSyncService from './woocommerce-order-sync.service';
 import WooCommerceProductMapping from '../../../../infrastructure/database/mongoose/models/woocommerce-product-mapping.model';
 import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/woocommerce-store.model';
-import { WooCommerceOrder, WooCommerceProduct } from '../../../../infrastructure/integrations/ecommerce/woocommerce/woocommerce.types';
+import { WooCommerceOrder, WooCommerceProduct } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import logger from '../../../../shared/logger/winston.logger';
 
 export default class WooCommerceWebhookService {

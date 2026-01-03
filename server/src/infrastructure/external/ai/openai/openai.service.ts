@@ -11,7 +11,7 @@
  */
 
 import OpenAI from 'openai';
-import logger from '../../../shared/logger/winston.logger';
+import logger from '../../../shared/../../../../shared/logger/winston.logger';
 
 interface ClassificationResult {
     category: string;

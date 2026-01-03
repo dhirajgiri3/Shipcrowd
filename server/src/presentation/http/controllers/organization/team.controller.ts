@@ -8,7 +8,7 @@ import TeamInvitation from '../../../../infrastructure/database/mongoose/models/
 import TeamPermission from '../../../../infrastructure/database/mongoose/models/team-permission.model';
 import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
-import { createAuditLog } from '../../middleware/system/auditLog';
+import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import emailService from '../../../../core/application/services/communication/email.service';
 import { getUserPermissions } from '../../middleware/auth/permissions';
 import activityService from '../../../../core/application/services/user/activity.service';

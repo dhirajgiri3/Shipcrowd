@@ -5,7 +5,7 @@
  */
 
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import logger from '../../shared/logger/winston.logger';
+import logger from '../../../../shared/logger/winston.logger';
 
 // Configure Cloudinary
 cloudinary.config({

@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import QueueManager from '../queue/queue.manager';
+import QueueManager from '../utilities/queue-manager';
 import AmazonStore from '../database/mongoose/models/amazon-store.model';
 import AmazonOrderSyncService from '../../core/application/services/amazon/amazon-order-sync.service';
 import logger from '../../shared/logger/winston.logger';

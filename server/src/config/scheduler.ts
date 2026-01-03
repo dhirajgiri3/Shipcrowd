@@ -1,6 +1,6 @@
 import { CronJob } from 'cron';
 import logger from '../shared/logger/winston.logger';
-import { processScheduledDeletions } from '../infrastructure/jobs/accountDeletion.job';
+import { processScheduledDeletions } from '../infrastructure/jobs/account-deletion.job';
 
 /**
  * Initialize all scheduled jobs

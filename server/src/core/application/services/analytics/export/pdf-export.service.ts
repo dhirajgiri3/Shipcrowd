@@ -5,7 +5,7 @@
  */
 
 import PDFDocument from 'pdfkit';
-import logger from '../../logger/winston.logger';
+import logger from '../../../../../../shared/logger/winston.logger';
 
 export interface PDFColumn {
     header: string;

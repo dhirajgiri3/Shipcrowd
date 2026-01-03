@@ -14,7 +14,7 @@
 import AmazonStore from '../../../../infrastructure/database/mongoose/models/amazon-store.model';
 import AmazonSyncLog from '../../../../infrastructure/database/mongoose/models/amazon-sync-log.model';
 import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import { AmazonClient } from '../../../../infrastructure/external/amazon/amazon.client';
+import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amazon/amazon.client';
 import AmazonOAuthService from './amazon-oauth.service';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';

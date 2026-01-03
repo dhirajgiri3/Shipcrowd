@@ -13,7 +13,7 @@ import {
 import {
   verifyVelocityWebhookSignature,
   bypassWebhookVerification
-} from '../../../middleware/webhooks/velocityWebhookAuth';
+} from '../../../middleware/webhooks/velocity-webhook-auth.middleware';
 import { authenticate } from '../../../middleware/auth/auth';
 
 const router = Router();

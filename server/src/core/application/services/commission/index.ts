@@ -2,9 +2,9 @@
  * Commission Services Barrel Export
  */
 
-export { default as CommissionRuleService } from './CommissionRuleService.js';
-export { default as SalesRepresentativeService } from './SalesRepresentativeService.js';
-export { default as CommissionCalculationService } from './CommissionCalculationService.js';
-export { default as CommissionApprovalService } from './CommissionApprovalService.js';
-export { default as PayoutProcessingService } from './PayoutProcessingService.js';
-export { default as CommissionAnalyticsService } from './CommissionAnalyticsService.js';
+export { default as CommissionRuleService } from './commission-rule.service';
+export { default as SalesRepresentativeService } from './sales-representative.service';
+export { default as CommissionCalculationService } from './commission-calculation.service';
+export { default as CommissionApprovalService } from './commission-approval.service';
+export { default as PayoutProcessingService } from './payout-processing.service';
+export { default as CommissionAnalyticsService } from './commission-analytics.service';

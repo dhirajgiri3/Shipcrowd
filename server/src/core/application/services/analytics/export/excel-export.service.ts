@@ -5,7 +5,7 @@
  */
 
 import ExcelJS from 'exceljs';
-import logger from '../../logger/winston.logger';
+import logger from '../../../../../../shared/logger/winston.logger';
 
 export interface ExcelColumn {
     header: string;

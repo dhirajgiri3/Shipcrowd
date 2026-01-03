@@ -2,7 +2,7 @@ import ShopifyStore from '../../../../infrastructure/database/mongoose/models/sh
 import ShopifyOrderSyncService from './shopify-order-sync.service';
 import ProductMapping from '../../../../infrastructure/database/mongoose/models/product-mapping.model';
 import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import QueueManager from '../../../../infrastructure/queue/queue.manager';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError } from '../../../../shared/errors/app.error';
 import winston from 'winston';
 

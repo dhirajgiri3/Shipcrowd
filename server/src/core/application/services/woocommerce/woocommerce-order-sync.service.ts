@@ -22,8 +22,8 @@
 import WooCommerceStore from '../../../../infrastructure/database/mongoose/models/woocommerce-store.model';
 import WooCommerceSyncLog from '../../../../infrastructure/database/mongoose/models/woocommerce-sync-log.model';
 import Order from '../../../../infrastructure/database/mongoose/models/order.model';
-import WooCommerceClient from '../../../../infrastructure/integrations/ecommerce/woocommerce/woocommerce.client';
-import { WooCommerceOrder } from '../../../../infrastructure/integrations/ecommerce/woocommerce/woocommerce.types';
+import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
+import { WooCommerceOrder } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 
