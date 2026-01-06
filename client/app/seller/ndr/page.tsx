@@ -64,10 +64,10 @@ const mockNDRs = [
 ];
 
 const statusStyles = {
-    pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', label: 'Pending' },
-    reattempt: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', label: 'Reattempt Scheduled' },
-    rto_initiated: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300', label: 'RTO Initiated' },
-    resolved: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', label: 'Resolved' },
+    pending: { bg: 'bg-[var(--warning-bg)]', text: 'text-[var(--warning)]', label: 'Pending' },
+    reattempt: { bg: 'bg-[var(--info-bg)]', text: 'text-[var(--info)]', label: 'Reattempt Scheduled' },
+    rto_initiated: { bg: 'bg-[var(--error-bg)]', text: 'text-[var(--error)]', label: 'RTO Initiated' },
+    resolved: { bg: 'bg-[var(--success-bg)]', text: 'text-[var(--success)]', label: 'Resolved' },
 };
 
 export default function NDRManagementPage() {
@@ -103,43 +103,43 @@ export default function NDRManagementPage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border-amber-200/80 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20">
+                <Card className="border-[var(--warning)]/20 bg-[var(--warning-bg)]">
                     <CardContent className="p-4">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                                <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                            <div className="h-12 w-12 rounded-2xl bg-[var(--warning)]/10 flex items-center justify-center">
+                                <AlertTriangle className="h-6 w-6 text-[var(--warning)]" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{pendingCount}</p>
-                                <p className="text-sm text-amber-600 dark:text-amber-400">Pending NDRs</p>
+                                <p className="text-2xl font-bold text-[var(--warning)]">{pendingCount}</p>
+                                <p className="text-sm text-[var(--warning)]">Pending NDRs</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-rose-200/80 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-950/20">
+                <Card className="border-[var(--error)]/20 bg-[var(--error-bg)]">
                     <CardContent className="p-4">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
-                                <X className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                            <div className="h-12 w-12 rounded-2xl bg-[var(--error)]/10 flex items-center justify-center">
+                                <X className="h-6 w-6 text-[var(--error)]" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-rose-700 dark:text-rose-300">{rtoCount}</p>
-                                <p className="text-sm text-rose-600 dark:text-rose-400">RTO Initiated</p>
+                                <p className="text-2xl font-bold text-[var(--error)]">{rtoCount}</p>
+                                <p className="text-sm text-[var(--error)]">RTO Initiated</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+                <Card className="border-[var(--success)]/20 bg-[var(--success-bg)]">
                     <CardContent className="p-4">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                            <div className="h-12 w-12 rounded-2xl bg-[var(--success)]/10 flex items-center justify-center">
+                                <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">85%</p>
-                                <p className="text-sm text-emerald-600 dark:text-emerald-400">Resolution Rate</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">85%</p>
+                                <p className="text-sm text-[var(--success)]">Resolution Rate</p>
                             </div>
                         </div>
                     </CardContent>
@@ -180,7 +180,7 @@ export default function NDRManagementPage() {
                 {filteredNDRs.length === 0 ? (
                     <Card className="border-[var(--border-default)]">
                         <CardContent className="p-12 text-center">
-                            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-emerald-500" />
+                            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-[var(--success)]" />
                             <h3 className="text-lg font-semibold text-[var(--text-primary)]">No NDRs found</h3>
                             <p className="text-sm text-[var(--text-secondary)] mt-1">
                                 All deliveries are on track!

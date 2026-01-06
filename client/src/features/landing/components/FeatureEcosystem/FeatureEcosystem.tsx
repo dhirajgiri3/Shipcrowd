@@ -167,23 +167,23 @@ function FeatureShowcase({ feature, index, inView, reverse }: any) {
         >
             {/* Content Side */}
             <div className="flex-1 space-y-8 relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-charcoal-50 rounded-full border border-charcoal-100">
-                    <feature.icon size={14} className="text-charcoal-600" />
-                    <span className="text-xs font-bold text-charcoal-600 uppercase tracking-wider">{feature.title}</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100 shadow-sm">
+                    <feature.icon size={14} className="text-gray-600" />
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{feature.title}</span>
                 </div>
 
-                <h3 className="text-3xl md:text-5xl font-bold text-charcoal-950 leading-tight">
+                <h3 className="text-3xl md:text-5xl font-bold text-gray-900 leading-tight tracking-tight">
                     {feature.title}
                 </h3>
 
-                <p className="text-lg text-charcoal-600 leading-relaxed">
+                <p className="text-lg text-gray-600 leading-relaxed font-medium">
                     {feature.description}
                 </p>
 
-                <div className="flex items-center gap-8 pt-4 border-t border-charcoal-100">
+                <div className="flex items-center gap-8 pt-4 border-t border-gray-100">
                     <div>
                         <div className="text-3xl font-bold text-primaryBlue">{feature.stats.count}</div>
-                        <div className="text-xs font-bold text-charcoal-400 uppercase tracking-wider">{feature.stats.label}</div>
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{feature.stats.label}</div>
                     </div>
                 </div>
             </div>
@@ -194,12 +194,12 @@ function FeatureShowcase({ feature, index, inView, reverse }: any) {
                     style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
-                    className="relative w-full aspect-[4/3] rounded-3xl bg-white border border-charcoal-100 shadow-2xl transition-all duration-200 ease-linear cursor-grab active:cursor-grabbing group"
+                    className="relative w-full aspect-[4/3] rounded-3xl bg-white border border-gray-100/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-200 ease-linear cursor-grab active:cursor-grabbing group"
                 >
                     {/* Floating Elements / Depth Layers */}
                     <motion.div
                         style={{ translateZ: 50 }}
-                        className="absolute inset-4 md:inset-8 bg-charcoal-50 rounded-2xl overflow-hidden shadow-inner border border-charcoal-100/50"
+                        className="absolute inset-4 md:inset-8 bg-gradient-to-br from-gray-50 to-white rounded-2xl overflow-hidden shadow-inner border border-gray-100"
                     >
                         {feature.image && (
                             <Image
@@ -212,10 +212,10 @@ function FeatureShowcase({ feature, index, inView, reverse }: any) {
                     </motion.div>
 
                     {/* Glossy Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
 
                     {/* Shadow Layer */}
-                    <div className="absolute -inset-4 bg-primaryBlue/20 blur-3xl -z-10 opacity-0 group-hover:opacity-40 transition-opacity duration-500" />
+                    <div className="absolute -inset-4 bg-primaryBlue/10 blur-3xl -z-10 opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
                 </motion.div>
             </div>
         </motion.div>

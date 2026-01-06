@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/C
 import { MetricCard } from '@/components/admin/MetricCard';
 import { Button } from '@/components/ui/core/Button';
 import { IndianRupee, ArrowUpRight, ArrowDownRight, CreditCard, Wallet } from 'lucide-react';
-import { formatCurrency } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/shared/utils';
 import { Badge } from '@/components/ui/core/Badge';
 
 const transactions = [
@@ -25,7 +25,7 @@ export default function FinancialsPage() {
                     title="Available Balance"
                     value={formatCurrency(24500)}
                     icon={Wallet}
-                    className="bg-indigo-50 border-indigo-100"
+                    className="bg-[var(--bg-secondary)] border-[var(--border-subtle)]"
                 />
                 <MetricCard
                     title="Total Spent (Dec)"
@@ -53,7 +53,10 @@ export default function FinancialsPage() {
                             {transactions.map((txn) => (
                                 <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors">
                                     <div className="flex items-center gap-4">
-                                        <div className={`p-2 rounded-full ${txn.type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                        <div className={cn(
+                                            "p-2 rounded-full",
+                                            txn.type === 'credit' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--error-bg)] text-[var(--error)]"
+                                        )}>
                                             {txn.type === 'credit' ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                                         </div>
                                         <div>
@@ -62,7 +65,10 @@ export default function FinancialsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className={`font-semibold ${txn.type === 'credit' ? 'text-emerald-600' : 'text-[var(--text-primary)]'}`}>
+                                        <p className={cn(
+                                            "font-semibold",
+                                            txn.type === 'credit' ? "text-[var(--success)]" : "text-[var(--text-primary)]"
+                                        )}>
                                             {txn.type === 'credit' ? '+' : ''}{formatCurrency(txn.amount)}
                                         </p>
                                         <p className="text-xs text-[var(--text-muted)] capitalize">{txn.status}</p>
@@ -90,7 +96,7 @@ export default function FinancialsPage() {
                                 <span className="text-sm">HDFC Bank **** 8821</span>
                                 <Badge variant="outline">Primary</Badge>
                             </div>
-                            <Button variant="ghost" size="sm" className="w-full text-indigo-600">
+                            <Button variant="ghost" size="sm" className="w-full text-[var(--primary-blue)]">
                                 + Add New Method
                             </Button>
                         </div>

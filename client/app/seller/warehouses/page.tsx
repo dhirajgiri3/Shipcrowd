@@ -121,7 +121,7 @@ export default function WarehousesPage() {
                                             <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
                                                 {warehouse.name}
                                                 {warehouse.isDefault && (
-                                                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                                                    <Star className="h-4 w-4 text-[var(--warning)] fill-[var(--warning)]" />
                                                 )}
                                             </h3>
                                             <p className="text-xs text-[var(--text-muted)]">
@@ -131,12 +131,12 @@ export default function WarehousesPage() {
                                     </div>
 
                                     {warehouse.isVerified ? (
-                                        <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                                        <Badge className="bg-[var(--success-bg)] text-[var(--success)]">
                                             <CheckCircle2 className="h-3 w-3 mr-1" />
                                             Verified
                                         </Badge>
                                     ) : (
-                                        <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                                        <Badge className="bg-[var(--warning-bg)] text-[var(--warning)]">
                                             Pending
                                         </Badge>
                                     )}
@@ -172,7 +172,7 @@ export default function WarehousesPage() {
                                         Edit
                                     </Button>
                                     {!warehouse.isDefault && (
-                                        <Button variant="outline" size="sm" className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20">
+                                        <Button variant="outline" size="sm" className="text-[var(--error)] hover:bg-[var(--error-bg)]">
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     )}

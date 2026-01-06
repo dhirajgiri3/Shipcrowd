@@ -136,7 +136,7 @@ export default function ShipmentsPage() {
                     <div className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(row.codAmount)}</div>
                     <span className={cn(
                         "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
-                        row.paymentMode === 'prepaid' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
+                        row.paymentMode === 'prepaid' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-[var(--info-bg)] text-[var(--info)]"
                     )}>
                         {row.paymentMode}
                     </span>
@@ -203,12 +203,12 @@ export default function ShipmentsPage() {
                                 <div className="flex items-start justify-between mb-2">
                                     <div className={cn(
                                         "p-2 rounded-lg",
-                                        status.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                                            status.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                                                status.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
-                                                    status.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                                                        status.color === 'orange' ? "bg-orange-500/10 text-orange-500" :
-                                                            "bg-rose-500/10 text-rose-500"
+                                        status.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                                            status.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                                status.color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
+                                                    status.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                                        status.color === 'orange' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                                            "bg-[var(--error-bg)] text-[var(--error)]"
                                     )}>
                                         <status.icon className="w-4 h-4" />
                                     </div>

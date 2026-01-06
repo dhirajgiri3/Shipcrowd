@@ -127,6 +127,21 @@ export default function RootLayout({
         {/* Preconnect to external domains for faster loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var storageKey = 'shipcrowd-theme';
+                  var savedTheme = localStorage.getItem(storageKey);
+                  var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  var theme = savedTheme === 'system' || !savedTheme ? systemTheme : savedTheme;
+                  document.documentElement.classList.add(theme);
+                } catch (e) {}
+              })()
+            `,
+          }}
+        />
       </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}

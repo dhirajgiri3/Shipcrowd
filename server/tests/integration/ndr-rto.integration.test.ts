@@ -1,20 +1,42 @@
+// Jest hoists mocks to the top, so we need to declare mocks before any imports
+const mockNDREvent = {
+    findById: jest.fn(),
+    findOne: jest.fn(),
+    find: jest.fn(),
+    countDocuments: jest.fn(),
+    createNDREvent: jest.fn(),
+    getExpiredNDRs: jest.fn(),
+};
+
+const mockNDRWorkflow = {
+    getWorkflowForNDR: jest.fn(),
+};
+
+// Mock the models barrel export BEFORE any imports
+jest.mock('@/infrastructure/database/mongoose/models', () => ({
+    NDREvent: mockNDREvent,
+    NDRWorkflow: mockNDRWorkflow,
+    // Add placeholder exports to prevent import errors
+    IShipment: {},
+}));
+
+// Now we can import the services that depend on the mocked models
 import NDRDetectionService from '@/core/application/services/ndr/ndr-detection.service';
 import NDRClassificationService from '@/core/application/services/ndr/ndr-classification.service';
 import NDRResolutionService from '@/core/application/services/ndr/ndr-resolution.service';
-import RTOService from '@/core/application/services/rto/rto.service';
-import { NDREvent } from '@/infrastructure/database/mongoose/models';
-import { NDRWorkflow } from '@/infrastructure/database/mongoose/models';
-
-jest.mock('@/infrastructure/database/mongoose/models/ndr-event.model');
-jest.mock('@/infrastructure/database/mongoose/models/ndr-workflow.model');
 
 describe('NDR/RTO Integration Tests', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     describe('Complete NDR Resolution Flow', () => {
         it('should handle full NDR flow: Detection → Classification → Resolution → Resolved', async () => {
             // 1. Detection
             const mockShipment = {
                 _id: 'ship123',
                 awb: 'TRK123',
+                trackingNumber: 'TRK123',
                 companyId: 'comp123',
                 orderId: 'order123',
             };
@@ -26,20 +48,20 @@ describe('NDR/RTO Integration Tests', () => {
                 timestamp: new Date(),
             };
 
-            const mockNDREvent = {
+            const mockEventData = {
                 _id: 'ndr123',
                 shipment: mockShipment._id,
                 awb: 'TRK123',
                 ndrReason: 'Customer not available',
-                ndrType: 'keyword' as any, // Will be updated after classification
+                ndrType: 'keyword' as any,
                 status: 'detected',
                 save: jest.fn().mockResolvedValue(true),
             };
 
-            (NDREvent.countDocuments as jest.Mock).mockResolvedValue(0);
-            (NDREvent.createNDREvent as jest.Mock).mockResolvedValue(mockNDREvent);
-            (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
-            (NDREvent.findOne as jest.Mock).mockResolvedValue(null);
+            mockNDREvent.countDocuments.mockResolvedValue(0);
+            mockNDREvent.createNDREvent.mockResolvedValue(mockEventData);
+            mockNDREvent.findById.mockResolvedValue(mockEventData);
+            mockNDREvent.findOne.mockResolvedValue(null);
 
             const result = await NDRDetectionService.detectNDRFromTracking(
                 trackingUpdate,
@@ -51,13 +73,13 @@ describe('NDR/RTO Integration Tests', () => {
             expect(result.ndrEvent).toBeDefined();
             expect(result.ndrEvent?.status).toBe('detected');
 
-            // 2. Classification
-            mockNDREvent.ndrType = 'customer_unavailable';
+            // 2. Classification would update ndrType
+            mockEventData.ndrType = 'customer_unavailable' as any;
             await NDRClassificationService.classifyAndUpdate(String(result.ndrEvent?._id));
 
-            expect(mockNDREvent.ndrType).toBe('customer_unavailable');
+            expect(mockEventData.ndrType).toBe('customer_unavailable');
 
-            // 3. Resolution workflow would be triggered
+            // 3. Verify workflow structure
             const mockWorkflow = {
                 ndrType: 'customer_unavailable',
                 actions: [
@@ -70,17 +92,16 @@ describe('NDR/RTO Integration Tests', () => {
                 ],
             };
 
-            (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(mockWorkflow);
+            mockNDRWorkflow.getWorkflowForNDR.mockResolvedValue(mockWorkflow);
 
-            // Workflow would execute actions here
-            expect(mockNDREvent).toBeDefined();
+            expect(mockEventData).toBeDefined();
         });
     });
 
     describe('Complete RTO Flow', () => {
         it('should handle full RTO flow: NDR → Deadline → Auto-RTO → Warehouse notification', async () => {
             // 1. Create expired NDR
-            const mockNDREvent = {
+            const expiredNDREvent = {
                 _id: 'ndr124',
                 shipment: 'ship124',
                 company: 'comp124',
@@ -98,16 +119,15 @@ describe('NDR/RTO Integration Tests', () => {
                 },
             };
 
-            (NDREvent.getExpiredNDRs as jest.Mock).mockResolvedValue([mockNDREvent]);
-            (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(mockWorkflow);
+            mockNDREvent.getExpiredNDRs.mockResolvedValue([expiredNDREvent]);
+            mockNDRWorkflow.getWorkflowForNDR.mockResolvedValue(mockWorkflow);
 
             // 2. Check deadlines (would trigger RTO)
-            const processed = await NDRResolutionService.checkResolutionDeadlines();
+            await NDRResolutionService.checkResolutionDeadlines();
 
-            // 3. RTO would be triggered automatically
-            // RTOService.triggerRTO would be called
-            expect(mockNDREvent).toBeDefined();
-            expect(NDREvent.getExpiredNDRs).toHaveBeenCalled();
+            // 3. Verify expired NDRs were fetched
+            expect(expiredNDREvent).toBeDefined();
+            expect(mockNDREvent.getExpiredNDRs).toHaveBeenCalled();
         });
     });
 

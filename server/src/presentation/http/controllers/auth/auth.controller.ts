@@ -333,18 +333,22 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     // Create a new session
     await createSession(typedUser._id, refreshToken, req, expiresAt);
 
-    res.cookie('refreshToken', refreshToken, {
+    // Cookie name with secure prefix in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+
+    res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: cookieMaxAge,
     });
 
     // Set access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
+    res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
@@ -378,8 +382,12 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
  */
 export const refreshToken = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Cookie names with secure prefix in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+
     // Validate that we have a refresh token from either cookies or body
-    const token = req.cookies?.refreshToken || req.body?.refreshToken;
+    const token = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken || req.body?.refreshToken;
     if (!token) {
       sendError(res, 'Refresh token is required', 401, 'REFRESH_TOKEN_REQUIRED');
       return;
@@ -433,22 +441,33 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
       const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
 
-      // Keep the same refresh token, don't generate a new one on every refresh
-      // This helps with session tracking and management
-      const newRefreshToken = token;
+      // TOKEN ROTATION: Generate a new refresh token for better security
+      const newRefreshToken = generateRefreshToken(
+        typedUser._id.toString(),
+        typedUser.security.tokenVersion || 0,
+        '7d'
+      );
 
-      res.cookie('refreshToken', newRefreshToken, {
+      // Revoke the old refresh token
+      await revokeRefreshToken(token);
+
+      // Update session with new refresh token
+      session.refreshToken = newRefreshToken;
+      session.lastActive = new Date();
+      await session.save();
+
+      res.cookie(refreshCookieName, newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
       // Set new access token as httpOnly cookie
-      res.cookie('accessToken', accessToken, {
+      res.cookie(accessCookieName, accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict',
         maxAge: 15 * 60 * 1000, // 15 minutes
       });
 
@@ -638,10 +657,16 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
  */
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    // Cookie names with secure prefix in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
 
-    // Clear both cookies
-    res.clearCookie('refreshToken');
+    const refreshToken = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken;
+
+    // Clear both cookies (regular and secure-prefixed)
+    res.clearCookie(refreshCookieName);
+    res.clearCookie(accessCookieName);
+    res.clearCookie('refreshToken'); // Clear regular cookie for backwards compatibility
     res.clearCookie('accessToken');
 
     // Cast to AuthRequest to access user property

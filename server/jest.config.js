@@ -34,6 +34,9 @@ module.exports = {
     clearMocks: true,
     resetMocks: true,
     restoreMocks: true,
+    // CRITICAL: Run tests serially to prevent database conflicts
+    // Tests were failing due to parallel execution causing race conditions
+    maxWorkers: 1,
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             useESM: false,

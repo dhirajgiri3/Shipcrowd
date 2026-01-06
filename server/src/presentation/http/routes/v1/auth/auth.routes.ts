@@ -1,5 +1,6 @@
 import express from 'express';
 import passport from 'passport';
+import crypto from 'crypto';
 import authController from '../../../controllers/auth/auth.controller';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import {
@@ -12,6 +13,32 @@ import { generateAuthTokens } from '../../../../../core/application/services/aut
 import logger from '../../../../../shared/logger/winston.logger';
 
 const router = express.Router();
+
+/**
+ * @route GET /auth/csrf-token
+ * @desc Generate and return a CSRF token
+ * @access Public
+ */
+router.get('/csrf-token', (req, res) => {
+  try {
+    // Generate a cryptographically secure random token
+    const csrfToken = crypto.randomBytes(32).toString('hex');
+
+    res.json({
+      success: true,
+      data: {
+        csrfToken
+      }
+    });
+  } catch (error) {
+    logger.error('CSRF token generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate CSRF token'
+    });
+  }
+});
+
 
 /**
  * @route POST /auth/register
@@ -136,18 +163,23 @@ router.get('/google/callback',
       // Generate tokens
       const { accessToken, refreshToken } = generateAuthTokens(req.user as any);
 
-      // Set both tokens as httpOnly cookies
-      res.cookie('accessToken', accessToken, {
+      // Cookie names with secure prefix in production
+      const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+      const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+
+      // Set access token as httpOnly cookie
+      res.cookie(accessCookieName, accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict',
         maxAge: 15 * 60 * 1000, // 15 minutes
       });
 
-      res.cookie('refreshToken', refreshToken, {
+      // Set refresh token as httpOnly cookie
+      res.cookie(refreshCookieName, refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 

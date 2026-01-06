@@ -136,7 +136,7 @@ export default function WeightDiscrepancyPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <Scale className="h-6 w-6 text-[#2525FF]" />
+                        <Scale className="h-6 w-6 text-[var(--primary-blue)]" />
                         Weight Discrepancies
                     </h1>
                     <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -154,8 +154,8 @@ export default function WeightDiscrepancyPage() {
                                 <p className="text-sm text-[var(--text-muted)]">Total Discrepancies</p>
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{mockDiscrepancies.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Scale className="h-5 w-5 text-[#2525FF]" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <Scale className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -165,10 +165,10 @@ export default function WeightDiscrepancyPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Pending Action</p>
-                                <p className="text-2xl font-bold text-amber-600">{totalPending}</p>
+                                <p className="text-2xl font-bold text-[var(--warning)]">{totalPending}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
+                                <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -180,8 +180,8 @@ export default function WeightDiscrepancyPage() {
                                 <p className="text-sm text-[var(--text-muted)]">Total Add. Charges</p>
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalAdditionalCharges)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                                <IndianRupee className="h-5 w-5 text-rose-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--error-bg)] flex items-center justify-center">
+                                <IndianRupee className="h-5 w-5 text-[var(--error)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -191,10 +191,10 @@ export default function WeightDiscrepancyPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Disputes Won</p>
-                                <p className="text-2xl font-bold text-emerald-600">67%</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">67%</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <TrendingUp className="h-5 w-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--success-bg)] flex items-center justify-center">
+                                <TrendingUp className="h-5 w-5 text-[var(--success)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -202,11 +202,11 @@ export default function WeightDiscrepancyPage() {
             </div>
 
             {/* Info Banner */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="bg-[var(--warning-bg)] border border-[var(--warning)]/30 rounded-xl p-4 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-[var(--warning)] flex-shrink-0 mt-0.5" />
                 <div>
-                    <h3 className="font-medium text-amber-800">Action Required Within 48 Hours</h3>
-                    <p className="text-sm text-amber-700 mt-1">
+                    <h3 className="font-medium text-[var(--warning)]">Action Required Within 48 Hours</h3>
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">
                         Pending discrepancies will be auto-accepted if no action is taken within the deadline.
                         Upload proof to dispute any incorrect weight charges.
                     </p>
@@ -231,8 +231,8 @@ export default function WeightDiscrepancyPage() {
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
                                 selectedStatus === filter.id
-                                    ? "bg-[#2525FF] text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
+                                    ? "bg-[var(--primary-blue)] text-white"
+                                    : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
                             )}
                         >
                             {filter.label}
@@ -246,7 +246,7 @@ export default function WeightDiscrepancyPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                                 <tr>
                                     <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB / Order</th>
                                     <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
@@ -258,7 +258,7 @@ export default function WeightDiscrepancyPage() {
                                     <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-[var(--border-subtle)]">
                                 {filteredDiscrepancies.map((disc) => (
                                     <tr key={disc.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
@@ -275,7 +275,7 @@ export default function WeightDiscrepancyPage() {
                                             <p className="text-sm font-medium text-[var(--text-primary)]">{disc.chargedWeight}g</p>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <p className="text-sm font-semibold text-rose-600">+{disc.difference}g</p>
+                                            <p className="text-sm font-semibold text-[var(--error)]">+{disc.difference}g</p>
                                         </td>
                                         <td className="p-4 text-right">
                                             <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(disc.additionalCharge)}</p>
@@ -297,7 +297,7 @@ export default function WeightDiscrepancyPage() {
                                                     </Button>
                                                     <Button
                                                         size="sm"
-                                                        className="text-xs bg-[#2525FF]"
+                                                        className="text-xs bg-[var(--primary-blue)]"
                                                         onClick={() => handleDispute(disc.id)}
                                                     >
                                                         <FileText className="h-3 w-3 mr-1" />
@@ -309,7 +309,7 @@ export default function WeightDiscrepancyPage() {
                                                 <p className="text-xs text-[var(--text-muted)] text-right">Under review</p>
                                             )}
                                             {disc.status === 'resolved' && disc.resolution && (
-                                                <p className="text-xs text-emerald-600 text-right">{disc.resolution}</p>
+                                                <p className="text-xs text-[var(--success)] text-right">{disc.resolution}</p>
                                             )}
                                         </td>
                                     </tr>
@@ -324,7 +324,7 @@ export default function WeightDiscrepancyPage() {
             {filteredDiscrepancies.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
+                        <CheckCircle className="h-12 w-12 text-[var(--success)] mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-[var(--text-primary)]">No discrepancies found</h3>
                         <p className="text-[var(--text-muted)] mt-1">All your shipment weights match!</p>
                     </CardContent>

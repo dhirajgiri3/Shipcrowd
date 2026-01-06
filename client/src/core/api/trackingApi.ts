@@ -22,14 +22,26 @@ export interface PublicTrackingResponse {
     timeline: TrackingTimelineEvent[];
 }
 
-export const trackingApi = {
+/**
+ * Tracking API Service
+ * Handles public shipment tracking functionality
+ * Class-based pattern for consistency and maintainability
+ */
+class TrackingApiService {
     /**
      * Track a shipment by AWB/Tracking Number (Public)
      */
-    trackShipment: async (trackingNumber: string): Promise<PublicTrackingResponse> => {
+    async trackShipment(trackingNumber: string): Promise<PublicTrackingResponse> {
         const response = await apiClient.get<{ data: PublicTrackingResponse }>(
             `/shipments/public/track/${trackingNumber}`
         );
         return response.data.data;
-    },
-};
+    }
+}
+
+/**
+ * Singleton instance
+ */
+export const trackingApi = new TrackingApiService();
+
+export default trackingApi;

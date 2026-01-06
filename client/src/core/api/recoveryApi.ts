@@ -39,85 +39,73 @@ export interface GenerateRecoveryKeysResponse {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// API FUNCTIONS
+// RECOVERY API SERVICE
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Get list of available security questions
+ * Recovery API Service
+ * Handles account recovery operations including security questions,
+ * backup email setup, and recovery key management.
+ * Class-based pattern for consistency and maintainability.
  */
-export async function getSecurityQuestions(): Promise<SecurityQuestion[]> {
-    const response = await apiClient.get<{ questions: SecurityQuestion[] }>('/auth/recovery/security-questions');
-    return response.data.questions || [];
+class RecoveryApiService {
+    /**
+     * Get list of available security questions
+     */
+    async getSecurityQuestions(): Promise<SecurityQuestion[]> {
+        const response = await apiClient.get<{ questions: SecurityQuestion[] }>('/auth/recovery/security-questions');
+        return response.data.questions || [];
+    }
+
+    /**
+     * Setup security questions for account recovery
+     * @param data - Object containing 3 questions and their answers
+     */
+    async setupSecurityQuestions(data: SetupSecurityQuestionsData): Promise<{ message: string }> {
+        const response = await apiClient.post<{ message: string }>('/auth/recovery/setup-questions', data);
+        return response.data;
+    }
+
+    /**
+     * Setup backup email for account recovery
+     * @param email - The backup email address
+     */
+    async setupBackupEmail(email: string): Promise<{ message: string }> {
+        const response = await apiClient.post<{ message: string }>('/auth/recovery/setup-backup-email', { email });
+        return response.data;
+    }
+
+    /**
+     * Generate recovery keys
+     * WARNING: These keys are shown only once and cannot be recovered
+     */
+    async generateRecoveryKeys(): Promise<GenerateRecoveryKeysResponse> {
+        const response = await apiClient.post<GenerateRecoveryKeysResponse>('/auth/recovery/generate-keys', {});
+        return response.data;
+    }
+
+    /**
+     * Get current recovery options status
+     */
+    async getRecoveryStatus(): Promise<RecoveryStatus> {
+        const response = await apiClient.get<RecoveryStatus>('/auth/recovery/status');
+        return response.data;
+    }
+
+    /**
+     * Send recovery options via email
+     * Useful if user loses access to their account
+     * @param email - Email address to send recovery options to
+     */
+    async sendRecoveryOptions(email: string): Promise<{ message: string }> {
+        const response = await apiClient.post<{ message: string }>('/auth/recovery/send-options', { email });
+        return response.data;
+    }
 }
 
 /**
- * Setup security questions for account recovery
- * @param data - Object containing 3 questions and their answers
+ * Singleton instance
  */
-export async function setupSecurityQuestions(data: SetupSecurityQuestionsData): Promise<{ message: string }> {
-    const response = await apiClient.post<{ message: string }>('/auth/recovery/setup-questions', data, {
-        headers: {
-            'X-CSRF-Token': 'frontend-request',
-        },
-    });
-    return response.data;
-}
-
-/**
- * Setup backup email for account recovery
- * @param email - The backup email address
- */
-export async function setupBackupEmail(email: string): Promise<{ message: string }> {
-    const response = await apiClient.post<{ message: string }>('/auth/recovery/setup-backup-email', { email }, {
-        headers: {
-            'X-CSRF-Token': 'frontend-request',
-        },
-    });
-    return response.data;
-}
-
-/**
- * Generate recovery keys
- * WARNING: These keys are shown only once and cannot be recovered
- */
-export async function generateRecoveryKeys(): Promise<GenerateRecoveryKeysResponse> {
-    const response = await apiClient.post<GenerateRecoveryKeysResponse>('/auth/recovery/generate-keys', {}, {
-        headers: {
-            'X-CSRF-Token': 'frontend-request',
-        },
-    });
-    return response.data;
-}
-
-/**
- * Get current recovery options status
- */
-export async function getRecoveryStatus(): Promise<RecoveryStatus> {
-    const response = await apiClient.get<RecoveryStatus>('/auth/recovery/status');
-    return response.data;
-}
-
-/**
- * Send recovery options via email
- * Useful if user loses access to their account
- * @param email - Email address to send recovery options to
- */
-export async function sendRecoveryOptions(email: string): Promise<{ message: string }> {
-    const response = await apiClient.post<{ message: string }>('/auth/recovery/send-options', { email });
-    return response.data;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// EXPORT RECOVERY API OBJECT
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const recoveryApi = {
-    getSecurityQuestions,
-    setupSecurityQuestions,
-    setupBackupEmail,
-    generateRecoveryKeys,
-    getRecoveryStatus,
-    sendRecoveryOptions,
-};
+export const recoveryApi = new RecoveryApiService();
 
 export default recoveryApi;

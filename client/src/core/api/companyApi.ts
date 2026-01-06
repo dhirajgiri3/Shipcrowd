@@ -58,70 +58,58 @@ export interface CreateCompanyData {
     billingInfo?: CompanyBillingInfo;
 }
 
-// API Functions
-export async function createCompany(data: CreateCompanyData): Promise<{ message: string; company: Company }> {
-    const response = await apiClient.post('/companies', data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
+/**
+ * Company API Service
+ * Handles all company-related API endpoints
+ * Class-based pattern for consistency and maintainability
+ */
+class CompanyApiService {
+    async createCompany(data: CreateCompanyData): Promise<{ message: string; company: Company }> {
+        const response = await apiClient.post('/companies', data);
+        return response.data;
+    }
+
+    async getCompany(companyId: string): Promise<{ company: Company }> {
+        const response = await apiClient.get(`/companies/${companyId}`);
+        return response.data;
+    }
+
+    async updateCompany(companyId: string, data: Partial<CreateCompanyData>): Promise<{ message: string; company: Company }> {
+        const response = await apiClient.put(`/companies/${companyId}`, data);
+        return response.data;
+    }
+
+    async getAllCompanies(params?: { page?: number; limit?: number; search?: string }) {
+        const response = await apiClient.get('/companies', { params });
+        return response.data;
+    }
+
+    async inviteOwner(companyId: string, data: InviteOwnerData): Promise<{ message: string }> {
+        const response = await apiClient.post(`/companies/${companyId}/invite-owner`, data);
+        return response.data;
+    }
+
+    async updateCompanyStatus(
+        companyId: string,
+        status: Company['status'],
+        reason?: string
+    ): Promise<{ message: string; company: Company }> {
+        const response = await apiClient.patch(
+            `/companies/${companyId}/status`,
+            { status, reason }
+        );
+        return response.data;
+    }
+
+    async getCompanyStats(): Promise<CompanyStats> {
+        const response = await apiClient.get('/companies/stats');
+        return response.data;
+    }
 }
 
-export async function getCompany(companyId: string): Promise<{ company: Company }> {
-    const response = await apiClient.get(`/companies/${companyId}`);
-    return response.data;
-}
-
-export async function updateCompany(companyId: string, data: Partial<CreateCompanyData>): Promise<{ message: string; company: Company }> {
-    const response = await apiClient.put(`/companies/${companyId}`, data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-// Get all companies (admin only)
-export async function getAllCompanies(params?: { page?: number; limit?: number; search?: string }) {
-    const response = await apiClient.get('/companies', { params });
-    return response.data;
-}
-
-// Invite company owner (admin only)
-export async function inviteOwner(companyId: string, data: InviteOwnerData): Promise<{ message: string }> {
-    const response = await apiClient.post(`/companies/${companyId}/invite-owner`, data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-// Update company status (admin only)
-export async function updateCompanyStatus(
-    companyId: string,
-    status: Company['status'],
-    reason?: string
-): Promise<{ message: string; company: Company }> {
-    const response = await apiClient.patch(
-        `/companies/${companyId}/status`,
-        { status, reason },
-        {
-            headers: { 'X-CSRF-Token': 'frontend-request' },
-        }
-    );
-    return response.data;
-}
-
-// Get company statistics (admin only)
-export async function getCompanyStats(): Promise<CompanyStats> {
-    const response = await apiClient.get('/companies/stats');
-    return response.data;
-}
-
-export const companyApi = {
-    createCompany,
-    getCompany,
-    updateCompany,
-    getAllCompanies,
-    inviteOwner,
-    updateCompanyStatus,
-    getCompanyStats,
-};
+/**
+ * Singleton instance
+ */
+export const companyApi = new CompanyApiService();
 
 export default companyApi;

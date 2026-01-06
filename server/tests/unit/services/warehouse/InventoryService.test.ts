@@ -25,7 +25,7 @@ describe('Inventory Service', () => {
             });
 
             expect(inventory).toBeDefined();
-            expect(inventory.sku).toBe(sku);
+            expect(inventory.sku).toBe(sku.toUpperCase()); // Service converts to uppercase
             expect(inventory.onHand).toBe(100);
             expect(inventory.status).toBe('ACTIVE');
         });

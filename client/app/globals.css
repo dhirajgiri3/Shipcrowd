@@ -1,25 +1,36 @@
 @import "tailwindcss";
 @import 'leaflet/dist/leaflet.css';
 
-/* Strict: Dont use gradient in our UI
-   Dont use Primary Blue color aggresiveky in our ui design, use it sparingly and thoughfully
-*/
+/* ==============================================================================
+   🚀 SHIPCROWD DESIGN SYSTEM v2.0
+   ==============================================================================
+   
+   PHILOSOPHY: "Premium Software Aesthetic"
+   • Light Mode: Crisp, Ice-White, Professional (High Clarity)
+   • Dark Mode:  Deep, Immersive, Cool-Toned (Software/Web3 Vibe)
+   
+   COLOR THEORY:
+   • We avoid pure blacks (#000000) and greys to prevent a "dead" look.
+   • Light Mode uses "Ice White" (Cool Blue Tint) for backgrounds to feel fresh.
+   • Dark Mode uses "Void Black" (Cool Blue/Purple Tint) for depth.
+   • Brand Color (#7B61FF) is a soft Purple-Blue that looks native in this environment.
 
-/* ============================================
-   SHIPCROWD DESIGN SYSTEM
-   Comprehensive • Light Theme • Unified
-   ============================================ */
+   Z-INDEX STRATEGY:
+   • We use a semantic scale (Page, Overlay, Toast) to prevent layering wars.
+   • See "Z-Index Hierarchy" section below.
+
+   ============================================================================== */
 
 @theme {
    /* === TYPOGRAPHY FAMILY === */
    --font-sans: var(--font-inter);
    --font-mono: var(--font-jetbrains-mono);
 
-   /* === TYPOGRAPHY SIZES (Semantic Scale) === */
-   --text-display-2xl: 4.5rem;
+   /* === TYPOGRAPHY SIZES (Refined Scale) === */
+   --text-display-2xl: 4rem;
    --text-display-2xl--line-height: 1.1;
 
-   --text-display-xl: 3.75rem;
+   --text-display-xl: 3.5rem;
    --text-display-xl--line-height: 1.1;
 
    --text-display-lg: 3rem;
@@ -46,446 +57,216 @@
    --text-caption: 0.75rem;
    --text-caption--line-height: 1.5;
 
-   /* === BRAND COLORS (Tailwind Integration) === */
+   /* === BRAND COLORS === */
    --color-primaryBlue: var(--primary-blue);
    --color-primaryBlue-deep: var(--primary-blue-deep);
    --color-primaryBlue-light: var(--primary-blue-light);
    --color-primaryBlue-soft: var(--primary-blue-soft);
-
-   /* === BRAND SHADOWS === */
-   --shadow-blue: 0 8px 30px rgba(37, 37, 255, 0.3);
-   --shadow-blue-lg: 0 12px 40px rgba(37, 37, 255, 0.4);
 }
 
 :root {
    /* ========================================
-     BRAND COLORS
+     BASE PALETTE (HSL)
      ======================================== */
-   --primary-blue: #2525FF;
-   --primary-blue-deep: #1E1ECC;
-   --primary-blue-light: #4444FF;
-   --primary-blue-soft: #E8E8FF;
+   /* Brand Blue: #2525FF -> hsl(240, 100%, 57%) */
+   --brand-h: 240;
+   --brand-s: 100%;
+   --brand-l: 57%;
 
-   /* ========================================
-     NEUTRAL / GRAY SCALE
-     ======================================== */
-   --white: #FFFFFF;
-   --black: #000000;
-   --gray-25: #FCFCFD;
-   --gray-50: #F9FAFB;
-   --gray-100: #F3F4F6;
-   --gray-200: #E5E7EB;
-   --gray-300: #D1D5DB;
-   --gray-400: #9CA3AF;
-   --gray-500: #6B7280;
-   --gray-600: #4B5563;
-   --gray-700: #374151;
-   --gray-800: #1F2937;
-   --gray-900: #111827;
-   --gray-950: #030712;
+   /* Primary Brand Colors */
+   --primary-blue: hsl(var(--brand-h), var(--brand-s), var(--brand-l));
+   --primary-blue-deep: hsl(var(--brand-h), var(--brand-s), 45%);
+   --primary-blue-light: hsl(var(--brand-h), var(--brand-s), 65%);
+   --primary-blue-soft: hsl(var(--brand-h), var(--brand-s), 96%);
+   /* Very subtle background */
 
-   /* ========================================
-     TEXT COLORS
-     ======================================== */
-   --text-primary: #111827;
-   /* Headings, titles */
-   --text-secondary: #4B5563;
-   /* Body text */
-   --text-tertiary: #6B7280;
-   /* Secondary info */
-   --text-muted: #9CA3AF;
-   /* Placeholders, disabled */
-   --text-subtle: #D1D5DB;
-   /* Very light text */
-   --text-inverse: #FFFFFF;
-   /* Text on dark bg */
-   --text-brand: #2525FF;
-   /* Brand-colored text */
-   --text-success: #059669;
-   /* Success messages */
-   --text-warning: #D97706;
-   /* Warning messages */
-   --text-error: #DC2626;
-   /* Error messages */
+   /* Neutrals (Slate-like) */
+   --white: hsl(0, 0%, 100%);
+   --black: hsl(240, 10%, 4%);
+   /* Soft Black */
 
-   /* ========================================
-     BACKGROUND COLORS
-     ======================================== */
-   --bg-primary: #FFFFFF;
-   /* Main background */
-   --bg-secondary: #F9FAFB;
-   /* Cards, sections */
-   --bg-tertiary: #F3F4F6;
-   /* Inputs, subtle areas */
-   --bg-elevated: #FFFFFF;
-   /* Modals, dropdowns */
-   --bg-hover: #F3F4F6;
-   /* Hover states */
-   --bg-active: #E5E7EB;
-   /* Active/pressed states */
-   --bg-selected: #E8E8FF;
-   /* Selected items */
-   --bg-overlay: rgba(0, 0, 0, 0.5);
+   /* Light Mode Backgrounds - Premium Software Crisp */
+   --bg-primary: hsl(0, 0%, 100%);
+   /* Pure White Cards */
+   --bg-secondary: hsl(215, 25%, 97%);
+   /* Ice White Background (Cool Tint) */
+   --bg-tertiary: hsl(215, 20%, 95%);
+   /* Inputs/Subtle */
+   --bg-elevated: hsl(0, 0%, 100%);
+   /* Dropdowns */
+   --bg-hover: hsl(215, 25%, 96%);
+   --bg-active: hsl(215, 25%, 94%);
 
-   /* Tooltip Colors */
-   --bg-tooltip: #1F2937;
-   --text-tooltip: #F9FAFB;
-   --border-tooltip: #374151;
+   /* Text Colors - High Contrast Professional */
+   --text-primary: hsl(222, 30%, 15%);
+   /* Deep Obsidian Blue-Black */
+   --text-secondary: hsl(220, 12%, 45%);
+   /* Cool Neutral Gray */
+   --text-tertiary: hsl(220, 10%, 60%);
+   --text-muted: hsl(220, 10%, 70%);
+   --text-inverse: hsl(0, 0%, 100%);
 
-   /* ========================================
-     BORDER COLORS
-     ======================================== */
-   --border-subtle: #F3F4F6;
-   /* Dividers, separators */
-   --border-default: #E5E7EB;
-   /* Default borders */
-   --border-strong: #D1D5DB;
-   /* Emphasized borders */
-   --border-focus: #2525FF;
-   /* Focus state */
-   --border-error: #EF4444;
-   /* Error state */
-   --border-success: #10B981;
-   /* Success state */
-   --border-hover: #D1D5DB;
-   /* Hover state */
+   /* Borders - Crisp & Subtle */
+   --border-subtle: hsl(220, 15%, 92%);
+   --border-default: hsl(220, 15%, 88%);
+   --border-strong: hsl(220, 15%, 80%);
+   --border-focus: var(--primary-blue);
 
-   /* ========================================
-     INTERACTIVE / BUTTON COLORS
-     ======================================== */
-   --btn-primary-bg: #2525FF;
-   --btn-primary-bg-hover: #1E1ECC;
-   --btn-primary-bg-active: #1818A0;
-   --btn-primary-text: #FFFFFF;
+   /* Status Colors */
+   --success: hsl(142, 76%, 36%);
+   --success-bg: hsl(142, 70%, 96%);
 
-   --btn-secondary-bg: #FFFFFF;
-   --btn-secondary-bg-hover: #F9FAFB;
-   --btn-secondary-bg-active: #F3F4F6;
-   --btn-secondary-text: #374151;
-   --btn-secondary-border: #E5E7EB;
+   --warning: hsl(38, 92%, 50%);
+   --warning-bg: hsl(48, 100%, 96%);
 
-   --btn-ghost-bg: transparent;
-   --btn-ghost-bg-hover: #F3F4F6;
-   --btn-ghost-text: #4B5563;
+   --error: hsl(0, 84%, 60%);
+   --error-bg: hsl(0, 100%, 97%);
 
-   /* ========================================
-     INPUT / FORM COLORS
-     ======================================== */
-   --input-bg: #F9FAFB;
-   --input-bg-hover: #F3F4F6;
-   --input-bg-focus: #FFFFFF;
-   --input-bg-disabled: #F3F4F6;
-   --input-border: #E5E7EB;
-   --input-border-hover: #D1D5DB;
-   --input-border-focus: #2525FF;
-   --input-border-error: #EF4444;
-   --input-text: #111827;
-   --input-placeholder: #9CA3AF;
-   --input-disabled-text: #9CA3AF;
+   --info: hsl(217, 91%, 60%);
+   --info-bg: hsl(217, 100%, 97%);
 
-   /* ========================================
-     STATUS / FEEDBACK COLORS
-     ======================================== */
-   --success: #10B981;
-   --success-light: #34D399;
-   --success-bg: #ECFDF5;
-   --success-border: #A7F3D0;
-
-   --warning: #F59E0B;
-   --warning-light: #FBBF24;
-   --warning-bg: #FFFBEB;
-   --warning-border: #FDE68A;
-
-   --error: #EF4444;
-   --error-light: #F87171;
-   --error-bg: #FEF2F2;
-   --error-border: #FECACA;
-
-   --info: #3B82F6;
-   --info-light: #60A5FA;
-   --info-bg: #EFF6FF;
-   --info-border: #BFDBFE;
-
-   /* ========================================
-     SPACING SCALE (based on 4px)
-     ======================================== */
-   --space-0: 0;
-   --space-1: 0.25rem;
-   /* 4px */
-   --space-2: 0.5rem;
-   /* 8px */
-   --space-3: 0.75rem;
-   /* 12px */
-   --space-4: 1rem;
-   /* 16px */
-   --space-5: 1.25rem;
-   /* 20px */
-   --space-6: 1.5rem;
-   /* 24px */
-   --space-8: 2rem;
-   /* 32px */
-   --space-10: 2.5rem;
-   /* 40px */
-   --space-12: 3rem;
-   /* 48px */
-   --space-16: 4rem;
-   /* 64px */
-   --space-20: 5rem;
-   /* 80px */
-   --space-24: 6rem;
-   /* 96px */
-   --space-32: 8rem;
-   /* 128px */
-
-   /* ========================================
-     BORDER RADIUS
-     ======================================== */
-   --radius-none: 0;
+   /* Spacing & Radius */
    --radius-sm: 0.25rem;
-   /* 4px */
-   --radius-md: 0.375rem;
-   /* 6px */
-   --radius-lg: 0.5rem;
-   /* 8px */
-   --radius-xl: 0.75rem;
-   /* 12px */
-   --radius-2xl: 1rem;
-   /* 16px */
-   --radius-3xl: 1.5rem;
-   /* 24px */
+   --radius-md: 0.5rem;
+   --radius-lg: 0.75rem;
+   /* Standard Card Radius (12px) */
+   --radius-xl: 1rem;
+   /* Larger sections */
+   --radius-2xl: 1.5rem;
    --radius-full: 9999px;
 
-   /* ========================================
-     SHADOWS / ELEVATION
-     ======================================== */
-   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-   --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+   /* Shadows - Soft & Diffused for Light Mode */
+   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+   --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+   --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+   --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.03);
 
-   /* Brand shadows */
-   --shadow-brand-sm: 0 4px 14px rgba(37, 37, 255, 0.2);
-   --shadow-brand: 0 8px 30px rgba(37, 37, 255, 0.3);
-   --shadow-brand-lg: 0 12px 40px rgba(37, 37, 255, 0.4);
+   /* Brand Shadows */
+   --shadow-brand-sm: 0 4px 14px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.2);
+   --shadow-brand: 0 8px 30px hsla(var(--brand-h), var(--brand-s), var(--brand-l), 0.3);
 
-   /* ========================================
-     TRANSITIONS / MOTION
-     ======================================== */
+   /* Transitions */
    --duration-fast: 150ms;
    --duration-base: 200ms;
    --duration-slow: 300ms;
-   --duration-slower: 500ms;
 
-   --ease-linear: linear;
-   --ease-in: cubic-bezier(0.4, 0, 1, 1);
-   --ease-out: cubic-bezier(0, 0, 0.2, 1);
-   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+   --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-   /* ========================================
-     Z-INDEX SCALE
-     ======================================== */
-   --z-base: 0;
-   --z-dropdown: 1000;
+   /* Glass */
+   --glass-bg: rgba(255, 255, 255, 0.7);
+   --glass-border: rgba(255, 255, 255, 0.5);
+   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+
+   /* Z-Index Hierarchy (Smart Scale) */
+   --z-header-sticky: 50;
+   /* Sticky Top Nav */
+   --z-search-focus: 51;
+   /* Search Input Highlighting */
+   --z-dropdown-page: 45;
+   /* Page-level Dropdowns (Under Header) */
+   --z-dropdown: 60;
+   /* Header Dropdowns (Above Header, Below Sidebar) */
+   --z-popover: 65;
+   /* Popovers */
+   --z-sidebar-desktop: 70;
+   /* Desktop Sidebar */
+   --z-overlay: 90;
+   /* Mobile Backdrops */
+   --z-sidebar-mobile: 100;
+   /* Mobile Sidebar */
+
    --z-sticky: 1020;
+   /* Legacy */
    --z-fixed: 1030;
    --z-modal-backdrop: 1040;
    --z-modal: 1050;
-   --z-popover: 1060;
    --z-tooltip: 1070;
-   --z-notification: 1080;
-
-   /* ========================================
-     FOCUS RING
-     ======================================== */
-   --focus-ring-width: 2px;
-   --focus-ring-offset: 2px;
-   --focus-ring-color: rgba(37, 37, 255, 0.25);
-
-   /* ========================================
-     LEGACY SUPPORT
-     ======================================== */
-   --background: #FFFFFF;
-   --foreground: #111827;
-
-   /* ========================================
-     GLASSMORPHISM EFFECTS
-     ======================================== */
-   --glass-bg: rgba(255, 255, 255, 0.7);
-   --glass-border: rgba(229, 231, 235, 0.3);
-   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+   --z-toast: 1100;
+   /* Toasts (Topmost) */
 }
 
 /* ========================================
-   DARK MODE THEME
+   DARK MODE
+   Soft, Professional, No-Shadow Depth
    ======================================== */
 
 .dark {
-   /* ============================================
-      BACKGROUNDS - Pure & Clean
-      ============================================ */
-   --bg-primary: #000000;
-   /* True Black */
-   --bg-secondary: #0A0A0A;
-   /* Almost Black (Card Bg) */
-   --bg-tertiary: #121212;
-   /* Dark Gray (Inputs) */
-   --bg-elevated: #121212;
+   /* Base Colors - Deep Software Cool (Web3/SaaS) */
+   --bg-primary: hsl(230, 12%, 8%);
+   /* Cards - Deep Obsidian */
+   --bg-secondary: hsl(230, 15%, 4%);
+   /* Background - Void Black with cool tint */
+   --bg-tertiary: hsl(230, 12%, 10%);
+   /* Inputs - Lighter cool gray */
+   --bg-elevated: hsl(230, 12%, 12%);
    /* Modals */
-   --bg-hover: #1A1A1A;
-   /* Interactive Hover */
-   --bg-active: #262626;
-   /* Active State */
-   --bg-selected: rgba(37, 37, 255, 0.1);
-   --bg-overlay: rgba(0, 0, 0, 0.85);
+   --bg-hover: hsl(230, 12%, 16%);
+   /* Hover */
+   --bg-active: hsl(230, 12%, 20%);
+   /* Active */
+   --bg-selected: hsla(250, 100%, 65%, 0.15);
+   --bg-overlay: hsla(230, 15%, 2%, 0.8);
 
-   /* Tooltip Colors */
-   --bg-tooltip: #27272A;
-   --text-tooltip: #F4F4F5;
-   --border-tooltip: #3F3F46;
+   /* Text - Cool Crisp White */
+   --text-primary: hsl(220, 20%, 98%);
+   --text-secondary: hsl(220, 15%, 70%);
+   /* Cool gray text */
+   --text-tertiary: hsl(220, 10%, 55%);
+   --text-muted: hsl(220, 10%, 45%);
+   --text-inverse: hsl(230, 15%, 4%);
 
-   /* ============================================
-      TEXT - High Contrast White
-      ============================================ */
-   --text-primary: #FFFFFF;
-   /* Pure White */
-   --text-secondary: #D4D4D8;
-   /* Zinc-300 */
-   --text-tertiary: #A1A1AA;
-   /* Zinc-400 */
-   --text-muted: #71717A;
-   /* Zinc-500 */
-   --text-subtle: #52525B;
-   /* Zinc-600 */
-   --text-inverse: #000000;
-   /* On Light Bg */
-   --text-brand: #5252FF;
-   /* High Vis Brand Color */
-   --text-link: #5252FF;
-   --link-hover: #7575FF;
+   /* Brand - Adjusted for Dark Mode (Soft Purple-Blue) */
+   --primary-blue: #7B61FF;
+   /* Soft Purple-Blue */
+   --primary-blue-deep: #5e43f3;
+   --primary-blue-soft: rgba(123, 97, 255, 0.15);
+   --primary-blue-light: rgba(123, 97, 255, 0.25);
 
-   /* Status Text - Brighter for Dark Mode */
-   --text-success: #4ADE80;
-   --text-warning: #FCD34D;
-   --text-error: #F87171;
+   /* Borders - Cool Deep Styling */
+   --border-subtle: hsl(230, 12%, 12%);
+   --border-default: hsl(230, 12%, 18%);
+   --border-strong: hsl(230, 12%, 26%);
+   --border-focus: var(--primary-blue);
 
-   /* ============================================
-      BORDERS - Define Structure (No Shadows)
-      ============================================ */
-   --border-subtle: #1F1F25;
-   /* Section Dividers */
-   --border-default: #27272A;
-   /* Card Borders */
-   --border-strong: #3F3F46;
-   /* Input Borders */
-   --border-hover: #52525B;
-   /* Hover State */
-   --border-focus: #5252FF;
-   /* Brand Focus */
-   --border-interactive: rgba(37, 37, 255, 0.4);
-   --border-error: #EF4444;
-   --border-success: #22C55E;
+   /* Status Colors - Muted */
+   --success: hsl(142, 70%, 50%);
+   --success-bg: hsla(142, 70%, 50%, 0.1);
+   --success-border: hsla(142, 70%, 50%, 0.2);
 
-   /* ============================================
-      BRAND COLOR - #2525FF Core
-      ============================================ */
-   --primary-blue: #3E3EFF;
-   /* Adapted for Dark Mode Readability */
-   --primary-blue-hover: #5252FF;
-   --primary-blue-active: #2525FF;
-   --primary-blue-deep: #1A1A80;
-   --primary-blue-soft: rgba(37, 37, 255, 0.15);
-   /* Backgrounds */
-   --primary-blue-subtle: rgba(37, 37, 255, 0.05);
+   --warning: hsl(38, 92%, 55%);
+   --warning-bg: hsla(38, 92%, 50%, 0.1);
+   --warning-border: hsla(38, 92%, 50%, 0.2);
 
-   /* ============================================
-      NO SHADOWS - FLAT / BORDERED ONLY
-      ============================================ */
-   /* We replace shadow depth with border definition */
+   --error: hsl(0, 94%, 65%);
+   --error-bg: hsla(0, 94%, 65%, 0.1);
+   --error-border: hsla(0, 94%, 65%, 0.2);
+
+   --info: hsl(217, 91%, 65%);
+   --info-bg: hsla(217, 91%, 60%, 0.1);
+   --info-border: hsla(217, 91%, 60%, 0.2);
+
+   /* NO SHADOWS - Flat Design */
    --shadow-xs: none;
    --shadow-sm: none;
    --shadow-md: none;
-   --shadow-lg: 0 0 0 1px #27272A;
-   /* Mock border as shadow */
-   --shadow-xl: 0 0 0 1px #3F3F46;
-   --shadow-2xl: 0 0 0 1px #52525B;
-   --shadow-inner: none;
+   --shadow-lg: none;
+   --shadow-xl: none;
+   /* User explicitly requested no shadows */
 
-   /* Component Elevation via Borders */
+   /* Use Border as Mock Shadow/Depth if needed */
    --shadow-card: 0 0 0 1px var(--border-default);
-   --shadow-card-hover: 0 0 0 1px var(--border-hover);
-   --shadow-dropdown: 0 0 0 1px var(--border-strong);
-   --shadow-modal: 0 0 0 1px var(--border-strong), 0 0 0 100vmax rgba(0, 0, 0, 0.8);
-   --shadow-brand: 0 0 0 1px var(--primary-blue);
+   --shadow-card-hover: 0 0 0 1px var(--border-strong);
 
-   /* ============================================
-      INPUTS
-      ============================================ */
-   --input-bg: #0A0A0A;
-   --input-border: #27272A;
-   --input-border-hover: #3F3F46;
-   --input-border-focus: #5252FF;
-   --input-text: #FFFFFF;
-   --input-placeholder: #52525B;
-
-   /* ============================================
-      BUTTONS
-      ============================================ */
-   --btn-primary-bg: #2525FF;
-   --btn-primary-bg-hover: #3A3AFF;
-   --btn-primary-text: #FFFFFF;
-
-   --btn-secondary-bg: #121212;
-   --btn-secondary-bg-hover: #1A1A1A;
-   --btn-secondary-text: #FFFFFF;
-   --btn-secondary-border: #27272A;
-
-   --btn-ghost-bg: transparent;
-   --btn-ghost-bg-hover: #1A1A1A;
-   --btn-ghost-text: #D4D4D8;
-
-   /* ============================================
-      GLASSMORPHISM
-      ============================================ */
-   --glass-bg: rgba(10, 10, 10, 0.9);
-   /* More opaque */
-   --glass-border: rgba(255, 255, 255, 0.1);
+   /* Glass */
+   --glass-bg: hsla(240, 6%, 10%, 0.9);
+   --glass-border: hsla(255, 255%, 255%, 0.08);
    --glass-shadow: none;
 
-   /* ============================================
-      STATUS COLORS - Muted Backgrounds
-      ============================================ */
-   --success: #22C55E;
-   --success-bg: rgba(34, 197, 94, 0.1);
-   --success-border: rgba(34, 197, 94, 0.2);
-
-   --warning: #EAB308;
-   --warning-bg: rgba(234, 179, 8, 0.1);
-   --warning-border: rgba(234, 179, 8, 0.2);
-
-   --error: #EF4444;
-   --error-bg: rgba(239, 68, 68, 0.1);
-   --error-border: rgba(239, 68, 68, 0.2);
-
-   --info: #3B82F6;
-   --info-bg: rgba(59, 130, 246, 0.1);
-   --info-border: rgba(59, 130, 246, 0.2);
-
-   /* ============================================
-      FOCUS RING
-      ============================================ */
-   --focus-ring-width: 2px;
-   --focus-ring-offset: 1px;
-   --focus-ring-color: #2525FF;
-
-   /* ============================================
-      LEGACY SUPPORT
-      ============================================ */
-   --background: #000000;
-   --foreground: #FFFFFF;
+   /* Legacy */
+   --background: #0B0C15;
+   --foreground: #F8FAFC;
 }
 
 /* ========================================
@@ -497,7 +278,8 @@
 }
 
 html {
-   transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
+   /* Smooth mode switch */
+   transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
 }
 
 body {
@@ -506,7 +288,6 @@ body {
    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
    -webkit-font-smoothing: antialiased;
    -moz-osx-font-smoothing: grayscale;
-   transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
 }
 
 /* ========================================
@@ -515,7 +296,7 @@ body {
 
 @layer utilities {
 
-   /* Cursor */
+   /* Interactive Cursor */
    button,
    a,
    [role="button"] {
@@ -563,12 +344,10 @@ body {
       overflow: hidden;
    }
 
-   /* Text Balance */
    .text-balance {
       text-wrap: balance;
    }
 
-   /* Safe Area (Mobile) */
    .pb-safe {
       padding-bottom: env(safe-area-inset-bottom);
    }
@@ -577,28 +356,13 @@ body {
       padding-top: env(safe-area-inset-top);
    }
 
-   /* Focus Ring Utility */
+   /* Clean Focus */
    .focus-ring {
       outline: none;
-      box-shadow: 0 0 0 var(--focus-ring-offset) var(--bg-primary),
-         0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) var(--focus-ring-color);
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary-blue);
    }
 
-   /* Smooth Transitions */
-   .transition-smooth {
-      transition: all var(--duration-base) var(--ease-spring);
-   }
-
-   .transition-colors-smooth {
-      transition: color var(--duration-base) var(--ease-out),
-         background-color var(--duration-base) var(--ease-out),
-         border-color var(--duration-base) var(--ease-out);
-   }
-
-   /* ========================================
-      PREMIUM CARD STYLES - NO BORDERS
-      ======================================== */
-
+   /* Card Styles - Theme Aware */
    .card-base {
       background: var(--bg-primary);
       border-radius: var(--radius-xl);
@@ -607,22 +371,24 @@ body {
       transition: all 200ms var(--ease-out);
    }
 
-   .card-shadow {
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+   /* Dark mode override for cards */
+   .dark .card-base {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      box-shadow: none;
    }
 
    .card-hover:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      /* In dark mode, this might just lighten the border */
    }
 
-   .card-3d {
-      box-shadow:
-         0 1px 3px rgba(0, 0, 0, 0.05),
-         0 4px 12px rgba(0, 0, 0, 0.04);
+   .dark .card-hover:hover {
+      border-color: var(--border-strong);
+      box-shadow: none;
    }
 
-   /* Glass Effects */
+   /* Glass Utilities */
    .glass {
       background: var(--glass-bg);
       backdrop-filter: blur(12px);
@@ -631,39 +397,9 @@ body {
       box-shadow: var(--glass-shadow);
    }
 
-   .glass-subtle {
-      background: var(--glass-bg);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-   }
-
    /* Gradient Backgrounds */
    .bg-gradient-brand {
-      background: linear-gradient(135deg, #4444FF 0%, #2525FF 100%);
-   }
-
-   .bg-gradient-hero {
-      background: linear-gradient(135deg, var(--primary-blue-soft) 0%, var(--bg-primary) 100%);
-   }
-
-   .bg-gradient-surface {
-      background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-   }
-
-
-
-   /* Interactive States */
-   .interactive-lift {
-      transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
-   }
-
-   .interactive-lift:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-   }
-
-   .interactive-scale:active {
-      transform: scale(0.98);
+      background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--primary-blue) 100%);
    }
 
    /* Animations */
@@ -699,7 +435,7 @@ body {
       }
    }
 
-   /* Stagger delays for children */
+   /* Stagger delays */
    .stagger-1 {
       animation-delay: 50ms;
    }
@@ -716,28 +452,9 @@ body {
       animation-delay: 200ms;
    }
 
-   .stagger-5 {
-      animation-delay: 250ms;
-   }
-
-   .stagger-6 {
-      animation-delay: 300ms;
-   }
-
-   .stagger-7 {
-      animation-delay: 350ms;
-   }
-
-   .stagger-8 {
-      animation-delay: 400ms;
-   }
-
-   /* Skeleton Loading */
+   /* Skeleton */
    .skeleton {
-      background: linear-gradient(90deg,
-            var(--bg-tertiary) 0%,
-            var(--bg-hover) 50%,
-            var(--bg-tertiary) 100%);
+      background: linear-gradient(90deg, var(--bg-tertiary) 0%, var(--bg-hover) 50%, var(--bg-tertiary) 100%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
       border-radius: var(--radius-md);
@@ -753,11 +470,7 @@ body {
       }
    }
 
-   /* ========================================
-      LOADER ANIMATIONS
-      ======================================== */
-
-   /* Truck Animation - Suspension bounce */
+   /* Truck Animation */
    @keyframes truck-suspension {
       0% {
          transform: translateY(0px);
@@ -776,7 +489,6 @@ body {
       animation: truck-suspension 1s linear infinite;
    }
 
-   /* Truck Animation - Road scrolling */
    @keyframes truck-road {
       0% {
          transform: translateX(0px);
@@ -791,7 +503,6 @@ body {
       animation: truck-road 1.4s linear infinite;
    }
 
-   /* Truck Animation - Wheel rotation */
    @keyframes truck-wheel {
       0% {
          transform: rotate(0deg);
@@ -806,7 +517,6 @@ body {
       animation: truck-wheel 1s linear infinite;
    }
 
-   /* Spinner - Circular rotation */
    .animate-spin {
       animation: spin 1s linear infinite;
    }
@@ -821,7 +531,6 @@ body {
       }
    }
 
-   /* Dots - Bounce animation */
    @keyframes dots-bounce {
 
       0%,
@@ -860,228 +569,5 @@ body {
 
    .scrollbar-premium::-webkit-scrollbar-thumb:hover {
       background: var(--text-muted);
-   }
-
-   /* Soft Dividers */
-   .divider-soft {
-      height: 1px;
-      background: linear-gradient(90deg,
-            transparent 0%,
-            var(--border-default) 50%,
-            transparent 100%);
-      border: none;
-   }
-
-   /* Focus Ring */
-   .focus-ring-brand:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px var(--primary-blue-soft);
-   }
-
-   /* Metric Numbers */
-   .metric-number {
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -0.02em;
-   }
-
-   /* ========================================
-      SOFT BORDER UTILITIES - Minimal Design
-      ======================================== */
-
-   /* Soft border classes - subtle, clean look */
-   .border-soft {
-      border: 1px solid var(--border-subtle);
-   }
-
-   .border-soft-strong {
-      border: 1px solid var(--border-default);
-   }
-
-   /* Card with soft border (no shadow) */
-   .card-soft {
-      background: var(--bg-primary);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border-subtle);
-      transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
-   }
-
-   .card-soft:hover {
-      border-color: var(--border-default);
-   }
-
-   /* Card soft with padding */
-   .card-soft-padded {
-      background: var(--bg-primary);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border-subtle);
-      padding: var(--space-6);
-      transition: border-color 200ms var(--ease-out);
-   }
-
-   .card-soft-padded:hover {
-      border-color: var(--border-default);
-   }
-
-   /* Section wrapper with soft appearance */
-   .section-soft {
-      background: var(--bg-primary);
-      border-radius: var(--radius-2xl);
-      border: 1px solid var(--border-subtle);
-      overflow: hidden;
-   }
-
-   /* Soft divider */
-   .border-divider {
-      border-color: var(--border-subtle);
-   }
-
-   /* Interactive card with lift on hover */
-   .card-interactive {
-      background: var(--bg-primary);
-      border-radius: var(--radius-xl);
-      border: 1px solid var(--border-subtle);
-      transition: all 200ms var(--ease-out);
-   }
-
-   .card-interactive:hover {
-      border-color: var(--primary-blue);
-      transform: translateY(-2px);
-   }
-
-   /* Metric card style */
-   .card-metric {
-      background: var(--bg-primary);
-      border-radius: var(--radius-2xl);
-      border: 1px solid var(--border-subtle);
-      padding: var(--space-6);
-      transition: all 200ms var(--ease-out);
-   }
-
-   .card-metric:hover {
-      border-color: var(--border-default);
-   }
-
-   /* Header bar styling */
-   .header-soft {
-      background: var(--bg-primary);
-      border-bottom: 1px solid var(--border-subtle);
-   }
-
-   /* Sidebar styling */
-   .sidebar-soft {
-      background: var(--bg-primary);
-      border-right: 1px solid var(--border-subtle);
-   }
-
-   /* ========================================
-      BLUE-HARMONIZED DARK THEME UTILITIES
-      ======================================== */
-
-   /* Surface elevation utilities */
-   .surface-1 {
-      background: var(--bg-surface-1);
-   }
-
-   .surface-2 {
-      background: var(--bg-surface-2);
-   }
-
-   .surface-3 {
-      background: var(--bg-surface-3);
-   }
-
-   .surface-4 {
-      background: var(--bg-surface-4);
-   }
-
-   /* Elevated card styles */
-   .card-elevated-1 {
-      background: var(--bg-surface-1);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-card);
-      transition: all 200ms var(--ease-out);
-   }
-
-   .card-elevated-1:hover {
-      box-shadow: var(--shadow-card-hover);
-      transform: translateY(-1px);
-   }
-
-   .card-elevated-2 {
-      background: var(--bg-surface-2);
-      border-radius: var(--radius-xl);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8),
-         0 0 0 1px var(--border-default);
-   }
-
-   .card-elevated-3 {
-      background: var(--bg-surface-3);
-      border-radius: var(--radius-xl);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.9),
-         0 0 0 1px var(--border-strong);
-   }
-
-   /* Interactive states with blue tint */
-   .interactive-blue {
-      transition: all 200ms var(--ease-out);
-   }
-
-   .interactive-blue:hover {
-      background: rgba(107, 111, 246, 0.06);
-      box-shadow: 0 0 12px var(--blue-glow-subtle);
-   }
-
-   .interactive-blue:active {
-      background: rgba(107, 111, 246, 0.10);
-      transform: scale(0.98);
-   }
-
-   /* Focus ring with blue glow */
-   .focus-ring-blue:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 2px var(--bg-primary),
-         0 0 0 4px var(--primary-blue-soft),
-         0 0 12px var(--blue-glow-soft);
-   }
-
-   /* Gradient backgrounds with blue theme */
-   .bg-gradient-blue-subtle {
-      background: linear-gradient(135deg,
-            var(--bg-surface-1) 0%,
-            var(--bg-surface-2) 100%);
-   }
-
-   .bg-gradient-blue-medium {
-      background: linear-gradient(135deg,
-            rgba(107, 111, 246, 0.05) 0%,
-            transparent 100%);
-   }
-
-   .bg-gradient-brand-blue {
-      background: linear-gradient(135deg,
-            var(--primary-blue-hover) 0%,
-            var(--primary-blue) 100%);
-   }
-
-
-
-   /* Skeleton loading with blue tint */
-   .skeleton-blue {
-      background: linear-gradient(90deg,
-            var(--bg-surface-1) 0%,
-            var(--bg-surface-2) 50%,
-            var(--bg-surface-1) 100%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-   }
-
-   /* Blue-tinted divider */
-   .divider-blue {
-      height: 1px;
-      background: linear-gradient(90deg,
-            transparent 0%,
-            var(--border-default) 50%,
-            transparent 100%);
-      box-shadow: 0 0 4px var(--blue-glow-subtle);
    }
 }

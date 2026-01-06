@@ -348,8 +348,8 @@ UserSchema.pre('save', async function (next) {
   if (!user.isModified('password')) return next();
 
   try {
-    // Generate a salt
-    const salt = await bcrypt.genSalt(10);
+    // Generate a salt with 12 rounds (increased from 10 for better security)
+    const salt = await bcrypt.genSalt(12);
     // Hash the password along with the new salt
     const hash = await bcrypt.hash(user.password, salt);
     // Replace the plaintext password with the hash

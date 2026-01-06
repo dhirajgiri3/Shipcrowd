@@ -21,8 +21,8 @@ export function QuickOrderModal({ customer, isOpen, onClose }: QuickOrderModalPr
     const { addToast } = useToast();
     const { data: warehouses, isLoading: warehousesLoading } = useWarehouses();
     const createOrder = useCreateOrder({
-        onSuccess: () => {
-            addToast('Order created successfully!', 'success');
+        onSuccess: (order) => {
+            addToast(`Order ${order.orderNumber} created successfully!`, 'success');
             onClose();
         },
         onError: () => {
@@ -71,27 +71,30 @@ export function QuickOrderModal({ customer, isOpen, onClose }: QuickOrderModalPr
             return;
         }
 
-        createOrder.mutate({
+        // Create order with real API
+        await createOrder.mutateAsync({
             customerInfo: {
                 name: customer.name,
+                email: customer.email,
                 phone: customer.phone,
-                email: customer.email || '',
                 address: {
                     line1: customer.addressLine1 || '',
-                    line2: '',
+                    line2: customer.addressLine2,
                     city: customer.city,
                     state: customer.state,
-                    country: 'India',
+                    country: customer.country || 'India',
                     postalCode: customer.postalCode,
                 },
             },
-            products: [{
-                name: formData.productName,
-                sku: formData.sku,
-                quantity: formData.quantity,
-                weight: formData.weight,
-                price: formData.price,
-            }],
+            products: [
+                {
+                    name: formData.productName,
+                    sku: formData.sku || undefined,
+                    quantity: formData.quantity,
+                    price: formData.price,
+                    weight: formData.weight,
+                },
+            ],
             paymentMethod: formData.paymentMode,
             warehouseId: formData.warehouseId,
         });
@@ -324,7 +327,7 @@ export function QuickOrderModal({ customer, isOpen, onClose }: QuickOrderModalPr
                                     </span>
                                 </div>
                                 <div className="flex gap-3">
-                                    <Button variant="ghost" onClick={onClose} disabled={createOrder.isPending}>
+                                    <Button variant="ghost" onClick={onClose} disabled={false}>
                                         Cancel
                                     </Button>
                                     <Button

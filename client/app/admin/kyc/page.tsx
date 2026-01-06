@@ -93,10 +93,10 @@ const mockKYCData = [
 
 const statusFilters = [
     { id: 'all', label: 'All Requests' },
-    { id: 'verified', label: 'Verified', color: 'bg-emerald-500' },
-    { id: 'pending', label: 'Pending Review', color: 'bg-amber-500' },
-    { id: 'rejected', label: 'Rejected', color: 'bg-rose-500' },
-    { id: 'incomplete', label: 'Incomplete', color: 'bg-blue-500' }
+    { id: 'verified', label: 'Verified', color: 'bg-[var(--success)]' },
+    { id: 'pending', label: 'Pending Review', color: 'bg-[var(--warning)]' },
+    { id: 'rejected', label: 'Rejected', color: 'bg-[var(--error)]' },
+    { id: 'incomplete', label: 'Incomplete', color: 'bg-[var(--info)]' }
 ];
 
 // --- COMPONENTS ---
@@ -110,19 +110,19 @@ function StatsCard({ title, value, icon: Icon, color, trend }: any) {
             <div className="flex items-center justify-between mb-4">
                 <div className={cn(
                     "p-3 rounded-xl",
-                    color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                        color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                            color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                                "bg-rose-500/10 text-rose-500"
+                    color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                            color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                "bg-[var(--error-bg)] text-[var(--error)]"
                 )}>
                     <Icon className="w-6 h-6" />
                 </div>
                 <span className={cn(
                     "text-xs font-bold px-2 py-1 rounded-full",
-                    color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                        color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                            color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                                "bg-rose-500/10 text-rose-500"
+                    color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                            color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                "bg-[var(--error-bg)] text-[var(--error)]"
                 )}>
                     {trend}
                 </span>
@@ -272,10 +272,10 @@ export default function KYCPage() {
                                             <div className="flex flex-col items-end">
                                                 <span className={cn(
                                                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize",
-                                                    item.status === 'verified' ? "bg-emerald-500/10 text-emerald-500" :
-                                                        item.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
-                                                            item.status === 'incomplete' ? "bg-blue-500/10 text-blue-500" :
-                                                                "bg-rose-500/10 text-rose-500"
+                                                    item.status === 'verified' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                                        item.status === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                                            item.status === 'incomplete' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                                                                "bg-[var(--error-bg)] text-[var(--error)]"
                                                 )}>
                                                     {item.status === 'verified' && <CheckCircle2 className="w-3 h-3" />}
                                                     {item.status === 'pending' && <Clock className="w-3 h-3" />}
@@ -332,7 +332,7 @@ export default function KYCPage() {
                                 {selectedRequest.documents.map((doc: string, i: number) => (
                                     <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                                            <div className="p-2 rounded-lg bg-[var(--info-bg)] text-[var(--info)]">
                                                 <FileText className="w-4 h-4" />
                                             </div>
                                             <span className="text-sm font-medium text-[var(--text-primary)]">{doc}</span>
@@ -354,13 +354,13 @@ export default function KYCPage() {
                         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button
                                 variant="outline"
-                                className="border-rose-200 text-rose-500 hover:bg-rose-50"
+                                className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)]"
                                 onClick={handleReject}
                             >
                                 <XCircle className="w-4 h-4 mr-2" /> Reject
                             </Button>
                             <Button
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                                className="bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
                                 onClick={handleApprove}
                             >
                                 <CheckCircle2 className="w-4 h-4 mr-2" /> Approve

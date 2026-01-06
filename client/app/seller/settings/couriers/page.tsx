@@ -84,11 +84,11 @@ export default function CourierPriorityPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Truck className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <Truck className="h-6 w-6 text-[var(--primary-blue)]" />
                         Courier Priority Settings
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Drag to reorder couriers by preference for automatic selection
                     </p>
                 </div>
@@ -105,11 +105,11 @@ export default function CourierPriorityPage() {
             </div>
 
             {/* Info Banner */}
-            <div className="bg-[#2525FF]/5 border border-[#2525FF]/20 rounded-xl p-4 flex items-start gap-3">
-                <Info className="h-5 w-5 text-[#2525FF] flex-shrink-0 mt-0.5" />
+            <div className="bg-[var(--primary-blue-soft)] border border-[var(--primary-blue)]/20 rounded-xl p-4 flex items-start gap-3">
+                <Info className="h-5 w-5 text-[var(--primary-blue)] flex-shrink-0 mt-0.5" />
                 <div>
-                    <h3 className="font-medium text-gray-900">How Priority Works</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="font-medium text-[var(--text-primary)]">How Priority Works</h3>
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">
                         When shipping an order, enabled couriers are checked in priority order.
                         The first courier that offers the best rate and serviceable pincode is automatically selected.
                     </p>
@@ -122,24 +122,11 @@ export default function CourierPriorityPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total Couriers</p>
-                                <p className="text-2xl font-bold text-gray-900">{couriers.length}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Total Couriers</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{couriers.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <Truck className="h-5 w-5 text-[#2525FF]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500">Enabled</p>
-                                <p className="text-2xl font-bold text-emerald-600">{enabledCount}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -148,11 +135,24 @@ export default function CourierPriorityPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Disabled</p>
-                                <p className="text-2xl font-bold text-gray-400">{couriers.length - enabledCount}</p>
+                                <p className="text-sm text-[var(--text-muted)]">Enabled</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">{enabledCount}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg bg-[var(--success-bg)] flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-[var(--text-muted)]">Disabled</p>
+                                <p className="text-2xl font-bold text-[var(--text-secondary)]">{couriers.length - enabledCount}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
-                                <ToggleLeft className="h-5 w-5 text-gray-400" />
+                                <ToggleLeft className="h-5 w-5 text-[var(--text-muted)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -161,13 +161,13 @@ export default function CourierPriorityPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Top Choice</p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-sm text-[var(--text-muted)]">Top Choice</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">
                                     {couriers.filter(c => c.enabled).sort((a, b) => a.priority - b.priority)[0]?.name || 'None'}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Star className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
+                                <Star className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -191,21 +191,21 @@ export default function CourierPriorityPage() {
                             className={cn(
                                 "p-4 rounded-xl border transition-all cursor-grab active:cursor-grabbing",
                                 draggedId === courier.id
-                                    ? "border-[#2525FF] bg-[#2525FF]/5 shadow-lg scale-[1.02]"
+                                    ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] shadow-lg scale-[1.02]"
                                     : courier.enabled
-                                        ? "border-gray-200 bg-[var(--bg-primary)] hover:border-gray-300"
-                                        : "border-gray-100 bg-[var(--bg-secondary)]/50 opacity-60"
+                                        ? "border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:border-[var(--border-default)]"
+                                        : "border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 opacity-60"
                             )}
                         >
                             <div className="flex items-center gap-4">
                                 {/* Drag Handle */}
                                 <div className="flex items-center gap-2">
-                                    <GripVertical className="h-5 w-5 text-gray-300" />
+                                    <GripVertical className="h-5 w-5 text-[var(--text-muted)]" />
                                     <div className={cn(
                                         "h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold",
                                         index === 0 && courier.enabled
-                                            ? "bg-amber-100 text-amber-700"
-                                            : "bg-gray-100 text-gray-500"
+                                            ? "bg-[var(--warning-bg)] text-[var(--warning)]"
+                                            : "bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
                                     )}>
                                         {index + 1}
                                     </div>
@@ -214,7 +214,7 @@ export default function CourierPriorityPage() {
                                 {/* Courier Info */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <h4 className="font-semibold text-gray-900">{courier.name}</h4>
+                                        <h4 className="font-semibold text-[var(--text-primary)]">{courier.name}</h4>
                                         {index === 0 && courier.enabled && (
                                             <Badge variant="warning" className="text-xs">
                                                 <Star className="h-3 w-3 mr-1" />
@@ -222,7 +222,7 @@ export default function CourierPriorityPage() {
                                             </Badge>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                                    <div className="flex items-center gap-4 mt-1 text-sm text-[var(--text-secondary)]">
                                         <span className="flex items-center gap-1">
                                             <Clock className="h-3.5 w-3.5" />
                                             {courier.avgDelivery}
@@ -232,7 +232,7 @@ export default function CourierPriorityPage() {
                                             {courier.rate} Rate
                                         </span>
                                         <span className="flex items-center gap-1">
-                                            <Star className="h-3.5 w-3.5 text-amber-500" />
+                                            <Star className="h-3.5 w-3.5 text-[var(--warning)]" />
                                             {courier.rating}
                                         </span>
                                     </div>
@@ -245,13 +245,13 @@ export default function CourierPriorityPage() {
                                 >
                                     {courier.enabled ? (
                                         <>
-                                            <span className="text-sm text-emerald-600 font-medium">Enabled</span>
-                                            <ToggleRight className="h-6 w-6 text-emerald-500" />
+                                            <span className="text-sm text-[var(--success)] font-medium">Enabled</span>
+                                            <ToggleRight className="h-6 w-6 text-[var(--success)]" />
                                         </>
                                     ) : (
                                         <>
-                                            <span className="text-sm text-gray-400 font-medium">Disabled</span>
-                                            <ToggleLeft className="h-6 w-6 text-gray-300" />
+                                            <span className="text-sm text-[var(--text-muted)] font-medium">Disabled</span>
+                                            <ToggleLeft className="h-6 w-6 text-[var(--text-muted)]" />
                                         </>
                                     )}
                                 </button>

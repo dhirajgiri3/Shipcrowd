@@ -39,7 +39,7 @@ export default function FinancialsPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Wallet & Billing</h2>
+                <h2 className="text-2xl font-bold text-[var(--text-primary)]">Wallet & Billing</h2>
                 <Button onClick={() => addToast('Opening recharge modal...', 'info')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Recharge Wallet
@@ -52,7 +52,7 @@ export default function FinancialsPage() {
                     title="Available Balance"
                     value={formatCurrency(24500)}
                     icon={Wallet}
-                    className="bg-indigo-50 border-indigo-100"
+                    className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20"
                 />
                 <MetricCard
                     title="Total Spent (This Month)"
@@ -84,7 +84,7 @@ export default function FinancialsPage() {
                             {transactions.map((txn) => (
                                 <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors">
                                     <div className="flex items-center gap-4">
-                                        <div className={`p-2 rounded-full ${txn.type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                        <div className={`p-2 rounded-full ${txn.type === 'credit' ? 'bg-[var(--success-bg)] text-[var(--success)]' : 'bg-[var(--error-bg)] text-[var(--error)]'}`}>
                                             {txn.type === 'credit' ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                                         </div>
                                         <div>
@@ -93,7 +93,7 @@ export default function FinancialsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className={`font-semibold ${txn.type === 'credit' ? 'text-emerald-600' : 'text-[var(--text-primary)]'}`}>
+                                        <p className={`font-semibold ${txn.type === 'credit' ? 'text-[var(--success)]' : 'text-[var(--text-primary)]'}`}>
                                             {txn.type === 'credit' ? '+' : ''}{formatCurrency(txn.amount)}
                                         </p>
                                         <Badge variant={txn.status === 'success' ? 'success' : 'warning'} className="text-xs">
@@ -119,13 +119,13 @@ export default function FinancialsPage() {
                             <Button variant="outline" className="w-full justify-start" size="lg" onClick={() => addToast('Withdrawal feature coming soon!', 'info')}>
                                 <IndianRupee className="mr-2 h-5 w-5" /> Withdraw Funds
                             </Button>
-                            <div className="pt-4 border-t border-gray-100">
+                            <div className="pt-4 border-t border-[var(--border-subtle)]">
                                 <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">Payment Methods</h4>
-                                <div className="p-3 border border-gray-200 rounded-lg flex items-center justify-between mb-2">
+                                <div className="p-3 border border-[var(--border-subtle)] rounded-lg flex items-center justify-between mb-2">
                                     <span className="text-sm">HDFC Bank **** 8821</span>
                                     <Badge variant="outline">Primary</Badge>
                                 </div>
-                                <Button variant="ghost" size="sm" className="w-full text-indigo-600">
+                                <Button variant="ghost" size="sm" className="w-full text-[var(--primary-blue)]">
                                     + Add New Method
                                 </Button>
                             </div>
@@ -135,13 +135,13 @@ export default function FinancialsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <RefreshCcw className="h-5 w-5 text-gray-600" />
+                                <RefreshCcw className="h-5 w-5 text-[var(--text-muted)]" />
                                 COD Remittance
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {codRemittances.map((rem, idx) => (
-                                <div key={idx} className="p-3 border border-gray-100 rounded-lg">
+                                <div key={idx} className="p-3 border border-[var(--border-subtle)] rounded-lg">
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-sm font-medium text-[var(--text-primary)]">{rem.period}</span>
                                         <Badge variant={

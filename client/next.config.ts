@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
   // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],
-    domains: [], // Add your image domains here
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
   },
 
   // Bundle analyzer (optional, uncomment to use)

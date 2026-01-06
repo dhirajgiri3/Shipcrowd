@@ -60,11 +60,11 @@ export default function CompaniesPage() {
 
     const getStatusColor = (status: Company['status']) => {
         const colors = {
-            pending_verification: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-            kyc_submitted: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-            approved: 'bg-green-500/20 text-green-400 border-green-500/30',
-            suspended: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-            rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+            pending_verification: 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/30',
+            kyc_submitted: 'bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/30',
+            approved: 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/30',
+            suspended: 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/30',
+            rejected: 'bg-[var(--error-bg)] text-[var(--error)] border-[var(--error)]/30',
         };
         return colors[status];
     };
@@ -90,7 +90,7 @@ export default function CompaniesPage() {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-[#2525FF] to-[#4040FF] text-white rounded-lg font-medium hover:shadow-lg hover:shadow-[#2525FF]/20 transition-all"
+                    className="px-6 py-3 bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white rounded-lg font-medium hover:shadow-lg hover:shadow-[var(--primary-blue)]/20 transition-all"
                 >
                     + Create Company
                 </button>
@@ -115,7 +115,7 @@ export default function CompaniesPage() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
                     >
                         <div className="text-gray-400 text-sm mb-1">Active</div>
-                        <div className="text-2xl font-bold text-green-400">{stats.active}</div>
+                        <div className="text-2xl font-bold text-[var(--success)]">{stats.active}</div>
                     </motion.div>
 
                     <motion.div
@@ -125,7 +125,7 @@ export default function CompaniesPage() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
                     >
                         <div className="text-gray-400 text-sm mb-1">Pending</div>
-                        <div className="text-2xl font-bold text-yellow-400">{stats.byStatus.pending_verification}</div>
+                        <div className="text-2xl font-bold text-[var(--warning)]">{stats.byStatus.pending_verification}</div>
                     </motion.div>
 
                     <motion.div
@@ -135,7 +135,7 @@ export default function CompaniesPage() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
                     >
                         <div className="text-gray-400 text-sm mb-1">KYC Submitted</div>
-                        <div className="text-2xl font-bold text-blue-400">{stats.byStatus.kyc_submitted}</div>
+                        <div className="text-2xl font-bold text-[var(--info)]">{stats.byStatus.kyc_submitted}</div>
                     </motion.div>
 
                     <motion.div
@@ -145,7 +145,7 @@ export default function CompaniesPage() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
                     >
                         <div className="text-gray-400 text-sm mb-1">Approved</div>
-                        <div className="text-2xl font-bold text-green-400">{stats.byStatus.approved}</div>
+                        <div className="text-2xl font-bold text-[var(--success)]">{stats.byStatus.approved}</div>
                     </motion.div>
 
                     <motion.div
@@ -155,7 +155,7 @@ export default function CompaniesPage() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
                     >
                         <div className="text-gray-400 text-sm mb-1">Suspended/Rejected</div>
-                        <div className="text-2xl font-bold text-red-400">{stats.byStatus.suspended + stats.byStatus.rejected}</div>
+                        <div className="text-2xl font-bold text-[var(--error)]">{stats.byStatus.suspended + stats.byStatus.rejected}</div>
                     </motion.div>
                 </div>
             )}
@@ -167,7 +167,7 @@ export default function CompaniesPage() {
                     placeholder="Search companies..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[#2525FF]/50"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-[var(--primary-blue)]/50"
                 />
             </div>
 
@@ -175,7 +175,7 @@ export default function CompaniesPage() {
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
                 {loading ? (
                     <div className="flex justify-center items-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#2525FF]"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-blue)]"></div>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -224,7 +224,7 @@ export default function CompaniesPage() {
                                                     setSelectedCompany(company);
                                                     setShowInviteModal(true);
                                                 }}
-                                                className="px-4 py-2 bg-[#2525FF]/20 text-[#2525FF] rounded-lg text-sm font-medium hover:bg-[#2525FF]/30 transition-colors"
+                                                className="px-4 py-2 bg-[var(--primary-blue)]/20 text-[var(--primary-blue)] rounded-lg text-sm font-medium hover:bg-[var(--primary-blue)]/30 transition-colors"
                                             >
                                                 Invite Owner
                                             </button>
@@ -338,7 +338,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                             required
                         />
                     </div>
@@ -348,7 +348,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                             type="text"
                             value={formData.line1}
                             onChange={(e) => setFormData({ ...formData, line1: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                             required
                         />
                     </div>
@@ -358,7 +358,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                             type="text"
                             value={formData.line2}
                             onChange={(e) => setFormData({ ...formData, line2: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -368,7 +368,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                                 type="text"
                                 value={formData.city}
                                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                                 required
                             />
                         </div>
@@ -378,7 +378,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                                 type="text"
                                 value={formData.state}
                                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                                 required
                             />
                         </div>
@@ -389,7 +389,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                             type="text"
                             value={formData.postalCode}
                             onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                             required
                         />
                     </div>
@@ -404,7 +404,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-gradient-to-r from-[#2525FF] to-[#4040FF] text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 transition-all"
+                            className="flex-1 px-4 py-2 bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 transition-all"
                         >
                             {loading ? 'Creating...' : 'Create Company'}
                         </button>
@@ -457,7 +457,7 @@ function InviteOwnerModal({ company, onClose }: { company: Company; onClose: () 
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                             required
                         />
                     </div>
@@ -467,7 +467,7 @@ function InviteOwnerModal({ company, onClose }: { company: Company; onClose: () 
                             type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50"
                             required
                         />
                     </div>
@@ -477,7 +477,7 @@ function InviteOwnerModal({ company, onClose }: { company: Company; onClose: () 
                             value={formData.message}
                             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                             rows={3}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#2525FF]/50 resize-none"
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[var(--primary-blue)]/50 resize-none"
                         />
                     </div>
                     <div className="flex gap-3 pt-4">
@@ -491,7 +491,7 @@ function InviteOwnerModal({ company, onClose }: { company: Company; onClose: () 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-gradient-to-r from-[#2525FF] to-[#4040FF] text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 transition-all"
+                            className="flex-1 px-4 py-2 bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 transition-all"
                         >
                             {loading ? 'Sending...' : 'Send Invitation'}
                         </button>

@@ -87,28 +87,25 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
                         className={cn(
                             "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden",
                             isActive
-                                ? "text-white"
+                                ? "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]"
                                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                         )}
                     >
-                        {/* Active state background with gradient */}
+                        {/* Active state indicator - subtle sidebar line */}
                         {isActive && (
-                            <>
-                                <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-light)] opacity-100" />
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--primary-blue-light)]" />
-                            </>
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[var(--primary-blue)]" />
                         )}
 
                         <item.icon className={cn(
                             "relative z-10 h-5 w-5 transition-all duration-200",
-                            isActive ? "text-white" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
+                            isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
                         )} />
                         <span className="relative z-10">{item.label}</span>
 
                         {/* Arrow indicator on hover */}
                         <ChevronRight className={cn(
                             "relative z-10 ml-auto h-4 w-4 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0",
-                            isActive ? "text-white" : "text-[var(--text-muted)]"
+                            isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
                         )} />
                     </Link>
                 );
@@ -118,13 +115,13 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
     );
 
     return (
-        <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]">
+        <aside className="fixed left-0 top-0 z-[var(--z-sidebar-desktop)] h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)]">
             {/* Logo section */}
             <div className="flex h-16 items-center px-6">
                 <img
-                    src="/logos/Shipcrowd-logo.png"
+                    src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                     alt="ShipCrowd Logo"
-                    className="h-8 w-auto transition-opacity duration-200 hover:opacity-80"
+                    className="h-8 w-auto transition-opacity duration-200 hover:opacity-80 rounded-full"
                 />
             </div>
 
@@ -168,21 +165,22 @@ export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () =>
                 <div className="mt-auto pt-4">
                     <div className="divider-soft mb-4" />
 
-                    <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-[var(--bg-secondary)] shadow-sm hover:shadow-md transition-all duration-200">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] flex items-center justify-center text-white font-bold text-sm shadow-md">
+                    {/* User Info - Minimalist */}
+                    <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-all duration-200 cursor-pointer">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-primary)] font-bold text-xs">
                             {userInitials}
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{user?.name || 'Admin'}</p>
+                            <p className="text-sm font-medium text-[var(--text-primary)] truncate">{user?.name || 'Admin'}</p>
                             <p className="text-xs text-[var(--text-muted)] truncate capitalize">{user?.role || 'admin'}</p>
                         </div>
                     </div>
 
                     <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200 group"
+                        className="w-full flex items-center justify-start gap-2 px-2 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-rose-600 hover:bg-rose-500/5 transition-all duration-200 group"
                     >
-                        <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                        <LogOut className="h-3.5 w-3.5" />
                         <span>Sign Out</span>
                     </button>
                 </div>

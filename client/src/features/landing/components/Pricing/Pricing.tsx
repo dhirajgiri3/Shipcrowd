@@ -80,13 +80,13 @@ export default function Pricing() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.3 }}
-                        className="inline-flex items-center p-1.5 bg-charcoal-50 rounded-full relative border border-charcoal-100"
+                        className="inline-flex items-center p-1.5 bg-gray-100 rounded-full relative border border-gray-200"
                     >
                         <button
                             onClick={() => setBillingCycle("monthly")}
                             className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${billingCycle === "monthly"
                                 ? "text-white bg-primaryBlue shadow-md"
-                                : "text-charcoal-600 hover:text-charcoal-900"
+                                : "text-gray-600 hover:text-gray-900"
                                 }`}
                         >
                             Monthly
@@ -95,11 +95,11 @@ export default function Pricing() {
                             onClick={() => setBillingCycle("annual")}
                             className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${billingCycle === "annual"
                                 ? "text-white bg-primaryBlue shadow-md"
-                                : "text-charcoal-600 hover:text-charcoal-900"
+                                : "text-gray-600 hover:text-gray-900"
                                 }`}
                         >
                             Annual
-                            <span className="px-2 py-0.5 bg-emerald text-white text-[10px] font-bold rounded-full">
+                            <span className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full">
                                 Save 20%
                             </span>
                         </button>
@@ -115,20 +115,20 @@ export default function Pricing() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.1 }}
-                            className={`relative p-8 rounded-3xl border transition-all duration-500 ${plan.popular
-                                ? "bg-gradient-to-br from-primaryBlue to-indigo-600 text-white border-transparent shadow-2xl shadow-primaryBlue/20 scale-105 md:scale-110"
-                                : "bg-white text-charcoal-950 border-charcoal-100 hover:border-primaryBlue/30 hover:shadow-xl"
+                            className={`relative p-8 rounded-3xl transition-all duration-500 ${plan.popular
+                                ? "bg-gradient-to-br from-primaryBlue to-indigo-600 text-white shadow-2xl shadow-primaryBlue/20 scale-105 md:scale-110 border-0"
+                                : "bg-white text-gray-900 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:border-gray-200"
                                 }`}
                         >
                             {plan.popular && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg border border-white/20">
                                     MOST POPULAR
                                 </div>
                             )}
 
                             <div className="mb-8">
-                                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                                <p className={`text-sm ${plan.popular ? "text-white/80" : "text-charcoal-600"}`}>
+                                <h3 className="text-2xl font-bold mb-2 tracking-tight">{plan.name}</h3>
+                                <p className={`text-sm font-medium ${plan.popular ? "text-white/80" : "text-gray-500"}`}>
                                     {plan.description}
                                 </p>
                             </div>
@@ -141,13 +141,13 @@ export default function Pricing() {
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -10 }}
-                                            className="text-5xl font-bold"
+                                            className="text-5xl font-bold tracking-tight"
                                         >
                                             {plan.price[billingCycle]}
                                         </motion.span>
                                     </AnimatePresence>
                                     {plan.price.monthly !== "Custom" && (
-                                        <span className={`text-sm ${plan.popular ? "text-white/70" : "text-charcoal-500"}`}>
+                                        <span className={`text-sm font-medium ${plan.popular ? "text-white/70" : "text-gray-500"}`}>
                                             /month
                                         </span>
                                     )}
@@ -170,8 +170,8 @@ export default function Pricing() {
 
                             <Button
                                 className={`w-full h-12 text-base font-semibold rounded-xl transition-all duration-300 ${plan.popular
-                                    ? "bg-white text-primaryBlue hover:bg-charcoal-50 shadow-lg hover:shadow-xl"
-                                    : "bg-primaryBlue text-white hover:bg-primaryBlue/90"
+                                    ? "bg-white text-primaryBlue hover:bg-white/90 shadow-lg"
+                                    : "bg-primaryBlue text-white hover:bg-primaryBlue/90 shadow-lg shadow-primaryBlue/20"
                                     }`}
                             >
                                 {plan.cta}

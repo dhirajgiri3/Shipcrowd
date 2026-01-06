@@ -7,10 +7,10 @@
 import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';
 import { NDRWorkflow, INDRWorkflow, IWorkflowAction } from '../../../../infrastructure/database/mongoose/models';
 import NDRActionExecutors from './actions/ndr-action-executors';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
-import mongoose from 'mongoose';
 
 interface CustomerInfo {
     name: string;
@@ -57,7 +57,7 @@ export default class NDRResolutionService {
         // Execute first action immediately
         await this.executeNextAction(ndrEvent, workflow, 0);
     }
-
+                                     
     /**
      * Execute next action in workflow
      */
@@ -147,10 +147,6 @@ export default class NDRResolutionService {
         ndrEventId: string,
         action: IWorkflowAction
     ): Promise<void> {
-        // Import job dynamically
-        const QueueManagerModule = await import('../../../../infrastructure/utilities/queue-manager.js') as any;
-        const QueueManager = QueueManagerModule.default;
-
         await QueueManager.addJob(
             'ndr-resolution',
             `ndr-action-${ndrEventId}-${action.sequence}`,

@@ -1,9 +1,22 @@
 import NDRDetectionService from '../../../../src/core/application/services/ndr/ndr-detection.service';
-import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
 import { IShipment } from '../../../../src/infrastructure/database/mongoose/models';
 
-// Mock the NDREvent model
-jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model');
+// Mock must be defined inline in factory to avoid hoisting issues
+jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
+    const mockFindByIdResult = { populate: jest.fn() };
+    return {
+        NDREvent: {
+            findOne: jest.fn(),
+            countDocuments: jest.fn(),
+            createNDREvent: jest.fn(),
+            find: jest.fn(),
+            findById: jest.fn(() => mockFindByIdResult),
+            aggregate: jest.fn().mockResolvedValue([]),
+        },
+    };
+});
+
+const { NDREvent } = require('../../../../src/infrastructure/database/mongoose/models');
 
 describe('NDRDetectionService', () => {
     beforeEach(() => {

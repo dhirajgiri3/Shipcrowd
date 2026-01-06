@@ -26,13 +26,13 @@ export default function IntegrationsPage() {
             <div>
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <Plug className="h-6 w-6 text-indigo-600" />
+                        <h2 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                            <Plug className="h-6 w-6 text-[var(--primary-blue)]" />
                             Integrations & Users
                         </h2>
-                        <p className="text-gray-500 text-sm mt-1">E-commerce connections and team management</p>
+                        <p className="text-[var(--text-secondary)] text-sm mt-1">E-commerce connections and team management</p>
                     </div>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700">
+                    <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/90">
                         + Add Integration
                     </Button>
                 </div>
@@ -56,7 +56,7 @@ export default function IntegrationsPage() {
                                 <p className="text-xs text-[var(--text-muted)] mb-3">
                                     {integration.ordersSync.toLocaleString()} orders synced
                                 </p>
-                                <div className="text-[10px] text-gray-400 mb-3">
+                                <div className="text-[10px] text-[var(--text-muted)] mb-3">
                                     Last sync: {integration.lastSync}
                                 </div>
                                 <Button
@@ -83,7 +83,7 @@ export default function IntegrationsPage() {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100 text-[var(--text-muted)]">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
                                     <tr>
                                         <th className="px-6 py-3 font-medium">Name</th>
                                         <th className="px-6 py-3 font-medium">Email</th>
@@ -93,11 +93,11 @@ export default function IntegrationsPage() {
                                         <th className="px-6 py-3 font-medium text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
                                     {mockUsers.map((user, idx) => (
                                         <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
                                             <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{user.name}</td>
-                                            <td className="px-6 py-4 text-gray-600">{user.email}</td>
+                                            <td className="px-6 py-4 text-[var(--text-secondary)]">{user.email}</td>
                                             <td className="px-6 py-4">
                                                 <Badge variant="outline">{user.role}</Badge>
                                             </td>

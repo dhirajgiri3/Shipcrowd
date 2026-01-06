@@ -1,90 +1,121 @@
 /**
- * Enhanced Login Page with Toast Notifications and Better Error Handling
- * 
- * Improvements:
- * 1. Toast notifications for success/error feedback
- * 2. LoadingButton component
- * 3. Better error messages from error handler
- * 4. Visual feedback enhancements
+ * Login Page
+ *
+ * Features:
+ * - Email/password authentication
+ * - Google OAuth integration
+ * - Password visibility toggle
+ * - Remember me functionality
+ * - Proper error handling with new auth system
+ * - Role-based redirect after successful login
  */
 
-"use client"
+'use client';
 
-import Link from "next/link"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import {
     ArrowRight,
     Mail,
     Lock,
     Eye,
     EyeOff,
-} from "lucide-react"
-import { useAuth } from "@/src/features/auth"
-import { GuestGuard } from "@/src/features/auth/components/AuthGuard"
-import { toast } from "sonner"
-import { getErrorMessage } from "@/lib/error-handler"
-import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
-import { LoadingButton } from "@/components/ui/utility/LoadingButton"
+} from 'lucide-react';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { OAUTH_CONFIG } from '@/src/config/oauth';
+import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
+import { LoadingButton } from '@/components/ui/utility/LoadingButton';
 
 export default function LoginPage() {
-    const router = useRouter()
-    const { login, isLoading } = useAuth()
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <LoginForm />
+        </Suspense>
+    );
+}
 
-    const [showPassword, setShowPassword] = useState(false)
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const [rememberMe, setRememberMe] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+function LoginForm() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectPath = searchParams.get('redirect');
+    const { login, isLoading, isInitialized, isAuthenticated } = useAuth();
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
+    const [localError, setLocalError] = useState<string | null>(null);
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (isInitialized && isAuthenticated) {
+            if (redirectPath && redirectPath !== '/') {
+                router.push(redirectPath);
+            } else {
+                router.push('/seller');
+            }
+        }
+    }, [isInitialized, isAuthenticated, router, redirectPath]);
+
+    // Don't render until auth is initialized
+    if (!isInitialized) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Don't show page if redirecting
+    if (isAuthenticated) {
+        return null;
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError(null)
+        e.preventDefault();
+        setLocalError(null);
 
         // Client-side validation
         if (!email || !password) {
-            const message = "Please fill in all fields"
-            setError(message)
-            toast.error(message)
-            return
+            const message = 'Please fill in all fields';
+            setLocalError(message);
+            toast.error(message);
+            return;
         }
 
         if (!email.includes('@')) {
-            const message = "Please enter a valid email address"
-            setError(message)
-            toast.error(message)
-            return
+            const message = 'Please enter a valid email address';
+            setLocalError(message);
+            toast.error(message);
+            return;
         }
 
-        try {
-            const result = await login({ email, password, rememberMe })
+        const result = await login({ email, password, rememberMe });
 
-            if (result.success) {
-                toast.success("Welcome back! Redirecting...")
-                // Role-based redirect logic
-                let destination = "/onboarding"
-                if (result.user?.role === 'admin') {
-                    destination = "/admin"
-                } else if (result.user?.companyId) {
-                    destination = "/seller"
-                }
-                setTimeout(() => router.push(destination), 500)
+        if (result.success) {
+            toast.success('Welcome back!');
+
+            // Redirect to original destination if present, otherwise role-based default
+            if (redirectPath && redirectPath !== '/') {
+                router.push(redirectPath);
             } else {
-                // Use error handler to get user-friendly message
-                const errorMessage = getErrorMessage(result.error)
-                setError(errorMessage)
-                toast.error(errorMessage)
+                const destination = result.user?.role === 'admin' ? '/admin' : '/seller';
+                router.push(destination);
             }
-        } catch (err: any) {
-            const errorMessage = getErrorMessage(err)
-            setError(errorMessage)
-            toast.error(errorMessage)
+        } else {
+            const errorMessage = result.error?.message || 'Login failed. Please try again.';
+            setLocalError(errorMessage);
+            toast.error(errorMessage);
         }
-    }
+    };
 
     return (
-        <GuestGuard redirectTo="/seller">
         <div className="flex min-h-screen">
             {/* Left Side - Form */}
             <motion.div
@@ -97,9 +128,9 @@ export default function LoginPage() {
                     {/* Logo */}
                     <Link href="/" className="inline-block mb-12">
                         <img
-                            src="/logos/Shipcrowd-logo.png"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                             alt="ShipCrowd"
-                            className="h-8 w-auto"
+                            className="h-8 w-auto rounded-full"
                         />
                     </Link>
 
@@ -114,14 +145,14 @@ export default function LoginPage() {
                     </div>
 
                     {/* Error Alert */}
-                    {error && (
+                    {localError && (
                         <motion.div
                             className="mb-6"
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                         >
-                            <Alert variant="error" dismissible onDismiss={() => setError(null)}>
-                                <AlertDescription>{error}</AlertDescription>
+                            <Alert variant="error" dismissible onDismiss={() => setLocalError(null)}>
+                                <AlertDescription>{localError}</AlertDescription>
                             </Alert>
                         </motion.div>
                     )}
@@ -130,7 +161,7 @@ export default function LoginPage() {
                     <div className="mb-6">
                         <button
                             type="button"
-                            onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
+                            onClick={() => window.location.href = OAUTH_CONFIG.google.authUrl}
                             className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all group"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -327,6 +358,5 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
-        </GuestGuard>
-    )
+    );
 }

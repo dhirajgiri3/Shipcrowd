@@ -89,7 +89,7 @@ export function QuickCreate() {
                                                     <div className="h-10 w-10 rounded-full bg-[var(--bg-primary)] border border-[var(--border-subtle)] flex items-center justify-center text-sm font-bold text-[var(--text-primary)] shadow-sm group-hover:scale-110 transition-transform">
                                                         {customer.name.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--primary-blue)] text-white p-1.5 rounded-full shadow-lg shadow-blue-500/20 transform translate-x-2 group-hover:translate-x-0">
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--primary-blue)] text-white p-1.5 rounded-full shadow-lg shadow-[var(--primary-blue)]/20 transform translate-x-2 group-hover:translate-x-0">
                                                         <Plus className="h-3 w-3" />
                                                     </div>
                                                 </div>

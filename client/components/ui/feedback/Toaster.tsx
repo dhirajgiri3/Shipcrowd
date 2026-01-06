@@ -8,6 +8,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
             className="toaster group"
+            style={{ zIndex: 'var(--z-toast)' } as React.CSSProperties}
             toastOptions={{
                 classNames: {
                     toast:

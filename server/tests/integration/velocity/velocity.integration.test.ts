@@ -53,7 +53,7 @@ describe('Velocity Shipfast Integration', () => {
         email: 'warehouse@test.com'
       },
       address: {
-        street: '123 Main St',
+        line1: '123 Main St',
         city: 'Delhi',
         state: 'Delhi',
         postalCode: '110001',

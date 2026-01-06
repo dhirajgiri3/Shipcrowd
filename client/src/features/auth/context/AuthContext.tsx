@@ -1,407 +1,629 @@
-"use client"
+'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { authApi, AuthUser, LoginCredentials, RegisterData, ChangePasswordData, ChangeEmailData, PasswordStrengthResponse } from '@/src/core/api'
-import { sessionApi, Session } from '@/src/core/api/sessionApi'
-import { clearCSRFToken } from '@/src/core/api/client'
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
+import { authApi } from '@/src/core/api/auth.api';
+import { sessionApi, type Session } from '@/src/core/api/session.api';
+import { clearCSRFToken, prefetchCSRFToken } from '@/src/core/api/client';
+import { normalizeError } from '@/src/core/api/client';
+import { toast } from 'sonner';
+import axios from 'axios';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Auth Context
+ * Manages authentication state and provides auth methods
+ * No race conditions, proper cleanup, CSRF management
+ */
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-export type { AuthUser, LoginCredentials, Session }
-
-export interface SignupData {
-    name: string;
-    email: string;
-    password: string;
+interface AuthProviderProps {
+  children: React.ReactNode;
 }
 
-export interface AuthContextType {
-    user: AuthUser | null
-    isLoading: boolean
-    isAuthenticated: boolean
-    error: string | null
-    login: (credentials: LoginCredentials) => Promise<{ success: boolean; user?: AuthUser; error?: string }>
-    register: (data: SignupData) => Promise<{ success: boolean; message?: string; error?: string }>
-    logout: () => Promise<void>
-    clearError: () => void
-    refreshUser: () => Promise<void>
+/**
+ * Auth Provider Component
+ * Handles:
+ * - User state management
+ * - Auto-login on mount (check /auth/me)
+ * - Token refresh every 14 minutes
+ * - CSRF token initialization
+ * - Clean error handling
+ */
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<NormalizedError | null>(null);
 
-    // Password management
-    changePassword: (data: ChangePasswordData) => Promise<{ success: boolean; message?: string; error?: string }>
-    checkPasswordStrength: (password: string) => Promise<PasswordStrengthResponse | null>
+  // Refs for cleanup and preventing race conditions
+  const initializeRef = useRef(false);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Email management
-    changeEmail: (data: ChangeEmailData) => Promise<{ success: boolean; message?: string; error?: string }>
+  // ✅ Activity and Refresh Timing Refs
+  const lastActivityRef = useRef(Date.now());
+  const lastRefreshRef = useRef(Date.now());
 
-    // Session management
-    sessions: Session[]
-    loadSessions: () => Promise<void>
-    revokeSession: (sessionId: string) => Promise<{ success: boolean; message?: string; error?: string }>
-    revokeAllSessions: () => Promise<{ success: boolean; message?: string; revokedCount?: number; error?: string }>
-}
+  // ✅ Activity Listener setup
+  useEffect(() => {
+    const handleActivity = () => {
+      // Throttle: Only update if significant time passed (e.g. 1 sec) or just raw is fine for Date.now()
+      lastActivityRef.current = Date.now();
+    };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CONTEXT
-// ═══════════════════════════════════════════════════════════════════════════
+    // Listen for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    window.addEventListener('scroll', handleActivity);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+    // ✅ Cross-Tab Synchronization
+    const authChannel = new BroadcastChannel('auth_channel');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PROVIDER COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<AuthUser | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [sessions, setSessions] = useState<Session[]>([])
-
-    const isAuthenticated = !!user
-
-    /**
-     * Fetch current user from the API
-     */
-    const fetchCurrentUser = useCallback(async (): Promise<AuthUser | null> => {
-        try {
-            const userData = await authApi.getMe()
-            return userData
-        } catch {
-            return null
-        }
-    }, [])
-
-    /**
-     * Refresh user data
-     */
-    const refreshUser = useCallback(async () => {
-        const userData = await fetchCurrentUser()
-        setUser(userData)
-    }, [fetchCurrentUser])
-
-    /**
-     * Initialize auth state on mount
-     * Try to restore session using refresh token cookie
-     */
-    useEffect(() => {
-        let mounted = true;
-
-        const initAuth = async () => {
-            // Skip auth check on auth pages to avoid unnecessary API calls
-            // Note: Track page still initializes auth context (for optional login state)
-            if (typeof window !== 'undefined') {
-                const currentPath = window.location.pathname;
-
-                // Use centralized route config to determine if we should skip auth init
-                const { shouldSkipAuthInit } = await import('@/src/config/routes');
-
-                // If on auth/verification page, immediately set user to null and stop loading
-                if (shouldSkipAuthInit(currentPath)) {
-                    if (mounted) {
-                        setUser(null);
-                        setIsLoading(false);
-                    }
-                    return; // Skip auth check entirely
-                }
+    authChannel.onmessage = (event) => {
+      if (event.data.type === 'LOGOUT') {
+        // Received LOGOUT from another tab
+        // Only act if currently logged in to avoid loops
+        setUser((currentUser) => {
+          if (currentUser) {
+            // Clear local state without calling API (since other tab did it)
+            clearCSRFToken();
+            if (refreshIntervalRef.current) {
+              clearInterval(refreshIntervalRef.current);
+              refreshIntervalRef.current = null;
             }
-
-            // Only run auth check for protected/authenticated pages
-            try {
-                // First, try to get current user directly (validates accessToken cookie)
-                // This is cheaper than refresh and works if session is still valid
-                const userData = await fetchCurrentUser()
-                if (mounted) {
-                    setUser(userData)
-                }
-            } catch (err: any) {
-                if (!mounted) return;
-
-                // If getMe fails, check if it's a 401 (could be expired access token)
-                if (err?.code === 'HTTP_401') {
-                    try {
-                        // Try to refresh using refreshToken cookie
-                        await authApi.refreshToken()
-
-                        // If refresh succeeds, fetch user again
-                        const userData = await fetchCurrentUser()
-                        if (mounted) {
-                            setUser(userData)
-                            if (process.env.NODE_ENV === 'development') {
-                                console.log('[Auth] Session restored via token refresh')
-                            }
-                        }
-                    } catch (refreshErr: any) {
-                        // Refresh failed - no valid session exists
-                        // This is normal for logged-out users
-                        if (mounted) {
-                            setUser(null)
-
-                            // Only log non-401 errors (network issues, server errors, etc.)
-                            if (refreshErr?.code !== 'HTTP_401' && process.env.NODE_ENV === 'development') {
-                                console.warn('[Auth] Session refresh failed:', refreshErr.message)
-                            }
-                        }
-                    }
-                } else {
-                    // Non-401 error (network issue, server error, etc.)
-                    if (mounted) {
-                        setUser(null)
-                        if (process.env.NODE_ENV === 'development') {
-                            console.warn('[Auth] Session initialization failed:', err.message)
-                        }
-                    }
-                }
-            } finally {
-                if (mounted) {
-                    setIsLoading(false)
-                }
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Auth] Synced logout from another tab');
             }
-        }
-
-        initAuth()
-
-        return () => {
-            mounted = false;
-        }
-    }, [fetchCurrentUser])
-
-    /**
-     * Login with email and password
-     */
-    const login = useCallback(async (credentials: LoginCredentials): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
-        setIsLoading(true)
-        setError(null)
-
-        try {
-            const response = await authApi.login(credentials)
-
-            // Set user from login response
-            setUser(response.user)
-
-            return { success: true, user: response.user }
-        } catch (err: any) {
-            const errorMessage = err.message || 'Login failed. Please check your credentials.'
-            setError(errorMessage)
-            return { success: false, error: errorMessage }
-        } finally {
-            setIsLoading(false)
-        }
-    }, [])
-
-    /**
-     * Register a new user
-     */
-    const register = useCallback(async (data: SignupData): Promise<{ success: boolean; message?: string; error?: string }> => {
-        setIsLoading(true)
-        setError(null)
-
-        try {
-            const response = await authApi.register(data as RegisterData)
-            return {
-                success: true,
-                message: response.message || 'Registration successful! Please check your email to verify your account.'
+            return null;
+          }
+          return currentUser;
+        });
+      } else if (event.data.type === 'LOGIN') {
+        // Received LOGIN from another tab
+        // If currently logged out, fetch user to sync state
+        setUser((currentUser) => {
+          if (!currentUser) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Auth] Synced login from another tab');
             }
-        } catch (err: any) {
-            const errorMessage = err.message || 'Registration failed. Please try again.'
-            setError(errorMessage)
-            return { success: false, error: errorMessage }
-        } finally {
-            setIsLoading(false)
-        }
-    }, [])
+            // Trigger re-fetch
+            authApi.getMe().then(userData => {
+              setUser(userData);
+              setupTokenRefresh();
+              prefetchCSRFToken().catch(console.warn);
+            }).catch(console.error);
+          }
+          return currentUser;
+        });
+      }
+    };
 
-    /**
-     * Logout user
-     */
-    const logout = useCallback(async () => {
-        setIsLoading(true)
-        try {
-            await authApi.logout()
-        } catch (err) {
-            // Even if server logout fails, clear local state
-            console.error('Logout error:', err)
-        } finally {
-            setUser(null)
-            setIsLoading(false)
-        }
-    }, [])
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      authChannel.close();
+    };
+  }, []);
 
-    /**
-     * Clear error state
-     */
-    const clearError = useCallback(() => {
-        setError(null)
-    }, [])
-
-    /**
-     * Change password (requires current password)
-     */
-    const changePassword = useCallback(async (data: ChangePasswordData): Promise<{ success: boolean; message?: string; error?: string }> => {
-        setIsLoading(true)
-        setError(null)
-
-        try {
-            const response = await authApi.changePassword(data)
-            // Refresh user data after password change
-            await refreshUser()
-            return { success: true, message: response.message || 'Password changed successfully' }
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to change password'
-            setError(errorMessage)
-            return { success: false, error: errorMessage }
-        } finally {
-            setIsLoading(false)
-        }
-    }, [refreshUser])
-
-    /**
-     * Check password strength
-     */
-    const checkPasswordStrength = useCallback(async (password: string): Promise<PasswordStrengthResponse | null> => {
-        try {
-            return await authApi.checkPasswordStrength(password)
-        } catch (err: any) {
-            console.error('[Auth] Password strength check failed:', err)
-            return null
-        }
-    }, [])
-
-    /**
-     * Change email address
-     */
-    const changeEmail = useCallback(async (data: ChangeEmailData): Promise<{ success: boolean; message?: string; error?: string }> => {
-        setIsLoading(true)
-        setError(null)
-
-        try {
-            const response = await authApi.changeEmail(data)
-            // Refresh user data to show pending email change
-            await refreshUser()
-            return { success: true, message: response.message || 'Verification email sent to new address' }
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to change email'
-            setError(errorMessage)
-            return { success: false, error: errorMessage }
-        } finally {
-            setIsLoading(false)
-        }
-    }, [refreshUser])
-
-    /**
-     * Load all active sessions
-     */
-    const loadSessions = useCallback(async () => {
-        try {
-            const response = await sessionApi.getSessions()
-            setSessions(response.sessions || [])
-        } catch (err: any) {
-            console.error('[Auth] Failed to load sessions:', err)
-            setSessions([])
-        }
-    }, [])
-
-    /**
-     * Revoke a specific session
-     */
-    const revokeSession = useCallback(async (sessionId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
-        try {
-            const response = await sessionApi.revokeSession(sessionId)
-            // Reload sessions to reflect the change
-            await loadSessions()
-            return { success: true, message: response.message || 'Session revoked successfully' }
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to revoke session'
-            return { success: false, error: errorMessage }
-        }
-    }, [loadSessions])
-
-    /**
-     * Revoke all sessions except current
-     */
-    const revokeAllSessions = useCallback(async (): Promise<{ success: boolean; message?: string; revokedCount?: number; error?: string }> => {
-        try {
-            const response = await sessionApi.revokeAllSessions()
-            // Reload sessions to reflect the change
-            await loadSessions()
-            return {
-                success: true,
-                message: response.message || 'All other sessions revoked',
-                revokedCount: response.revokedCount
-            }
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to revoke sessions'
-            return { success: false, error: errorMessage }
-        }
-    }, [loadSessions])
-
-    /**
-     * Automatic token refresh every 14 minutes
-     * Keeps access token fresh before expiry (15 min)
-     */
-    useEffect(() => {
-        if (!isAuthenticated) return
-
-        const interval = setInterval(async () => {
-            try {
-                await authApi.refreshToken()
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('[Auth] Token refreshed automatically')
-                }
-            } catch (error: any) {
-                // If refresh fails, user will be logged out on next API call
-                if (process.env.NODE_ENV === 'development') {
-                    console.error('[Auth] Auto-refresh failed:', error.message)
-                }
-            }
-        }, 14 * 60 * 1000) // 14 minutes
-
-        return () => clearInterval(interval)
-    }, [isAuthenticated])
-
-    /**
-     * Clear CSRF token on logout
-     */
-    useEffect(() => {
-        if (!isAuthenticated) {
-            clearCSRFToken()
-        }
-    }, [isAuthenticated])
-
-    return (
-        <AuthContext.Provider
-            value={{
-                user,
-                isLoading,
-                isAuthenticated,
-                error,
-                login,
-                register,
-                logout,
-                clearError,
-                refreshUser,
-                changePassword,
-                checkPasswordStrength,
-                changeEmail,
-                sessions,
-                loadSessions,
-                revokeSession,
-                revokeAllSessions,
-            }}
-        >
-            {children}
-        </AuthContext.Provider>
-    )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HOOK
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function useAuth(): AuthContextType {
-    const context = useContext(AuthContext)
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider')
+  /**
+   * Setup token refresh timer
+   * Refresh token every 14 minutes (before 15 min access token expiry)
+   * Works independently - no user check needed
+   */
+  /**
+   * Setup token refresh timer
+   * Smart Refresh: Checks every minute, refreshes if 14 mins passed AND user is active
+   */
+  const setupTokenRefresh = useCallback(() => {
+    // Clear existing interval
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
     }
-    return context
+
+    // Reset refresh timestamp
+    lastRefreshRef.current = Date.now();
+
+    // Check every minute
+    refreshIntervalRef.current = setInterval(async () => {
+      const now = Date.now();
+      const timeSinceRefresh = now - lastRefreshRef.current;
+      const timeSinceActivity = now - lastActivityRef.current;
+
+      // CONFIG: Refresh after 14 mins
+      const REFRESH_THRESHOLD = 14 * 60 * 1000;
+      // CONFIG: Stop refreshing if inactive for 20 mins
+      const INACTIVITY_TIMEOUT = 20 * 60 * 1000;
+
+      // Only attempt refresh if time threshold met
+      if (timeSinceRefresh >= REFRESH_THRESHOLD) {
+        // ✅ Only refresh if user has been active recently
+        if (timeSinceActivity < INACTIVITY_TIMEOUT) {
+          try {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Auth] Refreshing token (Active Session)');
+            }
+            await authApi.refreshToken();
+            const userData = await authApi.getMe();
+            setUser(userData);
+            // Update last refresh time on success
+            lastRefreshRef.current = Date.now();
+          } catch (err) {
+            // Token refresh failed - session expired
+            console.error('[Auth] Refresh failed', err);
+            setUser(null);
+            if (refreshIntervalRef.current) {
+              clearInterval(refreshIntervalRef.current);
+              refreshIntervalRef.current = null;
+            }
+          }
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] Skipping refresh - User inactive');
+          }
+          // Do nothing, let token expire naturally. 
+          // Next user action will trigger 401 -> retry -> refresh (if refresh token valid)
+        }
+      }
+    }, 60 * 1000); // Check every minute
+  }, []);
+
+  /**
+   * Initialize authentication on mount
+   * Checks for existing session via /auth/me
+   */
+  const initializeAuth = useCallback(async () => {
+    // Prevent multiple initializations
+    if (initializeRef.current) return;
+    initializeRef.current = true;
+
+    try {
+      // ✅ Pre-fetch CSRF token in background to ensure readiness for mutations
+      prefetchCSRFToken().catch((err) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Auth] CSRF prefetch failed:', err);
+        }
+      });
+
+      const userData = await authApi.getMe();
+      setUser(userData);
+      setupTokenRefresh();
+    } catch (err) {
+      // User not authenticated - expected for public pages
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Auth] No active session');
+      }
+    } finally {
+      setIsInitialized(true);
+    }
+  }, [setupTokenRefresh]);
+
+  /**
+   * Refresh user data from server
+   * Can be called manually to sync user state
+   */
+  const refreshUser = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const userData = await authApi.getMe();
+      setUser(userData);
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Register new user
+   */
+  const register = useCallback(
+    async (data: RegisterRequest) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await authApi.register(data);
+
+        return { success: true };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Login user
+   */
+  const login = useCallback(
+    async (data: LoginRequest) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await authApi.login(data);
+        const userData = response.data.user;
+
+        // ✅ Security: Rotate CSRF token on login to prevent session fixation
+        clearCSRFToken();
+        prefetchCSRFToken().catch(console.warn);
+
+        setUser(userData);
+        setupTokenRefresh(); // Start refresh timer on successful login
+
+        // ✅ Broadcast LOGIN event to other tabs (ONLY on success)
+        try {
+          const authChannel = new BroadcastChannel('auth_channel');
+          authChannel.postMessage({ type: 'LOGIN' });
+          authChannel.close();
+        } catch (broadcastError) {
+          // BroadcastChannel may not be supported in all environments
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Auth] BroadcastChannel not available:', broadcastError);
+          }
+        }
+
+        return { success: true, user: userData };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [setupTokenRefresh]
+  );
+
+  /**
+   * Logout user
+   */
+  const logout = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Call logout endpoint
+      await authApi.logout();
+
+      // Clear state
+      setUser(null);
+
+      // Clear CSRF token
+      clearCSRFToken();
+
+      // Stop token refresh
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+
+      // ✅ Broadcast LOGOUT event to other tabs
+      const authChannel = new BroadcastChannel('auth_channel');
+      authChannel.postMessage({ type: 'LOGOUT' });
+      authChannel.close();
+
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Verify email with token
+   */
+  const verifyEmail = useCallback(
+    async (token: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await authApi.verifyEmail(token);
+
+        return { success: true };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Resend verification email
+   */
+  const resendVerification = useCallback(
+    async (email: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await authApi.resendVerification(email);
+
+        return { success: true };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Request password reset
+   */
+  const resetPassword = useCallback(
+    async (email: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await authApi.resetPassword(email);
+
+        return { success: true };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Confirm password reset with token and new password
+   */
+  const resetPasswordConfirm = useCallback(
+    async (token: string, password: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await authApi.resetPasswordConfirm(token, password);
+
+        return { success: true };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Change password for authenticated user
+   */
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        await authApi.changePassword(currentPassword, newPassword);
+
+        return { success: true };
+      } catch (err) {
+        const normalizedErr = normalizeError(err as any);
+        setError(normalizedErr);
+        return { success: false, error: normalizedErr };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Clear error manually (for form submission retry)
+   */
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // ========================================================================
+  // SETTINGS PAGE STUBS (To be implemented with real API)
+  // ========================================================================
+
+  const [sessions, setSessions] = useState<any[]>([]);
+
+  /**
+   * Change email - Stub implementation
+   * TODO: Backend endpoint not yet available
+   */
+  const changeEmail = useCallback(async (data: { newEmail: string; password: string }) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // TODO: Implement when backend endpoint is ready
+      // await authApi.changeEmail(data);
+
+      return {
+        success: false,
+        error: 'Email change endpoint is not yet available on the backend. Please contact support.'
+      };
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      return { success: false, error: normalizedErr.message };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Load user sessions
+   */
+  const loadSessions = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const sessions = await sessionApi.getSessions();
+      setSessions(sessions);
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      setSessions([]);
+      toast.error('Failed to load sessions. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Revoke specific session
+   */
+  const revokeSession = useCallback(async (sessionId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      await sessionApi.revokeSession(sessionId);
+
+      // Refresh sessions list
+      await loadSessions();
+
+      toast.success('Session revoked successfully');
+      return { success: true };
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      toast.error('Failed to revoke session. Please try again.');
+      return { success: false, error: normalizedErr.message };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadSessions]);
+
+  /**
+   * Revoke all other sessions
+   */
+  const revokeAllSessions = useCallback(async (): Promise<{ success: boolean; message?: string; revokedCount?: number; error?: string }> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const result = await sessionApi.revokeAllSessions();
+
+      // Refresh sessions list
+      await loadSessions();
+
+      toast.success(`${result.revoked} session(s) revoked successfully`);
+      return { success: true, revokedCount: result.revoked };
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      toast.error('Failed to revoke sessions. Please try again.');
+      return { success: false, error: normalizedErr.message };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadSessions]);
+
+  /**
+   * Check password strength - Uses local validation
+   */
+  const checkPasswordStrength = useCallback(async (password: string) => {
+    // Local password strength calculation
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+    const strengthMap: Record<number, string> = {
+      0: 'weak', 1: 'weak', 2: 'fair', 3: 'good', 4: 'strong', 5: 'strong'
+    };
+
+    const suggestions: string[] = [];
+    if (password.length < 12) suggestions.push('Use at least 12 characters');
+    if (!/[A-Z]/.test(password)) suggestions.push('Add uppercase letters');
+    if (!/[a-z]/.test(password)) suggestions.push('Add lowercase letters');
+    if (!/\d/.test(password)) suggestions.push('Add numbers');
+    if (!/[^a-zA-Z0-9]/.test(password)) suggestions.push('Add special characters');
+
+    return {
+      score,
+      strength: strengthMap[score] || 'weak',
+      feedback: {
+        warning: score < 3 ? 'Password is too weak' : undefined,
+        suggestions,
+      },
+    };
+  }, []);
+
+  /**
+   * Initialize auth on mount
+   */
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  /**
+   * Cleanup on unmount
+   */
+  useEffect(() => {
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    isInitialized,
+    error,
+    register,
+    login,
+    logout,
+    refreshUser,
+    verifyEmail,
+    resendVerification,
+    resetPassword,
+    resetPasswordConfirm,
+    changePassword,
+    clearError,
+    // Settings page methods
+    changeEmail,
+    sessions,
+    loadSessions,
+    revokeSession,
+    revokeAllSessions,
+    checkPasswordStrength,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+export default AuthProvider;
+

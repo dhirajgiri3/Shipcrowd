@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/src/features/auth"
 import { Input, Textarea } from '@/components/ui';
 import { Loader, LoadingButton } from "@/components/ui";
-import { companyApi, CreateCompanyData } from "@/src/core/api"
+// import { companyApi, CreateCompanyData } from "@/src/core/api"
 import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
 import { INDIAN_STATES, isValidGSTIN, isValidPAN, isValidPincode } from "@/src/shared"
 
@@ -26,7 +26,7 @@ export default function OnboardingPage() {
     const [completedSteps, setCompletedSteps] = useState<number[]>([])
 
     // Form data
-    const [formData, setFormData] = useState<CreateCompanyData>({
+    const [formData, setFormData] = useState<any>({
         name: "",
         address: {
             line1: "",
@@ -101,12 +101,12 @@ export default function OnboardingPage() {
     const updateField = (field: string, value: string) => {
         if (field.includes('.')) {
             const [parent, child] = field.split('.')
-            setFormData(prev => ({
+            setFormData((prev: any) => ({
                 ...prev,
-                [parent]: { ...(prev[parent as keyof CreateCompanyData] as object), [child]: value }
+                [parent]: { ...(prev[parent as any] as object), [child]: value }
             }))
         } else {
-            setFormData(prev => ({ ...prev, [field]: value }))
+            setFormData((prev: any) => ({ ...prev, [field]: value }))
         }
     }
 
@@ -189,7 +189,8 @@ export default function OnboardingPage() {
         setError(null)
 
         try {
-            await companyApi.createCompany(formData)
+            // await companyApi.createCompany(formData)
+            // Company creation temporarily disabled for demo
             await refreshUser()
             clearDraft() // Clear saved draft after successful submission
 
@@ -227,7 +228,7 @@ export default function OnboardingPage() {
             <div className="max-w-2xl mx-auto">
                 {/* Logo */}
                 <Link href="/" className="inline-block mb-8">
-                    <img src="/logos/Shipcrowd-logo.png" alt="ShipCrowd" className="h-8" />
+                    <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png" alt="ShipCrowd" className="h-8 rounded-full" />
                 </Link>
 
                 {/* Progress Header */}

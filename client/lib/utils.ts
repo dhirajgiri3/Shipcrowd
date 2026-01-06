@@ -119,12 +119,12 @@ export const getStatusColor = (status: string): string => {
     const type = getStatusType(status);
 
     const colorMap: Record<StatusColorType, string> = {
-        success: 'bg-[--color-success-light] text-[--color-success-dark] border-[--color-success]/20',
-        warning: 'bg-[--color-warning-light] text-[--color-warning-dark] border-[--color-warning]/20',
-        error: 'bg-[--color-error-light] text-[--color-error-dark] border-[--color-error]/20',
-        info: 'bg-[--color-info-light] text-[--color-info-dark] border-[--color-info]/20',
-        neutral: 'bg-[--color-gray-100] text-[--color-gray-700] border-[--color-gray-200]',
-        primary: 'bg-[--color-primary-light] text-[--color-primary] border-[--color-primary]/20',
+        success: 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20',
+        warning: 'bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20',
+        error: 'bg-[var(--error-bg)] text-[var(--error)] border-[var(--error)]/20',
+        info: 'bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20',
+        neutral: 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-subtle)]',
+        primary: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border-[var(--primary-blue)]/20',
     };
 
     return colorMap[type];

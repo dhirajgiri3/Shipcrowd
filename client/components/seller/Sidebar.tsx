@@ -154,21 +154,18 @@ export function Sidebar() {
                 className={cn(
                     "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group overflow-hidden",
                     isActive
-                        ? "text-white"
+                        ? "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]"
                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                 )}
             >
-                {/* Active state background with gradient */}
+                {/* Active state indicator - subtle sidebar line */}
                 {isActive && (
-                    <>
-                        <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-light)] opacity-100" />
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--primary-blue-light)]" />
-                    </>
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-[var(--primary-blue)]" />
                 )}
 
                 <item.icon className={cn(
                     "relative z-10 h-5 w-5 transition-all duration-200",
-                    isActive ? "text-white" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
+                    isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
                 )} />
                 <span className="relative z-10 flex-1">{item.label}</span>
 
@@ -177,8 +174,8 @@ export function Sidebar() {
                     <span className={cn(
                         "relative z-10 px-1.5 py-0.5 text-[10px] font-bold rounded-full min-w-[18px] text-center",
                         isActive
-                            ? "bg-white/20 text-white"
-                            : "bg-rose-500 text-white"
+                            ? "bg-[var(--primary-blue)] text-white"
+                            : "bg-[var(--error)] text-white"
                     )}>
                         {badgeCount}
                     </span>
@@ -188,7 +185,7 @@ export function Sidebar() {
                 {!badgeCount && (
                     <ChevronRight className={cn(
                         "relative z-10 h-4 w-4 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0",
-                        isActive ? "text-white" : "text-[var(--text-muted)]"
+                        isActive ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
                     )} />
                 )}
             </Link>
@@ -196,13 +193,13 @@ export function Sidebar() {
     };
 
     return (
-        <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] flex flex-col">
+        <aside className="fixed left-0 top-0 z-[var(--z-sidebar-desktop)] h-screen w-64 bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] flex flex-col">
             {/* Logo */}
             <div className="flex h-16 items-center px-6">
                 <img
-                    src="/logos/Shipcrowd-logo.png"
+                    src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                     alt="ShipCrowd Logo"
-                    className="h-8 w-auto transition-opacity duration-200 hover:opacity-80"
+                    className="h-8 w-auto transition-opacity duration-200 hover:opacity-80 rounded-full"
                 />
             </div>
 
@@ -227,7 +224,7 @@ export function Sidebar() {
                                     <span className="flex items-center gap-2">
                                         {section.title}
                                         {!isExpanded && sectionBadgeCount > 0 && (
-                                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white min-w-[18px] text-center">
+                                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[var(--error)] text-white min-w-[18px] text-center">
                                                 {sectionBadgeCount}
                                             </span>
                                         )}
@@ -284,32 +281,45 @@ export function Sidebar() {
             </div>
 
             {/* User Profile & Footer */}
-            <div className="p-4">
-                <div className="divider-soft mb-4" />
+            <div className="p-4 mt-auto">
+                <div className="h-px bg-[var(--border-subtle)] mb-4" />
 
-                {/* Company Badge */}
-                <div className="mb-3 px-3 py-2 rounded-xl bg-[var(--primary-blue-soft)] shadow-sm">
-                    <p className="text-xs font-semibold text-[var(--primary-blue)]">ShipCrowd</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Pro Plan • Active</p>
+                {/* Company Badge - Clean & Premium */}
+                <div className="mb-3">
+                    <div className="relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-tertiary)] p-3 shadow-sm group cursor-pointer hover:border-[var(--primary-blue)]/30 transition-all duration-300">
+                        {/* Glow Effect */}
+                        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-[var(--primary-blue)]/5 blur-2xl group-hover:bg-[var(--primary-blue)]/10 transition-colors duration-500" />
+
+                        <div className="relative flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <p className="text-xs font-bold text-[var(--text-primary)] tracking-wide">ShipCrowd Pro</p>
+                                <p className="text-[10px] font-medium text-[var(--text-muted)]">Premium Active</p>
+                            </div>
+                            <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] px-1.5 py-0">
+                                PRO
+                            </Badge>
+                        </div>
+                    </div>
                 </div>
 
-                {/* User Info */}
-                <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-[var(--bg-secondary)] shadow-sm hover:shadow-md transition-all duration-200">
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] flex items-center justify-center text-white font-bold text-sm shadow-md">
+                {/* User Info - Minimalist */}
+                <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-all duration-200 cursor-pointer">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-primary)] font-bold text-xs">
                         {initials}
                     </div>
                     <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{user?.name || 'Seller'}</p>
+                        <p className="text-sm font-medium text-[var(--text-primary)] truncate">{user?.name || 'Seller'}</p>
                         <p className="text-xs text-[var(--text-muted)] truncate capitalize">{user?.role || 'seller'}</p>
                     </div>
+                    <Settings className="w-4 h-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" />
                 </div>
 
                 {/* Sign Out */}
                 <button
                     onClick={handleSignOut}
-                    className="w-full flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200 group"
+                    className="w-full flex items-center justify-start gap-2 px-2 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-bg)] transition-all duration-200 group"
                 >
-                    <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                    <LogOut className="h-3.5 w-3.5" />
                     <span>Sign Out</span>
                 </button>
             </div>

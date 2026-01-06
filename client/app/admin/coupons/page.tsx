@@ -108,11 +108,11 @@ export default function CouponsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <Ticket className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
+                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                        <Ticket className="h-6 w-6 text-[var(--primary-blue)]" />
                         Coupons & Promotions
                     </h1>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
                         Manage discount codes for wallet recharges
                     </p>
                 </div>
@@ -128,11 +128,11 @@ export default function CouponsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Coupons</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{mockCoupons.length}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Total Coupons</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockCoupons.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
-                                <Ticket className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
+                                <Ticket className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -141,13 +141,13 @@ export default function CouponsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>
+                                <p className="text-sm text-[var(--text-secondary)]">Active</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">
                                     {mockCoupons.filter(c => c.status === 'active').length}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
-                                <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
+                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -156,13 +156,13 @@ export default function CouponsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Redemptions</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                                <p className="text-sm text-[var(--text-secondary)]">Total Redemptions</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">
                                     {mockCoupons.reduce((sum, c) => sum + c.usedCount, 0)}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
-                                <Users className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--info-bg)]">
+                                <Users className="h-5 w-5 text-[var(--info)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -171,11 +171,11 @@ export default function CouponsPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Est. Discount Given</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>₹45.2K</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Est. Discount Given</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">₹45.2K</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
-                                <IndianRupee className="h-5 w-5" style={{ color: 'var(--warning)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
+                                <IndianRupee className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -184,11 +184,11 @@ export default function CouponsPage() {
 
             {/* Create Coupon Form */}
             {showCreateForm && (
-                <Card className="border-[#2525FF]/20 bg-[#2525FF]/5">
+                <Card className="border-[var(--primary-blue-soft)] bg-[var(--bg-primary)]">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg">Create New Coupon</CardTitle>
-                            <CardDescription>Set up a new discount code</CardDescription>
+                            <CardTitle className="text-lg text-[var(--text-primary)]">Create New Coupon</CardTitle>
+                            <CardDescription className="text-[var(--text-secondary)]">Set up a new discount code</CardDescription>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => setShowCreateForm(false)}>
                             <X className="h-4 w-4" />
@@ -197,54 +197,54 @@ export default function CouponsPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Coupon Code *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Coupon Code *</label>
                                 <Input placeholder="e.g., SAVE50" className="uppercase" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Discount Type *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Discount Type *</label>
+                                <select className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-active)]">
                                     <option value="percentage">Percentage</option>
                                     <option value="fixed">Fixed Amount</option>
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Discount Value *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Discount Value *</label>
                                 <Input type="number" placeholder="e.g., 50" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Max Discount (₹)</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Max Discount (₹)</label>
                                 <Input type="number" placeholder="e.g., 500" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Min Recharge (₹) *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Min Recharge (₹) *</label>
                                 <Input type="number" placeholder="e.g., 1000" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Usage Limit</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Usage Limit</label>
                                 <Input type="number" placeholder="Unlimited if empty" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Valid From *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Valid From *</label>
                                 <Input type="date" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Valid To *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Valid To *</label>
                                 <Input type="date" />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Description</label>
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Description</label>
                             <Input placeholder="Brief description of the coupon" />
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
                             <Button onClick={() => {
                                 addToast('Coupon created successfully!', 'success');
@@ -272,11 +272,12 @@ export default function CouponsPage() {
                         <button
                             key={status}
                             onClick={() => setSelectedStatus(status)}
-                            className="px-4 py-2 text-sm font-medium rounded-full transition-all capitalize"
-                            style={{
-                                background: selectedStatus === status ? 'var(--primary-blue)' : 'var(--bg-secondary)',
-                                color: selectedStatus === status ? 'var(--text-inverse)' : 'var(--text-secondary)'
-                            }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
+                                selectedStatus === status
+                                    ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                                    : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                            )}
                         >
                             {status}
                         </button>
@@ -289,7 +290,7 @@ export default function CouponsPage() {
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                            <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                                 <tr>
                                     <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Code</th>
                                     <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Discount</th>
@@ -300,7 +301,7 @@ export default function CouponsPage() {
                                     <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-[var(--border-subtle)]">
                                 {filteredCoupons.map((coupon) => (
                                     <tr key={coupon.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                         <td className="p-4">
@@ -312,7 +313,7 @@ export default function CouponsPage() {
                                                     onClick={() => copyToClipboard(coupon.code)}
                                                     className="p-1 hover:bg-[var(--bg-active)] rounded transition-colors"
                                                 >
-                                                    <Copy className="h-3.5 w-3.5 text-gray-400" />
+                                                    <Copy className="h-3.5 w-3.5 text-[var(--text-muted)]" />
                                                 </button>
                                             </div>
                                             <p className="text-xs text-[var(--text-muted)] mt-1">{coupon.description}</p>
@@ -321,12 +322,12 @@ export default function CouponsPage() {
                                             <div className="flex items-center gap-1">
                                                 {coupon.type === 'percentage' ? (
                                                     <>
-                                                        <Percent className="h-4 w-4 text-[#2525FF]" />
+                                                        <Percent className="h-4 w-4 text-[var(--primary-blue)]" />
                                                         <span className="font-medium text-[var(--text-primary)]">{coupon.value}%</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <IndianRupee className="h-4 w-4 text-[#2525FF]" />
+                                                        <IndianRupee className="h-4 w-4 text-[var(--primary-blue)]" />
                                                         <span className="font-medium text-[var(--text-primary)]">{coupon.value}</span>
                                                     </>
                                                 )}
@@ -347,20 +348,20 @@ export default function CouponsPage() {
                                                 )}
                                             </div>
                                             {coupon.usageLimit && (
-                                                <div className="w-20 h-1.5 bg-gray-200 rounded-full mt-1">
+                                                <div className="w-20 h-1.5 bg-[var(--bg-tertiary)] rounded-full mt-1">
                                                     <div
-                                                        className="h-full bg-[#2525FF] rounded-full"
+                                                        className="h-full bg-[var(--primary-blue)] rounded-full"
                                                         style={{ width: `${Math.min((coupon.usedCount / coupon.usageLimit) * 100, 100)}%` }}
                                                     />
                                                 </div>
                                             )}
                                         </td>
                                         <td className="p-4">
-                                            <div className="flex items-center gap-1 text-sm text-gray-900">
-                                                <Calendar className="h-4 w-4 text-gray-400" />
+                                            <div className="flex items-center gap-1 text-sm text-[var(--text-primary)]">
+                                                <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
                                                 <span>{coupon.validFrom}</span>
                                             </div>
-                                            <p className="text-xs text-gray-500">to {coupon.validTo}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">to {coupon.validTo}</p>
                                         </td>
                                         <td className="p-4">
                                             <Badge variant={coupon.status === 'active' ? 'success' : 'neutral'}>
@@ -379,7 +380,7 @@ export default function CouponsPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                                    className="text-[var(--error)] hover:text-[var(--error)] hover:bg-[var(--error-bg)]"
                                                     onClick={() => addToast('Coupon deleted!', 'success')}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -398,9 +399,9 @@ export default function CouponsPage() {
             {filteredCoupons.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <Ticket className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No coupons found</h3>
-                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your search or create a new coupon</p>
+                        <Ticket className="h-12 w-12 mx-auto mb-4 text-[var(--text-muted)]" />
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No coupons found</h3>
+                        <p className="mt-1 text-[var(--text-secondary)]">Try adjusting your search or create a new coupon</p>
                         <Button className="mt-4" onClick={() => setShowCreateForm(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Create Coupon

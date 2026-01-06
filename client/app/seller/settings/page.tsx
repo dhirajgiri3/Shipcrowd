@@ -84,12 +84,12 @@ export default function SettingsPage() {
         <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
             <div className="flex flex-col md:flex-row gap-8">
                 <aside className="w-full md:w-64 space-y-2">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6 px-2">Settings</h2>
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 px-2">Settings</h2>
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => handleTabClick(tab)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-[#2525FF]/5 text-[#2525FF] border border-[#2525FF]/10' : 'text-gray-600 hover:bg-[var(--bg-hover)] hover:text-gray-900'
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === tab.id ? 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] border border-[var(--primary-blue)]/20' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
                                 }`}
                         >
                             <tab.icon className="w-5 h-5" />
@@ -114,8 +114,8 @@ export default function SettingsPage() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="flex items-center gap-6 pb-6 border-b border-gray-100">
-                                            <div className="h-20 w-20 rounded-xl bg-[#2525FF] flex items-center justify-center text-white text-2xl font-bold">
+                                        <div className="flex items-center gap-6 pb-6 border-b border-[var(--border-subtle)]">
+                                            <div className="h-20 w-20 rounded-xl bg-[var(--primary-blue)] flex items-center justify-center text-white text-2xl font-bold">
                                                 {profileData?.name?.charAt(0).toUpperCase() || 'U'}
                                             </div>
                                             <div>
@@ -124,15 +124,15 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="text-sm font-medium text-gray-700 block mb-1.5">Full Name</label>
+                                            <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Full Name</label>
                                             <Input value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} />
                                         </div>
                                         <div>
-                                            <label className="text-sm font-medium text-gray-700 block mb-1.5">Email Address</label>
+                                            <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Email Address</label>
                                             <Input value={profileData?.email || ''} disabled />
                                         </div>
                                         <div>
-                                            <label className="text-sm font-medium text-gray-700 block mb-1.5">Phone Number</label>
+                                            <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Phone Number</label>
                                             <Input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} placeholder="+91 98765 43210" />
                                         </div>
                                         <div className="pt-4 flex justify-end">
@@ -159,34 +159,34 @@ export default function SettingsPage() {
                                 ) : (
                                     <>
                                         <div>
-                                            <label className="text-sm font-medium text-gray-700 block mb-1.5">Company Name</label>
+                                            <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Company Name</label>
                                             <Input value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="text-sm font-medium text-gray-700 block mb-1.5">GSTIN</label>
+                                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">GSTIN</label>
                                                 <Input value={companyForm.billingInfo.gstin} onChange={(e) => setCompanyForm({ ...companyForm, billingInfo: { ...companyForm.billingInfo, gstin: e.target.value } })} />
                                             </div>
                                             <div>
-                                                <label className="text-sm font-medium text-gray-700 block mb-1.5">PAN</label>
+                                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">PAN</label>
                                                 <Input value={companyForm.billingInfo.pan} onChange={(e) => setCompanyForm({ ...companyForm, billingInfo: { ...companyForm.billingInfo, pan: e.target.value } })} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="text-sm font-medium text-gray-700 block mb-1.5">Business Address</label>
+                                            <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Business Address</label>
                                             <Input value={companyForm.address.line1} onChange={(e) => setCompanyForm({ ...companyForm, address: { ...companyForm.address, line1: e.target.value } })} />
                                         </div>
                                         <div className="grid grid-cols-3 gap-4">
                                             <div>
-                                                <label className="text-sm font-medium text-gray-700 block mb-1.5">City</label>
+                                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">City</label>
                                                 <Input value={companyForm.address.city} onChange={(e) => setCompanyForm({ ...companyForm, address: { ...companyForm.address, city: e.target.value } })} />
                                             </div>
                                             <div>
-                                                <label className="text-sm font-medium text-gray-700 block mb-1.5">State</label>
+                                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">State</label>
                                                 <Input value={companyForm.address.state} onChange={(e) => setCompanyForm({ ...companyForm, address: { ...companyForm.address, state: e.target.value } })} />
                                             </div>
                                             <div>
-                                                <label className="text-sm font-medium text-gray-700 block mb-1.5">Pincode</label>
+                                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Pincode</label>
                                                 <Input value={companyForm.address.postalCode} onChange={(e) => setCompanyForm({ ...companyForm, address: { ...companyForm.address, postalCode: e.target.value } })} />
                                             </div>
                                         </div>
@@ -203,8 +203,8 @@ export default function SettingsPage() {
                     {!['profile', 'company', 'security', 'account'].includes(activeTab) && (
                         <Card>
                             <CardContent className="py-12 flex flex-col items-center justify-center text-center">
-                                <div className="h-12 w-12 rounded-full bg-[var(--bg-tertary)] flex items-center justify-center mb-4">
-                                    <Lock className="w-6 h-6 text-gray-400" />
+                                <div className="h-12 w-12 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center mb-4">
+                                    <Lock className="w-6 h-6 text-[var(--text-muted)]" />
                                 </div>
                                 <h3 className="text-lg font-medium text-[var(--text-primary)]">Settings Section</h3>
                                 <p className="text-[var(--text-muted)] max-w-sm mt-2">

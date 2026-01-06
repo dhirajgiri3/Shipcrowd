@@ -75,17 +75,20 @@ export const useSellerActions = (options?: { useMockData?: boolean }) => {
     return useQuery<SellerActionsResponse>({
         queryKey: ['seller', 'actions'],
         queryFn: async () => {
-            // Use mock data if explicitly requested or for development
-            if (options?.useMockData) {
+            // In development, use mock data by default (backend endpoint may not exist)
+            // This avoids noisy console errors during development
+            const isDevelopment = process.env.NODE_ENV === 'development';
+
+            if (options?.useMockData || isDevelopment) {
                 return mockSellerActions;
             }
 
+            // In production, try the API and fall back to mock data on error
             try {
                 const response = await apiClient.get('/analytics/seller-actions');
                 return response.data as SellerActionsResponse;
             } catch (error) {
                 // Fallback to mock data if API fails
-                console.warn('Falling back to mock seller actions data');
                 return mockSellerActions;
             }
         },

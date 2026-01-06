@@ -4,6 +4,7 @@ import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
+import { authApi } from '@/src/core/api/auth.api';
 import { Loader } from '@/components/ui';
 
 function OAuthCallbackContent() {
@@ -36,14 +37,17 @@ function OAuthCallbackContent() {
             try {
                 // Wait for auth state to sync (cookies should be set by backend)
                 await refreshUser();
+
+                // ✅ Get fresh user data AFTER refresh to avoid stale closure
+                const userData = await authApi.getMe();
                 setAuthChecked(true);
 
                 toast.success('Successfully signed in with Google!');
 
                 // Small delay for toast visibility, then redirect
                 setTimeout(() => {
-                    // Redirect based on onboarding status
-                    const destination = user?.companyId ? '/seller' : '/onboarding';
+                    // ✅ Use fresh userData, not stale user from closure
+                    const destination = userData?.companyId ? '/seller' : '/onboarding';
                     router.push(destination);
                 }, 800);
             } catch (err) {
@@ -55,7 +59,7 @@ function OAuthCallbackContent() {
         };
 
         handleOAuthCallback();
-    }, [searchParams, router, refreshUser, user]);
+    }, [searchParams, router, refreshUser]); // ✅ Removed `user` to prevent stale closure
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">

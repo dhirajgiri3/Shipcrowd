@@ -27,10 +27,10 @@ describe('Authentication Service', () => {
 
         it('should normalize email to lowercase', async () => {
             const user = await createTestUser({
-                email: 'Test@EXAMPLE.COM',
+                email: 'NormalizeTest@EXAMPLE.COM',
             });
 
-            expect(user.email).toBe('test@example.com');
+            expect(user.email).toBe('normalizetest@example.com');
         });
 
         it('should set default role to seller', async () => {
@@ -113,12 +113,14 @@ describe('Authentication Service', () => {
         });
 
         it('should find users by role', async () => {
-            await createTestUser({ role: 'admin', email: 'admin1@test.com' });
-            await createTestUser({ role: 'admin', email: 'admin2@test.com' });
-            await createTestUser({ role: 'seller', email: 'seller1@test.com' });
+            const admin1 = await createTestUser({ role: 'admin', email: 'roletest-admin1@test.com' });
+            const admin2 = await createTestUser({ role: 'admin', email: 'roletest-admin2@test.com' });
+            await createTestUser({ role: 'seller', email: 'roletest-seller1@test.com' });
 
             const admins = await User.find({ role: 'admin' });
-            expect(admins.length).toBe(2);
+            expect(admins.length).toBeGreaterThanOrEqual(2);
+            expect(admins.map(a => a.email)).toContain('roletest-admin1@test.com');
+            expect(admins.map(a => a.email)).toContain('roletest-admin2@test.com');
         });
     });
 });

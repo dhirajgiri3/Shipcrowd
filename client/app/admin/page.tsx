@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/core/Button';
 import { AnimatedNumber } from '@/hooks/useCountUp';
 import {
     Activity,
@@ -89,10 +90,10 @@ const revenueData = [
 ];
 
 const orderStatusData = [
-    { name: 'Delivered', value: 4500, color: '#10B981' },
-    { name: 'In Transit', value: 1200, color: '#3B82F6' },
-    { name: 'Pending', value: 800, color: '#F59E0B' },
-    { name: 'RTO', value: 300, color: '#EF4444' },
+    { name: 'Delivered', value: 4500, color: 'var(--success)' },
+    { name: 'In Transit', value: 1200, color: 'var(--primary-blue)' },
+    { name: 'Pending', value: 800, color: 'var(--warning)' },
+    { name: 'RTO', value: 300, color: 'var(--error)' },
 ];
 
 const aiInsights = [
@@ -127,31 +128,27 @@ const aiInsights = [
 
 // --- COMPONENTS ---
 
-// 1. Stat Card with Sparkline
+// 1. Stat Card - Clean & Professional
 function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data }: any) {
     return (
         <motion.div
             variants={itemVariants}
-            className="relative overflow-hidden p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] group hover:shadow-xl transition-all duration-300"
+            className="group relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-6 text-left transition-all duration-200 hover:border-[var(--border-focus)]"
         >
-            <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity`}>
-                <Icon className="w-32 h-32" />
-            </div>
-
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-start justify-between mb-4">
                 <div className={cn(
-                    "p-3 rounded-2xl",
-                    color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                        color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                            color === 'violet' ? "bg-violet-500/10 text-violet-500" :
-                                "bg-amber-500/10 text-amber-500"
+                    "p-2.5 rounded-lg transition-colors border",
+                    color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20" :
+                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
+                            color === 'violet' ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" :
+                                "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20"
                 )}>
-                    <Icon className="w-6 h-6" />
+                    <Icon className="w-5 h-5" />
                 </div>
                 {trend && (
                     <div className={cn(
-                        "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
-                        trend === 'up' ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+                        "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
+                        trend === 'up' ? "text-[var(--success)] bg-[var(--success-bg)]" : "text-[var(--error)] bg-[var(--error-bg)]"
                     )}>
                         <TrendingUp className={cn("w-3 h-3", trend === 'down' && "rotate-180")} />
                         {trendValue}
@@ -162,40 +159,36 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
             <div>
                 <p className="text-sm font-medium text-[var(--text-secondary)]">{title}</p>
                 <div className="flex items-baseline gap-2 mt-1">
-                    <h3 className="text-3xl font-bold text-[var(--text-primary)]">
+                    <h3 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
                         <AnimatedNumber value={value} />
                     </h3>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-1">{subtext}</p>
             </div>
 
-            <div className="h-16 mt-4 -mx-2">
+            <div className="h-10 mt-4 -mx-2 opacity-50 group-hover:opacity-100 transition-opacity">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data || revenueData}>
                         <defs>
                             <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={
-                                    color === 'blue' ? '#3B82F6' :
-                                        color === 'emerald' ? '#10B981' :
-                                            color === 'violet' ? '#8B5CF6' : '#F59E0B'
-                                } stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={
-                                    color === 'blue' ? '#3B82F6' :
-                                        color === 'emerald' ? '#10B981' :
-                                            color === 'violet' ? '#8B5CF6' : '#F59E0B'
-                                } stopOpacity={0} />
+                                <stop offset="0%" stopColor={
+                                    color === 'blue' ? 'var(--primary-blue)' :
+                                        color === 'emerald' ? 'var(--success)' :
+                                            color === 'violet' ? '#8B5CF6' : 'var(--warning)'
+                                } stopOpacity={0.1} />
+                                <stop offset="100%" stopColor="transparent" stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <Area
                             type="monotone"
                             dataKey="value"
                             stroke={
-                                color === 'blue' ? '#3B82F6' :
-                                    color === 'emerald' ? '#10B981' :
-                                        color === 'violet' ? '#8B5CF6' : '#F59E0B'
+                                color === 'blue' ? 'var(--primary-blue)' :
+                                    color === 'emerald' ? 'var(--success)' :
+                                        color === 'violet' ? '#8B5CF6' : 'var(--warning)'
                             }
                             fill={`url(#gradient-${title})`}
-                            strokeWidth={2}
+                            strokeWidth={1.5}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -213,10 +206,10 @@ function AIInsightCard({ insight }: { insight: any }) {
         >
             <div className="flex gap-4">
                 <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                    insight.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                        insight.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                            "bg-blue-500/10 text-blue-500"
+                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                    insight.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
+                        insight.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20" :
+                            "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20"
                 )}>
                     <insight.icon className="w-5 h-5" />
                 </div>
@@ -225,9 +218,9 @@ function AIInsightCard({ insight }: { insight: any }) {
                         {insight.title}
                         <span className={cn(
                             "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
-                            insight.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                                insight.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                                    "bg-blue-500/10 text-blue-500"
+                            insight.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                insight.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                    "bg-[var(--info-bg)] text-[var(--info)]"
                         )}>
                             {insight.impact}
                         </span>
@@ -262,11 +255,13 @@ export default function AdminDashboardPage() {
     return (
         <div className="min-h-screen space-y-8 pb-10">
             {/* 1. Top Navigation & Welcome */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
+            {/* 1. Top Navigation & Welcome */}
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <div
                         className="flex items-center gap-2 text-sm font-medium text-[var(--primary-blue)] mb-2"
                     >
                         <div className="px-2 py-1 rounded-md bg-[var(--primary-blue-soft)]/20 border border-[var(--primary-blue)]/20 flex items-center gap-2">
@@ -278,24 +273,23 @@ export default function AdminDashboardPage() {
                         </div>
                         <span className="text-[var(--text-muted)]">•</span>
                         <span className="text-[var(--text-muted)]">{currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                    </motion.div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
+                    </div>
+                    <h1
                         className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
                     >
                         Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
-                    </motion.h1>
-                </div>
+                    </h1>
+                </motion.div>
 
                 <div className="flex items-center gap-3">
                     <DateRangePicker />
-                    <button className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-colors">
+                    <Button variant="outline" size="icon" className="bg-[var(--bg-primary)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]" title="Settings">
                         <Settings className="w-5 h-5" />
-                    </button>
-                    <button className="p-2.5 rounded-xl bg-[var(--primary-blue)] text-white shadow-lg shadow-blue-500/20 hover:bg-[var(--primary-blue-deep)] transition-colors">
-                        <ArrowUpRight className="w-5 h-5" />
-                    </button>
+                    </Button>
+                    <Button className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white border-0" title="Export Dashboard">
+                        <span className="mr-2">Export</span>
+                        <ArrowUpRight className="w-4 h-4" />
+                    </Button>
                 </div>
             </header>
 
@@ -381,12 +375,12 @@ export default function AdminDashboardPage() {
                                 <AreaChart data={revenueData}>
                                     <defs>
                                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
                                         </linearGradient>
                                         <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
@@ -397,8 +391,8 @@ export default function AdminDashboardPage() {
                                         contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)', borderRadius: '12px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }}
                                         itemStyle={{ color: 'var(--text-primary)', fontSize: '12px' }}
                                     />
-                                    <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                                    <Area yAxisId="right" type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
+                                    <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                    <Area yAxisId="right" type="monotone" dataKey="orders" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -421,10 +415,10 @@ export default function AdminDashboardPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="relative flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--success)]"></span>
                                 </span>
-                                <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide">Live</span>
+                                <span className="text-xs font-bold text-[var(--success)] uppercase tracking-wide">Live</span>
                             </div>
                         </div>
 
@@ -445,11 +439,11 @@ export default function AdminDashboardPage() {
                                 <div key={i} className="flex gap-4 p-3 rounded-2xl hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)] group">
                                     <div className={cn(
                                         "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-current opacity-80",
-                                        item.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                                            item.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500" :
-                                                item.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
-                                                    item.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                                                        item.color === 'rose' || item.color === 'red' ? "bg-rose-500/10 text-rose-500" :
+                                        item.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)] border-[var(--info)]/20" :
+                                            item.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20" :
+                                                item.color === 'violet' ? "bg-violet-500/10 text-violet-500 border-violet-500/20" :
+                                                    item.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning)]/20" :
+                                                        item.color === 'rose' || item.color === 'red' ? "bg-[var(--error-bg)] text-[var(--error)] border-[var(--error)]/20" :
                                                             "bg-slate-500/10 text-slate-500"
                                     )}>
                                         <item.icon className="w-5 h-5" />
@@ -544,26 +538,25 @@ export default function AdminDashboardPage() {
                     </div>
 
                     {/* System Health Compact */}
-                    <div className="p-6 rounded-3xl bg-[#0f172a] text-white border border-slate-800 shadow-xl overflow-hidden relative">
-                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+                    <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden relative">
                         <div className="relative z-10">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold flex items-center gap-2">
-                                    <Server className="w-4 h-4 text-emerald-400" />
+                                <h3 className="font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                                    <Server className="w-4 h-4 text-emerald-500" />
                                     System Status
                                 </h3>
-                                <div className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20">
+                                <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20">
                                     Healthy
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                    <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                                         <span>API Latency</span>
-                                        <span className="text-emerald-400">45ms</span>
+                                        <span className="text-emerald-500 font-medium">45ms</span>
                                     </div>
-                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: "25%" }}
@@ -572,11 +565,11 @@ export default function AdminDashboardPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                    <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                                         <span>Error Rate</span>
-                                        <span className="text-emerald-400">0.01%</span>
+                                        <span className="text-emerald-500 font-medium">0.01%</span>
                                     </div>
-                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: "2%" }}
@@ -585,15 +578,15 @@ export default function AdminDashboardPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                    <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
                                         <span>Database Load</span>
-                                        <span className="text-blue-400">32%</span>
+                                        <span className="text-blue-500 font-medium">32%</span>
                                     </div>
-                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: "32%" }}
-                                            className="h-full bg-blue-500"
+                                            className="h-full bg-[var(--primary-blue)]"
                                         />
                                     </div>
                                 </div>

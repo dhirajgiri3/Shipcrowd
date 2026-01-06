@@ -8,7 +8,7 @@ export default function AIShowcase() {
     const words = ["This", "Isn't", "Software.", "This", "Is", "Your", "AI", "Logistics", "Brain."]
 
     return (
-        <section className="bg-white text-charcoal-950 py-24 md:py-32 overflow-hidden relative border-y border-charcoal-100">
+        <section className="bg-white text-gray-950 py-24 md:py-32 overflow-hidden relative border-y border-transparent">
             {/* Subtle background pattern */}
             <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
                 <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(#2525FF 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -16,7 +16,7 @@ export default function AIShowcase() {
 
             {/* Gradient accents */}
             <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primaryBlue/[0.03] rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-cyan/[0.03] rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-cyan-400/[0.03] rounded-full blur-3xl pointer-events-none" />
 
             <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
                 {/* Part 1: Section Hero */}
@@ -26,13 +26,13 @@ export default function AIShowcase() {
                         transition={{ duration: 3, repeat: Infinity }}
                         className="inline-flex items-center gap-2.5 mb-6"
                     >
-                        <div className="w-1.5 h-1.5 rounded-full bg-cyan" />
-                        <span className="text-cyan text-sm font-bold tracking-wide uppercase">
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        <span className="text-cyan-600 text-sm font-bold tracking-wide uppercase">
                             Powered by Artificial Intelligence
                         </span>
                     </motion.div>
 
-                    <h2 className="text-4xl md:text-6xl font-bold leading-tight mb-6 max-w-[900px] mx-auto flex flex-wrap justify-center gap-x-3">
+                    <h2 className="text-4xl md:text-6xl font-bold leading-tight mb-6 max-w-[900px] mx-auto flex flex-wrap justify-center gap-x-3 tracking-tight">
                         {words.map((word, i) => (
                             <motion.span
                                 key={i}
@@ -52,7 +52,7 @@ export default function AIShowcase() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 1, duration: 0.6 }}
-                        className="text-lg md:text-xl text-charcoal-600 max-w-[800px] mx-auto leading-relaxed"
+                        className="text-lg md:text-xl text-gray-600 max-w-[800px] mx-auto leading-relaxed"
                     >
                         ShipCrowd doesn't just manage your shipments—it thinks for you. Our neural engine analyzes millions of data points to make the perfect decision, every single time.
                     </motion.p>
@@ -77,7 +77,7 @@ export default function AIShowcase() {
                         <motion.div
                             animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.25, 0.1] }}
                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-gradient-radial from-primaryBlue/30 via-cyan/15 to-transparent blur-[60px] rounded-full"
+                            className="absolute inset-0 bg-gradient-radial from-primaryBlue/30 via-cyan-400/15 to-transparent blur-[60px] rounded-full"
                             style={{ willChange: 'transform, opacity' }}
                         />
 
@@ -224,7 +224,7 @@ export default function AIShowcase() {
                         >
                             {/* Outer glow ring */}
                             <motion.div
-                                className="absolute -inset-3 rounded-full bg-gradient-to-r from-primaryBlue/15 via-cyan/10 to-primaryBlue/15 blur-lg"
+                                className="absolute -inset-3 rounded-full bg-gradient-to-r from-primaryBlue/15 via-cyan-400/10 to-primaryBlue/15 blur-lg"
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
                                 style={{ willChange: 'transform' }}
@@ -232,7 +232,7 @@ export default function AIShowcase() {
 
                             {/* Main white container */}
                             <div className="absolute inset-0 bg-white rounded-full shadow-[0_0_40px_-10px_rgba(37,37,255,0.3)] border border-primaryBlue/10 overflow-hidden">
-                                <div className="absolute inset-3 rounded-full bg-gradient-to-br from-charcoal-50 via-white to-charcoal-50" />
+                                <div className="absolute inset-3 rounded-full bg-gradient-to-br from-gray-50 via-white to-gray-50" />
                                 <div className="absolute inset-6 rounded-full bg-gradient-to-tl from-primaryBlue/5 to-transparent" />
 
                                 {/* Activity rings (simplified) */}
@@ -245,7 +245,7 @@ export default function AIShowcase() {
 
                             {/* Brain Icon Container */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <Brain size={85} className="text-charcoal-100 absolute" strokeWidth={0.8} />
+                                <Brain size={85} className="text-gray-100 absolute" strokeWidth={0.8} />
 
                                 <div className="relative">
                                     <Brain size={85} className="text-primaryBlue/70" strokeWidth={1.2} />
@@ -256,7 +256,7 @@ export default function AIShowcase() {
                                         style={{ clipPath: 'inset(0 0 0 0)' }}
                                     >
                                         <motion.div
-                                            className="absolute w-full h-6 bg-gradient-to-b from-transparent via-cyan/30 to-transparent"
+                                            className="absolute w-full h-6 bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent"
                                             animate={{ y: [-80, 80] }}
                                             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                                             style={{ willChange: 'transform' }}
@@ -274,7 +274,7 @@ export default function AIShowcase() {
 
                             {/* Status Badge */}
                             <motion.div
-                                className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-charcoal-900 text-white text-[9px] font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 whitespace-nowrap"
+                                className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 whitespace-nowrap"
                                 animate={{ y: [0, -3, 0] }}
                                 transition={{ duration: 3, repeat: Infinity }}
                             >
@@ -294,7 +294,7 @@ export default function AIShowcase() {
                         ].map((stat, i) => (
                             <motion.div
                                 key={`stat-${i}`}
-                                className="absolute bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-charcoal-100 z-20"
+                                className="absolute bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-gray-100/50 z-20"
                                 style={{ x: stat.x, y: stat.y }}
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{
@@ -309,7 +309,7 @@ export default function AIShowcase() {
                                 }}
                             >
                                 <div className="text-sm font-bold text-primaryBlue">{stat.value}</div>
-                                <div className="text-[9px] text-charcoal-500 uppercase tracking-wider">{stat.label}</div>
+                                <div className="text-[9px] text-gray-500 uppercase tracking-wider">{stat.label}</div>
                             </motion.div>
                         ))}
 

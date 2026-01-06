@@ -84,9 +84,7 @@ export default class RTOService {
         triggeredBy: 'auto' | 'manual' = 'manual',
         triggeredByUser?: string
     ): Promise<RTOResult> {
-        // Import mongoose for transactions
-        const mongoose = await import('mongoose');
-        const session = await mongoose.default.startSession();
+        const session = await mongoose.startSession();
 
         try {
             // Start transaction for atomic RTO creation (Issue #9)

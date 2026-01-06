@@ -109,11 +109,11 @@ export default function B2BRateCalculatorPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Calculator className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <Calculator className="h-6 w-6 text-[var(--primary-blue)]" />
                         B2B Rate Calculator
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Get competitive B2B shipping rates for bulk and heavy shipments
                     </p>
                 </div>
@@ -138,32 +138,32 @@ export default function B2BRateCalculatorPage() {
                                     className={cn(
                                         "flex-1 p-4 rounded-xl border-2 transition-all",
                                         shipmentType === 'single'
-                                            ? "border-[#2525FF] bg-[#2525FF]/5"
+                                            ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]/5"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
                                     <Package className={cn(
                                         "h-8 w-8 mx-auto mb-2",
-                                        shipmentType === 'single' ? "text-[#2525FF]" : "text-gray-400"
+                                        shipmentType === 'single' ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
                                     )} />
-                                    <p className="font-semibold text-gray-900">Single Shipment</p>
-                                    <p className="text-sm text-gray-500 mt-1">One heavy package</p>
+                                    <p className="font-semibold text-[var(--text-primary)]">Single Shipment</p>
+                                    <p className="text-sm text-[var(--text-muted)] mt-1">One heavy package</p>
                                 </button>
                                 <button
                                     onClick={() => setShipmentType('bulk')}
                                     className={cn(
                                         "flex-1 p-4 rounded-xl border-2 transition-all",
                                         shipmentType === 'bulk'
-                                            ? "border-[#2525FF] bg-[#2525FF]/5"
+                                            ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]/5"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
                                     <Box className={cn(
                                         "h-8 w-8 mx-auto mb-2",
-                                        shipmentType === 'bulk' ? "text-[#2525FF]" : "text-gray-400"
+                                        shipmentType === 'bulk' ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
                                     )} />
-                                    <p className="font-semibold text-gray-900">Bulk Shipment</p>
-                                    <p className="text-sm text-gray-500 mt-1">Multiple packages</p>
+                                    <p className="font-semibold text-[var(--text-primary)]">Bulk Shipment</p>
+                                    <p className="text-sm text-[var(--text-muted)] mt-1">Multiple packages</p>
                                 </button>
                             </div>
                         </CardContent>
@@ -173,14 +173,14 @@ export default function B2BRateCalculatorPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                                <MapPin className="h-5 w-5 text-[#2525FF]" />
+                                <MapPin className="h-5 w-5 text-[var(--primary-blue)]" />
                                 Pickup & Delivery Location
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">From Pincode *</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">From Pincode *</label>
                                     <Input
                                         placeholder="e.g., 400001"
                                         value={fromPincode}
@@ -188,7 +188,7 @@ export default function B2BRateCalculatorPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">To Pincode *</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">To Pincode *</label>
                                     <Input
                                         placeholder="e.g., 110001"
                                         value={toPincode}
@@ -203,14 +203,14 @@ export default function B2BRateCalculatorPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                                <Scale className="h-5 w-5 text-[#2525FF]" />
+                                <Scale className="h-5 w-5 text-[var(--primary-blue)]" />
                                 Package Details
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Weight (kg) *</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">Weight (kg) *</label>
                                     <Input
                                         type="number"
                                         placeholder="e.g., 28"
@@ -220,7 +220,7 @@ export default function B2BRateCalculatorPage() {
                                 </div>
                                 {shipmentType === 'bulk' && (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Quantity</label>
+                                        <label className="text-sm font-medium text-[var(--text-primary)]">Quantity</label>
                                         <Input
                                             type="number"
                                             placeholder="e.g., 10"
@@ -233,7 +233,7 @@ export default function B2BRateCalculatorPage() {
 
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Length (cm)</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">Length (cm)</label>
                                     <Input
                                         type="number"
                                         placeholder="L"
@@ -242,7 +242,7 @@ export default function B2BRateCalculatorPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Width (cm)</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">Width (cm)</label>
                                     <Input
                                         type="number"
                                         placeholder="W"
@@ -251,7 +251,7 @@ export default function B2BRateCalculatorPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Height (cm)</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">Height (cm)</label>
                                     <Input
                                         type="number"
                                         placeholder="H"
@@ -278,16 +278,16 @@ export default function B2BRateCalculatorPage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-3">
                                 <div className="flex justify-between">
-                                    <span className="text-sm text-gray-500">Actual Weight</span>
+                                    <span className="text-sm text-[var(--text-muted)]">Actual Weight</span>
                                     <span className="font-medium">{actualWeight.toFixed(2)} kg</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-sm text-gray-500">Volumetric Weight</span>
+                                    <span className="text-sm text-[var(--text-muted)]">Volumetric Weight</span>
                                     <span className="font-medium">{volumetricWeight.toFixed(2)} kg</span>
                                 </div>
                                 {shipmentType === 'bulk' && (
                                     <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500">Quantity</span>
+                                        <span className="text-sm text-[var(--text-muted)]">Quantity</span>
                                         <span className="font-medium">{quantity} units</span>
                                     </div>
                                 )}
@@ -295,17 +295,17 @@ export default function B2BRateCalculatorPage() {
                             <div className="border-t pt-4">
                                 <div className="flex justify-between text-lg font-bold">
                                     <span>Chargeable Weight</span>
-                                    <span className="text-[#2525FF]">{chargeableWeight.toFixed(2)} kg</span>
+                                    <span className="text-[var(--primary-blue)]">{chargeableWeight.toFixed(2)} kg</span>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
                                     Higher of actual or volumetric weight
                                 </p>
                             </div>
 
                             {shipmentType === 'bulk' && (
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
-                                    <p className="font-medium text-amber-800">Bulk Discount Applied</p>
-                                    <p className="text-amber-700 text-xs mt-1">10% off on 10+ units</p>
+                                    <p className="font-medium text-[var(--warning)]">Bulk Discount Applied</p>
+                                    <p className="text-[var(--warning)] text-xs mt-1">10% off on 10+ units</p>
                                 </div>
                             )}
                         </CardContent>
@@ -318,7 +318,7 @@ export default function B2BRateCalculatorPage() {
                 <Card className="mt-6 animate-in fade-in duration-300">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <Truck className="h-5 w-5 text-[#2525FF]" />
+                            <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
                             Available B2B Rates
                         </CardTitle>
                         <CardDescription>
@@ -333,7 +333,7 @@ export default function B2BRateCalculatorPage() {
                                     className={cn(
                                         "p-4 rounded-xl border transition-all",
                                         index === 0
-                                            ? "border-emerald-200 bg-emerald-50/50"
+                                            ? "border-[var(--success)] bg-[var(--success-bg)]/50"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
@@ -345,15 +345,15 @@ export default function B2BRateCalculatorPage() {
                                     )}
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
-                                            <h4 className="font-semibold text-gray-900">{rate.courier}</h4>
-                                            <p className="text-sm text-gray-500">{rate.service}</p>
+                                            <h4 className="font-semibold text-[var(--text-primary)]">{rate.courier}</h4>
+                                            <p className="text-sm text-[var(--text-muted)]">{rate.service}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-2xl font-bold text-gray-900">{formatCurrency(rate.total)}</p>
-                                            <p className="text-xs text-gray-500">+ GST</p>
+                                            <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rate.total)}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">+ GST</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 mb-3 text-sm text-gray-500">
+                                    <div className="flex items-center gap-4 mb-3 text-sm text-[var(--text-muted)]">
                                         <span className="flex items-center gap-1">
                                             <Clock className="h-3.5 w-3.5" />
                                             {rate.eta}

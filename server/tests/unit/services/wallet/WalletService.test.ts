@@ -115,21 +115,27 @@ describe('WalletService', () => {
     describe('credit', () => {
         it('should add funds to wallet successfully', async () => {
             const mockWallet = { balance: 1000, currency: 'INR', lowBalanceThreshold: 500 };
-            const mockCompany = { wallet: mockWallet };
+            const mockCompany = {
+                _id: mockCompanyId,
+                wallet: mockWallet,
+                __v: 0,
+            };
 
-            (Company.findById as jest.Mock).mockImplementation(() => ({
-                select: jest.fn().mockResolvedValue(mockCompany),
+            // Mock Company.findById().session() chain
+            (Company.findById as jest.Mock).mockReturnValue({
                 session: jest.fn().mockResolvedValue(mockCompany),
-            }));
+            });
 
+            // Mock WalletTransaction.create with session
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 1500 },
             ]);
 
-            (Company.findByIdAndUpdate as jest.Mock).mockReturnValue({
-                session: jest.fn().mockReturnThis(),
+            // Mock Company.findOneAndUpdate with proper return
+            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+                wallet: { balance: 1500 },
+                __v: 1,
             });
-            (Company.findByIdAndUpdate as jest.Mock).mockResolvedValue({ wallet: { balance: 1500 } });
 
             const result = await WalletService.credit(
                 mockCompanyId,
@@ -151,8 +157,15 @@ describe('WalletService', () => {
                 lowBalanceThreshold: 500,
             };
 
+            const mockCompany = {
+                _id: mockCompanyId,
+                wallet: mockWallet,
+                __v: 0,
+            };
+
+            // Mock Company.findById().session() to return company with low balance
             (Company.findById as jest.Mock).mockReturnValue({
-                select: jest.fn().mockResolvedValue({ wallet: mockWallet }),
+                session: jest.fn().mockResolvedValue(mockCompany),
             });
 
             const result = await WalletService.debit(
@@ -170,19 +183,28 @@ describe('WalletService', () => {
     describe('handleRTOCharge', () => {
         it('should deduct RTO charges from wallet', async () => {
             const mockWallet = { balance: 1000, currency: 'INR', lowBalanceThreshold: 500 };
-            const mockCompany = { wallet: mockWallet };
+            const mockCompany = {
+                _id: mockCompanyId,
+                wallet: mockWallet,
+                __v: 0,
+            };
             const rtoEventId = new mongoose.Types.ObjectId().toString();
 
-            (Company.findById as jest.Mock).mockImplementation(() => ({
-                select: jest.fn().mockResolvedValue(mockCompany),
+            // Mock Company.findById().session() chain
+            (Company.findById as jest.Mock).mockReturnValue({
                 session: jest.fn().mockResolvedValue(mockCompany),
-            }));
+            });
 
+            // Mock WalletTransaction.create
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 950 },
             ]);
 
-            (Company.findByIdAndUpdate as jest.Mock).mockResolvedValue({ wallet: { balance: 950 } });
+            // Mock Company.findOneAndUpdate
+            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+                wallet: { balance: 950 },
+                __v: 1,
+            });
 
             const result = await WalletService.handleRTOCharge(
                 mockCompanyId,
@@ -199,19 +221,28 @@ describe('WalletService', () => {
     describe('handleShippingCost', () => {
         it('should deduct shipping cost from wallet', async () => {
             const mockWallet = { balance: 500, currency: 'INR', lowBalanceThreshold: 100 };
-            const mockCompany = { wallet: mockWallet };
+            const mockCompany = {
+                _id: mockCompanyId,
+                wallet: mockWallet,
+                __v: 0,
+            };
             const shipmentId = new mongoose.Types.ObjectId().toString();
 
-            (Company.findById as jest.Mock).mockImplementation(() => ({
-                select: jest.fn().mockResolvedValue(mockCompany),
+            // Mock Company.findById().session() chain
+            (Company.findById as jest.Mock).mockReturnValue({
                 session: jest.fn().mockResolvedValue(mockCompany),
-            }));
+            });
 
+            // Mock WalletTransaction.create
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 400 },
             ]);
 
-            (Company.findByIdAndUpdate as jest.Mock).mockResolvedValue({ wallet: { balance: 400 } });
+            // Mock Company.findOneAndUpdate
+            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+                wallet: { balance: 400 },
+                __v: 1,
+            });
 
             const result = await WalletService.handleShippingCost(
                 mockCompanyId,
@@ -227,19 +258,28 @@ describe('WalletService', () => {
     describe('handleCODRemittance', () => {
         it('should credit COD amount to wallet', async () => {
             const mockWallet = { balance: 1000, currency: 'INR', lowBalanceThreshold: 500 };
-            const mockCompany = { wallet: mockWallet };
+            const mockCompany = {
+                _id: mockCompanyId,
+                wallet: mockWallet,
+                __v: 0,
+            };
             const shipmentId = new mongoose.Types.ObjectId().toString();
 
-            (Company.findById as jest.Mock).mockImplementation(() => ({
-                select: jest.fn().mockResolvedValue(mockCompany),
+            // Mock Company.findById().session() chain
+            (Company.findById as jest.Mock).mockReturnValue({
                 session: jest.fn().mockResolvedValue(mockCompany),
-            }));
+            });
 
+            // Mock WalletTransaction.create
             (WalletTransaction.create as jest.Mock).mockResolvedValue([
                 { _id: 'txn123', balanceAfter: 1500 },
             ]);
 
-            (Company.findByIdAndUpdate as jest.Mock).mockResolvedValue({ wallet: { balance: 1500 } });
+            // Mock Company.findOneAndUpdate
+            (Company.findOneAndUpdate as jest.Mock).mockResolvedValue({
+                wallet: { balance: 1500 },
+                __v: 1,
+            });
 
             const result = await WalletService.handleCODRemittance(
                 mockCompanyId,

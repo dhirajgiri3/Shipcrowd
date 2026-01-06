@@ -36,28 +36,31 @@ const iconMap = {
 
 const priorityStyles = {
     critical: {
-        bg: "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors",
-        border: "border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
+        bg: "bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors",
+        border: "border-l-4 border-l-[var(--error)] border-y border-r border-[var(--border-subtle)]",
         text: "text-[var(--text-primary)]",
-        iconBg: "bg-[var(--error)] text-white shadow-sm shadow-rose-500/20",
-        badge: "bg-[var(--error)] text-white",
+        iconBg: "bg-[var(--error-bg)] text-[var(--error)]",
+        badge: "bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error)]/20",
         indicator: "bg-[var(--error)]",
+        button: "bg-[var(--error)] text-white hover:bg-[var(--error)]/90"
     },
     high: {
-        bg: "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors",
-        border: "border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
+        bg: "bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors",
+        border: "border-l-4 border-l-[var(--warning)] border-y border-r border-[var(--border-subtle)]",
         text: "text-[var(--text-primary)]",
-        iconBg: "bg-[var(--warning)] text-white shadow-sm shadow-amber-500/20",
-        badge: "bg-[var(--warning)] text-white",
+        iconBg: "bg-[var(--warning-bg)] text-[var(--warning)]",
+        badge: "bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning)]/20",
         indicator: "bg-[var(--warning)]",
+        button: "bg-[var(--warning)] text-white hover:bg-[var(--warning)]/90"
     },
     medium: {
-        bg: "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors",
-        border: "border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
+        bg: "bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors",
+        border: "border-l-4 border-l-[var(--primary-blue)] border-y border-r border-[var(--border-subtle)]",
         text: "text-[var(--text-primary)]",
-        iconBg: "bg-[var(--info)] text-white shadow-sm shadow-blue-500/20",
-        badge: "bg-[var(--info)] text-white",
-        indicator: "bg-[var(--info)]",
+        iconBg: "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]",
+        badge: "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)] border border-[var(--primary-blue)]/20",
+        indicator: "bg-[var(--primary-blue)]",
+        button: "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)]"
     },
 };
 
@@ -106,7 +109,7 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
-            <Card className="border-[var(--border-default)] bg-[var(--bg-primary)] overflow-hidden">
+            <Card className="border-[var(--border-default)] bg-[var(--bg-primary)]">
                 <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -148,20 +151,17 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                                 transition={{ delay: index * 0.1 }}
                                 className={cn(
                                     "p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4",
-                                    "transition-all duration-200 hover:shadow-sm group relative overflow-hidden",
+                                    "transition-all duration-200 hover:shadow-sm group relative",
                                     styles.bg,
                                     styles.border
                                 )}
                             >
-                                {/* Subtle Indicator Line (Left) - Optional, cleaner than full border */}
-                                <div className={cn("absolute left-0 top-0 bottom-0 w-1", styles.indicator)} />
-
                                 <div className="flex items-start sm:items-center gap-4 flex-1 pl-2">
                                     <div className={cn(
-                                        "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                                        "h-12 w-12 rounded-xl flex items-center justify-center shrink-0",
                                         styles.iconBg
                                     )}>
-                                        <Icon className={cn("h-6 w-6", styles.text)} />
+                                        <Icon className="h-6 w-6" />
                                     </div>
 
                                     <div className="flex-1 min-w-0">
@@ -170,7 +170,7 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                                                 {action.title}
                                             </h4>
                                             {action.count && action.count > 0 && (
-                                                <Badge className={cn("text-xs font-bold", styles.badge)}>
+                                                <Badge className={cn("text-xs font-bold shadow-none", styles.badge)}>
                                                     {action.count}
                                                 </Badge>
                                             )}
@@ -184,9 +184,8 @@ export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequir
                                 <div className="flex items-center gap-2 sm:shrink-0">
                                     <Link href={action.actionUrl} className="flex-1 sm:flex-none">
                                         <Button
-                                            variant="primary"
                                             size="sm"
-                                            className="w-full sm:w-auto"
+                                            className={cn("w-full sm:w-auto font-medium shadow-sm transition-opacity opacity-90 hover:opacity-100", styles.button)}
                                         >
                                             {action.actionLabel}
                                         </Button>

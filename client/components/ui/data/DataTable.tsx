@@ -28,7 +28,7 @@ interface DataTableProps<T> {
     onRowClick?: (row: T) => void;
 }
 
-export function DataTable<T extends { id: string | number }>({
+export function DataTable<T extends { id?: string | number; _id?: string }>({
     columns,
     data,
     searchKey,
@@ -39,6 +39,11 @@ export function DataTable<T extends { id: string | number }>({
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    // Helper to get unique key for each row (supports both id and _id)
+    const getRowKey = (row: T, index: number): string | number => {
+        return (row as any).id ?? (row as any)._id ?? index;
+    };
 
     const sortedData = [...data].sort((a, b) => {
         if (!sortConfig) return 0;
@@ -65,7 +70,7 @@ export function DataTable<T extends { id: string | number }>({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-primary)] overflow-hidden">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
@@ -74,7 +79,7 @@ export function DataTable<T extends { id: string | number }>({
                                     <th
                                         key={idx}
                                         className={cn(
-                                            "px-6 py-4 font-medium text-[var(--text-muted)] whitespace-nowrap",
+                                            "px-5 py-3 font-medium text-[var(--text-muted)] whitespace-nowrap",
                                             col.width,
                                             typeof col.accessorKey === 'string' ? "cursor-pointer hover:bg-[var(--bg-hover)] transition-colors" : ""
                                         )}
@@ -95,19 +100,19 @@ export function DataTable<T extends { id: string | number }>({
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         {columns.map((_, j) => (
-                                            <td key={j} className="px-6 py-4"><div className="h-4 bg-[var(--bg-secondary)] rounded w-3/4"></div></td>
+                                            <td key={j} className="px-5 py-3"><div className="h-4 bg-[var(--bg-secondary)] rounded w-3/4"></div></td>
                                         ))}
                                     </tr>
                                 ))
                             ) : paginatedData.length > 0 ? (
-                                paginatedData.map((row) => (
+                                paginatedData.map((row, idx) => (
                                     <tr
-                                        key={row.id}
+                                        key={getRowKey(row, idx)}
                                         className={`hover:bg-[var(--bg-hover)] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                                         onClick={() => onRowClick?.(row)}
                                     >
                                         {columns.map((col, idx) => (
-                                            <td key={idx} className="px-6 py-4 text-[var(--text-primary)]">
+                                            <td key={idx} className="px-5 py-3 text-[var(--text-primary)]">
                                                 {col.cell ? col.cell(row) : ((row as any)[col.accessorKey as string] as React.ReactNode)}
                                             </td>
                                         ))}
@@ -115,7 +120,7 @@ export function DataTable<T extends { id: string | number }>({
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={columns.length} className="px-6 py-12 text-center text-[var(--text-muted)]">
+                                    <td colSpan={columns.length} className="px-5 py-12 text-center text-[var(--text-muted)]">
                                         No results found
                                     </td>
                                 </tr>

@@ -10,31 +10,31 @@ export { apiClient, normalizeError, isApiEnabled } from './client';
 export type { ApiError } from './client';
 
 // Auth API
-export { authApi } from './authApi';
-export type {
-    AuthUser,
-    LoginCredentials,
-    LoginResponse,
-    RegisterData,
-    RegisterResponse,
-    ChangePasswordData,
-    ChangeEmailData,
-    PasswordStrengthResponse,
-} from './authApi';
+export { authApi } from './auth.api';
+// export type {
+//     AuthUser,
+//     LoginCredentials,
+//     LoginResponse,
+//     RegisterData,
+//     RegisterResponse,
+//     ChangePasswordData,
+//     ChangeEmailData,
+//     PasswordStrengthResponse,
+// } from './authApi';
 
 // Company API
-export { companyApi } from './companyApi';
-export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './companyApi';
+// export { companyApi } from './companyApi';
+// export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './companyApi';
 
 // KYC API
-export { kycApi } from './kycApi';
-export type { KYCData, KYCDocument, SubmitKYCRequest, VerifyPANRequest, VerifyBankAccountRequest, VerifyGSTINRequest } from './kycApi';
+// export { kycApi } from './kycApi';
+// export type { KYCData, KYCDocument, SubmitKYCRequest, VerifyPANRequest, VerifyBankAccountRequest, VerifyGSTINRequest } from './kycApi';
 
 // Error Handling
-export { handleApiError, showSuccessToast, showInfoToast } from '@/lib/error-handler';
+// export { handleApiError, showSuccessToast, showInfoToast } from '@/lib/error-handler';
 
 // React Query Hooks
 export * from './hooks';
 
 // OpenAPI Types
-export type { components, paths } from './types/api';
+// export type { components, paths } from './types/api';

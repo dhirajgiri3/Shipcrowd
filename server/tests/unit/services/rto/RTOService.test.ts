@@ -4,6 +4,7 @@ import WarehouseNotificationService from '../../../../src/core/application/servi
 
 jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model');
 jest.mock('../../../../src/core/application/services/warehouse/warehouse-notification.service');
+jest.mock('../../../../src/core/application/services/wallet/wallet.service');
 
 describe('RTOService', () => {
     beforeEach(() => {
@@ -46,7 +47,7 @@ describe('RTOService', () => {
                 },
             };
 
-            const charges = (RTOService as any).calculateRTOCharges(mockShipment as any);
+            const charges = await (RTOService as any).calculateRTOCharges(mockShipment as any);
 
             expect(charges).toBeGreaterThan(0);
             expect(typeof charges).toBe('number');
@@ -121,7 +122,12 @@ describe('RTOService', () => {
                 },
             ];
 
-            (RTOEvent.find as jest.Mock).mockResolvedValue(mockRTOEvents);
+            (RTOEvent.aggregate as jest.Mock)
+                .mockResolvedValueOnce([{ _id: null, total: 2, avgCharges: 62.5 }]) // totalStats
+                .mockResolvedValueOnce([
+                    { _id: 'ndr_unresolved', count: 1 },
+                    { _id: 'customer_cancellation', count: 1 },
+                ]); // reasonStats
 
             const stats = await RTOService.getRTOStats('company123');
 

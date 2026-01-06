@@ -110,11 +110,11 @@ export default function ProfilePage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <User className="h-6 w-6 text-[#2525FF]" />
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <User className="h-6 w-6 text-[var(--primary-blue)]" />
                         Company Profile
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-[var(--text-muted)] text-sm mt-1">
                         Manage your business profile and branding
                     </p>
                 </div>
@@ -146,15 +146,15 @@ export default function ProfilePage() {
                                     "w-32 h-32 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden",
                                     logoPreview
                                         ? "border-transparent"
-                                        : "border-gray-200 hover:border-[#2525FF]/50 hover:bg-[#2525FF]/5"
+                                        : "border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:bg-[var(--primary-blue)]/5"
                                 )}
                             >
                                 {logoPreview ? (
                                     <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="text-center">
-                                        <Camera className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                                        <p className="text-xs text-gray-400">Click to upload</p>
+                                        <Camera className="h-8 w-8 text-[var(--text-muted)] mx-auto mb-2" />
+                                        <p className="text-xs text-[var(--text-muted)]">Click to upload</p>
                                     </div>
                                 )}
                             </div>
@@ -165,7 +165,7 @@ export default function ProfilePage() {
                                 className="hidden"
                                 onChange={handleLogoUpload}
                             />
-                            <p className="text-xs text-gray-400 mt-3 text-center">
+                            <p className="text-xs text-[var(--text-muted)] mt-3 text-center">
                                 PNG, JPG up to 2MB<br />
                                 Recommended: 200x200px
                             </p>
@@ -173,7 +173,7 @@ export default function ProfilePage() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="mt-2 text-rose-600"
+                                    className="mt-2 text-[var(--error)]"
                                     onClick={handleRemoveLogo}
                                 >
                                     <Trash2 className="h-4 w-4 mr-1" />
@@ -184,7 +184,7 @@ export default function ProfilePage() {
 
                         <div className="border-t pt-4 space-y-3">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Display Name</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Display Name</label>
                                 <Input
                                     value={profile.displayName}
                                     onChange={(e) => handleInputChange('displayName', e.target.value)}
@@ -192,7 +192,7 @@ export default function ProfilePage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                                <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-1">
                                     <Globe className="h-3.5 w-3.5" />
                                     Website
                                 </label>
@@ -210,21 +210,21 @@ export default function ProfilePage() {
                 <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-[#2525FF]" />
+                            <Building2 className="h-5 w-5 text-[var(--primary-blue)]" />
                             Business Information
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Company Name</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Company Name</label>
                                 <Input
                                     value={profile.companyName}
                                     onChange={(e) => handleInputChange('companyName', e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                                <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-1">
                                     <Mail className="h-3.5 w-3.5" />
                                     Email
                                 </label>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                                <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-1">
                                     <Phone className="h-3.5 w-3.5" />
                                     Primary Phone
                                 </label>
@@ -245,7 +245,7 @@ export default function ProfilePage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Alternate Phone</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Alternate Phone</label>
                                 <Input
                                     value={profile.altPhone}
                                     onChange={(e) => handleInputChange('altPhone', e.target.value)}
@@ -255,42 +255,42 @@ export default function ProfilePage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">GSTIN</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">GSTIN</label>
                                 <Input
                                     value={profile.gstin}
                                     onChange={(e) => handleInputChange('gstin', e.target.value)}
                                     disabled
                                     className="bg-[var(--bg-secondary)]"
                                 />
-                                <p className="text-xs text-gray-400">Contact support to update</p>
+                                <p className="text-xs text-[var(--text-muted)]">Contact support to update</p>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">PAN</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">PAN</label>
                                 <Input
                                     value={profile.pan}
                                     onChange={(e) => handleInputChange('pan', e.target.value)}
                                     disabled
                                     className="bg-[var(--bg-secondary)]"
                                 />
-                                <p className="text-xs text-gray-400">Contact support to update</p>
+                                <p className="text-xs text-[var(--text-muted)]">Contact support to update</p>
                             </div>
                         </div>
 
                         <div className="border-t pt-4">
-                            <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-[#2525FF]" />
+                            <h3 className="font-medium text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-[var(--primary-blue)]" />
                                 Registered Address
                             </h3>
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Address Line 1</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">Address Line 1</label>
                                     <Input
                                         value={profile.address.line1}
                                         onChange={(e) => handleAddressChange('line1', e.target.value)}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Address Line 2</label>
+                                    <label className="text-sm font-medium text-[var(--text-primary)]">Address Line 2</label>
                                     <Input
                                         value={profile.address.line2}
                                         onChange={(e) => handleAddressChange('line2', e.target.value)}
@@ -298,21 +298,21 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">City</label>
+                                        <label className="text-sm font-medium text-[var(--text-primary)]">City</label>
                                         <Input
                                             value={profile.address.city}
                                             onChange={(e) => handleAddressChange('city', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">State</label>
+                                        <label className="text-sm font-medium text-[var(--text-primary)]">State</label>
                                         <Input
                                             value={profile.address.state}
                                             onChange={(e) => handleAddressChange('state', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">PIN Code</label>
+                                        <label className="text-sm font-medium text-[var(--text-primary)]">PIN Code</label>
                                         <Input
                                             value={profile.address.pincode}
                                             onChange={(e) => handleAddressChange('pincode', e.target.value)}

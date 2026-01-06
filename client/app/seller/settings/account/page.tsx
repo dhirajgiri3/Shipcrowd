@@ -76,8 +76,8 @@ export default function AccountSettingsPage() {
             {/* Email Management */}
             <Card className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-blue-500/10 rounded-lg">
-                        <Mail className="h-5 w-5 text-blue-500" />
+                    <div className="p-2 bg-[var(--primary-blue-soft)] rounded-lg">
+                        <Mail className="h-5 w-5 text-[var(--primary-blue)]" />
                     </div>
                     <div className="flex-1">
                         <h2 className="text-lg font-semibold text-[var(--text-primary)]">Email Address</h2>
@@ -94,7 +94,7 @@ export default function AccountSettingsPage() {
                             <p className="text-sm font-medium text-[var(--text-primary)]">Current Email</p>
                             <p className="text-sm text-[var(--text-secondary)] mt-1">{user?.email}</p>
                             {user?.isEmailVerified && (
-                                <div className="flex items-center gap-1 mt-2 text-xs text-green-500">
+                                <div className="flex items-center gap-1 mt-2 text-xs text-[var(--success)]">
                                     <CheckCircle2 className="h-3 w-3" />
                                     Verified
                                 </div>
@@ -142,9 +142,9 @@ export default function AccountSettingsPage() {
                                 />
                             </div>
 
-                            <div className="flex items-center gap-2 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                                <AlertTriangle className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                <p className="text-xs text-blue-600 dark:text-blue-400">
+                            <div className="flex items-center gap-2 p-3 bg-[var(--primary-blue-soft)] rounded-lg border border-[var(--primary-blue)]/20">
+                                <AlertTriangle className="h-4 w-4 text-[var(--primary-blue)] flex-shrink-0" />
+                                <p className="text-xs text-[var(--primary-blue)]">
                                     We'll send a verification link to your new email address. You must verify it before the change takes effect.
                                 </p>
                             </div>
@@ -180,8 +180,8 @@ export default function AccountSettingsPage() {
             {/* Account Recovery - Placeholder */}
             <Card className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-green-500/10 rounded-lg">
-                        <ShieldCheck className="h-5 w-5 text-green-500" />
+                    <div className="p-2 bg-[var(--success-bg)] rounded-lg">
+                        <ShieldCheck className="h-5 w-5 text-[var(--success)]" />
                     </div>
                     <div className="flex-1">
                         <h2 className="text-lg font-semibold text-[var(--text-primary)]">Account Recovery</h2>
@@ -237,10 +237,10 @@ export default function AccountSettingsPage() {
             </Card>
 
             {/* Danger Zone */}
-            <Card className="p-6 border-red-500/20 bg-red-500/5">
+            <Card className="p-6 border-[var(--error)]/20 bg-[var(--error-bg)]">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-red-500/10 rounded-lg">
-                        <Trash2 className="h-5 w-5 text-red-500" />
+                    <div className="p-2 bg-[var(--error)]/10 rounded-lg">
+                        <Trash2 className="h-5 w-5 text-[var(--error)]" />
                     </div>
                     <div className="flex-1">
                         <h2 className="text-lg font-semibold text-[var(--text-primary)]">Danger Zone</h2>
@@ -251,7 +251,7 @@ export default function AccountSettingsPage() {
                 </div>
 
                 {!showDeleteConfirm ? (
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-red-500/20">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--error)]/20">
                         <div>
                             <p className="text-sm font-medium text-[var(--text-primary)]">Delete Account</p>
                             <p className="text-xs text-[var(--text-secondary)] mt-1">
@@ -267,11 +267,11 @@ export default function AccountSettingsPage() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="space-y-4 p-4 bg-[var(--bg-tertiary)] rounded-lg border border-red-500/20">
+                    <div className="space-y-4 p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--error)]/20">
                         <div className="flex items-start gap-2">
-                            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                            <AlertTriangle className="h-5 w-5 text-[var(--error)] flex-shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-sm font-medium text-red-500">Warning: This action cannot be undone</p>
+                                <p className="text-sm font-medium text-[var(--error)]">Warning: This action cannot be undone</p>
                                 <p className="text-xs text-[var(--text-secondary)] mt-1">
                                     Deleting your account will permanently remove all your data, including:
                                 </p>
@@ -286,7 +286,7 @@ export default function AccountSettingsPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-                                Type <span className="font-mono bg-red-500/10 px-1 py-0.5 rounded text-red-500">DELETE</span> to confirm
+                                Type <span className="font-mono bg-[var(--error)]/10 px-1 py-0.5 rounded text-[var(--error)]">DELETE</span> to confirm
                             </label>
                             <Input
                                 type="text"
@@ -321,9 +321,9 @@ export default function AccountSettingsPage() {
             </Card>
 
             {/* Account Info */}
-            <Card className="p-6 bg-blue-500/5 border-blue-500/20">
+            <Card className="p-6 bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
                 <div className="flex gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-[var(--primary-blue)] flex-shrink-0 mt-0.5" />
                     <div className="space-y-2">
                         <p className="text-sm font-medium text-[var(--text-primary)]">
                             Account Information

@@ -111,7 +111,7 @@ export default function CODRemittancePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <Banknote className="h-6 w-6 text-[#2525FF]" />
+                        <Banknote className="h-6 w-6 text-[var(--primary-blue)]" />
                         COD Remittance
                     </h1>
                     <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -133,8 +133,8 @@ export default function CODRemittancePage() {
                                 <p className="text-sm text-[var(--text-muted)]">Total COD Collected</p>
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalCODCollected)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <IndianRupee className="h-5 w-5 text-[#2525FF]" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <IndianRupee className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -144,10 +144,10 @@ export default function CODRemittancePage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Total Remitted</p>
-                                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalRemitted)}</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">{formatCurrency(totalRemitted)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--success-bg)] flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -157,10 +157,10 @@ export default function CODRemittancePage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Pending Remit</p>
-                                <p className="text-2xl font-bold text-amber-600">{formatCurrency(totalPending)}</p>
+                                <p className="text-2xl font-bold text-[var(--warning)]">{formatCurrency(totalPending)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
+                                <Clock className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -188,8 +188,8 @@ export default function CODRemittancePage() {
                     className={cn(
                         "px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-px",
                         activeTab === 'remittances'
-                            ? "border-[#2525FF] text-[#2525FF]"
-                            : "border-transparent text-[var(--text-muted)] hover:text-gray-700"
+                            ? "border-[var(--primary-blue)] text-[var(--primary-blue)]"
+                            : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                     )}
                 >
                     Remittance History
@@ -199,8 +199,8 @@ export default function CODRemittancePage() {
                     className={cn(
                         "px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-px flex items-center gap-2",
                         activeTab === 'pending'
-                            ? "border-[#2525FF] text-[#2525FF]"
-                            : "border-transparent text-[var(--text-muted)] hover:text-gray-700"
+                            ? "border-[var(--primary-blue)] text-[var(--primary-blue)]"
+                            : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                     )}
                 >
                     Pending COD
@@ -228,7 +228,7 @@ export default function CODRemittancePage() {
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                                    <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                                         <tr>
                                             <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
                                             <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Remit ID</th>
@@ -241,12 +241,12 @@ export default function CODRemittancePage() {
                                             <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100">
+                                    <tbody className="divide-y divide-[var(--border-subtle)]">
                                         {filteredRemittances.map((rem) => (
                                             <tr key={rem.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                                        <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
                                                         <span className="text-sm text-[var(--text-primary)]">{rem.date}</span>
                                                     </div>
                                                 </td>
@@ -260,13 +260,13 @@ export default function CODRemittancePage() {
                                                     <p className="text-sm font-medium text-[var(--text-primary)]">{formatCurrency(rem.totalCOD)}</p>
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <p className="text-sm text-rose-600">-{formatCurrency(rem.deductions)}</p>
+                                                    <p className="text-sm text-[var(--error)]">-{formatCurrency(rem.deductions)}</p>
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <p className="text-sm text-gray-600">-{formatCurrency(rem.tds)}</p>
+                                                    <p className="text-sm text-[var(--text-secondary)]">-{formatCurrency(rem.tds)}</p>
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    <p className="text-sm font-bold text-emerald-600">{formatCurrency(rem.netAmount)}</p>
+                                                    <p className="text-sm font-bold text-[var(--success)]">{formatCurrency(rem.netAmount)}</p>
                                                 </td>
                                                 <td className="p-4 text-center">
                                                     <span className="text-sm text-[var(--text-primary)]">{rem.shipmentCount}</span>
@@ -315,7 +315,7 @@ export default function CODRemittancePage() {
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
                                     <tr>
                                         <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB Number</th>
                                         <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">COD Amount</th>
@@ -323,7 +323,7 @@ export default function CODRemittancePage() {
                                         <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Expected Remit</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
                                     {mockPendingCOD.map((item) => (
                                         <tr key={item.awb} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                             <td className="p-4">
@@ -333,7 +333,7 @@ export default function CODRemittancePage() {
                                                 <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(item.amount)}</p>
                                             </td>
                                             <td className="p-4 text-center">
-                                                <p className="text-sm text-gray-600">{item.deliveredDate}</p>
+                                                <p className="text-sm text-[var(--text-secondary)]">{item.deliveredDate}</p>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <Badge variant="info" className="text-xs">{item.expectedRemit}</Badge>
@@ -341,7 +341,7 @@ export default function CODRemittancePage() {
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-[var(--bg-secondary)] border-t border-gray-200">
+                                <tfoot className="bg-[var(--bg-secondary)] border-t border-[var(--border-subtle)]">
                                     <tr>
                                         <td className="p-4 font-medium text-[var(--text-primary)]">Total</td>
                                         <td className="p-4 text-right font-bold text-[var(--text-primary)]">

@@ -87,7 +87,7 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
             {isOpen && (
                 <div
                     className={cn(
-                        "absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 z-[var(--z-dropdown)]",
+                        "absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 z-[var(--z-dropdown-page)]",
                         "bg-[var(--bg-elevated)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)]",
                         "shadow-[var(--shadow-dropdown)] overflow-hidden",
                         "animate-fade-in"

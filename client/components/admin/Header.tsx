@@ -61,7 +61,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
 
     return (
         <>
-            <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-4 lg:px-6 transition-colors duration-200">
+            <header className="sticky top-0 z-[var(--z-header-sticky)] flex h-14 w-full items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-4 lg:px-6 transition-colors duration-200">
                 {/* Left Section - Title */}
                 <div className="flex items-center gap-3">
                     <button
@@ -77,7 +77,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 <div className="hidden md:flex flex-1 max-w-md mx-8">
                     <div className={cn(
                         "relative w-full transition-all duration-200",
-                        searchFocused && "z-50"
+                        searchFocused && "z-[var(--z-search-focus)]"
                     )}>
                         <div className={cn(
                             "absolute inset-0 rounded-xl transition-all duration-200",

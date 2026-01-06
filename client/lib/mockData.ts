@@ -1,98 +1,227 @@
-import { Shipment, Order, Company, User, CourierName, Status } from '@/types/admin';
+import { Shipment, Order, Company, Status } from '@/types/admin';
 
-// Deterministic generic data helpers
-const couriers: CourierName[] = ['Delhivery', 'Xpressbees', 'DTDC', 'Bluedart', 'EcomExpress'];
-const cities = [
-    { city: 'Mumbai', state: 'Maharashtra' },
-    { city: 'Delhi', state: 'Delhi' },
-    { city: 'Bangalore', state: 'Karnataka' },
-    { city: 'Chennai', state: 'Tamil Nadu' },
-    { city: 'Hyderabad', state: 'Telangana' },
-    { city: 'Pune', state: 'Maharashtra' },
-    { city: 'Ahmedabad', state: 'Gujarat' },
-    { city: 'Kolkata', state: 'West Bengal' },
-    { city: 'Jaipur', state: 'Rajasthan' },
-    { city: 'Lucknow', state: 'Uttar Pradesh' },
+// --- SHIPMENT MOCK DATA ---
+export const MOCK_SHIPMENTS: Shipment[] = [
+    {
+        id: 'SHP-88214',
+        awb: 'AWB982374123',
+        orderNumber: 'ORD-1709821-0',
+        customer: {
+            name: 'Aarav Patel',
+            phone: '+91 98765 43210',
+            email: 'aarav.patel@example.com',
+        },
+        courier: 'Delhivery',
+        status: 'delivered',
+        origin: { city: 'Mumbai', state: 'Maharashtra', line1: '42, Market Road', pincode: '400001' },
+        destination: { city: 'Delhi', state: 'Delhi', line1: '12, Residency Park', pincode: '110001' },
+        weight: 1.2,
+        codAmount: 1250,
+        paymentMode: 'prepaid',
+        createdAt: '2024-03-10T10:00:00Z',
+    },
+    {
+        id: 'SHP-99215',
+        awb: 'AWB982374124',
+        orderNumber: 'ORD-1709821-1',
+        customer: {
+            name: 'Vihaan Sharma',
+            phone: '+91 98765 43211',
+            email: 'vihaan.sharma@example.com',
+        },
+        courier: 'Xpressbees',
+        status: 'in-transit',
+        origin: { city: 'Bangalore', state: 'Karnataka', line1: '88, Tech Park', pincode: '560001' },
+        destination: { city: 'Hyderabad', state: 'Telangana', line1: '34, Jubilee Hills', pincode: '500033' },
+        weight: 2.5,
+        codAmount: 3400,
+        paymentMode: 'cod',
+        createdAt: '2024-03-12T14:30:00Z',
+    },
+    {
+        id: 'SHP-77326',
+        awb: 'AWB982374125',
+        orderNumber: 'ORD-1709821-2',
+        customer: {
+            name: 'Aditya Verma',
+            phone: '+91 98765 43212',
+            email: 'aditya.verma@example.com',
+        },
+        courier: 'DTDC',
+        status: 'pending',
+        origin: { city: 'Delhi', state: 'Delhi', line1: '55, Connaught Place', pincode: '110001' },
+        destination: { city: 'Mumbai', state: 'Maharashtra', line1: '99, Bandra West', pincode: '400050' },
+        weight: 0.8,
+        codAmount: 800,
+        paymentMode: 'prepaid',
+        createdAt: '2024-03-14T09:15:00Z',
+    },
+    {
+        id: 'SHP-66437',
+        awb: 'AWB982374126',
+        orderNumber: 'ORD-1709821-3',
+        customer: {
+            name: 'Sai Kumar',
+            phone: '+91 98765 43213',
+            email: 'sai.kumar@example.com',
+        },
+        courier: 'Bluedart',
+        status: 'delivered',
+        origin: { city: 'Chennai', state: 'Tamil Nadu', line1: '23, Anna Salai', pincode: '600002' },
+        destination: { city: 'Kolkata', state: 'West Bengal', line1: '45, Park Street', pincode: '700016' },
+        weight: 3.1,
+        codAmount: 4500,
+        paymentMode: 'cod',
+        createdAt: '2024-03-08T11:45:00Z',
+    },
+    {
+        id: 'SHP-55548',
+        awb: 'AWB982374127',
+        orderNumber: 'ORD-1709821-4',
+        customer: {
+            name: 'Ananya Singh',
+            phone: '+91 98765 43214',
+            email: 'ananya.singh@example.com',
+        },
+        courier: 'EcomExpress',
+        status: 'rto',
+        origin: { city: 'Pune', state: 'Maharashtra', line1: '12, Koregaon Park', pincode: '411001' },
+        destination: { city: 'Ahmedabad', state: 'Gujarat', line1: '67, CG Road', pincode: '380009' },
+        weight: 1.5,
+        codAmount: 1200,
+        paymentMode: 'cod',
+        createdAt: '2024-03-11T16:20:00Z',
+    },
+    {
+        id: 'SHP-44659',
+        awb: 'AWB982374128',
+        orderNumber: 'ORD-1709821-5',
+        customer: {
+            name: 'Diya Rao',
+            phone: '+91 98765 43215',
+            email: 'diya.rao@example.com',
+        },
+        courier: 'Delhivery',
+        status: 'ndr',
+        origin: { city: 'Hyderabad', state: 'Telangana', line1: '89, Banjara Hills', pincode: '500034' },
+        destination: { city: 'Bangalore', state: 'Karnataka', line1: '12, Indiranagar', pincode: '560038' },
+        weight: 0.5,
+        codAmount: 600,
+        paymentMode: 'prepaid',
+        createdAt: '2024-03-13T13:10:00Z',
+    },
+    {
+        id: 'SHP-33760',
+        awb: 'AWB982374129',
+        orderNumber: 'ORD-1709821-6',
+        customer: {
+            name: 'Isha Mehta',
+            phone: '+91 98765 43216',
+            email: 'isha.mehta@example.com',
+        },
+        courier: 'Xpressbees',
+        status: 'in-transit',
+        origin: { city: 'Jaipur', state: 'Rajasthan', line1: '34, MI Road', pincode: '302001' },
+        destination: { city: 'Lucknow', state: 'Uttar Pradesh', line1: '56, Hazratganj', pincode: '226001' },
+        weight: 4.2,
+        codAmount: 5200,
+        paymentMode: 'cod',
+        createdAt: '2024-03-15T08:00:00Z',
+    },
+    {
+        id: 'SHP-22871',
+        awb: 'AWB982374130',
+        orderNumber: 'ORD-1709821-7',
+        customer: {
+            name: 'Arjun Nair',
+            phone: '+91 98765 43217',
+            email: 'arjun.nair@example.com',
+        },
+        courier: 'DTDC',
+        status: 'delivered',
+        origin: { city: 'Kolkata', state: 'West Bengal', line1: '78, Salt Lake', pincode: '700091' },
+        destination: { city: 'Mumbai', state: 'Maharashtra', line1: '23, Andheri East', pincode: '400069' },
+        weight: 2.0,
+        codAmount: 2100,
+        paymentMode: 'prepaid',
+        createdAt: '2024-03-09T15:40:00Z',
+    }
 ];
 
-const customerNames = [
-    'Aarav Patel', 'Vihaan Sharma', 'Aditya Verma', 'Sai Kumar', 'Reyansh Gupta',
-    'Ananya Singh', 'Diya Rao', 'Isha Mehta', 'Saanvi Reddy', 'Myra Malhotra',
-    'Arjun Nair', 'Rohan Das', 'Kabir Joshi', 'Ishaan Choudhury', 'Vivaan Jain'
+// --- ORDER MOCK DATA ---
+export const MOCK_ORDERS: Order[] = [
+    {
+        id: 'ORD-1001',
+        customer: { name: 'Aarav Patel', phone: '+91 98765 43210', email: 'aarav@example.com' },
+        productName: 'Wireless Keyboard',
+        quantity: 1,
+        amount: 3499,
+        paymentStatus: 'paid',
+        shipmentStatus: 'shipped',
+        createdAt: '2024-03-10T10:00:00Z'
+    },
+    {
+        id: 'ORD-1002',
+        customer: { name: 'Vihaan Sharma', phone: '+91 98765 43211', email: 'vihaan@example.com' },
+        productName: 'Gaming Mouse',
+        quantity: 2,
+        amount: 2599,
+        paymentStatus: 'pending',
+        shipmentStatus: 'unshipped',
+        createdAt: '2024-03-12T14:30:00Z'
+    },
+    {
+        id: 'ORD-1003',
+        customer: { name: 'Aditya Verma', phone: '+91 98765 43212', email: 'aditya@example.com' },
+        productName: 'Monitor Stand',
+        quantity: 1,
+        amount: 1299,
+        paymentStatus: 'paid',
+        shipmentStatus: 'shipped',
+        createdAt: '2024-03-14T09:15:00Z'
+    },
+    {
+        id: 'ORD-1004',
+        customer: { name: 'Sai Kumar', phone: '+91 98765 43213', email: 'sai@example.com' },
+        productName: 'USB-C Hub',
+        quantity: 3,
+        amount: 4500,
+        paymentStatus: 'failed',
+        shipmentStatus: 'unshipped',
+        createdAt: '2024-03-15T11:20:00Z'
+    }
 ];
 
-const statuses: Status[] = ['delivered', 'in-transit', 'pending', 'ndr', 'rto', 'cancelled'];
-
-const getRandomElement = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-const getRandomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const getRandomDate = (daysAgo: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() - getRandomInt(0, daysAgo));
-    return date.toISOString();
-};
-
-export const generateShipments = (count: number): Shipment[] => {
-    return Array.from({ length: count }).map((_, i) => {
-        const origin = getRandomElement(cities);
-        let destination = getRandomElement(cities);
-        while (destination.city === origin.city) destination = getRandomElement(cities);
-
-        return {
-            id: `SHP-${getRandomInt(10000, 99999)}`,
-            awb: `AWB${getRandomInt(100000000, 999999999)}`,
-            orderNumber: `ORD-${Date.now()}-${i}`,
-            customer: {
-                name: getRandomElement(customerNames),
-                phone: `+91 ${getRandomInt(60000, 99999)} ${getRandomInt(10000, 99999)}`,
-                email: `customer${i}@example.com`,
-            },
-            courier: getRandomElement(couriers),
-            status: getRandomElement(statuses),
-            origin: { ...origin, line1: `${getRandomInt(1, 100)}, Market Road`, pincode: `${getRandomInt(110000, 800000)}` },
-            destination: { ...destination, line1: `${getRandomInt(1, 100)}, Residency Park`, pincode: `${getRandomInt(110000, 800000)}` },
-            weight: parseFloat((Math.random() * 5).toFixed(1)),
-            codAmount: getRandomInt(500, 5000),
-            paymentMode: Math.random() > 0.4 ? 'cod' : 'prepaid',
-            createdAt: getRandomDate(7),
-        };
-    });
-};
-
-export const generateOrders = (count: number): Order[] => {
-    return Array.from({ length: count }).map((_, i) => {
-        const isPaid = Math.random() > 0.3;
-        return {
-            id: `ORD-${getRandomInt(100000, 999999)}`,
-            customer: {
-                name: getRandomElement(customerNames),
-                phone: `+91 ${getRandomInt(7000000000, 9999999999)}`,
-                email: `user${i}@mail.com`
-            },
-            productName: getRandomElement(['Wireless Keybaord', 'Gaming Mouse', 'monitor Stand', 'USB-C Hub', 'Laptop Sleeve', 'Webcam']),
-            quantity: getRandomInt(1, 3),
-            amount: getRandomInt(499, 15000),
-            paymentStatus: isPaid ? 'paid' : (Math.random() > 0.5 ? 'pending' : 'failed'),
-            shipmentStatus: isPaid ? (Math.random() > 0.5 ? 'shipped' : 'unshipped') : 'unshipped',
-            createdAt: getRandomDate(10)
-        }
-    })
-}
-
-export const generateCompanies = (count: number): Company[] => {
-    return Array.from({ length: count }).map((_, i) => ({
-        id: `COMP-${getRandomInt(100, 999)}`,
-        name: `${getRandomElement(['Alpha', 'Beta', 'Gamma', 'Delta', 'Omega'])} Logistics ${i + 1}`,
-        tier: getRandomElement(['Starter', 'Growth', 'Enterprise']),
-        walletBalance: getRandomInt(100, 50000),
-        activeUsers: getRandomInt(1, 50),
-        totalOrders: getRandomInt(50, 5000),
-        status: Math.random() > 0.1 ? 'active' : 'inactive',
-    }));
-};
-
-export const MOCK_SHIPMENTS = generateShipments(25);
-export const MOCK_ORDERS = generateOrders(20);
-export const MOCK_COMPANIES = generateCompanies(10);
+// --- COMPANY MOCK DATA ---
+export const MOCK_COMPANIES: Company[] = [
+    {
+        id: 'COMP-001',
+        name: 'Alpha Logistics',
+        tier: 'Enterprise',
+        walletBalance: 45000,
+        activeUsers: 42,
+        totalOrders: 3500,
+        status: 'active',
+    },
+    {
+        id: 'COMP-002',
+        name: 'Beta Transport',
+        tier: 'Growth',
+        walletBalance: 12500,
+        activeUsers: 15,
+        totalOrders: 1200,
+        status: 'active',
+    },
+    {
+        id: 'COMP-003',
+        name: 'Gamma Express',
+        tier: 'Starter',
+        walletBalance: 2500,
+        activeUsers: 4,
+        totalOrders: 350,
+        status: 'inactive',
+    }
+];
 
 // --- AI & PREDICTION MOCK DATA ---
 export const MOCK_PREDICTIONS = [
@@ -133,4 +262,3 @@ export const MOCK_INVENTORY = [
     { sku: 'SKU-004', name: 'USB-C Cable', quantity: 850, warehouse: 'Delhi Central Hub', status: 'In Stock' },
     { sku: 'SKU-005', name: 'Bluetooth Speaker', quantity: 35, warehouse: 'Mumbai Fulfillment Ctr', status: 'Low Stock' },
 ];
-

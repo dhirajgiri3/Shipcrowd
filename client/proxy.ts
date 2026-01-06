@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isPublicRoute, isAdminRoute, isSellerRoute } from '@/src/config/routes';
+import { isPublicRoute, isAdminRoute, isSellerRoute, isGuestOnlyRoute } from '@/src/config/routes';
 
 /**
  * Next.js Middleware for Authentication and Route Protection
@@ -13,6 +13,26 @@ export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // ═══════════════════════════════════════════════════════════════════════
+    // CHECK AUTHENTICATION TOKENS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const accessToken = request.cookies.get('accessToken');
+    const refreshToken = request.cookies.get('refreshToken');
+    const hasToken = !!(accessToken || refreshToken);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // GUEST-ONLY ROUTES - Redirect authenticated users
+    // ═══════════════════════════════════════════════════════════════════════
+
+    if (isGuestOnlyRoute(pathname)) {
+        if (hasToken) {
+            // Default dashboard route
+            return NextResponse.redirect(new URL('/seller', request.url));
+        }
+        return NextResponse.next();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC ROUTES - Allow access without authentication
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -20,12 +40,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // CHECK AUTHENTICATION TOKENS
-    // ═══════════════════════════════════════════════════════════════════════
 
-    const accessToken = request.cookies.get('accessToken');
-    const refreshToken = request.cookies.get('refreshToken');
 
     // No tokens = redirect to login
     if (!accessToken && !refreshToken) {

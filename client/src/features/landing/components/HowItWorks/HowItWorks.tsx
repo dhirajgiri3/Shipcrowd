@@ -47,7 +47,7 @@ export default function HowItWorks() {
                 {/* Steps Steps */}
                 <div className="relative grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-32">
                     {/* Animated Connector Line (Desktop) */}
-                    <div className="hidden lg:block absolute top-[120px] left-0 w-full h-px border-t-2 border-dashed border-primaryBlue/20 z-0" />
+                    <div className="hidden lg:block absolute top-[120px] left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primaryBlue/20 to-transparent z-0" />
 
                     <StepCard
                         number="01"
@@ -90,12 +90,12 @@ export default function HowItWorks() {
                     {/* Glassmorphic Background */}
                     <div className="absolute inset-0 bg-primaryBlue">
                         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shine_3s_infinite]" />
-                        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-cyan/30 to-transparent blur-3xl opacity-50" />
-                        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-indigo/30 to-transparent blur-3xl opacity-50" />
+                        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-cyan-400/30 to-transparent blur-3xl opacity-50" />
+                        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-indigo-500/30 to-transparent blur-3xl opacity-50" />
                     </div>
 
                     <div className="relative z-10 max-w-[800px] mx-auto">
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-8 leading-tight tracking-tight">
                             Ready to Start Your Intelligent Shipping Journey?
                         </h2>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -130,9 +130,9 @@ function StepCard({ number, title, description, visual, delay }: any) {
             transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
             className="group relative z-10"
         >
-            <div className="bg-white rounded-3xl p-2 md:p-3 border border-charcoal-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] group-hover:shadow-[0_20px_50px_-20px_rgba(37,37,255,0.15)] group-hover:border-primaryBlue/30 transition-all duration-500">
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-2 md:p-3 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] group-hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] group-hover:border-primaryBlue/20 transition-all duration-500">
                 {/* Visual Container */}
-                <div className="aspect-[4/3] bg-charcoal-50 rounded-2xl mb-8 overflow-hidden relative group-hover:bg-primaryBlue/5 transition-colors duration-500 flex items-center justify-center">
+                <div className="aspect-[4/3] bg-gray-50/50 rounded-2xl mb-8 overflow-hidden relative group-hover:bg-primaryBlue/5 transition-colors duration-500 flex items-center justify-center border border-gray-100/50">
                     {visual}
                 </div>
 
@@ -141,11 +141,11 @@ function StepCard({ number, title, description, visual, delay }: any) {
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primaryBlue/10 text-primaryBlue font-bold text-sm border border-primaryBlue/20">
                             {number}
                         </span>
-                        <h3 className="text-xl font-bold text-charcoal-900 leading-tight">
+                        <h3 className="text-xl font-bold text-gray-900 leading-tight tracking-tight">
                             {title}
                         </h3>
                     </div>
-                    <p className="text-charcoal-500 leading-relaxed text-sm">
+                    <p className="text-gray-500 leading-relaxed text-sm font-medium">
                         {description}
                     </p>
                 </div>

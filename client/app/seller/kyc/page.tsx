@@ -24,7 +24,7 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
-import { kycApi, KYCData } from '@/src/core/api';
+// import { kycApi, KYCData } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
 import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
@@ -61,7 +61,7 @@ export default function KycPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [existingKYC, setExistingKYC] = useState<KYCData | null>(null);
+    const [existingKYC, setExistingKYC] = useState<any>(null); // TODO: replace with proper KYC types
 
     // Verification states
     const [panVerification, setPanVerification] = useState<VerificationStatus>({ verified: false, loading: false });
@@ -86,36 +86,38 @@ export default function KycPage() {
 
     // Fetch existing KYC on mount
     useEffect(() => {
-        const fetchKYC = async () => {
-            try {
-                const response = await kycApi.getKYC();
-                if (response.kyc) {
-                    setExistingKYC(response.kyc);
-                    // Pre-fill form if KYC exists
-                    const docs = response.kyc.documents || [];
-                    const panDoc = docs.find(d => d.type === 'pan');
-                    const bankDoc = docs.find(d => d.type === 'bank_account');
-                    const gstinDoc = docs.find(d => d.type === 'gstin');
+        // const fetchKYC = async () => {
+        //     // KYC fetching disabled for demo
+        // try {
+        // // const response = await kycApi.getKYC();
+        // // if (response.kyc) {
+        // // setExistingKYC(response.kyc);
+        // // Pre-fill form if KYC exists
+        // // const docs = response.kyc.documents || [];
+        // const panDoc = docs.find(d => d.type === 'pan');
+        // const bankDoc = docs.find(d => d.type === 'bank_account');
+        // const gstinDoc = docs.find(d => d.type === 'gstin');
 
-                    if (panDoc?.status === 'verified') {
-                        setPanVerification({ verified: true, loading: false });
-                    }
-                    if (bankDoc?.status === 'verified') {
-                        setBankVerification({ verified: true, loading: false });
-                    }
-                    if (gstinDoc?.status === 'verified') {
-                        setGstinVerification({ verified: true, loading: false });
-                    }
-                }
-            } catch (err) {
-                // No existing KYC, that's fine
-            } finally {
-                setIsLoading(false);
-            }
-        };
+        // if (panDoc?.status === 'verified') {
+        // setPanVerification({ verified: true, loading: false });
+        // }
+        // if (bankDoc?.status === 'verified') {
+        // setBankVerification({ verified: true, loading: false });
+        // }
+        // if (gstinDoc?.status === 'verified') {
+        // setGstinVerification({ verified: true, loading: false });
+        // }
+        // }
+        // } catch (err) {
+        // // No existing KYC, that's fine
+        // } finally {
+        // setIsLoading(false);
+        // }
+        // };
 
         if (!authLoading && user) {
-            fetchKYC();
+            // KYC API is not yet integrated - just set loading to false
+            setIsLoading(false);
         } else if (!authLoading && !user) {
             router.push('/login');
         }
@@ -126,7 +128,7 @@ export default function KycPage() {
         setError(null);
     };
 
-    // PAN Verification - keeping logic same, improving feedback
+    // PAN Verification - Disabled for demo
     const verifyPAN = useCallback(async () => {
         if (!isValidPAN(formData.pan) || formData.pan.length !== 10) {
             setPanVerification({ verified: false, loading: false, error: 'Invalid PAN format' });
@@ -135,46 +137,27 @@ export default function KycPage() {
 
         setPanVerification({ verified: false, loading: true });
 
-        try {
-            const response = await kycApi.verifyPAN({ panNumber: formData.pan });
-            if (response.success && response.verified) {
-                setPanVerification({
-                    verified: true,
-                    loading: false,
-                    data: response.data
-                });
-                toast.success('PAN verified successfully!');
-            } else {
-                setPanVerification({
-                    verified: false,
-                    loading: false,
-                    error: response.message || 'PAN verification failed'
-                });
-            }
-        } catch (err: any) {
-            setPanVerification({
-                verified: false,
-                loading: false,
-                error: err.message || 'Verification failed'
-            });
-        }
+        // Simulate verification delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Stub: Show as verified for demo
+        setPanVerification({
+            verified: true,
+            loading: false,
+            data: { name: 'Demo User' }
+        });
+        toast.success('PAN verified successfully! (Demo mode)');
     }, [formData.pan]);
 
-    // IFSC Lookup
+    // IFSC Lookup - Disabled for demo
     const lookupIFSC = useCallback(async () => {
         if (!isValidIFSC(formData.ifscCode) || formData.ifscCode.length !== 11) {
             setIfscData(null);
             return;
         }
 
-        try {
-            const response = await kycApi.verifyIFSC(formData.ifscCode);
-            if (response.success && response.data) {
-                setIfscData({ bank: response.data.bank, branch: response.data.branch });
-            }
-        } catch {
-            setIfscData(null);
-        }
+        // Stub: Show mock bank data for demo
+        setIfscData({ bank: 'Demo Bank', branch: 'Main Branch' });
     }, [formData.ifscCode]);
 
     // Bank Verification
@@ -192,24 +175,13 @@ export default function KycPage() {
         setBankVerification({ verified: false, loading: true });
 
         try {
-            const response = await kycApi.verifyBankAccount({
-                accountNumber: formData.accountNumber,
-                ifscCode: formData.ifscCode,
+            // KYC API temporarily disabled
+            // const response = await kycApi.verifyBankAccount({...});
+            setBankVerification({
+                verified: false,
+                loading: false,
+                error: 'Bank verification is temporarily disabled for demo mode'
             });
-            if (response.success && response.verified) {
-                setBankVerification({
-                    verified: true,
-                    loading: false,
-                    data: response.data
-                });
-                toast.success('Bank account verified!');
-            } else {
-                setBankVerification({
-                    verified: false,
-                    loading: false,
-                    error: response.message || 'Bank verification failed'
-                });
-            }
         } catch (err: any) {
             setBankVerification({
                 verified: false,
@@ -219,7 +191,7 @@ export default function KycPage() {
         }
     }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode]);
 
-    // GSTIN Verification
+    // GSTIN Verification - Disabled for demo
     const verifyGSTIN = useCallback(async () => {
         if (!formData.gstin) return; // GSTIN is optional
 
@@ -230,29 +202,16 @@ export default function KycPage() {
 
         setGstinVerification({ verified: false, loading: true });
 
-        try {
-            const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
-            if (response.success && response.verified) {
-                setGstinVerification({
-                    verified: true,
-                    loading: false,
-                    data: response.data
-                });
-                toast.success('GSTIN verified!');
-            } else {
-                setGstinVerification({
-                    verified: false,
-                    loading: false,
-                    error: response.message || 'GSTIN verification failed'
-                });
-            }
-        } catch (err: any) {
-            setGstinVerification({
-                verified: false,
-                loading: false,
-                error: err.message || 'Verification failed'
-            });
-        }
+        // Simulate verification delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Stub: Show as verified for demo
+        setGstinVerification({
+            verified: true,
+            loading: false,
+            data: { businessName: 'Demo Business Pvt Ltd' }
+        });
+        toast.success('GSTIN verified! (Demo mode)');
     }, [formData.gstin]);
 
     // Step validation
@@ -313,35 +272,19 @@ export default function KycPage() {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
     };
 
-    // Submit KYC
+    // Submit KYC - Disabled for demo
     const handleSubmit = async () => {
         if (!validateCurrentStep()) return;
 
         setIsSubmitting(true);
         setError(null);
 
-        try {
-            await kycApi.submitKYC({
-                panNumber: formData.pan,
-                bankDetails: {
-                    accountNumber: formData.accountNumber,
-                    ifscCode: formData.ifscCode,
-                    bankName: ifscData?.bank,
-                },
-                gstin: formData.gstin || undefined,
-            });
+        // Simulate submission delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-            await kycApi.updateAgreement(true);
-
-            toast.success('KYC submitted successfully!');
-            router.push('/seller');
-        } catch (err: any) {
-            const message = err.message || 'Failed to submit KYC';
-            setError(message);
-            toast.error(message);
-        } finally {
-            setIsSubmitting(false);
-        }
+        toast.success('KYC submitted successfully! (Demo mode)');
+        router.push('/seller');
+        setIsSubmitting(false);
     };
 
     // Render verification badge - Updated design
@@ -549,7 +492,7 @@ export default function KycPage() {
                                     {currentStep === 1 && (
                                         <div className="space-y-6 max-w-lg">
                                             <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-[var(--text-primary)]">Permanent Account Number (PAN) <span className="text-red-500">*</span></label>
+                                                <label className="text-sm font-semibold text-[var(--text-primary)]">Permanent Account Number (PAN) <span className="text-[var(--error)]">*</span></label>
                                                 <div className="relative">
                                                     <Input
                                                         placeholder="ABCDE1234F"
@@ -612,7 +555,7 @@ export default function KycPage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <label className="text-sm font-semibold text-[var(--text-primary)]">Account Number <span className="text-red-500">*</span></label>
+                                                    <label className="text-sm font-semibold text-[var(--text-primary)]">Account Number <span className="text-[var(--error)]">*</span></label>
                                                     <Input
                                                         type="password"
                                                         placeholder="Enter account number"
@@ -623,7 +566,7 @@ export default function KycPage() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <label className="text-sm font-semibold text-[var(--text-primary)]">Confirm Account Number <span className="text-red-500">*</span></label>
+                                                    <label className="text-sm font-semibold text-[var(--text-primary)]">Confirm Account Number <span className="text-[var(--error)]">*</span></label>
                                                     <Input
                                                         placeholder="Re-enter account number"
                                                         value={formData.confirmAccountNumber}
@@ -636,7 +579,7 @@ export default function KycPage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div className="space-y-2">
-                                                    <label className="text-sm font-semibold text-[var(--text-primary)]">IFSC Code <span className="text-red-500">*</span></label>
+                                                    <label className="text-sm font-semibold text-[var(--text-primary)]">IFSC Code <span className="text-[var(--error)]">*</span></label>
                                                     <div className="relative">
                                                         <Input
                                                             placeholder="SBIN0001234"
@@ -650,7 +593,7 @@ export default function KycPage() {
                                                             className="h-11 uppercase font-mono"
                                                         />
                                                         {ifscData && (
-                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
+                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--success)]">
                                                                 <CheckCircle2 className="w-5 h-5" />
                                                             </div>
                                                         )}

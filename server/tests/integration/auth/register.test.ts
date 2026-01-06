@@ -29,8 +29,12 @@ describe('POST /api/v1/auth/register', () => {
             expect(response.body).toHaveProperty('message');
             expect(response.body.message).toMatch(/registered successfully|Registration successful/i);
 
+            // Small delay to ensure async operations complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             // Verify user was created in database
             const user = await User.findOne({ email: userData.email });
+
             expect(user).toBeTruthy();
             expect(user!.name).toBe(userData.name);
             expect(user!.role).toBe(userData.role);
@@ -53,6 +57,9 @@ describe('POST /api/v1/auth/register', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(201);
 
+            // Small delay to ensure async operations complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             const user = await User.findOne({ email: userData.email });
             expect(user!.password).toBeDefined();
             expect(user!.password).not.toBe(userData.password);
@@ -72,6 +79,9 @@ describe('POST /api/v1/auth/register', () => {
                 .send(userData)
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(201);
+
+            // Small delay to ensure async operations complete
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             const user = await User.findOne({ email: 'test@example.com' });
             expect(user).toBeTruthy();

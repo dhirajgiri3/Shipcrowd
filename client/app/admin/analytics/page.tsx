@@ -29,7 +29,7 @@ const zoneDistribution = [
     { name: 'North-East', value: 100 },
 ];
 
-const COLORS = ['#2525FF', '#4338CA', '#10B981', '#F59E0B', '#EF4444'];
+const COLORS = ['var(--primary-blue)', '#4338CA', 'var(--success)', 'var(--warning)', 'var(--error)'];
 
 export default function AnalyticsPage() {
     return (
@@ -56,28 +56,29 @@ export default function AnalyticsPage() {
                     <AreaChart data={deliveryPerformanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2525FF" stopOpacity={0.1} />
-                                <stop offset="95%" stopColor="#2525FF" stopOpacity={0} />
+                                <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.1} />
+                                <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                         <Tooltip
                             contentStyle={{
                                 borderRadius: '8px',
-                                border: 'none',
+                                border: '1px solid var(--border-subtle)',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                backgroundColor: '#fff',
-                                padding: '12px'
+                                backgroundColor: 'var(--bg-popover)',
+                                padding: '12px',
+                                color: 'var(--text-primary)'
                             }}
-                            labelStyle={{ color: '#111827', fontWeight: 600 }}
-                            itemStyle={{ color: '#111827', fontSize: '14px' }}
+                            labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                            itemStyle={{ color: 'var(--text-primary)', fontSize: '14px' }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                        <Area type="monotone" dataKey="delivered" stroke="#2525FF" fillOpacity={1} fill="url(#colorDelivered)" name="Delivered" />
-                        <Area type="monotone" dataKey="ndr" stroke="#F59E0B" fill="none" name="NDR" />
-                        <Area type="monotone" dataKey="rto" stroke="#EF4444" fill="none" name="RTO" />
+                        <Area type="monotone" dataKey="delivered" stroke="var(--primary-blue)" fillOpacity={1} fill="url(#colorDelivered)" name="Delivered" />
+                        <Area type="monotone" dataKey="ndr" stroke="var(--warning)" fill="none" name="NDR" />
+                        <Area type="monotone" dataKey="rto" stroke="var(--error)" fill="none" name="RTO" />
                     </AreaChart>
                 </ChartCard>
 
@@ -100,13 +101,14 @@ export default function AnalyticsPage() {
                         <Tooltip
                             contentStyle={{
                                 borderRadius: '8px',
-                                border: 'none',
+                                border: '1px solid var(--border-subtle)',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                backgroundColor: '#fff',
-                                padding: '12px'
+                                backgroundColor: 'var(--bg-popover)',
+                                padding: '12px',
+                                color: 'var(--text-primary)'
                             }}
-                            labelStyle={{ color: '#111827', fontWeight: 600 }}
-                            itemStyle={{ color: '#111827', fontSize: '14px' }}
+                            labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                            itemStyle={{ color: 'var(--text-primary)', fontSize: '14px' }}
                         />
                         <Legend layout="vertical" verticalAlign="middle" align="right" />
                     </PieChart>
@@ -121,7 +123,7 @@ export default function AnalyticsPage() {
                     <CardContent>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100 text-[var(--text-muted)]">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
                                     <tr>
                                         <th className="px-6 py-3 font-medium">Date</th>
                                         <th className="px-6 py-3 font-medium">Total Orders</th>
@@ -130,13 +132,13 @@ export default function AnalyticsPage() {
                                         <th className="px-6 py-3 font-medium">Avg. TAT</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
                                     {deliveryPerformanceData.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
-                                            <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{row.date}</td>
+                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]">
+                                            <td className="px-6 py-4 font-medium">{row.date}</td>
                                             <td className="px-6 py-4">{row.delivered + row.ndr + row.rto}</td>
-                                            <td className="px-6 py-4 text-emerald-600 font-medium">{row.delivered}</td>
-                                            <td className="px-6 py-4 text-rose-600 font-medium">{((row.rto / (row.delivered + row.ndr + row.rto)) * 100).toFixed(1)}%</td>
+                                            <td className="px-6 py-4 text-[var(--success)] font-medium">{row.delivered}</td>
+                                            <td className="px-6 py-4 text-[var(--error)] font-medium">{((row.rto / (row.delivered + row.ndr + row.rto)) * 100).toFixed(1)}%</td>
                                             <td className="px-6 py-4 text-[var(--text-muted)]">2.4 days</td>
                                         </tr>
                                     ))}

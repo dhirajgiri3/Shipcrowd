@@ -147,7 +147,7 @@ export default function AdminReturnsPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <PackageX className="h-6 w-6 text-[#2525FF]" />
+                        <PackageX className="h-6 w-6 text-[var(--primary-blue)]" />
                         Returns & NDR Management
                     </h1>
                     <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -175,8 +175,8 @@ export default function AdminReturnsPage() {
                                 <p className="text-sm text-[var(--text-muted)]">Total NDRs</p>
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{mockNDRs.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
-                                <PackageX className="h-5 w-5 text-[#2525FF]" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <PackageX className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -186,10 +186,10 @@ export default function AdminReturnsPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Action Pending</p>
-                                <p className="text-2xl font-bold text-amber-600">{actionPending}</p>
+                                <p className="text-2xl font-bold text-[var(--warning)]">{actionPending}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--warning-bg)] flex items-center justify-center">
+                                <Clock className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -199,10 +199,10 @@ export default function AdminReturnsPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">RTO Count</p>
-                                <p className="text-2xl font-bold text-rose-600">{rtoCount}</p>
+                                <p className="text-2xl font-bold text-[var(--error)]">{rtoCount}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                                <RotateCcw className="h-5 w-5 text-rose-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--error-bg)] flex items-center justify-center">
+                                <RotateCcw className="h-5 w-5 text-[var(--error)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -214,8 +214,8 @@ export default function AdminReturnsPage() {
                                 <p className="text-sm text-[var(--text-muted)]">RTO Value</p>
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rtoValue)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <TrendingDown className="h-5 w-5 text-purple-600" />
+                            <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                <TrendingDown className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -240,7 +240,7 @@ export default function AdminReturnsPage() {
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap",
                                 selectedStatus === filter.id
-                                    ? "bg-[#2525FF] text-white"
+                                    ? "bg-[var(--primary-blue)] text-white"
                                     : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
                             )}
                         >

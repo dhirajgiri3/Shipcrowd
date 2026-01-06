@@ -1,111 +1,109 @@
 /**
- * Reset Password Page with Enhanced UX
+ * Reset Password Page
+ *
+ * Features:
+ * - Confirm new password with token validation
+ * - Password strength indicator
+ * - Password match validation
+ * - Proper error handling with new auth system
  */
 
-"use client"
+'use client';
 
-import Link from "next/link"
-import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { motion } from "framer-motion"
-import { ArrowRight, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react"
-import { toast } from "sonner"
-import { getErrorMessage } from "@/lib/error-handler"
-import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
-import { LoadingButton } from "@/components/ui/utility/LoadingButton"
-import { authApi } from "@/src/core/api/authApi"
+import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { ArrowRight, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
+import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/src/shared/utils/password';
 
 function ResetPasswordForm() {
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const token = searchParams.get('token')
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const token = searchParams.get('token');
 
-    const [password, setPassword] = useState("")
-    const [confirmPassword, setConfirmPassword] = useState("")
-    const [showPassword, setShowPassword] = useState(false)
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [success, setSuccess] = useState(false)
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
 
-    // Password strength calculation
-    const getPasswordStrength = (pwd: string) => {
-        if (!pwd) return { score: 0, label: '', color: '' }
+    const { resetPasswordConfirm } = useAuth();
 
-        let score = 0
-        if (pwd.length >= 8) score++
-        if (pwd.length >= 12) score++
-        if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
-        if (/\d/.test(pwd)) score++
-        if (/[^a-zA-Z0-9]/.test(pwd)) score++
-
-        if (score <= 2) return { score, label: 'Weak', color: 'red' }
-        if (score === 3) return { score, label: 'Fair', color: 'amber' }
-        if (score === 4) return { score, label: 'Good', color: 'blue' }
-        return { score, label: 'Strong', color: 'emerald' }
-    }
-
-    const passwordStrength = password ? getPasswordStrength(password) : null
+    // Validate password strength
+    const passwordValidation = password ? validatePassword(password) : null;
 
     useEffect(() => {
         if (!token) {
-            setError("Invalid or missing reset token")
-            toast.error("Invalid or missing reset token")
+            setError('Invalid or missing reset token');
+            toast.error('Invalid or missing reset token');
         }
-    }, [token])
+    }, [token]);
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError(null)
+        e.preventDefault();
+        setError(null);
 
         // Client-side validation
         if (!password || !confirmPassword) {
-            const message = "Please fill in all fields"
-            setError(message)
-            toast.error(message)
-            return
+            const message = 'Please fill in all fields';
+            setError(message);
+            toast.error(message);
+            return;
         }
 
-        if (password.length < 8) {
-            const message = "Password must be at least 8 characters"
-            setError(message)
-            toast.error(message)
-            return
+        if (!passwordValidation?.isValid) {
+            const message = 'Password does not meet requirements';
+            setError(message);
+            toast.error(message);
+            return;
         }
 
         if (password !== confirmPassword) {
-            const message = "Passwords do not match"
-            setError(message)
-            toast.error(message)
-            return
+            const message = 'Passwords do not match';
+            setError(message);
+            toast.error(message);
+            return;
         }
 
         if (!token) {
-            const message = "Invalid or missing reset token"
-            setError(message)
-            toast.error(message)
-            return
+            const message = 'Invalid or missing reset token';
+            setError(message);
+            toast.error(message);
+            return;
         }
 
-        setIsLoading(true)
+        setIsLoading(true);
 
         try {
-            await authApi.resetPassword(token, password)
-            setSuccess(true)
-            toast.success("Password reset successful! Redirecting to login...")
+            const result = await resetPasswordConfirm(token, password);
+            if (result.success) {
+                setSuccess(true);
+                toast.success('Password reset successful! Redirecting to login...');
 
-            // Redirect after 2 seconds
-            setTimeout(() => {
-                router.push("/login")
-            }, 2000)
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    router.push('/login');
+                }, 2000);
+            } else {
+                const errorMessage = result.error?.message || 'Password reset failed';
+                setError(errorMessage);
+                toast.error(errorMessage);
+            }
         } catch (err: any) {
-            const errorMessage = getErrorMessage(err)
-            setError(errorMessage)
-            toast.error(errorMessage)
+            const errorMessage = err.message || 'Password reset failed';
+            setError(errorMessage);
+            toast.error(errorMessage);
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }
+    };
 
     return (
         <div className="flex min-h-screen">
@@ -120,9 +118,9 @@ function ResetPasswordForm() {
                     {/* Logo */}
                     <Link href="/" className="inline-block mb-12">
                         <img
-                            src="/logos/Shipcrowd-logo.png"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                             alt="ShipCrowd"
-                            className="h-8 w-auto"
+                            className="h-8 w-auto rounded-full"
                         />
                     </Link>
 
@@ -202,38 +200,41 @@ function ResetPasswordForm() {
                                     </div>
 
                                     {/* Password strength indicator */}
-                                    {password.length > 0 && passwordStrength && (
+                                    {passwordValidation && (
                                         <motion.div
                                             className="mt-3 space-y-2"
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                         >
                                             <div className="flex gap-1">
-                                                {[1, 2, 3, 4, 5].map((level) => (
-                                                    <div
-                                                        key={level}
-                                                        className={`h-1 flex-1 rounded-full transition-all ${passwordStrength.score >= level
-                                                            ? passwordStrength.color === 'red' ? 'bg-red-500' :
-                                                                passwordStrength.color === 'amber' ? 'bg-amber-500' :
-                                                                    passwordStrength.color === 'blue' ? 'bg-primaryBlue' :
-                                                                        'bg-emerald-500'
-                                                            : 'bg-gray-200'
-                                                            }`}
-                                                    />
-                                                ))}
+                                                {[1, 2, 3, 4, 5].map((level) => {
+                                                    const strengthScore = Object.values(passwordValidation.requirements).filter(Boolean).length;
+                                                    const color = getPasswordStrengthColor(passwordValidation.strength);
+                                                    const bgColor =
+                                                        color === 'red' ? 'bg-red-500' :
+                                                            color === 'amber' ? 'bg-amber-500' :
+                                                                color === 'blue' ? 'bg-blue-500' :
+                                                                    'bg-emerald-500';
+                                                    return (
+                                                        <div
+                                                            key={level}
+                                                            className={`h-1 flex-1 rounded-full transition-all ${strengthScore >= level ? bgColor : 'bg-gray-200'}`}
+                                                        />
+                                                    );
+                                                })}
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <p className="text-xs text-gray-500">
-                                                    Must be at least 8 characters
+                                                    Password strength
                                                 </p>
                                                 <span
-                                                    className={`text-xs font-semibold ${passwordStrength.color === 'red' ? 'text-red-500' :
-                                                        passwordStrength.color === 'amber' ? 'text-amber-500' :
-                                                            passwordStrength.color === 'blue' ? 'text-primaryBlue' :
-                                                                'text-emerald-500'
+                                                    className={`text-xs font-semibold ${getPasswordStrengthColor(passwordValidation.strength) === 'red' ? 'text-red-500' :
+                                                            getPasswordStrengthColor(passwordValidation.strength) === 'amber' ? 'text-amber-500' :
+                                                                getPasswordStrengthColor(passwordValidation.strength) === 'blue' ? 'text-blue-500' :
+                                                                    'text-emerald-500'
                                                         }`}
                                                 >
-                                                    {passwordStrength.label}
+                                                    {getPasswordStrengthLabel(passwordValidation.strength)}
                                                 </span>
                                             </div>
                                         </motion.div>

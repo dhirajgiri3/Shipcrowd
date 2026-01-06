@@ -134,7 +134,7 @@ export default function AdminNDRPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <DateRangePicker />
-                    <Button variant="outline" className="border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600">
+                    <Button variant="outline" className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)] hover:text-[var(--error)]">
                         <AlertTriangle className="h-4 w-4 mr-2" />
                         View High Risk (45)
                     </Button>
@@ -175,12 +175,12 @@ export default function AdminNDRPage() {
 
                 {/* 2. Quick Stats */}
                 <div className="space-y-4">
-                    <div className="p-5 rounded-2xl bg-gradient-to-br from-rose-500/10 to-rose-500/5 border border-rose-200/50">
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-[var(--error-bg)] to-[var(--error-bg)]/50 border border-[var(--error)]/20">
                         <div className="flex justify-between items-start mb-2">
-                            <div className="p-2 rounded-lg bg-rose-100 text-rose-600">
+                            <div className="p-2 rounded-lg bg-[var(--error-bg)] text-[var(--error)]">
                                 <AlertTriangle className="w-5 h-5" />
                             </div>
-                            <span className="text-xs font-bold text-rose-600 bg-white/50 px-2 py-1 rounded-full">+12 Today</span>
+                            <span className="text-xs font-bold text-[var(--error)] bg-white/50 px-2 py-1 rounded-full">+12 Today</span>
                         </div>
                         <p className="text-3xl font-bold text-[var(--text-primary)]">42</p>
                         <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Action Required</p>
@@ -188,7 +188,7 @@ export default function AdminNDRPage() {
 
                     <div className="p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
                         <div className="flex justify-between items-start mb-2">
-                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                            <div className="p-2 rounded-lg bg-[var(--info-bg)] text-[var(--info)]">
                                 <RefreshCw className="w-5 h-5" />
                             </div>
                         </div>
@@ -198,7 +198,7 @@ export default function AdminNDRPage() {
 
                     <div className="p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
                         <div className="flex justify-between items-start mb-2">
-                            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                            <div className="p-2 rounded-lg bg-[var(--warning-bg)] text-[var(--warning)]">
                                 <RotateCcw className="w-5 h-5" />
                             </div>
                         </div>
@@ -255,9 +255,9 @@ export default function AdminNDRPage() {
                                     <div className="flex items-center gap-4 w-full lg:w-auto">
                                         <div className={cn(
                                             "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg",
-                                            ndr.status === 'action_required' ? "bg-rose-500/10 text-rose-500" :
-                                                ndr.status === 'pending_seller' ? "bg-amber-500/10 text-amber-500" :
-                                                    "bg-blue-500/10 text-blue-500"
+                                            ndr.status === 'action_required' ? "bg-[var(--error-bg)] text-[var(--error)]" :
+                                                ndr.status === 'pending_seller' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                                    "bg-[var(--info-bg)] text-[var(--info)]"
                                         )}>
                                             {ndr.attempts}
                                         </div>
@@ -292,7 +292,7 @@ export default function AdminNDRPage() {
                                         </div>
 
                                         {ndr.status === 'action_required' ? (
-                                            <Button size="sm" className="bg-rose-500 hover:bg-rose-600 text-white min-w-[120px]">
+                                            <Button size="sm" className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white min-w-[120px]">
                                                 Fix Now
                                             </Button>
                                         ) : (

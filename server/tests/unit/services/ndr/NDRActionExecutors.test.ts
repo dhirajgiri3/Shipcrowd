@@ -9,10 +9,19 @@ import TokenService from '../../../../src/shared/services/token.service';
 import { createTestNDREvent } from '../../../fixtures/ndrFactory';
 import mongoose from 'mongoose';
 
-// Mock external services
-jest.mock('../../../../src/infrastructure/external/communication/exotel/exotel.client');
-jest.mock('../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service');
+// Mock external services with manual mocks
+jest.mock('../../../../src/infrastructure/external/communication/exotel/exotel.client', () => {
+    return require('../../../mocks/exotel.mock');
+});
+jest.mock('../../../../src/infrastructure/external/communication/whatsapp/whatsapp.service', () => {
+    return require('../../../mocks/whatsapp.mock');
+});
+jest.mock('../../../../src/core/application/services/communication/email.service', () => {
+    return require('../../../mocks/email.mock');
+});
 jest.mock('../../../../src/shared/services/token.service');
+
+
 
 describe('NDRActionExecutors', () => {
     const mockContext = {
@@ -38,7 +47,8 @@ describe('NDRActionExecutors', () => {
         it('should call customer successfully via Exotel', async () => {
             const mockCallSid = 'CALL123';
             (ExotelClient.prototype.initiateCall as jest.Mock).mockResolvedValue({
-                sid: mockCallSid,
+                success: true,
+                callSid: mockCallSid,
                 status: 'queued',
             });
 
@@ -78,6 +88,7 @@ describe('NDRActionExecutors', () => {
     describe('executeSendWhatsApp', () => {
         it('should send WhatsApp message successfully', async () => {
             (WhatsAppService.prototype.sendMessage as jest.Mock).mockResolvedValue({
+                success: true,
                 messageId: 'MSG123',
                 status: 'sent',
             });
@@ -147,6 +158,7 @@ describe('NDRActionExecutors', () => {
 
             (TokenService.generateAddressUpdateToken as jest.Mock).mockReturnValue(mockToken);
             (WhatsAppService.prototype.sendMessage as jest.Mock).mockResolvedValue({
+                success: true,
                 messageId: 'MSG123',
             });
 
@@ -211,7 +223,8 @@ describe('NDRActionExecutors', () => {
     describe('executeAction - Router', () => {
         it('should route to correct executor for call_customer', async () => {
             (ExotelClient.prototype.initiateCall as jest.Mock).mockResolvedValue({
-                sid: 'CALL123',
+                success: true,
+                callSid: 'CALL123',
             });
 
             const result = await NDRActionExecutors.executeAction(
@@ -226,6 +239,7 @@ describe('NDRActionExecutors', () => {
 
         it('should route to correct executor for send_whatsapp', async () => {
             (WhatsAppService.prototype.sendMessage as jest.Mock).mockResolvedValue({
+                success: true,
                 messageId: 'MSG123',
             });
 

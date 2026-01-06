@@ -145,27 +145,28 @@ export default function ProfitManagementPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <IndianRupee className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
+                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                        <IndianRupee className="h-6 w-6 text-[var(--primary-blue)]" />
                         Profit Management
                     </h1>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
                         Import, export, and analyze profit data
                     </p>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 border-b border-gray-200">
+            <div className="flex gap-2 border-b border-[var(--border-subtle)]">
                 {(['overview', 'import', 'export'] as const).map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className="px-4 py-3 text-sm font-medium border-b-2 transition-all capitalize"
-                        style={{
-                            borderColor: activeTab === tab ? 'var(--primary-blue)' : 'transparent',
-                            color: activeTab === tab ? 'var(--primary-blue)' : 'var(--text-secondary)'
-                        }}
+                        className={cn(
+                            "px-4 py-3 text-sm font-medium border-b-2 transition-all capitalize",
+                            activeTab === tab
+                                ? "border-[var(--primary-blue)] text-[var(--primary-blue)]"
+                                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        )}
                     >
                         {tab}
                     </button>
@@ -181,24 +182,11 @@ export default function ProfitManagementPage() {
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Profit</p>
-                                        <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{formatCurrency(totalProfit)}</p>
+                                        <p className="text-sm text-[var(--text-secondary)]">Total Profit</p>
+                                        <p className="text-2xl font-bold text-[var(--success)]">{formatCurrency(totalProfit)}</p>
                                     </div>
-                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
-                                        <TrendingUp className="h-5 w-5" style={{ color: 'var(--success)' }} />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Charged</p>
-                                        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalCharged)}</p>
-                                    </div>
-                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
-                                        <IndianRupee className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
+                                        <TrendingUp className="h-5 w-5 text-[var(--success)]" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -207,11 +195,11 @@ export default function ProfitManagementPage() {
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Shipments</p>
-                                        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{totalShipments}</p>
+                                        <p className="text-sm text-[var(--text-secondary)]">Total Charged</p>
+                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalCharged)}</p>
                                     </div>
-                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
-                                        <FileSpreadsheet className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
+                                        <IndianRupee className="h-5 w-5 text-[var(--primary-blue)]" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -220,11 +208,24 @@ export default function ProfitManagementPage() {
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Avg Margin</p>
-                                        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{avgMargin}%</p>
+                                        <p className="text-sm text-[var(--text-secondary)]">Shipments</p>
+                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{totalShipments}</p>
                                     </div>
-                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
-                                        <TrendingUp className="h-5 w-5" style={{ color: 'var(--warning)' }} />
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--info-bg)]">
+                                        <FileSpreadsheet className="h-5 w-5 text-[var(--info)]" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-[var(--text-secondary)]">Avg Margin</p>
+                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{avgMargin}%</p>
+                                    </div>
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
+                                        <TrendingUp className="h-5 w-5 text-[var(--warning)]" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -277,15 +278,15 @@ export default function ProfitManagementPage() {
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredData.map((row) => (
                                             <tr key={row.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                <td className="p-4 text-sm" style={{ color: 'var(--text-primary)' }}>{row.date}</td>
+                                                <td className="p-4 text-sm text-[var(--text-primary)]">{row.date}</td>
                                                 <td className="p-4">
-                                                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{row.sellerName}</p>
-                                                    <code className="text-xs" style={{ color: 'var(--text-muted)' }}>{row.sellerId}</code>
+                                                    <p className="text-sm font-medium text-[var(--text-primary)]">{row.sellerName}</p>
+                                                    <code className="text-xs text-[var(--text-muted)]">{row.sellerId}</code>
                                                 </td>
-                                                <td className="p-4 text-right text-sm" style={{ color: 'var(--text-primary)' }}>{row.shipments}</td>
-                                                <td className="p-4 text-right text-sm" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.shippingCost)}</td>
-                                                <td className="p-4 text-right text-sm" style={{ color: 'var(--text-primary)' }}>{formatCurrency(row.charged)}</td>
-                                                <td className="p-4 text-right text-sm font-semibold" style={{ color: 'var(--success)' }}>{formatCurrency(row.profit)}</td>
+                                                <td className="p-4 text-right text-sm text-[var(--text-primary)]">{row.shipments}</td>
+                                                <td className="p-4 text-right text-sm text-[var(--text-secondary)]">{formatCurrency(row.shippingCost)}</td>
+                                                <td className="p-4 text-right text-sm text-[var(--text-primary)]">{formatCurrency(row.charged)}</td>
+                                                <td className="p-4 text-right text-sm font-semibold text-[var(--success)]">{formatCurrency(row.profit)}</td>
                                                 <td className="p-4 text-right">
                                                     <Badge variant={row.margin >= 15 ? 'success' : row.margin >= 10 ? 'warning' : 'neutral'}>
                                                         {row.margin}%
@@ -307,7 +308,7 @@ export default function ProfitManagementPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                                <Upload className="h-5 w-5 text-[#2525FF]" />
+                                <Upload className="h-5 w-5 text-[var(--primary-blue)]" />
                                 Import Profit Data
                             </CardTitle>
                             <CardDescription>Upload CSV or Excel file with profit records</CardDescription>
@@ -318,31 +319,26 @@ export default function ProfitManagementPage() {
                                 onDragLeave={() => setIsDragging(false)}
                                 onDrop={handleDrop}
                                 onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all"
-                                style={{
-                                    borderColor: isDragging
-                                        ? 'var(--primary-blue)'
+                                className={cn(
+                                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
+                                    isDragging
+                                        ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]"
                                         : uploadedFile
-                                            ? 'var(--success)'
-                                            : 'var(--border-subtle)',
-                                    background: isDragging
-                                        ? 'var(--primary-blue-soft)'
-                                        : uploadedFile
-                                            ? 'var(--success-bg)'
-                                            : 'transparent'
-                                }}
+                                            ? "border-[var(--success)] bg-[var(--success-bg)]"
+                                            : "border-[var(--border-subtle)] bg-transparent"
+                                )}
                             >
                                 {uploadedFile ? (
                                     <>
-                                        <CheckCircle className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--success)' }} />
-                                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{uploadedFile.name}</p>
-                                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Ready to import</p>
+                                        <CheckCircle className="h-12 w-12 mx-auto mb-3 text-[var(--success)]" />
+                                        <p className="font-medium text-[var(--text-primary)]">{uploadedFile.name}</p>
+                                        <p className="text-sm mt-1 text-[var(--text-secondary)]">Ready to import</p>
                                     </>
                                 ) : (
                                     <>
-                                        <FileSpreadsheet className="h-12 w-12 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-                                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Drop file here or click to upload</p>
-                                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Supports CSV and XLSX</p>
+                                        <FileSpreadsheet className="h-12 w-12 mx-auto mb-3 text-[var(--text-muted)]" />
+                                        <p className="font-medium text-[var(--text-primary)]">Drop file here or click to upload</p>
+                                        <p className="text-sm mt-1 text-[var(--text-secondary)]">Supports CSV and XLSX</p>
                                     </>
                                 )}
                             </div>
@@ -367,10 +363,10 @@ export default function ProfitManagementPage() {
                         <CardContent>
                             <div className="space-y-3">
                                 {mockImportHistory.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--bg-secondary)' }}>
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-secondary)]">
                                         <div>
-                                            <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.filename}</p>
-                                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.date} • {item.records} records</p>
+                                            <p className="font-medium text-[var(--text-primary)]">{item.filename}</p>
+                                            <p className="text-xs text-[var(--text-secondary)]">{item.date} • {item.records} records</p>
                                         </div>
                                         <Badge variant={item.status === 'success' ? 'success' : 'warning'}>
                                             {item.status === 'success' ? 'Success' : `${item.errors} errors`}
@@ -388,7 +384,7 @@ export default function ProfitManagementPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
-                            <Download className="h-5 w-5 text-[#2525FF]" />
+                            <Download className="h-5 w-5 text-[var(--primary-blue)]" />
                             Export Profit Report
                         </CardTitle>
                         <CardDescription>Download profit data in your preferred format</CardDescription>

@@ -33,7 +33,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
     const isAdminDashboard = pathname.startsWith('/admin');
     const isSellerDashboard = pathname.startsWith('/seller');
     const canAccessAdmin = user.role === 'admin' || user.role === 'admin+seller';
-    const canAccessSeller = user.role === 'seller' || user.role === 'admin+seller';
+    const canAccessSeller = user.role === 'seller' || user.role === 'admin+seller' || user.role === 'admin';
 
     // Dynamic role label based on current dashboard
     const currentRoleLabel = isAdminDashboard ? 'Admin' : isSellerDashboard ? 'Seller' : user.role;
@@ -114,7 +114,7 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
                     "absolute right-0 top-full mt-2 w-64",
                     "bg-[var(--bg-primary)]/95 backdrop-blur-xl border border-[var(--border-subtle)]",
                     "rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20",
-                    "origin-top-right overflow-hidden z-50",
+                    "origin-top-right overflow-hidden z-[var(--z-dropdown)]",
                     "animate-in fade-in slide-in-from-top-2 duration-200"
                 )}>
                     {/* User Info Header */}

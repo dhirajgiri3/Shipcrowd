@@ -38,7 +38,7 @@ export function TopSellers({ data = [] }: TopSellersProps) {
             {/* Header */}
             <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-sm">
+                    <div className="h-10 w-10 rounded-xl bg-[var(--warning-bg)] flex items-center justify-center text-[var(--warning)] shadow-sm">
                         <Trophy className="h-5 w-5" />
                     </div>
                     <div>
@@ -80,9 +80,9 @@ export function TopSellers({ data = [] }: TopSellersProps) {
                                 {/* Rank */}
                                 <div className={cn(
                                     "flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center font-bold text-sm",
-                                    rank === 1 ? "bg-gradient-to-br from-yellow-300 to-amber-500 text-white shadow-md shadow-amber-500/20" :
-                                        rank === 2 ? "bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-md shadow-slate-500/20" :
-                                            rank === 3 ? "bg-gradient-to-br from-orange-300 to-orange-500 text-white shadow-md shadow-orange-500/20" :
+                                    rank === 1 ? "bg-[var(--warning)] text-white shadow-md shadow-amber-500/20" :
+                                        rank === 2 ? "bg-[var(--text-secondary)] text-white shadow-md shadow-slate-500/20" :
+                                            rank === 3 ? "bg-[#d97706] text-white shadow-md shadow-orange-500/20" :
                                                 "bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border-subtle)]"
                                 )}>
                                     {rank <= 3 ? <Crown className="h-4 w-4" /> : `#${rank}`}

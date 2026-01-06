@@ -75,10 +75,7 @@ export default function SecuritySettingsPage() {
 
         setIsChangingPassword(true);
         try {
-            const result = await changePassword({
-                currentPassword,
-                newPassword,
-            });
+            const result = await changePassword(currentPassword, newPassword);
 
             if (result.success) {
                 toast.success(result.message || 'Password changed successfully');
@@ -88,7 +85,8 @@ export default function SecuritySettingsPage() {
                 setConfirmPassword('');
                 setPasswordStrength(null);
             } else {
-                toast.error(result.error || 'Failed to change password');
+                const errorMsg = result.error?.message || result.error || 'Failed to change password';
+                toast.error(typeof errorMsg === 'string' ? errorMsg : 'Failed to change password');
             }
         } catch (error: any) {
             toast.error(error.message || 'Failed to change password');
@@ -152,15 +150,15 @@ export default function SecuritySettingsPage() {
         switch (score) {
             case 0:
             case 1:
-                return 'text-red-500';
+                return 'text-[var(--error)]';
             case 2:
-                return 'text-orange-500';
+                return 'text-[var(--warning)]';
             case 3:
-                return 'text-yellow-500';
+                return 'text-[var(--warning)]';
             case 4:
-                return 'text-green-500';
+                return 'text-[var(--success)]';
             default:
-                return 'text-gray-500';
+                return 'text-[var(--text-muted)]';
         }
     };
 
@@ -192,8 +190,8 @@ export default function SecuritySettingsPage() {
             {/* Password Management */}
             <Card className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-blue-500/10 rounded-lg">
-                        <Lock className="h-5 w-5 text-blue-500" />
+                    <div className="p-2 bg-[var(--primary-blue-soft)] rounded-lg">
+                        <Lock className="h-5 w-5 text-[var(--primary-blue)]" />
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-[var(--text-primary)]">Change Password</h2>
@@ -255,13 +253,13 @@ export default function SecuritySettingsPage() {
                         {passwordStrength && (
                             <div className="mt-2 space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="flex-1 h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full transition-all ${passwordStrength.score === 0 ? 'bg-red-500 w-1/4' :
-                                                passwordStrength.score === 1 ? 'bg-red-500 w-2/4' :
-                                                    passwordStrength.score === 2 ? 'bg-orange-500 w-3/4' :
-                                                        passwordStrength.score === 3 ? 'bg-yellow-500 w-3/4' :
-                                                            'bg-green-500 w-full'
+                                            className={`h-full transition-all ${passwordStrength.score === 0 ? 'bg-[var(--error)] w-1/4' :
+                                                passwordStrength.score === 1 ? 'bg-[var(--error)] w-2/4' :
+                                                    passwordStrength.score === 2 ? 'bg-[var(--warning)] w-3/4' :
+                                                        passwordStrength.score === 3 ? 'bg-[var(--warning)] w-3/4' :
+                                                            'bg-[var(--success)] w-full'
                                                 }`}
                                         />
                                     </div>
@@ -271,7 +269,7 @@ export default function SecuritySettingsPage() {
                                 </div>
 
                                 {passwordStrength.feedback.warning && (
-                                    <p className="text-xs text-orange-500 flex items-center gap-1">
+                                    <p className="text-xs text-[var(--warning)] flex items-center gap-1">
                                         <AlertTriangle className="h-3 w-3" />
                                         {passwordStrength.feedback.warning}
                                     </p>
@@ -311,7 +309,7 @@ export default function SecuritySettingsPage() {
                             </button>
                         </div>
                         {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                            <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                            <p className="text-xs text-[var(--error)] mt-1">Passwords do not match</p>
                         )}
                     </div>
 
@@ -330,8 +328,8 @@ export default function SecuritySettingsPage() {
             <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-500/10 rounded-lg">
-                            <Smartphone className="h-5 w-5 text-green-500" />
+                        <div className="p-2 bg-[var(--success-bg)] rounded-lg">
+                            <Smartphone className="h-5 w-5 text-[var(--success)]" />
                         </div>
                         <div>
                             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Active Sessions</h2>
@@ -404,7 +402,7 @@ export default function SecuritySettingsPage() {
                                     onClick={() => handleRevokeSession(session._id)}
                                     disabled={revokingSessionId === session._id}
                                     isLoading={revokingSessionId === session._id}
-                                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                    className="text-[var(--error)] hover:text-[var(--error)] hover:bg-[var(--error-bg)]"
                                 >
                                     Revoke
                                 </Button>
@@ -415,9 +413,9 @@ export default function SecuritySettingsPage() {
             </Card>
 
             {/* Security Info */}
-            <Card className="p-6 bg-blue-500/5 border-blue-500/20">
+            <Card className="p-6 bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
                 <div className="flex gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-[var(--primary-blue)] flex-shrink-0 mt-0.5" />
                     <div className="space-y-2">
                         <p className="text-sm font-medium text-[var(--text-primary)]">
                             Security Best Practices

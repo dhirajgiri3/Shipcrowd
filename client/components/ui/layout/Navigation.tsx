@@ -42,10 +42,10 @@ export function Navigation() {
                     <Link href="/" className="flex items-center gap-2 group relative">
                         <div className="relative w-32 h-10 transition-transform duration-300 group-hover:scale-105">
                             <Image
-                                src="/logos/Shipcrowd-logo.png"
+                                src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                                 alt="ShipCrowd Logo"
                                 fill
-                                className="object-contain object-left"
+                                className="object-contain object-left rounded-full"
                                 priority
                             />
                         </div>
@@ -67,12 +67,18 @@ export function Navigation() {
 
                     {/* Actions */}
                     <div className="hidden md:flex items-center gap-4">
-                        <button className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                        <Link
+                            href="/login"
+                            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                        >
                             Log in
-                        </button>
-                        <button className="bg-[var(--primary-blue)] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-[var(--primary-blue-deep)] hover:text-white transition-all shadow-lg hover:shadow-[var(--shadow-brand)] hover:-translate-y-0.5 active:translate-y-0">
+                        </Link>
+                        <Link
+                            href="/signup"
+                            className="bg-[var(--primary-blue)] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-[var(--primary-blue-deep)] hover:text-white transition-all shadow-lg hover:shadow-[var(--shadow-brand)] hover:-translate-y-0.5 active:translate-y-0"
+                        >
                             Get Started
-                        </button>
+                        </Link>
                     </div>
 
                     {/* Mobile Toggle */}
@@ -99,10 +105,10 @@ export function Navigation() {
                         <div className="flex items-center justify-between p-6 border-b border-[var(--border-subtle)]">
                             <div className="relative w-28 h-8">
                                 <Image
-                                    src="/logos/Shipcrowd-logo.png"
+                                    src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                                     alt="ShipCrowd Logo"
                                     fill
-                                    className="object-contain object-left"
+                                    className="object-contain object-left rounded-full"
                                 />
                             </div>
                             <button

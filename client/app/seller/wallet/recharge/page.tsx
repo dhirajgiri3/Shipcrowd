@@ -104,7 +104,7 @@ export default function RechargePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <Wallet className="h-6 w-6 text-[#2525FF]" />
+                        <Wallet className="h-6 w-6 text-[var(--primary-blue)]" />
                         Wallet Recharge
                     </h1>
                     <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -117,7 +117,7 @@ export default function RechargePage() {
             </div>
 
             {/* Current Balance Card */}
-            <Card className="bg-gradient-to-br from-[#2525FF] to-[#1a1adb] text-white">
+            <Card className="bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                         <div>
@@ -142,13 +142,13 @@ export default function RechargePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                                <IndianRupee className="h-5 w-5 text-[#2525FF]" />
+                                <IndianRupee className="h-5 w-5 text-[var(--primary-blue)]" />
                                 Enter Amount
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">₹</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-[var(--text-muted)]">₹</span>
                                 <Input
                                     type="number"
                                     value={amount}
@@ -165,8 +165,8 @@ export default function RechargePage() {
                                         className={cn(
                                             "px-4 py-2 rounded-xl border text-sm font-medium transition-all",
                                             amount === value.toString()
-                                                ? "border-[#2525FF] bg-[#2525FF]/10 text-[#2525FF]"
-                                                : "border-gray-200 hover:border-gray-300"
+                                                ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"
+                                                : "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
                                         )}
                                     >
                                         {formatCurrency(value)}
@@ -181,7 +181,7 @@ export default function RechargePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                                <CreditCard className="h-5 w-5 text-[#2525FF]" />
+                                <CreditCard className="h-5 w-5 text-[var(--primary-blue)]" />
                                 Payment Method
                             </CardTitle>
                         </CardHeader>
@@ -193,17 +193,17 @@ export default function RechargePage() {
                                     className={cn(
                                         "p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-4",
                                         selectedMethod === method.id
-                                            ? "border-[#2525FF] bg-[#2525FF]/5 ring-2 ring-[#2525FF]/20"
-                                            : "border-gray-200 hover:border-gray-300"
+                                            ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] ring-2 ring-[var(--primary-blue)]/20"
+                                            : "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
                                     )}
                                 >
                                     <div className={cn(
                                         "h-10 w-10 rounded-lg flex items-center justify-center",
-                                        selectedMethod === method.id ? "bg-[#2525FF]/10" : "bg-gray-100"
+                                        selectedMethod === method.id ? "bg-[var(--primary-blue-soft)]" : "bg-[var(--bg-secondary)]"
                                     )}>
                                         <method.icon className={cn(
                                             "h-5 w-5",
-                                            selectedMethod === method.id ? "text-[#2525FF]" : "text-[var(--text-muted)]"
+                                            selectedMethod === method.id ? "text-[var(--primary-blue)]" : "text-[var(--text-muted)]"
                                         )} />
                                     </div>
                                     <div className="flex-1">
@@ -213,8 +213,8 @@ export default function RechargePage() {
                                     <div className={cn(
                                         "h-5 w-5 rounded-full border-2 flex items-center justify-center",
                                         selectedMethod === method.id
-                                            ? "border-[#2525FF] bg-[#2525FF]"
-                                            : "border-gray-300"
+                                            ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]"
+                                            : "border-[var(--border-subtle)]"
                                     )}>
                                         {selectedMethod === method.id && (
                                             <CheckCircle className="h-3 w-3 text-white" />
@@ -229,18 +229,18 @@ export default function RechargePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                                <Gift className="h-5 w-5 text-[#2525FF]" />
+                                <Gift className="h-5 w-5 text-[var(--primary-blue)]" />
                                 Apply Promo Code
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             {appliedPromo ? (
-                                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                                <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--success-bg)] border border-[var(--success)]/20">
                                     <div className="flex items-center gap-3">
-                                        <CheckCircle className="h-5 w-5 text-emerald-600" />
+                                        <CheckCircle className="h-5 w-5 text-[var(--success)]" />
                                         <div>
-                                            <p className="font-semibold text-emerald-800">{appliedPromo.code}</p>
-                                            <p className="text-sm text-emerald-600">
+                                            <p className="font-semibold text-[var(--success)]">{appliedPromo.code}</p>
+                                            <p className="text-sm text-[var(--success)]">
                                                 {appliedPromo.type === 'flat'
                                                     ? `${formatCurrency(appliedPromo.discount)} off`
                                                     : `${appliedPromo.discount}% off (max ${formatCurrency(appliedPromo.maxDiscount || 0)})`
@@ -278,11 +278,11 @@ export default function RechargePage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Recharge Amount</span>
+                                    <span className="text-[var(--text-secondary)]">Recharge Amount</span>
                                     <span className="font-medium">{amount ? formatCurrency(Number(amount)) : '₹0'}</span>
                                 </div>
                                 {appliedPromo && (
-                                    <div className="flex justify-between text-sm text-emerald-600">
+                                    <div className="flex justify-between text-sm text-[var(--success)]">
                                         <span>Discount ({appliedPromo.code})</span>
                                         <span>
                                             -{appliedPromo.type === 'flat'
@@ -293,8 +293,8 @@ export default function RechargePage() {
                                     </div>
                                 )}
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">GST (0%)</span>
-                                    <span className="text-emerald-600">Free</span>
+                                    <span className="text-[var(--text-secondary)]">GST (0%)</span>
+                                    <span className="text-[var(--success)]">Free</span>
                                 </div>
                             </div>
 
@@ -316,7 +316,7 @@ export default function RechargePage() {
                                 <ArrowRight className="h-4 w-4 ml-2" />
                             </Button>
 
-                            <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                            <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
                                 <Shield className="h-3.5 w-3.5" />
                                 100% Secure Payment
                             </div>

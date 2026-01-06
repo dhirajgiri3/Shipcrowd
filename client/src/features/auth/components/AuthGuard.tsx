@@ -1,159 +1,102 @@
-"use client"
+'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/features/auth';
-import { Loader2 } from 'lucide-react';
+import { ReactNode, useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '../hooks/useAuth';
+import type { User } from '@/src/types/auth';
 
 interface AuthGuardProps {
-    children: React.ReactNode;
-    /** Where to redirect if not authenticated (default: /login) */
-    redirectTo?: string;
-    /** Require user to have a company (for onboarded users) */
-    requireCompany?: boolean;
-    /** Allow only specific roles */
-    allowedRoles?: ('admin' | 'seller' | 'staff' | 'user')[];
-    /** Require KYC to be approved */
-    requireKycApproved?: boolean;
-    /** Require company to be active */
-    requireCompanyActive?: boolean;
-    /** Required permissions (any match) */
-    requiredPermissions?: string[];
+  children: ReactNode;
+  requiredRole?: User['role'] | User['role'][];
+  redirectTo?: string;
+  loadingFallback?: ReactNode;
 }
 
 /**
- * Auth Guard Component
- * Protects routes that require authentication
+ * AuthGuard Component
  * 
- * Usage:
- * <AuthGuard>
- *   <ProtectedPage />
- * </AuthGuard>
+ * Protects routes that require authentication.
  * 
- * With options:
- * <AuthGuard requireCompany allowedRoles={['seller', 'admin']}>
- *   <SellerDashboard />
- * </AuthGuard>
+ * Dev Mode: /seller/* and /admin/* routes are accessible without auth
+ * Production: All protected routes require authentication
+ * 
+ * Features:
+ * - Redirects unauthenticated users to login
+ * - Role-based access control
+ * - Loading state during auth check
+ * - Smooth UX with no flash of content
  */
 export function AuthGuard({
-    children,
-    redirectTo = '/login',
-    requireCompany = false,
-    allowedRoles,
-    requireKycApproved = false,
-    requireCompanyActive = false,
-    requiredPermissions,
+  children,
+  requiredRole,
+  redirectTo = '/login',
+  loadingFallback,
 }: AuthGuardProps) {
-    const router = useRouter();
-    const { user, isLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, isAuthenticated, isInitialized } = useAuth();
+  const [shouldRender, setShouldRender] = useState(false);
 
-    useEffect(() => {
-        if (isLoading) return;
+  useEffect(() => {
+    if (!isInitialized) return;
 
-        // Not authenticated
-        if (!isAuthenticated) {
-            router.push(redirectTo);
-            return;
-        }
+    // ✅ Dev mode bypass with explicit environment variable (CRITICAL SECURITY)
+    // Only bypass auth if BOTH conditions are true:
+    // 1. NODE_ENV === 'development'
+    // 2. NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true' (explicit opt-in)
+    const isDevBypass =
+      process.env.NODE_ENV === 'development' &&
+      process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true';
 
-        // Need company but don't have one
-        if (requireCompany && !user?.companyId) {
-            router.push('/onboarding');
-            return;
-        }
-
-        // Role check
-        if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-            router.push('/unauthorized');
-            return;
-        }
-
-        // KYC check - now using correct status field
-        if (requireKycApproved && user?.kycStatus?.status !== 'verified') {
-            // Allow admin to bypass KYC requirement
-            if (user?.role !== 'admin') {
-                router.push('/seller/kyc');
-                return;
-            }
-        }
-
-        // Company status check
-        if (requireCompanyActive && user?.companyStatus !== 'active') {
-            if (user?.role !== 'admin') {
-                router.push('/seller/settings/profile?error=company_inactive');
-                return;
-            }
-        }
-
-        // Permission check (user needs at least one of the required permissions)
-        if (requiredPermissions && requiredPermissions.length > 0 && user) {
-            const hasPermission = requiredPermissions.some(perm =>
-                user.permissions?.includes(perm)
-            );
-
-            if (!hasPermission && user.role !== 'admin') {
-                router.push('/unauthorized');
-                return;
-            }
-        }
-    }, [isLoading, isAuthenticated, user, requireCompany, allowedRoles, requireKycApproved, requireCompanyActive, requiredPermissions, redirectTo, router]);
-
-    // Loading state
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-primaryBlue animate-spin" />
-            </div>
-        );
+    if (isDevBypass) {
+      console.warn('[AuthGuard] DEV MODE: Auth bypass enabled for', pathname);
+      setShouldRender(true);
+      return;
     }
 
-    // Not ready to show content
-    if (!isAuthenticated) return null;
-    if (requireCompany && !user?.companyId) return null;
-    if (allowedRoles && user && !allowedRoles.includes(user.role)) return null;
-    if (requireKycApproved && user?.kycStatus?.status !== 'verified' && user?.role !== 'admin') return null;
-    if (requireCompanyActive && user?.companyStatus !== 'active' && user?.role !== 'admin') return null;
-    if (requiredPermissions && requiredPermissions.length > 0 && user) {
-        const hasPermission = requiredPermissions.some(perm => user.permissions?.includes(perm));
-        if (!hasPermission && user.role !== 'admin') return null;
+    // ✅ ALWAYS check authentication in production and when bypass is disabled
+    if (!isAuthenticated) {
+      // If redirecting to login, append current path so user can be redirected back
+      if (redirectTo === '/login' && pathname && pathname !== '/') {
+        router.push(`${redirectTo}?redirect=${encodeURIComponent(pathname)}`);
+      } else {
+        router.push(redirectTo);
+      }
+      return;
     }
 
-    return <>{children}</>;
+    // Check role-based access
+    if (requiredRole && user) {
+      const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+      if (!allowedRoles.includes(user.role)) {
+        // Redirect to user's default dashboard instead of generic unauthorized page for better UX
+        const destination = user.role === 'admin' ? '/admin' : '/seller';
+        if (pathname !== destination) {
+          router.push(destination);
+        }
+        return;
+      }
+    }
+
+    setShouldRender(true);
+  }, [isInitialized, isAuthenticated, user, requiredRole, redirectTo, router, pathname]);
+
+  // Show loading state while checking auth
+  if (!isInitialized) {
+    return loadingFallback || (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render until auth check complete
+  if (!shouldRender) return null;
+
+  return <>{children}</>;
 }
 
-/**
- * Guest Guard Component
- * For pages that should only be accessible to non-authenticated users (login, signup)
- */
-export function GuestGuard({
-    children,
-    redirectTo = '/seller',
-}: {
-    children: React.ReactNode;
-    redirectTo?: string;
-}) {
-    const router = useRouter();
-    const { isLoading, isAuthenticated, user } = useAuth();
-
-    useEffect(() => {
-        if (isLoading) return;
-
-        if (isAuthenticated) {
-            // Redirect based on company status
-            const destination = user?.companyId ? redirectTo : '/onboarding';
-            router.push(destination);
-        }
-    }, [isLoading, isAuthenticated, user, redirectTo, router]);
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 text-primaryBlue animate-spin" />
-            </div>
-        );
-    }
-
-    if (isAuthenticated) return null;
-
-    return <>{children}</>;
-}
+export default AuthGuard;

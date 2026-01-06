@@ -13,6 +13,7 @@ import { CommissionTransaction } from '../../../../infrastructure/database/mongo
 import { Payout } from '../../../../infrastructure/database/mongoose/models';
 import { SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import CacheService from '../../../../infrastructure/utilities/cache.service';
 
 export interface CommissionMetrics {
     totalCommission: number;

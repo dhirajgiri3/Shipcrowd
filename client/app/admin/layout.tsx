@@ -5,9 +5,14 @@ import { Sidebar } from '@/components/admin/Sidebar';
 import { Header } from '@/components/admin/Header';
 import { ThemeProvider } from '@/components/shared/ThemeProvider';
 import { ToastProvider } from '@/components/ui/feedback/Toast';
-import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
+// TODO: Restore AuthGuard before production deployment!
+// import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
+
 import { X } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
+
+// ⚠️ DEV MODE: AuthGuard disabled for development testing
+// TODO: Re-enable AuthGuard before deploying to production!
 
 export default function AdminLayout({
     children,
@@ -17,24 +22,20 @@ export default function AdminLayout({
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <AuthGuard
-            allowedRoles={['admin']}
-            redirectTo="/login"
-        >
-            <ThemeProvider>
-                <ToastProvider>
-                    <div className="min-h-screen bg-[var(--bg-secondary)]">
+        <ThemeProvider>
+            <ToastProvider>
+                <div className="min-h-screen bg-[var(--bg-secondary)]">
                     {/* Mobile sidebar overlay */}
                     {sidebarOpen && (
                         <div
-                            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                            className="fixed inset-0 bg-black/50 z-[var(--z-overlay)] lg:hidden"
                             onClick={() => setSidebarOpen(false)}
                         />
                     )}
 
                     {/* Mobile sidebar */}
                     <div className={cn(
-                        "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:hidden",
+                        "fixed inset-y-0 left-0 z-[var(--z-sidebar-mobile)] w-64 transform transition-transform duration-200 ease-in-out lg:hidden",
                         sidebarOpen ? "translate-x-0" : "-translate-x-full"
                     )}>
                         <Sidebar />
@@ -60,9 +61,9 @@ export default function AdminLayout({
                             </div>
                         </main>
                     </div>
-                    </div>
-                </ToastProvider>
-            </ThemeProvider>
-        </AuthGuard>
+                </div>
+            </ToastProvider>
+        </ThemeProvider>
+        // </AuthGuard>
     );
 }

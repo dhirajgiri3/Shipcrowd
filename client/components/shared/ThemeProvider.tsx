@@ -35,6 +35,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Apply theme to HTML element
   const applyTheme = (themeValue: 'light' | 'dark') => {
     const root = document.documentElement;
+    if (root.classList.contains(themeValue)) {
+      setResolvedTheme(themeValue);
+      return;
+    }
     root.classList.remove('light', 'dark');
     root.classList.add(themeValue);
     setResolvedTheme(themeValue);

@@ -49,81 +49,70 @@ export interface SubmitKYCRequest {
     gstin?: string;
 }
 
-// API Functions
-export async function getKYC(): Promise<{ kyc: KYCData | null }> {
-    const response = await apiClient.get('/kyc');
-    return response.data;
+/**
+ * KYC API Service
+ * Handles all KYC verification and document submission
+ * Class-based pattern for consistency and maintainability
+ */
+class KYCApiService {
+    async getKYC(): Promise<{ kyc: KYCData | null }> {
+        const response = await apiClient.get('/kyc');
+        return response.data;
+    }
+
+    async submitKYC(data: SubmitKYCRequest): Promise<{ message: string; kyc: KYCData }> {
+        const response = await apiClient.post('/kyc', data);
+        return response.data;
+    }
+
+    async verifyPAN(data: VerifyPANRequest): Promise<{
+        success: boolean;
+        verified: boolean;
+        data?: { name: string; pan: string };
+        message?: string;
+    }> {
+        const response = await apiClient.post('/kyc/verify-pan', data);
+        return response.data;
+    }
+
+    async verifyBankAccount(data: VerifyBankAccountRequest): Promise<{
+        success: boolean;
+        verified: boolean;
+        data?: { accountHolderName: string; bankName: string };
+        message?: string;
+    }> {
+        const response = await apiClient.post('/kyc/verify-bank-account', data);
+        return response.data;
+    }
+
+    async verifyIFSC(ifscCode: string): Promise<{
+        success: boolean;
+        data?: { bank: string; branch: string; address: string };
+        message?: string;
+    }> {
+        const response = await apiClient.post('/kyc/verify-ifsc', { ifscCode });
+        return response.data;
+    }
+
+    async verifyGSTIN(data: VerifyGSTINRequest): Promise<{
+        success: boolean;
+        verified: boolean;
+        data?: { businessName: string; gstin: string; status: string };
+        message?: string;
+    }> {
+        const response = await apiClient.post('/kyc/verify-gstin', data);
+        return response.data;
+    }
+
+    async updateAgreement(accepted: boolean): Promise<{ message: string }> {
+        const response = await apiClient.post('/kyc/agreement', { accepted });
+        return response.data;
+    }
 }
 
-export async function submitKYC(data: SubmitKYCRequest): Promise<{ message: string; kyc: KYCData }> {
-    const response = await apiClient.post('/kyc', data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-export async function verifyPAN(data: VerifyPANRequest): Promise<{
-    success: boolean;
-    verified: boolean;
-    data?: { name: string; pan: string };
-    message?: string;
-}> {
-    const response = await apiClient.post('/kyc/verify-pan', data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-export async function verifyBankAccount(data: VerifyBankAccountRequest): Promise<{
-    success: boolean;
-    verified: boolean;
-    data?: { accountHolderName: string; bankName: string };
-    message?: string;
-}> {
-    const response = await apiClient.post('/kyc/verify-bank-account', data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-export async function verifyIFSC(ifscCode: string): Promise<{
-    success: boolean;
-    data?: { bank: string; branch: string; address: string };
-    message?: string;
-}> {
-    const response = await apiClient.post('/kyc/verify-ifsc', { ifscCode }, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-export async function verifyGSTIN(data: VerifyGSTINRequest): Promise<{
-    success: boolean;
-    verified: boolean;
-    data?: { businessName: string; gstin: string; status: string };
-    message?: string;
-}> {
-    const response = await apiClient.post('/kyc/verify-gstin', data, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-export async function updateAgreement(accepted: boolean): Promise<{ message: string }> {
-    const response = await apiClient.post('/kyc/agreement', { accepted }, {
-        headers: { 'X-CSRF-Token': 'frontend-request' },
-    });
-    return response.data;
-}
-
-export const kycApi = {
-    getKYC,
-    submitKYC,
-    verifyPAN,
-    verifyBankAccount,
-    verifyIFSC,
-    verifyGSTIN,
-    updateAgreement,
-};
+/**
+ * Singleton instance
+ */
+export const kycApi = new KYCApiService();
 
 export default kycApi;

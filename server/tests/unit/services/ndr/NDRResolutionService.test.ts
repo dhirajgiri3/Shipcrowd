@@ -1,11 +1,25 @@
 import NDRResolutionService from '../../../../src/core/application/services/ndr/ndr-resolution.service';
-import { NDREvent } from '../../../../src/infrastructure/database/mongoose/models';
-import { NDRWorkflow } from '../../../../src/infrastructure/database/mongoose/models';
 import NDRActionExecutors from '../../../../src/core/application/services/ndr/actions/ndr-action-executors';
 
-jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-event.model');
-jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/ndr-workflow.model');
+// Mock must be defined inline in factory to avoid hoisting issues
+jest.mock('../../../../src/infrastructure/database/mongoose/models', () => {
+    return {
+        NDREvent: {
+            findById: jest.fn(() => ({
+                populate: jest.fn().mockResolvedValue(null),
+            })),
+            find: jest.fn(),
+            aggregate: jest.fn().mockResolvedValue([]),
+        },
+        NDRWorkflow: {
+            getWorkflowForNDR: jest.fn(),
+        },
+    };
+});
+
 jest.mock('../../../../src/core/application/services/ndr/actions/ndr-action-executors');
+
+const { NDREvent, NDRWorkflow } = require('../../../../src/infrastructure/database/mongoose/models');
 
 describe('NDRResolutionService', () => {
     beforeEach(() => {
@@ -17,6 +31,9 @@ describe('NDRResolutionService', () => {
             _id: 'ndr123',
             ndrType: 'address_issue',
             status: 'detected',
+            company: 'company123',
+            shipment: 'shipment123',
+            order: 'order123',
             resolutionActions: [],
             save: jest.fn().mockResolvedValue(true),
         };
@@ -42,7 +59,9 @@ describe('NDRResolutionService', () => {
         };
 
         it('should execute actions in sequence order', async () => {
-            (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockNDREvent),
+            });
             (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(mockWorkflow);
 
             (NDRActionExecutors.executeAction as jest.Mock).mockResolvedValue({
@@ -75,7 +94,9 @@ describe('NDRResolutionService', () => {
                 ],
             };
 
-            (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockNDREvent),
+            });
             (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(workflow);
 
             const scheduleActionSpy = jest.spyOn(NDRResolutionService, 'scheduleAction' as any);
@@ -92,7 +113,9 @@ describe('NDRResolutionService', () => {
                 status: 'resolved',
             };
 
-            (NDREvent.findById as jest.Mock).mockResolvedValue(resolvedNDR);
+            (NDREvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(resolvedNDR),
+            });
 
             await NDRResolutionService.executeResolutionWorkflow('ndr123');
 
@@ -106,7 +129,9 @@ describe('NDRResolutionService', () => {
                 resolutionDeadline: new Date(Date.now() - 1000), // 1 second ago
             };
 
-            (NDREvent.findById as jest.Mock).mockResolvedValue(expiredNDR);
+            (NDREvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(expiredNDR),
+            });
 
             const escalateSpy = jest.spyOn(NDRResolutionService, 'escalateNDR');
 
@@ -142,7 +167,9 @@ describe('NDRResolutionService', () => {
         });
 
         it('should log all actions in resolutionActions array', async () => {
-            (NDREvent.findById as jest.Mock).mockResolvedValue(mockNDREvent);
+            (NDREvent.findById as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue(mockNDREvent),
+            });
             (NDRWorkflow.getWorkflowForNDR as jest.Mock).mockResolvedValue(mockWorkflow);
 
             (NDRActionExecutors.executeAction as jest.Mock).mockResolvedValue({

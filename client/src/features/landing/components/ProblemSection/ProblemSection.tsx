@@ -46,8 +46,9 @@ export default function ProblemSection() {
     return (
         <section className="py-24 md:py-32 bg-white relative overflow-hidden">
             {/* Background Decorations */}
-            <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-charcoal-50 to-white -z-10" />
-            <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-primaryBlue/[0.02] rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-gray-50/50 to-white -z-10" />
+            <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-indigo-50/30 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-rose-50/30 rounded-full blur-3xl pointer-events-none" />
 
             <div className="container mx-auto px-6 md:px-12 max-w-[1400px]">
                 {/* Header */}
@@ -56,10 +57,10 @@ export default function ProblemSection() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="inline-flex items-center gap-2.5 mb-6 px-4 py-2 bg-rose/5 rounded-full border border-rose/10"
+                        className="inline-flex items-center gap-2.5 mb-6 px-4 py-2 bg-rose-50 rounded-full border border-rose-100"
                     >
-                        <div className="w-1.5 h-1.5 rounded-full bg-rose" />
-                        <span className="text-rose text-sm font-bold tracking-wide uppercase">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        <span className="text-rose-600 text-sm font-bold tracking-wide uppercase">
                             The Current Reality
                         </span>
                     </motion.div>
@@ -69,9 +70,9 @@ export default function ProblemSection() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.1 }}
-                        className="text-4xl md:text-5xl font-bold text-charcoal-950 mb-6 leading-tight"
+                        className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight tracking-tight"
                     >
-                        Shipping Logistics shouldn't feel like <span className="text-rose decoration-4 underline decoration-rose/20">fighting a fire.</span>
+                        Shipping Logistics shouldn't feel like <span className="text-rose-500 decoration-4 underline decoration-rose-200">fighting a fire.</span>
                     </motion.h2>
 
                     <motion.p
@@ -79,7 +80,7 @@ export default function ProblemSection() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.2 }}
-                        className="text-lg text-charcoal-600 leading-relaxed"
+                        className="text-lg text-gray-600 leading-relaxed"
                     >
                         Most e-commerce brands lose 20% of their operational time just managing logistics manually.
                     </motion.p>
@@ -93,7 +94,7 @@ export default function ProblemSection() {
                             initial={{ opacity: 0, y: 30 }}
                             animate={inView ? { opacity: 1, y: 0 } : {}}
                             transition={{ delay: i * 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                            className="bg-white border border-charcoal-100 rounded-3xl overflow-hidden hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] hover:border-charcoal-200 transition-all duration-500 group flex flex-col items-center text-center p-8"
+                            className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group flex flex-col items-center text-center p-8 group"
                         >
                             {/* Image Visual */}
                             <div className="w-full h-[220px] md:h-[280px] relative mb-8 group-hover:scale-105 transition-transform duration-700">
@@ -108,13 +109,13 @@ export default function ProblemSection() {
 
                             {/* Content */}
                             <div className="space-y-4 max-w-[400px]">
-                                <div className={`inline-flex p-3 rounded-2xl ${problem.bg} mb-2 group-hover:scale-110 transition-transform duration-300`}>
-                                    <problem.icon className={`w-6 h-6 ${problem.accent}`} strokeWidth={2.5} />
+                                <div className={`inline-flex p-3 rounded-2xl bg-white shadow-sm border border-gray-100 mb-2 group-hover:scale-110 transition-transform duration-300`}>
+                                    <problem.icon className={`w-6 h-6 ${problem.accent}`} strokeWidth={2} />
                                 </div>
-                                <h3 className="text-2xl font-bold text-charcoal-900 group-hover:text-primaryBlue transition-colors duration-300">
+                                <h3 className="text-2xl font-bold text-gray-900 group-hover:text-primaryBlue transition-colors duration-300 tracking-tight">
                                     {problem.title}
                                 </h3>
-                                <p className="text-charcoal-600 leading-relaxed">
+                                <p className="text-gray-500 leading-relaxed font-medium">
                                     {problem.description}
                                 </p>
                             </div>

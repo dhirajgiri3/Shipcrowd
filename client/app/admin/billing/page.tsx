@@ -150,11 +150,11 @@ export default function BillingPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <Receipt className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
+                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                        <Receipt className="h-6 w-6 text-[var(--primary-blue)]" />
                         Billing & Recharges
                     </h1>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
                         Manage seller recharges and manual billing entries
                     </p>
                 </div>
@@ -176,24 +176,11 @@ export default function BillingPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Recharges (Today)</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalRecharges)}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Total Recharges (Today)</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalRecharges)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
-                                <IndianRupee className="h-5 w-5" style={{ color: 'var(--success)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>{formatCurrency(pendingRecharges)}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
-                                <Clock className="h-5 w-5" style={{ color: 'var(--warning)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
+                                <IndianRupee className="h-5 w-5 text-[var(--success)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -202,11 +189,11 @@ export default function BillingPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Failed Transactions</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--error)' }}>{failedRecharges}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Pending</p>
+                                <p className="text-2xl font-bold text-[var(--warning)]">{formatCurrency(pendingRecharges)}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--error-bg)' }}>
-                                <AlertCircle className="h-5 w-5" style={{ color: 'var(--error)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
+                                <Clock className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -215,13 +202,26 @@ export default function BillingPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Unique Sellers</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                                <p className="text-sm text-[var(--text-secondary)]">Failed Transactions</p>
+                                <p className="text-2xl font-bold text-[var(--error)]">{failedRecharges}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--error-bg)]">
+                                <AlertCircle className="h-5 w-5 text-[var(--error)]" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-[var(--text-secondary)]">Unique Sellers</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">
                                     {new Set(mockRecharges.map(r => r.sellerId)).size}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
-                                <Users className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
+                                <Users className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -230,7 +230,7 @@ export default function BillingPage() {
 
             {/* Manual Entry Form */}
             {showAddManual && (
-                <Card className="border-[#2525FF]/20 bg-[#2525FF]/5">
+                <Card className="border-[var(--primary-blue)]/20 bg-[var(--primary-blue-soft)]">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-lg">Add Manual Billing Entry</CardTitle>
@@ -281,24 +281,26 @@ export default function BillingPage() {
             )}
 
             {/* Tabs */}
-            <div className="flex items-center gap-2 border-b pb-4" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex items-center gap-2 border-b pb-4 border-[var(--border-subtle)]">
                 <button
                     onClick={() => setActiveTab('recharges')}
-                    className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
-                    style={{
-                        background: activeTab === 'recharges' ? 'var(--primary-blue)' : 'transparent',
-                        color: activeTab === 'recharges' ? 'var(--text-inverse)' : 'var(--text-secondary)'
-                    }}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                        activeTab === 'recharges'
+                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                            : "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                    )}
                 >
                     Seller Recharges
                 </button>
                 <button
                     onClick={() => setActiveTab('manual')}
-                    className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
-                    style={{
-                        background: activeTab === 'manual' ? 'var(--primary-blue)' : 'transparent',
-                        color: activeTab === 'manual' ? 'var(--text-inverse)' : 'var(--text-secondary)'
-                    }}
+                    className={cn(
+                        "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                        activeTab === 'manual'
+                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                            : "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                    )}
                 >
                     Manual Entries
                 </button>
@@ -322,11 +324,12 @@ export default function BillingPage() {
                                 <button
                                     key={status}
                                     onClick={() => setSelectedStatus(status)}
-                                    className="px-4 py-2 text-sm font-medium rounded-full transition-all capitalize"
-                                    style={{
-                                        background: selectedStatus === status ? 'var(--primary-blue)' : 'var(--bg-secondary)',
-                                        color: selectedStatus === status ? 'var(--text-inverse)' : 'var(--text-secondary)'
-                                    }}
+                                    className={cn(
+                                        "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
+                                        selectedStatus === status
+                                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                                            : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                    )}
                                 >
                                     {status}
                                 </button>
@@ -359,7 +362,7 @@ export default function BillingPage() {
                                                 <td className="p-4">
                                                     <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(recharge.amount)}</p>
                                                     {recharge.discount > 0 && (
-                                                        <p className="text-xs text-emerald-600">-{formatCurrency(recharge.discount)} discount</p>
+                                                        <p className="text-xs text-[var(--success)]">-{formatCurrency(recharge.discount)} discount</p>
                                                     )}
                                                 </td>
                                                 <td className="p-4">
@@ -368,7 +371,7 @@ export default function BillingPage() {
                                                 </td>
                                                 <td className="p-4">
                                                     {recharge.couponUsed ? (
-                                                        <code className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                                        <code className="px-2 py-0.5 bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] rounded text-xs">
                                                             {recharge.couponUsed}
                                                         </code>
                                                     ) : (
@@ -429,7 +432,7 @@ export default function BillingPage() {
                                             <td className="p-4">
                                                 <span className={cn(
                                                     "font-semibold",
-                                                    entry.amount > 0 ? "text-emerald-600" : "text-rose-600"
+                                                    entry.amount > 0 ? "text-[var(--success)]" : "text-[var(--error)]"
                                                 )}>
                                                     {entry.amount > 0 ? '+' : ''}{formatCurrency(entry.amount)}
                                                 </span>

@@ -12,7 +12,12 @@ export default async function globalSetup(): Promise<void> {
     });
 
     const uri = mongod.getUri();
+
+    // CRITICAL: Set both MONGO_TEST_URI and MONGODB_URI to ensure
+    // the app uses the test database when services connect
     process.env.MONGO_TEST_URI = uri;
+    process.env.MONGODB_URI = uri; // This is what the app uses in database.ts
+
     process.env.JWT_SECRET = 'test_jwt_secret_for_testing_only';
     process.env.JWT_ACCESS_EXPIRY = '15m';
     process.env.JWT_REFRESH_EXPIRY = '7d';
@@ -23,4 +28,5 @@ export default async function globalSetup(): Promise<void> {
     (globalThis as any).__MONGOD__ = mongod;
 
     console.log('✅ MongoDB Memory Server started at:', uri);
+    console.log('✅ MONGODB_URI set to test database');
 }

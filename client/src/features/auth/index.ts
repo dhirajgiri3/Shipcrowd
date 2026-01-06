@@ -5,8 +5,14 @@
  */
 
 // Context
-export { AuthProvider, useAuth } from './context/AuthContext';
-export type { AuthUser, LoginCredentials, SignupData, AuthContextType } from './context/AuthContext';
+export { AuthProvider } from './context/AuthContext';
+
+// Hooks
+export { useAuth } from './hooks/useAuth';
 
 // Components
-export { AuthGuard, GuestGuard } from './components/AuthGuard';
+export { AuthGuard } from './components/AuthGuard';
+
+// Types (from centralized types)
+export type { AuthContextType, User, LoginRequest, RegisterRequest } from '@/src/types/auth';
+

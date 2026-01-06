@@ -95,10 +95,10 @@ export default function SupportPage() {
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
-            case 'high': return 'border-l-rose-500';
-            case 'medium': return 'border-l-amber-500';
-            case 'low': return 'border-l-emerald-500';
-            default: return 'border-l-gray-300';
+            case 'high': return 'border-l-[var(--error)]';
+            case 'medium': return 'border-l-[var(--warning)]';
+            case 'low': return 'border-l-[var(--success)]';
+            default: return 'border-l-[var(--border-subtle)]';
         }
     };
 
@@ -108,7 +108,7 @@ export default function SupportPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        <HelpCircle className="h-6 w-6 text-[#2525FF]" />
+                        <HelpCircle className="h-6 w-6 text-[var(--primary-blue)]" />
                         Help & Support
                     </h1>
                     <p className="text-[var(--text-muted)] text-sm mt-1">Get help or manage your support tickets</p>
@@ -119,7 +119,7 @@ export default function SupportPage() {
                             onClick={() => setActiveTab('help')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                                activeTab === 'help' ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm" : "text-gray-600"
+                                activeTab === 'help' ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
                             )}
                         >
                             Help Center
@@ -128,7 +128,7 @@ export default function SupportPage() {
                             onClick={() => setActiveTab('tickets')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                                activeTab === 'tickets' ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm" : "text-gray-600"
+                                activeTab === 'tickets' ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-secondary)]"
                             )}
                         >
                             My Tickets
@@ -143,7 +143,7 @@ export default function SupportPage() {
 
             {/* New Ticket Form */}
             {showNewTicket && (
-                <Card className="border-[#2525FF]/20 bg-[#2525FF]/5">
+                <Card className="border-[var(--primary-blue)]/20 bg-[var(--primary-blue-soft)]">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-lg">Create Support Ticket</CardTitle>
@@ -156,8 +156,8 @@ export default function SupportPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Issue Category *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 transition-colors">
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Issue Category *</label>
+                                <select className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] transition-colors">
                                     <option value="">Select category</option>
                                     <option value="shipment">Shipment Issue</option>
                                     <option value="payment">Payment / COD</option>
@@ -168,31 +168,31 @@ export default function SupportPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">AWB Number (if applicable)</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">AWB Number (if applicable)</label>
                                 <Input placeholder="e.g., DL123456789" />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Subject *</label>
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Subject *</label>
                             <Input placeholder="Brief description of your issue" />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Description *</label>
+                            <label className="text-sm font-medium text-[var(--text-primary)]">Description *</label>
                             <textarea
-                                className="flex min-h-[120px] w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
+                                className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-default)] transition-colors resize-none"
                                 placeholder="Provide detailed information about your issue..."
                             />
                         </div>
 
-                        <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-[#2525FF]/50 transition-colors cursor-pointer">
-                            <Paperclip className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                        <div className="border-2 border-dashed border-[var(--border-subtle)] rounded-lg p-4 text-center hover:border-[var(--primary-blue)]/50 transition-colors cursor-pointer">
+                            <Paperclip className="h-5 w-5 text-[var(--text-muted)] mx-auto mb-1" />
                             <p className="text-sm text-[var(--text-muted)]">Attach files (optional)</p>
-                            <p className="text-xs text-gray-400">Max 5MB per file</p>
+                            <p className="text-xs text-[var(--text-muted)]">Max 5MB per file</p>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowNewTicket(false)}>Cancel</Button>
                             <Button onClick={() => {
                                 addToast('Ticket submitted successfully!', 'success');
@@ -210,7 +210,7 @@ export default function SupportPage() {
             {activeTab === 'help' && (
                 <>
                     {/* Search */}
-                    <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-100">
+                    <Card className="bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
                         <CardContent className="pt-6">
                             <div className="max-w-xl mx-auto">
                                 <Input
@@ -228,34 +228,34 @@ export default function SupportPage() {
                     <div className="grid gap-4 md:grid-cols-3">
                         <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => addToast('Opening WhatsApp...', 'info')}>
                             <CardContent className="p-6 text-center">
-                                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                    <MessageSquare className="h-6 w-6 text-emerald-600" />
+                                <div className="w-12 h-12 bg-[var(--success-bg)] rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                    <MessageSquare className="h-6 w-6 text-[var(--success)]" />
                                 </div>
                                 <h3 className="font-semibold text-[var(--text-primary)]">WhatsApp</h3>
                                 <p className="text-sm text-[var(--text-muted)] mt-1">Quick chat support</p>
-                                <p className="text-xs text-emerald-600 mt-2">● Online now</p>
+                                <p className="text-xs text-[var(--success)] mt-2">● Online now</p>
                             </CardContent>
                         </Card>
 
                         <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => addToast('Calling support...', 'info')}>
                             <CardContent className="p-6 text-center">
-                                <div className="w-12 h-12 bg-[#2525FF]/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                    <Phone className="h-6 w-6 text-[#2525FF]" />
+                                <div className="w-12 h-12 bg-[var(--primary-blue-soft)] rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                    <Phone className="h-6 w-6 text-[var(--primary-blue)]" />
                                 </div>
                                 <h3 className="font-semibold text-[var(--text-primary)]">Call Us</h3>
                                 <p className="text-sm text-[var(--text-muted)] mt-1">+91 1800-XXX-XXXX</p>
-                                <p className="text-xs text-gray-400 mt-2">Mon-Sat, 9AM-6PM</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-2">Mon-Sat, 9AM-6PM</p>
                             </CardContent>
                         </Card>
 
                         <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => addToast('Opening email client...', 'info')}>
                             <CardContent className="p-6 text-center">
-                                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                    <Mail className="h-6 w-6 text-amber-600" />
+                                <div className="w-12 h-12 bg-[var(--warning-bg)] rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                    <Mail className="h-6 w-6 text-[var(--warning)]" />
                                 </div>
                                 <h3 className="font-semibold text-[var(--text-primary)]">Email Support</h3>
                                 <p className="text-sm text-[var(--text-muted)] mt-1">support@shipcrowd.in</p>
-                                <p className="text-xs text-gray-400 mt-2">Response within 24hrs</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-2">Response within 24hrs</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -264,7 +264,7 @@ export default function SupportPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <HelpCircle className="h-5 w-5 text-gray-600" />
+                                <HelpCircle className="h-5 w-5 text-[var(--text-secondary)]" />
                                 Frequently Asked Questions
                             </CardTitle>
                         </CardHeader>
@@ -276,16 +276,16 @@ export default function SupportPage() {
                                     onClick={() => addToast('Opening FAQ article...', 'info')}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <FileText className="h-4 w-4 text-gray-400" />
+                                        <FileText className="h-4 w-4 text-[var(--text-muted)]" />
                                         <span className="text-[var(--text-primary)]">{item.question}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-400">{item.category}</span>
-                                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                                        <span className="text-xs text-[var(--text-muted)]">{item.category}</span>
+                                        <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
                                     </div>
                                 </div>
                             ))}
-                            <Button variant="ghost" className="w-full text-[#2525FF] mt-2">
+                            <Button variant="ghost" className="w-full text-[var(--primary-blue)] mt-2">
                                 View All FAQs
                                 <ExternalLink className="h-4 w-4 ml-2" />
                             </Button>
@@ -306,8 +306,8 @@ export default function SupportPage() {
                                 className={cn(
                                     "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
                                     ticketFilter === filter
-                                        ? "bg-[#2525FF] text-white"
-                                        : "bg-gray-100 text-gray-600 hover:bg-[var(--bg-active)]"
+                                        ? "bg-[var(--primary-blue)] text-white"
+                                        : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
                                 )}
                             >
                                 {filter}
@@ -330,11 +330,11 @@ export default function SupportPage() {
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs font-mono text-gray-400">{ticket.id}</span>
+                                                <span className="text-xs font-mono text-[var(--text-muted)]">{ticket.id}</span>
                                                 {getStatusBadge(ticket.status)}
                                             </div>
-                                            <h3 className="font-medium text-gray-900">{ticket.subject}</h3>
-                                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                                            <h3 className="font-medium text-[var(--text-primary)]">{ticket.subject}</h3>
+                                            <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
                                                 <span>Created: {ticket.createdAt}</span>
                                                 {ticket.awbNumber && (
                                                     <span className="bg-[var(--bg-tertiary)] px-2 py-0.5 rounded">AWB: {ticket.awbNumber}</span>
@@ -342,8 +342,8 @@ export default function SupportPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xs text-gray-400">Updated {ticket.lastUpdate}</span>
-                                            <ChevronRight className="h-5 w-5 text-gray-400" />
+                                            <span className="text-xs text-[var(--text-muted)]">Updated {ticket.lastUpdate}</span>
+                                            <ChevronRight className="h-5 w-5 text-[var(--text-muted)]" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -355,9 +355,9 @@ export default function SupportPage() {
                     {filteredTickets.length === 0 && (
                         <Card>
                             <CardContent className="py-12 text-center">
-                                <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900">No tickets found</h3>
-                                <p className="text-gray-500 mt-1">
+                                <MessageSquare className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-[var(--text-primary)]">No tickets found</h3>
+                                <p className="text-[var(--text-muted)] mt-1">
                                     {ticketFilter === 'all'
                                         ? "You haven't created any support tickets yet"
                                         : `No ${ticketFilter} tickets`

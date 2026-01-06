@@ -64,7 +64,7 @@ export default function WarehousesPage() {
                         <div className="p-2 rounded-lg bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]">
                             <Warehouse className="w-5 h-5" />
                         </div>
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500">Active</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-[var(--success-bg)] text-[var(--success)]">Active</span>
                     </div>
                     <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.total}</p>
                     <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide mt-1">Total Hubs</p>
@@ -72,7 +72,7 @@ export default function WarehousesPage() {
 
                 <div className="p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
                     <div className="flex items-center justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-violet-500/10 text-violet-500">
+                        <div className="p-2 rounded-lg bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]">
                             <Package className="w-5 h-5" />
                         </div>
                     </div>
@@ -82,18 +82,18 @@ export default function WarehousesPage() {
 
                 <div className="p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
                     <div className="flex items-center justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                        <div className="p-2 rounded-lg bg-[var(--warning-bg)] text-[var(--warning)]">
                             <BarChart3 className="w-5 h-5" />
                         </div>
                         <span className={cn(
                             "text-xs font-bold px-2 py-1 rounded-full",
-                            overallUtilization > 80 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
+                            overallUtilization > 80 ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-[var(--success-bg)] text-[var(--success)]"
                         )}>
                             {overallUtilization}%
                         </span>
                     </div>
                     <div className="w-full h-2 bg-[var(--bg-tertiary)] rounded-full mt-2 overflow-hidden">
-                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${overallUtilization}%` }} />
+                        <div className="h-full bg-[var(--warning)] rounded-full" style={{ width: `${overallUtilization}%` }} />
                     </div>
                     <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide mt-2">Space Utilized</p>
                 </div>
@@ -141,7 +141,7 @@ export default function WarehousesPage() {
                                 </div>
                                 <span className={cn(
                                     "px-2.5 py-1 rounded-full text-xs font-bold",
-                                    wh.status === 'Active' ? "bg-emerald-500/10 text-emerald-500" : "bg-gray-500/10 text-gray-500"
+                                    wh.status === 'Active' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-gray-500/10 text-gray-500"
                                 )}>
                                     {wh.status}
                                 </span>
@@ -159,16 +159,16 @@ export default function WarehousesPage() {
                                         <span className="text-[var(--text-muted)] font-medium">Capacity Used</span>
                                         <span className={cn(
                                             "font-bold",
-                                            (wh.utilized / wh.capacity) > 0.9 ? "text-rose-500" :
-                                                (wh.utilized / wh.capacity) > 0.7 ? "text-amber-500" : "text-emerald-500"
+                                            (wh.utilized / wh.capacity) > 0.9 ? "text-[var(--error)]" :
+                                                (wh.utilized / wh.capacity) > 0.7 ? "text-[var(--warning)]" : "text-[var(--success)]"
                                         )}>{Math.round((wh.utilized / wh.capacity) * 100)}%</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
                                         <div
                                             className={cn(
                                                 "h-full rounded-full transition-all duration-500",
-                                                (wh.utilized / wh.capacity) > 0.9 ? "bg-rose-500" :
-                                                    (wh.utilized / wh.capacity) > 0.7 ? "bg-amber-500" : "bg-emerald-500"
+                                                (wh.utilized / wh.capacity) > 0.9 ? "bg-[var(--error)]" :
+                                                    (wh.utilized / wh.capacity) > 0.7 ? "bg-[var(--warning)]" : "bg-[var(--success)]"
                                             )}
                                             style={{ width: `${(wh.utilized / wh.capacity) * 100}%` }}
                                         />
@@ -226,8 +226,8 @@ export default function WarehousesPage() {
                                     <td className="px-6 py-4">
                                         <span className={cn(
                                             "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase",
-                                            item.status === 'In Stock' ? "bg-emerald-500/10 text-emerald-500" :
-                                                item.status === 'Low Stock' ? "bg-amber-500/10 text-amber-500" : "bg-gray-500/10 text-gray-500"
+                                            item.status === 'In Stock' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                                item.status === 'Low Stock' ? "bg-[var(--warning-bg)] text-[var(--warning)]" : "bg-gray-500/10 text-gray-500"
                                         )}>
                                             {item.status}
                                         </span>

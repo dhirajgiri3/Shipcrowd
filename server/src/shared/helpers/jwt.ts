@@ -121,6 +121,8 @@ export const generateAccessToken = (
 
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRY,
+    audience: 'shipcrowd-api',
+    issuer: 'shipcrowd-auth',
   } as jwt.SignOptions);
 };
 
@@ -145,6 +147,8 @@ export const generateRefreshToken = (
 
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, {
     expiresIn: expiry || REFRESH_TOKEN_EXPIRY,
+    audience: 'shipcrowd-api',
+    issuer: 'shipcrowd-auth',
   } as jwt.SignOptions);
 };
 
@@ -157,7 +161,10 @@ export const verifyAccessToken = async (
   token: string,
   checkBlacklist: boolean = true
 ): Promise<AccessTokenPayload> => {
-  const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET) as AccessTokenPayload;
+  const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET, {
+    audience: 'shipcrowd-api',
+    issuer: 'shipcrowd-auth',
+  }) as AccessTokenPayload;
 
   // Check if token is blacklisted
   if (checkBlacklist && decoded.jti) {
@@ -179,7 +186,10 @@ export const verifyRefreshToken = async (
   token: string,
   checkBlacklist: boolean = true
 ): Promise<RefreshTokenPayload> => {
-  const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET) as RefreshTokenPayload;
+  const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET, {
+    audience: 'shipcrowd-api',
+    issuer: 'shipcrowd-auth',
+  }) as RefreshTokenPayload;
 
   // Check if token is blacklisted
   if (checkBlacklist && decoded.jti) {

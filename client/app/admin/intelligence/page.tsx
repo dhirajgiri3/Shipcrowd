@@ -207,7 +207,7 @@ export default function IntelligencePage() {
                     <Card className="h-full bg-[var(--bg-primary)] border-[var(--border-subtle)] flex flex-col">
                         <CardHeader className="border-b border-[var(--border-subtle)] pb-4">
                             <CardTitle className="flex items-center gap-2 text-[var(--text-primary)]">
-                                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />
                                 Anomaly Detection
                             </CardTitle>
                             <CardDescription className="text-[var(--text-muted)]">

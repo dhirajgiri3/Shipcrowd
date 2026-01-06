@@ -10,6 +10,8 @@ export interface RecentCustomer {
     state: string;
     postalCode: string;
     addressLine1: string;
+    addressLine2?: string;
+    country?: string;
     totalOrders: number;
     lastOrderDate: string;
     avgOrderValue: number;

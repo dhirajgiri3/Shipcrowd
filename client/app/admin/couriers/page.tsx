@@ -135,11 +135,11 @@ export default function CouriersPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <Truck className="h-6 w-6" style={{ color: 'var(--primary-blue)' }} />
+                    <h1 className="text-2xl font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                        <Truck className="h-6 w-6 text-[var(--primary-blue)]" />
                         Courier Partners
                     </h1>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm mt-1 text-[var(--text-secondary)]">
                         Manage courier integrations and services
                     </p>
                 </div>
@@ -155,24 +155,11 @@ export default function CouriersPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Couriers</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{mockCouriers.length}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Total Couriers</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockCouriers.length}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-blue-soft)' }}>
-                                <Truck className="h-5 w-5" style={{ color: 'var(--primary-blue)' }} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--success)' }}>{activeCouriers}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--success-bg)' }}>
-                                <CheckCircle className="h-5 w-5" style={{ color: 'var(--success)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
+                                <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -181,11 +168,11 @@ export default function CouriersPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total Shipments</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{totalShipments.toLocaleString()}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Active</p>
+                                <p className="text-2xl font-bold text-[var(--success)]">{activeCouriers}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--info-bg)' }}>
-                                <Package className="h-5 w-5" style={{ color: 'var(--info)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
+                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -194,11 +181,24 @@ export default function CouriersPage() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Avg. Delivery Rate</p>
-                                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>93.5%</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Total Shipments</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{totalShipments.toLocaleString()}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--warning-bg)' }}>
-                                <Zap className="h-5 w-5" style={{ color: 'var(--warning)' }} />
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--info-bg)]">
+                                <Package className="h-5 w-5 text-[var(--info)]" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-[var(--text-secondary)]">Avg. Delivery Rate</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">93.5%</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
+                                <Zap className="h-5 w-5 text-[var(--warning)]" />
                             </div>
                         </div>
                     </CardContent>
@@ -207,11 +207,11 @@ export default function CouriersPage() {
 
             {/* Add Courier Form */}
             {showAddForm && (
-                <Card style={{ borderColor: 'var(--primary-blue-soft)', background: 'var(--bg-primary)' }}>
+                <Card className="border-[var(--primary-blue-soft)] bg-[var(--bg-primary)]">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg" style={{ color: 'var(--text-primary)' }}>Add New Courier Partner</CardTitle>
-                            <CardDescription style={{ color: 'var(--text-secondary)' }}>Configure a new courier integration</CardDescription>
+                            <CardTitle className="text-lg text-[var(--text-primary)]">Add New Courier Partner</CardTitle>
+                            <CardDescription className="text-[var(--text-secondary)]">Configure a new courier integration</CardDescription>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => setShowAddForm(false)}>
                             <X className="h-4 w-4" />
@@ -220,16 +220,16 @@ export default function CouriersPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Courier Name *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Courier Name *</label>
                                 <Input placeholder="e.g., Delhivery" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Courier Code *</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Courier Code *</label>
                                 <Input placeholder="e.g., delhivery" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Status</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Status</label>
+                                <select className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-active)]">
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
@@ -238,35 +238,35 @@ export default function CouriersPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">API Key</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">API Key</label>
                                 <Input type="password" placeholder="API Key (if available)" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">API Secret</label>
+                                <label className="text-sm font-medium text-[var(--text-primary)]">API Secret</label>
                                 <Input type="password" placeholder="API Secret (if available)" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-gray-300" defaultChecked />
-                                <span className="text-sm text-gray-700">COD Enabled</span>
+                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" defaultChecked />
+                                <span className="text-sm text-[var(--text-primary)]">COD Enabled</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-gray-300" defaultChecked />
-                                <span className="text-sm text-gray-700">Pickup Enabled</span>
+                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" defaultChecked />
+                                <span className="text-sm text-[var(--text-primary)]">Pickup Enabled</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-gray-300" defaultChecked />
-                                <span className="text-sm text-gray-700">Tracking Enabled</span>
+                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" defaultChecked />
+                                <span className="text-sm text-[var(--text-primary)]">Tracking Enabled</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-gray-300" />
-                                <span className="text-sm text-gray-700">API Integrated</span>
+                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" />
+                                <span className="text-sm text-[var(--text-primary)]">API Integrated</span>
                             </label>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
                             <Button onClick={() => {
                                 addToast('Courier added successfully!', 'success');
@@ -294,11 +294,12 @@ export default function CouriersPage() {
                         <button
                             key={status}
                             onClick={() => setSelectedStatus(status)}
-                            className="px-4 py-2 text-sm font-medium rounded-full transition-all capitalize"
-                            style={{
-                                background: selectedStatus === status ? 'var(--primary-blue)' : 'var(--bg-secondary)',
-                                color: selectedStatus === status ? 'var(--text-inverse)' : 'var(--text-secondary)'
-                            }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
+                                selectedStatus === status
+                                    ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                                    : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                            )}
                         >
                             {status}
                         </button>
@@ -315,12 +316,12 @@ export default function CouriersPage() {
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                                        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
                                             {courier.logo}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{courier.name}</h3>
-                                            <code className="text-xs" style={{ color: 'var(--text-secondary)' }}>{courier.code}</code>
+                                            <h3 className="font-semibold text-[var(--text-primary)]">{courier.name}</h3>
+                                            <code className="text-xs text-[var(--text-secondary)]">{courier.code}</code>
                                         </div>
                                     </div>
                                     <Badge variant={courier.status === 'active' ? 'success' : 'neutral'}>
@@ -330,7 +331,7 @@ export default function CouriersPage() {
 
                                 {/* Services */}
                                 <div>
-                                    <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>Services</p>
+                                    <p className="text-xs mb-2 text-[var(--text-secondary)]">Services</p>
                                     <div className="flex flex-wrap gap-1">
                                         {courier.services.map((service) => (
                                             <Badge key={service} variant="outline" className="text-xs">
@@ -344,67 +345,67 @@ export default function CouriersPage() {
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <div className="flex items-center gap-2">
                                         {courier.apiIntegrated ? (
-                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
+                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
                                         )}
-                                        <span className={courier.apiIntegrated ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.apiIntegrated ? 'var(--text-primary)' : 'var(--text-muted)' }}>API</span>
+                                        <span className={courier.apiIntegrated ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>API</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {courier.codEnabled ? (
-                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
+                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
                                         )}
-                                        <span className={courier.codEnabled ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.codEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>COD</span>
+                                        <span className={courier.codEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>COD</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {courier.pickupEnabled ? (
-                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
+                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
                                         )}
-                                        <span className={courier.pickupEnabled ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.pickupEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>Pickup</span>
+                                        <span className={courier.pickupEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>Pickup</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {courier.trackingEnabled ? (
-                                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
+                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
                                         ) : (
-                                            <AlertCircle className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
                                         )}
-                                        <span className={courier.trackingEnabled ? 'text-gray-700' : 'text-gray-400'} style={{ color: courier.trackingEnabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>Tracking</span>
+                                        <span className={courier.trackingEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>Tracking</span>
                                     </div>
                                 </div>
 
                                 {/* Stats */}
                                 {courier.status === 'active' && (
-                                    <div className="rounded-lg p-3 grid grid-cols-3 gap-2 text-center" style={{ background: 'var(--bg-secondary)' }}>
+                                    <div className="rounded-lg p-3 grid grid-cols-3 gap-2 text-center bg-[var(--bg-secondary)]">
                                         <div>
-                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Shipments</p>
-                                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{courier.totalShipments.toLocaleString()}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Shipments</p>
+                                            <p className="text-sm font-semibold text-[var(--text-primary)]">{courier.totalShipments.toLocaleString()}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Avg. TAT</p>
-                                            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{courier.avgDeliveryTime}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Avg. TAT</p>
+                                            <p className="text-sm font-semibold text-[var(--text-primary)]">{courier.avgDeliveryTime}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Success</p>
-                                            <p className="text-sm font-semibold" style={{ color: 'var(--success)' }}>{courier.successRate}%</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Success</p>
+                                            <p className="text-sm font-semibold text-[var(--success)]">{courier.successRate}%</p>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Actions */}
-                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <div className="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => toggleCourierStatus(courier.id, courier.status)}
                                     >
                                         {courier.status === 'active' ? (
-                                            <><ToggleRight className="h-4 w-4 mr-1" style={{ color: 'var(--success)' }} /> Active</>
+                                            <><ToggleRight className="h-4 w-4 mr-1 text-[var(--success)]" /> Active</>
                                         ) : (
-                                            <><ToggleLeft className="h-4 w-4 mr-1" style={{ color: 'var(--text-muted)' }} /> Inactive</>
+                                            <><ToggleLeft className="h-4 w-4 mr-1 text-[var(--text-muted)]" /> Inactive</>
                                         )}
                                     </Button>
                                     <div className="flex gap-1">
@@ -426,9 +427,9 @@ export default function CouriersPage() {
             {filteredCouriers.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
-                        <Truck className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-                        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>No couriers found</h3>
-                        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>Try adjusting your search or add a new courier</p>
+                        <Truck className="h-12 w-12 mx-auto mb-4 text-[var(--text-muted)]" />
+                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No couriers found</h3>
+                        <p className="mt-1 text-[var(--text-secondary)]">Try adjusting your search or add a new courier</p>
                         <Button className="mt-4" onClick={() => setShowAddForm(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add Courier

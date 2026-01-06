@@ -1,58 +1,71 @@
 /**
- * Forgot Password Page with Enhanced UX
+ * Forgot Password Page
+ *
+ * Features:
+ * - Request password reset via email
+ * - Email validation
+ * - Proper error handling with new auth system
+ * - Security-aware success message
  */
 
-"use client"
+'use client';
 
-import Link from "next/link"
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { ArrowRight, Mail, ArrowLeft } from "lucide-react"
-import { toast } from "sonner"
-import { getErrorMessage } from "@/lib/error-handler"
-import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
-import { LoadingButton } from "@/components/ui/utility/LoadingButton"
-import { authApi } from "@/src/core/api/authApi"
+import Link from 'next/link';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Mail, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
+import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export default function ForgotPasswordPage() {
-    const [email, setEmail] = useState("")
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [success, setSuccess] = useState(false)
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError(null)
+  const { resetPassword } = useAuth();
 
-        // Client-side validation
-        if (!email) {
-            const message = "Please enter your email address"
-            setError(message)
-            toast.error(message)
-            return
-        }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
 
-        if (!email.includes('@')) {
-            const message = "Please enter a valid email address"
-            setError(message)
-            toast.error(message)
-            return
-        }
-
-        setIsLoading(true)
-
-        try {
-            await authApi.requestPasswordReset(email)
-            setSuccess(true)
-            toast.success("Password reset link sent! Check your email.")
-        } catch (err: any) {
-            const errorMessage = getErrorMessage(err)
-            setError(errorMessage)
-            toast.error(errorMessage)
-        } finally {
-            setIsLoading(false)
-        }
+    // Client-side validation
+    if (!email) {
+      const message = 'Please enter your email address';
+      setError(message);
+      toast.error(message);
+      return;
     }
+
+    if (!email.includes('@')) {
+      const message = 'Please enter a valid email address';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await resetPassword(email);
+      if (result.success) {
+        setSuccess(true);
+        toast.success('Password reset link sent! Check your email.');
+      } else {
+        const errorMessage = result.error?.message || 'Failed to send reset link';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to send reset link';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
     return (
         <div className="flex min-h-screen">
@@ -67,9 +80,9 @@ export default function ForgotPasswordPage() {
                     {/* Logo */}
                     <Link href="/" className="inline-block mb-12">
                         <img
-                            src="/logos/Shipcrowd-logo.png"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
                             alt="ShipCrowd"
-                            className="h-8 w-auto"
+                            className="h-8 w-auto rounded-full"
                         />
                     </Link>
 

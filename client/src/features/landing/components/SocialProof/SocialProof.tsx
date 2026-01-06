@@ -22,7 +22,7 @@ export default function SocialProof() {
     }
 
     return (
-        <section className="py-24 md:py-32 bg-white overflow-hidden border-y border-charcoal-100">
+        <section className="py-24 md:py-32 bg-white overflow-hidden border-y border-gray-100">
             <div className="container mx-auto px-6 md:px-12 max-w-[1400px]">
                 {/* Header */}
                 <div className="grid lg:grid-cols-[55%_45%] gap-12 mb-16 items-start">
@@ -44,7 +44,7 @@ export default function SocialProof() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: 0.1 }}
-                            className="text-4xl md:text-5xl font-bold text-charcoal-950 leading-tight mb-6"
+                            className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6 tracking-tight"
                         >
                             Real Businesses.<br />
                             Real Results.<br />
@@ -56,7 +56,7 @@ export default function SocialProof() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: 0.2 }}
-                            className="text-lg text-charcoal-600 max-w-[500px]"
+                            className="text-lg text-gray-600 max-w-[500px]"
                         >
                             From bootstrapped startups to established brands shipping 10,000+ orders monthly...
                         </motion.p>
@@ -68,7 +68,7 @@ export default function SocialProof() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.3 }}
-                        className="bg-white rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-charcoal-100"
+                        className="bg-white rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-100"
                     >
                         <div className="grid grid-cols-2 gap-6">
                             {[
@@ -85,11 +85,11 @@ export default function SocialProof() {
                                     transition={{ delay: 0.4 + i * 0.1 }}
                                     className="text-center"
                                 >
-                                    <div className={`w-12 h-12 mx-auto bg-charcoal-50 rounded-xl flex items-center justify-center ${stat.color} mb-3`}>
+                                    <div className={`w-12 h-12 mx-auto bg-gray-50 rounded-xl flex items-center justify-center ${stat.color} mb-3`}>
                                         <stat.icon size={24} />
                                     </div>
-                                    <div className="text-3xl font-bold text-charcoal-900 mb-1">{stat.value}</div>
-                                    <div className="text-xs text-charcoal-500 font-medium">{stat.label}</div>
+                                    <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                                    <div className="text-xs text-gray-500 font-medium">{stat.label}</div>
                                 </motion.div>
                             ))}
                         </div>
@@ -102,7 +102,7 @@ export default function SocialProof() {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={inView ? { opacity: 1, scale: 1 } : {}}
                     transition={{ duration: 0.8 }}
-                    className="bg-white border border-charcoal-100 rounded-3xl p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_30px_70px_-15px_rgba(37,37,255,0.12)] transition-all duration-500 flex flex-col md:flex-row gap-8 items-stretch"
+                    className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_30px_70px_-15px_rgba(37,37,255,0.12)] transition-all duration-500 flex flex-col md:flex-row gap-8 items-stretch"
                 >
                     {/* Video/Image Side */}
                     <div
@@ -153,7 +153,7 @@ export default function SocialProof() {
                             <div className="w-5 h-5 bg-primaryBlue rounded flex items-center justify-center">
                                 <ShieldCheck size={12} className="text-white" />
                             </div>
-                            <span className="font-bold text-charcoal-900 text-sm">StyleHub</span>
+                            <span className="font-bold text-gray-900 text-sm">StyleHub</span>
                         </div>
                     </div>
 
@@ -161,11 +161,11 @@ export default function SocialProof() {
                     <div className="flex-1 py-4 md:py-6 md:pr-6 flex flex-col justify-center">
                         <Quote className="text-primaryBlue/20 w-12 h-12 mb-4" />
 
-                        <h3 className="text-2xl md:text-3xl font-bold text-charcoal-900 leading-tight mb-6">
+                        <h3 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-6 tracking-tight">
                             "ShipCrowd cut our shipping costs by 23% and saved our operations team 15 hours every week..."
                         </h3>
 
-                        <p className="text-charcoal-600 mb-6 leading-relaxed">
+                        <p className="text-gray-600 mb-6 leading-relaxed">
                             We used to juggle 7 different courier dashboards. Now everything is in one place with AI doing the heavy lifting. Game changer for our business.
                         </p>
 
@@ -195,15 +195,15 @@ export default function SocialProof() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: 0.1 * i }}
-                            className="bg-white border border-charcoal-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                            className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
                         >
                             <div className="flex gap-1 text-amber mb-3">
                                 {[1, 2, 3, 4, 5].map(j => <Star key={j} size={12} fill="currentColor" />)}
                             </div>
-                            <p className="text-sm text-charcoal-700 mb-4 leading-relaxed">"{testimonial.quote}"</p>
+                            <p className="text-sm text-gray-700 mb-4 leading-relaxed">"{testimonial.quote}"</p>
                             <div>
-                                <div className="font-bold text-charcoal-900 text-sm">{testimonial.name}</div>
-                                <div className="text-xs text-charcoal-500">{testimonial.company}</div>
+                                <div className="font-bold text-gray-900 text-sm">{testimonial.name}</div>
+                                <div className="text-xs text-gray-500">{testimonial.company}</div>
                             </div>
                         </motion.div>
                     ))}

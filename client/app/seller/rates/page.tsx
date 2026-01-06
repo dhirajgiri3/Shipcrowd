@@ -131,8 +131,8 @@ export default function RatesPage() {
                         {/* Origin & Destination */}
                         <div className="space-y-3">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-gray-400" />
+                                <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                                    <MapPin className="h-4 w-4 text-[var(--text-muted)]" />
                                     Origin Pincode *
                                 </label>
                                 <Input
@@ -143,8 +143,8 @@ export default function RatesPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-gray-400" />
+                                <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                                    <MapPin className="h-4 w-4 text-[var(--text-muted)]" />
                                     Destination Pincode *
                                 </label>
                                 <Input
@@ -158,8 +158,8 @@ export default function RatesPage() {
 
                         {/* Weight */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <Weight className="h-4 w-4 text-gray-400" />
+                            <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                                <Weight className="h-4 w-4 text-[var(--text-muted)]" />
                                 Weight (kg) *
                             </label>
                             <Input
@@ -174,8 +174,8 @@ export default function RatesPage() {
 
                         {/* Dimensions */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <Ruler className="h-4 w-4 text-gray-400" />
+                            <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                                <Ruler className="h-4 w-4 text-[var(--text-muted)]" />
                                 Dimensions (cm) - Optional
                             </label>
                             <div className="grid grid-cols-3 gap-2">
@@ -199,8 +199,8 @@ export default function RatesPage() {
 
                         {/* Payment Mode */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <IndianRupee className="h-4 w-4 text-gray-400" />
+                            <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                                <IndianRupee className="h-4 w-4 text-[var(--text-muted)]" />
                                 Payment Mode
                             </label>
                             <Select
@@ -229,21 +229,21 @@ export default function RatesPage() {
                     {!showResults ? (
                         <Card className="h-full flex items-center justify-center bg-[var(--bg-secondary)]">
                             <CardContent className="text-center py-12">
-                                <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                                <Package className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-4" />
                                 <p className="text-[var(--text-muted)]">Enter shipment details to see available rates</p>
                             </CardContent>
                         </Card>
                     ) : (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-[var(--text-secondary)]">
                                     <span className="font-medium">{calculatedRates.length}</span> courier options available
                                 </p>
                                 <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
                                     <span>{formData.originPincode}</span>
                                     <ArrowRight className="h-4 w-4" />
                                     <span>{formData.destinationPincode}</span>
-                                    <span className="text-gray-300">•</span>
+                                    <span className="text-[var(--text-muted)]">•</span>
                                     <span>{formData.weight} kg</span>
                                 </div>
                             </div>
@@ -277,7 +277,7 @@ export default function RatesPage() {
                                                             {rate.eta}
                                                         </span>
                                                         <span className="flex items-center gap-1">
-                                                            <Star className="h-3.5 w-3.5 text-amber-500" />
+                                                            <Star className="h-3.5 w-3.5 text-[var(--warning)]" />
                                                             {rate.rating}
                                                         </span>
                                                     </div>
@@ -304,13 +304,13 @@ export default function RatesPage() {
             </div>
 
             {/* Info Note */}
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-[var(--info-bg)] border-[var(--info)]/20">
                 <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                        <Calculator className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <Calculator className="h-5 w-5 text-[var(--info)] mt-0.5" />
                         <div>
-                            <p className="text-sm font-semibold text-blue-900">Rate Calculation</p>
-                            <p className="text-xs text-blue-700 mt-1">
+                            <p className="text-sm font-semibold text-[var(--info)]">Rate Calculation</p>
+                            <p className="text-xs text-[var(--info)] mt-1">
                                 Rates shown are estimates. Final charges may vary based on volumetric weight, zone classification, and service add-ons.
                             </p>
                         </div>

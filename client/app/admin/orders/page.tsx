@@ -137,11 +137,11 @@ const courierRates = [
 ];
 
 const statusConfig = [
-    { id: 'new', label: 'New Orders', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-    { id: 'ready', label: 'Ready to Ship', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    { id: 'shipped', label: 'In Transit', icon: Truck, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-    { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-    { id: 'rto', label: 'RTO / NDR', icon: RotateCcw, color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+    { id: 'new', label: 'New Orders', icon: Clock, color: 'text-[var(--warning)]', bg: 'bg-[var(--warning-bg)]', border: 'border-[var(--warning)]/20' },
+    { id: 'ready', label: 'Ready to Ship', icon: Package, color: 'text-[var(--info)]', bg: 'bg-[var(--info-bg)]', border: 'border-[var(--info)]/20' },
+    { id: 'shipped', label: 'In Transit', icon: Truck, color: 'text-[var(--primary-blue)]', bg: 'bg-[var(--primary-blue-soft)]', border: 'border-[var(--primary-blue)]/20' },
+    { id: 'delivered', label: 'Delivered', icon: CheckCircle2, color: 'text-[var(--success)]', bg: 'bg-[var(--success-bg)]', border: 'border-[var(--success)]/20' },
+    { id: 'rto', label: 'RTO / NDR', icon: RotateCcw, color: 'text-[var(--error)]', bg: 'bg-[var(--error-bg)]', border: 'border-[var(--error)]/20' },
 ];
 
 type Order = typeof mockOrders[0];
@@ -263,7 +263,7 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-1 mt-0.5">
                         <span className={cn(
                             "w-1.5 h-1.5 rounded-full",
-                            row.paymentMode === 'COD' ? "bg-amber-500" : "bg-emerald-500"
+                            row.paymentMode === 'COD' ? "bg-[var(--warning)]" : "bg-[var(--success)]"
                         )} />
                         <span className="text-xs text-[var(--text-secondary)]">{row.paymentMode}</span>
                     </div>
@@ -307,7 +307,7 @@ export default function OrdersPage() {
                 }
                 if (activeTab === 'delivered') {
                     return (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success)]/20">
                             <CheckCircle2 className="h-3 w-3 mr-1.5" />
                             Delivered
                         </span>
@@ -316,8 +316,8 @@ export default function OrdersPage() {
                 if (activeTab === 'rto') {
                     return (
                         <div>
-                            <p className="text-[10px] text-rose-500 font-medium uppercase tracking-wide mb-1">Action Required</p>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 hover:border-rose-300 hover:bg-rose-50 text-rose-700">
+                            <p className="text-[10px] text-[var(--error)] font-medium uppercase tracking-wide mb-1">Action Required</p>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-[var(--error)]/20 hover:border-[var(--error)]/30 hover:bg-[var(--error-bg)] text-[var(--error)]">
                                 Reattempt
                             </Button>
                         </div>
@@ -563,7 +563,7 @@ export default function OrdersPage() {
                                             </div>
                                             <div>
                                                 <p className="font-bold text-[var(--text-primary)]">{courier.name}</p>
-                                                <p className="text-xs text-[var(--text-muted)] mt-0.5">ETA: {courier.eta} • <span className="text-amber-500">★ {courier.rating}</span></p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-0.5">ETA: {courier.eta} • <span className="text-[var(--warning)]">★ {courier.rating}</span></p>
                                             </div>
                                         </div>
                                         <div className="text-right relative z-10">

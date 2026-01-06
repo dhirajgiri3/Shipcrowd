@@ -205,18 +205,18 @@ export default function SellersPage() {
                 <div className="flex flex-col gap-1">
                     <span className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold w-fit",
-                        row.status === 'active' ? "bg-emerald-500/10 text-emerald-500" :
-                            row.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
-                                "bg-rose-500/10 text-rose-500"
+                        row.status === 'active' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                            row.status === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                "bg-[var(--error-bg)] text-[var(--error)]"
                     )}>
                         <span className={cn("w-1.5 h-1.5 rounded-full",
-                            row.status === 'active' ? "bg-emerald-500" :
-                                row.status === 'pending' ? "bg-amber-500" : "bg-rose-500"
+                            row.status === 'active' ? "bg-[var(--success)]" :
+                                row.status === 'pending' ? "bg-[var(--warning)]" : "bg-[var(--error)]"
                         )} />
                         {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
                     </span>
                     {row.kycStatus === 'verified' && (
-                        <span className="text-[10px] text-emerald-500 flex items-center gap-1 px-1">
+                        <span className="text-[10px] text-[var(--success)] flex items-center gap-1 px-1">
                             <Shield className="w-3 h-3" /> Verified
                         </span>
                     )}
@@ -230,10 +230,10 @@ export default function SellersPage() {
                 <div className="w-24">
                     <div className="flex justify-between text-xs mb-1">
                         <span className="text-[var(--text-muted)]">Success</span>
-                        <span className={cn("font-bold", row.successRate > 90 ? "text-emerald-500" : "text-amber-500")}>{row.successRate}%</span>
+                        <span className={cn("font-bold", row.successRate > 90 ? "text-[var(--success)]" : "text-[var(--warning)]")}>{row.successRate}%</span>
                     </div>
                     <div className="h-1 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-                        <div className={cn("h-full rounded-full", row.successRate > 90 ? "bg-emerald-500" : "text-amber-500")} style={{ width: `${row.successRate}%` }} />
+                        <div className={cn("h-full rounded-full", row.successRate > 90 ? "bg-[var(--success)]" : "bg-[var(--warning)]")} style={{ width: `${row.successRate}%` }} />
                     </div>
                 </div>
             )
@@ -244,7 +244,7 @@ export default function SellersPage() {
             cell: (row: Seller) => (
                 <span className={cn(
                     "font-bold font-mono",
-                    row.walletBalance < 0 ? "text-rose-500" : "text-[var(--text-primary)]"
+                    row.walletBalance < 0 ? "text-[var(--error)]" : "text-[var(--text-primary)]"
                 )}>
                     {formatCurrency(row.walletBalance)}
                 </span>
@@ -306,10 +306,10 @@ export default function SellersPage() {
                         <div className="flex items-start justify-between mb-2">
                             <div className={cn(
                                 "p-2 rounded-lg",
-                                stat.color === 'blue' ? "bg-blue-500/10 text-blue-500" :
-                                    stat.color === 'amber' ? "bg-amber-500/10 text-amber-500" :
-                                        stat.color === 'violet' ? "bg-violet-500/10 text-violet-500" :
-                                            "bg-emerald-500/10 text-emerald-500"
+                                stat.color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                                    stat.color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                        stat.color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
+                                            "bg-[var(--success-bg)] text-[var(--success)]"
                             )}>
                                 <stat.icon className="w-5 h-5" />
                             </div>
@@ -417,13 +417,13 @@ export default function SellersPage() {
                                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--border-subtle)]">
                                     <span className={cn(
                                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
-                                        seller.status === 'active' ? "bg-emerald-500/10 text-emerald-500" :
-                                            seller.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
-                                                "bg-rose-500/10 text-rose-500"
+                                        seller.status === 'active' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                            seller.status === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                                "bg-[var(--error-bg)] text-[var(--error)]"
                                     )}>
                                         <span className={cn("w-1.5 h-1.5 rounded-full",
-                                            seller.status === 'active' ? "bg-emerald-500" :
-                                                seller.status === 'pending' ? "bg-amber-500" : "bg-rose-500"
+                                            seller.status === 'active' ? "bg-[var(--success)]" :
+                                                seller.status === 'pending' ? "bg-[var(--warning)]" : "bg-[var(--error)]"
                                         )} />
                                         {seller.status.charAt(0).toUpperCase() + seller.status.slice(1)}
                                     </span>
@@ -470,7 +470,7 @@ export default function SellersPage() {
                             </Button>
                             {selectedSeller.status === 'pending' ? (
                                 <Button
-                                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                                    className="flex-1 bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
                                     onClick={() => handleApproveSeller(selectedSeller)}
                                 >
                                     <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
@@ -478,7 +478,7 @@ export default function SellersPage() {
                             ) : (
                                 <Button
                                     variant="outline"
-                                    className="flex-1 border-rose-200 text-rose-500 hover:bg-rose-50"
+                                    className="flex-1 border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)]"
                                     onClick={() => handleSuspendSeller(selectedSeller)}
                                 >
                                     <Ban className="w-4 h-4 mr-2" /> Suspend
