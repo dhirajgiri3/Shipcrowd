@@ -1,10 +1,50 @@
 "use client";
 
+/**
+ * ====================================================================================================
+ * COMPONENT DESIGN PHILOSOPHY: Action Center
+ * ====================================================================================================
+ * 
+ * CORE CONCEPT: "Immersive Priority Grid"
+ * Moving away from traditional list views, this component treats actionable items as "Premium Cards"
+ * that command attention without shouting. The goal is to make "work" feel "gratifying".
+ * 
+ * 1. VISUAL HIERARCHY & TYPOGRAPHY:
+ *    - We use a strict typographic scale to ensure readability and prestige.
+ *    - HEADLINES (Action Titles) are `text-sm` but `font-bold` to act as swift navigational anchors.
+ *    - NUMBERS (Counts) are large (`text-3xl`), tracking-tight, and partially opaque to serve as 
+ *      visual texture rather than just data. They provide immediate scale context.
+ * 
+ * 2. COLOR THEORY & PSYCHOLOGY:
+ *    - Instead of generic "Status Colors", we use "Contextual Gradients".
+ *    - NOT just Red/Green/Blue, but Rose, Emerald, and Amber washes.
+ *    - Light Mode: Clean `bg-white` with subtle warmth/coolness drawn from the borders.
+ *    - Dark Mode: Deep `zinc-900` richness that allows the neon accents to pop.
+ *    - KYC (Green): Represents Trust, ID, Verification.
+ *    - Orders (Blue): Represents Flux, Movement, Business.
+ *    - Wallet (Amber/Orange): Represents Caution, Value, Gold.
+ * 
+ * 3. SPATIAL DYNAMICS:
+ *    - GRID: A robust 4-column grid creates a sense of "Dashboard Command".
+ *    - DEPTH: We use `hover:-translate-y-1` combined with shadow bloom to make cards feel physical.
+ *    - BUTTONS: Bottom-aligned "Action Anchors" that span the width but feel lightweight.
+ * 
+ * ====================================================================================================
+ */
+
 import { motion } from "framer-motion";
-import { AlertCircle, Package, Wallet, Shield, CheckCircle2 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/core/Card";
-import { Badge } from "@/components/ui/core/Badge";
-import { Button } from "@/components/ui/core/Button";
+import {
+    AlertCircle,
+    Package,
+    Wallet,
+    Shield,
+    CheckCircle2,
+    AlertTriangle,
+    ArrowRight,
+    Megaphone,
+    Truck,
+    Scale
+} from "lucide-react";
 import { cn } from "@/src/shared/utils";
 import Link from "next/link";
 
@@ -28,200 +68,215 @@ interface ActionsRequiredProps {
 
 const iconMap = {
     orders_ready: Package,
-    ndr_pending: AlertCircle,
+    ndr_pending: AlertTriangle,
     low_wallet: Wallet,
     kyc_pending: Shield,
-    weight_dispute: Package,
+    weight_dispute: Scale,
 };
 
-const priorityStyles = {
-    critical: {
-        bg: "bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors",
-        border: "border-l-4 border-l-[var(--error)] border-y border-r border-[var(--border-subtle)]",
-        text: "text-[var(--text-primary)]",
-        iconBg: "bg-[var(--error-bg)] text-[var(--error)]",
-        badge: "bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error)]/20",
-        indicator: "bg-[var(--error)]",
-        button: "bg-[var(--error)] text-white hover:bg-[var(--error)]/90"
+// Refined Styles - Lighter, Cleaner, Semantic Colors
+const colors = {
+    rose: { // Critical / NDR
+        border: "border-rose-100 dark:border-rose-900/40",
+        bg_hover: "hover:shadow-rose-100/50 dark:hover:shadow-rose-900/20",
+        gradient: "from-rose-500/5 to-transparent",
+        icon_bg: "bg-rose-500",
+        icon_text: "text-white",
+        title: "text-rose-950 dark:text-rose-50",
+        btn_text: "text-rose-600 dark:text-rose-400",
+        btn_hover_bg: "group-hover:bg-rose-50 dark:group-hover:bg-rose-900/20"
     },
-    high: {
-        bg: "bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors",
-        border: "border-l-4 border-l-[var(--warning)] border-y border-r border-[var(--border-subtle)]",
-        text: "text-[var(--text-primary)]",
-        iconBg: "bg-[var(--warning-bg)] text-[var(--warning)]",
-        badge: "bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning)]/20",
-        indicator: "bg-[var(--warning)]",
-        button: "bg-[var(--warning)] text-white hover:bg-[var(--warning)]/90"
+    emerald: { // KYC / Success / Verification
+        border: "border-emerald-100 dark:border-emerald-900/40",
+        bg_hover: "hover:shadow-emerald-100/50 dark:hover:shadow-emerald-900/20",
+        gradient: "from-emerald-500/5 to-transparent",
+        icon_bg: "bg-emerald-500",
+        icon_text: "text-white",
+        title: "text-emerald-950 dark:text-emerald-50",
+        btn_text: "text-emerald-600 dark:text-emerald-400",
+        btn_hover_bg: "group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20"
     },
-    medium: {
-        bg: "bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-colors",
-        border: "border-l-4 border-l-[var(--primary-blue)] border-y border-r border-[var(--border-subtle)]",
-        text: "text-[var(--text-primary)]",
-        iconBg: "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)]",
-        badge: "bg-[var(--primary-blue-soft)]/50 text-[var(--primary-blue)] border border-[var(--primary-blue)]/20",
-        indicator: "bg-[var(--primary-blue)]",
-        button: "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)]"
+    amber: { // Wallet / Warning
+        border: "border-amber-100 dark:border-amber-900/40",
+        bg_hover: "hover:shadow-amber-100/50 dark:hover:shadow-amber-900/20",
+        gradient: "from-amber-500/5 to-transparent",
+        icon_bg: "bg-amber-500",
+        icon_text: "text-white",
+        title: "text-amber-950 dark:text-amber-50",
+        btn_text: "text-amber-600 dark:text-amber-400",
+        btn_hover_bg: "group-hover:bg-amber-50 dark:group-hover:bg-amber-900/20"
     },
-};
-
-const itemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 },
-};
-
-export function ActionsRequired({ actions, isLoading, onDismiss }: ActionsRequiredProps) {
-    if (isLoading) {
-        return <ActionsRequiredSkeleton />;
+    blue: { // Orders / Neutral
+        border: "border-blue-100 dark:border-blue-900/40",
+        bg_hover: "hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20",
+        gradient: "from-blue-500/5 to-transparent",
+        icon_bg: "bg-blue-600",
+        icon_text: "text-white",
+        title: "text-blue-950 dark:text-blue-50",
+        btn_text: "text-blue-600 dark:text-blue-400",
+        btn_hover_bg: "group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20"
+    },
+    violet: { // Disputes / Legal
+        border: "border-violet-100 dark:border-violet-900/40",
+        bg_hover: "hover:shadow-violet-100/50 dark:hover:shadow-violet-900/20",
+        gradient: "from-violet-500/5 to-transparent",
+        icon_bg: "bg-violet-600",
+        icon_text: "text-white",
+        title: "text-violet-950 dark:text-violet-50",
+        btn_text: "text-violet-600 dark:text-violet-400",
+        btn_hover_bg: "group-hover:bg-violet-50 dark:group-hover:bg-violet-900/20"
     }
+};
 
-    // Empty state - All caught up!
-    if (!actions || actions.length === 0) {
-        return (
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-            >
-                <Card className="border-[var(--success-border)] bg-[var(--success-bg)] shadow-none">
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-[var(--bg-primary)] flex items-center justify-center border border-[var(--success-border)]">
-                                <CheckCircle2 className="h-6 w-6 text-[var(--success)]" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-[var(--text-primary)]">
-                                    All caught up! ✨
-                                </h3>
-                                <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-                                    No pending actions. Youre doing great!
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </motion.div>
-        );
-    }
+const typeToColorMap: Record<string, keyof typeof colors> = {
+    'orders_ready': 'blue',
+    'ndr_pending': 'rose',
+    'low_wallet': 'amber',
+    'kyc_pending': 'emerald', // Specific Request: Green for KYC
+    'weight_dispute': 'violet',
+};
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+};
+
+export function ActionsRequired({ actions, isLoading }: ActionsRequiredProps) {
+    if (isLoading) return <ActionsSkeleton />;
+    if (!actions?.length) return <AllGoodState />;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-        >
-            <Card className="border-[var(--border-default)] bg-[var(--bg-primary)]">
-                <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
-                                <AlertCircle className="h-6 w-6 text-[var(--text-primary)]" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-xl font-bold text-[var(--text-primary)]">
-                                    Actions Required
-                                </CardTitle>
-                                <p className="text-sm text-[var(--text-secondary)] mt-1">
-                                    {actions.length} {actions.length === 1 ? 'item needs' : 'items need'} your attention
-                                </p>
-                            </div>
-                        </div>
+        <section className="space-y-6">
+            <div className="flex items-center gap-3 px-1">
+                <div className="p-2 rounded-xl bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-subtle)] shadow-sm">
+                    <Megaphone className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <div>
+                    <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+                        Action Center
+                    </h2>
+                    <p className="text-xs text-[var(--text-secondary)] font-medium">
+                        {actions.length} items require your attention
+                    </p>
+                </div>
+            </div>
 
-                        {/* Priority indicator */}
-                        <div className="hidden sm:flex items-center gap-2">
-                            {actions.some(a => a.priority === 'critical') && (
-                                <span className="px-2 py-1 rounded-full bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error-border)] text-xs font-bold uppercase tracking-wide">
-                                    Urgent
-                                </span>
+            <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
+            >
+                {actions.map((action) => {
+                    const Icon = iconMap[action.type] || AlertCircle;
+                    const colorKey = typeToColorMap[action.type] || 'blue';
+                    const theme = colors[colorKey];
+
+                    return (
+                        <motion.div
+                            key={action.id}
+                            variants={cardVariants}
+                            whileHover={{ y: -4 }}
+                            className={cn(
+                                "group relative flex flex-col justify-between overflow-hidden rounded-3xl border bg-[var(--bg-primary)] transition-all duration-300",
+                                theme.border,
+                                theme.bg_hover,
+                                "hover:shadow-lg"
                             )}
-                        </div>
-                    </div>
-                </CardHeader>
+                        >
+                            {/* Ambient Gradient */}
+                            <div className={cn("absolute inset-0 bg-gradient-to-br opacity-100", theme.gradient)} />
 
-                <CardContent className="space-y-3 pt-0">
-                    {actions.map((action, index) => {
-                        const Icon = iconMap[action.type] || AlertCircle;
-                        const styles = priorityStyles[action.priority];
+                            {/* Decorative Top Line */}
+                            <div className={cn("absolute top-0 inset-x-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300", theme.icon_bg)} />
 
-                        return (
-                            <motion.div
-                                key={action.id}
-                                variants={itemVariants}
-                                initial="hidden"
-                                animate="visible"
-                                transition={{ delay: index * 0.1 }}
-                                className={cn(
-                                    "p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4",
-                                    "transition-all duration-200 hover:shadow-sm group relative",
-                                    styles.bg,
-                                    styles.border
-                                )}
-                            >
-                                <div className="flex items-start sm:items-center gap-4 flex-1 pl-2">
+                            {/* Content */}
+                            <div className="relative p-6">
+                                <div className="flex justify-between items-start mb-5">
                                     <div className={cn(
-                                        "h-12 w-12 rounded-xl flex items-center justify-center shrink-0",
-                                        styles.iconBg
+                                        "h-14 w-14 rounded-2xl flex items-center justify-center shadow-md transform group-hover:scale-105 transition-all duration-300",
+                                        theme.icon_bg,
+                                        theme.icon_text
                                     )}>
-                                        <Icon className="h-6 w-6" />
+                                        <Icon className="w-7 h-7" strokeWidth={2} />
                                     </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <h4 className={cn("font-semibold text-base", styles.text)}>
-                                                {action.title}
-                                            </h4>
-                                            {action.count && action.count > 0 && (
-                                                <Badge className={cn("text-xs font-bold shadow-none", styles.badge)}>
-                                                    {action.count}
-                                                </Badge>
-                                            )}
+                                    {action.count !== undefined && action.count > 0 && (
+                                        <div className="flex flex-col items-end">
+                                            <span className={cn("text-4xl font-extrabold tracking-tight opacity-90", theme.title)}>
+                                                {action.count}
+                                            </span>
                                         </div>
-                                        <p className="text-sm text-[var(--text-secondary)] line-clamp-2">
-                                            {action.description}
-                                        </p>
-                                    </div>
+                                    )}
                                 </div>
 
-                                <div className="flex items-center gap-2 sm:shrink-0">
-                                    <Link href={action.actionUrl} className="flex-1 sm:flex-none">
-                                        <Button
-                                            size="sm"
-                                            className={cn("w-full sm:w-auto font-medium shadow-sm transition-opacity opacity-90 hover:opacity-100", styles.button)}
-                                        >
-                                            {action.actionLabel}
-                                        </Button>
-                                    </Link>
+                                <div className="space-y-2 mb-8">
+                                    <h3 className={cn("text-sm font-bold tracking-tight uppercase", theme.title)}>
+                                        {action.title}
+                                    </h3>
+                                    <p className="text-[13px] leading-6 text-[var(--text-secondary)] font-medium line-clamp-2">
+                                        {action.description}
+                                    </p>
                                 </div>
-                            </motion.div>
-                        );
-                    })}
-                </CardContent>
-            </Card>
+                            </div>
+
+                            {/* Footer / Action Area */}
+                            <div className="relative mt-auto px-6 pb-6 w-full">
+                                <Link href={action.actionUrl} className="block w-full">
+                                    <button className={cn(
+                                        "w-full flex items-center justify-between py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border border-transparent",
+                                        theme.btn_text,
+                                        theme.btn_hover_bg,
+                                        "hover:pl-5 hover:pr-3"
+                                    )}>
+                                        <span>{action.actionLabel}</span>
+                                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
+                                    </button>
+                                </Link>
+                            </div>
+                        </motion.div>
+                    );
+                })}
+            </motion.div>
+        </section>
+    );
+}
+
+function AllGoodState() {
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-3xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-secondary)]/10 p-12 text-center"
+        >
+            <div className="mx-auto mb-6 h-20 w-20 rounded-3xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center shadow-sm">
+                <CheckCircle2 className="w-10 h-10 text-[var(--success)]" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-xl font-bold text-[var(--text-primary)]">All Caught Up!</h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-sm mx-auto">
+                Excellent work! Your dashboard is clear of any pending actions.
+            </p>
         </motion.div>
     );
 }
 
-function ActionsRequiredSkeleton() {
+function ActionsSkeleton() {
     return (
-        <Card className="border-[var(--border-subtle)] bg-[var(--bg-primary)]">
-            <CardHeader>
-                <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-[var(--bg-tertiary)] animate-pulse" />
-                    <div className="space-y-2">
-                        <div className="h-5 w-40 bg-[var(--bg-tertiary)] rounded animate-pulse" />
-                        <div className="h-4 w-28 bg-[var(--bg-tertiary)] rounded animate-pulse" />
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-0">
-                {[1, 2, 3].map((i) => (
-                    <div
-                        key={i}
-                        className="h-24 bg-[var(--bg-tertiary)] rounded-2xl animate-pulse"
-                        style={{ animationDelay: `${i * 100}ms` }}
-                    />
+        <div className="space-y-6">
+            <div className="flex items-center gap-3 px-1 opacity-50">
+                <div className="h-8 w-8 rounded-lg bg-[var(--bg-secondary)] animate-pulse" />
+                <div className="h-4 w-32 bg-[var(--bg-secondary)] animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-64 rounded-3xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] animate-pulse" />
                 ))}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }
 

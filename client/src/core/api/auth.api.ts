@@ -65,17 +65,20 @@ class AuthApiService {
    * Get current authenticated user
    * GET /auth/me
    */
-  async getMe(): Promise<User> {
-    const response = await apiClient.get<GetMeResponse>('/auth/me');
+  async getMe(skipRefresh = false): Promise<User> {
+    const config = skipRefresh ? { headers: { 'X-Skip-Refresh': 'true' } } : {};
+    const response = await apiClient.get<GetMeResponse>('/auth/me', config);
     return response.data.data.user;
   }
 
   /**
    * Refresh access token using refresh token cookie
    * POST /auth/refresh
+   * Returns user data to avoid race condition with getMe()
    */
-  async refreshToken(): Promise<void> {
-    await apiClient.post<RefreshTokenResponse>('/auth/refresh');
+  async refreshToken(): Promise<{ data: { user: User } }> {
+    const response = await apiClient.post<RefreshTokenResponse>('/auth/refresh');
+    return response.data;
   }
 
   /**

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 import orderController from '../../../controllers/shipping/order.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';
@@ -29,7 +30,7 @@ const upload = multer({
  * @desc Create a new order
  * @access Private
  */
-router.post('/', authenticate, csrfProtection, asyncHandler(orderController.createOrder));
+router.post('/', authenticate, csrfProtection, checkKYC, asyncHandler(orderController.createOrder));
 
 /**
  * @route GET /api/v1/orders
@@ -50,14 +51,14 @@ router.get('/:orderId', authenticate, asyncHandler(orderController.getOrderById)
  * @desc Update an order
  * @access Private
  */
-router.patch('/:orderId', authenticate, csrfProtection, asyncHandler(orderController.updateOrder));
+router.patch('/:orderId', authenticate, csrfProtection, checkKYC, asyncHandler(orderController.updateOrder));
 
 /**
  * @route DELETE /api/v1/orders/:orderId
  * @desc Soft delete an order
  * @access Private
  */
-router.delete('/:orderId', authenticate, csrfProtection, asyncHandler(orderController.deleteOrder));
+router.delete('/:orderId', authenticate, csrfProtection, checkKYC, asyncHandler(orderController.deleteOrder));
 
 /**
  * @route POST /api/v1/orders/bulk
@@ -68,6 +69,7 @@ router.post(
     '/bulk',
     authenticate,
     csrfProtection,
+    checkKYC,
     upload.single('file'),
     asyncHandler(orderController.bulkImportOrders)
 );

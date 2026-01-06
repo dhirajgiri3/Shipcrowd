@@ -86,6 +86,14 @@ let failedQueue: Array<{
     reject: (reason?: any) => void;
 }> = [];
 
+// ✅ Circuit Breaker State (Fix #2)
+// Prevents infinite retry loops after refresh failure
+let refreshFailedPermanently = false;
+let refreshAttemptCount = 0;
+const MAX_REFRESH_ATTEMPTS = 3;
+const COOLDOWN_MS = 5000; // 5 seconds
+let lastFailureTime = 0;
+
 const processQueue = (error: any, token: string | null = null) => {
     failedQueue.forEach((prom) => {
         if (error) {
@@ -95,6 +103,38 @@ const processQueue = (error: any, token: string | null = null) => {
         }
     });
     failedQueue = [];
+};
+
+/**
+ * Reset all auth state (circuit breaker, refresh flags)
+ * Call on login/logout to ensure clean slate
+ */
+export const resetAuthState = () => {
+    refreshFailedPermanently = false;
+    refreshAttemptCount = 0;
+    lastFailureTime = 0;
+    isRefreshing = false;
+    failedQueue = [];
+    if (process.env.NODE_ENV === 'development') {
+        console.log('[Auth] ✅ Circuit breaker RESET');
+    }
+};
+
+/**
+ * Check if circuit breaker is currently blocking refresh attempts
+ */
+export const isRefreshBlocked = (): boolean => {
+    if (!refreshFailedPermanently) return false;
+
+    const timeSinceFailure = Date.now() - lastFailureTime;
+    if (timeSinceFailure >= COOLDOWN_MS) {
+        // Cooldown expired, allow retry
+        refreshFailedPermanently = false;
+        refreshAttemptCount = 0;
+        return false;
+    }
+
+    return true;
 };
 
 
@@ -227,15 +267,73 @@ const createApiClient = (): AxiosInstance => {
             if (
                 error.response?.status === 401 &&
                 !originalRequest._retry &&
+                !originalRequest.headers?.['X-Skip-Refresh'] &&
                 !isUrlPath(originalRequest.url, '/auth/refresh') &&
                 !isUrlPath(originalRequest.url, '/auth/login')
             ) {
+                // ✅ Fix #7: Check for terminal error codes that shouldn't trigger refresh
+                const responseData = error.response?.data as any;
+                const terminalCodes = ['SESSION_EXPIRED', 'SESSION_TIMEOUT', 'REFRESH_TOKEN_REQUIRED'];
+
+                if (terminalCodes.includes(responseData?.code)) {
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn(`[API] Terminal error code: ${responseData.code}, skipping refresh`);
+                    }
+
+                    if (typeof window !== 'undefined') {
+                        const currentPath = window.location.pathname;
+                        const { shouldNotRedirectOnAuthFailure } = await import('@/src/config/routes');
+
+                        if (!shouldNotRedirectOnAuthFailure(currentPath)) {
+                            window.location.href = '/login?session_expired=true';
+                        }
+                    }
+                    return Promise.reject(normalizeError(error));
+                }
+
+                // ✅ Fix #2: Check circuit breaker before attempting refresh
+                if (refreshFailedPermanently) {
+                    const timeSinceFailure = Date.now() - lastFailureTime;
+
+                    if (timeSinceFailure < COOLDOWN_MS) {
+                        if (process.env.NODE_ENV === 'development') {
+                            console.warn('[Auth] 🚨 Circuit breaker ACTIVE - blocking refresh attempt');
+                        }
+                        return Promise.reject(normalizeError(error));
+                    } else {
+                        // Cooldown expired, reset
+                        refreshFailedPermanently = false;
+                        refreshAttemptCount = 0;
+                    }
+                }
+
+                // ✅ Check max attempts
+                if (refreshAttemptCount >= MAX_REFRESH_ATTEMPTS) {
+                    if (process.env.NODE_ENV === 'development') {
+                        console.error('[Auth] 🚨 Max refresh attempts reached, circuit breaker TRIPPED');
+                    }
+                    refreshFailedPermanently = true;
+                    lastFailureTime = Date.now();
+
+                    if (typeof window !== 'undefined') {
+                        const currentPath = window.location.pathname;
+                        const { shouldNotRedirectOnAuthFailure } = await import('@/src/config/routes');
+
+                        if (!shouldNotRedirectOnAuthFailure(currentPath)) {
+                            window.location.href = '/login?auth_error=session_expired';
+                        }
+                    }
+                    return Promise.reject(normalizeError(error));
+                }
+
                 // ✅ If already refreshing, queue this request
                 if (isRefreshing) {
                     return new Promise((resolve, reject) => {
                         failedQueue.push({ resolve, reject });
                     })
                         .then(() => {
+                            // ✅ Fix #4: Mark queued request as retried before processing
+                            originalRequest._retry = true;
                             return client(originalRequest);
                         })
                         .catch((err) => {
@@ -245,14 +343,24 @@ const createApiClient = (): AxiosInstance => {
 
                 originalRequest._retry = true;
                 isRefreshing = true;
+                refreshAttemptCount++;
+
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[Auth] Refresh attempt ${refreshAttemptCount}/${MAX_REFRESH_ATTEMPTS}`);
+                }
 
                 try {
                     // Token refresh will set new cookies automatically
                     await client.post('/auth/refresh');
 
                     if (process.env.NODE_ENV === 'development') {
-                        console.log('[API] Token refreshed, retrying request:', originalRequest.url);
+                        console.log('[Auth] ✅ Token refresh SUCCESS');
                     }
+
+                    // ✅ Reset on success
+                    refreshAttemptCount = 0;
+                    refreshFailedPermanently = false;
+                    lastFailureTime = 0;
 
                     // ✅ Process queue on success
                     processQueue(null);
@@ -260,14 +368,18 @@ const createApiClient = (): AxiosInstance => {
                     // Retry the original request
                     return client(originalRequest);
                 } catch (refreshError) {
+                    if (process.env.NODE_ENV === 'development') {
+                        console.error('[Auth] ❌ Token refresh FAILED');
+                    }
+
+                    // ✅ Set circuit breaker on failure
+                    refreshFailedPermanently = true;
+                    lastFailureTime = Date.now();
+
                     // ✅ Process queue on failure
                     processQueue(refreshError, null);
 
                     // Refresh failed - redirect to login ONLY if not already on auth pages
-                    if (process.env.NODE_ENV === 'development') {
-                        console.warn('[API] Token refresh failed');
-                    }
-
                     if (typeof window !== 'undefined') {
                         const currentPath = window.location.pathname;
 
@@ -276,7 +388,7 @@ const createApiClient = (): AxiosInstance => {
 
                         // Only redirect if not on a public page
                         if (!shouldNotRedirectOnAuthFailure(currentPath)) {
-                            window.location.href = '/login';
+                            window.location.href = '/login?auth_error=session_expired';
                         }
                     }
                     return Promise.reject(normalizeError(error));

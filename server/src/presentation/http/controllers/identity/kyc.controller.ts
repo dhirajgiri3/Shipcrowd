@@ -962,14 +962,13 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
     // If all steps are complete, update the overall status
     if (allComplete) {
       await withTransaction(async (session) => {
-        kyc.status = 'verified';
+        // ✅ FEATURE 4: Require admin approval instead of auto-verification
+        kyc.status = 'pending'; // Changed from 'verified' to 'pending'
+        kyc.submittedAt = new Date(); // Track submission time
         await kyc.save({ session });
 
-        // Update user's KYC status
-        await User.findByIdAndUpdate(user._id, {
-          'kycStatus.isComplete': true,
-          'kycStatus.lastUpdated': new Date(),
-        }, { session });
+        // ❌ DO NOT auto-update user KYC status - wait for admin approval
+        // User kycStatus will be updated when admin approves via approveKYC endpoint
       });
     } else {
       await kyc.save();

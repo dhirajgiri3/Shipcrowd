@@ -7,7 +7,7 @@ import { TeamInvitation } from '../../../../infrastructure/database/mongoose/mod
 import { Session } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../../../../core/application/services/communication/email.service';
+import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
 import { createSession, updateSessionActivity, revokeSession, getUserSessions, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import { formatError } from '../../../../shared/errors/error-messages';
@@ -124,7 +124,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       email: validatedData.email,
       password: validatedData.password,
       name: validatedData.name,
-      role: validatedData.role || (teamRole ? 'staff' : 'seller'),
+      // ✅ FEATURE 5: Fix role assignment - all company users are 'seller'
+      role: validatedData.role || 'seller', // Changed from (teamRole ? 'staff' : 'seller')
       ...(companyId && { companyId }),
       ...(teamRole && { teamRole }),
       isActive: false,
@@ -135,6 +136,29 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     });
 
     await user.save();
+
+    // ✅ FEATURE 6: Auto-create company for first user and assign as owner
+    if (!companyId) {
+      const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+      const newCompany = new Company({
+        name: `${user.name}'s Company`,
+        owner: user._id,
+        status: 'pending_verification',
+        settings: {
+          currency: 'INR',
+          timezone: 'Asia/Kolkata',
+        },
+      });
+      await newCompany.save();
+
+      // Update user with company and owner role
+      user.companyId = newCompany._id;
+      user.teamRole = 'owner';
+      await user.save();
+
+      logger.info(`Auto-created company ${newCompany._id} for user ${user._id}`);
+    }
+
     await sendVerificationEmail(user.email, user.name, verificationToken);
 
     // Assert type after save if necessary, Mongoose methods usually return typed docs
@@ -423,21 +447,44 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
       // Check for inactivity timeout (Issue #27: Use env variable)
       const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(8 * 60 * 60 * 1000)); // Default 8 hours
-      const lastActiveTime = session.lastActive?.getTime() || session.createdAt.getTime();
+
+      // Update session activity BEFORE timeout check (Fix #5)
+      await updateSessionActivity(token);
+
+      // Re-fetch session after activity update
+      const updatedSession = await Session.findOne({
+        userId: typedUser._id,
+        refreshToken: token,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() }
+      });
+
+      if (!updatedSession) {
+        // Session was already rotated by concurrent request (Fix #9: Idempotency)
+        sendSuccess(res, {
+          user: {
+            id: typedUser._id.toString(),
+            name: typedUser.name,
+            email: typedUser.email,
+            role: typedUser.role,
+            companyId: typedUser.companyId,
+          }
+        }, 'Token already refreshed');
+        return;
+      }
+
+      const lastActiveTime = updatedSession.lastActive?.getTime() || updatedSession.createdAt.getTime();
       const timeSinceActive = Date.now() - lastActiveTime;
 
       if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
-        session.isRevoked = true;
-        await session.save();
+        updatedSession.isRevoked = true;
+        await updatedSession.save();
 
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
         sendError(res, 'Session expired due to inactivity', 401, 'SESSION_TIMEOUT');
         return;
       }
-
-      // Update session activity
-      await updateSessionActivity(token);
 
       const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
 
@@ -452,9 +499,9 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       await revokeRefreshToken(token);
 
       // Update session with new refresh token
-      session.refreshToken = newRefreshToken;
-      session.lastActive = new Date();
-      await session.save();
+      updatedSession.refreshToken = newRefreshToken;
+      updatedSession.lastActive = new Date();
+      await updatedSession.save();
 
       res.cookie(refreshCookieName, newRefreshToken, {
         httpOnly: true,
@@ -481,7 +528,15 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         req
       );
 
-      sendSuccess(res, null, 'Token refreshed');
+      sendSuccess(res, {
+        user: {
+          id: typedUser._id.toString(),
+          name: typedUser.name,
+          email: typedUser.email,
+          role: typedUser.role,
+          companyId: typedUser.companyId,
+        }
+      }, 'Token refreshed');
     } catch (tokenError) {
       logger.error('Token verification error:', tokenError);
       sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
@@ -570,6 +625,11 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
     typedUser.security.tokenVersion = (typedUser.security.tokenVersion || 0) + 1;
     await typedUser.save();
 
+    // ✅ FEATURE 12: Password Reset Auto-Logout
+    // Revoke all active sessions to force re-login everywhere
+    const revokedCount = await revokeAllSessions(typedUser._id.toString());
+    logger.info(`Password reset: Revoked ${revokedCount} sessions for user ${typedUser._id}`);
+
     await createAuditLog(
       typedUser._id.toString(),
       typedUser.companyId,
@@ -579,12 +639,13 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
       {
         message: 'Password reset completed',
         method: 'reset_token',
-        success: true
+        success: true,
+        sessionsRevoked: revokedCount,
       },
       req
     );
 
-    sendSuccess(res, null, 'Password has been reset successfully');
+    sendSuccess(res, { sessionsRevoked: revokedCount }, 'Password has been reset successfully. Please log in again.');
   } catch (error) {
     logger.error('Password reset error:', error);
     if (error instanceof z.ZodError) {
@@ -620,22 +681,79 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
+    // Mark user as verified and active
     typedUser.isActive = true;
+    typedUser.isEmailVerified = true;
     typedUser.security.verificationToken = undefined;
     typedUser.security.verificationTokenExpiry = undefined;
     await typedUser.save();
 
+    // ✅ AUTO-LOGIN: Generate tokens
+    const accessToken = generateAccessToken(
+      typedUser._id.toString(),
+      typedUser.role,
+      typedUser.companyId?.toString()
+    );
+
+    const refreshToken = generateRefreshToken(
+      typedUser._id.toString(),
+      typedUser.security.tokenVersion || 0,
+      '7d' // Default 7-day session
+    );
+
+    // ✅ Create session
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
+
+    // ✅ Set httpOnly cookies
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+
+    res.cookie(refreshCookieName, refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.cookie(accessCookieName, accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Audit log
     await createAuditLog(
       typedUser._id.toString(),
       typedUser.companyId,
-      'update',
+      'verify', // Changed from 'email_verified_auto_login' to valid action type
       'user',
       typedUser._id.toString(),
-      { message: 'Email verified' },
+      { message: 'Email verified and auto-logged in' },
       req
     );
 
-    sendSuccess(res, null, 'Email verified successfully');
+    // ✅ Return user data for frontend to update auth state
+    const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';
+
+    sendSuccess(
+      res,
+      {
+        user: {
+          id: typedUser._id.toString(),
+          name: typedUser.name,
+          email: typedUser.email,
+          role: typedUser.role,
+          companyId: typedUser.companyId?.toString(),
+          teamRole: typedUser.teamRole,
+        },
+        autoLogin: true,
+        redirectUrl,
+      },
+      'Email verified successfully. Logging you in...'
+    );
   } catch (error) {
     logger.error('Email verification error:', error);
     if (error instanceof z.ZodError) {
@@ -650,6 +768,7 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
 
 /**
  * Logout user
@@ -866,10 +985,11 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
       user.role,
       user.companyId
     );
-    const refreshToken = await generateRefreshToken(user._id.toString(), user.security?.tokenVersion || 0);
+    const refreshToken = await generateRefreshToken(user._id.toString(), user.security?.tokenVersion || 0, '30d');
 
+    // Set session expiry to 30 days for OAuth (better UX since no password typed)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
 
     // Create session
     await createSession(
@@ -890,8 +1010,26 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
       req
     );
 
-    // Redirect to frontend with tokens
-    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${accessToken}&refresh=${refreshToken}`;
+    // Set httpOnly cookies (same as regular login)
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+
+    res.cookie(accessCookieName, accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie(refreshCookieName, refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for OAuth
+    });
+
+    // Redirect to frontend without tokens in URL
+    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/seller/dashboard`;
     res.redirect(redirectUrl);
   } catch (error) {
     logger.error('Google OAuth callback error:', error);
@@ -1205,6 +1343,217 @@ export const verifyEmailChange = async (req: Request, res: Response, next: NextF
   }
 };
 
+/**
+ * Request magic link for passwordless login
+ * @route POST /auth/magic-link
+ */
+export const requestMagicLink = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const schema = z.object({
+      email: z.string().email(),
+    });
+    const { email } = schema.parse(req.body);
+
+    // Find user
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    // Generic response to prevent user enumeration
+    const genericMessage = 'If your email is registered, you will receive a magic link shortly';
+
+    if (!user) {
+      sendSuccess(res, null, genericMessage);
+      return;
+    }
+
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    // Check if account is active
+    if (!typedUser.isActive) {
+      sendSuccess(res, null, genericMessage);
+      return;
+    }
+
+    // Generate raw token (32 bytes = 64 hex characters)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    // Create magic link record
+    const { MagicLink } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+    await MagicLink.create({
+      email: typedUser.email,
+      userId: typedUser._id,
+      token: hashedToken,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+    });
+
+    // Send magic link email
+    const magicUrl = `${process.env.CLIENT_URL}/auth/magic?token=${rawToken}`;
+    await sendMagicLinkEmail(typedUser.email, typedUser.name, magicUrl);
+
+    // Audit log
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'security',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Magic link requested', ip: req.ip },
+      req
+    );
+
+    sendSuccess(res, null, genericMessage);
+  } catch (error) {
+    logger.error('Magic link request error:', error);
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
+    }
+    next(error);
+  }
+};
+
+/**
+ * Verify magic link and log user in
+ * @route POST /auth/verify-magic-link
+ */
+export const verifyMagicLink = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const schema = z.object({
+      token: z.string(),
+    });
+    const { token } = schema.parse(req.body);
+
+    // Hash the token to match database
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find magic link
+    const { MagicLink } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+    const magicLink = await MagicLink.findOne({
+      token: hashedToken,
+      expiresAt: { $gt: new Date() },
+      usedAt: null, // Not yet used
+    });
+
+    if (!magicLink) {
+      sendError(res, 'Invalid or expired magic link', 400, 'INVALID_MAGIC_LINK');
+      return;
+    }
+
+    // Mark as used
+    magicLink.usedAt = new Date();
+    await magicLink.save();
+
+    // Get user
+    const user = await User.findById(magicLink.userId);
+
+    if (!user) {
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
+    }
+
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    if (!typedUser.isActive) {
+      sendError(res, 'Account is not active', 403, 'ACCOUNT_INACTIVE');
+      return;
+    }
+
+    // Generate tokens (30-day session for magic link convenience)
+    const accessToken = generateAccessToken(
+      typedUser._id.toString(),
+      typedUser.role,
+      typedUser.companyId?.toString()
+    );
+
+    const refreshToken = generateRefreshToken(
+      typedUser._id.toString(),
+      typedUser.security.tokenVersion || 0,
+      '30d' // Magic link = long session
+    );
+
+    // Create session
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
+
+    // Set httpOnly cookies
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+
+    res.cookie(refreshCookieName, refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    res.cookie(accessCookieName, accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Audit log
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'login',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Magic link login successful', ip: req.ip },
+      req
+    );
+
+    // Update last login
+    typedUser.security.lastLogin = {
+      timestamp: new Date(),
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+      success: true,
+    };
+    await typedUser.save();
+
+    // Return user data
+    const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';
+
+    sendSuccess(
+      res,
+      {
+        user: {
+          id: typedUser._id.toString(),
+          name: typedUser.name,
+          email: typedUser.email,
+          role: typedUser.role,
+          companyId: typedUser.companyId?.toString(),
+          teamRole: typedUser.teamRole,
+        },
+        redirectUrl,
+      },
+      'Login successful'
+    );
+  } catch (error) {
+    logger.error('Magic link verification error:', error);
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => ({
+        code: 'VALIDATION_ERROR',
+        message: err.message,
+        field: err.path.join('.'),
+      }));
+      sendValidationError(res, errors);
+      return;
+    }
+    next(error);
+  }
+};
+
 
 const authController = {
   register,
@@ -1221,6 +1570,8 @@ const authController = {
   changePassword,
   changeEmail,
   verifyEmailChange,
+  requestMagicLink,
+  verifyMagicLink,
 };
 
 export default authController;

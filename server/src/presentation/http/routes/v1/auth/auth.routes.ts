@@ -90,6 +90,47 @@ router.post('/verify-email', emailVerificationRateLimiter, authController.verify
 router.post('/resend-verification', csrfProtection, emailVerificationRateLimiter, authController.resendVerificationEmail);
 
 /**
+ * @route POST /auth/magic-link
+ * @desc Request magic link for passwordless login
+ * @access Public
+ */
+router.post('/magic-link', csrfProtection, emailVerificationRateLimiter, authController.requestMagicLink);
+
+/**
+ * @route POST /auth/verify-magic-link
+ * @desc Verify magic link and log in
+ * @access Public
+ */
+router.post('/verify-magic-link', authController.verifyMagicLink);
+
+// ✅ FEATURE 9: Account Recovery (Email Verification)
+import recoveryController from '../../../controllers/auth/recovery.controller';
+
+/**
+ * @route POST /auth/recovery/request-unlock
+ * @desc Request account recovery email for locked accounts
+ * @access Public
+ */
+router.post(
+  '/recovery/request-unlock',
+  csrfProtection,
+  emailVerificationRateLimiter,
+  recoveryController.requestAccountRecovery
+);
+
+/**
+ * @route POST /auth/recovery/verify-unlock
+ * @desc Verify recovery token and unlock account
+ * @access Public
+ */
+router.post(
+  '/recovery/verify-unlock',
+  csrfProtection,
+  emailVerificationRateLimiter,
+  recoveryController.verifyRecoveryToken
+);
+
+/**
  * @route POST /auth/check-password-strength
  * @desc Check password strength
  * @access Public

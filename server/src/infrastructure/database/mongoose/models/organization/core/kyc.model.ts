@@ -62,6 +62,7 @@ export interface IKYC extends Document {
   };
   verificationNotes?: string;
   rejectionReason?: string;
+  submittedAt?: Date; // Track when KYC was submitted for admin review
   createdAt: Date;
   updatedAt: Date;
 }
@@ -174,6 +175,7 @@ const KYCSchema = new Schema<IKYC>(
     },
     verificationNotes: String,
     rejectionReason: String,
+    submittedAt: Date, // Track when KYC was submitted for admin review
   },
   {
     timestamps: true,

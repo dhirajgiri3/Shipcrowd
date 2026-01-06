@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useEffect, useRef, useState } from '
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
 import { authApi } from '@/src/core/api/auth.api';
 import { sessionApi, type Session } from '@/src/core/api/session.api';
-import { clearCSRFToken, prefetchCSRFToken } from '@/src/core/api/client';
+import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/client';
 import { normalizeError } from '@/src/core/api/client';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -60,42 +60,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // ✅ Cross-Tab Synchronization
     const authChannel = new BroadcastChannel('auth_channel');
 
-    authChannel.onmessage = (event) => {
+    authChannel.onmessage = async (event) => {
       if (event.data.type === 'LOGOUT') {
         // Received LOGOUT from another tab
         // Only act if currently logged in to avoid loops
-        setUser((currentUser) => {
-          if (currentUser) {
-            // Clear local state without calling API (since other tab did it)
-            clearCSRFToken();
-            if (refreshIntervalRef.current) {
-              clearInterval(refreshIntervalRef.current);
-              refreshIntervalRef.current = null;
-            }
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[Auth] Synced logout from another tab');
-            }
-            return null;
+        if (user) {
+          // ✅ Fix #8: Reset circuit breaker on cross-tab logout
+          clearCSRFToken();
+          resetAuthState();
+          if (refreshIntervalRef.current) {
+            clearInterval(refreshIntervalRef.current);
+            refreshIntervalRef.current = null;
           }
-          return currentUser;
-        });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] Synced logout from another tab');
+          }
+          setUser(null);
+        }
       } else if (event.data.type === 'LOGIN') {
         // Received LOGIN from another tab
-        // If currently logged out, fetch user to sync state
-        setUser((currentUser) => {
-          if (!currentUser) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[Auth] Synced login from another tab');
-            }
-            // Trigger re-fetch
-            authApi.getMe().then(userData => {
-              setUser(userData);
-              setupTokenRefresh();
-              prefetchCSRFToken().catch(console.warn);
-            }).catch(console.error);
+        // ✅ Fix #3: Move async logic outside setState callback
+        if (!user) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] Synced login from another tab');
           }
-          return currentUser;
-        });
+          try {
+            const userData = await authApi.getMe();
+            setUser(userData);
+            setupTokenRefresh();
+            prefetchCSRFToken().catch(console.warn);
+          } catch (err) {
+            console.error('[Auth] Failed to sync login from tab:', err);
+          }
+        }
       }
     };
 
@@ -142,13 +139,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (timeSinceRefresh >= REFRESH_THRESHOLD) {
         // ✅ Only refresh if user has been active recently
         if (timeSinceActivity < INACTIVITY_TIMEOUT) {
+          // ✅ Check circuit breaker before attempting refresh
+          if (isRefreshBlocked()) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[Auth] Skipping refresh - circuit breaker active');
+            }
+            // Clear interval to stop further attempts
+            if (refreshIntervalRef.current) {
+              clearInterval(refreshIntervalRef.current);
+              refreshIntervalRef.current = null;
+            }
+            return;
+          }
+
           try {
             if (process.env.NODE_ENV === 'development') {
               console.log('[Auth] Refreshing token (Active Session)');
             }
-            await authApi.refreshToken();
-            const userData = await authApi.getMe();
-            setUser(userData);
+            // ✅ Fix #1: Use user data from refresh response
+            const response = await authApi.refreshToken();
+            if (response?.data?.user) {
+              setUser(response.data.user);
+            }
             // Update last refresh time on success
             lastRefreshRef.current = Date.now();
           } catch (err) {
@@ -188,7 +200,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       });
 
-      const userData = await authApi.getMe();
+      const userData = await authApi.getMe(true);
       setUser(userData);
       setupTokenRefresh();
     } catch (err) {
@@ -252,6 +264,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         setError(null);
 
+        // ✅ Fix #2: Reset circuit breaker on login
+        resetAuthState();
+
         const response = await authApi.login(data);
         const userData = response.data.user;
 
@@ -300,8 +315,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear state
       setUser(null);
 
-      // Clear CSRF token
+      // ✅ Fix #2: Reset circuit breaker on logout
       clearCSRFToken();
+      resetAuthState();
 
       // Stop token refresh
       if (refreshIntervalRef.current) {
@@ -332,9 +348,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         setError(null);
 
-        await authApi.verifyEmail(token);
+        const response = await authApi.verifyEmail(token);
 
-        return { success: true };
+        // ✅ If auto-login is enabled, set user state
+        if (response.autoLogin && response.user) {
+          // Map response user to full User type
+          const fullUser: User = {
+            _id: response.user.id,
+            name: response.user.name,
+            email: response.user.email,
+            role: response.user.role as any,
+            companyId: response.user.companyId,
+            teamRole: response.user.teamRole as any,
+            isEmailVerified: true,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          setUser(fullUser);
+
+          // Broadcast login to other tabs via BroadcastChannel
+          const authChannel = new BroadcastChannel('auth_channel');
+          authChannel.postMessage({ type: 'LOGIN', user: fullUser });
+          authChannel.close();
+        }
+
+        return { success: true, data: response };
       } catch (err) {
         const normalizedErr = normalizeError(err as any);
         setError(normalizedErr);
@@ -345,6 +385,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
     []
   );
+
 
   /**
    * Resend verification email

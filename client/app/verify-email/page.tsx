@@ -41,19 +41,19 @@ function VerifyEmailContent() {
           setStatus('success');
           setMessage('Email verified successfully!');
 
-          // ✅ Get user data to check onboarding status
-          const userData = await authApi.getMe();
-          const destination = userData?.companyId ? '/seller' : '/onboarding';
+          // ✅ Use auto-login response data (no need for getMe())
+          const responseData = result.data;
+          const destination = responseData?.redirectUrl || '/seller/dashboard';
 
           // ✅ Set destination for UI message
-          setRedirectDestination(userData?.companyId ? 'dashboard' : 'onboarding');
+          setRedirectDestination(destination.includes('admin') ? 'dashboard' : 'dashboard');
 
           // Auto-redirect after 5 seconds
           const timer = setInterval(() => {
             setCountdown((prev) => {
               if (prev <= 1) {
                 clearInterval(timer);
-                // ✅ Redirect based on company status
+                // ✅ Redirect using backend-provided URL
                 router.push(destination);
                 return 0;
               }
@@ -148,7 +148,7 @@ function VerifyEmailContent() {
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => router.push(redirectDestination === 'dashboard' ? '/seller' : '/onboarding')}
+              onClick={() => router.push('/seller/dashboard')}
               className="flex-1 py-3 bg-primaryBlue text-white rounded-lg hover:bg-primaryBlue/90 transition-colors font-medium"
             >
               Continue Now

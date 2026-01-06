@@ -100,7 +100,18 @@ export interface VerifyEmailRequest {
 export interface VerifyEmailResponse {
   success: true;
   message: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    companyId?: string;
+    teamRole?: string;
+  };
+  autoLogin?: boolean;
+  redirectUrl?: string;
 }
+
 
 export interface ResendVerificationRequest {
   email: string;
@@ -133,6 +144,9 @@ export interface ResetPasswordConfirmResponse {
 export interface RefreshTokenResponse {
   success: true;
   message: string;
+  data: {
+    user: User;
+  };
 }
 
 export interface ChangePasswordRequest {
@@ -193,7 +207,7 @@ export interface AuthContextType {
   refreshUser: () => Promise<void>;
 
   // Verification
-  verifyEmail: (token: string) => Promise<{ success: boolean; error?: NormalizedError }>;
+  verifyEmail: (token: string) => Promise<{ success: boolean; data?: VerifyEmailResponse; error?: NormalizedError }>;
   resendVerification: (email: string) => Promise<{ success: boolean; error?: NormalizedError }>;
 
   // Password Management

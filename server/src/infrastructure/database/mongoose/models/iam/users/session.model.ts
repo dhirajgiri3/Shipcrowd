@@ -21,6 +21,15 @@ export interface ISession extends Document {
   lastActive: Date;
   expiresAt: Date;
   isRevoked: boolean;
+  // ✅ FEATURE 15: Token Rotation Reuse Detection
+  previousToken?: string;
+  rotationCount?: number;
+  lastRotatedAt?: Date;
+  suspiciousActivity?: {
+    reuseDetected?: boolean;
+    reuseAttemptedAt?: Date;
+    reuseIp?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
   compareRefreshToken(candidateToken: string): Promise<boolean>;
@@ -75,6 +84,27 @@ const SessionSchema = new Schema<ISession>(
       default: false,
       index: true,
     },
+    // ✅ FEATURE 15: Token Rotation Reuse Detection
+    previousToken: {
+      type: String,
+      default: null,
+    },
+    rotationCount: {
+      type: Number,
+      default: 0,
+    },
+    lastRotatedAt: {
+      type: Date,
+      default: null,
+    },
+    suspiciousActivity: {
+      reuseDetected: {
+        type: Boolean,
+        default: false,
+      },
+      reuseAttemptedAt: Date,
+      reuseIp: String,
+    },
   },
   {
     timestamps: true,
@@ -95,16 +125,16 @@ SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index f
 // ============================================================================
 
 // Hash refresh token before saving
-SessionSchema.pre('save', async function(next) {
-    if (this.isModified('refreshToken')) {
-        this.refreshToken = await bcrypt.hash(this.refreshToken, 12);
-    }
-    next();
+SessionSchema.pre('save', async function (next) {
+  if (this.isModified('refreshToken')) {
+    this.refreshToken = await bcrypt.hash(this.refreshToken, 12);
+  }
+  next();
 });
 
 // Method to compare refresh token
-SessionSchema.methods.compareRefreshToken = async function(candidateToken: string): Promise<boolean> {
-    return bcrypt.compare(candidateToken, this.refreshToken);
+SessionSchema.methods.compareRefreshToken = async function (candidateToken: string): Promise<boolean> {
+  return bcrypt.compare(candidateToken, this.refreshToken);
 };
 
 // Create and export the Session model

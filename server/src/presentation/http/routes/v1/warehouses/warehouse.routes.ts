@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 import warehouseController from '../../../controllers/warehouse/warehouse.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';
@@ -29,7 +30,7 @@ const upload = multer({
  * @desc Create a new warehouse
  * @access Private
  */
-router.post('/', authenticate, csrfProtection, asyncHandler(warehouseController.createWarehouse));
+router.post('/', authenticate, csrfProtection, checkKYC, asyncHandler(warehouseController.createWarehouse));
 
 /**
  * @route GET /warehouses
@@ -50,14 +51,14 @@ router.get('/:warehouseId', authenticate, asyncHandler(warehouseController.getWa
  * @desc Update a warehouse
  * @access Private
  */
-router.patch('/:warehouseId', authenticate, csrfProtection, asyncHandler(warehouseController.updateWarehouse));
+router.patch('/:warehouseId', authenticate, csrfProtection, checkKYC, asyncHandler(warehouseController.updateWarehouse));
 
 /**
  * @route DELETE /warehouses/:warehouseId
  * @desc Delete a warehouse (soft delete)
  * @access Private
  */
-router.delete('/:warehouseId', authenticate, csrfProtection, asyncHandler(warehouseController.deleteWarehouse));
+router.delete('/:warehouseId', authenticate, csrfProtection, checkKYC, asyncHandler(warehouseController.deleteWarehouse));
 
 /**
  * @route POST /warehouses/import

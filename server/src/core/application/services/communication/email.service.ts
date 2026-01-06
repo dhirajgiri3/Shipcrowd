@@ -624,6 +624,59 @@ export const sendRecoveryEmail = async (
 };
 
 /**
+ * Send a magic link for passwordless login
+ */
+export const sendMagicLinkEmail = async (
+  to: string,
+  name: string,
+  magicUrl: string
+): Promise<boolean> => {
+  // Check if we have a template ID for magic link emails
+  const templateId = process.env.SENDGRID_MAGIC_LINK_TEMPLATE_ID;
+
+  if (templateId && EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    // Use SendGrid template with dynamic data
+    return sendEmail(
+      to,
+      'Your Magic Link to Login',
+      '', // HTML is not needed when using a template
+      '', // Text is not needed when using a template
+      undefined, // No attachments
+      templateId,
+      {
+        name,
+        magic_url: magicUrl,
+      }
+    );
+  } else {
+    // Fallback to custom HTML
+    const html = `
+      <h1>🔐 Your Magic Link</h1>
+      <p>Hello ${name},</p>
+      <p>You requested a magic link to sign in to your ShipCrowd account. Click the button below to log in instantly:</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${magicUrl}" style="background-color: #2525FF; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
+          🚀 Sign In to ShipCrowd
+        </a>
+      </p>
+      <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+      <p style="background-color: #f5f5f5; padding: 12px; border-radius: 6px; word-break: break-all; font-size: 13px; color: #333;">
+        ${magicUrl}
+      </p>
+      <p style="color: #999; font-size: 13px; margin-top: 30px;">
+        ⏱️ This link will expire in <strong>15 minutes</strong> for security reasons.
+      </p>
+      <p style="color: #999; font-size: 13px;">
+        If you didn't request this magic link, you can safely ignore this email.
+      </p>
+      <p>Thank you,<br>The ShipCrowd Team</p>
+    `;
+
+    return sendEmail(to, '🔐 Your Magic Link to Login', html);
+  }
+};
+
+/**
  * Send a company owner invitation email (admin only)
  */
 export const sendOwnerInvitationEmail = async (
@@ -677,6 +730,89 @@ export const sendOwnerInvitationEmail = async (
   }
 };
 
+/**
+ * Send account recovery email for locked accounts
+ */
+export const sendAccountRecoveryEmail = async (
+  to: string,
+  name: string,
+  recoveryUrl: string
+): Promise<boolean> => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header h1 { color: white; margin: 0; font-size: 28px; }
+          .content { background: #ffffff; padding: 40px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .btn { display: inline-block; padding: 14px 32 px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+          .btn:hover { background: #5568d3; }
+          .alert { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0; border-radius: 4px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔓 Account Recovery</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${name},</p>
+            <p>We received a request to recover your ShipCrowd account. If you were locked out or need to regain access, you can reset your account using the link below.</p>
+            
+            <div class="alert">
+              <strong>⏰ This recovery link expires in 4 hours</strong>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${recoveryUrl}" class="btn">Recover My Account</a>
+            </div>
+            
+            <p>After clicking the link above, you'll be able to:</p>
+            <ul>
+              <li>Unlock your account if it was locked</li>
+              <li>Reset your password</li>
+              <li>Regain full access to your ShipCrowd account</li>
+            </ul>
+            
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
+              <strong>🔐 Security Note:</strong> If you didn't request this recovery link, please ignore this email and ensure your account credentials are secure. Your account remains protected.
+            </p>
+            
+            <p>Thank you,<br>The ShipCrowd Security Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated security email from ShipCrowd</p>
+            <p>© ${new Date().getFullYear()} ShipCrowd. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Account Recovery - ShipCrowd
+
+Hello ${name},
+
+We received a request to recover your ShipCrowd account.
+
+Recovery Link: ${recoveryUrl}
+
+This link expires in 4 hours.
+
+If you didn't request this, please ignore this email and ensure your account credentials are secure.
+
+Thank you,
+The ShipCrowd Security Team
+  `;
+
+  return sendEmail(to, '🔓 Account Recovery - ShipCrowd', html, text);
+};
+
 export default {
   sendEmail,
   sendVerificationEmail,
@@ -689,5 +825,7 @@ export default {
   sendEmailChangeVerification,
   sendEmailChangeNotification,
   sendRecoveryEmail,
+  sendMagicLinkEmail,
   sendOwnerInvitationEmail,
+  sendAccountRecoveryEmail,
 };

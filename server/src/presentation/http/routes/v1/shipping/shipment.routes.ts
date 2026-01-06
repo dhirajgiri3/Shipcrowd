@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 import shipmentController from '../../../controllers/shipping/shipment.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
@@ -10,7 +11,7 @@ const router = express.Router();
  * @desc Create a new shipment from an order
  * @access Private
  */
-router.post('/', authenticate, csrfProtection, asyncHandler(shipmentController.createShipment));
+router.post('/', authenticate, csrfProtection, checkKYC, asyncHandler(shipmentController.createShipment));
 
 /**
  * @route GET /api/v1/shipments
@@ -45,7 +46,7 @@ router.get('/:shipmentId', authenticate, asyncHandler(shipmentController.getShip
  * @desc Update shipment status
  * @access Private
  */
-router.patch('/:shipmentId/status', authenticate, csrfProtection, asyncHandler(shipmentController.updateShipmentStatus));
+router.patch('/:shipmentId/status', authenticate, csrfProtection, checkKYC, asyncHandler(shipmentController.updateShipmentStatus));
 
 /**
  * @route DELETE /api/v1/shipments/:shipmentId

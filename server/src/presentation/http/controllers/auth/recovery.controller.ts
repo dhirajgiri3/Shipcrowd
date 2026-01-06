@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { AuthRequest } from '../../middleware/auth/auth';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
@@ -253,6 +255,189 @@ export const sendRecoveryOptionsHandler = async (req: Request, res: Response, ne
   }
 };
 
+/**
+ * Request account recovery via email (for locked accounts)
+ * @route POST /api/v1/auth/recovery/request-unlock
+ */
+export const requestAccountRecovery = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      sendError(res, 'Email is required', 400, 'EMAIL_REQUIRED');
+      return;
+    }
+
+    // Generic response message to prevent user enumeration
+    const genericMessage = 'If your email is registered, you will receive recovery instructions shortly';
+
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      '+security.lockUntil'
+    );
+
+    // If user doesn't exist, still send generic success response
+    if (!user) {
+      logger.warn(`Account recovery requested for non-existent email: ${email}`);
+      sendSuccess(res, null, genericMessage);
+      return;
+    }
+
+    // Dynamically import RecoveryToken and email service
+    const { RecoveryToken } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+    const { sendAccountRecoveryEmail } = await import('../../../../core/application/services/communication/email.service.js');
+
+    // Generate recovery token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    // Create recovery token record
+    await RecoveryToken.create({
+      userId: user._id,
+      token: hashedToken,
+      method: 'email',
+      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+    });
+
+    // Send recovery email with the raw (unhashed) token
+    const recoveryUrl = `${process.env.CLIENT_URL}/account-recovery?token=${rawToken}`;
+    await sendAccountRecoveryEmail(user.email, user.name, recoveryUrl);
+
+    // Audit log
+    await createAuditLog(
+      (user._id as mongoose.Types.ObjectId).toString(),
+      user.companyId ? (user.companyId as mongoose.Types.ObjectId).toString() : '',
+      'security',
+      'user',
+      (user._id as mongoose.Types.ObjectId).toString(),
+      {
+        message: 'Account recovery requested',
+        ip: req.ip || 'unknown',
+        method: 'email',
+      },
+      req
+    );
+
+    logger.info(`Account recovery requested for user ${user._id} from IP ${req.ip}`);
+
+    sendSuccess(res, null, genericMessage);
+  } catch (error) {
+    logger.error('Account recovery request error:', error);
+    next(error);
+  }
+};
+
+/**
+ * Verify recovery token and unlock account
+ * @route POST /api/v1/auth/recovery/verify-unlock
+ */
+export const verifyRecoveryToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      sendError(res, 'Recovery token is required', 400, 'TOKEN_REQUIRED');
+      return;
+    }
+
+    // Hash the token to match database
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Dynamically import RecoveryToken
+    const { RecoveryToken } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+
+    // Find valid recovery token
+    const recoveryToken = await RecoveryToken.findOne({
+      token: hashedToken,
+      expiresAt: { $gt: new Date() },
+      usedAt: null,
+    });
+
+    if (!recoveryToken) {
+      logger.warn(`Invalid or expired recovery token attempted from IP ${req.ip}`);
+      sendError(res, 'Invalid or expired recovery token', 400, 'INVALID_TOKEN');
+      return;
+    }
+
+    // Mark token as used
+    recoveryToken.usedAt = new Date();
+    await recoveryToken.save();
+
+    // Get user
+    const user = await User.findById(recoveryToken.userId).select(
+      '+security.failedLoginAttempts +security.lockUntil'
+    );
+
+    if (!user) {
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
+    }
+
+    // Start session for atomic updates
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Unlock account if locked (check lockUntil field)
+      if (user.security?.lockUntil && user.security.lockUntil > new Date()) {
+        user.security.lockUntil = undefined;
+      }
+
+      // Reset failed login attempts
+      user.security.failedLoginAttempts = 0;
+
+      await user.save({ session });
+
+      // Audit log
+      await createAuditLog(
+        (user._id as mongoose.Types.ObjectId).toString(),
+        user.companyId ? (user.companyId as mongoose.Types.ObjectId).toString() : '',
+        'account_unlock',
+        'user',
+        (user._id as mongoose.Types.ObjectId).toString(),
+        {
+          message: 'Account recovered via email verification',
+          ip: req.ip || 'unknown',
+          method: 'email',
+        },
+        req
+      );
+
+      await session.commitTransaction();
+
+      logger.info(`Account recovered successfully for user ${user._id}`);
+
+      sendSuccess(
+        res,
+        {
+          email: user.email,
+          nextStep: 'reset_password',
+          redirectUrl: '/reset-password',
+        },
+        'Account recovered successfully. Please reset your password to continue.'
+      );
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  } catch (error) {
+    logger.error('Account recovery verification error:', error);
+    next(error);
+  }
+};
+
 const recoveryController = {
   getSecurityQuestions,
   setupSecurityQuestionsHandler,
@@ -260,6 +445,8 @@ const recoveryController = {
   generateRecoveryKeysHandler,
   getRecoveryStatus,
   sendRecoveryOptionsHandler,
+  requestAccountRecovery,
+  verifyRecoveryToken,
 };
 
 export default recoveryController;
