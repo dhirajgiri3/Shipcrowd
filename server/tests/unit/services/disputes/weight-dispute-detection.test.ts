@@ -10,6 +10,9 @@ jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shi
 jest.mock('../../../../src/infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model');
 jest.mock('../../../../src/shared/logger/winston.logger');
 
+// Type helpers for mocks
+type MockedFunction<T extends (...args: any[]) => any> = jest.MockedFunction<T>;
+
 describe('WeightDisputeDetectionService', () => {
     const mockShipmentId = '654321654321654321654321';
     const mockCompanyId = '123456123456123456123456';
@@ -27,10 +30,10 @@ describe('WeightDisputeDetectionService', () => {
             packageDetails: { weight: 1.0 }, // 1kg declared
             paymentDetails: { shippingCost: 100 },
             weights: { declared: { value: 1.0, unit: 'kg' } },
-            save: jest.fn().mockResolvedValue(true),
+            save: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
         };
 
-        (Shipment.findById as jest.Mock).mockResolvedValue(mockShipment);
+        (Shipment.findById as jest.MockedFunction<any>).mockResolvedValue(mockShipment);
     });
 
     describe('detectOnCarrierScan', () => {
@@ -51,16 +54,16 @@ describe('WeightDisputeDetectionService', () => {
 
         it('should create dispute when discrepancy exceeds 5%', async () => {
             // Act: 1.1kg (10% discrepancy)
-            (WeightDispute as unknown as jest.Mock).mockImplementation(() => ({
-                save: jest.fn().mockResolvedValue({
-                    _id: 'dispute123',
-                    disputeId: 'WD-20230101-ABCDE',
-                    detectedAt: new Date(),
-                    financialImpact: { difference: 10 }
-                }),
+            const mockDispute = {
                 _id: 'dispute123',
+                disputeId: 'WD-20230101-ABCDE',
                 detectedAt: new Date(),
                 financialImpact: { difference: 10 }
+            };
+
+            (WeightDispute as jest.MockedFunction<any>).mockImplementation(() => ({
+                save: jest.fn<() => Promise<typeof mockDispute>>().mockResolvedValue(mockDispute),
+                ...mockDispute
             }));
 
             const result = await WeightDisputeDetectionService.detectOnCarrierScan(
@@ -83,16 +86,16 @@ describe('WeightDisputeDetectionService', () => {
             mockShipment.weights.declared.value = 2.0;
             mockShipment.paymentDetails.shippingCost = 200;
 
-            (WeightDispute as unknown as jest.Mock).mockImplementation(() => ({
-                save: jest.fn().mockResolvedValue({
-                    _id: 'dispute123',
-                    disputeId: 'WD-20230101-ABCDE',
-                    detectedAt: new Date(),
-                    financialImpact: { difference: 100 }
-                }),
+            const mockDispute = {
                 _id: 'dispute123',
+                disputeId: 'WD-20230101-ABCDE',
                 detectedAt: new Date(),
                 financialImpact: { difference: 100 }
+            };
+
+            (WeightDispute as jest.MockedFunction<any>).mockImplementation(() => ({
+                save: jest.fn<() => Promise<typeof mockDispute>>().mockResolvedValue(mockDispute),
+                ...mockDispute
             }));
 
             // Act: 3kg (50% discrepancy, ₹100 diff)
@@ -122,7 +125,7 @@ describe('WeightDisputeDetectionService', () => {
         });
 
         it('should throw error if shipment not found', async () => {
-            (Shipment.findById as jest.Mock).mockResolvedValue(null);
+            (Shipment.findById as jest.MockedFunction<any>).mockResolvedValue(null);
 
             await expect(WeightDisputeDetectionService.detectOnCarrierScan(
                 mockShipmentId,
