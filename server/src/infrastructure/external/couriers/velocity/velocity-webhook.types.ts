@@ -8,7 +8,7 @@
 // ==================== WEBHOOK PAYLOAD ====================
 
 export interface VelocityWebhookPayload {
-  event_type: 'SHIPMENT_STATUS_UPDATE' | 'SHIPMENT_CREATED' | 'SHIPMENT_CANCELLED';
+  event_type: 'SHIPMENT_STATUS_UPDATE' | 'SHIPMENT_CREATED' | 'SHIPMENT_CANCELLED' | 'SHIPMENT_WEIGHT_SCANNED';
   timestamp: string;                    // ISO 8601
   shipment_data: {
     awb: string;
@@ -20,6 +20,13 @@ export interface VelocityWebhookPayload {
     estimated_delivery?: string;
     updated_at: string;
     description?: string;
+  };
+  weight_data?: {
+    scanned_weight: number;             // Weight in grams or kg
+    unit: 'kg' | 'g';                   // Weight unit
+    scan_location?: string;             // Hub/facility where scanned
+    scan_timestamp: string;             // ISO 8601
+    scan_photo_url?: string;            // Optional weight photo
   };
   tracking_event?: {
     status: string;

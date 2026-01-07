@@ -13,6 +13,7 @@ import {
   WebhookEventHandler
 } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
 import { VELOCITY_STATUS_MAP } from '../../../../infrastructure/external/couriers/velocity/velocity.types';
+import WeightDisputeDetectionService from '../disputes/weight-dispute-detection.service';
 
 export class VelocityWebhookService implements WebhookEventHandler {
   /**
@@ -271,6 +272,140 @@ export class VelocityWebhookService implements WebhookEventHandler {
   }
 
   /**
+   * Handle shipment weight scanned webhook (Week 11: Weight Dispute Management)
+   * Triggers automatic dispute detection when carrier scans package weight
+   */
+  async handleWeightScanned(payload: VelocityWebhookPayload): Promise<WebhookProcessingResult> {
+    const startTime = Date.now();
+
+    try {
+      const { awb, order_id, courier_name } = payload.shipment_data;
+      const weightData = payload.weight_data;
+
+      if (!weightData) {
+        logger.warn('Weight data missing in weight_scanned webhook', { awb, orderId: order_id });
+        return {
+          success: false,
+          awb,
+          orderId: order_id,
+          statusUpdated: false,
+          error: 'Weight data missing',
+          timestamp: new Date()
+        };
+      }
+
+      logger.info('Processing Velocity weight scanned webhook', {
+        awb,
+        orderId: order_id,
+        scannedWeight: weightData.scanned_weight,
+        unit: weightData.unit,
+        location: weightData.scan_location
+      });
+
+      // Find shipment by AWB or order ID
+      const shipment = await Shipment.findOne({
+        $or: [
+          { 'carrierDetails.carrierTrackingNumber': awb },
+          { trackingNumber: order_id }
+        ],
+        isDeleted: false
+      });
+
+      if (!shipment) {
+        logger.warn('Shipment not found for weight scanned webhook', { awb, orderId: order_id });
+        return {
+          success: false,
+          awb,
+          orderId: order_id,
+          statusUpdated: false,
+          error: 'Shipment not found',
+          timestamp: new Date()
+        };
+      }
+
+      // Trigger weight dispute detection
+      try {
+        const dispute = await WeightDisputeDetectionService.detectOnCarrierScan(
+          String(shipment._id),
+          {
+            value: weightData.scanned_weight,
+            unit: weightData.unit
+          },
+          {
+            photoUrl: weightData.scan_photo_url,
+            scannedAt: new Date(weightData.scan_timestamp),
+            location: weightData.scan_location,
+            notes: `Weight scanned at ${weightData.scan_location || courier_name} hub`,
+            carrierName: courier_name
+          }
+        );
+
+        const processingTime = Date.now() - startTime;
+
+        if (dispute) {
+          logger.info('Weight dispute created from webhook', {
+            awb,
+            orderId: order_id,
+            disputeId: dispute.disputeId,
+            discrepancyPercent: dispute.discrepancy.percentage,
+            financialImpact: dispute.financialImpact.difference,
+            processingTimeMs: processingTime
+          });
+        } else {
+          logger.info('Weight verified - no dispute created', {
+            awb,
+            orderId: order_id,
+            declaredWeight: shipment.packageDetails.weight,
+            scannedWeight: weightData.scanned_weight,
+            processingTimeMs: processingTime
+          });
+        }
+
+        return {
+          success: true,
+          awb,
+          orderId: order_id,
+          statusUpdated: true, // Weight verified/dispute created
+          timestamp: new Date()
+        };
+      } catch (detectionError) {
+        logger.error('Error in weight dispute detection', {
+          awb,
+          orderId: order_id,
+          error: detectionError instanceof Error ? detectionError.message : detectionError
+        });
+
+        // Still return success for webhook since shipment exists
+        // Detection error should not fail webhook processing
+        return {
+          success: true,
+          awb,
+          orderId: order_id,
+          statusUpdated: false,
+          error: 'Dispute detection failed but webhook processed',
+          timestamp: new Date()
+        };
+      }
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      logger.error('Error processing weight scanned webhook', {
+        error,
+        payload,
+        processingTimeMs: processingTime
+      });
+
+      return {
+        success: false,
+        awb: payload.shipment_data.awb,
+        orderId: payload.shipment_data.order_id,
+        statusUpdated: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  /**
    * Route webhook to appropriate handler based on event type
    */
   async processWebhook(payload: VelocityWebhookPayload): Promise<WebhookProcessingResult> {
@@ -281,6 +416,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
         return this.handleShipmentCreated(payload);
       case 'SHIPMENT_CANCELLED':
         return this.handleShipmentCancelled(payload);
+      case 'SHIPMENT_WEIGHT_SCANNED':
+        return this.handleWeightScanned(payload);
       default:
         logger.warn('Unknown webhook event type', { eventType: payload.event_type });
         return {

@@ -13,30 +13,33 @@ High-level project information, features, and planning
 
 ### [Development Documentation](./Development/)
 Development guides, methodology, plans, and progress reports
-- Methodology (CANON, AI Prompts)
-- Planning (Masterplans, Parallel Execution)
-- Context Packages (AI-optimized module docs)
-- Progress Reports
-- Development Tracking
+- **Context Packages**: Domain-specific AI-optimized module documentation
+- **Planning**: Masterplans, implementation strategies, week-by-week execution
+- **Analysis**: Integration analysis, revision tracking
+- **Audit**: Backend audits, test reports, progress summaries
+- **Methodology**: CANON standards, AI prompts
 
 ### [Technical Documentation](./Technical/)
 APIs, integrations, workflows, and setup guides
 - API Documentation
-- Third-Party Integrations (Velocity, Razorpay, DeepVue, Shopify)
-- Workflows & Monitoring
+- Authentication Architecture
 - Setup Guides
+- Workflows & Monitoring
 
 ### [Resources](./Resources/)
-Templates, deployment checklists, and archived documentation
+Templates, deployment checklists, and reference materials
 - Document Templates
 - Deployment Checklist
-- Archive (legacy docs)
+- Data & Reference Files
 
-### [Client Documentation](./Client/)
+### [UX](./UX/)
 Frontend-specific documentation
 - Dashboard Analysis
 - UX Refactor Plans
 - Design Prompts
+
+### [Archive](./Archive/)
+Legacy documentation and audit logs
 
 ---
 
@@ -45,10 +48,11 @@ Frontend-specific documentation
 ```
 docs/
 ├─ Project/          - High-level project docs
-├─ Development/      - Dev guides, plans, reports
+├─ Development/      - Dev context, plans, reports, audits
 ├─ Technical/        - APIs, integrations, setup
-├─ Resources/        - Templates, archive
-└─ Client/           - Frontend documentation
+├─ Resources/        - Templates, reference data
+├─ UX/               - Frontend documentation
+└─ Archive/          - Legacy docs
 ```
 
 ---
@@ -56,11 +60,12 @@ docs/
 ## 🔍 Finding Documentation
 
 - **Looking for API docs?** → `Technical/API/`
-- **Setting up integrations?** → `Technical/Integrations/`
+- **Setting up integrations?** → `Development/Context/Integrations/`
 - **Planning development?** → `Development/Planning/`
 - **Need context for AI?** → `Development/Context/`
 - **Writing new docs?** → `Resources/Templates/`
+- **Audit reports?** → `Development/Audit/`
 
 ---
 
-**Last Updated:** December 27, 2025
+**Last Updated:** Jan 7, 2026

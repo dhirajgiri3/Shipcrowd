@@ -1,12 +1,11 @@
 # Technical Documentation
 
-This directory contains technical specifications, API documentation, and integration details.
+This directory contains technical specifications, workflows, and setup details.
 
 ## Contents
 
-- **API/**: API contracts, endpoints, and schema definitions.
-- **Integrations/**: Third-party integration guides (Velocity, etc.).
-- **Architecture/**: System design, diagrams, and infrastructure.
-
-## Key Files
-- [API Documentation](file:///docs/Technical/API/API_DOCUMENTATION.md)
+- **[API](./API/)**: API contracts and endpoint lists.
+- **[Auth](./Auth/)**: Authentication implementation details.
+- **[Setup](./Setup/)**: Setup and deployment guides.
+- **[Workflows](./Workflows/)**: Technical workflow documentation.
+- **[Guides](./Guides/)**: General technical guides.
