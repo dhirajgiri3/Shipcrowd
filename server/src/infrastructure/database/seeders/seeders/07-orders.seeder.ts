@@ -275,6 +275,11 @@ export async function seedOrders(): Promise<void> {
     const timer = createTimer();
     logger.step(7, 'Seeding Orders');
 
+    // Clear counters to ensure fresh start on each run
+    orderCounters.clear();
+    companyPrefixMap.clear();
+    nextPrefixIndex = 1;
+
     try {
         // Get approved companies with warehouses
         const companies = await Company.find({ status: 'approved' }).lean();

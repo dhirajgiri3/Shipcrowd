@@ -128,21 +128,21 @@ async function runSeeders(): Promise<void> {
     logger.phase('Running Seeders');
 
     // Dynamically import seeders to ensure env vars are loaded first
-    const { seedUsers } = await import('./seeders/01-users.seeder');
-    const { seedCompanies } = await import('./seeders/02-companies.seeder');
-    const { seedKYC } = await import('./seeders/03-kyc.seeder');
-    const { seedWarehouses } = await import('./seeders/04-warehouses.seeder');
-    const { seedPickLists } = await import('./seeders/05-picklists.seeder');
-    const { seedInventory } = await import('./seeders/06-inventory.seeder');
-    const { seedOrders } = await import('./seeders/07-orders.seeder');
-    const { seedShipments } = await import('./seeders/08-shipments.seeder');
-    const { seedNDREvents } = await import('./seeders/09-ndr-events.seeder');
-    const { seedRTOEvents } = await import('./seeders/10-rto-events.seeder');
-    const { seedWalletTransactions } = await import('./seeders/11-wallet-transactions.seeder');
-    const { seedConsents } = await import('./seeders/12-consents.seeder');
-    const { seedSessions } = await import('./seeders/13-sessions.seeder');
-    const { seedWeightDisputes } = await import('./seeders/14-weight-disputes.seeder');
-    const { seedCODRemittances } = await import('./seeders/15-cod-remittances.seeder');
+    const { seedUsers } = await import('./seeders/01-users.seeder.js');
+    const { seedCompanies } = await import('./seeders/02-companies.seeder.js');
+    const { seedKYC } = await import('./seeders/03-kyc.seeder.js');
+    const { seedWarehouses } = await import('./seeders/04-warehouses.seeder.js');
+    const { seedPickLists } = await import('./seeders/05-picklists.seeder.js');
+    const { seedInventory } = await import('./seeders/06-inventory.seeder.js');
+    const { seedOrders } = await import('./seeders/07-orders.seeder.js');
+    const { seedShipments } = await import('./seeders/08-shipments.seeder.js');
+    const { seedNDREvents } = await import('./seeders/09-ndr-events.seeder.js');
+    const { seedRTOEvents } = await import('./seeders/10-rto-events.seeder.js');
+    const { seedWalletTransactions } = await import('./seeders/11-wallet-transactions.seeder.js');
+    const { seedConsents } = await import('./seeders/12-consents.seeder.js');
+    const { seedSessions } = await import('./seeders/13-sessions.seeder.js');
+    const { seedWeightDisputes } = await import('./seeders/14-weight-disputes.seeder.js');
+    const { seedCODRemittances } = await import('./seeders/15-cod-remittances.seeder.js');
 
     // Seeder order based on dependencies
     const seeders = [

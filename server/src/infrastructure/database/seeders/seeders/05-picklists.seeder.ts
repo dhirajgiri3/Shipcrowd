@@ -8,7 +8,7 @@
  */
 
 import mongoose from 'mongoose';
-import PickList from '../../mongoose/models/logistics/picking/pick-list.model';
+import PickList from '../../mongoose/models/logistics/warehouse/activities/pick-list.model';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
 import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
@@ -53,8 +53,8 @@ function generatePickListItems(orders: any[], warehouseId: string, inventory: Ma
             // Find location code from inventory if available
             let locationCode = undefined;
             if (inventoryItem?.locations && inventoryItem.locations.length > 0) {
-                const location = selectRandom(inventoryItem.locations);
-                locationCode = location.locationCode;
+                const location = selectRandom(inventoryItem.locations) as any;
+                locationCode = location?.locationCode;
             }
 
             items.push({
@@ -172,7 +172,7 @@ export async function seedPickLists(): Promise<void> {
                 if (status !== 'pending' && staffUsers.length > 0) {
                     const picker = selectRandom(staffUsers);
                     assignedTo = picker._id;
-                    startedAt = status !== 'pending' ? addDays(createdDate, randomInt(0, 1)) : undefined;
+                    startedAt = addDays(createdDate, randomInt(0, 1));
 
                     if (status === 'picked' || status === 'verified') {
                         completedAt = addMinutes(startedAt || createdDate, randomInt(15, 45));

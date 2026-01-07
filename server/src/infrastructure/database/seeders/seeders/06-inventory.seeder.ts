@@ -65,13 +65,10 @@ function generateInventoryLocations(onHand: number, warehouseId: string): any[] 
         const qtyAtLocation = i === locationCount - 1 ? remainingQty : randomInt(Math.ceil(remainingQty / (locationCount - i)), remainingQty);
 
         locations.push({
+            locationId: new mongoose.Types.ObjectId(), // Generate mock location ID
             locationCode,
-            zone,
-            aisle: parseInt(aisle),
-            rack: parseInt(rack),
-            bin: parseInt(bin),
             quantity: qtyAtLocation,
-            warehouseId,
+            isPickFace: i === 0, // First location is pick face
         });
 
         remainingQty -= qtyAtLocation;
