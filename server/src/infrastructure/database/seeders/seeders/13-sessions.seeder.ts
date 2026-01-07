@@ -44,6 +44,20 @@ const LOCATIONS = [
     { city: 'Jaipur', region: 'Rajasthan', country: 'India' },
 ];
 
+// Pages user might access
+const ACCESSIBLE_PAGES = [
+    '/dashboard',
+    '/orders',
+    '/shipments',
+    '/inventory',
+    '/settings',
+    '/reports',
+    '/team',
+    '/billing',
+    '/integrations',
+    '/help',
+];
+
 /**
  * Generate a random IP address
  */
@@ -81,6 +95,23 @@ async function generateSessionData(
 ): Promise<any> {
     const isRevoked = Math.random() < 0.3; // 30% of sessions are revoked/expired
     const expiresAt = addDays(sessionDate, 7);
+    const isActive = !isRevoked;
+
+    // Generate activity tracking
+    const activityCount = isActive ? randomInt(5, 30) : randomInt(1, 5);
+    const activities: any[] = [];
+    let currentTime = sessionDate;
+
+    for (let i = 0; i < activityCount; i++) {
+        activities.push({
+            page: selectRandom(ACCESSIBLE_PAGES),
+            timestamp: currentTime,
+            duration: randomInt(10, 300), // seconds
+        });
+        currentTime = addDays(currentTime, randomInt(0, 1));
+    }
+
+    const lastAccessedPage = activities.length > 0 ? activities[activities.length - 1].page : '/dashboard';
 
     return {
         userId: user._id,
@@ -92,6 +123,9 @@ async function generateSessionData(
         lastActive: isRevoked
             ? randomDateBetween(sessionDate, addDays(sessionDate, 3))
             : addHours(new Date(), -randomInt(0, 48)),
+        lastAccessedPage,
+        activityCount,
+        activities,
         expiresAt,
         isRevoked,
         createdAt: sessionDate,

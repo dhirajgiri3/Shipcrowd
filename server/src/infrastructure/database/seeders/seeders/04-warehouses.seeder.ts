@@ -52,13 +52,27 @@ function getBusinessTypeFromName(companyName: string): 'fashion' | 'electronics'
 function generateWarehouseData(
     company: any,
     warehouseIndex: number,
-    city: CityData
+    city: CityData,
+    usedNames: Set<string>
 ): any {
     const coordinates = getCityCoordinates(city.name);
     const contactPerson = generateIndianName();
 
+    let name = `${company.name.split(' ')[0]} ${city.name} WH-${warehouseIndex + 1}`;
+
+    // Ensure uniqueness
+    if (usedNames.has(name)) {
+        name = `${company.name.substring(0, 10)} ${city.name} WH-${warehouseIndex + 1} ${randomInt(10, 99)}`;
+    }
+
+    // Double check and assume unique enough with randomInt, but track it
+    if (usedNames.has(name)) {
+        name = `${name}-${randomInt(100, 999)}`;
+    }
+    usedNames.add(name);
+
     return {
-        name: `${company.name.split(' ')[0]} ${city.name} WH-${warehouseIndex + 1}`,
+        name,
         companyId: company._id,
         address: {
             line1: generateIndustrialAddress(city.name),
@@ -110,6 +124,7 @@ export async function seedWarehouses(): Promise<void> {
 
         const warehouses: any[] = [];
         const companyDefaultWarehouses: Map<string, mongoose.Types.ObjectId> = new Map();
+        const usedNames = new Set<string>();
 
         for (let i = 0; i < companies.length; i++) {
             const company = companies[i];
@@ -131,7 +146,7 @@ export async function seedWarehouses(): Promise<void> {
                 // First warehouse in home city, others in nearby cities
                 const city = j === 0 ? homeCity : selectRandom(nearbyCities);
 
-                const warehouseData = generateWarehouseData(company, j, city);
+                const warehouseData = generateWarehouseData(company, j, city, usedNames);
                 warehouses.push(warehouseData);
             }
 

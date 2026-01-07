@@ -17,21 +17,12 @@ import { logger, createTimer, formatDuration } from './utils/logger.utils';
 // Load environment variables
 dotenv.config();
 
-// Import seeders in dependency order
-import { seedUsers } from './seeders/01-users.seeder';
-import { seedCompanies } from './seeders/02-companies.seeder';
-import { seedKYC } from './seeders/03-kyc.seeder';
-import { seedWarehouses } from './seeders/04-warehouses.seeder';
-import { seedInventory } from './seeders/06-inventory.seeder';
-import { seedOrders } from './seeders/07-orders.seeder';
-import { seedShipments } from './seeders/08-shipments.seeder';
-import { seedNDREvents } from './seeders/09-ndr-events.seeder';
-import { seedRTOEvents } from './seeders/10-rto-events.seeder';
-import { seedWalletTransactions } from './seeders/11-wallet-transactions.seeder';
-import { seedConsents } from './seeders/12-consents.seeder';
-import { seedSessions } from './seeders/13-sessions.seeder';
-import { seedWeightDisputes } from './seeders/14-weight-disputes.seeder';
-import { seedCODRemittances } from './seeders/15-cod-remittances.seeder';
+// Ensure ENCRYPTION_KEY is present for mongoose-field-encryption
+// If missing (e.g. no .env file), use the default dev key from .env.example
+if (!process.env.ENCRYPTION_KEY) {
+    console.warn('⚠️  ENCRYPTION_KEY not found in environment. Using default dev key for seeding.');
+    process.env.ENCRYPTION_KEY = '02207fcc1b5ce31788490e5cebf0deafb7000b20223942900fffd2c1bbb780';
+}
 
 // Collections to clear when using --clean flag
 const COLLECTIONS_TO_CLEAR = [
@@ -136,12 +127,30 @@ async function clearCollections(): Promise<void> {
 async function runSeeders(): Promise<void> {
     logger.phase('Running Seeders');
 
+    // Dynamically import seeders to ensure env vars are loaded first
+    const { seedUsers } = await import('./seeders/01-users.seeder');
+    const { seedCompanies } = await import('./seeders/02-companies.seeder');
+    const { seedKYC } = await import('./seeders/03-kyc.seeder');
+    const { seedWarehouses } = await import('./seeders/04-warehouses.seeder');
+    const { seedPickLists } = await import('./seeders/05-picklists.seeder');
+    const { seedInventory } = await import('./seeders/06-inventory.seeder');
+    const { seedOrders } = await import('./seeders/07-orders.seeder');
+    const { seedShipments } = await import('./seeders/08-shipments.seeder');
+    const { seedNDREvents } = await import('./seeders/09-ndr-events.seeder');
+    const { seedRTOEvents } = await import('./seeders/10-rto-events.seeder');
+    const { seedWalletTransactions } = await import('./seeders/11-wallet-transactions.seeder');
+    const { seedConsents } = await import('./seeders/12-consents.seeder');
+    const { seedSessions } = await import('./seeders/13-sessions.seeder');
+    const { seedWeightDisputes } = await import('./seeders/14-weight-disputes.seeder');
+    const { seedCODRemittances } = await import('./seeders/15-cod-remittances.seeder');
+
     // Seeder order based on dependencies
     const seeders = [
         { name: 'Users', fn: seedUsers },
         { name: 'Companies', fn: seedCompanies },
         { name: 'KYC', fn: seedKYC },
         { name: 'Warehouses', fn: seedWarehouses },
+        { name: 'Pick Lists', fn: seedPickLists },
         { name: 'Inventory', fn: seedInventory },
         { name: 'Orders', fn: seedOrders },
         { name: 'Shipments', fn: seedShipments },

@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import Order from '../../mongoose/models/orders/core/order.model';
 import Company from '../../mongoose/models/organization/core/company.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
+import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
 import { SEED_CONFIG, BusinessType, PaymentMethod } from '../config';
 import { randomInt, selectRandom, selectWeightedFromObject, maybeExecute, randomFloat } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -24,13 +25,28 @@ const orderCounters: Map<string, number> = new Map();
 /**
  * Generate unique order number
  */
+// Map to store consistent unique prefixes for companies
+const companyPrefixMap: Map<string, string> = new Map();
+let nextPrefixIndex = 1;
+
+/**
+ * Generate unique order number
+ */
 function generateOrderNumber(companyId: string, date: Date): string {
     const counter = (orderCounters.get(companyId) || 0) + 1;
     orderCounters.set(companyId, counter);
 
+    // Get or assign unique prefix for this company
+    let companyPrefix = companyPrefixMap.get(companyId);
+    if (!companyPrefix) {
+        // Generate unique prefix like C001, C002, etc.
+        companyPrefix = `C${nextPrefixIndex.toString().padStart(3, '0')}`;
+        companyPrefixMap.set(companyId, companyPrefix);
+        nextPrefixIndex++;
+    }
+
     const year = date.getFullYear().toString().slice(-2);
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const companyPrefix = companyId.slice(-4).toUpperCase();
     const seq = counter.toString().padStart(5, '0');
 
     return `ORD-${companyPrefix}-${year}${month}-${seq}`;
@@ -222,6 +238,37 @@ function generateOrderData(
 }
 
 /**
+ * Generate customer repository for repeat customer patterns
+ */
+function generateCustomerRepository(totalOrders: number): Map<string, any> {
+    const customers = new Map<string, any>();
+
+    // Create 2,000-3,000 unique customers
+    const customerCount = randomInt(2000, 3000);
+
+    // 70% single-order, 20% 2-3 orders, 10% 4-10 orders
+    for (let i = 0; i < customerCount; i++) {
+        const gender = Math.random() < 0.5 ? 'male' : 'female';
+        const name = generateIndianName(gender);
+        const phone = generateIndianPhone();
+        const email = generateEmail(name);
+
+        const customerKey = `${phone}`;
+
+        customers.set(customerKey, {
+            name,
+            email,
+            phone,
+            orderCount: 0,
+            maxOrders: Math.random() < 0.7 ? 1 : Math.random() < 0.67 ? randomInt(2, 3) : randomInt(4, 10),
+            addresses: [],
+        });
+    }
+
+    return customers;
+}
+
+/**
  * Main seeder function
  */
 export async function seedOrders(): Promise<void> {
@@ -232,6 +279,14 @@ export async function seedOrders(): Promise<void> {
         // Get approved companies with warehouses
         const companies = await Company.find({ status: 'approved' }).lean();
         const warehouses = await Warehouse.find({ isActive: true, isDeleted: false }).lean();
+
+        // Get inventory for SKU linking
+        const inventoryRecords = await Inventory.find({
+            status: { $in: ['ACTIVE', 'LOW_STOCK'] },
+            onHand: { $gt: 0 },
+            isActive: true,
+            isDeleted: false
+        }).lean();
 
         if (companies.length === 0 || warehouses.length === 0) {
             logger.warn('No companies or warehouses found. Skipping orders seeder.');

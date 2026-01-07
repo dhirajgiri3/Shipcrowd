@@ -37,10 +37,47 @@ function getBusinessType(name: string): BusinessType {
 function calculateInventoryStatus(
     available: number,
     reorderPoint: number
-): 'active' | 'low_stock' | 'out_of_stock' | 'discontinued' {
-    if (available <= 0) return 'out_of_stock';
-    if (available <= reorderPoint) return 'low_stock';
-    return 'active';
+): 'ACTIVE' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'DISCONTINUED' {
+    if (available <= 0) return 'OUT_OF_STOCK';
+    if (available <= reorderPoint) return 'LOW_STOCK';
+    return 'ACTIVE';
+}
+
+/**
+ * Generate inventory locations for a warehouse zone
+ */
+function generateInventoryLocations(onHand: number, warehouseId: string): any[] {
+    if (onHand === 0) return [];
+
+    const locationCount = Math.min(randomInt(1, 3), Math.ceil(onHand / 50));
+    const locations: any[] = [];
+
+    let remainingQty = onHand;
+    const zones = ['ZONE-A', 'ZONE-B', 'ZONE-C'];
+
+    for (let i = 0; i < locationCount; i++) {
+        const zone = zones[i % zones.length];
+        const aisle = randomInt(1, 10).toString().padStart(2, '0');
+        const rack = randomInt(1, 20).toString().padStart(2, '0');
+        const bin = randomInt(1, 5).toString().padStart(2, '0');
+
+        const locationCode = `${zone}-A${aisle}-R${rack}-B${bin}`;
+        const qtyAtLocation = i === locationCount - 1 ? remainingQty : randomInt(Math.ceil(remainingQty / (locationCount - i)), remainingQty);
+
+        locations.push({
+            locationCode,
+            zone,
+            aisle: parseInt(aisle),
+            rack: parseInt(rack),
+            bin: parseInt(bin),
+            quantity: qtyAtLocation,
+            warehouseId,
+        });
+
+        remainingQty -= qtyAtLocation;
+    }
+
+    return locations;
 }
 
 /**
@@ -76,10 +113,10 @@ function generateInventoryRecord(
         reserved,
         damaged,
         inTransfer,
-        // Allocation not included as it's a separate subdoc
+        locations: generateInventoryLocations(onHand, warehouse._id.toString()),
         reorderPoint,
         reorderQuantity,
-        replenishmentStatus: available <= reorderPoint ? 'reorder_needed' : 'sufficient',
+        replenishmentStatus: available <= reorderPoint ? 'SUGGESTED' : 'NONE',
         status: calculateInventoryStatus(available, reorderPoint),
         unitCost: Math.round(product.price * randomFloat(0.4, 0.7, 2)),
         totalValue: Math.round(onHand * product.price * randomFloat(0.4, 0.7, 2)),
@@ -141,8 +178,8 @@ export async function seedInventory(): Promise<void> {
                 const record = generateInventoryRecord(warehouse, company, product, j);
                 inventoryRecords.push(record);
 
-                if (record.status === 'low_stock') lowStockCount++;
-                if (record.status === 'out_of_stock') outOfStockCount++;
+                if (record.status === 'LOW_STOCK') lowStockCount++;
+                if (record.status === 'OUT_OF_STOCK') outOfStockCount++;
             }
 
             if ((i + 1) % 50 === 0 || i === warehouses.length - 1) {

@@ -294,8 +294,63 @@ export async function seedWeightDisputes(): Promise<void> {
         }
 
         // Insert disputes
-        if (disputes.length > 0) {
-            await WeightDispute.insertMany(disputes);
+        const insertedDisputes = disputes.length > 0 ? await WeightDispute.insertMany(disputes) : [];
+
+        // Create wallet transactions for resolved disputes
+        const walletTransactions: any[] = [];
+        for (const dispute of insertedDisputes) {
+            if (dispute.resolution && (dispute.resolution.refundAmount > 0 || dispute.resolution.deductionAmount > 0)) {
+                const company = companyMap.get(dispute.companyId.toString());
+                if (!company) continue;
+
+                if (dispute.resolution.refundAmount > 0) {
+                    walletTransactions.push({
+                        companyId: dispute.companyId,
+                        type: 'dispute_refund',
+                        amount: dispute.resolution.refundAmount,
+                        description: `Weight dispute refund (${dispute.disputeId})`,
+                        source: 'weight_dispute',
+                        sourceId: dispute._id,
+                        balanceBefore: company.wallet?.balance || 0,
+                        balanceAfter: (company.wallet?.balance || 0) + dispute.resolution.refundAmount,
+                        status: 'completed',
+                        paymentMethod: 'credit',
+                        createdAt: dispute.resolution.resolvedAt,
+                        updatedAt: dispute.resolution.resolvedAt,
+                        metadata: {
+                            disputeId: dispute.disputeId,
+                            outcome: dispute.resolution.outcome,
+                            reason: dispute.resolution.reasonCode,
+                        },
+                    });
+                }
+
+                if (dispute.resolution.deductionAmount > 0) {
+                    walletTransactions.push({
+                        companyId: dispute.companyId,
+                        type: 'dispute_deduction',
+                        amount: dispute.resolution.deductionAmount,
+                        description: `Weight dispute deduction (${dispute.disputeId})`,
+                        source: 'weight_dispute',
+                        sourceId: dispute._id,
+                        balanceBefore: company.wallet?.balance || 0,
+                        balanceAfter: (company.wallet?.balance || 0) - dispute.resolution.deductionAmount,
+                        status: 'completed',
+                        paymentMethod: 'debit',
+                        createdAt: dispute.resolution.resolvedAt,
+                        updatedAt: dispute.resolution.resolvedAt,
+                        metadata: {
+                            disputeId: dispute.disputeId,
+                            outcome: dispute.resolution.outcome,
+                            reason: dispute.resolution.reasonCode,
+                        },
+                    });
+                }
+            }
+        }
+
+        if (walletTransactions.length > 0) {
+            await WalletTransaction.insertMany(walletTransactions);
         }
 
         logger.complete('weight disputes', disputes.length, timer.elapsed());
@@ -304,6 +359,7 @@ export async function seedWeightDisputes(): Promise<void> {
             'Pending': `${pendingCount} (${((pendingCount / disputes.length) * 100).toFixed(1)}%)`,
             'Resolved': `${resolvedCount} (${((resolvedCount / disputes.length) * 100).toFixed(1)}%)`,
             'Avg Financial Impact': `₹${Math.round(disputes.reduce((sum, d) => sum + d.financialImpact.difference, 0) / disputes.length)}`,
+            'Wallet Transactions Created': walletTransactions.length,
         });
 
     } catch (error) {

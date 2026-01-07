@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import RTOEvent from '../../mongoose/models/logistics/shipping/exceptions/rto-event.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import Warehouse from '../../mongoose/models/logistics/warehouse/structure/warehouse.model';
+import Inventory from '../../mongoose/models/logistics/inventory/store/inventory.model';
 import { SEED_CONFIG } from '../config';
 import { randomInt, randomFloat, selectRandom, selectWeightedFromObject, maybeExecute } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -188,7 +189,54 @@ export async function seedRTOEvents(): Promise<void> {
         }
 
         // Insert all RTO events
-        await RTOEvent.insertMany(rtoEvents);
+        const insertedRTOEvents = await RTOEvent.insertMany(rtoEvents);
+
+        // Update inventory for restocked RTOs
+        const inventoryUpdateOps: any[] = [];
+        let restockedCount = 0;
+
+        for (const rtoEvent of insertedRTOEvents) {
+            // Only process if RTO is in restocked status and QC passed
+            if (rtoEvent.returnStatus === 'restocked' && rtoEvent.qcResult?.passed) {
+                const shipment = rtoShipments.find(s => s._id.equals(rtoEvent.shipment));
+                if (!shipment || !shipment.products || shipment.products.length === 0) continue;
+
+                // Get inventory records matching the shipment's products
+                const skuNames = shipment.products.map(p => p.name || p.sku);
+
+                for (const product of shipment.products) {
+                    const qty = product.quantity || 1;
+
+                    // Find matching inventory SKU and update
+                    inventoryUpdateOps.push({
+                        updateOne: {
+                            filter: {
+                                warehouseId: rtoEvent.warehouse,
+                                productName: product.name || product.sku,
+                                companyId: rtoEvent.company,
+                            },
+                            update: {
+                                $inc: {
+                                    onHand: qty,
+                                    available: qty,
+                                },
+                                $set: {
+                                    lastReceivedDate: rtoEvent.actualReturnDate || new Date(),
+                                    lastMovementDate: new Date(),
+                                },
+                            },
+                            upsert: false,
+                        },
+                    });
+
+                    restockedCount++;
+                }
+            }
+        }
+
+        if (inventoryUpdateOps.length > 0) {
+            await Inventory.bulkWrite(inventoryUpdateOps);
+        }
 
         // Calculate RTO charges
         const totalCharges = rtoEvents.reduce((sum, e) => sum + e.rtoCharges, 0);
@@ -201,6 +249,7 @@ export async function seedRTOEvents(): Promise<void> {
             'Charges Deducted': `${chargesDeducted} (${((chargesDeducted / rtoEvents.length) * 100).toFixed(1)}%)`,
             'QC Passed': qcPassed > 0 ? `${qcPassed} (${((qcPassed / (qcPassed + qcFailed)) * 100).toFixed(1)}%)` : 'N/A',
             'QC Failed': qcFailed > 0 ? `${qcFailed} (${((qcFailed / (qcPassed + qcFailed)) * 100).toFixed(1)}%)` : 'N/A',
+            'Inventory Items Restocked': restockedCount,
         });
 
         logger.info('RTO Status Distribution:');

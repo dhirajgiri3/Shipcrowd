@@ -358,8 +358,31 @@ export async function seedCODRemittances(): Promise<void> {
         }
 
         // Insert remittances
-        if (remittances.length > 0) {
-            await CODRemittance.insertMany(remittances);
+        const insertedRemittances = remittances.length > 0 ? await CODRemittance.insertMany(remittances) : [];
+
+        // Update shipment remittance status
+        const updateOps: any[] = [];
+        for (const remittance of insertedRemittances) {
+            for (const shipment of remittance.shipments) {
+                updateOps.push({
+                    updateOne: {
+                        filter: { _id: shipment.shipmentId },
+                        update: {
+                            $set: {
+                                'remittanceStatus.remittanceId': remittance._id,
+                                'remittanceStatus.batch': remittance.remittanceId,
+                                'remittanceStatus.status': remittance.status,
+                                'remittanceStatus.payoutStatus': remittance.payout.status,
+                                'remittanceStatus.updatedAt': remittance.createdAt,
+                            },
+                        },
+                    },
+                });
+            }
+        }
+
+        if (updateOps.length > 0) {
+            await Shipment.bulkWrite(updateOps);
         }
 
         logger.complete('COD remittances', remittances.length, timer.elapsed());
@@ -369,6 +392,7 @@ export async function seedCODRemittances(): Promise<void> {
             'Total Net Payable': `₹${totalNetPayable.toLocaleString()}`,
             'Avg Batch Size': Math.round(totalShipments / remittances.length),
             'Avg Net Payable': `₹${Math.round(totalNetPayable / remittances.length).toLocaleString()}`,
+            'Shipments Updated': updateOps.length,
         });
 
     } catch (error) {

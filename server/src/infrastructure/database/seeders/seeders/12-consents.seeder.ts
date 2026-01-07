@@ -113,7 +113,50 @@ export async function seedConsents(): Promise<void> {
         }
 
         // Insert all consents
-        await Consent.insertMany(consents);
+        const insertedConsents = await Consent.insertMany(consents);
+
+        // Create consent history records for tracking changes
+        const consentHistories: any[] = [];
+        for (const consent of insertedConsents) {
+            if (consent.accepted) {
+                consentHistories.push({
+                    userId: consent.userId,
+                    consentId: consent._id,
+                    consentType: consent.type,
+                    version: consent.version,
+                    accepted: true,
+                    acceptedAt: consent.acceptedAt,
+                    ip: consent.ip,
+                    userAgent: consent.userAgent,
+                    source: 'registration',
+                    action: 'consent_accepted',
+                    createdAt: consent.acceptedAt,
+                });
+
+                // 10% of consents have a re-acceptance history (e.g., after terms update)
+                if (Math.random() < 0.1) {
+                    const reacceptanceDate = addDays(consent.acceptedAt || new Date(), randomInt(30, 365));
+                    consentHistories.push({
+                        userId: consent.userId,
+                        consentId: consent._id,
+                        consentType: consent.type,
+                        version: CONSENT_VERSION,
+                        accepted: true,
+                        acceptedAt: reacceptanceDate,
+                        ip: selectRandom(SAMPLE_IPS),
+                        userAgent: selectRandom(SAMPLE_USER_AGENTS),
+                        source: 'terms_update',
+                        action: 'consent_re_accepted',
+                        reason: 'Terms of Service updated',
+                        createdAt: reacceptanceDate,
+                    });
+                }
+            }
+        }
+
+        if (consentHistories.length > 0) {
+            await ConsentHistory.insertMany(consentHistories);
+        }
 
         logger.complete('consents', consents.length, timer.elapsed());
         logger.table({
@@ -122,6 +165,7 @@ export async function seedConsents(): Promise<void> {
             'Privacy Accepted': `${privacyCount} (${((privacyCount / users.length) * 100).toFixed(1)}%)`,
             'Cookies Accepted': `${cookiesCount} (${((cookiesCount / users.length) * 100).toFixed(1)}%)`,
             'Marketing Accepted': `${marketingCount} (${((marketingCount / users.length) * 100).toFixed(1)}%)`,
+            'Consent History Records': consentHistories.length,
         });
 
     } catch (error) {

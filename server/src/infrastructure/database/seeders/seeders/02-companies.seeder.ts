@@ -113,6 +113,7 @@ export async function seedCompanies(): Promise<void> {
 
         const companies: any[] = [];
         const businessTypes: BusinessType[] = [];
+        const usedNames = new Set<string>();
 
         // Generate companies for each seller
         for (let i = 0; i < sellers.length; i++) {
@@ -122,7 +123,13 @@ export async function seedCompanies(): Promise<void> {
             const businessType = selectWeightedFromObject(SEED_CONFIG.businessTypes) as BusinessType;
             businessTypes.push(businessType);
 
-            const companyData = generateCompanyData(seller, businessType);
+            let companyData = generateCompanyData(seller, businessType);
+
+            // Ensure company name is unique
+            if (usedNames.has(companyData.name)) {
+                companyData.name = `${companyData.name} ${randomInt(100, 999)}`;
+            }
+            usedNames.add(companyData.name);
 
             // Store seller reference for later linking
             (companyData as any)._sellerId = seller._id;
@@ -147,6 +154,55 @@ export async function seedCompanies(): Promise<void> {
 
         await User.bulkWrite(bulkOps);
 
+        // Link staff users to companies
+        const staffUsers = await User.find({ role: 'staff' }).lean();
+        const staffBulkOps: any[] = [];
+        let staffLinked = 0;
+
+        // Assign 40% of companies to have 0-3 staff members
+        for (const company of insertedCompanies) {
+            const hasStaff = Math.random() < 0.4;
+            if (!hasStaff) continue;
+
+            // 30% have 1 staff, 10% have 2-3 staff
+            const staffCount = Math.random() < 0.3
+                ? randomInt(1, 1)
+                : Math.random() < 0.33
+                    ? randomInt(2, 2)
+                    : randomInt(3, 3);
+
+            // Randomly select staff members
+            for (let i = 0; i < staffCount && staffUsers.length > 0; i++) {
+                const randomStaffIndex = randomInt(0, staffUsers.length - 1);
+                const staffUser = staffUsers[randomStaffIndex];
+
+                // Don't reassign a staff member (remove from available pool conceptually)
+                if (staffUser.companyId) continue;
+
+                const teamRoles = ['manager', 'member', 'member', 'member', 'member', 'viewer'];
+                const teamRole = selectRandom(teamRoles);
+                const isActive = Math.random() < 0.85;
+
+                staffBulkOps.push({
+                    updateOne: {
+                        filter: { _id: staffUser._id },
+                        update: {
+                            companyId: company._id,
+                            teamRole,
+                            teamStatus: isActive ? 'active' : 'invited',
+                            isEmailVerified: isActive,
+                        },
+                    },
+                });
+
+                staffLinked++;
+            }
+        }
+
+        if (staffBulkOps.length > 0) {
+            await User.bulkWrite(staffBulkOps);
+        }
+
         // Count by business type
         const fashionCount = businessTypes.filter((t) => t === 'fashion').length;
         const electronicsCount = businessTypes.filter((t) => t === 'electronics').length;
@@ -166,6 +222,7 @@ export async function seedCompanies(): Promise<void> {
             'Status: Approved': approvedCount,
             'Status: KYC Submitted': kycSubmittedCount,
             'Status: Suspended': suspendedCount,
+            'Staff Members Linked': staffLinked,
         });
 
     } catch (error) {
