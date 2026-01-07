@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/src/features/auth';
+import { authApi } from '@/src/core/api/auth.api';
 import { Button, Input, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 // import { formatDistanceToNow } from 'date-fns';
 
 export default function SecuritySettingsPage() {
-    const { user, changePassword, sessions, loadSessions, revokeSession, revokeAllSessions, checkPasswordStrength } = useAuth();
+    const { user, changePassword, sessions, loadSessions, revokeSession, revokeAllSessions } = useAuth();
 
     // Password change state
     const [currentPassword, setCurrentPassword] = useState('');
@@ -34,14 +35,18 @@ export default function SecuritySettingsPage() {
     useEffect(() => {
         if (newPassword.length >= 8) {
             const timer = setTimeout(async () => {
-                const strength = await checkPasswordStrength(newPassword);
-                setPasswordStrength(strength);
+                try {
+                    const strength = await authApi.checkPasswordStrength(newPassword, user?.email, user?.name);
+                    setPasswordStrength(strength);
+                } catch (error) {
+                    console.error('Password strength check failed:', error);
+                }
             }, 500);
             return () => clearTimeout(timer);
         } else {
             setPasswordStrength(null);
         }
-    }, [newPassword, checkPasswordStrength]);
+    }, [newPassword, user]);
 
     const handleLoadSessions = async () => {
         setIsLoadingSessions(true);

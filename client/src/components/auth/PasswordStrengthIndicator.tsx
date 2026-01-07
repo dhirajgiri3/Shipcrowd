@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import zxcvbn from 'zxcvbn';
+import { authApi } from '@/src/core/api/auth.api';
 
 interface PasswordStrengthIndicatorProps {
     password: string;
@@ -44,26 +44,60 @@ const strengthConfig = {
     },
 };
 
+// Simple debounce helper
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
+    let timeout: NodeJS.Timeout;
+    return (...args: Parameters<T>) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
+
 export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({
     password,
     userInputs = [],
     showSuggestions = true,
     className = '',
 }) => {
-    const [result, setResult] = useState<ReturnType<typeof zxcvbn> | null>(null);
+    const [result, setResult] = useState<any | null>(null);
     const [isVisible, setIsVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // Debounced backend password strength check
+    const checkStrength = useCallback(
+        debounce(async (pwd: string) => {
+            if (!pwd || pwd.length < 3) {
+                setResult(null);
+                setIsVisible(false);
+                return;
+            }
+
+            setLoading(true);
+            try {
+                // Call backend API for password strength
+                const strengthData = await authApi.checkPasswordStrength(
+                    pwd,
+                    userInputs[0], // email if provided
+                    userInputs[1]  // name if provided
+                );
+
+                setResult(strengthData);
+                setIsVisible(true);
+            } catch (error) {
+                console.error('Password strength check failed:', error);
+                // On error, hide indicator
+                setResult(null);
+                setIsVisible(false);
+            } finally {
+                setLoading(false);
+            }
+        }, 500), // 500ms debounce
+        [userInputs]
+    );
 
     useEffect(() => {
-        if (password.length > 0) {
-            // Analyze password strength with user context
-            const analysis = zxcvbn(password, userInputs);
-            setResult(analysis);
-            setIsVisible(true);
-        } else {
-            setIsVisible(false);
-            setResult(null);
-        }
-    }, [password, userInputs]);
+        checkStrength(password);
+    }, [password, checkStrength]);
 
     if (!isVisible || !result) {
         return null;
@@ -71,7 +105,6 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
 
     const score = result.score as 0 | 1 | 2 | 3 | 4;
     const config = strengthConfig[score];
-    const crackTime = result.crack_times_display.offline_slow_hashing_1e4_per_second;
 
     return (
         <AnimatePresence>
@@ -92,7 +125,7 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
                             animate={{ scale: 1, opacity: 1 }}
                             className={`font-semibold ${config.textColor}`}
                         >
-                            {config.label}
+                            {loading ? 'Checking...' : config.label}
                         </motion.span>
                     </div>
 
@@ -107,27 +140,13 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
                     </div>
                 </div>
 
-                {/* Crack Time Estimate */}
+                {/* Backend Feedback */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
-                >
-                    <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                    <span>Time to crack: <strong>{crackTime}</strong></span>
+                    className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{result.isStrong ? '✅ Strong password' : '⚠️ Could be stronger'}</span>
                 </motion.div>
 
                 {/* Feedback & Suggestions */}
@@ -136,16 +155,14 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         transition={{ delay: 0.2 }}
-                        className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700"
-                    >
+                        className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                         {/* Warning */}
                         {result.feedback.warning && (
                             <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
                                 <svg
                                     className="w-4 h-4 mt-0.5 flex-shrink-0"
                                     fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                >
+                                    viewBox="0 0 20 20">
                                     <path
                                         fillRule="evenodd"
                                         d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -163,14 +180,13 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
                                     💡 Suggestions:
                                 </p>
                                 <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                                    {result.feedback.suggestions.map((suggestion, index) => (
+                                    {result.feedback.suggestions.map((suggestion: string, index: number) => (
                                         <motion.li
                                             key={index}
                                             initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: 0.3 + index * 0.1 }}
-                                            className="flex items-start gap-2"
-                                        >
+                                            className="flex items-start gap-2">
                                             <span className="text-blue-500 mt-0.5">•</span>
                                             <span>{suggestion}</span>
                                         </motion.li>

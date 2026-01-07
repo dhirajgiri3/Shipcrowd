@@ -362,31 +362,8 @@ body {
       box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary-blue);
    }
 
-   /* Card Styles - Theme Aware */
-   .card-base {
-      background: var(--bg-primary);
-      border-radius: var(--radius-xl);
-      padding: var(--space-6);
-      box-shadow: var(--shadow-sm);
-      transition: all 200ms var(--ease-out);
-   }
+   /* Card Styles - Theme Aware - REMOVED per user request to prefer utility classes */
 
-   /* Dark mode override for cards */
-   .dark .card-base {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-subtle);
-      box-shadow: none;
-   }
-
-   .card-hover:hover {
-      transform: translateY(-2px);
-      /* In dark mode, this might just lighten the border */
-   }
-
-   .dark .card-hover:hover {
-      border-color: var(--border-strong);
-      box-shadow: none;
-   }
 
    /* Glass Utilities */
    .glass {

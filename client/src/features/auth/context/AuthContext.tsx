@@ -493,24 +493,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [sessions, setSessions] = useState<any[]>([]);
 
   /**
-   * Change email - Stub implementation
-   * TODO: Backend endpoint not yet available
+   * Change email - Real backend implementation
    */
-  const changeEmail = useCallback(async (data: { newEmail: string; password: string }) => {
+  const changeEmail = useCallback(async (data: { newEmail: string; password?: string }) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Implement when backend endpoint is ready
-      // await authApi.changeEmail(data);
+      const response = await authApi.changeEmail(data.newEmail, data.password);
 
-      return {
-        success: false,
-        error: 'Email change endpoint is not yet available on the backend. Please contact support.'
-      };
+      toast.success('Verification email sent to new address. Please check your inbox.');
+      return { success: true };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
+      toast.error(normalizedErr.message || 'Failed to change email');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);
@@ -587,38 +584,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [loadSessions]);
 
-  /**
-   * Check password strength - Uses local validation
-   */
-  const checkPasswordStrength = useCallback(async (password: string) => {
-    // Local password strength calculation
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (password.length >= 12) score++;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[^a-zA-Z0-9]/.test(password)) score++;
-
-    const strengthMap: Record<number, string> = {
-      0: 'weak', 1: 'weak', 2: 'fair', 3: 'good', 4: 'strong', 5: 'strong'
-    };
-
-    const suggestions: string[] = [];
-    if (password.length < 12) suggestions.push('Use at least 12 characters');
-    if (!/[A-Z]/.test(password)) suggestions.push('Add uppercase letters');
-    if (!/[a-z]/.test(password)) suggestions.push('Add lowercase letters');
-    if (!/\d/.test(password)) suggestions.push('Add numbers');
-    if (!/[^a-zA-Z0-9]/.test(password)) suggestions.push('Add special characters');
-
-    return {
-      score,
-      strength: strengthMap[score] || 'weak',
-      feedback: {
-        warning: score < 3 ? 'Password is too weak' : undefined,
-        suggestions,
-      },
-    };
-  }, []);
+  // Note: Password strength check moved to backend API
+  // Use authApi.checkPasswordStrength() directly in components
 
   /**
    * Initialize auth on mount
@@ -660,7 +627,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loadSessions,
     revokeSession,
     revokeAllSessions,
-    checkPasswordStrength,
+    // Password strength check: Use authApi.checkPasswordStrength() directly
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

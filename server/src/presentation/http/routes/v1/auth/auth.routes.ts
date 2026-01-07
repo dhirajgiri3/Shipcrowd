@@ -7,7 +7,8 @@ import {
   loginRateLimiter,
   registrationRateLimiter,
   passwordResetRateLimiter,
-  emailVerificationRateLimiter
+  emailVerificationRateLimiter,
+  resendVerificationRateLimiter,
 } from '../../../middleware/system/rate-limiter.middleware';
 import { generateAuthTokens } from '../../../../../core/application/services/auth/oauth.service';
 import logger from '../../../../../shared/logger/winston.logger';
@@ -87,7 +88,7 @@ router.post('/verify-email', emailVerificationRateLimiter, authController.verify
  * @desc Resend verification email
  * @access Public
  */
-router.post('/resend-verification', csrfProtection, emailVerificationRateLimiter, authController.resendVerificationEmail);
+router.post('/resend-verification', csrfProtection, resendVerificationRateLimiter, authController.resendVerificationEmail); // ✅ FEATURE 22
 
 /**
  * @route POST /auth/magic-link

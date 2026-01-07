@@ -59,6 +59,18 @@ export const emailVerificationRateLimiter = rateLimit({
 });
 
 /**
+ * ✅ FEATURE 22: Rate limiter for resend verification email
+ * More restrictive to prevent email spam
+ */
+export const resendVerificationRateLimiter = rateLimit({
+  ...defaultOptions,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 3, // 3 requests per hour
+
+  message: { message: 'Too many verification emails requested, please try again later' },
+});
+
+/**
  * Rate limiter for API endpoints
  * Less restrictive for normal API usage
  */
@@ -96,6 +108,7 @@ export default {
   passwordResetRateLimiter,
   registrationRateLimiter,
   emailVerificationRateLimiter,
+  resendVerificationRateLimiter,
   apiRateLimiter,
   publicRateLimiter,
   globalRateLimiter,

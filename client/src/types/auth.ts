@@ -243,15 +243,8 @@ export interface AuthContextType {
     error?: string
   }>;
 
-  // Password Strength Check
-  checkPasswordStrength: (password: string) => Promise<{
-    score: number;
-    strength: string;
-    feedback: {
-      warning?: string;
-      suggestions: string[];
-    };
-  }>;
+  // Note: Password strength check moved to authApi.checkPasswordStrength()
+  // Call directly from components instead of through context
 
   // Utilities
   clearError: () => void;

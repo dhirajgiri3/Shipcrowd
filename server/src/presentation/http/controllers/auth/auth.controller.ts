@@ -118,7 +118,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationTokenExpiry = new Date();
-    verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 24);
+    verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 1); // ✅ FEATURE 20: 1 hour expiry
 
     const user = new User({
       email: validatedData.email,
@@ -853,7 +853,7 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
     // Generate new verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationTokenExpiry = new Date();
-    verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 24);
+    verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 1); // ✅ FEATURE 20: 1 hour expiry
 
     // Update user with new verification token
     typedUser.security.verificationToken = verificationToken;

@@ -98,6 +98,40 @@ export interface IShipment extends Document {
     rtoShippingCost?: number;
     qcPassed?: boolean;
   };
+
+  // Weight Tracking & Verification (Week 11 Enhancement)
+  weights: {
+    declared: {
+      value: number; // Matches packageDetails.weight
+      unit: 'kg' | 'g';
+    };
+    actual?: {
+      value: number; // Updated from carrier webhook
+      unit: 'kg' | 'g';
+      scannedAt?: Date;
+      scannedBy?: string; // 'Bluedart', 'Delhivery', etc.
+    };
+    verified: boolean; // True when actual weight is recorded
+  };
+
+  // Weight Dispute Tracking (Week 11 Enhancement)
+  weightDispute?: {
+    exists: boolean;
+    disputeId?: mongoose.Types.ObjectId;
+    status?: 'pending' | 'under_review' | 'resolved';
+    detectedAt?: Date;
+    financialImpact?: number; // Quick reference to dispute amount
+  };
+
+  // COD Remittance Tracking (Week 11 Enhancement)
+  remittanceStatus?: {
+    eligible: boolean; // True if delivered + hold period elapsed
+    eligibleDate?: Date; // When it becomes eligible
+    remittanceId?: mongoose.Types.ObjectId; // If included in a remittance batch
+    remittedAt?: Date;
+    remittedAmount?: number; // Net amount after deductions
+  };
+
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -310,6 +344,61 @@ const ShipmentSchema = new Schema<IShipment>(
       rtoShippingCost: Number,
       qcPassed: Boolean,
     },
+    weights: {
+      declared: {
+        value: {
+          type: Number,
+          required: true,
+        },
+        unit: {
+          type: String,
+          enum: ['kg', 'g'],
+          default: 'kg',
+        },
+      },
+      actual: {
+        value: Number,
+        unit: {
+          type: String,
+          enum: ['kg', 'g'],
+        },
+        scannedAt: Date,
+        scannedBy: String,
+      },
+      verified: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    weightDispute: {
+      exists: {
+        type: Boolean,
+        default: false,
+      },
+      disputeId: {
+        type: Schema.Types.ObjectId,
+        ref: 'WeightDispute',
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'under_review', 'resolved'],
+      },
+      detectedAt: Date,
+      financialImpact: Number,
+    },
+    remittanceStatus: {
+      eligible: {
+        type: Boolean,
+        default: false,
+      },
+      eligibleDate: Date,
+      remittanceId: {
+        type: Schema.Types.ObjectId,
+        ref: 'CODRemittance',
+      },
+      remittedAt: Date,
+      remittedAmount: Number,
+    },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -341,6 +430,12 @@ ShipmentSchema.index({ companyId: 1, 'paymentDetails.type': 1 }); // COD vs Prep
 ShipmentSchema.index({ companyId: 1, currentStatus: 1, actualDelivery: -1 }); // Delivery time analytics for completed shipments
 ShipmentSchema.index({ companyId: 1, carrier: 1, createdAt: -1 }); // Carrier performance analytics over time
 
+// Week 11: Weight Dispute & Remittance indexes
+ShipmentSchema.index({ 'weights.verified': 1, createdAt: -1 }); // Unverified weights scan
+ShipmentSchema.index({ 'weightDispute.exists': 1, 'weightDispute.status': 1 }); // Active disputes
+ShipmentSchema.index({ 'remittanceStatus.eligible': 1, 'paymentDetails.type': 1 }); // Eligible COD shipments
+ShipmentSchema.index({ companyId: 1, 'remittanceStatus.eligible': 1, 'remittanceStatus.remittanceId': 1 }); // Remittance batch creation
+
 // Pre-save hook to ensure the first status is added to history
 ShipmentSchema.pre('save', function (next) {
   const shipment = this;
@@ -351,6 +446,17 @@ ShipmentSchema.pre('save', function (next) {
       status: shipment.currentStatus,
       timestamp: new Date(),
     });
+  }
+
+  // Week 11: Initialize weights.declared from packageDetails.weight (for new shipments)
+  if (shipment.isNew && !shipment.weights) {
+    shipment.weights = {
+      declared: {
+        value: shipment.packageDetails.weight,
+        unit: 'kg', // Assuming packageDetails.weight is in kg
+      },
+      verified: false,
+    };
   }
 
   next();

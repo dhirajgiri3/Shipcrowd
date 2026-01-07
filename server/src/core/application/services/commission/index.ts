@@ -8,3 +8,12 @@ export { default as CommissionCalculationService } from './commission-calculatio
 export { default as CommissionApprovalService } from './commission-approval.service';
 export { default as PayoutProcessingService } from './payout-processing.service';
 export { default as CommissionAnalyticsService } from './commission-analytics.service';
+export { default as CommissionAIInsightsService } from './commission-ai-insights.service';
+
+// Export types
+export type {
+    CommissionForecast,
+    AnomalyReport,
+    PerformanceRecommendations,
+    SalesRepInsights
+} from './commission-ai-insights.service';

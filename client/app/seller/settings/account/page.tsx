@@ -1,341 +1,188 @@
 "use client";
 
 import { useState } from 'react';
+import { authApi } from '@/src/core/api/auth.api';
 import { useAuth } from '@/src/features/auth';
-import { Button, Input, Card } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
 import { toast } from 'sonner';
-import { Mail, ShieldCheck, Key, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Trash2, UserX, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-export default function AccountSettingsPage() {
-    const { user, changeEmail } = useAuth();
+export default function AccountManagementPage() {
+    const { user, logout } = useAuth();
+    const router = useRouter();
+    const [isDeactivating, setIsDeactivating] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    // Email change state
-    const [newEmail, setNewEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isChangingEmail, setIsChangingEmail] = useState(false);
-    const [showEmailForm, setShowEmailForm] = useState(false);
+    const handleDeactivate = async () => {
+        const confirmed = confirm(
+            'Are you sure you want to deactivate your account? You can reactivate it anytime by logging in again.'
+        );
+        if (!confirmed) return;
 
-    // Account deletion state
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+        const reason = prompt('Why are you deactivating? (optional)');
 
-    const handleChangeEmail = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!newEmail || !password) {
-            toast.error('Please fill in all fields');
-            return;
-        }
-
-        if (newEmail === user?.email) {
-            toast.error('New email is the same as current email');
-            return;
-        }
-
-        setIsChangingEmail(true);
+        setIsDeactivating(true);
         try {
-            const result = await changeEmail({ newEmail, password });
-
-            if (result.success) {
-                toast.success(result.message || 'Verification email sent to new address');
-                setNewEmail('');
-                setPassword('');
-                setShowEmailForm(false);
-            } else {
-                toast.error(result.error || 'Failed to change email');
-            }
+            await authApi.deactivateAccount(reason || undefined);
+            toast.success('Account deactivated successfully');
+            await logout();
+            router.push('/');
         } catch (error: any) {
-            toast.error(error.message || 'Failed to change email');
+            toast.error(error.response?.data?.message || 'Failed to deactivate account');
         } finally {
-            setIsChangingEmail(false);
+            setIsDeactivating(false);
         }
     };
 
-    const handleDeleteAccount = async () => {
-        if (deleteConfirmText !== 'DELETE') {
-            toast.error('Please type DELETE to confirm');
-            return;
-        }
+    const handleScheduleDeletion = async () => {
+        const confirmed = confirm(
+            '⚠️ WARNING: This will schedule your account for permanent deletion in 30 days.\n\nYou can cancel within 30 days. After that, all your data will be permanently deleted.\n\nAre you absolutely sure?'
+        );
+        if (!confirmed) return;
 
-        toast.error('Account deletion not yet implemented');
-        // TODO: Implement account deletion API call
-        setShowDeleteConfirm(false);
-        setDeleteConfirmText('');
+        const reason = prompt('Why are you leaving? (optional - helps us improve)');
+
+        setIsDeleting(true);
+        try {
+            const result = await authApi.scheduleAccountDeletion(reason || undefined);
+            const deletionDate = new Date(result.data?.scheduledDeletionDate).toLocaleDateString();
+            toast.success(`Account deletion scheduled for ${deletionDate}`);
+
+            // Show info about cancellation
+            setTimeout(() => {
+                alert(`Your account will be deleted on ${deletionDate}.\n\nYou can cancel this by logging in before that date.`);
+            }, 1000);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to schedule deletion');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
-        <div className="space-y-6">
-            {/* Page Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">Account Settings</h1>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">
-                    Manage your email, recovery options, and account preferences
-                </p>
-            </div>
+        <div className="min-h-screen p-6">
+            <div className="max-w-2xl mx-auto space-y-6">
+                <div>
+                    <Link href="/seller/settings/profile">
+                        <Button variant="ghost" className="gap-2 mb-4">
+                            <ArrowLeft className="h-4 w-4" />
+                            Back to Settings
+                        </Button>
+                    </Link>
 
-            {/* Email Management */}
-            <Card className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-[var(--primary-blue-soft)] rounded-lg">
-                        <Mail className="h-5 w-5 text-[var(--primary-blue)]" />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Email Address</h2>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            Update your email address for login and notifications
-                        </p>
-                    </div>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                        Account Management
+                    </h1>
+                    <p className="text-sm text-[var(--text-secondary)] mt-2">
+                        Manage your account status and data
+                    </p>
                 </div>
 
-                <div className="space-y-4">
-                    {/* Current Email */}
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
-                        <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">Current Email</p>
-                            <p className="text-sm text-[var(--text-secondary)] mt-1">{user?.email}</p>
-                            {user?.isEmailVerified && (
-                                <div className="flex items-center gap-1 mt-2 text-xs text-[var(--success)]">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Verified
+                {/* Current Account Info */}
+                <Card className="p-6">
+                    <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
+                        Account Information
+                    </h2>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-[var(--text-secondary)]">Email:</span>
+                            <span className="text-[var(--text-primary)] font-medium">{user?.email}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-[var(--text-secondary)]">Account Type:</span>
+                            <span className="text-[var(--text-primary)] font-medium capitalize">{user?.role}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-[var(--text-secondary)]">Status:</span>
+                            <span className="text-[var(--success)] font-medium">Active</span>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Danger Zone */}
+                <Card className="p-6 border-[var(--error)] bg-[var(--error-bg)]">
+                    <div className="flex items-center gap-2 mb-4">
+                        <AlertTriangle className="h-5 w-5 text-[var(--error)]" />
+                        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                            Danger Zone
+                        </h2>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Deactivate Account */}
+                        <div className="p-4 bg-[var(--bg-primary)] rounded-lg border border-[var(--border-primary)]">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <UserX className="h-5 w-5 text-[var(--warning)]" />
+                                        <h3 className="font-semibold text-[var(--text-primary)]">
+                                            Deactivate Account
+                                        </h3>
+                                    </div>
+                                    <p className="text-sm text-[var(--text-secondary)]">
+                                        Temporarily disable your account. You can reactivate anytime by logging in.
+                                    </p>
+                                    <ul className="mt-2 text-xs text-[var(--text-secondary)] space-y-1">
+                                        <li>• Your data will be preserved</li>
+                                        <li>• You can reactivate anytime</li>
+                                        <li>• Your profile will be hidden</li>
+                                    </ul>
                                 </div>
-                            )}
-                        </div>
-                        {!showEmailForm && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowEmailForm(true)}
-                            >
-                                Change Email
-                            </Button>
-                        )}
-                    </div>
-
-                    {/* Change Email Form */}
-                    {showEmailForm && (
-                        <form onSubmit={handleChangeEmail} className="space-y-4 p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-                                    New Email Address
-                                </label>
-                                <Input
-                                    type="email"
-                                    value={newEmail}
-                                    onChange={(e) => setNewEmail(e.target.value)}
-                                    placeholder="Enter your new email"
-                                    required
-                                    disabled={isChangingEmail}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-                                    Confirm Password
-                                </label>
-                                <Input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Enter your password to confirm"
-                                    required
-                                    disabled={isChangingEmail}
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2 p-3 bg-[var(--primary-blue-soft)] rounded-lg border border-[var(--primary-blue)]/20">
-                                <AlertTriangle className="h-4 w-4 text-[var(--primary-blue)] flex-shrink-0" />
-                                <p className="text-xs text-[var(--primary-blue)]">
-                                    We'll send a verification link to your new email address. You must verify it before the change takes effect.
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
                                 <Button
-                                    type="submit"
-                                    disabled={isChangingEmail}
-                                    isLoading={isChangingEmail}
-                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleDeactivate}
+                                    disabled={isDeactivating}
+                                    isLoading={isDeactivating}
+                                    className="border-[var(--warning)] text-[var(--warning)] hover:bg-[var(--warning)] hover:text-white"
                                 >
-                                    Send Verification Email
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        setShowEmailForm(false);
-                                        setNewEmail('');
-                                        setPassword('');
-                                    }}
-                                    disabled={isChangingEmail}
-                                >
-                                    Cancel
+                                    {isDeactivating ? 'Deactivating...' : 'Deactivate'}
                                 </Button>
                             </div>
-                        </form>
-                    )}
-                </div>
-            </Card>
+                        </div>
 
-            {/* Account Recovery - Placeholder */}
-            <Card className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-[var(--success-bg)] rounded-lg">
-                        <ShieldCheck className="h-5 w-5 text-[var(--success)]" />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Account Recovery</h2>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            Set up recovery options to regain access if you forget your password
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    {/* Security Questions - Coming Soon */}
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
-                        <div className="flex items-center gap-3">
-                            <Key className="h-5 w-5 text-[var(--text-secondary)]" />
-                            <div>
-                                <p className="text-sm font-medium text-[var(--text-primary)]">Security Questions</p>
-                                <p className="text-xs text-[var(--text-secondary)] mt-1">Not configured</p>
+                        {/* Delete Account */}
+                        <div className="p-4 bg-[var(--bg-primary)] rounded-lg border border-[var(--error)]">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Trash2 className="h-5 w-5 text-[var(--error)]" />
+                                        <h3 className="font-semibold text-[var(--text-primary)]">
+                                            Delete Account
+                                        </h3>
+                                    </div>
+                                    <p className="text-sm text-[var(--text-secondary)]">
+                                        Permanently delete your account after a 30-day grace period.
+                                    </p>
+                                    <ul className="mt-2 text-xs text-[var(--text-secondary)] space-y-1">
+                                        <li>• 30-day grace period to cancel</li>
+                                        <li>• All data will be permanently deleted</li>
+                                        <li>• This action cannot be undone after 30 days</li>
+                                    </ul>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleScheduleDeletion}
+                                    disabled={isDeleting}
+                                    isLoading={isDeleting}
+                                    className="border-[var(--error)] text-[var(--error)] hover:bg-[var(--error)] hover:text-white"
+                                >
+                                    {isDeleting ? 'Scheduling...' : 'Delete Account'}
+                                </Button>
                             </div>
                         </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Coming Soon
-                        </Button>
                     </div>
+                </Card>
 
-                    {/* Backup Email - Coming Soon */}
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
-                        <div className="flex items-center gap-3">
-                            <Mail className="h-5 w-5 text-[var(--text-secondary)]" />
-                            <div>
-                                <p className="text-sm font-medium text-[var(--text-primary)]">Backup Email</p>
-                                <p className="text-xs text-[var(--text-secondary)] mt-1">Not configured</p>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Coming Soon
-                        </Button>
-                    </div>
-
-                    {/* Recovery Keys - Coming Soon */}
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
-                        <div className="flex items-center gap-3">
-                            <Key className="h-5 w-5 text-[var(--text-secondary)]" />
-                            <div>
-                                <p className="text-sm font-medium text-[var(--text-primary)]">Recovery Keys</p>
-                                <p className="text-xs text-[var(--text-secondary)] mt-1">Not generated</p>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                            Coming Soon
-                        </Button>
-                    </div>
-                </div>
-            </Card>
-
-            {/* Danger Zone */}
-            <Card className="p-6 border-[var(--error)]/20 bg-[var(--error-bg)]">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-[var(--error)]/10 rounded-lg">
-                        <Trash2 className="h-5 w-5 text-[var(--error)]" />
-                    </div>
-                    <div className="flex-1">
-                        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Danger Zone</h2>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            Irreversible actions for your account
-                        </p>
-                    </div>
-                </div>
-
-                {!showDeleteConfirm ? (
-                    <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--error)]/20">
-                        <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">Delete Account</p>
-                            <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                Permanently delete your account and all associated data
-                            </p>
-                        </div>
-                        <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => setShowDeleteConfirm(true)}
-                        >
-                            Delete Account
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="space-y-4 p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--error)]/20">
-                        <div className="flex items-start gap-2">
-                            <AlertTriangle className="h-5 w-5 text-[var(--error)] flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-sm font-medium text-[var(--error)]">Warning: This action cannot be undone</p>
-                                <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                    Deleting your account will permanently remove all your data, including:
-                                </p>
-                                <ul className="text-xs text-[var(--text-secondary)] mt-2 space-y-1 ml-4">
-                                    <li>• All your orders and shipments</li>
-                                    <li>• Company information and team members</li>
-                                    <li>• Billing and payment history</li>
-                                    <li>• KYC documents and verification data</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-                                Type <span className="font-mono bg-[var(--error)]/10 px-1 py-0.5 rounded text-[var(--error)]">DELETE</span> to confirm
-                            </label>
-                            <Input
-                                type="text"
-                                value={deleteConfirmText}
-                                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                placeholder="Type DELETE to confirm"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={handleDeleteAccount}
-                                disabled={deleteConfirmText !== 'DELETE'}
-                            >
-                                Permanently Delete Account
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setShowDeleteConfirm(false);
-                                    setDeleteConfirmText('');
-                                }}
-                            >
-                                Cancel
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </Card>
-
-            {/* Account Info */}
-            <Card className="p-6 bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
-                <div className="flex gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-[var(--primary-blue)] flex-shrink-0 mt-0.5" />
-                    <div className="space-y-2">
-                        <p className="text-sm font-medium text-[var(--text-primary)]">
-                            Account Information
-                        </p>
-                        <div className="text-xs text-[var(--text-secondary)] space-y-1">
-                            <p>• Your account was created on {(user as any)?.createdAt ? new Date((user as any).createdAt).toLocaleDateString() : 'N/A'}</p>
-                            <p>• Your email is {user?.isEmailVerified ? 'verified' : 'not verified'}</p>
-                            <p>• Your account status is {user?.isActive ? 'active' : 'inactive'}</p>
-                        </div>
-                    </div>
-                </div>
-            </Card>
+                {/* Info Card */}
+                <Card className="p-4 bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/20">
+                    <p className="text-sm text-[var(--primary-blue)]">
+                        <strong>Need help?</strong> Contact our support team before deleting your account.
+                        We're here to help resolve any issues.
+                    </p>
+                </Card>
+            </div>
         </div>
     );
 }

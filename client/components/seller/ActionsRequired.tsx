@@ -78,8 +78,7 @@ const iconMap = {
 const colors = {
     rose: { // Critical / NDR
         border: "border-rose-100 dark:border-rose-900/40",
-        bg_hover: "hover:shadow-rose-100/50 dark:hover:shadow-rose-900/20",
-        gradient: "from-rose-500/5 to-transparent",
+        gradient: "from-rose-500/5 to-rose-500/3",
         icon_bg: "bg-rose-500",
         icon_text: "text-white",
         title: "text-rose-950 dark:text-rose-50",
@@ -88,8 +87,7 @@ const colors = {
     },
     emerald: { // KYC / Success / Verification
         border: "border-emerald-100 dark:border-emerald-900/40",
-        bg_hover: "hover:shadow-emerald-100/50 dark:hover:shadow-emerald-900/20",
-        gradient: "from-emerald-500/5 to-transparent",
+        gradient: "from-emerald-500/5 to-emerald-500/3",
         icon_bg: "bg-emerald-500",
         icon_text: "text-white",
         title: "text-emerald-950 dark:text-emerald-50",
@@ -98,8 +96,7 @@ const colors = {
     },
     amber: { // Wallet / Warning
         border: "border-amber-100 dark:border-amber-900/40",
-        bg_hover: "hover:shadow-amber-100/50 dark:hover:shadow-amber-900/20",
-        gradient: "from-amber-500/5 to-transparent",
+        gradient: "from-amber-500/5 to-amber-500/3",
         icon_bg: "bg-amber-500",
         icon_text: "text-white",
         title: "text-amber-950 dark:text-amber-50",
@@ -108,8 +105,7 @@ const colors = {
     },
     blue: { // Orders / Neutral
         border: "border-blue-100 dark:border-blue-900/40",
-        bg_hover: "hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20",
-        gradient: "from-blue-500/5 to-transparent",
+        gradient: "from-blue-500/5 to-blue-500/3",
         icon_bg: "bg-blue-600",
         icon_text: "text-white",
         title: "text-blue-950 dark:text-blue-50",
@@ -118,8 +114,7 @@ const colors = {
     },
     violet: { // Disputes / Legal
         border: "border-violet-100 dark:border-violet-900/40",
-        bg_hover: "hover:shadow-violet-100/50 dark:hover:shadow-violet-900/20",
-        gradient: "from-violet-500/5 to-transparent",
+        gradient: "from-violet-500/5 to-violet-500/3",
         icon_bg: "bg-violet-600",
         icon_text: "text-white",
         title: "text-violet-950 dark:text-violet-50",
@@ -131,8 +126,8 @@ const colors = {
 const typeToColorMap: Record<string, keyof typeof colors> = {
     'orders_ready': 'blue',
     'ndr_pending': 'rose',
-    'low_wallet': 'amber',
-    'kyc_pending': 'emerald', // Specific Request: Green for KYC
+    'low_wallet': 'emerald',
+    'kyc_pending': 'violet', // Specific Request: Green for KYC
     'weight_dispute': 'violet',
 };
 
@@ -185,7 +180,6 @@ export function ActionsRequired({ actions, isLoading }: ActionsRequiredProps) {
                             className={cn(
                                 "group relative flex flex-col justify-between overflow-hidden rounded-3xl border bg-[var(--bg-primary)] transition-all duration-300",
                                 theme.border,
-                                theme.bg_hover,
                                 "hover:shadow-lg"
                             )}
                         >
@@ -196,39 +190,39 @@ export function ActionsRequired({ actions, isLoading }: ActionsRequiredProps) {
                             <div className={cn("absolute top-0 inset-x-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300", theme.icon_bg)} />
 
                             {/* Content */}
-                            <div className="relative p-6">
-                                <div className="flex justify-between items-start mb-5">
+                            <div className="relative p-5">
+                                <div className="flex justify-between items-start mb-4">
                                     <div className={cn(
-                                        "h-14 w-14 rounded-2xl flex items-center justify-center shadow-md transform group-hover:scale-105 transition-all duration-300",
+                                        "h-12 w-12 rounded-2xl flex items-center justify-center shadow-md transform group-hover:scale-105 transition-all duration-300",
                                         theme.icon_bg,
                                         theme.icon_text
                                     )}>
-                                        <Icon className="w-7 h-7" strokeWidth={2} />
+                                        <Icon className="w-6 h-6" strokeWidth={2} />
                                     </div>
                                     {action.count !== undefined && action.count > 0 && (
                                         <div className="flex flex-col items-end">
-                                            <span className={cn("text-4xl font-extrabold tracking-tight opacity-90", theme.title)}>
+                                            <span className={cn("text-3xl font-extrabold tracking-tight opacity-90", theme.title)}>
                                                 {action.count}
                                             </span>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="space-y-2 mb-8">
-                                    <h3 className={cn("text-sm font-bold tracking-tight uppercase", theme.title)}>
+                                <div className="space-y-1.5 mb-4">
+                                    <h3 className={cn("text-xs font-bold tracking-tight uppercase", theme.title)}>
                                         {action.title}
                                     </h3>
-                                    <p className="text-[13px] leading-6 text-[var(--text-secondary)] font-medium line-clamp-2">
+                                    <p className="text-[13px] leading-5 text-[var(--text-secondary)] font-medium line-clamp-2">
                                         {action.description}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Footer / Action Area */}
-                            <div className="relative mt-auto px-6 pb-6 w-full">
+                            <div className="relative mt-auto px-5 pb-5 w-full">
                                 <Link href={action.actionUrl} className="block w-full">
                                     <button className={cn(
-                                        "w-full flex items-center justify-between py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border border-transparent",
+                                        "w-full flex items-center justify-between py-2 px-4 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-200 border border-transparent",
                                         theme.btn_text,
                                         theme.btn_hover_bg,
                                         "hover:pl-5 hover:pr-3"

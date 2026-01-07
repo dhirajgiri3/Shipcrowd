@@ -57,6 +57,10 @@ export interface ICompany extends Document {
   status: 'pending_verification' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
   isActive: boolean;
   isDeleted: boolean;
+  // ✅ FEATURE 27: Company Suspension Fields
+  isSuspended?: boolean;
+  suspendedAt?: Date;
+  suspensionReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -168,6 +172,13 @@ const CompanySchema = new Schema<ICompany>(
       type: Boolean,
       default: false,
     },
+    // ✅ FEATURE 27: Company Suspension Fields
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    suspendedAt: Date,
+    suspensionReason: String,
   },
   {
     timestamps: true,

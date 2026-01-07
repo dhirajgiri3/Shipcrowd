@@ -42,6 +42,32 @@ export const authenticate = async (
       companyId: payload.companyId,
     };
 
+    // ✅ FEATURE 27: Company Suspension Check
+    // Block access if user's company is suspended
+    if (payload.companyId) {
+      const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+      const company = await Company.findById(payload.companyId).select('isSuspended suspendedAt suspensionReason');
+
+      if (company?.isSuspended) {
+        logger.warn('Access denied: Company is suspended', {
+          userId: payload.userId,
+          companyId: payload.companyId,
+          suspendedAt: company.suspendedAt,
+        });
+
+        res.status(403).json({
+          success: false,
+          message: 'Your company account is suspended. Please contact support for assistance.',
+          code: 'COMPANY_SUSPENDED',
+          data: {
+            suspendedAt: company.suspendedAt,
+            contactSupport: true,
+          },
+        });
+        return;
+      }
+    }
+
     next();
   } catch (error) {
     res.status(401).json({ message: 'Invalid or expired token' });

@@ -81,9 +81,10 @@ describe('OrderAnalyticsService', () => {
 
     describe('getOrderTrends', () => {
         it('should return daily trends', async () => {
+            // Mock should return the transformed format (after $project stage)
             const mockTrends = [
-                { _id: '2024-01-01', orders: 10, revenue: 5000 },
-                { _id: '2024-01-02', orders: 15, revenue: 7500 }
+                { date: '2024-01-01', orders: 10, revenue: 5000 },
+                { date: '2024-01-02', orders: 15, revenue: 7500 }
             ];
 
             (Order.aggregate as jest.Mock).mockResolvedValue(mockTrends);
@@ -97,6 +98,7 @@ describe('OrderAnalyticsService', () => {
             expect(result).toHaveLength(2);
             expect(result[0].date).toBe('2024-01-01');
             expect(result[0].orders).toBe(10);
+            expect(result[0].revenue).toBe(5000);
         });
     });
 

@@ -31,6 +31,8 @@ import integrationsRoutes from './integrations';
 // Week 8: NDR/RTO Automation
 import ndrRoutes from './ndr/ndr.routes';
 import rtoRoutes from './rto/rto.routes';
+// Week 11: Weight Disputes & COD Remittance
+import weightDisputesRoutes from './disputes/weight-disputes.routes';
 
 const router = express.Router();
 
@@ -80,5 +82,7 @@ router.use('/rto', rtoRoutes);
 // Week 9: Analytics Export
 import exportRoutes from './analytics/export.routes';
 router.use('/export', exportRoutes);
+// Week 11: Weight Disputes & COD Remittance
+router.use('/disputes/weight', weightDisputesRoutes);
 
 export default router;

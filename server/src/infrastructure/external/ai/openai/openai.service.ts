@@ -360,6 +360,106 @@ Respond with just the action name and a brief reason.`;
     }
 
     /**
+     * Analyze commission trends for forecasting
+     * Used by CommissionAIInsightsService for forecast enhancement
+     */
+    static async analyzeCommissionTrends(prompt: string): Promise<string> {
+        try {
+            const client = this.getClient();
+
+            const response = await client.chat.completions.create({
+                model: this.model,
+                messages: [{
+                    role: 'system',
+                    content: 'You are a financial analyst specializing in sales commission forecasting. Provide accurate, conservative predictions based on data.'
+                }, {
+                    role: 'user',
+                    content: prompt
+                }],
+                max_tokens: 300,
+                temperature: 0.2, // Low temperature for numerical accuracy
+                response_format: { type: 'json_object' }
+            });
+
+            return response.choices[0]?.message?.content || '{"adjustmentFactor": 1.0, "confidence": 70, "insight": "Statistical forecast confirmed", "reasoning": "Insufficient context for adjustment"}';
+        } catch (error: any) {
+            logger.warn('Commission trends analysis failed', { error: error.message });
+            // Return conservative fallback
+            return '{"adjustmentFactor": 1.0, "confidence": 60, "insight": "Using statistical forecast only", "reasoning": "AI analysis unavailable"}';
+        }
+    }
+
+    /**
+     * Analyze anomalies with AI context
+     * Used by CommissionAIInsightsService for anomaly validation
+     */
+    static async analyzeAnomalies(prompt: string): Promise<string> {
+        try {
+            const client = this.getClient();
+
+            const response = await client.chat.completions.create({
+                model: this.model,
+                messages: [{
+                    role: 'system',
+                    content: 'You are a risk analyst. Determine if statistical anomalies are genuinely concerning or have valid explanations.'
+                }, {
+                    role: 'user',
+                    content: prompt
+                }],
+                max_tokens: 200,
+                temperature: 0.3,
+                response_format: { type: 'json_object' }
+            });
+
+            return response.choices[0]?.message?.content || '{"isGenuineAnomaly": true, "adjustedSeverity": "warning", "explanation": "Statistical anomaly detected", "suggestedAction": "Review manually"}';
+        } catch (error: any) {
+            logger.warn('Anomaly analysis failed', { error: error.message });
+            return '{"isGenuineAnomaly": true, "adjustedSeverity": "warning", "explanation": "Unable to analyze context", "suggestedAction": "Review manually"}';
+        }
+    }
+
+    /**
+     * Generate performance recommendations
+     * Used by CommissionAIInsightsService for personalized suggestions
+     */
+    static async generatePerformanceRecommendations(prompt: string): Promise<string> {
+        try {
+            const client = this.getClient();
+
+            const response = await client.chat.completions.create({
+                model: this.model,
+                messages: [{
+                    role: 'system',
+                    content: 'You are a sales performance coach. Generate specific, actionable recommendations based on metrics.'
+                }, {
+                    role: 'user',
+                    content: prompt
+                }],
+                max_tokens: 400,
+                temperature: 0.5, // Moderate creativity for suggestions
+                response_format: { type: 'json_object' }
+            });
+
+            const content = response.choices[0]?.message?.content;
+            if (content) {
+                // Ensure the response is an array
+                const parsed = JSON.parse(content);
+                if (Array.isArray(parsed)) {
+                    return content;
+                } else if (parsed.recommendations && Array.isArray(parsed.recommendations)) {
+                    return JSON.stringify(parsed.recommendations);
+                }
+            }
+
+            // Fallback
+            return '[{"priority": "medium", "category": "strategy", "title": "Maintain consistency", "description": "Continue current performance level", "expectedImpact": "Stable growth", "actionItems": ["Track metrics weekly"], "estimatedEffort": "low"}]';
+        } catch (error: any) {
+            logger.warn('Performance recommendations failed', { error: error.message });
+            return '[{"priority": "medium", "category": "strategy", "title": "Review performance metrics", "description": "AI recommendations unavailable", "expectedImpact": "N/A", "actionItems": ["Consult with manager"], "estimatedEffort": "low"}]';
+        }
+    }
+
+    /**
      * Check if OpenAI is configured
      */
     static isConfigured(): boolean {

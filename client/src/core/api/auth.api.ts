@@ -167,6 +167,114 @@ class AuthApiService {
 
     return response.data;
   }
+
+  /**
+   * Check password strength using backend validation
+   * POST /auth/check-password-strength
+   */
+  async checkPasswordStrength(
+    password: string,
+    email?: string,
+    name?: string
+  ): Promise<{
+    score: number;
+    isStrong: boolean;
+    feedback: {
+      warning?: string;
+      suggestions: string[];
+    };
+    requirements: {
+      minLength: number;
+      minScore: number;
+      requireLowercase: boolean;
+      requireUppercase: boolean;
+      requireNumber: boolean;
+      requireSpecial: boolean;
+    };
+  }> {
+    const response = await apiClient.post('/auth/check-password-strength', {
+      password,
+      email,
+      name,
+    });
+
+    return response.data.data;
+  }
+
+  /**
+   * Change email address
+   * POST /auth/change-email
+   */
+  async changeEmail(newEmail: string, password?: string): Promise<any> {
+    const response = await apiClient.post('/auth/change-email', {
+      newEmail,
+      password, // Optional for OAuth users
+    });
+    return response.data;
+  }
+
+  /**
+   * Request magic link for passwordless login
+   * POST /auth/magic-link
+   */
+  async requestMagicLink(email: string): Promise<any> {
+    const response = await apiClient.post('/auth/magic-link', { email });
+    return response.data;
+  }
+
+  /**
+   * Verify magic link token
+   * GET /auth/magic-link/verify?token=xxx
+   */
+  async verifyMagicLink(token: string): Promise<any> {
+    const response = await apiClient.get(`/auth/magic-link/verify?token=${token}`);
+    return response.data;
+  }
+
+  /**
+   * Request account recovery (unlock locked account)
+   * POST /auth/recovery/request-unlock
+   */
+  async requestAccountRecovery(email: string): Promise<any> {
+    const response = await apiClient.post('/auth/recovery/request-unlock', { email });
+    return response.data;
+  }
+
+  /**
+   * Verify account recovery token
+   * POST /auth/recovery/verify-unlock
+   */
+  async verifyRecoveryToken(token: string): Promise<any> {
+    const response = await apiClient.post('/auth/recovery/verify-unlock', { token });
+    return response.data;
+  }
+
+  /**
+   * Deactivate account
+   * POST /auth/deactivate
+   */
+  async deactivateAccount(reason?: string, password?: string): Promise<any> {
+    const response = await apiClient.post('/auth/deactivate', { reason, password });
+    return response.data;
+  }
+
+  /**
+   * Schedule account deletion (30-day grace period)
+   * POST /auth/delete/schedule
+   */
+  async scheduleAccountDeletion(reason?: string, password?: string): Promise<any> {
+    const response = await apiClient.post('/auth/delete/schedule', { reason, password });
+    return response.data;
+  }
+
+  /**
+   * Cancel scheduled account deletion
+   * POST /auth/delete/cancel
+   */
+  async cancelAccountDeletion(): Promise<any> {
+    const response = await apiClient.post('/auth/delete/cancel');
+    return response.data;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
