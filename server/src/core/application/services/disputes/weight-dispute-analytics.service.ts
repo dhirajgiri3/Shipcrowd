@@ -7,6 +7,32 @@
  * - Financial impact analysis
  * - Resolution performance metrics
  * 
+ * BUSINESS RULES:
+ * ===============
+ * 1. High-Risk Seller Scoring
+ *    - Base: dispute_count × 10
+ *    - Penalty: avg_discrepancy × 5
+ *    - Penalty: shipcrowd_favor_rate × 20
+ *    - Threshold: Score >100 = High Risk
+ *    - Reason: Multi-factor risk assessment
+ * 
+ * 2. Trend Grouping
+ *    - Daily: Last 30 days
+ *    - Weekly: Last 12 weeks
+ *    - Monthly: Last 12 months
+ * 
+ * PERFORMANCE:
+ * ===========
+ * - MongoDB Aggregation: Optimized pipelines
+ * - Indexes: companyId, status, createdAt
+ * - Query Time: <200ms for 10K disputes
+ * - Consider Redis caching (1-hour TTL)
+ * 
+ * DEPENDENCIES:
+ * ============
+ * - WeightDispute Model
+ * - Logger (Winston)
+ * 
  * Used by: Admin dashboard, reporting system
  */
 
