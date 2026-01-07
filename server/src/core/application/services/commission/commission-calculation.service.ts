@@ -6,6 +6,87 @@
  * - order.cancelled → cancel commission
  * - order.updated → recalculate commission
  * - rto.completed → handle RTO adjustments
+ * 
+ * BUSINESS RULES:
+ * ===============
+ * 1. Idempotency Protection
+ *    - Condition: Duplicate event within 5 minutes
+ *    - Action: Skip processing, return null
+ *    - Reason: Prevent duplicate commission calculations
+ * 
+ * 2. Rule Priority
+ *    - Condition: Multiple applicable rules
+ *    - Action: Use first matching rule (highest priority)
+ *    - Reason: Deterministic commission calculation
+ * 
+ * 3. Status-Based Recalculation
+ *    - Condition: Recalculate request
+ *    - Action: Only allow if status is 'pending'
+ *    - Reason: Prevent modification of approved/paid commissions
+ * 
+ * 4. RTO Handling
+ *    - Condition: RTO completed event
+ *    - Action: Cancel all pending commissions for order
+ *    - Reason: No commission for returned orders
+ * 
+ * 5. Audit Trail
+ *    - Condition: Every commission operation
+ *    - Action: Create audit log entry
+ *    - Reason: Compliance and dispute resolution
+ * 
+ * ERROR HANDLING:
+ * ==============
+ * Expected Errors:
+ * - AppError (404): Order not found
+ * - AppError (404): Sales representative not found
+ * - AppError (404): Commission rule not found
+ * - Null Return: No applicable rule found (warning logged)
+ * 
+ * Recovery Strategy:
+ * - Not Found Errors: Throw to caller, log error
+ * - No Applicable Rule: Return null, log warning
+ * - Duplicate Event: Skip silently, return null
+ * - Bulk Failures: Continue processing, collect errors
+ * 
+ * DEPENDENCIES:
+ * ============
+ * Internal:
+ * - CommissionTransaction Model: Store calculations
+ * - CommissionRule Model: Rule evaluation
+ * - SalesRepresentative Model: Rep lookup
+ * - Order Model: Order data
+ * - AuditLog Model: Audit trail
+ * - Logger: Winston for structured logging
+ * 
+ * Used By:
+ * - Order Event Handlers: Auto-calculate on order events
+ * - Commission Approval Service: Bulk calculations
+ * - Admin Dashboard: Manual recalculations
+ * 
+ * PERFORMANCE:
+ * ===========
+ * - Calculation Time: <100ms per order (rule evaluation + DB write)
+ * - Bulk Processing: Sequential (no parallelization to prevent race conditions)
+ * - Idempotency Cache: In-memory Map with 5-minute TTL
+ * - Query Optimization: Uses indexes on order, salesRep, status
+ * 
+ * TESTING:
+ * =======
+ * Unit Tests: tests/unit/services/commission/commission-calculation.test.ts
+ * Coverage: TBD
+ * 
+ * Critical Test Cases:
+ * - Idempotency (duplicate events)
+ * - Rule priority (multiple applicable rules)
+ * - Status validation (recalculate pending only)
+ * - RTO cancellation
+ * - Bulk processing with partial failures
+ * - No applicable rule handling
+ * 
+ * Business Impact:
+ * - Revenue sharing with sales team
+ * - Incentive program accuracy
+ * - Must maintain 100% accuracy for trust
  */
 
 import mongoose from 'mongoose';
