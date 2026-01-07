@@ -362,6 +362,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             teamRole: response.user.teamRole as any,
             isEmailVerified: true,
             isActive: true,
+            kycStatus: {
+              isComplete: false,
+              lastUpdated: undefined,
+            },
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };

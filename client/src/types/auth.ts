@@ -17,7 +17,6 @@ export interface User {
   // Team fields
   teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
   teamStatus?: 'active' | 'invited' | 'suspended';
-  permissions?: string[];
 
   // OAuth
   googleId?: string;
@@ -25,17 +24,31 @@ export interface User {
   isEmailVerified: boolean;
   avatar?: string;
 
-  // Profile
+  // Profile (expanded to match backend)
   profile?: {
     phone?: string;
+    address?: string;
     city?: string;
     state?: string;
     country?: string;
     postalCode?: string;
+    dateOfBirth?: string; // ISO string
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    bio?: string;
+    website?: string;
+    socialLinks?: {
+      twitter?: string;
+      linkedin?: string;
+      github?: string;
+      facebook?: string;
+    };
+    preferredLanguage?: string;
+    preferredCurrency?: string;
+    timezone?: string;
   };
 
-  // KYC Status
-  kycStatus?: {
+  // KYC Status (required, not optional)
+  kycStatus: {
     isComplete: boolean;
     lastUpdated?: string;
   };

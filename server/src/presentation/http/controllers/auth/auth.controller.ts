@@ -15,6 +15,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import { AuthRequest } from '../../middleware/auth/auth';
 import mongoose from 'mongoose';
 import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';
+import { UserDTO } from '../../dtos/user.dto';
 
 // Custom password validator
 const passwordValidator = (password: string, ctx: z.RefinementCtx) => {
@@ -377,13 +378,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     });
 
     sendSuccess(res, {
-      user: {
-        id: typedUser._id.toString(),
-        name: typedUser.name,
-        email: typedUser.email,
-        role: typedUser.role,
-        companyId: typedUser.companyId,
-      },
+      user: UserDTO.toResponse(typedUser),
     }, 'Login successful');
   } catch (error) {
     logger.error('Login error:', error);
@@ -529,13 +524,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       );
 
       sendSuccess(res, {
-        user: {
-          id: typedUser._id.toString(),
-          name: typedUser.name,
-          email: typedUser.email,
-          role: typedUser.role,
-          companyId: typedUser.companyId,
-        }
+        user: UserDTO.toResponse(typedUser),
       }, 'Token refreshed');
     } catch (tokenError) {
       logger.error('Token verification error:', tokenError);
@@ -938,14 +927,18 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
       return;
     }
 
-    const user = await User.findById(authReq.user._id).select('-password');
+    // Exclude sensitive fields: password, security tokens, OAuth tokens
+    const user = await User.findById(authReq.user._id)
+      .select('-password -security -oauth.google.accessToken -oauth.google.refreshToken -pendingEmailChange')
+      .lean();
 
     if (!user) {
       sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
       return;
     }
 
-    sendSuccess(res, { user }, 'User retrieved successfully');
+    // Use DTO for consistent response format
+    sendSuccess(res, { user: UserDTO.toResponse(user as IUser) }, 'User retrieved successfully');
   } catch (error) {
     logger.error('Get user error:', error);
     next(error);
