@@ -33,8 +33,14 @@ let nextPrefixIndex = 1;
  * Generate unique order number
  */
 function generateOrderNumber(companyId: string, date: Date): string {
-    const counter = (orderCounters.get(companyId) || 0) + 1;
-    orderCounters.set(companyId, counter);
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const yearMonth = `${year}${month}`;
+
+    // Counter key includes company and year-month for monthly sequence reset
+    const counterKey = `${companyId}-${yearMonth}`;
+    const counter = (orderCounters.get(counterKey) || 0) + 1;
+    orderCounters.set(counterKey, counter);
 
     // Get or assign unique prefix for this company
     let companyPrefix = companyPrefixMap.get(companyId);
@@ -45,11 +51,9 @@ function generateOrderNumber(companyId: string, date: Date): string {
         nextPrefixIndex++;
     }
 
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const seq = counter.toString().padStart(5, '0');
 
-    return `ORD-${companyPrefix}-${year}${month}-${seq}`;
+    return `ORD-${companyPrefix}-${yearMonth}-${seq}`;
 }
 
 /**
