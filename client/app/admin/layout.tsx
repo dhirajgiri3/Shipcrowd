@@ -1,4 +1,4 @@
-import { AdminLayoutClient } from './AdminLayoutClient';
+import { AdminLayoutClient } from './components/AdminLayoutClient';
 
 /**
  * Admin Dashboard Layout (Server Component)
@@ -10,7 +10,7 @@ import { AdminLayoutClient } from './AdminLayoutClient';
  * - Better SEO
  * - Server-side data fetching capability
  * 
- * All interactive logic is in AdminLayoutClient.tsx
+ * All interactive logic is in components/AdminLayoutClient.tsx
  */
 export default function AdminLayout({
     children,

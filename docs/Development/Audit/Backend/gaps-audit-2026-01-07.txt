@@ -1,0 +1,211 @@
+🔍 SHIPCROWD CODEBASE GAP AUDIT
+================================
+Date: 2026-01-07
+Time: 23:33:01
+
+📊 AUDIT SUMMARY
+================
+
+📝 1. TODO COMMENTS
+-------------------
+Total TODOs: 40
+Without ticket/timeline: 40
+
+Top 10 files with most TODOs:
+5 server/src/core/application/services/rto/rto.service.ts
+4 server/src/core/application/services/warehouse/warehouse-notification.service.ts
+4 server/src/core/application/services/shopify/shopify-webhook.service.ts
+4 server/src/core/application/services/disputes/weight-dispute-resolution.service.ts
+3 server/src/core/application/services/woocommerce/woocommerce-webhook.service.ts
+3 server/src/core/application/services/flipkart/flipkart-webhook.service.ts
+2 server/src/presentation/http/controllers/disputes/weight-disputes.controller.ts
+2 server/src/core/application/services/shopify/product-mapping.service.ts
+2 server/src/core/application/services/flipkart/flipkart-product-mapping.service.ts
+2 server/src/core/application/services/commission/commission-ai-insights.service.ts
+
+🎭 2. MOCK/PLACEHOLDER CODE
+---------------------------
+Total mock/placeholder instances: 107
+
+Files with placeholders:
+server/src/core/application/services/woocommerce/woocommerce-product-mapping.service.ts
+server/src/core/application/services/woocommerce/woocommerce-webhook.service.ts
+server/src/core/application/services/woocommerce/woocommerce-inventory-sync.service.ts
+server/src/core/application/services/commission/commission-rule.service.ts
+server/src/core/application/services/amazon/amazon-product-mapping.service.ts
+server/src/core/application/services/rto/rto.service.ts
+server/src/core/application/services/shopify/shopify-inventory-sync.service.ts
+server/src/core/application/services/shopify/shopify-order-sync.service.ts
+server/src/core/application/services/shopify/product-mapping.service.ts
+server/src/core/application/services/integrations/mocks/deepvue.mock.ts
+server/src/core/application/services/integrations/deepvue.service.ts
+server/src/core/application/services/ndr/actions/ndr-action-executors.ts
+server/src/core/application/services/warehouse/warehouse-notification.service.ts
+server/src/core/application/services/flipkart/flipkart-product-mapping.service.ts
+server/src/infrastructure/database/mongoose/models/crm/leads/lead.model.ts
+server/src/infrastructure/database/mongoose/models/marketplaces/amazon/amazon-store.model.ts
+server/src/infrastructure/external/ecommerce/amazon/amazon.client.ts
+server/src/infrastructure/external/couriers/velocity/velocity.types.ts
+server/src/infrastructure/external/communication/exotel/exotel.client.ts
+server/src/infrastructure/external/communication/whatsapp/whatsapp.service.ts
+
+📋 3. POTENTIAL LOG-ONLY METHODS
+--------------------------------
+Searching for methods that might only log...
+Potential log-only methods: 3762 (needs manual review)
+
+📚 4. SERVICES MISSING DOCUMENTATION
+------------------------------------
+Total services: 78
+
+Services missing 'Purpose:' section:
+  - server/src/core/domain/interfaces/warehouse/packing.interface.service.ts
+  - server/src/core/domain/interfaces/warehouse/inventory.interface.service.ts
+  - server/src/core/domain/interfaces/warehouse/picking.interface.service.ts
+  - server/src/shared/services/cache.service.ts
+  - server/src/shared/services/token.service.ts
+  - server/src/infrastructure/utilities/cache.service.ts
+  - server/src/infrastructure/external/storage/cloudinary/cloudinary-storage.service.ts
+  - server/src/infrastructure/external/ai/openai/openai.service.ts
+  - server/src/infrastructure/external/communication/whatsapp/whatsapp.service.ts
+
+Services without proper docs: 9
+
+🔒 5. AUTHORIZATION GAPS
+------------------------
+Total controllers: 45
+
+Controllers missing authorization checks:
+  - server/src/presentation/http/controllers/organization/company.controller.ts
+  - server/src/presentation/http/controllers/organization/team.controller.ts
+  - server/src/presentation/http/controllers/identity/consent.controller.ts
+  - server/src/presentation/http/controllers/identity/account.controller.ts
+  - server/src/presentation/http/controllers/identity/profile.controller.ts
+  - server/src/presentation/http/controllers/identity/user.controller.ts
+  - server/src/presentation/http/controllers/identity/kyc.controller.ts
+  - server/src/presentation/http/controllers/auth/auth.controller.ts
+  - server/src/presentation/http/controllers/auth/recovery.controller.ts
+  - server/src/presentation/http/controllers/auth/session.controller.ts
+  - server/src/presentation/http/controllers/disputes/weight-disputes.controller.ts
+  - server/src/presentation/http/controllers/shipping/order.controller.ts
+  - server/src/presentation/http/controllers/shipping/ratecard.controller.ts
+  - server/src/presentation/http/controllers/shipping/shipment.controller.ts
+  - server/src/presentation/http/controllers/shipping/zone.controller.ts
+  - server/src/presentation/http/controllers/integrations/flipkart.controller.ts
+  - server/src/presentation/http/controllers/integrations/amazon-product-mapping.controller.ts
+  - server/src/presentation/http/controllers/integrations/woocommerce.controller.ts
+  - server/src/presentation/http/controllers/integrations/amazon.controller.ts
+  - server/src/presentation/http/controllers/integrations/shopify.controller.ts
+  - server/src/presentation/http/controllers/system/audit.controller.ts
+  - server/src/presentation/http/controllers/public/address-update.controller.ts
+  - server/src/presentation/http/controllers/communication/notification.controller.ts
+  - server/src/presentation/http/controllers/communication/email.controller.ts
+  - server/src/presentation/http/controllers/communication/whatsapp.controller.ts
+  - server/src/presentation/http/controllers/warehouse/warehouse.controller.ts
+  - server/src/presentation/http/controllers/warehouse/picking.controller.ts
+  - server/src/presentation/http/controllers/warehouse/packing.controller.ts
+  - server/src/presentation/http/controllers/warehouse/inventory.controller.ts
+  - server/src/presentation/http/controllers/webhooks/velocity.webhook.controller.ts
+  - server/src/presentation/http/controllers/webhooks/shopify.webhook.controller.ts
+  - server/src/presentation/http/controllers/webhooks/flipkart.webhook.controller.ts
+  - server/src/presentation/http/controllers/webhooks/woocommerce.webhook.controller.ts
+  - server/src/presentation/http/controllers/analytics/analytics.controller.ts
+  - server/src/presentation/http/controllers/analytics/export.controller.ts
+  - server/src/presentation/http/controllers/analytics/auth-analytics.controller.ts
+
+Controllers without auth: 36
+
+💳 6. POTENTIAL MISSING TRANSACTIONS
+------------------------------------
+Files with multiple model updates (should use transactions):
+  - server/src/core/application/services/woocommerce/woocommerce-order-sync.service.ts (6 updates, no transaction)
+  - server/src/core/application/services/woocommerce/woocommerce-product-mapping.service.ts (3 updates, no transaction)
+  - server/src/core/application/services/commission/commission-rule.service.ts (4 updates, no transaction)
+  - server/src/core/application/services/commission/commission-approval.service.ts (6 updates, no transaction)
+  - server/src/core/application/services/commission/commission-calculation.service.ts (3 updates, no transaction)
+  - server/src/core/application/services/commission/sales-representative.service.ts (6 updates, no transaction)
+  - server/src/core/application/services/amazon/amazon-inventory-sync.service.ts (5 updates, no transaction)
+  - server/src/core/application/services/amazon/amazon-product-mapping.service.ts (3 updates, no transaction)
+  - server/src/core/application/services/amazon/amazon-order-sync.service.ts (9 updates, no transaction)
+  - server/src/core/application/services/disputes/weight-dispute-detection.service.ts (3 updates, no transaction)
+  - server/src/core/application/services/shopify/shopify-inventory-sync.service.ts (3 updates, no transaction)
+  - server/src/core/application/services/shopify/shopify-order-sync.service.ts (4 updates, no transaction)
+  - server/src/core/application/services/shopify/product-mapping.service.ts (3 updates, no transaction)
+  - server/src/core/application/services/ndr/ndr-detection.service.ts (2 updates, no transaction)
+  - server/src/core/application/services/communication/whatsapp.service.ts (2 updates, no transaction)
+  - server/src/core/application/services/flipkart/flipkart-order-sync.service.ts (4 updates, no transaction)
+  - server/src/core/application/services/flipkart/flipkart-webhook.service.ts (2 updates, no transaction)
+  - server/src/core/application/services/flipkart/flipkart-product-mapping.service.ts (3 updates, no transaction)
+  - server/src/infrastructure/database/migrations/create-analytics-indexes.ts (5 updates, no transaction)
+  - server/src/infrastructure/utilities/queue-manager.ts (11 updates, no transaction)
+
+🔌 7. INTEGRATION COMPLETENESS
+------------------------------
+External service integrations:
+Total integration files: 18
+
+Integrations with mock/placeholder code:
+server/src/infrastructure/external/ecommerce/amazon/amazon.client.ts
+server/src/infrastructure/external/communication/exotel/exotel.client.ts
+server/src/infrastructure/external/communication/whatsapp/whatsapp.service.ts
+
+⚠️  8. ERROR HANDLING GAPS
+-------------------------
+Services without try-catch blocks:
+  - server/src/core/application/services/commission/commission-analytics.service.ts
+  - server/src/core/application/services/auth/password.service.ts
+  - server/src/core/application/services/shipping/carrier.service.ts
+  - server/src/core/application/services/ndr/ndr-analytics.service.ts
+  - server/src/core/application/services/warehouse/packing.service.ts
+  - server/src/core/application/services/analytics/analytics.service.ts
+  - server/src/core/application/services/analytics/export/base-export.service.ts
+
+🧪 9. TEST COVERAGE GAPS
+------------------------
+Total unit test files: 21
+
+Services without tests:
+  - server/src/core/application/services/woocommerce/woocommerce-order-sync.service.ts
+  - server/src/core/application/services/woocommerce/woocommerce-oauth.service.ts
+  - server/src/core/application/services/woocommerce/woocommerce-product-mapping.service.ts
+  - server/src/core/application/services/woocommerce/woocommerce-webhook.service.ts
+  - server/src/core/application/services/woocommerce/woocommerce-inventory-sync.service.ts
+  - server/src/core/application/services/commission/commission-rule.service.ts
+  - server/src/core/application/services/commission/commission-approval.service.ts
+  - server/src/core/application/services/commission/payout-processing.service.ts
+  - server/src/core/application/services/commission/commission-calculation.service.ts
+  - server/src/core/application/services/commission/sales-representative.service.ts
+  - server/src/core/application/services/commission/commission-analytics.service.ts
+  - server/src/core/application/services/amazon/amazon-inventory-sync.service.ts
+  - server/src/core/application/services/amazon/amazon-oauth.service.ts
+  - server/src/core/application/services/amazon/amazon-product-mapping.service.ts
+  - server/src/core/application/services/amazon/amazon-order-sync.service.ts
+  - server/src/core/application/services/rto/rto.service.ts
+  - server/src/core/application/services/auth/password.service.ts
+  - server/src/core/application/services/auth/oauth.service.ts
+  - server/src/core/application/services/auth/session.service.ts
+  - server/src/core/application/services/disputes/weight-dispute-analytics.service.ts
+
+================================
+📊 AUDIT SUMMARY
+================================
+
+Category                        | Count  | Status
+--------------------------------|--------|--------
+TODOs (total)                   | 40     | [1;33mMEDIUM[0m
+TODOs without tracking          | 40     | [0;31mHIGH[0m
+Mock/Placeholder code           | 107    | [0;31mHIGH[0m
+Services missing docs           | 9      | [0;32mOK[0m
+Controllers missing auth        | 36     | [0;31mHIGH[0m
+Unit test files                 | 21     | [0;32mOK[0m
+
+================================
+✅ AUDIT COMPLETE
+================================
+
+Next steps:
+1. Review detailed output above
+2. Run manual service reviews (see audit-service-manual.sh)
+3. Create master fix plan based on findings
+
+Full output saved to: gaps-audit-2026-01-07.txt

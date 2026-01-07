@@ -1,4 +1,4 @@
-import { SellerLayoutClient } from './SellerLayoutClient';
+import { SellerLayoutClient } from './components/SellerLayoutClient';
 
 /**
  * Seller Dashboard Layout (Server Component)
@@ -10,7 +10,7 @@ import { SellerLayoutClient } from './SellerLayoutClient';
  * - Better SEO
  * - Server-side data fetching capability
  * 
- * All interactive logic is in SellerLayoutClient.tsx
+ * All interactive logic is in components/SellerLayoutClient.tsx
  */
 export default function SellerLayout({
     children,
