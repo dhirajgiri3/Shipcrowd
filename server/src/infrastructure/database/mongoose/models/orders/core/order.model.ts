@@ -292,7 +292,9 @@ OrderSchema.index({ companyId: 1, paymentStatus: 1 }); // Payment status filteri
 OrderSchema.index({ companyId: 1, paymentMethod: 1 }); // COD vs Prepaid filtering
 
 // E-commerce integration indexes
-OrderSchema.index({ source: 1, sourceId: 1, companyId: 1 }, { unique: true, sparse: true }); // Shopify order lookup and duplicate prevention
+// Unique constraint only when sourceId exists (sparse allows multiple nulls)
+OrderSchema.index({ sourceId: 1, companyId: 1 }, { unique: true, sparse: true }); // External order duplicate prevention
+OrderSchema.index({ source: 1, companyId: 1 }); // Source filtering (non-unique, allows manual orders)
 OrderSchema.index({ companyId: 1, flipkartOrderId: 1 }, { sparse: true, unique: true }); // Flipkart order lookup and duplicate prevention
 OrderSchema.index({ flipkartStoreId: 1, currentStatus: 1 }); // Flipkart store filtering with status
 OrderSchema.index({ companyId: 1, amazonOrderId: 1 }, { sparse: true, unique: true }); // Amazon order lookup and duplicate prevention
