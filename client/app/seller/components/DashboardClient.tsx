@@ -18,17 +18,17 @@ import {
     Target
 } from 'lucide-react';
 import {
-    AreaChart,
-    Area,
+    LazyAreaChart as AreaChart,
+    LazyArea as Area,
+    LazyPieChart as RechartsPieChart,
+    LazyPie as Pie,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    PieChart as RechartsPieChart,
-    Pie,
     Cell
-} from 'recharts';
+} from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/src/shared/utils';

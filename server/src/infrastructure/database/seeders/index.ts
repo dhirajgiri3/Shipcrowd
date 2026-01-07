@@ -30,6 +30,8 @@ import { seedRTOEvents } from './seeders/10-rto-events.seeder';
 import { seedWalletTransactions } from './seeders/11-wallet-transactions.seeder';
 import { seedConsents } from './seeders/12-consents.seeder';
 import { seedSessions } from './seeders/13-sessions.seeder';
+import { seedWeightDisputes } from './seeders/14-weight-disputes.seeder';
+import { seedCODRemittances } from './seeders/15-cod-remittances.seeder';
 
 // Collections to clear when using --clean flag
 const COLLECTIONS_TO_CLEAR = [
@@ -47,6 +49,8 @@ const COLLECTIONS_TO_CLEAR = [
     'rtoevents',
     'wallettransactions',
     'picklists',
+    'weightdisputes',
+    'codremittances',
 ];
 
 /**
@@ -146,6 +150,8 @@ async function runSeeders(): Promise<void> {
         { name: 'Wallet Transactions', fn: seedWalletTransactions },
         { name: 'Consents', fn: seedConsents },
         { name: 'Sessions', fn: seedSessions },
+        { name: 'Weight Disputes', fn: seedWeightDisputes },
+        { name: 'COD Remittances', fn: seedCODRemittances },
     ];
 
     for (const seeder of seeders) {

@@ -40,19 +40,19 @@ import {
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { SellerHealthDashboard } from '@/components/admin/SellerHealthDashboard';
 import {
-    AreaChart,
-    Area,
+    LazyAreaChart as AreaChart,
+    LazyArea as Area,
+    LazyBarChart as BarChart,
+    LazyBar as Bar,
+    LazyPieChart as RechartsPieChart,
+    LazyPie as Pie,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    BarChart,
-    Bar,
-    PieChart as RechartsPieChart,
-    Pie,
     Cell
-} from 'recharts';
+} from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
