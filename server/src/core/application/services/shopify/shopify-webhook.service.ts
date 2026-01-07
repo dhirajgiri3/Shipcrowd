@@ -1,3 +1,19 @@
+/**
+ * Shopify Webhook
+ * 
+ * Purpose: ShopifyWebhookService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyOrderSyncService from './shopify-order-sync.service';
 import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';

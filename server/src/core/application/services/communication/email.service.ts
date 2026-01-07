@@ -1,3 +1,19 @@
+/**
+ * Email
+ * 
+ * Purpose: Helper function to retry a function with exponential backoff
+ * 
+ * DEPENDENCIES:
+ * - Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import { MailDataRequired } from '@sendgrid/mail';

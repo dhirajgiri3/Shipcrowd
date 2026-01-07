@@ -1,7 +1,17 @@
 /**
- * NDRClassificationService
- *
- * Classifies NDR reasons using OpenAI with keyword fallback.
+ * Ndr Classification
+ * 
+ * Purpose: NDRClassificationService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { NDREvent } from '../../../../infrastructure/database/mongoose/models';

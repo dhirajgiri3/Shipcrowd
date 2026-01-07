@@ -1,17 +1,17 @@
 /**
- * WooCommerceWebhookService
- *
- * Handles all WooCommerce webhook events.
- *
- * Supported webhooks:
- * 1. order.created - New order placed
- * 2. order.updated - Order modified
- * 3. order.deleted - Order cancelled/deleted
- * 4. product.created - New product added
- * 5. product.updated - Product modified
- * 6. product.deleted - Product removed
- * 7. customer.created - New customer registered
- * 8. customer.updated - Customer information changed
+ * Woocommerce Webhook
+ * 
+ * Purpose: WooCommerceWebhookService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import WooCommerceOrderSyncService from './woocommerce-order-sync.service';

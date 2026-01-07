@@ -1,14 +1,17 @@
 /**
- * AmazonOrderSyncService
- *
- * Handles order synchronization from Amazon to Shipcrowd.
- *
- * Features:
- * - Paginated order retrieval using NextToken
- * - Order upsert (create or update)
- * - FBA/MFN order support
- * - Status mapping to Shipcrowd workflow
- * - Rate limiting and error handling
+ * Amazon Order Sync
+ * 
+ * Purpose: AmazonOrderSyncService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';

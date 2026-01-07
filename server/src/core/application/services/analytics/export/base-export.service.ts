@@ -1,8 +1,17 @@
 /**
- * Base Export Service
+ * Base Export
  * 
- * Abstract base class providing shared column formatting and utilities
- * for CSV, Excel, and PDF export services.
+ * Purpose: Base Export Service
+ * 
+ * DEPENDENCIES:
+ * - Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import logger from '../../../../../shared/logger/winston.logger';

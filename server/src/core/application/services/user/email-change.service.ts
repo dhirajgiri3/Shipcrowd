@@ -1,3 +1,19 @@
+/**
+ * Email Change
+ * 
+ * Purpose: Request email change for a user
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { User, IUser } from '../../../../infrastructure/database/mongoose/models';

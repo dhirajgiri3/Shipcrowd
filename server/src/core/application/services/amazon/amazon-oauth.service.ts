@@ -1,15 +1,17 @@
 /**
- * AmazonOAuthService
- *
- * Handles Amazon SP-API authentication and store management.
- * Manages LWA (Login with Amazon) OAuth tokens and AWS credentials.
- *
- * Features:
- * - LWA OAuth token management
- * - Store CRUD operations
- * - Connection testing
- * - SQS notification subscription
- * - Auto-pause on repeated failures
+ * Amazon Oauth
+ * 
+ * Purpose: AmazonOAuthService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { AmazonStore, IAmazonStore } from '../../../../infrastructure/database/mongoose/models';

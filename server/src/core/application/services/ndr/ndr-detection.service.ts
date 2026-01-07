@@ -1,13 +1,17 @@
 /**
- * NDRDetectionService
- *
- * Detects NDR events from courier tracking updates.
- *
- * Features:
- * - Parse tracking status for NDR indicators
- * - Extract NDR reason from courier remarks
- * - Prevent duplicate NDR creation
- * - Auto-calculate resolution deadline
+ * Ndr Detection
+ * 
+ * Purpose: NDRDetectionService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';

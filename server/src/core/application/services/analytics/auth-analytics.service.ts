@@ -1,3 +1,19 @@
+/**
+ * Auth Analytics
+ * 
+ * Purpose: Authentication Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import { Session } from '../../../../infrastructure/database/mongoose/models';
 import { User } from '../../../../infrastructure/database/mongoose/models';

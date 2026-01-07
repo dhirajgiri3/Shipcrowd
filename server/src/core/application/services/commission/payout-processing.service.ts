@@ -1,12 +1,17 @@
 /**
- * Payout Processing Service
+ * Payout Processing
  * 
- * Manages commission payout lifecycle:
- * - Initiate payouts for approved commissions
- * - Process via Razorpay
- * - Handle webhooks
- * - Batch processing
- * - Reconciliation
+ * Purpose: Payout Processing Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Event Bus, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

@@ -1,20 +1,17 @@
 /**
- * WooCommerceInventorySyncService
- *
- * Handles inventory synchronization from Shipcrowd to WooCommerce.
- * Updates product stock levels in WooCommerce when inventory changes in Shipcrowd.
- *
- * Features:
- * - Push inventory to WooCommerce (one-way sync)
- * - Batch inventory updates (up to 50 SKUs per batch)
- * - Product mapping lookup
- * - Rate limiting and error handling
- *
- * Sync Flow:
- * 1. Get product mapping by Shipcrowd SKU
- * 2. Fetch current inventory level from Shipcrowd
- * 3. Update WooCommerce product stock via REST API
- * 4. Log sync result
+ * Woocommerce Inventory Sync
+ * 
+ * Purpose: WooCommerceInventorySyncService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';

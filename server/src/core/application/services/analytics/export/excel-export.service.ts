@@ -1,7 +1,17 @@
 /**
- * Excel Export Service
+ * Excel Export
  * 
- * Generates styled Excel files using exceljs.
+ * Purpose: Excel Export Service
+ * 
+ * DEPENDENCIES:
+ * - Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import ExcelJS from 'exceljs';

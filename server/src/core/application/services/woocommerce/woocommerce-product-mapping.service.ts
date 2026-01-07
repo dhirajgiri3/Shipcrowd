@@ -1,14 +1,17 @@
 /**
- * WooCommerceProductMappingService
- *
- * Handles product mapping between WooCommerce and Shipcrowd.
- *
- * Features:
- * - Auto-mapping by exact SKU match
- * - Manual mapping creation
- * - CSV import/export
- * - Bulk operations
- * - Mapping statistics
+ * Woocommerce Product Mapping
+ * 
+ * Purpose: WooCommerceProductMappingService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';

@@ -1,7 +1,17 @@
 /**
- * Report Builder Service
+ * Report Builder
  * 
- * Orchestrates report generation, saving, and retrieval.
+ * Purpose: Report Builder Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { ReportConfig, IReportConfig } from '../../../../infrastructure/database/mongoose/models';

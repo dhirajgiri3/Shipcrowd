@@ -1,7 +1,17 @@
 /**
- * Shipment Analytics Service
+ * Shipment Analytics
  * 
- * Provides shipment statistics, courier performance, and delivery analysis.
+ * Purpose: Shipment Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';

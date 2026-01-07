@@ -1,5 +1,17 @@
 /**
- * PackingService - Refactored to Static Methods
+ * Packing
+ * 
+ * Purpose: PackingService - Refactored to Static Methods
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

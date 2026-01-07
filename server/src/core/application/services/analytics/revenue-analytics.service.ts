@@ -1,7 +1,17 @@
 /**
- * Revenue Analytics Service
+ * Revenue Analytics
  * 
- * Provides revenue statistics, wallet analytics, and COD remittance tracking.
+ * Purpose: Revenue Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { Order } from '../../../../infrastructure/database/mongoose/models';

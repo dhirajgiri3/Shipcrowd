@@ -1,22 +1,17 @@
 /**
- * WooCommerceOrderSyncService
- *
- * Handles order synchronization from WooCommerce to Shipcrowd.
- *
- * Features:
- * - Fetch orders from WooCommerce REST API
- * - Transform WooCommerce order schema to Shipcrowd order schema
- * - Create/update orders in Shipcrowd database
- * - Prevent duplicate orders
- * - Track sync statistics
- *
- * Sync Flow:
- * 1. Get WooCommerce store with decrypted credentials
- * 2. Fetch orders from WooCommerce (with pagination)
- * 3. Transform each order to Shipcrowd format
- * 4. Check for existing order (by woocommerceOrderId)
- * 5. Create new order or update existing
- * 6. Update sync logs and statistics
+ * Woocommerce Order Sync
+ * 
+ * Purpose: WooCommerceOrderSyncService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';

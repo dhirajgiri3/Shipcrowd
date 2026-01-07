@@ -1,3 +1,19 @@
+/**
+ * Notification
+ * 
+ * Purpose: Notification types
+ * 
+ * DEPENDENCIES:
+ * - Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import emailService from './email.service';
 import smsService from './sms.service';
 import whatsappService from './whatsapp.service';

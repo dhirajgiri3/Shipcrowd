@@ -1,8 +1,17 @@
 /**
- * Webhook Retry Service
- *
- * Handles retry logic for failed webhook processing with exponential backoff
- * Implements dead letter queue for persistent failures
+ * Webhook Retry
+ * 
+ * Purpose: Webhook Retry Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import logger from '../../../../shared/logger/winston.logger';

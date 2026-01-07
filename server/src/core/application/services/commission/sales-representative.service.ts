@@ -1,11 +1,17 @@
 /**
- * Sales Representative Service
+ * Sales Representative
  * 
- * Handles sales representative management including:
- * - CRUD operations
- * - Bank details encryption/decryption
- * - Performance metrics updates
- * - Territory management
+ * Purpose: Sales Representative Service
+ * 
+ * DEPENDENCIES:
+ * - Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

@@ -1,12 +1,17 @@
 /**
- * Commission AI Insights Service
+ * Commission Ai Insights
  * 
- * Provides AI-powered insights for commission system:
- * - Predictive forecasting (statistical + AI hybrid)
- * - Anomaly detection with contextual analysis
- * - Personalized performance recommendations
+ * Purpose: Commission AI Insights Service
  * 
- * Uses statistical methods as baseline with OpenAI enhancement for accuracy.
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

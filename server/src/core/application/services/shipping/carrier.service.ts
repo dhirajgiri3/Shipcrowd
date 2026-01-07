@@ -1,13 +1,17 @@
 /**
- * Intelligent Carrier Selection Service
- *
- * Selects the best carrier based on weight, zone, and delivery time.
- * Score = (rate × 0.7) + (deliveryTime × 5) - lower is better
- *
- * Carriers:
- * - Delhivery: Express, optimized for metro areas
- * - DTDC: Standard, pan-India coverage
- * - Xpressbees: Budget, regional focus
+ * Carrier
+ * 
+ * Purpose: Intelligent Carrier Selection Service
+ * 
+ * DEPENDENCIES:
+ * - None specified
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 export interface CarrierOption {

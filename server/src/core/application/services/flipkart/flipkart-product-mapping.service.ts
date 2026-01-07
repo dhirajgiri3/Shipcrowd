@@ -1,3 +1,19 @@
+/**
+ * Flipkart Product Mapping
+ * 
+ * Purpose: FlipkartProductMappingService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import { FlipkartStore } from '../../../../infrastructure/database/mongoose/models';
 import { FlipkartProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';

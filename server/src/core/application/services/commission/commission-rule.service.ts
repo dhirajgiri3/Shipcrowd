@@ -1,8 +1,17 @@
 /**
- * Commission Rule Service
+ * Commission Rule
  * 
- * Handles commission rule CRUD operations, rule testing,
- * and finding applicable rules for orders.
+ * Purpose: Commission Rule Service
+ * 
+ * DEPENDENCIES:
+ * - Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

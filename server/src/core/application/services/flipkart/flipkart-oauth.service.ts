@@ -1,17 +1,17 @@
 /**
- * FlipkartOAuthService
- *
- * Handles Flipkart Seller Hub authentication and connection management.
- * Flipkart uses OAuth 2.0 two-legged authentication with API key and secret.
- *
- * Flow:
- * 1. User provides API key + API secret + Seller ID
- * 2. Credentials are verified by calling getAccessToken()
- * 3. Store is saved with encrypted credentials
- * 4. Webhooks are registered
- *
- * Note: Flipkart uses client credentials grant for OAuth 2.0.
- * Merchants generate API keys in their Seller Hub settings.
+ * Flipkart Oauth
+ * 
+ * Purpose: FlipkartOAuthService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { FlipkartStore } from '../../../../infrastructure/database/mongoose/models';

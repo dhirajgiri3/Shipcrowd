@@ -1,14 +1,17 @@
 /**
- * AmazonProductMappingService
- *
- * Handles product mapping between Amazon listings (ASIN/SKU) and Shipcrowd SKUs.
- *
- * Features:
- * - Auto-mapping by SKU match
- * - Manual mapping creation
- * - CSV import/export
- * - Bulk operations
- * - FBA/MFN fulfillment type tracking
+ * Amazon Product Mapping
+ * 
+ * Purpose: AmazonProductMappingService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';

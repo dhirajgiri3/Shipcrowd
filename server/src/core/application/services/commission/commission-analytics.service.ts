@@ -1,11 +1,17 @@
 /**
- * Commission Analytics Service
+ * Commission Analytics
  * 
- * Provides analytics and reporting for commission system:
- * - Performance metrics by sales rep
- * - Commission trends over time
- * - Top performers
- * - Revenue analysis
+ * Purpose: Commission Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

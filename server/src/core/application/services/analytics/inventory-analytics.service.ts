@@ -1,7 +1,17 @@
 /**
- * Inventory Analytics Service
+ * Inventory Analytics
  * 
- * Provides stock level analysis and slow-moving product detection.
+ * Purpose: Inventory Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { Inventory } from '../../../../infrastructure/database/mongoose/models';

@@ -1,8 +1,17 @@
 /**
- * Order Analytics Service
+ * Order Analytics
  * 
- * Provides order statistics, trends, and product analytics.
- * Uses MongoDB aggregation pipelines.
+ * Purpose: Order Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { Order } from '../../../../infrastructure/database/mongoose/models';

@@ -1,3 +1,19 @@
+/**
+ * Shopify Oauth
+ * 
+ * Purpose: ShopifyOAuthService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import crypto from 'crypto';
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';

@@ -1,3 +1,19 @@
+/**
+ * Rto
+ * 
+ * Purpose: Check rate limit for RTO triggers
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Event Bus, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import mongoose from 'mongoose';
 import { RTOEvent, IRTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
@@ -398,11 +414,47 @@ export default class RTOService {
     }
 
     /**
-     * Update order status
+     * Update order status when RTO is triggered
+     * 
+     * CRITICAL: This must be called OUTSIDE the main transaction to avoid
+     * blocking RTO creation on order update failures. Order status is
+     * important but not critical - RTO can proceed even if this fails.
      */
     private static async updateOrderStatus(orderId: string, status: string): Promise<void> {
-        // TODO: Use OrderService to update
-        logger.info('Order status updated', { orderId, status });
+        try {
+            const result = await Order.findByIdAndUpdate(
+                orderId,
+                {
+                    $set: { currentStatus: status.toLowerCase() },
+                    $push: {
+                        statusHistory: {
+                            status: status.toLowerCase(),
+                            timestamp: new Date(),
+                            comment: 'RTO initiated - shipment being returned to warehouse',
+                            updatedBy: 'system',
+                        },
+                    },
+                },
+                { new: true }
+            );
+
+            if (!result) {
+                logger.warn('Order not found for status update', { orderId, status });
+            } else {
+                logger.info('Order status updated successfully', {
+                    orderId,
+                    previousStatus: result.currentStatus,
+                    newStatus: status
+                });
+            }
+        } catch (error: any) {
+            // Log error but don't throw - order update failure shouldn't block RTO
+            logger.error('Failed to update order status (non-critical)', {
+                orderId,
+                status,
+                error: error.message,
+            });
+        }
     }
 
     /**

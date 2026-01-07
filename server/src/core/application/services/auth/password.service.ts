@@ -1,3 +1,19 @@
+/**
+ * Password
+ * 
+ * Purpose: Minimum requirements for password strength
+ * 
+ * DEPENDENCIES:
+ * - None specified
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import zxcvbn from 'zxcvbn';
 
 export interface PasswordStrength {

@@ -1,15 +1,17 @@
 /**
- * AmazonInventorySyncService
- *
- * Handles pushing inventory from Shipcrowd to Amazon using SP-API Feeds.
- *
- * Features:
- * - One-way sync (Shipcrowd → Amazon)
- * - Batch updates using XML feeds
- * - Async feed processing with polling
- * - ProductMapping validation
- * - Rate limiting
- * - Comprehensive error handling
+ * Amazon Inventory Sync
+ * 
+ * Purpose: AmazonInventorySyncService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';

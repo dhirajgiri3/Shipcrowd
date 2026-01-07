@@ -1,7 +1,17 @@
 /**
- * PDF Export Service
+ * Pdf Export
  * 
- * Generates PDF reports using pdfkit.
+ * Purpose: PDF Export Service
+ * 
+ * DEPENDENCIES:
+ * - Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import PDFDocument from 'pdfkit';

@@ -1,3 +1,19 @@
+/**
+ * Recovery
+ * 
+ * Purpose: Set up security questions for account recovery
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { User, IUser } from '../../../../infrastructure/database/mongoose/models';

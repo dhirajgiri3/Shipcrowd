@@ -1,3 +1,19 @@
+/**
+ * Deepvue
+ * 
+ * Purpose: Get a valid access token for DeepVue API
+ * 
+ * DEPENDENCIES:
+ * - Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import axios from 'axios';
 import logger from '../../../../shared/logger/winston.logger';
 import dotenv from 'dotenv';

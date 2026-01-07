@@ -1,17 +1,17 @@
 /**
- * WooCommerceOAuthService
- *
- * Handles WooCommerce store authentication and connection management.
- * Unlike Shopify, WooCommerce uses REST API with consumer key/secret (OAuth 1.0a).
- *
- * Flow:
- * 1. User provides store URL + consumer key/secret
- * 2. Credentials are verified by making test API call
- * 3. Store is saved with encrypted credentials
- * 4. Webhooks are registered
- *
- * Note: WooCommerce doesn't have an OAuth 2.0 flow like Shopify.
- * Merchants generate API keys manually in their WooCommerce settings.
+ * Woocommerce Oauth
+ * 
+ * Purpose: WooCommerceOAuthService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';

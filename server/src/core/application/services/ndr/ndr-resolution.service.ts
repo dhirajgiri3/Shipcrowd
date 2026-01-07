@@ -1,7 +1,17 @@
 /**
- * NDRResolutionService
- *
- * Orchestrates NDR resolution workflows.
+ * Ndr Resolution
+ * 
+ * Purpose: NDRResolutionService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import { NDREvent, INDREvent } from '../../../../infrastructure/database/mongoose/models';

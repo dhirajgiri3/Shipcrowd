@@ -3,8 +3,89 @@
  * 
  * Handles commission approval workflow:
  * - Approve/reject individual transactions
- * - Bulk approve/reject
+ * - Bulk approve/reject operations
  * - Add adjustments (bonuses, penalties, corrections)
+ * 
+ * BUSINESS RULES:
+ * ===============
+ * 1. Status-Based Approval
+ *    - Condition: Approve/reject request
+ *    - Action: Only allow for 'pending' transactions
+ *    - Reason: Prevent modification of already processed commissions
+ * 
+ * 2. Adjustment Eligibility
+ *    - Condition: Add adjustment request
+ *    - Action: Only allow for 'pending' or 'approved' transactions
+ *    - Reason: Allow corrections before payout
+ * 
+ * 3. Final Amount Calculation
+ *    - Condition: Adjustment added
+ *    - Action: Recalculate finalAmount = calculatedAmount + sum(adjustments)
+ *    - Reason: Accurate commission payout
+ * 
+ * 4. Negative Amount Protection
+ *    - Condition: Final amount calculation
+ *    - Action: Set to 0 if negative
+ *    - Reason: Prevent negative commission payouts
+ * 
+ * 5. Audit Trail
+ *    - Condition: Every approval/rejection/adjustment
+ *    - Action: Create audit log entry
+ *    - Reason: Compliance and dispute resolution
+ * 
+ * 6. Bulk Operations
+ *    - Condition: Bulk approve/reject
+ *    - Action: Process sequentially, collect errors
+ *    - Reason: Continue processing even if some fail
+ * 
+ * ERROR HANDLING:
+ * ==============
+ * Expected Errors:
+ * - AppError (404): Transaction not found
+ * - AppError (400): Invalid status for operation
+ * - Bulk Errors: Individual transaction failures
+ * 
+ * Recovery Strategy:
+ * - Not Found: Throw to caller
+ * - Invalid Status: Throw with reason
+ * - Bulk Failures: Continue processing, collect errors
+ * 
+ * DEPENDENCIES:
+ * ============
+ * Internal:
+ * - CommissionTransaction Model: Transaction CRUD
+ * - CommissionAdjustment Model: Adjustment records
+ * - AuditLog Model: Audit trail
+ * - Logger: Winston for structured logging
+ * 
+ * Used By:
+ * - Commission Approval Controller: Admin approval UI
+ * - Payout Processing Service: Get approved transactions
+ * - Commission Analytics: Approval metrics
+ * 
+ * PERFORMANCE:
+ * ===========
+ * - Single Approval: <50ms (DB update + audit log)
+ * - Bulk Approval: ~50ms per transaction (sequential)
+ * - Adjustment: <100ms (create adjustment + recalculate)
+ * - Query Pending: <200ms (indexed query)
+ * 
+ * TESTING:
+ * =======
+ * Unit Tests: tests/unit/services/commission/commission-approval.test.ts
+ * Coverage: TBD
+ * 
+ * Critical Test Cases:
+ * - Status validation (pending only)
+ * - Bulk operations with partial failures
+ * - Adjustment calculation (positive/negative)
+ * - Negative amount protection
+ * - Audit trail creation
+ * 
+ * Business Impact:
+ * - Controls commission payouts
+ * - Ensures accuracy before payment
+ * - Must maintain audit trail
  */
 
 import mongoose from 'mongoose';

@@ -1,7 +1,17 @@
 /**
- * Customer Analytics Service
+ * Customer Analytics
  * 
- * Provides customer statistics, lifetime value, and retention metrics.
+ * Purpose: Customer Analytics Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';

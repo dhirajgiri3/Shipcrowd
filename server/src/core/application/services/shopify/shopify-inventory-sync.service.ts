@@ -1,3 +1,19 @@
+/**
+ * Shopify Inventory Sync
+ * 
+ * Purpose: ShopifyInventorySyncService
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Error Handling
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
+ */
+
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import { ShopifySyncLog } from '../../../../infrastructure/database/mongoose/models';

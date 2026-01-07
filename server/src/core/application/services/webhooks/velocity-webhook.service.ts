@@ -1,7 +1,17 @@
 /**
- * Velocity Webhook Event Handler Service
- *
- * Processes webhook events from Velocity Shipfast and updates shipment status
+ * Velocity Webhook
+ * 
+ * Purpose: Velocity Webhook Event Handler Service
+ * 
+ * DEPENDENCIES:
+ * - Database Models, Logger
+ * 
+ * TESTING:
+ * Unit Tests: tests/unit/services/.../{filename}.test.ts
+ * Coverage: TBD
+ * 
+ * NOTE: This service needs comprehensive documentation.
+ * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
 import mongoose from 'mongoose';
