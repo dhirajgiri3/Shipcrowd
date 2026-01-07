@@ -242,6 +242,21 @@ function generateShipmentData(order: any, warehouse: any): any {
             carrierServiceType: serviceType,
             carrierAccount: order.companyId.toString().slice(-6),
         },
+        // Week 11: Weight tracking and verification
+        weights: {
+            declared: {
+                value: Math.round(totalWeight * 100) / 100, // Same as packageDetails.weight
+                unit: 'kg',
+            },
+            // Add actual weight for delivered shipments (simulates carrier scanning)
+            actual: deliveryStatus === 'delivered' ? {
+                value: Math.round((totalWeight + (Math.random() * 0.4 - 0.1)) * 100) / 100, // Slight variance (-0.1 to +0.3 kg)
+                unit: 'kg',
+                scannedAt: actualDelivery,
+                scannedBy: carrier.charAt(0).toUpperCase() + carrier.slice(1).replace(/_/g, ' '),
+            } : undefined,
+            verified: deliveryStatus === 'delivered',
+        },
         // NDR/RTO details will be populated by their respective seeders
         ndrDetails: deliveryStatus === 'ndr' || deliveryStatus === 'rto' ? {
             ndrReason: selectRandom([

@@ -21,7 +21,7 @@ Comprehensive seeding plan for ShipCrowd shipping aggregator with **100% schema 
 {
   // Auth
   email: String (unique, required),
-  password: String (bcrypt 10 rounds, required if email provider),
+  password: String (bcrypt 12 rounds, required if email provider),
   role: 'admin' | 'seller' | 'staff' (required),
   teamRole: 'owner' | 'admin' | 'manager' | 'member' | 'viewer',
   teamStatus: 'active' | 'invited' | 'suspended',
@@ -29,39 +29,75 @@ Comprehensive seeding plan for ShipCrowd shipping aggregator with **100% schema 
   // OAuth
   googleId: String (unique, sparse),
   oauthProvider: 'email' | 'google',
+  oauth: {
+    google: {
+      id: String,
+      email: String,
+      name: String,
+      picture: String,
+      accessToken: String (encrypted),
+      refreshToken: String (encrypted)
+    }
+  },
 
-  // Profile
-  name: String (required),
-  phone: String,
-  avatar: String (URL),
-  bio: String,
-  address: { line1, line2, city, state, country, postalCode },
-  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say',
-  timezone: String (default: 'Asia/Kolkata'),
-  preferredCurrency: String (default: 'INR'),
+  // Profile (nested object)
+  profile: {
+    phone: String,
+    avatar: String (URL),
+    address: String,
+    city: String,
+    state: String,
+    country: String,
+    postalCode: String,
+    dateOfBirth: Date,
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say',
+    bio: String,
+    website: String,
+    socialLinks: { facebook, twitter, linkedin, instagram },
+    preferredLanguage: String,
+    preferredCurrency: String (default: 'INR'),
+    timezone: String (default: 'Asia/Kolkata')
+  },
 
-  // Security
-  isEmailVerified: Boolean (default: false),
-  verificationToken: String,
-  verificationTokenExpires: Date,
-  resetToken: String,
-  resetTokenExpires: Date,
-  lastLogin: { timestamp, ip, userAgent },
-  failedLoginAttempts: Number (default: 0),
-  lockUntil: Date,
-  tokenVersion: Number (default: 0),
+  // Security (nested object)
+  security: {
+    tokenVersion: Number (default: 0),
+    verificationToken: String,
+    verificationTokenExpiry: Date,
+    resetToken: String,
+    resetTokenExpiry: Date,
+    lastLogin: { timestamp, ip, userAgent, success },
+    failedLoginAttempts: Number (default: 0),
+    lockUntil: Date,
+    recoveryOptions: {
+      securityQuestions: { question1, answer1, question2, answer2, question3, answer3, lastUpdated },
+      backupEmail: String,
+      backupPhone: String,
+      recoveryKeys: [String],
+      lastUpdated: Date
+    }
+  },
+
+  // Email change tracking
+  pendingEmailChange: { email, token, tokenExpiry },
 
   // KYC
-  kyc: { isComplete: Boolean, lastUpdated: Date },
+  kycStatus: { isComplete: Boolean, lastUpdated: Date },
+
+  // Profile completion tracking
+  profileCompletion: { status: Number, requiredFieldsCompleted: Boolean, lastUpdated: Date, nextPromptDate },
 
   // Relationships
   companyId: ObjectId (ref: Company),
 
   // Metadata
   isActive: Boolean (default: true),
+  isEmailVerified: Boolean (default: false),
   isDeleted: Boolean (default: false),
-  anonymized: Boolean (default: false),
-  profileCompletion: { status: Number, requiredFieldsCompleted: Boolean, lastUpdated: Date }
+  deactivationReason: String,
+  deletionReason: String,
+  scheduledDeletionDate: Date,
+  anonymized: Boolean (default: false)
 }
 ```
 
@@ -76,7 +112,32 @@ Comprehensive seeding plan for ShipCrowd shipping aggregator with **100% schema 
   location: { country, city, region },
   expiresAt: Date (TTL index, required),
   lastActive: Date,
-  isRevoked: Boolean (default: false)
+  isRevoked: Boolean (default: false),
+  
+  // Token Rotation (Feature 15)
+  previousToken: String,
+  rotationCount: Number (default: 0),
+  lastRotatedAt: Date,
+  suspiciousActivity: {
+    reuseDetected: Boolean,
+    reuseAttemptedAt: Date,
+    reuseIp: String
+  }
+}
+```
+
+#### **Consent Model** (`iam/consent.model.ts`) - NEW
+```typescript
+{
+  userId: ObjectId (ref: User, required),
+  type: 'terms' | 'privacy' | 'marketing' | 'cookies' | 'data_processing',
+  version: String (required),
+  accepted: Boolean (required),
+  acceptedAt: Date,
+  withdrawnAt: Date,
+  ip: String (required),
+  userAgent: String (required),
+  source: 'registration' | 'settings' | 'banner' | 'api'
 }
 ```
 
@@ -387,6 +448,39 @@ Comprehensive seeding plan for ShipCrowd shipping aggregator with **100% schema 
     url: String (required),
     createdAt: Date
   }],
+
+  // Week 11: Weight Tracking & Verification
+  weights: {
+    declared: {
+      value: Number (required),
+      unit: 'kg' | 'g'
+    },
+    actual: {
+      value: Number,
+      unit: 'kg' | 'g',
+      scannedAt: Date,
+      scannedBy: String
+    },
+    verified: Boolean
+  },
+
+  // Week 11: Weight Dispute Tracking
+  weightDispute: {
+    exists: Boolean,
+    disputeId: ObjectId (ref: WeightDispute),
+    status: 'pending' | 'under_review' | 'resolved',
+    detectedAt: Date,
+    financialImpact: Number
+  },
+
+  // Week 11: COD Remittance Tracking
+  remittanceStatus: {
+    eligible: Boolean,
+    eligibleDate: Date,
+    remittanceId: ObjectId (ref: CODRemittance),
+    remittedAt: Date,
+    remittedAmount: Number
+  },
 
   carrierDetails: {
     carrierTrackingNumber: String,
