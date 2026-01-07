@@ -76,9 +76,10 @@ export const authenticate = async (
 
 /**
  * Middleware to check if user has required role
+ * ✅ FEATURE 25: Logs authorization failures for security monitoring
  */
-export const authorize = (roles: string | string[]): ((req: Request, res: Response, next: NextFunction) => void) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export const authorize = (roles: string | string[]): ((req: Request, res: Response, next: NextFunction) => Promise<void>) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = (req as AuthRequest).user;
     if (!user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -88,6 +89,37 @@ export const authorize = (roles: string | string[]): ((req: Request, res: Respon
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
     if (!allowedRoles.includes(user.role)) {
+      // ✅ FEATURE 25: Log authorization failures
+      try {
+        const { createAuditLog } = await import('../system/audit-log.middleware.js');
+        await createAuditLog(
+          user._id,
+          user.companyId,
+          'security',
+          'security',
+          undefined,
+          {
+            resource: req.path,
+            method: req.method,
+            requiredRoles: allowedRoles,
+            userRole: user.role,
+            reason: 'insufficient_role',
+          },
+          req
+        );
+      } catch (logError) {
+        logger.error('Failed to log authorization failure:', logError);
+      }
+
+      logger.warn('Authorization failed: Insufficient permissions', {
+        userId: user._id,
+        userRole: user.role,
+        requiredRoles: allowedRoles,
+        resource: req.path,
+        method: req.method,
+        ip: req.ip,
+      });
+
       res.status(403).json({ message: 'Insufficient permissions' });
       return;
     }
@@ -95,6 +127,7 @@ export const authorize = (roles: string | string[]): ((req: Request, res: Respon
     next();
   };
 };
+
 
 /**
  * Middleware to check if user belongs to the specified company

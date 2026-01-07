@@ -12,7 +12,7 @@ export default function ChangeEmailPage() {
     const [newEmail, setNewEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const isOAuth = user?.authProvider !== 'local';
+    const isOAuth = user?.oauthProvider !== 'email';
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -98,7 +98,7 @@ export default function ChangeEmailPage() {
                         {isOAuth && (
                             <div className="p-3 bg-[var(--primary-blue-soft)] rounded-lg">
                                 <p className="text-sm text-[var(--primary-blue)]">
-                                    ℹ️ You signed up with {user?.authProvider || 'OAuth'}. No password required.
+                                    ℹ️ You signed up with {user?.oauthProvider || 'OAuth'}. No password required.
                                 </p>
                             </div>
                         )}

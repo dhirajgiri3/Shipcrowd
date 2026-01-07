@@ -222,7 +222,7 @@ export interface AuthContextType {
   ) => Promise<{ success: boolean; message?: string; error?: NormalizedError }>;
 
   // Account Settings
-  changeEmail: (data: { newEmail: string; password: string }) => Promise<{
+  changeEmail: (data: { newEmail: string; password?: string }) => Promise<{
     success: boolean;
     message?: string;
     error?: string

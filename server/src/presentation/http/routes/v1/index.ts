@@ -13,6 +13,7 @@ import accountRoutes from './identity/account.routes';
 import emailRoutes from './communication/email.routes';
 import profileRoutes from './identity/profile.routes';
 import recoveryRoutes from './auth/recovery.routes';
+import consentRoutes from './identity/consent.routes';
 // New routes for 3-Day MVP
 import orderRoutes from './shipping/order.routes';
 import shipmentRoutes from './shipping/shipment.routes';
@@ -61,6 +62,7 @@ router.use('/account', accountRoutes);
 router.use('/email', emailRoutes);
 router.use('/profile', profileRoutes);
 router.use('/recovery', recoveryRoutes);
+router.use('/consent', consentRoutes);
 // New routes for 3-Day MVP
 router.use('/orders', orderRoutes);
 router.use('/shipments', shipmentRoutes);

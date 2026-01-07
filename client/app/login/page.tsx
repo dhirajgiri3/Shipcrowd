@@ -281,6 +281,16 @@ function LoginForm() {
                             Sign up
                         </Link>
                     </p>
+
+                    {/* Magic Link Option */}
+                    <div className="mt-4 text-center">
+                        <Link
+                            href="/magic-link"
+                            className="text-sm text-gray-500 hover:text-primaryBlue transition-colors"
+                        >
+                            Or sign in with a magic link →
+                        </Link>
+                    </div>
                 </div>
             </motion.div>
 

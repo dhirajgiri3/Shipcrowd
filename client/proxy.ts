@@ -16,9 +16,15 @@ export async function proxy(request: NextRequest) {
     // CHECK AUTHENTICATION TOKENS
     // ═══════════════════════════════════════════════════════════════════════
 
+    // Check both development and production cookie names
     const accessToken = request.cookies.get('accessToken');
     const refreshToken = request.cookies.get('refreshToken');
-    const hasToken = !!(accessToken || refreshToken);
+
+    // In production, backend uses __Secure- prefix
+    const secureAccessToken = request.cookies.get('__Secure-accessToken');
+    const secureRefreshToken = request.cookies.get('__Secure-refreshToken');
+
+    const hasToken = !!(accessToken || refreshToken || secureAccessToken || secureRefreshToken);
 
     // ═══════════════════════════════════════════════════════════════════════
     // GUEST-ONLY ROUTES - Redirect authenticated users

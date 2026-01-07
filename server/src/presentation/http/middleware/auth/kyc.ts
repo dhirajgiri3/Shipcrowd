@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { AuthRequest } from './auth';
+import { createAuditLog } from '../system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -65,6 +66,22 @@ export const checkKYC = async (
                 endpoint: req.path,
                 method: req.method,
             });
+
+            // ✅ FEATURE 25: Audit log for KYC denial
+            await createAuditLog(
+                (user._id as any).toString(),
+                user.companyId?.toString(),
+                'security',
+                'security',
+                undefined,
+                {
+                    reason: 'kyc_required',
+                    resource: req.path,
+                    method: req.method,
+                    message: 'Access denied - KYC not complete',
+                },
+                req
+            );
 
             res.status(403).json({
                 success: false,

@@ -1,14 +1,38 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcrypt';
 import { AuthRequest } from '../../middleware/auth/auth';
 import { getUserSessions, revokeSession, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { ISession } from '../../../../infrastructure/database/mongoose/models';
 
 const sessionIdSchema = z.object({
   sessionId: z.string(),
 });
+
+/**
+ * Helper function to find the current session ID by comparing cookie token with hashed session tokens
+ * Uses bcrypt.compare since session.refreshToken is stored as bcrypt hash
+ */
+const findCurrentSessionId = async (sessions: ISession[], cookieToken?: string): Promise<string | undefined> => {
+  if (!cookieToken) return undefined;
+
+  for (const session of sessions) {
+    try {
+      // ✅ FIX: Use bcrypt.compare to match plaintext cookie with stored hash
+      const isMatch = await bcrypt.compare(cookieToken, session.refreshToken);
+      if (isMatch) {
+        return (session._id as any).toString();
+      }
+    } catch (error) {
+      // If comparison fails, continue to next session
+      logger.debug('Session token comparison failed:', error);
+    }
+  }
+  return undefined;
+};
 
 export const getSessions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -19,6 +43,9 @@ export const getSessions = async (req: AuthRequest, res: Response, next: NextFun
 
     const sessions = await getUserSessions(req.user._id);
 
+    // ✅ FIX: Use bcrypt.compare to identify current session (was comparing plaintext with hash)
+    const currentSessionId = await findCurrentSessionId(sessions, req.cookies?.refreshToken);
+
     const formattedSessions = sessions.map(session => ({
       id: session._id,
       deviceInfo: session.deviceInfo,
@@ -26,7 +53,7 @@ export const getSessions = async (req: AuthRequest, res: Response, next: NextFun
       ip: session.ip,
       lastActive: session.lastActive,
       createdAt: session.createdAt,
-      current: req.cookies?.refreshToken === session.refreshToken,
+      current: (session._id as any).toString() === currentSessionId,
     }));
 
     sendSuccess(res, { sessions: formattedSessions }, 'Sessions retrieved successfully');
@@ -35,6 +62,7 @@ export const getSessions = async (req: AuthRequest, res: Response, next: NextFun
     next(error);
   }
 };
+
 
 export const terminateSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -85,10 +113,10 @@ export const terminateAllSessions = async (req: AuthRequest, res: Response, next
       return;
     }
 
+    // ✅ FIX: Use bcrypt.compare via helper to find current session
+    const sessions = await getUserSessions(req.user._id);
     const currentSessionId = req.body.keepCurrent === true
-      ? (await getUserSessions(req.user._id)).find(
-        session => session.refreshToken === req.cookies?.refreshToken
-      )?._id?.toString()
+      ? await findCurrentSessionId(sessions, req.cookies?.refreshToken)
       : undefined;
 
     const count = await revokeAllSessions(req.user._id, currentSessionId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { authApi } from '@/src/core/api/auth.api';
 import { useAuth } from '@/src/features/auth';
@@ -8,7 +8,7 @@ import { Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function MagicLinkVerifyPage() {
+function MagicLinkVerifyContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { refreshUser } = useAuth();
@@ -93,5 +93,17 @@ export default function MagicLinkVerifyPage() {
                 )}
             </Card>
         </div>
+    );
+}
+
+export default function MagicLinkVerifyPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+                <Loader2 className="h-12 w-12 text-[var(--primary-blue)] animate-spin" />
+            </div>
+        }>
+            <MagicLinkVerifyContent />
+        </Suspense>
     );
 }

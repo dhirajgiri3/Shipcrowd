@@ -30,6 +30,7 @@ import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } 
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
 import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { consentApi } from '@/src/core/api/consent.api';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -313,9 +315,9 @@ export default function SignupPage() {
                     </p>
                     <span
                       className={`text-xs font-semibold ${getPasswordStrengthColor(passwordValidation.strength) === 'red' ? 'text-red-500' :
-                          getPasswordStrengthColor(passwordValidation.strength) === 'amber' ? 'text-amber-500' :
-                            getPasswordStrengthColor(passwordValidation.strength) === 'blue' ? 'text-blue-500' :
-                              'text-emerald-500'
+                        getPasswordStrengthColor(passwordValidation.strength) === 'amber' ? 'text-amber-500' :
+                          getPasswordStrengthColor(passwordValidation.strength) === 'blue' ? 'text-blue-500' :
+                            'text-emerald-500'
                         }`}
                     >
                       {getPasswordStrengthLabel(passwordValidation.strength)}
@@ -344,6 +346,21 @@ export default function SignupPage() {
                 <a href="/privacy" className="text-primaryBlue hover:text-primaryBlue/80 font-medium">
                   Privacy Policy
                 </a>
+              </label>
+            </div>
+
+            {/* Marketing Consent (Optional) */}
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="marketing"
+                checked={marketingConsent}
+                onChange={(e) => setMarketingConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primaryBlue focus:ring-primaryBlue focus:ring-offset-0"
+                disabled={isLoading || !!successMessage}
+              />
+              <label htmlFor="marketing" className="text-sm text-gray-600 cursor-pointer">
+                I'd like to receive product updates, tips, and marketing emails (optional)
               </label>
             </div>
 

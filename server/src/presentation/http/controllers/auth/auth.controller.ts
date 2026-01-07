@@ -1050,9 +1050,9 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    // Validate password
+    // ✅ FIX: Use consistent password validation (was only using min(8))
     const schema = z.object({
-      password: z.string().min(8, 'Password must be at least 8 characters'),
+      password: z.string().min(PASSWORD_REQUIREMENTS.minLength).superRefine(passwordValidator),
     });
     const { password } = schema.parse(req.body);
 
@@ -1121,7 +1121,8 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
 
     const schema = z.object({
       currentPassword: z.string(),
-      newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+      // ✅ FIX: Use consistent password validation (was only using min(8))
+      newPassword: z.string().min(PASSWORD_REQUIREMENTS.minLength).superRefine(passwordValidator),
     });
     const { currentPassword, newPassword } = schema.parse(req.body);
 
