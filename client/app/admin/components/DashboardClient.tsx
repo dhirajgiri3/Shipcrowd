@@ -46,12 +46,12 @@ import {
     LazyBar as Bar,
     LazyPieChart as RechartsPieChart,
     LazyPie as Pie,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Cell
+    LazyXAxis as XAxis,
+    LazyYAxis as YAxis,
+    LazyCartesianGrid as CartesianGrid,
+    LazyTooltip as Tooltip,
+    LazyResponsiveContainer as ResponsiveContainer,
+    LazyCell as Cell
 } from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useToast } from '@/components/ui/feedback/Toast';
@@ -254,7 +254,6 @@ export function DashboardClient() {
 
     return (
         <div className="min-h-screen space-y-8 pb-10">
-            {/* 1. Top Navigation & Welcome */}
             {/* 1. Top Navigation & Welcome */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
                 <motion.div

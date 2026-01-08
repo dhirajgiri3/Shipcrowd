@@ -18,7 +18,8 @@ import {
     generateTrackingNumber,
     selectServiceType,
     getEstimatedDeliveryDays,
-    calculateShippingCost
+    calculateShippingCost,
+    resetTrackingCounters
 } from '../data/carrier-data';
 import { CarrierName } from '../config';
 
@@ -290,6 +291,9 @@ function generateShipmentData(order: any, warehouse: any): any {
 export async function seedShipments(): Promise<void> {
     const timer = createTimer();
     logger.step(8, 'Seeding Shipments');
+
+    // Reset tracking counters for fresh unique number generation
+    resetTrackingCounters();
 
     try {
         // Get all orders

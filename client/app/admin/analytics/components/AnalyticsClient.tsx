@@ -6,9 +6,20 @@ import { Select } from '@/components/ui/form/Select';
 import { Button } from '@/components/ui/core/Button';
 import { ChartCard } from '@/components/admin/ChartCard';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, Legend, PieChart, Pie, Cell
-} from 'recharts';
+    LazyAreaChart as AreaChart,
+    LazyArea as Area,
+    LazyXAxis as XAxis,
+    LazyYAxis as YAxis,
+    LazyCartesianGrid as CartesianGrid,
+    LazyTooltip as Tooltip,
+    LazyResponsiveContainer as ResponsiveContainer,
+    LazyBarChart as BarChart,
+    LazyBar as Bar,
+    LazyLegend as Legend,
+    LazyPieChart as PieChart,
+    LazyPie as Pie,
+    LazyCell as Cell
+} from '@/src/components/charts/LazyCharts';
 import { Download, Calendar } from 'lucide-react';
 
 const deliveryPerformanceData = [

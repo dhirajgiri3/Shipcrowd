@@ -22,12 +22,12 @@ import {
     LazyArea as Area,
     LazyPieChart as RechartsPieChart,
     LazyPie as Pie,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Cell
+    LazyXAxis as XAxis,
+    LazyYAxis as YAxis,
+    LazyCartesianGrid as CartesianGrid,
+    LazyTooltip as Tooltip,
+    LazyResponsiveContainer as ResponsiveContainer,
+    LazyCell as Cell
 } from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useRouter } from 'next/navigation';

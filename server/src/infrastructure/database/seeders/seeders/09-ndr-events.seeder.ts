@@ -166,6 +166,7 @@ function generateNDREventData(shipment: any): any {
 
     return {
         shipment: shipment._id,
+        order: shipment.orderId, // Required field - linked to the order
         awb: shipment.trackingNumber,
         ndrReason: shipment.ndrDetails?.ndrReason || generateNDRReason(type),
         ndrReasonClassified: type,
@@ -183,19 +184,15 @@ function generateNDREventData(shipment: any): any {
         ]), 0.7) : undefined,
         resolutionDeadline,
         company: shipment.companyId,
-        attemptCount: shipment.ndrDetails?.ndrAttempts || randomInt(1, 3),
-        maxAttempts: 3,
+        attemptNumber: shipment.ndrDetails?.ndrAttempts || randomInt(1, 3),
+        classificationSource: selectRandom(['openai', 'keyword', 'manual']),
         resolvedAt: status === 'resolved'
             ? addHours(detectedAt, randomInt(12, 48))
             : undefined,
         resolvedBy: status === 'resolved'
             ? selectRandom(['customer_response', 'reattempt_success', 'address_updated'])
             : undefined,
-        escalatedAt: status === 'rto_triggered'
-            ? addHours(resolutionDeadline, 1)
-            : undefined,
         autoRtoTriggered: status === 'rto_triggered' && Math.random() < 0.5,
-        classificationMethod: selectRandom(['openai', 'keyword', 'manual']),
         idempotencyKey: `NDR-${shipment.trackingNumber}-${Math.floor(detectedAt.getTime() / 1000)}`,
     };
 }

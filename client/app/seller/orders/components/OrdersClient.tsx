@@ -29,7 +29,7 @@ import {
     LazyArea as Area,
     LazyBarChart as BarChart,
     LazyBar as Bar,
-    ResponsiveContainer
+    LazyResponsiveContainer as ResponsiveContainer
 } from '@/src/components/charts/LazyCharts';
 
 // --- VISUALIZATION DATA ---

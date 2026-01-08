@@ -62,5 +62,62 @@ export const LazyBar = dynamic(
     { ssr: false }
 );
 
-// Export other chart components (lightweight, can be direct imports)
-export { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+// Lazy load LineChart component
+export const LazyLineChart = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.LineChart })),
+    { loading: () => <ChartLoader />, ssr: false }
+);
+
+// Lazy load Line component
+export const LazyLine = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.Line })),
+    { ssr: false }
+);
+
+// Lazy load ComposedChart component
+export const LazyComposedChart = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.ComposedChart })),
+    { loading: () => <ChartLoader />, ssr: false }
+);
+
+// Lazy load XAxis component
+export const LazyXAxis = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.XAxis })),
+    { ssr: false }
+);
+
+// Lazy load YAxis component
+export const LazyYAxis = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.YAxis })),
+    { ssr: false }
+);
+
+// Lazy load CartesianGrid component
+export const LazyCartesianGrid = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.CartesianGrid })),
+    { ssr: false }
+);
+
+// Lazy load Tooltip component
+export const LazyTooltip = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.Tooltip })),
+    { ssr: false }
+);
+
+// Lazy load Legend component
+export const LazyLegend = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.Legend })),
+    { ssr: false }
+);
+
+// Lazy load Cell component
+export const LazyCell = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.Cell })),
+    { ssr: false }
+);
+
+// Lazy load ResponsiveContainer component
+export const LazyResponsiveContainer = dynamic(
+    () => import('recharts').then(mod => ({ default: mod.ResponsiveContainer })),
+    { ssr: false }
+);

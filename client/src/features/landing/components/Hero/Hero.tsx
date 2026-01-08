@@ -3,7 +3,19 @@
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion"
 import { ArrowRight, TrendingUp, ShieldCheck, Truck, Home, Settings, CreditCard, LayoutGrid, ChevronDown, Plus, MoreHorizontal, Search, Bell, Package, Users, BarChart3, Activity } from "lucide-react"
 import { Button } from "@/components/ui/core/Button"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart, Bar } from 'recharts'
+import {
+    LazyAreaChart as AreaChart,
+    LazyArea as Area,
+    LazyLineChart as LineChart,
+    LazyLine as Line,
+    LazyComposedChart as ComposedChart,
+    LazyBar as Bar,
+    LazyXAxis as XAxis,
+    LazyYAxis as YAxis,
+    LazyCartesianGrid as CartesianGrid,
+    LazyTooltip as Tooltip,
+    LazyResponsiveContainer as ResponsiveContainer
+} from '@/src/components/charts/LazyCharts';
 import CountUp from 'react-countup'
 import { useInView } from 'react-intersection-observer'
 import { useState, useEffect } from 'react'

@@ -1,11 +1,14 @@
 /**
  * Carrier Data
- * 
+ *
  * Courier partner data with tracking number formats and service types.
  */
 
 import { selectRandom, randomInt, selectWeightedFromObject } from '../utils/random.utils';
 import { SEED_CONFIG, CarrierName } from '../config';
+
+// Tracking number counters per carrier to ensure uniqueness
+const trackingCounters: Map<CarrierName, number> = new Map();
 
 export interface CarrierData {
     name: CarrierName;
@@ -96,6 +99,13 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
 };
 
 /**
+ * Reset tracking number counters for a fresh seeding run
+ */
+export function resetTrackingCounters(): void {
+    trackingCounters.clear();
+}
+
+/**
  * Select a carrier based on configured weights
  */
 export function selectCarrier(): CarrierName {
@@ -110,14 +120,24 @@ export function getCarrierData(carrierName: CarrierName): CarrierData {
 }
 
 /**
- * Generate a tracking number for a carrier
+ * Generate a unique tracking number for a carrier using a counter
+ * Ensures no duplicate tracking numbers across all shipments
  */
 export function generateTrackingNumber(carrierName: CarrierName): string {
     const carrier = CARRIERS[carrierName];
-    const numericPart = randomInt(
-        Math.pow(10, carrier.trackingLength - carrier.trackingPrefix.length - 1),
-        Math.pow(10, carrier.trackingLength - carrier.trackingPrefix.length) - 1
-    );
+
+    // Initialize counter if not exists
+    if (!trackingCounters.has(carrierName)) {
+        trackingCounters.set(carrierName, 100000000); // Start from a reasonable number
+    }
+
+    // Increment and get the next counter value
+    const currentCounter = trackingCounters.get(carrierName)!;
+    trackingCounters.set(carrierName, currentCounter + 1);
+
+    // Format the numeric part with proper padding
+    const numericPart = currentCounter.toString().slice(-Math.max(carrier.trackingLength - carrier.trackingPrefix.length, 8));
+
     return `${carrier.trackingPrefix}${numericPart}`;
 }
 

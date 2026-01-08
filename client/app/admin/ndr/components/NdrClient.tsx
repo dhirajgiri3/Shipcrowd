@@ -4,17 +4,17 @@ export const dynamic = "force-dynamic";
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    AreaChart,
-    Area,
-    Cell
-} from 'recharts';
+    LazyBarChart as BarChart,
+    LazyBar as Bar,
+    LazyXAxis as XAxis,
+    LazyYAxis as YAxis,
+    LazyCartesianGrid as CartesianGrid,
+    LazyTooltip as Tooltip,
+    LazyResponsiveContainer as ResponsiveContainer,
+    LazyAreaChart as AreaChart,
+    LazyArea as Area,
+    LazyCell as Cell
+} from '@/src/components/charts/LazyCharts';
 import { Button } from '@/components/ui/core/Button';
 import { Input } from '@/components/ui/core/Input';
 import { Badge } from '@/components/ui/core/Badge';
