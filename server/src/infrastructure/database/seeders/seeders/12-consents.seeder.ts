@@ -122,33 +122,27 @@ export async function seedConsents(): Promise<void> {
                 consentHistories.push({
                     userId: consent.userId,
                     consentId: consent._id,
-                    consentType: consent.type,
+                    type: consent.type, // Use 'type' instead of 'consentType'
                     version: consent.version,
-                    accepted: true,
-                    acceptedAt: consent.acceptedAt,
                     ip: consent.ip,
                     userAgent: consent.userAgent,
-                    source: 'registration',
-                    action: 'consent_accepted',
+                    action: 'accepted', // Use valid enum value
                     createdAt: consent.acceptedAt,
                 });
 
-                // 10% of consents have a re-acceptance history (e.g., after terms update)
+                // 10% of consents have a withdrawal or update history (e.g., after terms update)
                 if (Math.random() < 0.1) {
-                    const reacceptanceDate = addDays(consent.acceptedAt || new Date(), randomInt(30, 365));
+                    const updateDate = addDays(consent.acceptedAt || new Date(), randomInt(30, 365));
                     consentHistories.push({
                         userId: consent.userId,
                         consentId: consent._id,
-                        consentType: consent.type,
+                        type: consent.type,
                         version: CONSENT_VERSION,
-                        accepted: true,
-                        acceptedAt: reacceptanceDate,
+                        previousVersion: consent.version,
                         ip: selectRandom(SAMPLE_IPS),
                         userAgent: selectRandom(SAMPLE_USER_AGENTS),
-                        source: 'terms_update',
-                        action: 'consent_re_accepted',
-                        reason: 'Terms of Service updated',
-                        createdAt: reacceptanceDate,
+                        action: 'updated', // Use valid enum value
+                        createdAt: updateDate,
                     });
                 }
             }

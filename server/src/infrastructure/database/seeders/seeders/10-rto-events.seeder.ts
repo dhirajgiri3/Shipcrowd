@@ -115,9 +115,10 @@ function generateRTOEventData(shipment: any, warehouses: Map<string, any>): any 
         shipment: shipment._id,
         order: shipment.orderId,
         reverseAwb: shipment.rtoDetails?.rtoTrackingNumber || `RTO-${shipment.trackingNumber}`,
-        reason,
+        rtoReason: reason, // Add the required rtoReason field
         triggeredAt,
-        triggeredBy: Math.random() < 0.7 ? 'system' : 'seller',
+        triggeredBy: Math.random() < 0.7 ? 'auto' : 'manual', // Use valid enum values
+        triggeredByUser: Math.random() < 0.7 ? undefined : `SELLER-${randomInt(1000, 9999)}`,
         returnStatus,
         forwardShippingCost,
         rtoCharges,
