@@ -292,12 +292,15 @@ OrderSchema.index({ companyId: 1, paymentStatus: 1 }); // Payment status filteri
 OrderSchema.index({ companyId: 1, paymentMethod: 1 }); // COD vs Prepaid filtering
 
 // E-commerce integration indexes
-// Unique constraint only when sourceId exists (sparse allows multiple nulls)
-OrderSchema.index({ sourceId: 1, companyId: 1 }, { unique: true, sparse: true }); // External order duplicate prevention
-OrderSchema.index({ source: 1, companyId: 1 }); // Source filtering (non-unique, allows manual orders)
-OrderSchema.index({ companyId: 1, flipkartOrderId: 1 }, { sparse: true, unique: true }); // Flipkart order lookup and duplicate prevention
+// Note: Platform order IDs (Shopify, Flipkart, Amazon) are globally unique across all companies
+// MongoDB sparse indexes on compound keys don't work as expected - they only exclude docs where ALL fields are null
+// Therefore, we make these indexes standalone without companyId to allow multiple null values
+OrderSchema.index({ sourceId: 1 }, { unique: true, sparse: true }); // Shopify/WooCommerce order duplicate prevention
+OrderSchema.index({ flipkartOrderId: 1 }, { sparse: true, unique: true }); // Flipkart order duplicate prevention
+OrderSchema.index({ amazonOrderId: 1 }, { sparse: true, unique: true }); // Amazon order duplicate prevention
+// Non-unique indexes for filtering
+OrderSchema.index({ source: 1, companyId: 1 }); // Source filtering (allows multiple manual/API orders)
 OrderSchema.index({ flipkartStoreId: 1, currentStatus: 1 }); // Flipkart store filtering with status
-OrderSchema.index({ companyId: 1, amazonOrderId: 1 }, { sparse: true, unique: true }); // Amazon order lookup and duplicate prevention
 OrderSchema.index({ amazonStoreId: 1, currentStatus: 1 }); // Amazon store filtering with status
 OrderSchema.index({ fulfillmentType: 1 }); // For FBA/MFN filtering
 
