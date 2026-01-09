@@ -289,7 +289,7 @@ const WeightDisputeSchema = new Schema<IWeightDispute>(
 // Indexes for performance
 WeightDisputeSchema.index({ companyId: 1, status: 1, createdAt: -1 }); // Company's disputes sorted by date
 WeightDisputeSchema.index({ status: 1, createdAt: -1 }); // Admin view: All pending disputes
-WeightDisputeSchema.index({ shipmentId: 1 }); // Lookup dispute by shipment
+// Note: shipmentId index is already defined inline in the schema field definition
 WeightDisputeSchema.index({ createdAt: -1 }); // Auto-resolve job: Old disputes
 WeightDisputeSchema.index({ 'financialImpact.difference': -1 }); // High-value disputes
 

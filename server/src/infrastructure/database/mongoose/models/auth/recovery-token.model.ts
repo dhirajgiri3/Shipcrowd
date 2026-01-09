@@ -40,7 +40,6 @@ const RecoveryTokenSchema = new Schema<IRecoveryToken>(
         expiresAt: {
             type: Date,
             required: true,
-            index: true,
         },
         usedAt: {
             type: Date,
