@@ -19,7 +19,7 @@ import { ShopifyProductMapping as ProductMapping } from '../../../../infrastruct
 import { ShopifySyncLog } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShopifyInventorySyncService
@@ -54,11 +54,6 @@ interface SyncResult {
 }
 
 export class ShopifyInventorySyncService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Push inventory to Shopify for a single SKU
@@ -114,7 +109,7 @@ export class ShopifyInventorySyncService {
       // Record success
       await mapping.recordSyncSuccess();
 
-      this.logger.info('Inventory synced to Shopify', {
+      logger.info('Inventory synced to Shopify', {
         storeId,
         sku,
         quantity,
@@ -154,7 +149,7 @@ export class ShopifyInventorySyncService {
       startTime: new Date(),
     });
 
-    this.logger.info('Starting batch inventory sync', {
+    logger.info('Starting batch inventory sync', {
       storeId,
       count: updates.length,
       syncLogId: syncLog._id,
@@ -219,7 +214,7 @@ export class ShopifyInventorySyncService {
           await mapping.recordSyncSuccess();
           result.itemsSynced++;
 
-          this.logger.debug('Synced inventory for SKU', {
+          logger.debug('Synced inventory for SKU', {
             sku: update.sku,
             quantity: update.quantity,
           });
@@ -231,7 +226,7 @@ export class ShopifyInventorySyncService {
             timestamp: new Date(),
           });
 
-          this.logger.error('Failed to sync inventory for SKU', {
+          logger.error('Failed to sync inventory for SKU', {
             sku: update.sku,
             error: error.message,
           });
@@ -254,7 +249,7 @@ export class ShopifyInventorySyncService {
     // Update store stats
     await store.incrementSyncStats('inventory', result.itemsSynced);
 
-    this.logger.info('Batch inventory sync completed', {
+    logger.info('Batch inventory sync completed', {
       storeId,
       ...result,
       syncLogId: syncLog._id,
@@ -362,7 +357,7 @@ export class ShopifyInventorySyncService {
       throw new AppError(`Inventory update failed: ${userErrors}`, 'SHOPIFY_INVENTORY_UPDATE_FAILED', 400);
     }
 
-    this.logger.debug('Inventory updated via GraphQL', {
+    logger.debug('Inventory updated via GraphQL', {
       inventoryItemId,
       locationId,
       available,
@@ -412,11 +407,11 @@ export class ShopifyInventorySyncService {
     });
 
     if (!mapping) {
-      this.logger.debug('No fulfillment sync mapping found for SKU', { sku });
+      logger.debug('No fulfillment sync mapping found for SKU', { sku });
       return;
     }
 
-    this.logger.info('Syncing inventory on fulfillment', {
+    logger.info('Syncing inventory on fulfillment', {
       storeId,
       sku,
       decreaseBy,

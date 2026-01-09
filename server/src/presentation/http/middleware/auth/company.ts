@@ -6,7 +6,6 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AuthRequest } from '../auth/auth';
 
 /**
  * Middleware to require company context
@@ -17,7 +16,7 @@ export const requireCompany = (
     res: Response,
     next: NextFunction
 ): void => {
-    const user = (req as AuthRequest).user;
+    const user = req.user;
 
     if (!user) {
         res.status(401).json({ message: 'Authentication required' });

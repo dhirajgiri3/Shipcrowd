@@ -18,7 +18,7 @@ import { FlipkartStore } from '../../../../infrastructure/database/mongoose/mode
 import { FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartWebhookService
@@ -37,11 +37,6 @@ import winston from 'winston';
  */
 
 export class FlipkartWebhookService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Process order/create webhook
@@ -50,7 +45,7 @@ export class FlipkartWebhookService {
    * Creates the order in Shipcrowd system.
    */
   static async processOrderCreate(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/create webhook', {
+    logger.info('Processing order/create webhook', {
       storeId,
       orderId: payload.orderId,
       orderNumber: payload.orderNumber,
@@ -81,7 +76,7 @@ export class FlipkartWebhookService {
       });
 
       if (existingOrder) {
-        this.logger.info('Order already exists, skipping creation', {
+        logger.info('Order already exists, skipping creation', {
           orderId: payload.orderId,
         });
         await syncLog.completeSync(0, 1);
@@ -134,13 +129,13 @@ export class FlipkartWebhookService {
 
       await syncLog.completeSync(1, 0);
 
-      this.logger.info('Order created from webhook', {
+      logger.info('Order created from webhook', {
         storeId,
         orderId: payload.orderId,
         orderNumber: order.orderNumber,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/create webhook', {
+      logger.error('Failed to process order/create webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -157,7 +152,7 @@ export class FlipkartWebhookService {
    * Updates order status to APPROVED.
    */
   static async processOrderApprove(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/approve webhook', {
+    logger.info('Processing order/approve webhook', {
       storeId,
       orderId: payload.orderId,
     });
@@ -175,7 +170,7 @@ export class FlipkartWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found for approval', {
+        logger.warn('Order not found for approval', {
           storeId,
           orderId: payload.orderId,
         });
@@ -191,12 +186,12 @@ export class FlipkartWebhookService {
 
       await order.save();
 
-      this.logger.info('Order approved', {
+      logger.info('Order approved', {
         storeId,
         orderId: payload.orderId,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/approve webhook', {
+      logger.error('Failed to process order/approve webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -212,7 +207,7 @@ export class FlipkartWebhookService {
    * Updates order status to READY_TO_SHIP.
    */
   static async processOrderReadyToDispatch(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/ready-to-dispatch webhook', {
+    logger.info('Processing order/ready-to-dispatch webhook', {
       storeId,
       orderId: payload.orderId,
     });
@@ -230,7 +225,7 @@ export class FlipkartWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found', {
+        logger.warn('Order not found', {
           storeId,
           orderId: payload.orderId,
         });
@@ -246,12 +241,12 @@ export class FlipkartWebhookService {
 
       await order.save();
 
-      this.logger.info('Order ready to dispatch', {
+      logger.info('Order ready to dispatch', {
         storeId,
         orderId: payload.orderId,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/ready-to-dispatch webhook', {
+      logger.error('Failed to process order/ready-to-dispatch webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -267,7 +262,7 @@ export class FlipkartWebhookService {
    * Updates order status to SHIPPED and records tracking.
    */
   static async processOrderDispatch(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/dispatch webhook', {
+    logger.info('Processing order/dispatch webhook', {
       storeId,
       orderId: payload.orderId,
     });
@@ -285,7 +280,7 @@ export class FlipkartWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found', {
+        logger.warn('Order not found', {
           storeId,
           orderId: payload.orderId,
         });
@@ -309,13 +304,13 @@ export class FlipkartWebhookService {
 
       await order.save();
 
-      this.logger.info('Order dispatched', {
+      logger.info('Order dispatched', {
         storeId,
         orderId: payload.orderId,
         trackingNumber: payload.trackingNumber,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/dispatch webhook', {
+      logger.error('Failed to process order/dispatch webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -331,7 +326,7 @@ export class FlipkartWebhookService {
    * Updates order status to DELIVERED.
    */
   static async processOrderDeliver(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/deliver webhook', {
+    logger.info('Processing order/deliver webhook', {
       storeId,
       orderId: payload.orderId,
     });
@@ -349,7 +344,7 @@ export class FlipkartWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found', {
+        logger.warn('Order not found', {
           storeId,
           orderId: payload.orderId,
         });
@@ -367,12 +362,12 @@ export class FlipkartWebhookService {
 
       await order.save();
 
-      this.logger.info('Order delivered', {
+      logger.info('Order delivered', {
         storeId,
         orderId: payload.orderId,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/deliver webhook', {
+      logger.error('Failed to process order/deliver webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -388,7 +383,7 @@ export class FlipkartWebhookService {
    * Updates order status to CANCELLED.
    */
   static async processOrderCancel(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/cancel webhook', {
+    logger.info('Processing order/cancel webhook', {
       storeId,
       orderId: payload.orderId,
     });
@@ -406,7 +401,7 @@ export class FlipkartWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found', {
+        logger.warn('Order not found', {
           storeId,
           orderId: payload.orderId,
         });
@@ -424,12 +419,12 @@ export class FlipkartWebhookService {
 
       // TODO: Restore inventory if applicable
 
-      this.logger.info('Order cancelled', {
+      logger.info('Order cancelled', {
         storeId,
         orderId: payload.orderId,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/cancel webhook', {
+      logger.error('Failed to process order/cancel webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -445,7 +440,7 @@ export class FlipkartWebhookService {
    * Updates order status to RETURNED.
    */
   static async processOrderReturn(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing order/return webhook', {
+    logger.info('Processing order/return webhook', {
       storeId,
       orderId: payload.orderId,
     });
@@ -463,7 +458,7 @@ export class FlipkartWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found', {
+        logger.warn('Order not found', {
           storeId,
           orderId: payload.orderId,
         });
@@ -481,12 +476,12 @@ export class FlipkartWebhookService {
 
       // TODO: Restore inventory if applicable
 
-      this.logger.info('Order returned', {
+      logger.info('Order returned', {
         storeId,
         orderId: payload.orderId,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process order/return webhook', {
+      logger.error('Failed to process order/return webhook', {
         storeId,
         orderId: payload.orderId,
         error: error.message,
@@ -502,7 +497,7 @@ export class FlipkartWebhookService {
    * Optional: Two-way sync (Flipkart → Shipcrowd).
    */
   static async processInventoryUpdate(payload: any, storeId: string): Promise<void> {
-    this.logger.info('Processing inventory/update webhook', {
+    logger.info('Processing inventory/update webhook', {
       storeId,
       sku: payload.sku,
       quantity: payload.quantity,
@@ -516,7 +511,7 @@ export class FlipkartWebhookService {
 
       // Only process if two-way sync is enabled
       if (store.syncConfig.inventorySync.syncDirection !== 'TWO_WAY') {
-        this.logger.debug('Two-way sync not enabled, skipping inventory update', {
+        logger.debug('Two-way sync not enabled, skipping inventory update', {
           storeId,
         });
         return;
@@ -525,13 +520,13 @@ export class FlipkartWebhookService {
       // TODO: Update Shipcrowd inventory
       // This would integrate with InventoryService to update stock levels
 
-      this.logger.info('Inventory updated (two-way sync)', {
+      logger.info('Inventory updated (two-way sync)', {
         storeId,
         sku: payload.sku,
         quantity: payload.quantity,
       });
     } catch (error: any) {
-      this.logger.error('Failed to process inventory/update webhook', {
+      logger.error('Failed to process inventory/update webhook', {
         storeId,
         sku: payload.sku,
         error: error.message,

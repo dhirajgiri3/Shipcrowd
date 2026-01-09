@@ -14,7 +14,6 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { Consent, ConsentHistory, ConsentType } from '../../../../infrastructure/database/mongoose/models/iam/consent.model';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendCreated, sendValidationError } from '../../../../shared/utils/responseHelper';
@@ -34,7 +33,7 @@ const withdrawConsentSchema = z.object({
  * Get user's current consents
  * @route GET /consent
  */
-export const getConsents = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getConsents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -65,7 +64,7 @@ export const getConsents = async (req: AuthRequest, res: Response, next: NextFun
  * Accept a consent
  * @route POST /consent
  */
-export const acceptConsent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const acceptConsent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -159,7 +158,7 @@ export const acceptConsent = async (req: AuthRequest, res: Response, next: NextF
  * Withdraw consent (required for GDPR)
  * @route DELETE /consent/:type
  */
-export const withdrawConsent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const withdrawConsent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -234,7 +233,7 @@ export const withdrawConsent = async (req: AuthRequest, res: Response, next: Nex
  * Export user data (GDPR right to data portability)
  * @route GET /consent/export
  */
-export const exportUserData = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const exportUserData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -310,7 +309,7 @@ export const exportUserData = async (req: AuthRequest, res: Response, next: Next
  * Get consent history
  * @route GET /consent/history
  */
-export const getConsentHistory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getConsentHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

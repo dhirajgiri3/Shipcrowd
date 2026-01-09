@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartClient
@@ -33,11 +33,6 @@ export class FlipkartClient {
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
 
-  private logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   // Rate limiting
   private requestQueue: number[] = [];
@@ -73,7 +68,7 @@ export class FlipkartClient {
           config.headers.Authorization = `Bearer ${this.accessToken}`;
         }
 
-        this.logger.debug('Flipkart API Request', {
+        logger.debug('Flipkart API Request', {
           method: config.method,
           url: config.url,
           params: config.params,
@@ -82,7 +77,7 @@ export class FlipkartClient {
         return config;
       },
       (error) => {
-        this.logger.error('Request interceptor error', { error: error.message });
+        logger.error('Request interceptor error', { error: error.message });
         return Promise.reject(error);
       }
     );
@@ -90,7 +85,7 @@ export class FlipkartClient {
     // Response interceptor
     this.httpClient.interceptors.response.use(
       (response) => {
-        this.logger.debug('Flipkart API Response', {
+        logger.debug('Flipkart API Response', {
           status: response.status,
           url: response.config.url,
         });
@@ -98,7 +93,7 @@ export class FlipkartClient {
       },
       (error) => {
         if (error.response) {
-          this.logger.error('Flipkart API Error', {
+          logger.error('Flipkart API Error', {
             status: error.response.status,
             url: error.config?.url,
             data: error.response.data,
@@ -110,7 +105,7 @@ export class FlipkartClient {
             this.tokenExpiresAt = null;
           }
         } else {
-          this.logger.error('Network error', { error: error.message });
+          logger.error('Network error', { error: error.message });
         }
 
         return Promise.reject(error);
@@ -131,14 +126,14 @@ export class FlipkartClient {
     if (this.requestQueue.length >= this.MAX_REQUESTS_PER_HOUR) {
       const oldestRequest = this.requestQueue[0];
       const waitTime = 3600000 - (now - oldestRequest);
-      this.logger.warn('Rate limit reached (hourly), waiting...', { waitTime });
+      logger.warn('Rate limit reached (hourly), waiting...', { waitTime });
       await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
 
     // Check per-second limit
     const recentRequests = this.requestQueue.filter((time) => now - time < 1000);
     if (recentRequests.length >= this.MAX_REQUESTS_PER_SECOND) {
-      this.logger.debug('Rate limit reached (per second), waiting 100ms');
+      logger.debug('Rate limit reached (per second), waiting 100ms');
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
@@ -182,14 +177,14 @@ export class FlipkartClient {
       const expiresIn = response.data.expires_in || 3600;
       this.tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
-      this.logger.info('Flipkart access token obtained', {
+      logger.info('Flipkart access token obtained', {
         expiresIn,
         expiresAt: this.tokenExpiresAt,
       });
 
       return this.accessToken!;
     } catch (error: any) {
-      this.logger.error('Failed to get access token', {
+      logger.error('Failed to get access token', {
         error: error.response?.data || error.message,
       });
       throw new Error(`Failed to get Flipkart access token: ${error.message}`);
@@ -262,7 +257,7 @@ export class FlipkartClient {
       await this.get('/orders/v3/shipments');
       return true;
     } catch (error) {
-      this.logger.error('Connection test failed', { error });
+      logger.error('Connection test failed', { error });
       return false;
     }
   }

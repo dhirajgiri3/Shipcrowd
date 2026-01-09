@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
   deactivateAccount,
@@ -47,7 +46,7 @@ const permanentDeleteSchema = z.object({
  * Deactivate user account
  * @route POST /account/deactivate
  */
-export const deactivateUserAccount = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deactivateUserAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -107,7 +106,7 @@ export const deactivateUserAccount = async (req: AuthRequest, res: Response, nex
  * Reactivate user account
  * @route POST /account/reactivate
  */
-export const reactivateUserAccount = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const reactivateUserAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -168,7 +167,7 @@ export const reactivateUserAccount = async (req: AuthRequest, res: Response, nex
  * Schedule account deletion
  * @route POST /account/delete
  */
-export const scheduleAccountDeletionHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const scheduleAccountDeletionHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -233,7 +232,7 @@ export const scheduleAccountDeletionHandler = async (req: AuthRequest, res: Resp
  * Cancel scheduled account deletion
  * @route POST /account/cancel-deletion
  */
-export const cancelScheduledDeletionHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const cancelScheduledDeletionHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { TeamPermission } from '../../../../infrastructure/database/mongoose/models';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from './auth';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -12,7 +11,7 @@ import logger from '../../../../shared/logger/winston.logger';
 export const checkPermission = (module: string, action: string) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authUser = (req as AuthRequest).user;
+      const authUser = req.user;
       if (!authUser) {
         res.status(401).json({ message: 'Authentication required' });
         return;

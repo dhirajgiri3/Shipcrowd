@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import FlipkartProductMappingService from '../../../../core/application/services/flipkart/flipkart-product-mapping.service';
 import FlipkartInventorySyncService from '../../../../core/application/services/flipkart/flipkart-inventory-sync.service';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartProductMappingController
@@ -22,11 +22,6 @@ import winston from 'winston';
  */
 
 export class FlipkartProductMappingController {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * POST /integrations/flipkart/stores/:id/mappings/auto
@@ -48,7 +43,7 @@ export class FlipkartProductMappingController {
 
       const result = await FlipkartProductMappingService.autoMapProducts(storeId);
 
-      this.logger.info('Auto-mapping triggered', {
+      logger.info('Auto-mapping triggered', {
         storeId,
         companyId,
         userId: req.user?._id,
@@ -135,7 +130,7 @@ export class FlipkartProductMappingController {
         mappedBy: req.user?._id,
       });
 
-      this.logger.info('Manual mapping created', {
+      logger.info('Manual mapping created', {
         mappingId: mapping._id,
         storeId,
         userId: req.user?._id,
@@ -175,7 +170,7 @@ export class FlipkartProductMappingController {
 
       await FlipkartProductMappingService.deleteMapping(mappingId);
 
-      this.logger.info('Mapping deleted', {
+      logger.info('Mapping deleted', {
         mappingId,
         companyId,
         userId: req.user?._id,
@@ -217,7 +212,7 @@ export class FlipkartProductMappingController {
 
       const result = await FlipkartProductMappingService.importMappingsFromCSV(storeId, csvData);
 
-      this.logger.info('CSV import completed', {
+      logger.info('CSV import completed', {
         storeId,
         companyId,
         userId: req.user?._id,
@@ -254,7 +249,7 @@ export class FlipkartProductMappingController {
 
       const csv = await FlipkartProductMappingService.exportMappingsToCSV(storeId);
 
-      this.logger.info('CSV export completed', {
+      logger.info('CSV export completed', {
         storeId,
         companyId,
         userId: req.user?._id,
@@ -322,7 +317,7 @@ export class FlipkartProductMappingController {
 
       await FlipkartProductMappingService.toggleMappingStatus(mappingId, isActive);
 
-      this.logger.info('Mapping status toggled', {
+      logger.info('Mapping status toggled', {
         mappingId,
         isActive,
         userId: req.user?._id,
@@ -366,7 +361,7 @@ export class FlipkartProductMappingController {
 
       await FlipkartInventorySyncService.syncProductInventory(mappingId, quantity);
 
-      this.logger.info('Inventory synced for mapping', {
+      logger.info('Inventory synced for mapping', {
         mappingId,
         quantity,
         userId: req.user?._id,

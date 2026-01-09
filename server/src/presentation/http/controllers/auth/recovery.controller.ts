@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
   setupSecurityQuestions,
@@ -42,7 +41,7 @@ export const getSecurityQuestions = async (req: Request, res: Response): Promise
   sendSuccess(res, { questions: SECURITY_QUESTIONS }, 'Security questions retrieved');
 };
 
-export const setupSecurityQuestionsHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const setupSecurityQuestionsHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -96,7 +95,7 @@ export const setupSecurityQuestionsHandler = async (req: AuthRequest, res: Respo
   }
 };
 
-export const setupBackupEmailHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const setupBackupEmailHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -139,7 +138,7 @@ export const setupBackupEmailHandler = async (req: AuthRequest, res: Response, n
   }
 };
 
-export const generateRecoveryKeysHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const generateRecoveryKeysHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -182,7 +181,7 @@ export const generateRecoveryKeysHandler = async (req: AuthRequest, res: Respons
   }
 };
 
-export const getRecoveryStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getRecoveryStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

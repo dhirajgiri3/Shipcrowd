@@ -5,7 +5,7 @@
  * Endpoint: POST /api/v1/webhooks/velocity
  */
 
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { VelocityWebhookService } from '../../../../core/application/services/webhooks/velocity-webhook.service';
 import { VelocityWebhookPayload } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
 import { WebhookRequest } from '../../middleware/webhooks/velocity-webhook-auth.middleware';

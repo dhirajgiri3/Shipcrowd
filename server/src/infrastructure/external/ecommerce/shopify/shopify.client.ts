@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShopifyClient
@@ -27,7 +27,6 @@ interface ShopifyClientConfig {
   accessToken: string;
   apiVersion?: string;
   maxRetries?: number;
-  logger?: winston.Logger;
 }
 
 interface GraphQLResponse<T = any> {
@@ -58,7 +57,6 @@ export class ShopifyClient {
   private accessToken: string;
   private apiVersion: string;
   private maxRetries: number;
-  private logger: winston.Logger;
 
   constructor(config: ShopifyClientConfig) {
     this.shopDomain = config.shopDomain;
@@ -67,13 +65,6 @@ export class ShopifyClient {
     this.maxRetries = config.maxRetries || 3;
 
     // Setup logger
-    this.logger =
-      config.logger ||
-      winston.createLogger({
-        level: 'info',
-        format: winston.format.json(),
-        transports: [new winston.transports.Console()],
-      });
 
     // Initialize rate limit bucket (leaky bucket algorithm)
     this.rateLimitBucket = {
@@ -110,7 +101,7 @@ export class ShopifyClient {
         const rateLimitHeader = response.headers['x-shopify-shop-api-call-limit'];
         if (rateLimitHeader) {
           const [used, total] = rateLimitHeader.split('/').map(Number);
-          this.logger.debug('Shopify rate limit', {
+          logger.debug('Shopify rate limit', {
             used,
             total,
             remaining: total - used,
@@ -145,7 +136,7 @@ export class ShopifyClient {
     // If no tokens available, wait until one is available
     if (this.rateLimitBucket.tokens < 1) {
       const waitTime = ((1 - this.rateLimitBucket.tokens) / this.rateLimitBucket.refillRate) * 1000;
-      this.logger.debug(`Rate limit: waiting ${waitTime}ms`);
+      logger.debug(`Rate limit: waiting ${waitTime}ms`);
       await this.sleep(waitTime);
       this.rateLimitBucket.tokens = 1;
       this.rateLimitBucket.lastRefill = Date.now();
@@ -181,7 +172,7 @@ export class ShopifyClient {
 
       // Check if we should retry
       if (retries >= this.maxRetries) {
-        this.logger.error(`Max retries (${this.maxRetries}) exceeded`);
+        logger.error(`Max retries (${this.maxRetries}) exceeded`);
         throw error;
       }
 
@@ -192,7 +183,7 @@ export class ShopifyClient {
       const jitter = delay * 0.2 * (Math.random() - 0.5);
       const waitTime = delay + jitter;
 
-      this.logger.warn(`Request failed, retrying in ${Math.round(waitTime)}ms (attempt ${retries + 1}/${this.maxRetries})`, {
+      logger.warn(`Request failed, retrying in ${Math.round(waitTime)}ms (attempt ${retries + 1}/${this.maxRetries})`, {
         status: axiosError.response?.status,
         statusText: axiosError.response?.statusText,
       });
@@ -207,7 +198,7 @@ export class ShopifyClient {
    * Log error details
    */
   private logError(error: AxiosError): void {
-    this.logger.error('Shopify API error', {
+    logger.error('Shopify API error', {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
@@ -221,7 +212,7 @@ export class ShopifyClient {
    */
   async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`GET ${endpoint}`, { params });
+      logger.debug(`GET ${endpoint}`, { params });
       const response = await this.httpClient.get<T>(endpoint, { params });
       return response.data;
     });
@@ -232,7 +223,7 @@ export class ShopifyClient {
    */
   async post<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`POST ${endpoint}`, { dataKeys: Object.keys(data || {}) });
+      logger.debug(`POST ${endpoint}`, { dataKeys: Object.keys(data || {}) });
       const response = await this.httpClient.post<T>(endpoint, data);
       return response.data;
     });
@@ -243,7 +234,7 @@ export class ShopifyClient {
    */
   async put<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`PUT ${endpoint}`, { dataKeys: Object.keys(data || {}) });
+      logger.debug(`PUT ${endpoint}`, { dataKeys: Object.keys(data || {}) });
       const response = await this.httpClient.put<T>(endpoint, data);
       return response.data;
     });
@@ -254,7 +245,7 @@ export class ShopifyClient {
    */
   async delete<T = any>(endpoint: string): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`DELETE ${endpoint}`);
+      logger.debug(`DELETE ${endpoint}`);
       const response = await this.httpClient.delete<T>(endpoint);
       return response.data;
     });
@@ -267,7 +258,7 @@ export class ShopifyClient {
    */
   async graphql<T = any>(query: string, variables?: Record<string, any>): Promise<GraphQLResponse<T>> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug('GraphQL query', {
+      logger.debug('GraphQL query', {
         queryLength: query.length,
         variables,
       });
@@ -282,7 +273,7 @@ export class ShopifyClient {
       // Log GraphQL cost metrics
       if (result.extensions?.cost) {
         const cost = result.extensions.cost;
-        this.logger.debug('GraphQL cost', {
+        logger.debug('GraphQL cost', {
           requestedQueryCost: cost.requestedQueryCost,
           actualQueryCost: cost.actualQueryCost,
           currentlyAvailable: cost.throttleStatus.currentlyAvailable,
@@ -295,14 +286,14 @@ export class ShopifyClient {
           cost.throttleStatus.currentlyAvailable / cost.throttleStatus.maximumAvailable;
         if (availableRatio < 0.2) {
           // Less than 20% budget remaining
-          this.logger.warn('GraphQL cost budget low, throttling requests');
+          logger.warn('GraphQL cost budget low, throttling requests');
           await this.sleep(1000); // Wait 1 second
         }
       }
 
       // Check for errors
       if (result.errors && result.errors.length > 0) {
-        this.logger.error('GraphQL errors', {
+        logger.error('GraphQL errors', {
           errors: result.errors,
         });
       }
@@ -359,10 +350,10 @@ export class ShopifyClient {
   async testConnection(): Promise<boolean> {
     try {
       await this.get('/shop.json');
-      this.logger.info('Shopify connection test successful');
+      logger.info('Shopify connection test successful');
       return true;
     } catch (error) {
-      this.logger.error('Shopify connection test failed', { error });
+      logger.error('Shopify connection test failed', { error });
       return false;
     }
   }

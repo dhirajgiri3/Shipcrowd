@@ -9,8 +9,7 @@
  * - Get analytics (admin only)
  */
 
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../../middleware/auth/auth';
+import { Request, Response, NextFunction } from 'express';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import {
     WeightDisputeDetectionService,
@@ -42,7 +41,7 @@ import {
  * - page, limit: Pagination
  */
 export const listDisputes = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -104,7 +103,7 @@ export const listDisputes = async (
  * Get dispute details with full timeline
  */
 export const getDisputeDetails = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -146,7 +145,7 @@ export const getDisputeDetails = async (
  * - notes: string
  */
 export const submitSellerEvidence = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -228,7 +227,7 @@ export const submitSellerEvidence = async (
  * - notes: string
  */
 export const resolveDispute = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -325,7 +324,7 @@ export const resolveDispute = async (
  * - companyId: Filter by company (optional)
  */
 export const getAnalytics = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -389,7 +388,7 @@ export const getAnalytics = async (
  * Get basic dispute metrics for company dashboard
  */
 export const getMetrics = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {

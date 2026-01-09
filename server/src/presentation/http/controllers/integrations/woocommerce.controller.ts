@@ -517,4 +517,170 @@ export default class WooCommerceController {
       next(error);
     }
   }
+
+  /**
+   * PUT /api/v1/integrations/woocommerce/stores/:storeId/orders/:orderId/status
+   * Update order status in WooCommerce (mark as shipped/completed)
+   */
+  static async updateOrderStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { storeId, orderId } = req.params;
+      const { status, awbNumber, courierName, trackingUrl } = req.body;
+      const companyId = req.user?.companyId;
+
+      if (!status) {
+        throw new AppError('Status is required', 'VALIDATION_ERROR', 400);
+      }
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify store ownership
+      const store = await WooCommerceStore.findOne({
+        _id: storeId,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Import fulfillment service from barrel export
+      const { WooCommerceFulfillmentService } = await import('../../../../core/application/services/woocommerce/index.js');
+
+      // Update order status
+      const trackingInfo = (awbNumber && courierName) ? {
+        awbNumber,
+        courierName,
+        trackingUrl,
+      } : undefined;
+
+      await WooCommerceFulfillmentService.updateOrderStatus(
+        orderId,
+        status,
+        trackingInfo
+      );
+
+      logger.info('WooCommerce order status updated via API', {
+        storeId,
+        orderId,
+        status,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.json({
+        success: true,
+        message: `Order status updated to ${status} in WooCommerce`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/integrations/woocommerce/stores/:storeId/orders/:orderId/tracking
+   * Add tracking note to WooCommerce order
+   */
+  static async addTrackingNote(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { storeId, orderId } = req.params;
+      const { awbNumber, courierName, trackingUrl, customerNote } = req.body;
+      const companyId = req.user?.companyId;
+
+      if (!awbNumber || !courierName) {
+        throw new AppError('AWB number and courier name are required', 'VALIDATION_ERROR', 400);
+      }
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify store ownership
+      const store = await WooCommerceStore.findOne({
+        _id: storeId,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Import fulfillment service from barrel export
+      const { WooCommerceFulfillmentService } = await import('../../../../core/application/services/woocommerce/index.js');
+
+      // Add tracking note
+      await WooCommerceFulfillmentService.addTrackingNote(
+        orderId,
+        {
+          awbNumber,
+          courierName,
+          trackingUrl,
+        },
+        customerNote !== false
+      );
+
+      logger.info('WooCommerce tracking note added via API', {
+        storeId,
+        orderId,
+        awbNumber,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      res.json({
+        success: true,
+        message: 'Tracking note added to order',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/integrations/woocommerce/stores/:id/sync/fulfillments
+   * Sync pending status updates to WooCommerce (bulk)
+   */
+  static async syncPendingUpdates(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+
+      if (!companyId) {
+        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+      }
+
+      // Verify store ownership
+      const store = await WooCommerceStore.findOne({
+        _id: id,
+        companyId,
+      });
+
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Import fulfillment service from barrel export
+      const { WooCommerceFulfillmentService } = await import('../../../../core/application/services/woocommerce/index.js');
+
+      // Sync pending updates
+      const syncedCount = await WooCommerceFulfillmentService.syncPendingUpdates(id);
+
+      logger.info('WooCommerce pending updates synced via API', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+        syncedCount,
+      });
+
+      res.json({
+        success: true,
+        message: `Synced ${syncedCount} orders to WooCommerce`,
+        syncedCount,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

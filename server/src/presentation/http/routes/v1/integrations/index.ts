@@ -5,6 +5,7 @@ import flipkartRoutes from './flipkart.routes';
 import amazonRoutes from './amazon.routes';
 import flipkartProductMappingRoutes from './flipkart-product-mapping.routes';
 import productMappingRoutes from './product-mapping.routes';
+import integrationsRoutes from './integrations.routes';
 
 /**
  * Integrations Routes Index
@@ -31,5 +32,8 @@ router.use('/amazon', amazonRoutes);
 
 // Generic Product Mapping (legacy/shared)
 router.use('/product-mappings', productMappingRoutes);
+
+// Cross-platform Integration Health Monitoring
+router.use(integrationsRoutes);
 
 export default router;

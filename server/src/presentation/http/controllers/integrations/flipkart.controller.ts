@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import FlipkartOAuthService from '../../../../core/application/services/flipkart/flipkart-oauth.service';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartController
@@ -19,11 +19,6 @@ import winston from 'winston';
  */
 
 export class FlipkartController {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * POST /integrations/flipkart/connect
@@ -68,7 +63,7 @@ export class FlipkartController {
         createdBy: String(userId),
       });
 
-      this.logger.info('Flipkart seller connected', {
+      logger.info('Flipkart seller connected', {
         storeId: store._id,
         sellerId: store.sellerId,
         companyId: store.companyId,
@@ -190,7 +185,7 @@ export class FlipkartController {
       // Disconnect store
       await FlipkartOAuthService.disconnectStore(id);
 
-      this.logger.info('Store disconnected', {
+      logger.info('Store disconnected', {
         storeId: id,
         sellerEmail: store.sellerEmail,
         companyId,
@@ -264,7 +259,7 @@ export class FlipkartController {
 
       await FlipkartOAuthService.togglePauseSync(id, true);
 
-      this.logger.info('Store sync paused', {
+      logger.info('Store sync paused', {
         storeId: id,
         sellerEmail: store.sellerEmail,
         companyId,
@@ -303,7 +298,7 @@ export class FlipkartController {
 
       await FlipkartOAuthService.togglePauseSync(id, false);
 
-      this.logger.info('Store sync resumed', {
+      logger.info('Store sync resumed', {
         storeId: id,
         sellerEmail: store.sellerEmail,
         companyId,

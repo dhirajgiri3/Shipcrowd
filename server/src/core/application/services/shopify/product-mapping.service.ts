@@ -18,7 +18,7 @@ import { ShopifyStore } from '../../../../infrastructure/database/mongoose/model
 import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 import { Parser } from 'json2csv';
 
 /**
@@ -71,11 +71,6 @@ interface CreateMappingData {
 }
 
 export class ProductMappingService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Auto-map products by exact SKU match
@@ -89,7 +84,7 @@ export class ProductMappingService {
       throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
     }
 
-    this.logger.info('Starting auto-mapping for store', {
+    logger.info('Starting auto-mapping for store', {
       storeId,
       shop: store.shopDomain,
     });
@@ -109,7 +104,7 @@ export class ProductMappingService {
     // Fetch all products from Shopify
     const products = await this.fetchAllProducts(client);
 
-    this.logger.info('Fetched products from Shopify', {
+    logger.info('Fetched products from Shopify', {
       productsCount: products.length,
     });
 
@@ -159,7 +154,7 @@ export class ProductMappingService {
 
           result.mapped++;
 
-          this.logger.debug('Auto-mapped variant', {
+          logger.debug('Auto-mapped variant', {
             variantId: variant.id,
             sku: variant.sku,
           });
@@ -167,7 +162,7 @@ export class ProductMappingService {
           result.failed++;
           result.unmappedSKUs.push(variant.sku);
 
-          this.logger.error('Failed to auto-map variant', {
+          logger.error('Failed to auto-map variant', {
             variantId: variant.id,
             sku: variant.sku,
             error: error.message,
@@ -183,7 +178,7 @@ export class ProductMappingService {
     });
     await store.save();
 
-    this.logger.info('Auto-mapping completed', {
+    logger.info('Auto-mapping completed', {
       storeId,
       ...result,
     });
@@ -257,7 +252,7 @@ export class ProductMappingService {
       isActive: true,
     });
 
-    this.logger.info('Created manual mapping', {
+    logger.info('Created manual mapping', {
       mappingId: mapping._id,
       variantId: data.shopifyVariantId,
       sku: data.shipcrowdSKU,
@@ -279,7 +274,7 @@ export class ProductMappingService {
 
     await mapping.deleteOne();
 
-    this.logger.info('Deleted mapping', {
+    logger.info('Deleted mapping', {
       mappingId,
       variantId: mapping.shopifyVariantId,
       sku: mapping.shipcrowdSKU,
@@ -423,7 +418,7 @@ export class ProductMappingService {
       }
     }
 
-    this.logger.info('CSV import completed', {
+    logger.info('CSV import completed', {
       storeId,
       imported: result.imported,
       failed: result.failed,
@@ -460,7 +455,7 @@ export class ProductMappingService {
     const parser = new Parser();
     const csv = parser.parse(data);
 
-    this.logger.info('Exported mappings to CSV', {
+    logger.info('Exported mappings to CSV', {
       storeId,
       count: mappings.length,
     });
@@ -492,7 +487,7 @@ export class ProductMappingService {
     mapping.isActive = isActive;
     await mapping.save();
 
-    this.logger.info('Toggled mapping status', {
+    logger.info('Toggled mapping status', {
       mappingId,
       isActive,
     });

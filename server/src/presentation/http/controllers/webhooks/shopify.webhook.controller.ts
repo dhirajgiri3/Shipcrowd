@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { WebhookEvent } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyWebhookService from '../../../../core/application/services/shopify/shopify-webhook.service';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShopifyWebhookController
@@ -18,11 +18,6 @@ import winston from 'winston';
  */
 
 export class ShopifyWebhookController {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * POST /webhooks/shopify/orders/create
@@ -47,7 +42,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        this.logger.info('Duplicate webhook received', {
+        logger.info('Duplicate webhook received', {
           webhookId: webhookMeta.webhookId,
           topic: 'orders/create',
         });

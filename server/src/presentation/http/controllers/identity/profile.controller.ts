@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import {
   updateProfileCompletionStatus,
@@ -53,7 +52,7 @@ const preferencesProfileSchema = z.object({
  * Get profile completion status
  * @route GET /profile/completion
  */
-export const getProfileCompletion = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getProfileCompletion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -97,7 +96,7 @@ export const getProfileCompletion = async (req: AuthRequest, res: Response, next
  * Update basic profile information
  * @route PATCH /profile/basic
  */
-export const updateBasicProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateBasicProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -171,7 +170,7 @@ export const updateBasicProfile = async (req: AuthRequest, res: Response, next: 
  * Update address information
  * @route PATCH /profile/address
  */
-export const updateAddressProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateAddressProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -243,7 +242,7 @@ export const updateAddressProfile = async (req: AuthRequest, res: Response, next
  * Update personal information
  * @route PATCH /profile/personal
  */
-export const updatePersonalProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updatePersonalProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -313,7 +312,7 @@ export const updatePersonalProfile = async (req: AuthRequest, res: Response, nex
  * Update social links
  * @route PATCH /profile/social
  */
-export const updateSocialProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateSocialProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -380,7 +379,7 @@ export const updateSocialProfile = async (req: AuthRequest, res: Response, next:
  * Update preferences
  * @route PATCH /profile/preferences
  */
-export const updatePreferencesProfile = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updatePreferencesProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -448,7 +447,7 @@ export const updatePreferencesProfile = async (req: AuthRequest, res: Response, 
  * Get profile completion prompts
  * @route GET /profile/prompts
  */
-export const getProfilePrompts = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getProfilePrompts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -506,7 +505,7 @@ export const getProfilePrompts = async (req: AuthRequest, res: Response, next: N
  * Dismiss profile completion prompt
  * @route POST /profile/dismiss-prompt
  */
-export const dismissProfilePrompt = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const dismissProfilePrompt = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

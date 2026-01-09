@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from './auth';
 import { createAuditLog } from '../system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -21,7 +20,7 @@ export const checkKYC = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const authUser = (req as AuthRequest).user;
+        const authUser = req.user;
 
         // Check if user is authenticated
         if (!authUser) {

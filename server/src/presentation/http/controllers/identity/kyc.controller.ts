@@ -1,9 +1,8 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import { KYC } from '../../../../infrastructure/database/mongoose/models';
 import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
@@ -32,7 +31,7 @@ const getDocumentIdString = (doc: any): string => {
  * @param res Response object
  * @returns User object if valid, null if invalid (response is sent in case of error)
  */
-const validateUserAndCompany = async (req: AuthRequest, res: Response): Promise<(IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId }) | null> => {
+const validateUserAndCompany = async (req: Request, res: Response): Promise<(IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId }) | null> => {
   if (!req.user) {
     sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
     return null;
@@ -100,7 +99,7 @@ import {
  * Submit KYC documents
  * @route POST /kyc
  */
-export const submitKYC = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const submitKYC = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -203,7 +202,7 @@ export const submitKYC = async (req: AuthRequest, res: Response, next: NextFunct
  * Get KYC details for the current user
  * @route GET /kyc
  */
-export const getKYC = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getKYC = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -228,7 +227,7 @@ export const getKYC = async (req: AuthRequest, res: Response, next: NextFunction
  * Verify KYC document (admin only)
  * @route POST /kyc/:kycId/verify
  */
-export const verifyKYCDocument = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyKYCDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -321,7 +320,7 @@ export const verifyKYCDocument = async (req: AuthRequest, res: Response, next: N
  * Reject KYC (admin only)
  * @route POST /kyc/:kycId/reject
  */
-export const rejectKYC = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const rejectKYC = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -379,7 +378,7 @@ export const rejectKYC = async (req: AuthRequest, res: Response, next: NextFunct
  * Get all KYCs (admin only)
  * @route GET /kyc/all
  */
-export const getAllKYCs = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getAllKYCs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -428,7 +427,7 @@ export const getAllKYCs = async (req: AuthRequest, res: Response, next: NextFunc
  * Verify PAN card in real-time using DeepVue API
  * @route POST /kyc/verify-pan
  */
-export const verifyPanCard = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyPanCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -557,7 +556,7 @@ export const verifyPanCard = async (req: AuthRequest, res: Response, next: NextF
  * Verify GSTIN in real-time using DeepVue API
  * @route POST /kyc/verify-gstin
  */
-export const verifyGstin = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyGstin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -753,7 +752,7 @@ export const verifyGstin = async (req: AuthRequest, res: Response, next: NextFun
  * Verify bank account in real-time using DeepVue API
  * @route POST /kyc/verify-bank-account
  */
-export const verifyBankAccount = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyBankAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const user = await validateUserAndCompany(req, res);
     if (!user) return;
@@ -901,7 +900,7 @@ export const verifyBankAccount = async (req: AuthRequest, res: Response, next: N
  * Update agreement acceptance status
  * @route POST /kyc/agreement
  */
-export const updateAgreement = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateAgreement = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -995,7 +994,7 @@ export const updateAgreement = async (req: AuthRequest, res: Response, next: Nex
  * Verify Aadhaar in real-time using DeepVue API (one-step verification)
  * @route POST /kyc/verify-aadhaar
  */
-export const verifyAadhaar = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyAadhaar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -1114,7 +1113,7 @@ export const verifyAadhaar = async (req: AuthRequest, res: Response, next: NextF
  * Verify IFSC code in real-time using DeepVue API
  * @route POST /kyc/verify-ifsc
  */
-export const verifyIfscCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyIfscCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Validate user (authentication check only, no need for company association)
     if (!req.user) {

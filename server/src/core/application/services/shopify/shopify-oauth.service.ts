@@ -18,7 +18,7 @@ import crypto from 'crypto';
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShopifyOAuthService
@@ -54,11 +54,6 @@ interface WebhookRegistration {
 }
 
 export class ShopifyOAuthService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   // Shopify OAuth scopes required
   private static readonly REQUIRED_SCOPES = [
@@ -112,7 +107,7 @@ export class ShopifyOAuthService {
       `redirect_uri=${encodeURIComponent(redirect)}&` +
       `state=${state}`;
 
-    this.logger.info('Generated Shopify install URL', {
+    logger.info('Generated Shopify install URL', {
       shop,
       companyId,
       scopes: this.REQUIRED_SCOPES.length,
@@ -207,7 +202,7 @@ export class ShopifyOAuthService {
     // Validate HMAC
     const queryParams = { shop, code, state, timestamp };
     if (!this.verifyHmac(queryParams, hmac)) {
-      this.logger.error('HMAC verification failed', { shop });
+      logger.error('HMAC verification failed', { shop });
       throw new AppError('Invalid HMAC signature', 'INVALID_HMAC', 403);
     }
 
@@ -224,7 +219,7 @@ export class ShopifyOAuthService {
       companyId,
     });
 
-    this.logger.info('Shopify OAuth callback completed', {
+    logger.info('Shopify OAuth callback completed', {
       shop,
       companyId,
       storeId: store._id,
@@ -261,7 +256,7 @@ export class ShopifyOAuthService {
       throw new AppError('Failed to obtain access token', 'ACCESS_TOKEN_ERROR', 500);
     }
 
-    this.logger.debug('Access token obtained', { shop });
+    logger.debug('Access token obtained', { shop });
     return response.data.access_token;
   }
 
@@ -305,7 +300,7 @@ export class ShopifyOAuthService {
       store.isPaused = false;
       store.uninstalledAt = undefined;
 
-      this.logger.info('Updating existing Shopify store', {
+      logger.info('Updating existing Shopify store', {
         storeId: store._id,
         shop,
       });
@@ -326,7 +321,7 @@ export class ShopifyOAuthService {
         isPaused: false,
       });
 
-      this.logger.info('Creating new Shopify store', {
+      logger.info('Creating new Shopify store', {
         shop,
         companyId,
       });
@@ -382,7 +377,7 @@ export class ShopifyOAuthService {
           createdAt: new Date(),
         });
 
-        this.logger.debug('Registered webhook', {
+        logger.debug('Registered webhook', {
           storeId,
           topic,
           webhookId: webhook.id,
@@ -390,9 +385,9 @@ export class ShopifyOAuthService {
       } catch (error: any) {
         // Check if webhook already exists
         if (error.response?.data?.errors?.address?.includes('already taken')) {
-          this.logger.warn('Webhook already registered', { topic });
+          logger.warn('Webhook already registered', { topic });
         } else {
-          this.logger.error('Failed to register webhook', {
+          logger.error('Failed to register webhook', {
             topic,
             error: error.message,
           });
@@ -404,7 +399,7 @@ export class ShopifyOAuthService {
     store.webhooks = registeredWebhooks;
     await store.save();
 
-    this.logger.info('Webhooks registered', {
+    logger.info('Webhooks registered', {
       storeId,
       count: registeredWebhooks.length,
       topics: registeredWebhooks.map((w) => w.topic),
@@ -431,13 +426,13 @@ export class ShopifyOAuthService {
     for (const webhook of store.webhooks) {
       try {
         await client.delete(`/webhooks/${webhook.shopifyWebhookId}.json`);
-        this.logger.debug('Unregistered webhook', {
+        logger.debug('Unregistered webhook', {
           storeId,
           topic: webhook.topic,
           webhookId: webhook.shopifyWebhookId,
         });
       } catch (error: any) {
-        this.logger.warn('Failed to unregister webhook', {
+        logger.warn('Failed to unregister webhook', {
           topic: webhook.topic,
           error: error.message,
         });
@@ -450,7 +445,7 @@ export class ShopifyOAuthService {
     store.webhooks = [];
     await store.save();
 
-    this.logger.info('Store disconnected', {
+    logger.info('Store disconnected', {
       storeId,
       shop: store.shopDomain,
     });
@@ -478,9 +473,9 @@ export class ShopifyOAuthService {
     if (!isValid) {
       store.isActive = false;
       await store.save();
-      this.logger.warn('Store connection invalid', { storeId });
+      logger.warn('Store connection invalid', { storeId });
     } else {
-      this.logger.info('Store connection valid', { storeId });
+      logger.info('Store connection valid', { storeId });
     }
 
     return isValid;
@@ -514,7 +509,7 @@ export class ShopifyOAuthService {
     store.isPaused = paused;
     await store.save();
 
-    this.logger.info(`Store sync ${paused ? 'paused' : 'resumed'}`, { storeId });
+    logger.info(`Store sync ${paused ? 'paused' : 'resumed'}`, { storeId });
   }
 }
 

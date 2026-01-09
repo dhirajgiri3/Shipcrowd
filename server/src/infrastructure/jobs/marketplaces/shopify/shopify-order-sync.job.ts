@@ -2,7 +2,7 @@ import { Job } from 'bullmq';
 import QueueManager from '../../../utilities/queue-manager';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
 import { ShopifyStore } from '../../../database/mongoose/models';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShopifyOrderSyncJob
@@ -27,11 +27,6 @@ interface OrderSyncJobData {
 }
 
 export class ShopifyOrderSyncJob {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Initialize order sync worker
@@ -43,7 +38,7 @@ export class ShopifyOrderSyncJob {
       concurrency: 3, // Process 3 stores concurrently
     });
 
-    this.logger.info('Shopify order sync worker initialized');
+    logger.info('Shopify order sync worker initialized');
   }
 
   /**
@@ -52,7 +47,7 @@ export class ShopifyOrderSyncJob {
   private static async processJob(job: Job<OrderSyncJobData>): Promise<any> {
     const { storeId, manual = false } = job.data;
 
-    this.logger.info('Processing order sync job', {
+    logger.info('Processing order sync job', {
       jobId: job.id,
       storeId,
       manual,
@@ -67,12 +62,12 @@ export class ShopifyOrderSyncJob {
       }
 
       if (!store.isActive) {
-        this.logger.info('Store is not active, skipping sync', { storeId });
+        logger.info('Store is not active, skipping sync', { storeId });
         return { skipped: true, reason: 'Store not active' };
       }
 
       if (store.isPaused) {
-        this.logger.info('Store sync is paused, skipping', { storeId });
+        logger.info('Store sync is paused, skipping', { storeId });
         return { skipped: true, reason: 'Sync paused' };
       }
 
@@ -90,7 +85,7 @@ export class ShopifyOrderSyncJob {
       // Update job progress
       await job.updateProgress(100);
 
-      this.logger.info('Order sync job completed', {
+      logger.info('Order sync job completed', {
         jobId: job.id,
         storeId,
         ...result,
@@ -98,7 +93,7 @@ export class ShopifyOrderSyncJob {
 
       return result;
     } catch (error: any) {
-      this.logger.error('Order sync job failed', {
+      logger.error('Order sync job failed', {
         jobId: job.id,
         storeId,
         error: error.message,
@@ -113,7 +108,7 @@ export class ShopifyOrderSyncJob {
           'syncConfig.orderSync.errorCount': { $inc: 1 },
         });
       } catch (updateError) {
-        this.logger.error('Failed to update store sync status', { updateError });
+        logger.error('Failed to update store sync status', { updateError });
       }
 
       throw error; // Re-throw for BullMQ retry logic
@@ -132,7 +127,7 @@ export class ShopifyOrderSyncJob {
     }
 
     if (!store.syncConfig.orderSync.enabled || !store.syncConfig.orderSync.autoSync) {
-      this.logger.info('Auto-sync not enabled for store, skipping schedule', { storeId });
+      logger.info('Auto-sync not enabled for store, skipping schedule', { storeId });
       return;
     }
 
@@ -148,7 +143,7 @@ export class ShopifyOrderSyncJob {
       cronExpression
     );
 
-    this.logger.info('Scheduled order sync for store', {
+    logger.info('Scheduled order sync for store', {
       storeId,
       intervalMinutes,
       cronExpression,
@@ -163,7 +158,7 @@ export class ShopifyOrderSyncJob {
 
     await QueueManager.removeRepeatableJob('shopify-order-sync', jobKey);
 
-    this.logger.info('Unscheduled order sync for store', { storeId });
+    logger.info('Unscheduled order sync for store', { storeId });
   }
 
   /**
@@ -184,7 +179,7 @@ export class ShopifyOrderSyncJob {
       }
     );
 
-    this.logger.info('Triggered manual order sync', {
+    logger.info('Triggered manual order sync', {
       jobId: job.id,
       storeId,
       priority,
@@ -203,7 +198,7 @@ export class ShopifyOrderSyncJob {
       'syncConfig.orderSync.autoSync': true,
     });
 
-    this.logger.info('Scheduling order sync for all active stores', {
+    logger.info('Scheduling order sync for all active stores', {
       count: stores.length,
     });
 
@@ -211,14 +206,14 @@ export class ShopifyOrderSyncJob {
       try {
         await this.scheduleStoreSync(String(store._id));
       } catch (error: any) {
-        this.logger.error('Failed to schedule store sync', {
+        logger.error('Failed to schedule store sync', {
           storeId: store._id,
           error: error.message,
         });
       }
     }
 
-    this.logger.info('Completed scheduling for all stores');
+    logger.info('Completed scheduling for all stores');
   }
 
   /**
@@ -233,7 +228,7 @@ export class ShopifyOrderSyncJob {
    */
   static async cleanOldJobs(gracePeriodMs: number = 86400000): Promise<void> {
     await QueueManager.cleanQueue('shopify-order-sync', gracePeriodMs);
-    this.logger.info('Cleaned old order sync jobs', { gracePeriodMs });
+    logger.info('Cleaned old order sync jobs', { gracePeriodMs });
   }
 }
 

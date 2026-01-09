@@ -21,7 +21,6 @@ import {
     getNDRTrendsQuerySchema,
     getTopNDRReasonsQuerySchema,
 } from '../../../../shared/validation/ndr-schemas';
-import winston from 'winston';
 
 export class NDRController {
     /**

@@ -1,5 +1,5 @@
 import { createClient, RedisClientType } from 'redis';
-import winston from 'winston';
+import logger from '../../shared/logger/winston.logger';
 
 /**
  * Redis Connection Manager
@@ -10,11 +10,6 @@ import winston from 'winston';
 
 export class RedisConnection {
   private static instance: RedisClientType | null = null;
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Get Redis connection (singleton)
@@ -26,18 +21,18 @@ export class RedisConnection {
 
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-    this.logger.info('Connecting to Redis', { url: redisUrl.replace(/:[^:]*@/, ':***@') });
+    logger.info('Connecting to Redis', { url: redisUrl.replace(/:[^:]*@/, ':***@') });
 
     this.instance = createClient({
       url: redisUrl,
       socket: {
         reconnectStrategy: (retries: number) => {
           if (retries > 10) {
-            this.logger.error('Redis reconnection failed after 10 attempts');
+            logger.error('Redis reconnection failed after 10 attempts');
             return new Error('Redis reconnection failed');
           }
           const delay = Math.min(retries * 100, 3000);
-          this.logger.warn(`Redis reconnecting in ${delay}ms (attempt ${retries})`);
+          logger.warn(`Redis reconnecting in ${delay}ms (attempt ${retries})`);
           return delay;
         },
       },
@@ -45,23 +40,23 @@ export class RedisConnection {
 
     // Event listeners
     this.instance.on('error', (err) => {
-      this.logger.error('Redis client error', { error: err.message });
+      logger.error('Redis client error', { error: err.message });
     });
 
     this.instance.on('connect', () => {
-      this.logger.info('Redis client connected');
+      logger.info('Redis client connected');
     });
 
     this.instance.on('ready', () => {
-      this.logger.info('Redis client ready');
+      logger.info('Redis client ready');
     });
 
     this.instance.on('end', () => {
-      this.logger.warn('Redis client disconnected');
+      logger.warn('Redis client disconnected');
     });
 
     this.instance.on('reconnecting', () => {
-      this.logger.info('Redis client reconnecting');
+      logger.info('Redis client reconnecting');
     });
 
     await this.instance.connect();
@@ -93,7 +88,7 @@ export class RedisConnection {
     if (this.instance && this.instance.isOpen) {
       await this.instance.quit();
       this.instance = null;
-      this.logger.info('Redis connection closed');
+      logger.info('Redis connection closed');
     }
   }
 
@@ -104,10 +99,10 @@ export class RedisConnection {
     try {
       const client = await this.getConnection();
       await client.ping();
-      this.logger.info('Redis connection test successful');
+      logger.info('Redis connection test successful');
       return true;
     } catch (error) {
-      this.logger.error('Redis connection test failed', { error });
+      logger.error('Redis connection test failed', { error });
       return false;
     }
   }

@@ -12,7 +12,6 @@ import { createSession, updateSessionActivity, revokeSession, getUserSessions, r
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthRequest } from '../../middleware/auth/auth';
 import mongoose from 'mongoose';
 import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';
 import { UserDTO } from '../../dtos/user.dto';
@@ -778,7 +777,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
     res.clearCookie('accessToken');
 
     // Cast to AuthRequest to access user property
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
     if (authReq.user) {
       // Revoke the current session if refresh token is available
       if (refreshToken) {
@@ -921,7 +920,7 @@ export const checkPasswordStrength = async (req: Request, res: Response, next: N
  */
 export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
     if (!authReq.user) {
       sendError(res, 'Authentication required', 401, 'AUTHENTICATION_REQUIRED');
       return;
@@ -1037,7 +1036,7 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
  */
 export const setPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
     if (!authReq.user) {
       sendError(res, 'Authentication required', 401, 'AUTHENTICATION_REQUIRED');
       return;
@@ -1106,7 +1105,7 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
  */
 export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
     if (!authReq.user) {
       res.status(401).json({ message: 'Authentication required' });
       return;
@@ -1191,7 +1190,7 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
  */
 export const changeEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
     if (!authReq.user) {
       res.status(401).json({ message: 'Authentication required' });
       return;

@@ -2,7 +2,7 @@ import { Job } from 'bullmq';
 import QueueManager from '../../../utilities/queue-manager';
 import { WebhookEvent } from '../../../database/mongoose/models';
 import FlipkartWebhookService from '../../../../core/application/services/flipkart/flipkart-webhook.service';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartWebhookProcessorJob
@@ -31,11 +31,6 @@ interface WebhookJobData {
 }
 
 export class FlipkartWebhookProcessorJob {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Initialize webhook processor worker
@@ -47,7 +42,7 @@ export class FlipkartWebhookProcessorJob {
       concurrency: 10, // Process 10 webhooks concurrently
     });
 
-    this.logger.info('Flipkart webhook processor worker initialized');
+    logger.info('Flipkart webhook processor worker initialized');
   }
 
   /**
@@ -56,7 +51,7 @@ export class FlipkartWebhookProcessorJob {
   private static async processJob(job: Job<WebhookJobData>): Promise<any> {
     const { eventId, storeId, topic, payload } = job.data;
 
-    this.logger.info('Processing webhook job', {
+    logger.info('Processing webhook job', {
       jobId: job.id,
       eventId,
       storeId,
@@ -73,7 +68,7 @@ export class FlipkartWebhookProcessorJob {
 
       // Skip if already processed
       if (event.processed) {
-        this.logger.info('Webhook already processed, skipping', {
+        logger.info('Webhook already processed, skipping', {
           eventId,
           topic,
         });
@@ -86,7 +81,7 @@ export class FlipkartWebhookProcessorJob {
       // Mark as processed
       await event.markProcessed();
 
-      this.logger.info('Webhook processed successfully', {
+      logger.info('Webhook processed successfully', {
         jobId: job.id,
         eventId,
         topic,
@@ -94,7 +89,7 @@ export class FlipkartWebhookProcessorJob {
 
       return { success: true };
     } catch (error: any) {
-      this.logger.error('Webhook processing failed', {
+      logger.error('Webhook processing failed', {
         jobId: job.id,
         eventId,
         topic,
@@ -109,7 +104,7 @@ export class FlipkartWebhookProcessorJob {
           await event.markFailed(error.message);
         }
       } catch (updateError) {
-        this.logger.error('Failed to update webhook event status', { updateError });
+        logger.error('Failed to update webhook event status', { updateError });
       }
 
       throw error; // Re-throw for BullMQ retry logic
@@ -158,7 +153,7 @@ export class FlipkartWebhookProcessorJob {
         break;
 
       default:
-        this.logger.warn('Unknown webhook topic', { topic });
+        logger.warn('Unknown webhook topic', { topic });
     }
   }
 
@@ -189,7 +184,7 @@ export class FlipkartWebhookProcessorJob {
       }
     );
 
-    this.logger.info('Retrying failed webhook', {
+    logger.info('Retrying failed webhook', {
       eventId,
       jobId: job.id,
     });
@@ -217,7 +212,7 @@ export class FlipkartWebhookProcessorJob {
    */
   static async cleanOldWebhooks(retentionDays: number = 90): Promise<number> {
     const deletedCount = await WebhookEvent.cleanupOldEvents(retentionDays);
-    this.logger.info('Cleaned old webhook events', {
+    logger.info('Cleaned old webhook events', {
       deletedCount,
       retentionDays,
     });
@@ -230,7 +225,7 @@ export class FlipkartWebhookProcessorJob {
   static async processUnprocessedWebhooks(limit: number = 100): Promise<void> {
     const unprocessed = await WebhookEvent.getUnprocessed(limit);
 
-    this.logger.info('Found unprocessed webhooks', {
+    logger.info('Found unprocessed webhooks', {
       count: unprocessed.length,
     });
 
@@ -250,14 +245,14 @@ export class FlipkartWebhookProcessorJob {
           }
         );
       } catch (error: any) {
-        this.logger.error('Failed to queue unprocessed webhook', {
+        logger.error('Failed to queue unprocessed webhook', {
           eventId: String(event._id),
           error: error.message,
         });
       }
     }
 
-    this.logger.info('Queued unprocessed webhooks for processing', {
+    logger.info('Queued unprocessed webhooks for processing', {
       count: unprocessed.length,
     });
   }

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
 import ShopifyInventorySyncService from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ProductMappingController
@@ -22,11 +22,6 @@ import winston from 'winston';
  */
 
 export class ProductMappingController {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * POST /integrations/shopify/stores/:id/mappings/auto
@@ -48,7 +43,7 @@ export class ProductMappingController {
 
       const result = await ProductMappingService.autoMapProducts(storeId);
 
-      this.logger.info('Auto-mapping triggered', {
+      logger.info('Auto-mapping triggered', {
         storeId,
         companyId,
         userId: req.user?._id,
@@ -135,7 +130,7 @@ export class ProductMappingController {
         mappedBy: req.user?._id,
       });
 
-      this.logger.info('Manual mapping created', {
+      logger.info('Manual mapping created', {
         mappingId: mapping._id,
         storeId,
         userId: req.user?._id,
@@ -175,7 +170,7 @@ export class ProductMappingController {
 
       await ProductMappingService.deleteMapping(mappingId);
 
-      this.logger.info('Mapping deleted', {
+      logger.info('Mapping deleted', {
         mappingId,
         companyId,
         userId: req.user?._id,
@@ -217,7 +212,7 @@ export class ProductMappingController {
 
       const result = await ProductMappingService.importMappingsFromCSV(storeId, csvData);
 
-      this.logger.info('CSV import completed', {
+      logger.info('CSV import completed', {
         storeId,
         companyId,
         userId: req.user?._id,
@@ -254,7 +249,7 @@ export class ProductMappingController {
 
       const csv = await ProductMappingService.exportMappingsToCSV(storeId);
 
-      this.logger.info('CSV export completed', {
+      logger.info('CSV export completed', {
         storeId,
         companyId,
         userId: req.user?._id,
@@ -322,7 +317,7 @@ export class ProductMappingController {
 
       await ProductMappingService.toggleMappingStatus(mappingId, isActive);
 
-      this.logger.info('Mapping status toggled', {
+      logger.info('Mapping status toggled', {
         mappingId,
         isActive,
         userId: req.user?._id,
@@ -366,7 +361,7 @@ export class ProductMappingController {
 
       await ShopifyInventorySyncService.syncProductInventory(mappingId, quantity);
 
-      this.logger.info('Inventory synced for mapping', {
+      logger.info('Inventory synced for mapping', {
         mappingId,
         quantity,
         userId: req.user?._id,

@@ -18,7 +18,7 @@ import { FlipkartStore } from '../../../../infrastructure/database/mongoose/mode
 import { FlipkartProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 import { Parser } from 'json2csv';
 
 /**
@@ -72,11 +72,6 @@ interface CreateMappingData {
 }
 
 export class FlipkartProductMappingService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Auto-map products by exact SKU match
@@ -90,7 +85,7 @@ export class FlipkartProductMappingService {
       throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
     }
 
-    this.logger.info('Starting auto-mapping for store', {
+    logger.info('Starting auto-mapping for store', {
       storeId,
       sellerId: store.sellerId,
     });
@@ -111,7 +106,7 @@ export class FlipkartProductMappingService {
     // Fetch all listings from Flipkart
     const listings = await this.fetchAllListings(client);
 
-    this.logger.info('Fetched listings from Flipkart', {
+    logger.info('Fetched listings from Flipkart', {
       listingsCount: listings.length,
     });
 
@@ -158,7 +153,7 @@ export class FlipkartProductMappingService {
 
         result.mapped++;
 
-        this.logger.debug('Auto-mapped listing', {
+        logger.debug('Auto-mapped listing', {
           fsn: listing.fsn,
           sku: listing.sku,
         });
@@ -166,7 +161,7 @@ export class FlipkartProductMappingService {
         result.failed++;
         result.unmappedSKUs.push(listing.sku);
 
-        this.logger.error('Failed to auto-map listing', {
+        logger.error('Failed to auto-map listing', {
           fsn: listing.fsn,
           sku: listing.sku,
           error: error.message,
@@ -181,7 +176,7 @@ export class FlipkartProductMappingService {
     });
     await store.save();
 
-    this.logger.info('Auto-mapping completed', {
+    logger.info('Auto-mapping completed', {
       storeId,
       ...result,
     });
@@ -219,7 +214,7 @@ export class FlipkartProductMappingService {
         nextPageToken = response.nextPageToken;
         pageCount++;
 
-        this.logger.debug('Fetched listings page', {
+        logger.debug('Fetched listings page', {
           page: pageCount,
           count: batch.length,
           hasMore: !!nextPageToken,
@@ -230,7 +225,7 @@ export class FlipkartProductMappingService {
           await this.sleep(100);
         }
       } catch (error: any) {
-        this.logger.error('Failed to fetch listings page', {
+        logger.error('Failed to fetch listings page', {
           page: pageCount,
           error: error.message,
         });
@@ -274,7 +269,7 @@ export class FlipkartProductMappingService {
       isActive: true,
     });
 
-    this.logger.info('Created manual mapping', {
+    logger.info('Created manual mapping', {
       mappingId: mapping._id,
       fsn: data.flipkartFSN,
       sku: data.shipcrowdSKU,
@@ -296,7 +291,7 @@ export class FlipkartProductMappingService {
 
     await mapping.deleteOne();
 
-    this.logger.info('Deleted mapping', {
+    logger.info('Deleted mapping', {
       mappingId,
       fsn: mapping.flipkartFSN,
       sku: mapping.shipcrowdSKU,
@@ -376,7 +371,7 @@ export class FlipkartProductMappingService {
     mapping.isActive = isActive;
     await mapping.save();
 
-    this.logger.info('Toggled mapping status', {
+    logger.info('Toggled mapping status', {
       mappingId,
       isActive,
     });
@@ -475,7 +470,7 @@ export class FlipkartProductMappingService {
       }
     }
 
-    this.logger.info('CSV import completed', {
+    logger.info('CSV import completed', {
       storeId,
       imported: result.imported,
       failed: result.failed,
@@ -513,7 +508,7 @@ export class FlipkartProductMappingService {
     const parser = new Parser();
     const csv = parser.parse(data);
 
-    this.logger.info('Exported mappings to CSV', {
+    logger.info('Exported mappings to CSV', {
       storeId,
       count: mappings.length,
     });

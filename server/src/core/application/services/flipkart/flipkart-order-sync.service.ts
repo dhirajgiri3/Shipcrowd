@@ -19,7 +19,7 @@ import { FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/mo
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartOrderSyncService
@@ -104,11 +104,6 @@ interface SyncResult {
 }
 
 export class FlipkartOrderSyncService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Main sync orchestrator
@@ -128,7 +123,7 @@ export class FlipkartOrderSyncService {
     }
 
     if (store.isPaused) {
-      this.logger.info('Store sync is paused, skipping', { storeId });
+      logger.info('Store sync is paused, skipping', { storeId });
       return {
         itemsProcessed: 0,
         itemsSynced: 0,
@@ -148,7 +143,7 @@ export class FlipkartOrderSyncService {
       status: 'IN_PROGRESS',
     });
 
-    this.logger.info('Starting order sync', {
+    logger.info('Starting order sync', {
       storeId,
       sellerId: store.sellerId,
       sinceDate,
@@ -183,7 +178,7 @@ export class FlipkartOrderSyncService {
           ...(sinceDate && { 'filter.modifiedAfter': sinceDate.toISOString() }),
         };
 
-        this.logger.debug('Fetching orders batch', {
+        logger.debug('Fetching orders batch', {
           pageNumber,
           pageSize,
           sinceDate: sinceDate?.toISOString(),
@@ -192,7 +187,7 @@ export class FlipkartOrderSyncService {
         const response = await this.fetchOrdersFromFlipkart(client, params);
         const shipments = response.shipments || [];
 
-        this.logger.debug('Fetched orders batch', {
+        logger.debug('Fetched orders batch', {
           count: shipments.length,
           pageNumber,
         });
@@ -219,7 +214,7 @@ export class FlipkartOrderSyncService {
               timestamp: new Date(),
             });
 
-            this.logger.error('Failed to sync order', {
+            logger.error('Failed to sync order', {
               orderItemId: shipment.orderItemId,
               orderId: shipment.orderId,
               error: error.message,
@@ -246,7 +241,7 @@ export class FlipkartOrderSyncService {
       await store.updateSyncStatus('order', 'IDLE');
       await store.incrementSyncStats('order', result.itemsSynced);
 
-      this.logger.info('Order sync completed', {
+      logger.info('Order sync completed', {
         storeId,
         ...result,
         syncLogId: syncLog._id,
@@ -254,7 +249,7 @@ export class FlipkartOrderSyncService {
 
       return result;
     } catch (error: any) {
-      this.logger.error('Order sync failed', {
+      logger.error('Order sync failed', {
         storeId,
         error: error.message,
       });
@@ -281,7 +276,7 @@ export class FlipkartOrderSyncService {
       const response = await client.get<FlipkartOrdersResponse>('/orders/v3/shipments', params);
       return response;
     } catch (error: any) {
-      this.logger.error('Failed to fetch orders from Flipkart', {
+      logger.error('Failed to fetch orders from Flipkart', {
         error: error.message,
         params,
       });
@@ -313,7 +308,7 @@ export class FlipkartOrderSyncService {
     if (existingOrder) {
       // Skip if order already fulfilled in Shipcrowd
       if (existingOrder.currentStatus === 'DELIVERED' || existingOrder.currentStatus === 'COMPLETED') {
-        this.logger.debug('Skipping fulfilled order', {
+        logger.debug('Skipping fulfilled order', {
           orderItemId: shipment.orderItemId,
           currentStatus: existingOrder.currentStatus,
         });
@@ -325,7 +320,7 @@ export class FlipkartOrderSyncService {
       const shipcrowdUpdated = new Date(existingOrder.updatedAt);
 
       if (flipkartUpdated <= shipcrowdUpdated) {
-        this.logger.debug('Skipping unchanged order', {
+        logger.debug('Skipping unchanged order', {
           orderItemId: shipment.orderItemId,
         });
         return null;
@@ -347,7 +342,7 @@ export class FlipkartOrderSyncService {
 
     const order = await Order.create(mapped);
 
-    this.logger.info('Created order from Flipkart', {
+    logger.info('Created order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
       shipcrowdOrderId: order._id,
       orderNumber: order.orderNumber,
@@ -385,7 +380,7 @@ export class FlipkartOrderSyncService {
 
     await existingOrder.save();
 
-    this.logger.info('Updated order from Flipkart', {
+    logger.info('Updated order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
       shipcrowdOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
@@ -531,7 +526,7 @@ export class FlipkartOrderSyncService {
     const sinceDate = new Date();
     sinceDate.setHours(sinceDate.getHours() - hoursBack);
 
-    this.logger.info('Syncing recent orders', {
+    logger.info('Syncing recent orders', {
       storeId,
       hoursBack,
       sinceDate,

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { WebhookEvent } from '../../../../infrastructure/database/mongoose/models';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 import crypto from 'crypto';
 
 /**
@@ -23,11 +23,6 @@ import crypto from 'crypto';
  */
 
 export class FlipkartWebhookController {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Generate a unique webhook ID from the payload
@@ -66,7 +61,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        FlipkartWebhookController.logger.info('Duplicate webhook received', {
+        logger.info('Duplicate webhook received', {
           topic: 'order/create',
         });
         res.status(200).json({ received: true, duplicate: true });

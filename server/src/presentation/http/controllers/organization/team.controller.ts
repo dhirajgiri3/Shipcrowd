@@ -6,7 +6,6 @@ import { User } from '../../../../infrastructure/database/mongoose/models';
 import { Company } from '../../../../infrastructure/database/mongoose/models';
 import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
 import { TeamPermission } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import emailService from '../../../../core/application/services/communication/email.service';
@@ -15,9 +14,9 @@ import activityService from '../../../../core/application/services/user/activity
 import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 // Helper function to wrap controller methods that expect AuthRequest
-const withAuth = (handler: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>) => {
+const withAuth = (handler: (req: Request, res: Response, next: NextFunction) => Promise<void>) => {
   return (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    return handler(req as AuthRequest, res, next);
+    return handler(req as Request, res, next);
   };
 };
 
@@ -83,7 +82,7 @@ const updatePermissionsSchema = z.object({
  * Get all team members for a company
  * @route GET /team or GET /companies/:companyId/team
  */
-export const getTeamMembers = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getTeamMembers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -159,7 +158,7 @@ export const getTeamMembers = async (req: AuthRequest, res: Response, next: Next
  * Get all pending team invitations for a company
  * @route GET /team/invitations
  */
-export const getTeamInvitations = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getTeamInvitations = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -225,7 +224,7 @@ export const getTeamInvitations = async (req: AuthRequest, res: Response, next: 
  * Invite a team member
  * @route POST /team/invite or POST /companies/:companyId/team/invite
  */
-export const inviteTeamMember = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const inviteTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -358,7 +357,7 @@ export const inviteTeamMember = async (req: AuthRequest, res: Response, next: Ne
  * Cancel a team invitation
  * @route DELETE /team/invitations/:invitationId
  */
-export const cancelInvitation = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const cancelInvitation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -433,7 +432,7 @@ export const cancelInvitation = async (req: AuthRequest, res: Response, next: Ne
  * Resend a team invitation
  * @route POST /team/invitations/:invitationId/resend
  */
-export const resendInvitation = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const resendInvitation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -527,7 +526,7 @@ export const resendInvitation = async (req: AuthRequest, res: Response, next: Ne
  * Update a team member's role
  * @route PATCH /team/members/:userId
  */
-export const updateTeamMember = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -693,7 +692,7 @@ export const updateTeamMember = async (req: AuthRequest, res: Response, next: Ne
  * Remove a team member
  * @route DELETE /team/members/:userId
  */
-export const removeTeamMember = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const removeTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -845,7 +844,7 @@ export const verifyInvitation = async (req: Request, res: Response, next: NextFu
  * Get a team member's permissions
  * @route GET /team/members/:userId/permissions
  */
-export const getTeamMemberPermissions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getTeamMemberPermissions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -907,7 +906,7 @@ export const getTeamMemberPermissions = async (req: AuthRequest, res: Response, 
  * Update a team member's permissions
  * @route PATCH /team/members/:userId/permissions
  */
-export const updateTeamMemberPermissions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateTeamMemberPermissions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -1027,7 +1026,7 @@ export const updateTeamMemberPermissions = async (req: AuthRequest, res: Respons
  * Get current user's permissions
  * @route GET /team/my-permissions
  */
-export const getMyPermissions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getMyPermissions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -1048,7 +1047,7 @@ export const getMyPermissions = async (req: AuthRequest, res: Response, next: Ne
  * Get team member activity
  * @route GET /team/members/:userId/activity
  */
-export const getTeamMemberActivity = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getTeamMemberActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -1139,7 +1138,7 @@ export const getTeamMemberActivity = async (req: AuthRequest, res: Response, nex
  * Get company activity
  * @route GET /team/activity
  */
-export const getCompanyActivity = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getCompanyActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });
@@ -1212,7 +1211,7 @@ export const getCompanyActivity = async (req: AuthRequest, res: Response, next: 
  * Get my activity
  * @route GET /team/my-activity
  */
-export const getMyActivity = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getMyActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });

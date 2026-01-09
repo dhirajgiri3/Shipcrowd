@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
@@ -18,7 +17,7 @@ const getAuditLogsSchema = z.object({
   search: z.string().optional(),
 });
 
-export const getMyAuditLogs = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -75,7 +74,7 @@ export const getMyAuditLogs = async (req: AuthRequest, res: Response, next: Next
   }
 };
 
-export const getCompanyAuditLogs = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getCompanyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -157,7 +156,7 @@ export const getCompanyAuditLogs = async (req: AuthRequest, res: Response, next:
   }
 };
 
-export const getSecurityAuditLogs = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getSecurityAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

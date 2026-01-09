@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { Warehouse, IWarehouse } from '../../../../infrastructure/database/mongoose/models';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { Company } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -87,7 +86,7 @@ const processOperatingHours = (operatingHours?: any) => {
   return processed;
 };
 
-export const createWarehouse = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -189,7 +188,7 @@ export const createWarehouse = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
-export const getWarehouses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -240,7 +239,7 @@ export const getWarehouses = async (req: AuthRequest, res: Response, next: NextF
   }
 };
 
-export const getWarehouseById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getWarehouseById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -280,7 +279,7 @@ export const getWarehouseById = async (req: AuthRequest, res: Response, next: Ne
   }
 };
 
-export const updateWarehouse = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -374,7 +373,7 @@ export const updateWarehouse = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
-export const deleteWarehouse = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deleteWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -449,7 +448,7 @@ export const deleteWarehouse = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
-export const importWarehouses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const importWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

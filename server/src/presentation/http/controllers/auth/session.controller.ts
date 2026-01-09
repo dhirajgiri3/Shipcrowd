@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { getUserSessions, revokeSession, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
@@ -34,7 +33,7 @@ const findCurrentSessionId = async (sessions: ISession[], cookieToken?: string):
   return undefined;
 };
 
-export const getSessions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -64,7 +63,7 @@ export const getSessions = async (req: AuthRequest, res: Response, next: NextFun
 };
 
 
-export const terminateSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const terminateSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -106,7 +105,7 @@ export const terminateSession = async (req: AuthRequest, res: Response, next: Ne
   }
 };
 
-export const terminateAllSessions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const terminateAllSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

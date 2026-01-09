@@ -1,7 +1,6 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { AuthRequest } from '../../presentation/http/middleware/auth/auth';
 import logger from '../logger/winston.logger';
 
 /**
@@ -19,7 +18,7 @@ export interface ApiError {
  * Returns null if all checks pass, otherwise sends error response
  */
 export const guardChecks = (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     options: { requireCompany?: boolean } = { requireCompany: true }
 ): { userId: string; companyId: string } | null => {

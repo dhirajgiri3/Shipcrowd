@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import {
@@ -43,7 +42,7 @@ const updatePasswordSchema = z.object({
  */
 export const getProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
 
     if (!authReq.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -71,7 +70,7 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
  */
 export const updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
 
     if (!authReq.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -125,7 +124,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
  */
 export const updatePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
 
     if (!authReq.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -186,7 +185,7 @@ export const updatePassword = async (req: Request, res: Response, next: NextFunc
  */
 export const getActivityLog = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
 
     if (!authReq.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

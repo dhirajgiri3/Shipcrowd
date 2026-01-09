@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Shopify Webhook Authentication Middleware
@@ -21,12 +21,6 @@ import winston from 'winston';
  * - X-Shopify-Topic: Webhook topic
  * - X-Shopify-Webhook-Id: Unique webhook ID
  */
-
-const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: winston.format.json(),
-  transports: [new winston.transports.Console()],
-});
 
 /**
  * Verify Shopify webhook HMAC signature

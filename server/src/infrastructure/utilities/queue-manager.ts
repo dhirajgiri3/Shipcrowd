@@ -1,6 +1,6 @@
 import { Queue, Worker, QueueEvents, Job } from 'bullmq';
 import RedisConnection from './redis.connection';
-import winston from 'winston';
+import logger from '../../shared/logger/winston.logger';
 
 /**
  * QueueManager
@@ -38,17 +38,12 @@ export class QueueManager {
   private static workers: Map<string, Worker> = new Map();
   private static queueEvents: Map<string, QueueEvents> = new Map();
 
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Initialize queue manager
    */
   static async initialize(): Promise<void> {
-    this.logger.info('Initializing Queue Manager');
+    logger.info('Initializing Queue Manager');
 
     // Test Redis connection
     const isConnected = await RedisConnection.testConnection();
@@ -204,7 +199,7 @@ export class QueueManager {
       },
     });
 
-    this.logger.info('Queue Manager initialized', {
+    logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });
   }
@@ -230,7 +225,7 @@ export class QueueManager {
     const events = new QueueEvents(name, { connection });
 
     events.on('completed', ({ jobId, returnvalue }) => {
-      this.logger.debug('Job completed', {
+      logger.debug('Job completed', {
         queue: name,
         jobId,
         returnvalue,
@@ -238,7 +233,7 @@ export class QueueManager {
     });
 
     events.on('failed', ({ jobId, failedReason }) => {
-      this.logger.error('Job failed', {
+      logger.error('Job failed', {
         queue: name,
         jobId,
         failedReason,
@@ -246,7 +241,7 @@ export class QueueManager {
     });
 
     events.on('progress', ({ jobId, data }) => {
-      this.logger.debug('Job progress', {
+      logger.debug('Job progress', {
         queue: name,
         jobId,
         progress: data,
@@ -256,7 +251,7 @@ export class QueueManager {
     this.queues.set(name, queue);
     this.queueEvents.set(name, events);
 
-    this.logger.info('Queue created', { name });
+    logger.info('Queue created', { name });
 
     return queue;
   }
@@ -275,7 +270,7 @@ export class QueueManager {
     const { queueName, processor, concurrency = 1 } = config;
 
     if (this.workers.has(queueName)) {
-      this.logger.warn('Worker already registered', { queue: queueName });
+      logger.warn('Worker already registered', { queue: queueName });
       return this.workers.get(queueName)!;
     }
 
@@ -292,7 +287,7 @@ export class QueueManager {
 
     // Worker event handlers
     worker.on('completed', (job, result) => {
-      this.logger.info('Worker completed job', {
+      logger.info('Worker completed job', {
         queue: queueName,
         jobId: job.id,
         duration: Date.now() - job.timestamp,
@@ -300,7 +295,7 @@ export class QueueManager {
     });
 
     worker.on('failed', (job, error) => {
-      this.logger.error('Worker failed job', {
+      logger.error('Worker failed job', {
         queue: queueName,
         jobId: job?.id,
         error: error.message,
@@ -309,14 +304,14 @@ export class QueueManager {
     });
 
     worker.on('error', (error) => {
-      this.logger.error('Worker error', {
+      logger.error('Worker error', {
         queue: queueName,
         error: error.message,
       });
     });
 
     worker.on('stalled', (jobId) => {
-      this.logger.warn('Job stalled', {
+      logger.warn('Job stalled', {
         queue: queueName,
         jobId,
       });
@@ -324,7 +319,7 @@ export class QueueManager {
 
     this.workers.set(queueName, worker);
 
-    this.logger.info('Worker registered', {
+    logger.info('Worker registered', {
       queue: queueName,
       concurrency,
     });
@@ -349,7 +344,7 @@ export class QueueManager {
 
     const job = await queue.add(jobName, data, options);
 
-    this.logger.debug('Job added to queue', {
+    logger.debug('Job added to queue', {
       queue: queueName,
       jobName,
       jobId: job.id,
@@ -379,7 +374,7 @@ export class QueueManager {
       },
     });
 
-    this.logger.info('Repeatable job added', {
+    logger.info('Repeatable job added', {
       queue: queueName,
       jobName,
       cron: cronExpression,
@@ -403,7 +398,7 @@ export class QueueManager {
 
     const removed = await queue.removeRepeatableByKey(jobKey);
 
-    this.logger.info('Repeatable job removed', {
+    logger.info('Repeatable job removed', {
       queue: queueName,
       jobKey,
       removed,
@@ -472,7 +467,7 @@ export class QueueManager {
     // Clean failed jobs older than grace period
     await queue.clean(grace, 100, 'failed');
 
-    this.logger.info('Queue cleaned', {
+    logger.info('Queue cleaned', {
       queue: queueName,
       gracePeriod: grace,
     });
@@ -490,7 +485,7 @@ export class QueueManager {
 
     await queue.pause();
 
-    this.logger.info('Queue paused', { queue: queueName });
+    logger.info('Queue paused', { queue: queueName });
   }
 
   /**
@@ -505,31 +500,31 @@ export class QueueManager {
 
     await queue.resume();
 
-    this.logger.info('Queue resumed', { queue: queueName });
+    logger.info('Queue resumed', { queue: queueName });
   }
 
   /**
    * Shutdown all queues and workers gracefully
    */
   static async shutdown(): Promise<void> {
-    this.logger.info('Shutting down Queue Manager');
+    logger.info('Shutting down Queue Manager');
 
     // Close all workers
     for (const [name, worker] of this.workers.entries()) {
       await worker.close();
-      this.logger.info('Worker closed', { queue: name });
+      logger.info('Worker closed', { queue: name });
     }
 
     // Close all queue events
     for (const [name, events] of this.queueEvents.entries()) {
       await events.close();
-      this.logger.info('Queue events closed', { queue: name });
+      logger.info('Queue events closed', { queue: name });
     }
 
     // Close all queues
     for (const [name, queue] of this.queues.entries()) {
       await queue.close();
-      this.logger.info('Queue closed', { queue: name });
+      logger.info('Queue closed', { queue: name });
     }
 
     // Close Redis connection
@@ -539,7 +534,7 @@ export class QueueManager {
     this.workers.clear();
     this.queueEvents.clear();
 
-    this.logger.info('Queue Manager shutdown complete');
+    logger.info('Queue Manager shutdown complete');
   }
 }
 

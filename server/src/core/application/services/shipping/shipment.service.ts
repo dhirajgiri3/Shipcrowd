@@ -248,171 +248,185 @@ export class ShipmentService {
         };
         updatedOrder: any;
     }> {
-        const { order, companyId, userId, payload } = args;
+        const session = await mongoose.startSession();
 
-        // Generate tracking number
-        const trackingNumber = await this.getUniqueTrackingNumber();
-        if (!trackingNumber) {
-            throw new Error('Failed to generate unique tracking number');
-        }
+        try {
+            session.startTransaction();
 
-        // Determine warehouse and origin pincode
-        const warehouseId = payload.warehouseId
-            ? new mongoose.Types.ObjectId(payload.warehouseId)
-            : order.warehouseId;
+            const { order, companyId, userId, payload } = args;
 
-        const originPincode = await this.getWarehouseOriginPincode(warehouseId, companyId);
-
-        // Calculate weight and select carrier
-        const totalWeight = this.calculateTotalWeight(order.products);
-        const serviceType = payload.serviceType as 'express' | 'standard';
-
-        let selectedOption: any;
-        let carrierResult: CarrierSelectionResult | null = null;
-
-        // NEW: API-based carrier selection (feature flagged)
-        const useApiRates = (payload as any).useApiRates || process.env.USE_VELOCITY_API_RATES === 'true';
-
-        if (useApiRates) {
-            try {
-                logger.info('Using API-based carrier selection', {
-                    orderId: order._id.toString(),
-                    companyId: companyId.toString()
-                });
-
-                const provider = await CourierFactory.getProvider('velocity-shipfast', companyId);
-
-                const rates = await provider.getRates({
-                    origin: { pincode: originPincode },
-                    destination: { pincode: order.customerInfo.address.postalCode },
-                    package: {
-                        weight: totalWeight,
-                        length: 20,
-                        width: 15,
-                        height: 10
-                    },
-                    paymentMode: order.paymentMethod || 'prepaid'
-                });
-
-                if (rates && rates.length > 0) {
-                    selectedOption = {
-                        carrier: rates[0].serviceType || 'Velocity Shipfast',
-                        rate: rates[0].total,
-                        deliveryTime: rates[0].estimatedDeliveryDays || 3
-                    };
-
-                    logger.info('API rates fetched successfully', {
-                        orderId: order._id.toString(),
-                        carrier: selectedOption.carrier,
-                        rate: selectedOption.rate
-                    });
-                }
-            } catch (error) {
-                logger.warn('API rates failed, falling back to static selection', {
-                    orderId: order._id.toString(),
-                    error: error instanceof Error ? error.message : 'Unknown error'
-                });
-                // Fall through to static selection
+            // Generate tracking number
+            const trackingNumber = await this.getUniqueTrackingNumber();
+            if (!trackingNumber) {
+                throw new Error('Failed to generate unique tracking number');
             }
-        }
 
-        // Fallback to static selection if API not used or failed
-        if (!selectedOption) {
-            const selection = this.selectCarrierForShipment({
-                totalWeight,
-                originPincode,
-                destinationPincode: order.customerInfo.address.postalCode,
+            // Determine warehouse and origin pincode
+            const warehouseId = payload.warehouseId
+                ? new mongoose.Types.ObjectId(payload.warehouseId)
+                : order.warehouseId;
+
+            const originPincode = await this.getWarehouseOriginPincode(warehouseId, companyId);
+
+            // Calculate weight and select carrier
+            const totalWeight = this.calculateTotalWeight(order.products);
+            const serviceType = payload.serviceType as 'express' | 'standard';
+
+            let selectedOption: any;
+            let carrierResult: CarrierSelectionResult | null = null;
+
+            // NEW: API-based carrier selection (feature flagged)
+            const useApiRates = (payload as any).useApiRates || process.env.USE_VELOCITY_API_RATES === 'true';
+
+            if (useApiRates) {
+                try {
+                    logger.info('Using API-based carrier selection', {
+                        orderId: order._id.toString(),
+                        companyId: companyId.toString()
+                    });
+
+                    const provider = await CourierFactory.getProvider('velocity-shipfast', companyId);
+
+                    const rates = await provider.getRates({
+                        origin: { pincode: originPincode },
+                        destination: { pincode: order.customerInfo.address.postalCode },
+                        package: {
+                            weight: totalWeight,
+                            length: 20,
+                            width: 15,
+                            height: 10
+                        },
+                        paymentMode: order.paymentMethod || 'prepaid'
+                    });
+
+                    if (rates && rates.length > 0) {
+                        selectedOption = {
+                            carrier: rates[0].serviceType || 'Velocity Shipfast',
+                            rate: rates[0].total,
+                            deliveryTime: rates[0].estimatedDeliveryDays || 3
+                        };
+
+                        logger.info('API rates fetched successfully', {
+                            orderId: order._id.toString(),
+                            carrier: selectedOption.carrier,
+                            rate: selectedOption.rate
+                        });
+                    }
+                } catch (error) {
+                    logger.warn('API rates failed, falling back to static selection', {
+                        orderId: order._id.toString(),
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                    // Fall through to static selection
+                }
+            }
+
+            // Fallback to static selection if API not used or failed
+            if (!selectedOption) {
+                const selection = this.selectCarrierForShipment({
+                    totalWeight,
+                    originPincode,
+                    destinationPincode: order.customerInfo.address.postalCode,
+                    serviceType,
+                    carrierOverride: payload.carrierOverride
+                });
+
+                selectedOption = selection.selectedOption;
+                carrierResult = selection.carrierResult;
+            }
+
+            // Calculate estimated delivery
+            const estimatedDelivery = new Date();
+            estimatedDelivery.setDate(estimatedDelivery.getDate() + selectedOption.deliveryTime);
+
+            // Create shipment
+            const shipment = new Shipment({
+                trackingNumber,
+                orderId: order._id,
+                companyId,
+                carrier: selectedOption.carrier,
                 serviceType,
-                carrierOverride: payload.carrierOverride
+                packageDetails: {
+                    weight: totalWeight,
+                    dimensions: { length: 20, width: 15, height: 10 },
+                    packageCount: 1,
+                    packageType: 'box',
+                    declaredValue: order.totals.total,
+                },
+                pickupDetails: warehouseId ? { warehouseId } : undefined,
+                deliveryDetails: {
+                    recipientName: order.customerInfo.name,
+                    recipientPhone: order.customerInfo.phone,
+                    recipientEmail: order.customerInfo.email,
+                    address: order.customerInfo.address,
+                    instructions: payload.instructions,
+                },
+                paymentDetails: {
+                    type: order.paymentMethod || 'prepaid',
+                    codAmount: order.paymentMethod === 'cod' ? order.totals.total : undefined,
+                    shippingCost: selectedOption.rate,
+                    currency: 'INR',
+                },
+                currentStatus: 'created',
+                estimatedDelivery,
             });
 
-            selectedOption = selection.selectedOption;
-            carrierResult = selection.carrierResult;
-        }
+            await shipment.save({ session });
 
-        // Calculate estimated delivery
-        const estimatedDelivery = new Date();
-        estimatedDelivery.setDate(estimatedDelivery.getDate() + selectedOption.deliveryTime);
+            // Update order with optimistic locking
+            const currentOrderVersion = order.__v;
+            const shippedStatusEntry = {
+                status: 'shipped',
+                timestamp: new Date(),
+                comment: `Shipment created via ${selectedOption.carrier}`,
+                updatedBy: new mongoose.Types.ObjectId(userId),
+            };
 
-        // Create shipment
-        const shipment = new Shipment({
-            trackingNumber,
-            orderId: order._id,
-            companyId,
-            carrier: selectedOption.carrier,
-            serviceType,
-            packageDetails: {
-                weight: totalWeight,
-                dimensions: { length: 20, width: 15, height: 10 },
-                packageCount: 1,
-                packageType: 'box',
-                declaredValue: order.totals.total,
-            },
-            pickupDetails: warehouseId ? { warehouseId } : undefined,
-            deliveryDetails: {
-                recipientName: order.customerInfo.name,
-                recipientPhone: order.customerInfo.phone,
-                recipientEmail: order.customerInfo.email,
-                address: order.customerInfo.address,
-                instructions: payload.instructions,
-            },
-            paymentDetails: {
-                type: order.paymentMethod || 'prepaid',
-                codAmount: order.paymentMethod === 'cod' ? order.totals.total : undefined,
-                shippingCost: selectedOption.rate,
-                currency: 'INR',
-            },
-            currentStatus: 'created',
-            estimatedDelivery,
-        });
-
-        await shipment.save();
-
-        // Update order with optimistic locking
-        const currentOrderVersion = order.__v;
-        const shippedStatusEntry = {
-            status: 'shipped',
-            timestamp: new Date(),
-            comment: `Shipment created via ${selectedOption.carrier}`,
-            updatedBy: new mongoose.Types.ObjectId(userId),
-        };
-
-        const updatedOrder = await Order.findOneAndUpdate(
-            {
-                _id: order._id,
-                __v: currentOrderVersion
-            },
-            {
-                $set: {
-                    currentStatus: 'shipped',
-                    'shippingDetails.provider': selectedOption.carrier,
-                    'shippingDetails.method': serviceType,
-                    'shippingDetails.trackingNumber': trackingNumber,
-                    'shippingDetails.estimatedDelivery': estimatedDelivery,
-                    'shippingDetails.shippingCost': selectedOption.rate,
-                    'totals.shipping': selectedOption.rate,
-                    'total.total': order.totals.subtotal + selectedOption.rate + order.totals.tax - order.totals.discount
+            const updatedOrder = await Order.findOneAndUpdate(
+                {
+                    _id: order._id,
+                    __v: currentOrderVersion
                 },
-                $push: { statusHistory: shippedStatusEntry },
-                $inc: { __v: 1 }
-            },
-            { new: true }
-        );
+                {
+                    $set: {
+                        currentStatus: 'shipped',
+                        'shippingDetails.provider': selectedOption.carrier,
+                        'shippingDetails.method': serviceType,
+                        'shippingDetails.trackingNumber': trackingNumber,
+                        'shippingDetails.estimatedDelivery': estimatedDelivery,
+                        'shippingDetails.shippingCost': selectedOption.rate,
+                        'totals.shipping': selectedOption.rate,
+                        'total.total': order.totals.subtotal + selectedOption.rate + order.totals.tax - order.totals.discount
+                    },
+                    $push: { statusHistory: shippedStatusEntry },
+                    $inc: { __v: 1 }
+                },
+                { new: true, session }
+            );
 
-        if (!updatedOrder) {
-            throw new Error('Order was updated by another process during shipment creation. Please retry.');
+            if (!updatedOrder) {
+                throw new Error('Order was updated by another process during shipment creation. Please retry.');
+            }
+
+            await session.commitTransaction();
+
+            return {
+                shipment,
+                carrierSelection: {
+                    selectedCarrier: selectedOption.carrier,
+                    selectedRate: selectedOption.rate,
+                    selectedDeliveryTime: selectedOption.deliveryTime,
+                    alternativeOptions: carrierResult?.alternativeOptions || [],
+                },
+                updatedOrder
+            };
+        } catch (error) {
+            await session.abortTransaction();
+            logger.error('Error creating shipment (transaction rolled back):', error);
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        return {
-            shipment,
-            carrierSelection: {
-                selectedCarrier: selectedOption.carrier,
-                selectedRate: selectedOption.rate,
-                selectedDeliveryTime: selectedOption.deliveryTime,
-                alternativeOptions: carrierResult?.alternativeOptions || [],
-            },
-            updatedOrder
-        };
     }
 
     /**

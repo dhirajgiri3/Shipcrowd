@@ -3,6 +3,7 @@ import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { generateOrderNumber, validateStatusTransition } from '../../../../shared/helpers/controller.helpers';
 import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * OrderService - Business logic for order management
@@ -136,44 +137,58 @@ export class OrderService {
             salesRepId?: string; // NEW: optional sales rep assignment
         };
     }) {
-        const { companyId, payload } = args;
+        const session = await mongoose.startSession();
 
-        const orderNumber = await this.getUniqueOrderNumber();
-        if (!orderNumber) {
-            throw new Error('Failed to generate unique order number');
+        try {
+            session.startTransaction();
+
+            const { companyId, payload } = args;
+
+            const orderNumber = await this.getUniqueOrderNumber();
+            if (!orderNumber) {
+                throw new Error('Failed to generate unique order number');
+            }
+
+            const totals = this.calculateTotals(payload.products);
+
+            const order = new Order({
+                orderNumber,
+                companyId,
+                customerInfo: payload.customerInfo,
+                products: payload.products,
+                paymentMethod: payload.paymentMethod || 'prepaid',
+                paymentStatus: payload.paymentMethod === 'cod' ? 'pending' : 'paid',
+                source: 'manual',
+                warehouseId: payload.warehouseId ? new mongoose.Types.ObjectId(payload.warehouseId) : undefined,
+                currentStatus: 'pending',
+                totals,
+                notes: payload.notes,
+                tags: payload.tags,
+                shippingDetails: { shippingCost: 0 },
+                salesRepresentative: payload.salesRepId ? new mongoose.Types.ObjectId(payload.salesRepId) : undefined,
+            });
+
+            await order.save({ session });
+
+            await session.commitTransaction();
+
+            // Emit order.created event (outside transaction)
+            const eventPayload: OrderEventPayload = {
+                orderId: (order._id as any).toString(),
+                companyId: companyId.toString(),
+                orderNumber: order.orderNumber,
+                salesRepId: payload.salesRepId,
+            };
+            eventBus.emitEvent('order.created', eventPayload);
+
+            return order;
+        } catch (error) {
+            await session.abortTransaction();
+            logger.error('Error creating order (transaction rolled back):', error);
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        const totals = this.calculateTotals(payload.products);
-
-        const order = new Order({
-            orderNumber,
-            companyId,
-            customerInfo: payload.customerInfo,
-            products: payload.products,
-            paymentMethod: payload.paymentMethod || 'prepaid',
-            paymentStatus: payload.paymentMethod === 'cod' ? 'pending' : 'paid',
-            source: 'manual',
-            warehouseId: payload.warehouseId ? new mongoose.Types.ObjectId(payload.warehouseId) : undefined,
-            currentStatus: 'pending',
-            totals,
-            notes: payload.notes,
-            tags: payload.tags,
-            shippingDetails: { shippingCost: 0 },
-            salesRepresentative: payload.salesRepId ? new mongoose.Types.ObjectId(payload.salesRepId) : undefined,
-        });
-
-        await order.save();
-
-        // Emit order.created event
-        const eventPayload: OrderEventPayload = {
-            orderId: (order._id as any).toString(),
-            companyId: companyId.toString(),
-            orderNumber: order.orderNumber,
-            salesRepId: payload.salesRepId,
-        };
-        eventBus.emitEvent('order.created', eventPayload);
-
-        return order;
     }
 
     /**

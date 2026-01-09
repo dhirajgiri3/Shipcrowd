@@ -122,9 +122,13 @@ class WeightDisputeDetectionService {
         actualWeight: WeightInfo,
         carrierScanData: CarrierScanData
     ): Promise<any | null> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             // Validate shipment exists
-            const shipment = await Shipment.findById(shipmentId);
+            const shipment = await Shipment.findById(shipmentId, null, { session });
             if (!shipment) {
                 throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
             }
@@ -163,7 +167,8 @@ class WeightDisputeDetectionService {
                     actualKg,
                     discrepancy,
                     financialImpact,
-                    carrierScanData
+                    carrierScanData,
+                    session
                 );
 
                 logger.info('Weight dispute created', {
@@ -174,15 +179,16 @@ class WeightDisputeDetectionService {
                 });
 
                 // Update shipment with dispute info
-                await this.updateShipmentWithDispute(shipment, dispute, actualWeight, carrierScanData);
+                await this.updateShipmentWithDispute(shipment, dispute, actualWeight, carrierScanData, session);
 
                 // TODO: Trigger notification (will be implemented in Phase 5)
                 // await this.notificationService.sendWeightDisputeAlert(shipment.companyId, dispute);
 
+                await session.commitTransaction();
                 return dispute;
             } else {
                 // No dispute needed, just update shipment with verified weight
-                await this.updateShipmentWeight(shipment, actualWeight, carrierScanData, true);
+                await this.updateShipmentWeight(shipment, actualWeight, carrierScanData, true, session);
 
                 logger.info('Weight verified - within threshold', {
                     shipmentId,
@@ -191,14 +197,18 @@ class WeightDisputeDetectionService {
                     financialImpact: financialImpact.difference,
                 });
 
+                await session.commitTransaction();
                 return null;
             }
         } catch (error) {
-            logger.error('Error in weight discrepancy detection', {
+            await session.abortTransaction();
+            logger.error('Error in weight discrepancy detection (transaction rolled back)', {
                 shipmentId,
                 error: error instanceof Error ? error.message : error,
             });
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -303,7 +313,8 @@ class WeightDisputeDetectionService {
         actualKg: number,
         discrepancy: Discrepancy,
         financialImpact: FinancialImpact,
-        carrierData: CarrierScanData
+        carrierData: CarrierScanData,
+        session: mongoose.ClientSession
     ): Promise<any> {
         const disputeId = this.generateDisputeId();
 
@@ -349,7 +360,7 @@ class WeightDisputeDetectionService {
             ],
         });
 
-        return await dispute.save();
+        return await dispute.save({ session });
     }
 
     /**
@@ -368,7 +379,8 @@ class WeightDisputeDetectionService {
         shipment: any,
         dispute: any,
         actualWeight: WeightInfo,
-        carrierData: CarrierScanData
+        carrierData: CarrierScanData,
+        session: mongoose.ClientSession
     ): Promise<void> {
         shipment.weights = {
             declared: shipment.weights?.declared || {
@@ -392,7 +404,7 @@ class WeightDisputeDetectionService {
             financialImpact: dispute.financialImpact.difference,
         };
 
-        await shipment.save();
+        await shipment.save({ session });
     }
 
     /**
@@ -411,7 +423,8 @@ class WeightDisputeDetectionService {
         shipment: any,
         actualWeight: WeightInfo,
         carrierData: CarrierScanData,
-        verified: boolean
+        verified: boolean,
+        session: mongoose.ClientSession
     ): Promise<void> {
         shipment.weights = {
             declared: shipment.weights?.declared || {
@@ -427,7 +440,7 @@ class WeightDisputeDetectionService {
             verified,
         };
 
-        await shipment.save();
+        await shipment.save({ session });
     }
 
     /**

@@ -117,14 +117,60 @@ export class VelocityWebhookService implements WebhookEventHandler {
       // Save shipment
       await shipment.save();
 
-      const processingTime = Date.now() - startTime;
-      logger.info('Webhook processed successfully', {
+      logger.info('Shipment status updated successfully', {
         awb,
-        orderId: order_id,
-        oldStatus: shipment.currentStatus,
         newStatus: internalStatus,
-        processingTimeMs: processingTime
+        orderId: order_id,
       });
+
+      // **AUTO-SYNC: Push fulfillment updates to all connected e-commerce platforms**
+      // This runs asynchronously after the shipment is saved and doesn't block the webhook response
+      if (isStatusUpdate) {
+        try {
+          // Dynamic imports to avoid circular dependencies
+          const { ShopifyFulfillmentService } = await import('../shopify/index.js');
+          const { WooCommerceFulfillmentService } = await import('../woocommerce/index.js');
+          const { AmazonFulfillmentService } = await import('../amazon/index.js');
+          const { FlipkartFulfillmentService } = await import('../flipkart/index.js');
+
+          // Run all platform syncs in parallel, don't block webhook response
+          Promise.allSettled([
+            ShopifyFulfillmentService.handleShipmentStatusChange(
+              String(shipment._id),
+              internalStatus
+            ),
+            WooCommerceFulfillmentService.handleShipmentStatusChange(
+              String(shipment._id),
+              internalStatus
+            ),
+            AmazonFulfillmentService.handleShipmentStatusChange(
+              String(shipment._id),
+              internalStatus
+            ),
+            FlipkartFulfillmentService.handleShipmentStatusChange(
+              String(shipment._id),
+              internalStatus
+            ),
+          ]).catch((error) => {
+            logger.warn('E-commerce fulfillment auto-sync encountered errors', {
+              shipmentId: shipment._id,
+              status: internalStatus,
+              error: error.message,
+            });
+          });
+
+          logger.debug('E-commerce fulfillment auto-sync triggered for all platforms', {
+            shipmentId: shipment._id,
+            status: internalStatus,
+            platforms: ['Shopify', 'WooCommerce', 'Amazon', 'Flipkart'],
+          });
+        } catch (error) {
+          logger.warn('Failed to trigger e-commerce fulfillment auto-sync', {
+            shipmentId: shipment._id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
 
       return {
         success: true,

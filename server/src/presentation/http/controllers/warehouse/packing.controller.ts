@@ -4,8 +4,7 @@
  * Handles all packing station and packing workflow HTTP endpoints
  */
 
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../../middleware/auth/auth';
+import { Request, Response, NextFunction } from 'express';
 import PackingService from "@/core/application/services/warehouse/packing.service";
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
@@ -32,7 +31,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
  * Create packing station
  * POST /api/v1/packing/stations
  */
-async function createStation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function createStation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -68,7 +67,7 @@ async function createStation(req: AuthRequest, res: Response, next: NextFunction
  * Get packing stations
  * GET /api/v1/packing/stations
  */
-async function getStations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getStations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -95,7 +94,7 @@ async function getStations(req: AuthRequest, res: Response, next: NextFunction):
  * Get station by ID
  * GET /api/v1/packing/stations/:id
  */
-async function getStationById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getStationById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
@@ -117,7 +116,7 @@ async function getStationById(req: AuthRequest, res: Response, next: NextFunctio
  * Get available stations
  * GET /api/v1/packing/stations/available/:warehouseId
  */
-async function getAvailableStations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getAvailableStations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId } = req.params;
         const stations = await PackingService.getAvailableStations(warehouseId);
@@ -132,7 +131,7 @@ async function getAvailableStations(req: AuthRequest, res: Response, next: NextF
  * Assign packer to station
  * POST /api/v1/packing/stations/:id/assign
  */
-async function assignPacker(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function assignPacker(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -171,7 +170,7 @@ async function assignPacker(req: AuthRequest, res: Response, next: NextFunction)
  * Unassign packer from station
  * POST /api/v1/packing/stations/:id/unassign
  */
-async function unassignPacker(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function unassignPacker(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -201,7 +200,7 @@ async function unassignPacker(req: AuthRequest, res: Response, next: NextFunctio
  * Set station offline
  * POST /api/v1/packing/stations/:id/offline
  */
-async function setOffline(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function setOffline(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -234,7 +233,7 @@ async function setOffline(req: AuthRequest, res: Response, next: NextFunction): 
  * Set station online
  * POST /api/v1/packing/stations/:id/online
  */
-async function setOnline(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function setOnline(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -264,7 +263,7 @@ async function setOnline(req: AuthRequest, res: Response, next: NextFunction): P
  * Start packing session
  * POST /api/v1/packing/stations/:id/session/start
  */
-async function startSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function startSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -305,7 +304,7 @@ async function startSession(req: AuthRequest, res: Response, next: NextFunction)
  * Pack an item
  * POST /api/v1/packing/stations/:id/pack
  */
-async function packItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function packItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
@@ -331,7 +330,7 @@ async function packItem(req: AuthRequest, res: Response, next: NextFunction): Pr
  * Create package
  * POST /api/v1/packing/stations/:id/packages
  */
-async function createPackage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function createPackage(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
@@ -358,7 +357,7 @@ async function createPackage(req: AuthRequest, res: Response, next: NextFunction
  * Verify weight
  * POST /api/v1/packing/stations/:id/verify-weight
  */
-async function verifyWeight(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function verifyWeight(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'packing station')) return;
@@ -385,7 +384,7 @@ async function verifyWeight(req: AuthRequest, res: Response, next: NextFunction)
  * Complete packing session
  * POST /api/v1/packing/stations/:id/session/complete
  */
-async function completeSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function completeSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -427,7 +426,7 @@ async function completeSession(req: AuthRequest, res: Response, next: NextFuncti
  * Cancel packing session
  * POST /api/v1/packing/stations/:id/session/cancel
  */
-async function cancelSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function cancelSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -463,7 +462,7 @@ async function cancelSession(req: AuthRequest, res: Response, next: NextFunction
  * Generate package label
  * GET /api/v1/packing/stations/:id/packages/:packageNumber/label
  */
-async function getPackageLabel(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getPackageLabel(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id, packageNumber } = req.params;
         const labelUrl = await PackingService.generatePackageLabel(id, parseInt(packageNumber, 10));
@@ -478,7 +477,7 @@ async function getPackageLabel(req: AuthRequest, res: Response, next: NextFuncti
  * Get station statistics
  * GET /api/v1/packing/stats/station/:stationId
  */
-async function getStationStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getStationStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { stationId } = req.params;
         const { startDate, endDate } = req.query;

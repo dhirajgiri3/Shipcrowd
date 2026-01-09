@@ -1,7 +1,6 @@
 import { Response, NextFunction, Request } from 'express';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -24,7 +23,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
 
-export const createShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -98,7 +97,7 @@ export const createShipment = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
-export const getShipments = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getShipments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res, { requireCompany: false });
         if (!auth) return;
@@ -154,7 +153,7 @@ export const getShipments = async (req: AuthRequest, res: Response, next: NextFu
     }
 };
 
-export const getShipmentById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getShipmentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -183,7 +182,7 @@ export const getShipmentById = async (req: AuthRequest, res: Response, next: Nex
     }
 };
 
-export const trackShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const trackShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -232,7 +231,7 @@ export const trackShipment = async (req: AuthRequest, res: Response, next: NextF
     }
 };
 
-export const updateShipmentStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateShipmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -294,7 +293,7 @@ export const updateShipmentStatus = async (req: AuthRequest, res: Response, next
     }
 };
 
-export const deleteShipment = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deleteShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;

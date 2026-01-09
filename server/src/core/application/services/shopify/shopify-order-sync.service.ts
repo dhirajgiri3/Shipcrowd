@@ -1,25 +1,10 @@
-/**
- * Shopify Order Sync
- * 
- * Purpose: ShopifyOrderSyncService
- * 
- * DEPENDENCIES:
- * - Database Models, Error Handling
- * 
- * TESTING:
- * Unit Tests: tests/unit/services/.../{filename}.test.ts
- * Coverage: TBD
- * 
- * NOTE: This service needs comprehensive documentation.
- * See SERVICE_TEMPLATE.md for documentation standards.
- */
-
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import { ShopifySyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 /**
  * ShopifyOrderSyncService
@@ -37,7 +22,7 @@ import winston from 'winston';
 
 interface ShopifyOrder {
   id: number;
-  name: string; // Order number (e.g., "#1001")
+  name: string;
   order_number: number;
   created_at: string;
   updated_at: string;
@@ -91,11 +76,6 @@ interface SyncResult {
 }
 
 export class ShopifyOrderSyncService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Main sync orchestrator
@@ -105,43 +85,48 @@ export class ShopifyOrderSyncService {
    * @returns Sync result statistics
    */
   static async syncOrders(storeId: string, sinceDate?: Date): Promise<SyncResult> {
-    const store = await ShopifyStore.findById(storeId).select('+accessToken');
-    if (!store) {
-      throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
-    }
-
-    if (!store.isActive) {
-      throw new AppError('Store is not active', 'STORE_INACTIVE', 400);
-    }
-
-    if (store.isPaused) {
-      this.logger.info('Store sync is paused, skipping', { storeId });
-      return {
-        itemsProcessed: 0,
-        itemsSynced: 0,
-        itemsFailed: 0,
-        itemsSkipped: 0,
-        syncErrors: [],
-      };
-    }
-
-    // Create sync log
-    const syncLog = await ShopifySyncLog.create({
-      storeId,
-      companyId: store.companyId,
-      syncType: 'ORDER',
-      syncTrigger: sinceDate ? 'SCHEDULED' : 'MANUAL',
-      startTime: new Date(),
-    });
-
-    this.logger.info('Starting order sync', {
-      storeId,
-      shop: store.shopDomain,
-      sinceDate,
-      syncLogId: syncLog._id,
-    });
+    const session = await mongoose.startSession();
 
     try {
+      session.startTransaction();
+
+      const store = await ShopifyStore.findById(storeId, null, { session }).select('+accessToken');
+      if (!store) {
+        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+      }
+
+      if (!store.isActive) {
+        throw new AppError('Store is not active', 'STORE_INACTIVE', 400);
+      }
+
+      if (store.isPaused) {
+        logger.info('Store sync is paused, skipping', { storeId });
+        await session.abortTransaction();
+        return {
+          itemsProcessed: 0,
+          itemsSynced: 0,
+          itemsFailed: 0,
+          itemsSkipped: 0,
+          syncErrors: [],
+        };
+      }
+
+      // Create sync log
+      const [syncLog] = await ShopifySyncLog.create([{
+        storeId,
+        companyId: store.companyId,
+        syncType: 'ORDER',
+        syncTrigger: sinceDate ? 'SCHEDULED' : 'MANUAL',
+        startTime: new Date(),
+      }], { session });
+
+      logger.info('Starting order sync', {
+        storeId,
+        shop: store.shopDomain,
+        sinceDate,
+        syncLogId: syncLog._id,
+      });
+
       // Initialize client
       const client = new ShopifyClient({
         shopDomain: store.shopDomain,
@@ -172,7 +157,7 @@ export class ShopifyOrderSyncService {
         const response = await client.get<{ orders: ShopifyOrder[] }>('/orders.json', params);
         const orders = response.orders || [];
 
-        this.logger.debug('Fetched orders batch', {
+        logger.debug('Fetched orders batch', {
           count: orders.length,
           pageInfo,
         });
@@ -199,7 +184,7 @@ export class ShopifyOrderSyncService {
               timestamp: new Date(),
             });
 
-            this.logger.error('Failed to sync order', {
+            logger.error('Failed to sync order', {
               orderId: shopifyOrder.id,
               orderName: shopifyOrder.name,
               error: error.message,
@@ -227,7 +212,10 @@ export class ShopifyOrderSyncService {
       await store.updateSyncStatus('order', 'IDLE');
       await store.incrementSyncStats('order', result.itemsSynced);
 
-      this.logger.info('Order sync completed', {
+
+      await session.commitTransaction();
+
+      logger.info('Order sync completed', {
         storeId,
         ...result,
         syncLogId: syncLog._id,
@@ -235,17 +223,19 @@ export class ShopifyOrderSyncService {
 
       return result;
     } catch (error: any) {
-      this.logger.error('Order sync failed', {
+      await session.abortTransaction();
+
+      logger.error('Order sync failed (transaction rolled back)', {
         storeId,
         error: error.message,
       });
 
-      await syncLog.failSync(error.message);
-      await store.updateSyncStatus('order', 'ERROR', { error: error.message });
-
       throw error;
+    } finally {
+      session.endSession();
     }
   }
+
 
   /**
    * Sync a single order from Shopify to Shipcrowd
@@ -268,7 +258,7 @@ export class ShopifyOrderSyncService {
     if (existingOrder) {
       // Skip if order already fulfilled in Shipcrowd
       if (existingOrder.currentStatus === 'DELIVERED' || existingOrder.currentStatus === 'COMPLETED') {
-        this.logger.debug('Skipping fulfilled order', {
+        logger.debug('Skipping fulfilled order', {
           orderId: shopifyOrder.id,
           currentStatus: existingOrder.currentStatus,
         });
@@ -280,7 +270,7 @@ export class ShopifyOrderSyncService {
       const shipcrowdUpdated = new Date(existingOrder.updatedAt);
 
       if (shopifyUpdated <= shipcrowdUpdated) {
-        this.logger.debug('Skipping unchanged order', {
+        logger.debug('Skipping unchanged order', {
           orderId: shopifyOrder.id,
         });
         return null;
@@ -302,7 +292,7 @@ export class ShopifyOrderSyncService {
 
     const order = await Order.create(mapped);
 
-    this.logger.info('Created order from Shopify', {
+    logger.info('Created order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
       shipcrowdOrderId: order._id,
       orderNumber: order.orderNumber,
@@ -334,7 +324,7 @@ export class ShopifyOrderSyncService {
 
     await existingOrder.save();
 
-    this.logger.info('Updated order from Shopify', {
+    logger.info('Updated order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
       shipcrowdOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
@@ -479,7 +469,7 @@ export class ShopifyOrderSyncService {
     const sinceDate = new Date();
     sinceDate.setHours(sinceDate.getHours() - hours);
 
-    this.logger.info('Syncing recent orders', {
+    logger.info('Syncing recent orders', {
       storeId,
       hours,
       sinceDate,

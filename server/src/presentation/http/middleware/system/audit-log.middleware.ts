@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose, { Document, Schema, UpdateQuery } from 'mongoose'; // Import Document, Schema, UpdateQuery
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthRequest } from '../../../../types/express';
+
 
 // Define a base interface for documents that might have audit fields
 interface AuditableDocument extends Document {
@@ -51,7 +51,7 @@ export const createAuditLog = async (
  * Middleware to log API requests
  */
 export const auditLogMiddleware = (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {

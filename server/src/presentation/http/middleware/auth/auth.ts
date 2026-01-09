@@ -2,11 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { verifyAccessToken } from '../../../../shared/helpers/jwt';
 import { User } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../../../types/express';
-import logger from '../../../../shared/logger/winston.logger';
 
-// Re-export the AuthRequest interface for backward compatibility
-export type { AuthRequest };
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Middleware to verify JWT token
@@ -36,7 +33,7 @@ export const authenticate = async (
     const payload = await verifyAccessToken(token);
 
     // Set user in request from token payload
-    (req as AuthRequest).user = {
+    req.user = {
       _id: payload.userId,
       role: payload.role,
       companyId: payload.companyId,
@@ -80,7 +77,7 @@ export const authenticate = async (
  */
 export const authorize = (roles: string | string[]): ((req: Request, res: Response, next: NextFunction) => Promise<void>) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = (req as AuthRequest).user;
+    const user = req.user;
     if (!user) {
       res.status(401).json({ message: 'Authentication required' });
       return;
@@ -137,7 +134,7 @@ export const checkCompany = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const user = (req as AuthRequest).user;
+  const user = req.user;
   if (!user) {
     res.status(401).json({ message: 'Authentication required' });
     return;

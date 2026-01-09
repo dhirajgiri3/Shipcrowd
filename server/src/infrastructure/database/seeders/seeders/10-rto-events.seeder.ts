@@ -199,13 +199,13 @@ export async function seedRTOEvents(): Promise<void> {
         for (const rtoEvent of insertedRTOEvents) {
             // Only process if RTO is in restocked status and QC passed
             if (rtoEvent.returnStatus === 'restocked' && rtoEvent.qcResult?.passed) {
-                const shipment = rtoShipments.find(s => s._id.equals(rtoEvent.shipment));
+                const shipment = rtoShipments.find(s => (s._id as any).equals(rtoEvent.shipment)) as any;
                 if (!shipment || !shipment.products || shipment.products.length === 0) continue;
 
                 // Get inventory records matching the shipment's products
-                const skuNames = shipment.products.map(p => p.name || p.sku);
+                const skuNames = shipment.products.map((p: any) => p.name || p.sku);
 
-                for (const product of shipment.products) {
+                for (const product of shipment.products as any[]) {
                     const qty = product.quantity || 1;
 
                     // Find matching inventory SKU and update

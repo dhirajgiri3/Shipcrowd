@@ -101,12 +101,16 @@ export default class SalesRepresentativeService {
         userId: string,
         companyId: string
     ): Promise<ISalesRepresentative> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             // Check if employee ID already exists
             const existingRep = await SalesRepresentative.findOne({
                 company: new mongoose.Types.ObjectId(companyId),
                 employeeId: repData.employeeId,
-            });
+            }, null, { session });
 
             if (existingRep) {
                 throw new AppError('Employee ID already exists', 'BIZ_CONFLICT', 400);
@@ -116,18 +120,19 @@ export default class SalesRepresentativeService {
 
             // If no userId provided, create or find user
             if (!userIdToUse && repData.email) {
-                let user = await User.findOne({ email: repData.email.toLowerCase() });
+                let user = await User.findOne({ email: repData.email.toLowerCase() }, null, { session });
 
                 if (!user) {
                     // Create new user
-                    user = await User.create({
+                    const [newUser] = await User.create([{
                         email: repData.email.toLowerCase(),
                         name: repData.name,
                         phone: repData.phone,
                         role: 'salesperson',
                         companyId: new mongoose.Types.ObjectId(companyId),
                         isVerified: false,
-                    });
+                    }], { session });
+                    user = newUser;
                     logger.info(`Created new user for sales rep: ${user.email}`);
                 }
 
@@ -142,7 +147,7 @@ export default class SalesRepresentativeService {
             const existingUserRep = await SalesRepresentative.findOne({
                 user: new mongoose.Types.ObjectId(userIdToUse),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }, null, { session });
 
             if (existingUserRep) {
                 throw new AppError('User is already a sales representative in this company', 'BIZ_CONFLICT', 400);
@@ -153,7 +158,7 @@ export default class SalesRepresentativeService {
                 const manager = await SalesRepresentative.findOne({
                     _id: new mongoose.Types.ObjectId(repData.reportingTo),
                     company: new mongoose.Types.ObjectId(companyId),
-                });
+                }, null, { session });
 
                 if (!manager) {
                     throw new AppError('Reporting manager not found', 'NOT_FOUND', 404);
@@ -176,10 +181,10 @@ export default class SalesRepresentativeService {
             });
 
             // Bank details will be encrypted by pre-save hook
-            await salesRep.save();
+            await salesRep.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'sales_representative.created',
                 resource: 'SalesRepresentative',
@@ -190,7 +195,9 @@ export default class SalesRepresentativeService {
                     role: salesRep.role,
                     territory: salesRep.territory,
                 },
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(`Sales representative created: ${salesRep.employeeId} for company ${companyId}`);
 
@@ -199,8 +206,11 @@ export default class SalesRepresentativeService {
 
             return salesRep;
         } catch (error) {
-            logger.error('Error creating sales representative:', error);
+            await session.abortTransaction();
+            logger.error('Error creating sales representative (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -213,11 +223,15 @@ export default class SalesRepresentativeService {
         userId: string,
         companyId: string
     ): Promise<ISalesRepresentative> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const salesRep = await SalesRepresentative.findOne({
                 _id: new mongoose.Types.ObjectId(repId),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }, null, { session });
 
             if (!salesRep) {
                 throw new AppError('Sales representative not found', 'NOT_FOUND', 404);
@@ -231,7 +245,7 @@ export default class SalesRepresentativeService {
                     const manager = await SalesRepresentative.findOne({
                         _id: new mongoose.Types.ObjectId(updates.reportingTo),
                         company: new mongoose.Types.ObjectId(companyId),
-                    });
+                    }, null, { session });
 
                     if (!manager) {
                         throw new AppError('Reporting manager not found', 'NOT_FOUND', 404);
@@ -262,25 +276,30 @@ export default class SalesRepresentativeService {
                 };
             }
 
-            await salesRep.save();
+            await salesRep.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'sales_representative.updated',
                 resource: 'SalesRepresentative',
                 resourceId: salesRep._id,
                 company: new mongoose.Types.ObjectId(companyId),
                 changes: updates,
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(`Sales representative updated: ${salesRep.employeeId} by user ${userId}`);
 
             await salesRep.populate('user', 'name email phone');
             return salesRep;
         } catch (error) {
-            logger.error('Error updating sales representative:', error);
+            await session.abortTransaction();
+            logger.error('Error updating sales representative (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -292,11 +311,15 @@ export default class SalesRepresentativeService {
         userId: string,
         companyId: string
     ): Promise<void> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const salesRep = await SalesRepresentative.findOne({
                 _id: new mongoose.Types.ObjectId(repId),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }, null, { session });
 
             if (!salesRep) {
                 throw new AppError('Sales representative not found', 'NOT_FOUND', 404);
@@ -307,7 +330,7 @@ export default class SalesRepresentativeService {
             const pendingCount = await CommissionTransaction.countDocuments({
                 salesRepresentative: new mongoose.Types.ObjectId(repId),
                 status: { $in: ['pending', 'approved'] },
-            });
+            }, { session });
 
             if (pendingCount > 0) {
                 throw new AppError(
@@ -319,21 +342,26 @@ export default class SalesRepresentativeService {
 
             // Soft delete - set status to inactive
             salesRep.status = 'inactive';
-            await salesRep.save();
+            await salesRep.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'sales_representative.deactivated',
                 resource: 'SalesRepresentative',
                 resourceId: salesRep._id,
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(`Sales representative deactivated: ${salesRep.employeeId}`);
         } catch (error) {
-            logger.error('Error deactivating sales representative:', error);
+            await session.abortTransaction();
+            logger.error('Error deactivating sales representative (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -455,11 +483,15 @@ export default class SalesRepresentativeService {
         userId: string,
         companyId: string
     ): Promise<ISalesRepresentative> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const salesRep = await SalesRepresentative.findOne({
                 _id: new mongoose.Types.ObjectId(repId),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }, null, { session });
 
             if (!salesRep) {
                 throw new AppError('Sales representative not found', 'NOT_FOUND', 404);
@@ -467,10 +499,10 @@ export default class SalesRepresentativeService {
 
             const previousTerritories = [...salesRep.territory];
             salesRep.territory = territories;
-            await salesRep.save();
+            await salesRep.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'sales_representative.territory_assigned',
                 resource: 'SalesRepresentative',
@@ -480,15 +512,20 @@ export default class SalesRepresentativeService {
                     from: previousTerritories,
                     to: territories,
                 },
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(`Territories updated for sales rep: ${salesRep.employeeId}`);
 
             await salesRep.populate('user', 'name email phone');
             return salesRep;
         } catch (error) {
-            logger.error('Error assigning territories:', error);
+            await session.abortTransaction();
+            logger.error('Error assigning territories (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 

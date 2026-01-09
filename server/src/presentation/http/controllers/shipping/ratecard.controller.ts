@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { RateCard, IRateCard } from '../../../../infrastructure/database/mongoose/models';
 import { Zone } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -74,7 +73,7 @@ const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number
     return true;
 };
 
-export const createRateCard = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -144,7 +143,7 @@ export const createRateCard = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
-export const getRateCards = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -182,7 +181,7 @@ export const getRateCards = async (req: AuthRequest, res: Response, next: NextFu
     }
 };
 
-export const getRateCardById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getRateCardById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -219,7 +218,7 @@ export const getRateCardById = async (req: AuthRequest, res: Response, next: Nex
     }
 };
 
-export const updateRateCard = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -307,7 +306,7 @@ export const updateRateCard = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
-export const calculateRate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const calculateRate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

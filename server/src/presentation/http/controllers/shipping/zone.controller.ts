@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { Zone, IZone } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -65,7 +64,7 @@ const checkPincodeOverlap = async (
  * Get all zones
  * @route GET /api/v1/zones
  */
-export const getZones = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getZones = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -117,7 +116,7 @@ export const getZones = async (req: AuthRequest, res: Response, next: NextFuncti
  * Create a new zone
  * @route POST /api/v1/zones
  */
-export const createZone = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -188,7 +187,7 @@ export const createZone = async (req: AuthRequest, res: Response, next: NextFunc
  * Get a zone by ID
  * @route GET /api/v1/zones/:id
  */
-export const getZoneById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getZoneById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -229,7 +228,7 @@ export const getZoneById = async (req: AuthRequest, res: Response, next: NextFun
  * Update a zone
  * @route PATCH /api/v1/zones/:id
  */
-export const updateZone = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
             sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

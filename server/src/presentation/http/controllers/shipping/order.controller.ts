@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -26,7 +25,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
 
-export const createOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -61,7 +60,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
-export const getOrders = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -107,7 +106,7 @@ export const getOrders = async (req: AuthRequest, res: Response, next: NextFunct
     }
 };
 
-export const getOrderById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getOrderById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -133,7 +132,7 @@ export const getOrderById = async (req: AuthRequest, res: Response, next: NextFu
     }
 };
 
-export const updateOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -205,7 +204,7 @@ export const updateOrder = async (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
-export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const deleteOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -241,7 +240,7 @@ export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
-export const bulkImportOrders = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const bulkImportOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;

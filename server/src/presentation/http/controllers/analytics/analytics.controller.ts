@@ -1,7 +1,6 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
@@ -13,7 +12,7 @@ import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper'
  * Handles dashboard analytics, order trends, and shipment performance metrics
  */
 export const getSellerDashboard = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -175,7 +174,7 @@ export const getSellerDashboard = async (
  * @route GET /api/v1/analytics/dashboard/admin
  */
 export const getAdminDashboard = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -343,7 +342,7 @@ export const getAdminDashboard = async (
  * @route GET /api/v1/analytics/orders
  */
 export const getOrderTrends = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -418,7 +417,7 @@ export const getOrderTrends = async (
  * @route GET /api/v1/analytics/shipments
  */
 export const getShipmentPerformance = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -535,7 +534,7 @@ import { buildReportSchema, saveReportConfigSchema } from '../../../../shared/va
  * @route GET /api/v1/analytics/revenue/stats
  */
 export const getRevenueStats = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -569,7 +568,7 @@ export const getRevenueStats = async (
  * @route GET /api/v1/analytics/revenue/wallet
  */
 export const getWalletStats = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -603,7 +602,7 @@ export const getWalletStats = async (
  * @route GET /api/v1/analytics/customers/stats
  */
 export const getCustomerStats = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -637,7 +636,7 @@ export const getCustomerStats = async (
  * @route GET /api/v1/analytics/customers/top
  */
 export const getTopCustomers = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -672,7 +671,7 @@ export const getTopCustomers = async (
  * @route GET /api/v1/analytics/inventory/stats
  */
 export const getInventoryStats = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -704,7 +703,7 @@ export const getInventoryStats = async (
  * @route GET /api/v1/analytics/orders/top-products
  */
 export const getTopProducts = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -739,7 +738,7 @@ export const getTopProducts = async (
  * @route POST /api/v1/analytics/reports/build
  */
 export const buildCustomReport = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -774,7 +773,7 @@ export const buildCustomReport = async (
  * @route POST /api/v1/analytics/reports/save
  */
 export const saveReportConfig = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -806,7 +805,7 @@ export const saveReportConfig = async (
  * @route GET /api/v1/analytics/reports
  */
 export const listReportConfigs = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -830,7 +829,7 @@ export const listReportConfigs = async (
  * @route DELETE /api/v1/analytics/reports/:id
  */
 export const deleteReportConfig = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {

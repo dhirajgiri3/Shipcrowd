@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * WooCommerceClient
@@ -20,7 +20,6 @@ export interface WooCommerceClientConfig {
   consumerSecret: string;
   apiVersion?: string;
   timeout?: number;
-  logger?: winston.Logger;
 }
 
 export class WooCommerceClient {
@@ -29,7 +28,6 @@ export class WooCommerceClient {
   private consumerKey: string;
   private consumerSecret: string;
   private apiVersion: string;
-  private logger: winston.Logger;
 
   constructor(config: WooCommerceClientConfig) {
     this.storeUrl = config.storeUrl.replace(/\/+$/, ''); // Remove trailing slash
@@ -38,13 +36,6 @@ export class WooCommerceClient {
     this.apiVersion = config.apiVersion || 'wc/v3';
 
     // Setup logger
-    this.logger =
-      config.logger ||
-      winston.createLogger({
-        level: 'info',
-        format: winston.format.json(),
-        transports: [new winston.transports.Console()],
-      });
 
     // Setup axios instance
     this.httpClient = axios.create({
@@ -65,7 +56,7 @@ export class WooCommerceClient {
     // Response interceptor for logging
     this.httpClient.interceptors.response.use(
       (response) => {
-        this.logger.debug('WooCommerce API response', {
+        logger.debug('WooCommerce API response', {
           endpoint: response.config.url,
           status: response.status,
         });
@@ -82,7 +73,7 @@ export class WooCommerceClient {
    * Log error details
    */
   private logError(error: AxiosError): void {
-    this.logger.error('WooCommerce API error', {
+    logger.error('WooCommerce API error', {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
@@ -116,7 +107,7 @@ export class WooCommerceClient {
 
       // Check if we should retry
       if (retries >= maxRetries) {
-        this.logger.error(`Max retries (${maxRetries}) exceeded`);
+        logger.error(`Max retries (${maxRetries}) exceeded`);
         throw error;
       }
 
@@ -125,7 +116,7 @@ export class WooCommerceClient {
       const jitter = delay * 0.2 * (Math.random() - 0.5);
       const waitTime = delay + jitter;
 
-      this.logger.warn(
+      logger.warn(
         `Request failed, retrying in ${Math.round(waitTime)}ms (attempt ${retries + 1}/${maxRetries})`,
         {
           status: axiosError.response?.status,
@@ -150,7 +141,7 @@ export class WooCommerceClient {
    */
   async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`GET ${endpoint}`, { params });
+      logger.debug(`GET ${endpoint}`, { params });
       const response = await this.httpClient.get<T>(endpoint, { params });
       return response.data;
     });
@@ -161,7 +152,7 @@ export class WooCommerceClient {
    */
   async post<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`POST ${endpoint}`, { dataKeys: Object.keys(data || {}) });
+      logger.debug(`POST ${endpoint}`, { dataKeys: Object.keys(data || {}) });
       const response = await this.httpClient.post<T>(endpoint, data);
       return response.data;
     });
@@ -172,7 +163,7 @@ export class WooCommerceClient {
    */
   async put<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`PUT ${endpoint}`, { dataKeys: Object.keys(data || {}) });
+      logger.debug(`PUT ${endpoint}`, { dataKeys: Object.keys(data || {}) });
       const response = await this.httpClient.put<T>(endpoint, data);
       return response.data;
     });
@@ -183,7 +174,7 @@ export class WooCommerceClient {
    */
   async delete<T = any>(endpoint: string): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`DELETE ${endpoint}`);
+      logger.debug(`DELETE ${endpoint}`);
       const response = await this.httpClient.delete<T>(endpoint);
       return response.data;
     });
@@ -227,10 +218,10 @@ export class WooCommerceClient {
   async testConnection(): Promise<boolean> {
     try {
       await this.get('/system_status');
-      this.logger.info('WooCommerce connection test successful');
+      logger.info('WooCommerce connection test successful');
       return true;
     } catch (error) {
-      this.logger.error('WooCommerce connection test failed', { error });
+      logger.error('WooCommerce connection test failed', { error });
       return false;
     }
   }

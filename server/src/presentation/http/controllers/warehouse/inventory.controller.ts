@@ -4,8 +4,7 @@
  * Handles all inventory and stock management HTTP endpoints
  */
 
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../../middleware/auth/auth';
+import { Request, Response, NextFunction } from 'express';
 import InventoryService from '@/core/application/services/warehouse/inventory.service';
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
@@ -32,7 +31,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
  * Create inventory record
  * POST /api/v1/inventory
  */
-async function createInventory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function createInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -68,7 +67,7 @@ async function createInventory(req: AuthRequest, res: Response, next: NextFuncti
  * Get inventory list
  * GET /api/v1/inventory
  */
-async function getInventoryList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getInventoryList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -97,7 +96,7 @@ async function getInventoryList(req: AuthRequest, res: Response, next: NextFunct
  * Get inventory by ID
  * GET /api/v1/inventory/:id
  */
-async function getInventoryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getInventoryById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'inventory')) return;
@@ -119,7 +118,7 @@ async function getInventoryById(req: AuthRequest, res: Response, next: NextFunct
  * Get inventory by SKU
  * GET /api/v1/inventory/sku/:warehouseId/:sku
  */
-async function getInventoryBySKU(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getInventoryBySKU(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId, sku } = req.params;
         const inventory = await InventoryService.getInventoryBySKU(warehouseId, sku);
@@ -139,7 +138,7 @@ async function getInventoryBySKU(req: AuthRequest, res: Response, next: NextFunc
  * Receive stock
  * POST /api/v1/inventory/receive
  */
-async function receiveStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function receiveStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -176,7 +175,7 @@ async function receiveStock(req: AuthRequest, res: Response, next: NextFunction)
  * Adjust stock
  * POST /api/v1/inventory/:id/adjust
  */
-async function adjustStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function adjustStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -216,7 +215,7 @@ async function adjustStock(req: AuthRequest, res: Response, next: NextFunction):
  * Reserve stock
  * POST /api/v1/inventory/:id/reserve
  */
-async function reserveStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function reserveStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'inventory')) return;
@@ -244,7 +243,7 @@ async function reserveStock(req: AuthRequest, res: Response, next: NextFunction)
  * Release reservation
  * POST /api/v1/inventory/:id/release
  */
-async function releaseReservation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function releaseReservation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         const validation = releaseReservationSchema.safeParse(req.body);
@@ -274,7 +273,7 @@ async function releaseReservation(req: AuthRequest, res: Response, next: NextFun
  * Transfer stock
  * POST /api/v1/inventory/:id/transfer
  */
-async function transferStock(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function transferStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -314,7 +313,7 @@ async function transferStock(req: AuthRequest, res: Response, next: NextFunction
  * Mark stock as damaged
  * POST /api/v1/inventory/:id/damage
  */
-async function markDamaged(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function markDamaged(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -359,7 +358,7 @@ async function markDamaged(req: AuthRequest, res: Response, next: NextFunction):
  * Cycle count
  * POST /api/v1/inventory/:id/cycle-count
  */
-async function cycleCount(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function cycleCount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -399,7 +398,7 @@ async function cycleCount(req: AuthRequest, res: Response, next: NextFunction): 
  * Check stock availability
  * POST /api/v1/inventory/check-availability
  */
-async function checkAvailability(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function checkAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const validation = checkAvailabilitySchema.safeParse(req.body);
         if (!validation.success) {
@@ -420,7 +419,7 @@ async function checkAvailability(req: AuthRequest, res: Response, next: NextFunc
  * Get low stock alerts
  * GET /api/v1/inventory/alerts/low-stock
  */
-async function getLowStockAlerts(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getLowStockAlerts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -437,7 +436,7 @@ async function getLowStockAlerts(req: AuthRequest, res: Response, next: NextFunc
  * Get stock movements
  * GET /api/v1/inventory/movements
  */
-async function getMovements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getMovements(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -466,7 +465,7 @@ async function getMovements(req: AuthRequest, res: Response, next: NextFunction)
  * Get inventory statistics
  * GET /api/v1/inventory/stats/:warehouseId
  */
-async function getInventoryStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getInventoryStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId } = req.params;
         const stats = await InventoryService.getInventoryStats(warehouseId);
@@ -481,7 +480,7 @@ async function getInventoryStats(req: AuthRequest, res: Response, next: NextFunc
  * Get movement summary
  * GET /api/v1/inventory/stats/:warehouseId/movements
  */
-async function getMovementSummary(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getMovementSummary(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId } = req.params;
         const { startDate, endDate } = req.query;

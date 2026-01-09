@@ -135,20 +135,30 @@ export default class CommissionCalculationService {
         data: CalculateCommissionDTO,
         companyId: string
     ): Promise<ICommissionTransaction | null> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const { orderId, salesRepId, eventType } = data;
 
             // Idempotency check
             const eventKey = `${orderId}:${salesRepId}:${eventType}`;
             if (processedEvents.has(eventKey)) {
                 logger.debug(`Duplicate event detected: ${eventKey}`);
+                await session.abortTransaction();
                 return null;
             }
 
-            // Check if transaction already exists
-            const existing = await CommissionTransaction.findByOrderAndSalesRep(orderId, salesRepId);
+            // Check if transaction already exists (replaced static method with direct query)
+            const existing = await CommissionTransaction.findOne({
+                order: new mongoose.Types.ObjectId(orderId),
+                salesRepresentative: new mongoose.Types.ObjectId(salesRepId),
+            }, null, { session });
+
             if (existing) {
                 logger.info(`Commission already calculated for order ${orderId}, sales rep ${salesRepId}`);
+                await session.abortTransaction();
                 return existing;
             }
 
@@ -156,7 +166,7 @@ export default class CommissionCalculationService {
             const order = await Order.findOne({
                 _id: new mongoose.Types.ObjectId(orderId),
                 companyId: new mongoose.Types.ObjectId(companyId),
-            });
+            }, null, { session });
 
             if (!order) {
                 throw new AppError('Order not found', 'NOT_FOUND', 404);
@@ -167,7 +177,7 @@ export default class CommissionCalculationService {
                 _id: new mongoose.Types.ObjectId(salesRepId),
                 company: new mongoose.Types.ObjectId(companyId),
                 status: 'active',
-            }).populate('commissionRules');
+            }, null, { session }).populate('commissionRules');
 
             if (!salesRep) {
                 throw new AppError('Active sales representative not found', 'NOT_FOUND', 404);
@@ -179,7 +189,7 @@ export default class CommissionCalculationService {
             // First, check assigned rules
             if (salesRep.commissionRules && salesRep.commissionRules.length > 0) {
                 for (const ruleId of salesRep.commissionRules) {
-                    const rule = await CommissionRule.findById(ruleId);
+                    const rule = await CommissionRule.findById(ruleId, null, { session });
                     if (rule && rule.isApplicable(order)) {
                         applicableRule = rule;
                         break;
@@ -187,9 +197,13 @@ export default class CommissionCalculationService {
                 }
             }
 
-            // If no assigned rule, find from all active rules
+            // If no assigned rule, find from all active rules (replaced static method)
             if (!applicableRule) {
-                const rules = await CommissionRule.findActiveRules(String(companyId));
+                const rules = await CommissionRule.find({
+                    company: new mongoose.Types.ObjectId(companyId),
+                    status: 'active',
+                }, null, { session }).sort({ priority: 1 });
+
                 for (const rule of rules) {
                     if (rule.isApplicable(order)) {
                         applicableRule = rule;
@@ -208,7 +222,7 @@ export default class CommissionCalculationService {
             const calculatedAmount = applicableRule.calculateCommission(orderValue, order);
 
             // Create transaction
-            const transaction = await CommissionTransaction.create({
+            const transaction = await CommissionTransaction.create([{
                 company: new mongoose.Types.ObjectId(companyId),
                 salesRepresentative: new mongoose.Types.ObjectId(salesRepId),
                 order: new mongoose.Types.ObjectId(orderId),
@@ -221,21 +235,24 @@ export default class CommissionCalculationService {
                     ruleType: applicableRule.ruleType,
                     eventType,
                 },
-            });
+            }], { session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(salesRepId),
                 action: 'commission.calculated',
                 resource: 'CommissionTransaction',
-                resourceId: transaction._id,
+                resourceId: transaction[0]._id,
                 company: new mongoose.Types.ObjectId(companyId),
                 details: {
                     orderId,
                     calculatedAmount,
                     ruleId: applicableRule._id,
                 },
-            });
+            }], { session });
+
+            // Commit transaction
+            await session.commitTransaction();
 
             // Mark event as processed
             processedEvents.set(eventKey, Date.now());
@@ -245,10 +262,13 @@ export default class CommissionCalculationService {
                 `Commission calculated: ${calculatedAmount} for order ${orderId}, rep ${salesRepId}`
             );
 
-            return transaction;
+            return transaction[0];
         } catch (error) {
-            logger.error('Error calculating commission:', error);
+            await session.abortTransaction();
+            logger.error('Error calculating commission (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -259,23 +279,27 @@ export default class CommissionCalculationService {
         orderId: string,
         companyId: string
     ): Promise<void> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const transactions = await CommissionTransaction.find({
                 order: new mongoose.Types.ObjectId(orderId),
                 company: new mongoose.Types.ObjectId(companyId),
                 status: 'pending',
-            });
+            }, null, { session });
 
             for (const transaction of transactions) {
                 transaction.status = 'cancelled';
-                await transaction.save();
+                await transaction.save({ session });
 
                 logger.info(`Commission cancelled for order ${orderId}, transaction ${transaction._id}`);
             }
 
             // Create audit log
             if (transactions.length > 0) {
-                await AuditLog.create({
+                await AuditLog.create([{
                     userId: 'system',
                     action: 'commission.cancelled',
                     resource: 'CommissionTransaction',
@@ -284,11 +308,16 @@ export default class CommissionCalculationService {
                         orderId,
                         count: transactions.length,
                     },
-                });
+                }], { session });
             }
+
+            await session.commitTransaction();
         } catch (error) {
-            logger.error('Error cancelling commission:', error);
+            await session.abortTransaction();
+            logger.error('Error cancelling commission (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -300,12 +329,20 @@ export default class CommissionCalculationService {
         salesRepId: string,
         companyId: string
     ): Promise<ICommissionTransaction | null> {
+        const session = await mongoose.startSession();
+
         try {
-            // Find existing transaction
-            const existing = await CommissionTransaction.findByOrderAndSalesRep(orderId, salesRepId);
+            session.startTransaction();
+
+            // Find existing transaction (replaced static method)
+            const existing = await CommissionTransaction.findOne({
+                order: new mongoose.Types.ObjectId(orderId),
+                salesRepresentative: new mongoose.Types.ObjectId(salesRepId),
+            }, null, { session });
 
             if (!existing) {
                 logger.warn(`No existing commission for order ${orderId}, creating new`);
+                await session.abortTransaction();
                 return this.calculateCommission(
                     { orderId, salesRepId, eventType: 'order.updated' },
                     companyId
@@ -315,17 +352,18 @@ export default class CommissionCalculationService {
             // Only recalculate if pending
             if (existing.status !== 'pending') {
                 logger.warn(`Cannot recalculate commission with status ${existing.status}`);
+                await session.abortTransaction();
                 return existing;
             }
 
             // Fetch updated order
-            const order = await Order.findById(orderId);
+            const order = await Order.findById(orderId, null, { session });
             if (!order) {
                 throw new AppError('Order not found', 'NOT_FOUND', 404);
             }
 
             // Fetch rule
-            const rule = await CommissionRule.findById(existing.commissionRule);
+            const rule = await CommissionRule.findById(existing.commissionRule, null, { session });
             if (!rule) {
                 throw new AppError('Commission rule not found', 'NOT_FOUND', 404);
             }
@@ -340,7 +378,9 @@ export default class CommissionCalculationService {
             if (existing.metadata) {
                 existing.metadata.orderValue = orderValue;
             }
-            await existing.save();
+            await existing.save({ session });
+
+            await session.commitTransaction();
 
             logger.info(
                 `Commission recalculated: ${newCalculatedAmount} for order ${orderId}, transaction ${existing._id}`
@@ -348,8 +388,11 @@ export default class CommissionCalculationService {
 
             return existing;
         } catch (error) {
-            logger.error('Error recalculating commission:', error);
+            await session.abortTransaction();
+            logger.error('Error recalculating commission (transaction rolled back):', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 

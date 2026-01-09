@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { Company, ICompany } from '../../../../infrastructure/database/mongoose/models';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
-import { AuthRequest } from '../../middleware/auth/auth';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken } from '../../../../shared/helpers/jwt';
@@ -54,7 +53,7 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
-    const authReq = req as AuthRequest;
+    const authReq = req as Request;
 
     if (authReq.user && authReq.user.role !== 'admin') {
       const user = await User.findById(authReq.user._id).lean();
@@ -89,7 +88,7 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-export const createCompany = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const createCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -156,7 +155,7 @@ export const createCompany = async (req: AuthRequest, res: Response, next: NextF
   }
 };
 
-export const updateCompany = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -233,7 +232,7 @@ export const updateCompany = async (req: AuthRequest, res: Response, next: NextF
   }
 };
 
-export const getAllCompanies = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getAllCompanies = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -267,7 +266,7 @@ export const getAllCompanies = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
-export const inviteCompanyOwner = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const inviteCompanyOwner = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -338,7 +337,7 @@ export const inviteCompanyOwner = async (req: AuthRequest, res: Response, next: 
   }
 };
 
-export const updateCompanyStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const updateCompanyStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -379,7 +378,7 @@ export const updateCompanyStatus = async (req: AuthRequest, res: Response, next:
   }
 };
 
-export const getCompanyStats = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getCompanyStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

@@ -19,8 +19,7 @@
     },
     "isolatedModules": true,
     "types": [
-      "node",
-      "jest"
+      "node"
     ]
   },
   "ts-node": {
@@ -28,8 +27,7 @@
     "experimentalSpecifierResolution": "node"
   },
   "include": [
-    "src/**/*",
-    "tests/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -20,7 +20,7 @@ import { ShopifyProductMapping as ProductMapping } from '../../../../infrastruct
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * ShopifyWebhookService
@@ -39,11 +39,6 @@ import winston from 'winston';
  */
 
 export class ShopifyWebhookService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Handle orders/create webhook
@@ -52,7 +47,7 @@ export class ShopifyWebhookService {
    * Immediately syncs the order to Shipcrowd.
    */
   static async handleOrderCreate(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing orders/create webhook', {
+    logger.info('Processing orders/create webhook', {
       storeId,
       orderId: payload.id,
       orderNumber: payload.name,
@@ -76,12 +71,12 @@ export class ShopifyWebhookService {
       // Alternative: Sync immediately without queue
       await ShopifyOrderSyncService.syncSingleOrderById(storeId, payload.id.toString());
 
-      this.logger.info('Order created and queued for sync', {
+      logger.info('Order created and queued for sync', {
         storeId,
         orderId: payload.id,
       });
     } catch (error: any) {
-      this.logger.error('Failed to handle orders/create webhook', {
+      logger.error('Failed to handle orders/create webhook', {
         storeId,
         orderId: payload.id,
         error: error.message,
@@ -97,7 +92,7 @@ export class ShopifyWebhookService {
    * Updates the corresponding Shipcrowd order.
    */
   static async handleOrderUpdated(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing orders/updated webhook', {
+    logger.info('Processing orders/updated webhook', {
       storeId,
       orderId: payload.id,
       orderNumber: payload.name,
@@ -145,14 +140,14 @@ export class ShopifyWebhookService {
 
       if (updated) {
         await order.save();
-        this.logger.info('Order updated from webhook', {
+        logger.info('Order updated from webhook', {
           storeId,
           orderId: payload.id,
           orderNumber: order.orderNumber,
         });
       }
     } catch (error: any) {
-      this.logger.error('Failed to handle orders/updated webhook', {
+      logger.error('Failed to handle orders/updated webhook', {
         storeId,
         orderId: payload.id,
         error: error.message,
@@ -168,7 +163,7 @@ export class ShopifyWebhookService {
    * Updates order status to CANCELLED and restores inventory if needed.
    */
   static async handleOrderCancelled(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing orders/cancelled webhook', {
+    logger.info('Processing orders/cancelled webhook', {
       storeId,
       orderId: payload.id,
       orderNumber: payload.name,
@@ -187,7 +182,7 @@ export class ShopifyWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found for cancellation', {
+        logger.warn('Order not found for cancellation', {
           storeId,
           orderId: payload.id,
         });
@@ -207,13 +202,13 @@ export class ShopifyWebhookService {
       // TODO: Restore inventory if applicable
       // This would integrate with InventoryService
 
-      this.logger.info('Order cancelled', {
+      logger.info('Order cancelled', {
         storeId,
         orderId: payload.id,
         orderNumber: order.orderNumber,
       });
     } catch (error: any) {
-      this.logger.error('Failed to handle orders/cancelled webhook', {
+      logger.error('Failed to handle orders/cancelled webhook', {
         storeId,
         orderId: payload.id,
         error: error.message,
@@ -229,7 +224,7 @@ export class ShopifyWebhookService {
    * Updates fulfillment status and syncs tracking number.
    */
   static async handleOrderFulfilled(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing orders/fulfilled webhook', {
+    logger.info('Processing orders/fulfilled webhook', {
       storeId,
       orderId: payload.id,
       orderNumber: payload.name,
@@ -248,7 +243,7 @@ export class ShopifyWebhookService {
       });
 
       if (!order) {
-        this.logger.warn('Order not found for fulfillment', {
+        logger.warn('Order not found for fulfillment', {
           storeId,
           orderId: payload.id,
         });
@@ -274,14 +269,14 @@ export class ShopifyWebhookService {
 
       await order.save();
 
-      this.logger.info('Order fulfilled', {
+      logger.info('Order fulfilled', {
         storeId,
         orderId: payload.id,
         orderNumber: order.orderNumber,
         trackingNumber: order.shippingDetails.trackingNumber,
       });
     } catch (error: any) {
-      this.logger.error('Failed to handle orders/fulfilled webhook', {
+      logger.error('Failed to handle orders/fulfilled webhook', {
         storeId,
         orderId: payload.id,
         error: error.message,
@@ -297,7 +292,7 @@ export class ShopifyWebhookService {
    * Refreshes product mappings if SKU changed.
    */
   static async handleProductUpdate(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing products/update webhook', {
+    logger.info('Processing products/update webhook', {
       storeId,
       productId: payload.id,
       productTitle: payload.title,
@@ -316,7 +311,7 @@ export class ShopifyWebhookService {
 
           // Update SKU if changed
           if (mapping.shopifySKU !== variant.sku) {
-            this.logger.info('Product SKU changed', {
+            logger.info('Product SKU changed', {
               variantId: variant.id,
               oldSKU: mapping.shopifySKU,
               newSKU: variant.sku,
@@ -338,12 +333,12 @@ export class ShopifyWebhookService {
         }
       }
 
-      this.logger.info('Product updated processed', {
+      logger.info('Product updated processed', {
         storeId,
         productId: payload.id,
       });
     } catch (error: any) {
-      this.logger.error('Failed to handle products/update webhook', {
+      logger.error('Failed to handle products/update webhook', {
         storeId,
         productId: payload.id,
         error: error.message,
@@ -359,7 +354,7 @@ export class ShopifyWebhookService {
    * Optional: Two-way sync (Shopify → Shipcrowd).
    */
   static async handleInventoryUpdate(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing inventory_levels/update webhook', {
+    logger.info('Processing inventory_levels/update webhook', {
       storeId,
       inventoryItemId: payload.inventory_item_id,
       available: payload.available,
@@ -373,7 +368,7 @@ export class ShopifyWebhookService {
 
       // Only process if two-way sync is enabled
       if (store.syncConfig.inventorySync.syncDirection !== 'TWO_WAY') {
-        this.logger.debug('Two-way sync not enabled, skipping inventory update', {
+        logger.debug('Two-way sync not enabled, skipping inventory update', {
           storeId,
         });
         return;
@@ -387,7 +382,7 @@ export class ShopifyWebhookService {
       });
 
       if (!mapping) {
-        this.logger.debug('No mapping found for inventory item', {
+        logger.debug('No mapping found for inventory item', {
           inventoryItemId: payload.inventory_item_id,
         });
         return;
@@ -396,13 +391,13 @@ export class ShopifyWebhookService {
       // TODO: Update Shipcrowd inventory
       // This would integrate with InventoryService to update stock levels
 
-      this.logger.info('Inventory updated (two-way sync)', {
+      logger.info('Inventory updated (two-way sync)', {
         storeId,
         sku: mapping.shipcrowdSKU,
         available: payload.available,
       });
     } catch (error: any) {
-      this.logger.error('Failed to handle inventory_levels/update webhook', {
+      logger.error('Failed to handle inventory_levels/update webhook', {
         storeId,
         inventoryItemId: payload.inventory_item_id,
         error: error.message,
@@ -418,7 +413,7 @@ export class ShopifyWebhookService {
    * Deactivates the store and pauses all sync jobs.
    */
   static async handleAppUninstalled(storeId: string, payload: any): Promise<void> {
-    this.logger.warn('Processing app/uninstalled webhook', {
+    logger.warn('Processing app/uninstalled webhook', {
       storeId,
       shopDomain: payload.domain,
     });
@@ -437,14 +432,14 @@ export class ShopifyWebhookService {
       // TODO: Unschedule background jobs
       // This would call ShopifyOrderSyncJob.unscheduleStoreSync(storeId)
 
-      this.logger.warn('Store deactivated due to app uninstall', {
+      logger.warn('Store deactivated due to app uninstall', {
         storeId,
         shopDomain: store.shopDomain,
       });
 
       // TODO: Send notification to admin
     } catch (error: any) {
-      this.logger.error('Failed to handle app/uninstalled webhook', {
+      logger.error('Failed to handle app/uninstalled webhook', {
         storeId,
         error: error.message,
       });
@@ -459,7 +454,7 @@ export class ShopifyWebhookService {
    * Updates ShopifyStore metadata.
    */
   static async handleShopUpdate(storeId: string, payload: any): Promise<void> {
-    this.logger.info('Processing shop/update webhook', {
+    logger.info('Processing shop/update webhook', {
       storeId,
       shopDomain: payload.domain,
     });
@@ -479,12 +474,12 @@ export class ShopifyWebhookService {
 
       await store.save();
 
-      this.logger.info('Shop metadata updated', {
+      logger.info('Shop metadata updated', {
         storeId,
         shopDomain: store.shopDomain,
       });
     } catch (error: any) {
-      this.logger.error('Failed to handle shop/update webhook', {
+      logger.error('Failed to handle shop/update webhook', {
         storeId,
         error: error.message,
       });

@@ -249,4 +249,79 @@ router.post(
  */
 router.get('/sync/jobs/:jobId', WooCommerceController.getSyncJobStatus);
 
+/**
+ * Fulfillment Routes
+ */
+
+/**
+ * PUT /api/v1/integrations/woocommerce/stores/:storeId/orders/:orderId/status
+ * Update order status in WooCommerce (e.g., mark as shipped/completed)
+ *
+ * Access: Admin, Company Owner, Manager
+ *
+ * Body:
+ * {
+ *   "status": "processing" | "completed" | "cancelled",
+ *   "awbNumber": "1234567890",
+ *   "courierName": "Delhivery",
+ *   "trackingUrl": "https://..." (optional)
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "message": "Order status updated in WooCommerce"
+ * }
+ */
+router.put(
+  '/stores/:storeId/orders/:orderId/status',
+  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  WooCommerceController.updateOrderStatus
+);
+
+/**
+ * POST /api/v1/integrations/woocommerce/stores/:storeId/orders/:orderId/tracking
+ * Add tracking note to WooCommerce order
+ *
+ * Access: Admin, Company Owner, Manager
+ *
+ * Body:
+ * {
+ *   "awbNumber": "1234567890",
+ *   "courierName": "Delhivery",
+ *   "trackingUrl": "https://..." (optional),
+ *   "customerNote": true (optional)
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "message": "Tracking note added to order"
+ * }
+ */
+router.post(
+  '/stores/:storeId/orders/:orderId/tracking',
+  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  WooCommerceController.addTrackingNote
+);
+
+/**
+ * POST /api/v1/integrations/woocommerce/stores/:id/sync/fulfillments
+ * Sync pending status updates to WooCommerce (bulk)
+ *
+ * Access: Admin, Company Owner
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "message": "Synced 5 orders to WooCommerce",
+ *   "syncedCount": 5
+ * }
+ */
+router.post(
+  '/stores/:id/sync/fulfillments',
+  authorize(['ADMIN', 'COMPANY_OWNER']),
+  WooCommerceController.syncPendingUpdates
+);
+
 export default router;

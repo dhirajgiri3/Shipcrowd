@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthRequest } from '../../middleware/auth/auth';
 import authAnalyticsService from '../../../../core/application/services/analytics/auth-analytics.service';
 import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
@@ -15,7 +14,7 @@ import logger from '../../../../shared/logger/winston.logger';
  * @access Admin only
  */
 export const getAuthMetrics = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -61,7 +60,7 @@ export const getAuthMetrics = async (
  * @access Admin only
  */
 export const getLoginStats = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -94,7 +93,7 @@ export const getLoginStats = async (
  * @access Admin only
  */
 export const getFailedLogins = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -127,7 +126,7 @@ export const getFailedLogins = async (
  * @access Admin only
  */
 export const getActiveSessions = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -152,7 +151,7 @@ export const getActiveSessions = async (
  * @access Admin only
  */
 export const getRegistrationTrends = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -185,7 +184,7 @@ export const getRegistrationTrends = async (
  * @access Admin only
  */
 export const getSecurityIncidents = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {

@@ -4,8 +4,7 @@
  * Handles all pick list and picking workflow HTTP endpoints
  */
 
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../../middleware/auth/auth';
+import { Request, Response, NextFunction } from 'express';
 import PickingService from "@/core/application/services/warehouse/picking.service";
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
@@ -30,7 +29,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
  * Create a new pick list
  * POST /api/v1/picking/pick-lists
  */
-async function createPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function createPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -66,7 +65,7 @@ async function createPickList(req: AuthRequest, res: Response, next: NextFunctio
  * Get pick lists with pagination
  * GET /api/v1/picking/pick-lists
  */
-async function getPickLists(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getPickLists(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -94,7 +93,7 @@ async function getPickLists(req: AuthRequest, res: Response, next: NextFunction)
  * Get pick list by ID
  * GET /api/v1/picking/pick-lists/:id
  */
-async function getPickListById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getPickListById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'pick list')) return;
@@ -116,7 +115,7 @@ async function getPickListById(req: AuthRequest, res: Response, next: NextFuncti
  * Get pick lists assigned to current user (picker)
  * GET /api/v1/picking/my-pick-lists
  */
-async function getMyPickLists(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getMyPickLists(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -138,7 +137,7 @@ async function getMyPickLists(req: AuthRequest, res: Response, next: NextFunctio
  * Assign pick list to picker
  * POST /api/v1/picking/pick-lists/:id/assign
  */
-async function assignPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function assignPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -178,7 +177,7 @@ async function assignPickList(req: AuthRequest, res: Response, next: NextFunctio
  * Start picking
  * POST /api/v1/picking/pick-lists/:id/start
  */
-async function startPicking(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function startPicking(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -211,7 +210,7 @@ async function startPicking(req: AuthRequest, res: Response, next: NextFunction)
  * Pick an item
  * POST /api/v1/picking/pick-lists/:id/pick
  */
-async function pickItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function pickItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         if (!validateObjectId(id, res, 'pick list')) return;
@@ -239,7 +238,7 @@ async function pickItem(req: AuthRequest, res: Response, next: NextFunction): Pr
  * Skip an item
  * POST /api/v1/picking/pick-lists/:id/skip
  */
-async function skipItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function skipItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -277,7 +276,7 @@ async function skipItem(req: AuthRequest, res: Response, next: NextFunction): Pr
  * Complete pick list
  * POST /api/v1/picking/pick-lists/:id/complete
  */
-async function completePickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function completePickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -319,7 +318,7 @@ async function completePickList(req: AuthRequest, res: Response, next: NextFunct
  * Cancel pick list
  * POST /api/v1/picking/pick-lists/:id/cancel
  */
-async function cancelPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function cancelPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -361,7 +360,7 @@ async function cancelPickList(req: AuthRequest, res: Response, next: NextFunctio
  * Verify pick list
  * POST /api/v1/picking/pick-lists/:id/verify
  */
-async function verifyPickList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function verifyPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const auth = guardChecks(req, res);
         if (!auth) return;
@@ -404,7 +403,7 @@ async function verifyPickList(req: AuthRequest, res: Response, next: NextFunctio
  * Get next item suggestion
  * GET /api/v1/picking/pick-lists/:id/next-item
  */
-async function getNextItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getNextItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
         const item = await PickingService.suggestNextItem(id);
@@ -419,7 +418,7 @@ async function getNextItem(req: AuthRequest, res: Response, next: NextFunction):
  * Get picker statistics
  * GET /api/v1/picking/stats/picker/:pickerId
  */
-async function getPickerStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getPickerStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { pickerId } = req.params;
         const { startDate, endDate } = req.query;
@@ -440,7 +439,7 @@ async function getPickerStats(req: AuthRequest, res: Response, next: NextFunctio
  * Get warehouse pick list statistics
  * GET /api/v1/picking/stats/warehouse/:warehouseId
  */
-async function getWarehouseStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+async function getWarehouseStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { warehouseId } = req.params;
         const { startDate, endDate } = req.query;

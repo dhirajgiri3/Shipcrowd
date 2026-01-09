@@ -21,6 +21,7 @@ import { AmazonClient } from '../../../../infrastructure/external/ecommerce/amaz
 import AmazonOAuthService from './amazon-oauth.service';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
 // Amazon order statuses
 type AmazonOrderStatus =
@@ -135,41 +136,45 @@ export default class AmazonOrderSyncService {
             maxOrders?: number;
         } = {}
     ): Promise<SyncResult> {
-        logger.info('Starting Amazon order sync', { storeId, options });
-
-        const store = await AmazonStore.findById(storeId).select(
-            '+lwaClientId +lwaClientSecret +lwaRefreshToken +awsAccessKeyId +awsSecretAccessKey'
-        );
-
-        if (!store) {
-            throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
-        }
-
-        if (!store.isActive || store.isPaused) {
-            throw new AppError('Amazon store is not active or is paused', 'AMAZON_STORE_INACTIVE', 400);
-        }
-
-        // Create sync log
-        const syncLog = await AmazonSyncLog.create({
-            storeId,
-            syncType: 'order',
-            status: 'IN_PROGRESS',
-            startTime: new Date(),
-            itemsProcessed: 0,
-            itemsSynced: 0,
-            itemsSkipped: 0,
-            itemsFailed: 0,
-        });
-
-        const result: SyncResult = {
-            itemsProcessed: 0,
-            itemsSynced: 0,
-            itemsFailed: 0,
-            itemsSkipped: 0,
-            syncErrors: [],
-        };
+        const session = await mongoose.startSession();
 
         try {
+            session.startTransaction();
+
+            logger.info('Starting Amazon order sync', { storeId, options });
+
+            const store = await AmazonStore.findById(storeId, null, { session }).select(
+                '+lwaClientId +lwaClientSecret +lwaRefreshToken +awsAccessKeyId +awsSecretAccessKey'
+            );
+
+            if (!store) {
+                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+            }
+
+            if (!store.isActive || store.isPaused) {
+                throw new AppError('Amazon store is not active or is paused', 'AMAZON_STORE_INACTIVE', 400);
+            }
+
+            // Create sync log
+            const [syncLog] = await AmazonSyncLog.create([{
+                storeId,
+                syncType: 'order',
+                status: 'IN_PROGRESS',
+                startTime: new Date(),
+                itemsProcessed: 0,
+                itemsSynced: 0,
+                itemsSkipped: 0,
+                itemsFailed: 0,
+            }], { session });
+
+            const result: SyncResult = {
+                itemsProcessed: 0,
+                itemsSynced: 0,
+                itemsFailed: 0,
+                itemsSkipped: 0,
+                syncErrors: [],
+            };
+
             // Update sync status
             await store.updateSyncStatus('order', 'SYNCING');
 
@@ -279,6 +284,9 @@ export default class AmazonOrderSyncService {
                 syncErrors
             );
 
+
+            await session.commitTransaction();
+
             logger.info('Amazon order sync completed', {
                 storeId,
                 ...result,
@@ -287,20 +295,23 @@ export default class AmazonOrderSyncService {
 
             return result;
         } catch (error: any) {
-            // Update sync status on error
-            await store.updateSyncStatus('order', 'ERROR', { error: error.message });
-            await AmazonOAuthService.recordError(storeId, error.message);
+            await session.abortTransaction();
 
-            // Fail sync log
-            await syncLog.failSync(error.message);
+            // Update sync status on error (outside transaction)
+            const store = await AmazonStore.findById(storeId);
+            if (store) {
+                await store.updateSyncStatus('order', 'ERROR', { error: error.message });
+                await AmazonOAuthService.recordError(storeId, error.message);
+            }
 
-            logger.error('Amazon order sync failed', {
+            logger.error('Amazon order sync failed (transaction rolled back)', {
                 storeId,
                 error: error.message,
-                syncLogId: syncLog._id,
             });
 
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 

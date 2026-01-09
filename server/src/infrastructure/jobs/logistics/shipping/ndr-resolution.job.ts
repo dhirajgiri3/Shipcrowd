@@ -8,7 +8,7 @@ import { Job } from 'bullmq';
 import { NDREvent, NDRWorkflow } from '../../../database/mongoose/models';
 import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
 import QueueManager from '../../../utilities/queue-manager';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 interface NDRResolutionJobData {
     ndrEventId: string;
@@ -18,11 +18,6 @@ interface NDRResolutionJobData {
 
 export class NDRResolutionJob {
     private static readonly QUEUE_NAME = 'ndr-resolution';
-    private static logger = winston.createLogger({
-        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-        format: winston.format.json(),
-        transports: [new winston.transports.Console()],
-    });
 
     /**
      * Initialize the job worker
@@ -34,7 +29,7 @@ export class NDRResolutionJob {
             concurrency: 5,
         });
 
-        this.logger.info('NDR resolution worker initialized');
+        logger.info('NDR resolution worker initialized');
     }
 
     /**
@@ -43,7 +38,7 @@ export class NDRResolutionJob {
     private static async processJob(job: Job<NDRResolutionJobData>): Promise<any> {
         const { ndrEventId, actionSequence, type = 'execute_action' } = job.data;
 
-        this.logger.info('Processing NDR resolution job', {
+        logger.info('Processing NDR resolution job', {
             jobId: job.id,
             ndrEventId,
             type,
@@ -65,12 +60,12 @@ export class NDRResolutionJob {
                     break;
 
                 default:
-                    this.logger.warn('Unknown job type', { type });
+                    logger.warn('Unknown job type', { type });
             }
 
             return { success: true };
         } catch (error: any) {
-            this.logger.error('NDR resolution job failed', {
+            logger.error('NDR resolution job failed', {
                 jobId: job.id,
                 ndrEventId,
                 error: error.message,
@@ -97,13 +92,13 @@ export class NDRResolutionJob {
         const ndrEvent = await NDREvent.findById(ndrEventId).populate('shipment order');
 
         if (!ndrEvent) {
-            this.logger.error('NDR event not found', { ndrEventId });
+            logger.error('NDR event not found', { ndrEventId });
             return;
         }
 
         // Check if already resolved
         if (ndrEvent.status === 'resolved' || ndrEvent.status === 'rto_triggered') {
-            this.logger.info('NDR already resolved, skipping action', { ndrEventId });
+            logger.info('NDR already resolved, skipping action', { ndrEventId });
             return;
         }
 
@@ -114,7 +109,7 @@ export class NDRResolutionJob {
         );
 
         if (!workflow) {
-            this.logger.warn('No workflow found', { ndrEventId, ndrType: ndrEvent.ndrType });
+            logger.warn('No workflow found', { ndrEventId, ndrType: ndrEvent.ndrType });
             return;
         }
 
@@ -122,7 +117,7 @@ export class NDRResolutionJob {
         const action = workflow.actions.find((a: any) => a.sequence === actionSequence);
 
         if (!action) {
-            this.logger.info('No more actions to execute', { ndrEventId, actionSequence });
+            logger.info('No more actions to execute', { ndrEventId, actionSequence });
             return;
         }
 
@@ -145,7 +140,7 @@ export class NDRResolutionJob {
         }
 
         if (new Date() > ndrEvent.resolutionDeadline) {
-            this.logger.info('Resolution deadline passed, checking RTO conditions', { ndrEventId });
+            logger.info('Resolution deadline passed, checking RTO conditions', { ndrEventId });
 
             const workflow = await NDRWorkflow.getWorkflowForNDR(
                 ndrEvent.ndrType,

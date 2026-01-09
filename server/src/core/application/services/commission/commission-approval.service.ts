@@ -140,14 +140,18 @@ export default class CommissionApprovalService {
         userId: string,
         companyId: string
     ): Promise<ICommissionTransaction> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const { transactionId, notes } = data;
 
             // Find transaction with optimistic locking
             const transaction = await CommissionTransaction.findOne({
                 _id: new mongoose.Types.ObjectId(transactionId),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }).session(session);
 
             if (!transaction) {
                 throw new AppError('Commission transaction not found', 'NOT_FOUND', 404);
@@ -173,10 +177,10 @@ export default class CommissionApprovalService {
                 transaction.metadata = { approvalNotes: notes };
             }
 
-            await transaction.save();
+            await transaction.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'commission.approved',
                 resource: 'CommissionTransaction',
@@ -187,7 +191,9 @@ export default class CommissionApprovalService {
                     salesRepId: transaction.salesRepresentative,
                     notes,
                 },
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(
                 `Commission approved: ${transactionId} by user ${userId}, amount: ${transaction.finalAmount}`
@@ -195,8 +201,11 @@ export default class CommissionApprovalService {
 
             return transaction;
         } catch (error) {
-            logger.error('Error approving commission:', error);
+            await session.abortTransaction();
+            logger.error('Error approving commission, transaction rolled back:', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -208,13 +217,17 @@ export default class CommissionApprovalService {
         userId: string,
         companyId: string
     ): Promise<ICommissionTransaction> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const { transactionId, reason } = data;
 
             const transaction = await CommissionTransaction.findOne({
                 _id: new mongoose.Types.ObjectId(transactionId),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }).session(session);
 
             if (!transaction) {
                 throw new AppError('Commission transaction not found', 'NOT_FOUND', 404);
@@ -234,10 +247,10 @@ export default class CommissionApprovalService {
             transaction.rejectedAt = new Date();
             transaction.rejectionReason = reason;
 
-            await transaction.save();
+            await transaction.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'commission.rejected',
                 resource: 'CommissionTransaction',
@@ -247,14 +260,19 @@ export default class CommissionApprovalService {
                     reason,
                     salesRepId: transaction.salesRepresentative,
                 },
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(`Commission rejected: ${transactionId} by user ${userId}, reason: ${reason}`);
 
             return transaction;
         } catch (error) {
-            logger.error('Error rejecting commission:', error);
+            await session.abortTransaction();
+            logger.error('Error rejecting commission, transaction rolled back:', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -363,14 +381,18 @@ export default class CommissionApprovalService {
         userId: string,
         companyId: string
     ): Promise<ICommissionTransaction> {
+        const session = await mongoose.startSession();
+
         try {
+            session.startTransaction();
+
             const { transactionId, amount, reason, adjustmentType } = data;
 
             //  Find transaction
             const transaction = await CommissionTransaction.findOne({
                 _id: new mongoose.Types.ObjectId(transactionId),
                 company: new mongoose.Types.ObjectId(companyId),
-            });
+            }).session(session);
 
             if (!transaction) {
                 throw new AppError('Commission transaction not found', 'NOT_FOUND', 404);
@@ -386,7 +408,7 @@ export default class CommissionApprovalService {
             }
 
             // Create adjustment record
-            const adjustment = await CommissionAdjustment.create({
+            const [adjustment] = await CommissionAdjustment.create([{
                 commissionTransaction: transaction._id,
                 company: new mongoose.Types.ObjectId(companyId),
                 amount,
@@ -394,7 +416,7 @@ export default class CommissionApprovalService {
                 adjustmentType,
                 adjustedBy: new mongoose.Types.ObjectId(userId),
                 status: 'pending', // Will need approval
-            });
+            }], { session });
 
             // Add to transaction's adjustments array
             transaction.adjustments.push(adjustment._id as any);
@@ -408,10 +430,10 @@ export default class CommissionApprovalService {
                 transaction.finalAmount = 0;
             }
 
-            await transaction.save();
+            await transaction.save({ session });
 
             // Create audit log
-            await AuditLog.create({
+            await AuditLog.create([{
                 userId: new mongoose.Types.ObjectId(userId),
                 action: 'commission.adjustment_added',
                 resource: 'CommissionTransaction',
@@ -423,7 +445,9 @@ export default class CommissionApprovalService {
                     adjustmentType,
                     reason,
                 },
-            });
+            }], { session });
+
+            await session.commitTransaction();
 
             logger.info(
                 `Adjustment added to transaction ${transactionId}: ${amount} (${adjustmentType})`
@@ -434,8 +458,11 @@ export default class CommissionApprovalService {
                 .populate('adjustments')
                 .then((t) => t!) as Promise<ICommissionTransaction>;
         } catch (error) {
-            logger.error('Error adding adjustment:', error);
+            await session.abortTransaction();
+            logger.error('Error adding adjustment, transaction rolled back:', error);
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 

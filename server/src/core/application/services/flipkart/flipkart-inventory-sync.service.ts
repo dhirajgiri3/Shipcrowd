@@ -19,7 +19,7 @@ import { FlipkartProductMapping } from '../../../../infrastructure/database/mong
 import { FlipkartSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import FlipkartClient from '../../../../infrastructure/external/ecommerce/flipkart/flipkart.client';
 import { AppError } from '../../../../shared/errors/app.error';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * FlipkartInventorySyncService
@@ -76,11 +76,6 @@ interface FlipkartInventoryUpdateResponse {
 }
 
 export class FlipkartInventorySyncService {
-  private static logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  });
 
   /**
    * Push inventory to Flipkart for a single SKU
@@ -151,7 +146,7 @@ export class FlipkartInventorySyncService {
       // Record success
       await mapping.recordSyncSuccess();
 
-      this.logger.info('Inventory synced to Flipkart', {
+      logger.info('Inventory synced to Flipkart', {
         storeId,
         sku,
         quantity,
@@ -194,7 +189,7 @@ export class FlipkartInventorySyncService {
       itemsFailed: 0,
     });
 
-    this.logger.info('Starting batch inventory sync', {
+    logger.info('Starting batch inventory sync', {
       storeId,
       count: updates.length,
       syncLogId: syncLog._id,
@@ -292,7 +287,7 @@ export class FlipkartInventorySyncService {
                 }
                 result.itemsSynced++;
 
-                this.logger.debug('Synced inventory for SKU', {
+                logger.debug('Synced inventory for SKU', {
                   sku: item.shipcrowdSKU,
                   fsn: item.fsn,
                   quantity: item.inventory,
@@ -318,7 +313,7 @@ export class FlipkartInventorySyncService {
                   timestamp: new Date(),
                 });
 
-                this.logger.error('Failed to sync inventory for SKU', {
+                logger.error('Failed to sync inventory for SKU', {
                   sku: item.shipcrowdSKU,
                   fsn: item.fsn,
                   error: failure.error,
@@ -337,7 +332,7 @@ export class FlipkartInventorySyncService {
             });
           }
 
-          this.logger.error('Batch inventory sync request failed', {
+          logger.error('Batch inventory sync request failed', {
             error: error.message,
             batchSize: batchListings.length,
           });
@@ -365,7 +360,7 @@ export class FlipkartInventorySyncService {
     // Update store stats
     await store.incrementSyncStats('inventory', result.itemsSynced);
 
-    this.logger.info('Batch inventory sync completed', {
+    logger.info('Batch inventory sync completed', {
       storeId,
       ...result,
       syncLogId: syncLog._id,

@@ -14,6 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
+import mongoose from 'mongoose';
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import { WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
@@ -36,16 +37,20 @@ export default class WooCommerceOrderSyncService {
    * Main orchestrator for order synchronization
    */
   static async syncOrders(storeId: string, sinceDate?: Date): Promise<SyncResult> {
-    const syncLog = await WooCommerceSyncLog.create({
-      storeId,
-      syncType: 'order',
-      status: 'IN_PROGRESS',
-      startTime: new Date(),
-    });
+    const session = await mongoose.startSession();
 
     try {
+      session.startTransaction();
+
+      const [syncLog] = await WooCommerceSyncLog.create([{
+        storeId,
+        syncType: 'order',
+        status: 'IN_PROGRESS',
+        startTime: new Date(),
+      }], { session });
+
       // 1. Get store with credentials
-      const store = await WooCommerceStore.findById(storeId).select(
+      const store = await WooCommerceStore.findById(storeId, null, { session }).select(
         '+consumerKey +consumerSecret'
       );
 
@@ -121,7 +126,7 @@ export default class WooCommerceOrderSyncService {
             source: 'woocommerce',
             sourceId: wooOrder.id.toString(),
             companyId: store.companyId,
-          });
+          }, null, { session });
 
           // Skip if order exists and hasn't been updated
           if (existingOrder) {
@@ -139,7 +144,7 @@ export default class WooCommerceOrderSyncService {
           if (existingOrder) {
             // Update existing order
             Object.assign(existingOrder, mappedOrder);
-            await existingOrder.save();
+            await existingOrder.save({ session });
             result.itemsSynced++;
 
             logger.debug('WooCommerce order updated', {
@@ -148,7 +153,7 @@ export default class WooCommerceOrderSyncService {
             });
           } else {
             // Create new order
-            const newOrder = await Order.create(mappedOrder);
+            const [newOrder] = await Order.create([mappedOrder], { session });
             result.itemsSynced++;
 
             logger.debug('WooCommerce order created', {
@@ -182,6 +187,8 @@ export default class WooCommerceOrderSyncService {
       await store.updateSyncStatus('order', 'COMPLETED');
       await store.incrementSyncStats('order', result.itemsSynced);
 
+      await session.commitTransaction();
+
       logger.info('WooCommerce order sync completed', {
         storeId,
         ...result,
@@ -189,20 +196,16 @@ export default class WooCommerceOrderSyncService {
 
       return result;
     } catch (error: any) {
-      logger.error('WooCommerce order sync failed', {
+      await session.abortTransaction();
+
+      logger.error('WooCommerce order sync failed (transaction rolled back)', {
         storeId,
         error: error.message,
       });
 
-      await syncLog.failSync(error.message);
-
-      // Update store sync status to ERROR
-      const store = await WooCommerceStore.findById(storeId);
-      if (store) {
-        await store.updateSyncStatus('order', 'ERROR', error.message);
-      }
-
       throw error;
+    } finally {
+      session.endSession();
     }
   }
 

@@ -2,6 +2,8 @@ import winston from 'winston';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Request, Response, NextFunction } from 'express';
+// Import our global type augmentation for Express.Request
+import '../../types/express';
 
 // Define log format
 const logFormat = winston.format.combine(
@@ -85,15 +87,5 @@ export const stream = {
     logger.info(message.trim());
   },
 };
-
-// Extend Request interface to include correlationId
-declare global {
-  namespace Express {
-    interface Request {
-      correlationId?: string;
-      requestLogger?: winston.Logger;
-    }
-  }
-}
 
 export default logger;

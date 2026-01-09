@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/email-change.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
@@ -20,7 +19,7 @@ const cancelEmailChangeSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-export const requestEmailChangeHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const requestEmailChangeHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -94,7 +93,7 @@ export const verifyEmailChangeHandler = async (req: Request, res: Response, next
   }
 };
 
-export const cancelEmailChangeHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const cancelEmailChangeHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
@@ -142,7 +141,7 @@ export const cancelEmailChangeHandler = async (req: AuthRequest, res: Response, 
   }
 };
 
-export const getEmailChangeStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getEmailChangeStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');

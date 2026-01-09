@@ -77,4 +77,40 @@ router.post(
   ShopifyController.resumeSync
 );
 
+/**
+ * Fulfillment Routes
+ */
+
+// Create fulfillment in Shopify (push tracking)
+router.post(
+  '/stores/:storeId/orders/:orderId/fulfill',
+  authenticate,
+  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  ShopifyController.createFulfillment
+);
+
+// Update tracking on existing fulfillment
+router.put(
+  '/stores/:storeId/fulfillments/:fulfillmentId',
+  authenticate,
+  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  ShopifyController.updateFulfillmentTracking
+);
+
+// Trigger manual order sync
+router.post(
+  '/stores/:id/sync/orders',
+  authenticate,
+  authorize(['ADMIN', 'COMPANY_OWNER']),
+  ShopifyController.syncOrders
+);
+
+// Sync pending fulfillments (bulk)
+router.post(
+  '/stores/:id/sync/fulfillments',
+  authenticate,
+  authorize(['ADMIN', 'COMPANY_OWNER']),
+  ShopifyController.syncPendingFulfillments
+);
+
 export default router;

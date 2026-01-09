@@ -4,9 +4,8 @@
  * Handles export requests for CSV, Excel, and PDF formats.
  */
 
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { AuthRequest } from '../../middleware/auth/auth';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
@@ -35,7 +34,7 @@ type ExportRequestBody = z.infer<typeof exportRequestSchema>;
  * @route POST /api/v1/export/csv
  */
 export const exportToCSV = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -95,7 +94,7 @@ export const exportToCSV = async (
  * @route POST /api/v1/export/excel
  */
 export const exportToExcel = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
@@ -157,7 +156,7 @@ export const exportToExcel = async (
  * @route POST /api/v1/export/pdf
  */
 export const exportToPDF = async (
-    req: AuthRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {

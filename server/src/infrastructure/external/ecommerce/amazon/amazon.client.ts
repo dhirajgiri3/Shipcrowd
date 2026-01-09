@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
-import winston from 'winston';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * AmazonClient
@@ -53,7 +53,6 @@ interface AmazonClientConfig {
 
   // Optional configuration
   maxRetries?: number;
-  logger?: winston.Logger;
 }
 
 interface FeedSubmissionResponse {
@@ -85,7 +84,7 @@ export class AmazonClient {
   // Client configuration
   private baseURL: string;
   private maxRetries: number;
-  private logger: winston.Logger;
+
 
   // Marketplace endpoints
   private static readonly MARKETPLACE_ENDPOINTS = {
@@ -114,14 +113,7 @@ export class AmazonClient {
 
     this.maxRetries = config.maxRetries || 3;
 
-    // Setup logger
-    this.logger =
-      config.logger ||
-      winston.createLogger({
-        level: 'info',
-        format: winston.format.json(),
-        transports: [new winston.transports.Console()],
-      });
+    // Logger is already imported from shared logger module
 
     // Initialize rate limit bucket (dynamic, will adjust based on response headers)
     this.rateLimitBucket = {
@@ -174,7 +166,7 @@ export class AmazonClient {
       return this.lwaTokenCache.accessToken;
     }
 
-    this.logger.debug('Refreshing LWA access token');
+    logger.debug('Refreshing LWA access token');
 
     try {
       const response = await axios.post<LWAToken>(
@@ -200,13 +192,13 @@ export class AmazonClient {
         expiresAt: now + token.expires_in * 1000,
       };
 
-      this.logger.info('LWA access token refreshed successfully', {
+      logger.info('LWA access token refreshed successfully', {
         expiresIn: token.expires_in,
       });
 
       return token.access_token;
     } catch (error) {
-      this.logger.error('Failed to refresh LWA access token', { error });
+      logger.error('Failed to refresh LWA access token', { error });
       throw new Error('Failed to obtain LWA access token');
     }
   }
@@ -351,7 +343,7 @@ export class AmazonClient {
     // If no tokens available, wait
     if (this.rateLimitBucket.tokens < 1) {
       const waitTime = ((1 - this.rateLimitBucket.tokens) / this.rateLimitBucket.refillRate) * 1000;
-      this.logger.debug(`Rate limit: waiting ${Math.round(waitTime)}ms`);
+      logger.debug(`Rate limit: waiting ${Math.round(waitTime)}ms`);
       await this.sleep(waitTime);
       this.rateLimitBucket.tokens = 1;
       this.rateLimitBucket.lastRefill = Date.now();
@@ -376,7 +368,7 @@ export class AmazonClient {
         // Set max tokens to allow burst (2x the rate)
         this.rateLimitBucket.maxTokens = Math.max(limit * 2, 10);
 
-        this.logger.debug('Updated rate limit', {
+        logger.debug('Updated rate limit', {
           refillRate: this.rateLimitBucket.refillRate,
           maxTokens: this.rateLimitBucket.maxTokens,
         });
@@ -408,7 +400,7 @@ export class AmazonClient {
         const retryAfter = axiosError.response.headers['retry-after'];
         const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : 5000;
 
-        this.logger.warn(`Rate limited (429), retrying after ${waitTime}ms`);
+        logger.warn(`Rate limited (429), retrying after ${waitTime}ms`);
         await this.sleep(waitTime);
 
         // Reset rate limit bucket to prevent immediate retry
@@ -429,7 +421,7 @@ export class AmazonClient {
 
       // Check if we should retry
       if (retries >= this.maxRetries) {
-        this.logger.error(`Max retries (${this.maxRetries}) exceeded`);
+        logger.error(`Max retries (${this.maxRetries}) exceeded`);
         throw error;
       }
 
@@ -440,7 +432,7 @@ export class AmazonClient {
       const jitter = delay * 0.2 * (Math.random() - 0.5);
       const waitTime = delay + jitter;
 
-      this.logger.warn(
+      logger.warn(
         `Request failed, retrying in ${Math.round(waitTime)}ms (attempt ${retries + 1}/${this.maxRetries})`,
         {
           status: axiosError.response?.status,
@@ -458,7 +450,7 @@ export class AmazonClient {
    * Log error details
    */
   private logError(error: AxiosError): void {
-    this.logger.error('Amazon SP-API error', {
+    logger.error('Amazon SP-API error', {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
@@ -472,7 +464,7 @@ export class AmazonClient {
    */
   async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`GET ${endpoint}`, { params });
+      logger.debug(`GET ${endpoint}`, { params });
       const response = await this.httpClient.get<T>(endpoint, { params });
       return response.data;
     });
@@ -483,7 +475,7 @@ export class AmazonClient {
    */
   async post<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`POST ${endpoint}`, { dataKeys: data ? Object.keys(data) : [] });
+      logger.debug(`POST ${endpoint}`, { dataKeys: data ? Object.keys(data) : [] });
       const response = await this.httpClient.post<T>(endpoint, data);
       return response.data;
     });
@@ -494,7 +486,7 @@ export class AmazonClient {
    */
   async put<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`PUT ${endpoint}`, { dataKeys: data ? Object.keys(data) : [] });
+      logger.debug(`PUT ${endpoint}`, { dataKeys: data ? Object.keys(data) : [] });
       const response = await this.httpClient.put<T>(endpoint, data);
       return response.data;
     });
@@ -505,7 +497,7 @@ export class AmazonClient {
    */
   async delete<T = any>(endpoint: string): Promise<T> {
     return this.retryWithBackoff(async () => {
-      this.logger.debug(`DELETE ${endpoint}`);
+      logger.debug(`DELETE ${endpoint}`);
       const response = await this.httpClient.delete<T>(endpoint);
       return response.data;
     });
@@ -523,7 +515,7 @@ export class AmazonClient {
     content: string,
     contentType: string = 'text/xml; charset=UTF-8'
   ): Promise<FeedSubmissionResponse> {
-    this.logger.info('Submitting feed', { feedType, contentLength: content.length });
+    logger.info('Submitting feed', { feedType, contentLength: content.length });
 
     // Step 1: Create feed document
     const createDocResponse = await this.post<{ feedDocumentId: string }>(
@@ -553,7 +545,7 @@ export class AmazonClient {
       }
     );
 
-    this.logger.info('Feed submitted successfully', {
+    logger.info('Feed submitted successfully', {
       feedId: createFeedResponse.feedId,
       feedDocumentId,
     });
@@ -570,11 +562,11 @@ export class AmazonClient {
    * @param feedId - Feed ID from submitFeed
    */
   async getFeedResult(feedId: string): Promise<FeedResult> {
-    this.logger.debug('Getting feed result', { feedId });
+    logger.debug('Getting feed result', { feedId });
 
     const response = await this.get<FeedResult>(`/feeds/2021-06-30/feeds/${feedId}`);
 
-    this.logger.info('Feed result retrieved', {
+    logger.info('Feed result retrieved', {
       feedId,
       processingStatus: response.processingStatus,
     });
@@ -605,7 +597,7 @@ export class AmazonClient {
         throw new Error(`Feed ${feedId} was cancelled`);
       }
 
-      this.logger.debug(`Feed still processing (${result.processingStatus}), waiting...`, {
+      logger.debug(`Feed still processing (${result.processingStatus}), waiting...`, {
         attempt: attempt + 1,
         maxAttempts,
       });
@@ -642,7 +634,7 @@ export class AmazonClient {
       // Extract NextToken for pagination
       nextToken = response.NextToken || response.nextToken || null;
 
-      this.logger.debug('Pagination status', {
+      logger.debug('Pagination status', {
         hasNextToken: !!nextToken,
         endpoint,
       });
@@ -662,10 +654,10 @@ export class AmazonClient {
         CreatedAfter: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Last 24 hours
       });
 
-      this.logger.info('Amazon SP-API connection test successful');
+      logger.info('Amazon SP-API connection test successful');
       return true;
     } catch (error) {
-      this.logger.error('Amazon SP-API connection test failed', { error });
+      logger.error('Amazon SP-API connection test failed', { error });
       return false;
     }
   }

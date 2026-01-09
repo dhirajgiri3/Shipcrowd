@@ -124,8 +124,12 @@ class WeightDisputeResolutionService {
         companyId: string,
         evidence: SellerEvidenceDTO
     ): Promise<any> {
+        const session = await mongoose.startSession();
+
         try {
-            const dispute = await WeightDispute.findById(disputeId);
+            session.startTransaction();
+
+            const dispute = await WeightDispute.findById(disputeId, null, { session });
 
             if (!dispute) {
                 throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
@@ -164,12 +168,14 @@ class WeightDisputeResolutionService {
                 notes: `${evidence.photos?.length || 0} photos, ${evidence.documents?.length || 0} documents`,
             });
 
-            await dispute.save();
+            await dispute.save({ session });
 
             // Update shipment dispute status
             await Shipment.findByIdAndUpdate(dispute.shipmentId, {
                 'weightDispute.status': 'under_review',
-            });
+            }, { session });
+
+            await session.commitTransaction();
 
             logger.info('Seller submitted dispute evidence', {
                 disputeId: dispute.disputeId,
@@ -183,12 +189,15 @@ class WeightDisputeResolutionService {
 
             return dispute;
         } catch (error) {
-            logger.error('Error submitting seller evidence', {
+            await session.abortTransaction();
+            logger.error('Error submitting seller evidence (transaction rolled back)', {
                 disputeId,
                 companyId,
                 error: error instanceof Error ? error.message : error,
             });
             throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -205,8 +214,12 @@ class WeightDisputeResolutionService {
         adminId: string | 'system',
         resolution: DisputeResolutionDTO
     ): Promise<any> {
+        const session = await mongoose.startSession();
+
         try {
-            const dispute = await WeightDispute.findById(disputeId);
+            session.startTransaction();
+
+            const dispute = await WeightDispute.findById(disputeId, null, { session });
 
             if (!dispute) {
                 throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
@@ -244,12 +257,14 @@ class WeightDisputeResolutionService {
             // Process financial settlement
             await this.processFinancialSettlement(dispute);
 
-            await dispute.save();
+            await dispute.save({ session });
 
             // Update shipment dispute status
             await Shipment.findByIdAndUpdate(dispute.shipmentId, {
                 'weightDispute.status': 'resolved',
-            });
+            }, { session });
+
+            await session.commitTransaction();
 
             logger.info('Dispute resolved', {
                 disputeId: dispute.disputeId,
