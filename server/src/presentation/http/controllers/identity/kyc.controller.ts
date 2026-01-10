@@ -7,6 +7,7 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
 import deepvueService from '../../../../core/application/services/integrations/deepvue.service';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 
@@ -182,6 +183,15 @@ export const submitKYC = async (req: Request, res: Response, next: NextFunction)
       req
     );
 
+    // ✅ ONBOARDING HOOK: Update progress
+    try {
+      if (req.user.companyId) {
+        await OnboardingProgressService.updateStep(req.user.companyId.toString(), 'kycSubmitted', req.user._id);
+      }
+    } catch (err) {
+      logger.error('Error updating onboarding progress for KYC submission:', err);
+    }
+
     sendCreated(res, { kyc }, 'KYC documents submitted successfully');
   } catch (error) {
     logger.error('Error submitting KYC:', error);
@@ -282,6 +292,21 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
 
     if (allDocumentsVerified) {
       updateData.status = 'verified';
+
+      // ✅ ONBOARDING HOOK: Update progress
+      try {
+        // Fix KYC Deadlock: Update user KYC status
+        await User.findByIdAndUpdate(kyc.userId, {
+          'kycStatus.isComplete': true,
+          'kycStatus.lastUpdated': new Date()
+        });
+
+        if (kyc.companyId) {
+          await OnboardingProgressService.updateStep(kyc.companyId.toString(), 'kycApproved', kyc.userId?.toString());
+        }
+      } catch (err) {
+        logger.error('Error updating onboarding progress/user status for KYC approval:', err);
+      }
     }
 
     const updatedKYC = await KYC.findByIdAndUpdate(kycId, { $set: updateData }, { new: true });

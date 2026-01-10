@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 import { formatOperatingHours } from '../../../../shared/helpers/formatOperatingHours';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import {
   sendSuccess,
   sendError,
@@ -175,6 +176,17 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
     }
 
     await createAuditLog(req.user._id, companyId, 'create', 'warehouse', String(warehouse._id), { message: 'Warehouse created' }, req);
+
+    // ✅ ONBOARDING HOOK: Update progress (unlocks badge likely via achievement service internally if configured)
+    try {
+      // Assuming 'warehouseAdded' is a tracked step or badge trigger. If not in OnboardingProgress model, it might just be for badge.
+      // But updateStep checks achievements too.
+      // Let's assume we mapped 'warehouse_created' badge to this action in business logic if needed.
+      // For now, we update step if it exists, or just to trigger checks.
+      await OnboardingProgressService.updateStep(companyId, 'warehouseAdded', req.user._id);
+    } catch (err) {
+      logger.error('Error updating onboarding progress for warehouse creation:', err);
+    }
 
     const warehouseObj = warehouse.toObject();
     if (warehouseObj.operatingHours) {

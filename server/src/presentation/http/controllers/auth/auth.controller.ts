@@ -8,10 +8,12 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRe
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
 import { createSession, updateSessionActivity, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';
+import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { UserDTO } from '../../dtos/user.dto';
 
 // Custom password validator
@@ -79,108 +81,102 @@ const checkPasswordStrengthSchema = z.object({
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = registerSchema.parse(req.body);
-    const existingUser = await User.findOne({ email: validatedData.email });
-    if (existingUser) {
-      sendError(res, 'User already exists', 409, 'USER_EXISTS');
-      return;
-    }
-
-    // Check if there's an invitation token
-    let companyId = validatedData.companyId;
-    let teamRole = validatedData.teamRole;
-    let companyName = '';
-
-    if (validatedData.invitationToken) {
-      // Find the invitation
-      const invitation = await TeamInvitation.findOne({
-        token: validatedData.invitationToken,
-        status: 'pending',
-        expiresAt: { $gt: new Date() },
-        email: validatedData.email.toLowerCase()
-      }).populate('companyId', 'name');
-
-      if (!invitation) {
-        sendError(res, 'Invalid or expired invitation token', 400, 'INVALID_INVITATION');
-        return;
+    await withTransaction(async (session) => {
+      // Check if user exists (inside transaction to be safe, though unique index helps)
+      const existingUser = await User.findOne({ email: validatedData.email }).session(session);
+      if (existingUser) {
+        throw new Error('USER_EXISTS'); // Will be caught below
       }
 
-      // Use the company and role from the invitation
-      companyId = (invitation.companyId as any)._id;
-      teamRole = invitation.teamRole;
-      companyName = (invitation.companyId as any).name;
+      // Check if there's an invitation token
+      let companyId = validatedData.companyId;
+      let teamRole = validatedData.teamRole;
+      let companyName = '';
 
-      // Mark the invitation as accepted
-      invitation.status = 'accepted';
-      await invitation.save();
-    }
+      if (validatedData.invitationToken) {
+        // Find the invitation
+        const invitation = await TeamInvitation.findOne({
+          token: validatedData.invitationToken,
+          status: 'pending',
+          expiresAt: { $gt: new Date() },
+          email: validatedData.email.toLowerCase()
+        }).populate('companyId', 'name').session(session);
 
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpiry = new Date();
-    verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 1); // ✅ FEATURE 20: 1 hour expiry
+        if (!invitation) {
+          throw new Error('INVALID_INVITATION');
+        }
 
-    const user = new User({
-      email: validatedData.email,
-      password: validatedData.password,
-      name: validatedData.name,
-      // ✅ FEATURE 5: Fix role assignment - all company users are 'seller'
-      role: validatedData.role || 'seller', // Changed from (teamRole ? 'staff' : 'seller')
-      ...(companyId && { companyId }),
-      ...(teamRole && { teamRole }),
-      isActive: false,
-      security: {
-        verificationToken,
-        verificationTokenExpiry,
-      },
-    });
+        // Use the company and role from the invitation
+        companyId = (invitation.companyId as any)._id;
+        teamRole = invitation.teamRole;
+        companyName = (invitation.companyId as any).name;
 
-    await user.save();
+        // Mark the invitation as accepted
+        invitation.status = 'accepted';
+        await invitation.save({ session });
+      }
 
-    // ✅ FEATURE 6: Auto-create company for first user and assign as owner
-    if (!companyId) {
-      const newCompany = new Company({
-        name: `${user.name}'s Company`,
-        owner: user._id,
-        status: 'pending_verification',
-        settings: {
-          currency: 'INR',
-          timezone: 'Asia/Kolkata',
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpiry = new Date();
+      verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 1); // ✅ FEATURE 20: 1 hour expiry
+
+      const user = new User({
+        email: validatedData.email,
+        password: validatedData.password,
+        name: validatedData.name,
+        // ✅ FEATURE 5: Fix role assignment - all company users are 'seller'
+        role: validatedData.role || 'seller',
+        ...(companyId && { companyId }),
+        ...(teamRole && { teamRole }),
+        isActive: false,
+        security: {
+          verificationToken,
+          verificationTokenExpiry,
         },
       });
-      await newCompany.save();
 
-      // Update user with company and owner role
-      user.companyId = newCompany._id;
-      user.teamRole = 'owner';
-      await user.save();
+      await user.save({ session });
 
-      logger.info(`Auto-created company ${newCompany._id} for user ${user._id}`);
-    }
+      // Send email (outside transaction logic technically, but we call it here. 
+      // If it fails, we catch, log, and proceed, OR we could abort transaction.
+      // Usually better to NOT abort transaction on email fail, but log it.)
+      try {
+        await sendVerificationEmail(user.email, user.name, verificationToken);
+      } catch (emailError) {
+        logger.error(`Failed to send verification email to ${user.email}:`, emailError);
+        // We log usage issue but do NOT rollback user creation for mail failure 
+        // unless strict requirement. User can resend verification.
+      }
 
-    await sendVerificationEmail(user.email, user.name, verificationToken);
+      // Assert type after save if necessary, Mongoose methods usually return typed docs
+      const savedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
-    // Assert type after save if necessary, Mongoose methods usually return typed docs
-    const savedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+      await createAuditLog(
+        savedUser._id.toString(), // Use toString() for ObjectId
+        savedUser.companyId,
+        'create',
+        'user',
+        savedUser._id.toString(), // Use toString() for ObjectId
+        {
+          message: companyId
+            ? `User registered and joined company ${companyName || companyId}`
+            : 'User registered'
+        },
+        req
+      );
 
-    await createAuditLog(
-      savedUser._id.toString(), // Use toString() for ObjectId
-      savedUser.companyId,
-      'create',
-      'user',
-      savedUser._id.toString(), // Use toString() for ObjectId
-      {
-        message: companyId
-          ? `User registered and joined company ${companyName || companyId}`
-          : 'User registered'
-      },
-      req
-    );
-
-    sendCreated(
-      res,
-      { companyId: companyId?.toString() },
-      'User registered successfully. Please check your email to verify your account.'
-    );
-  } catch (error) {
+      sendCreated(
+        res,
+        {
+          userId: savedUser._id.toString(),
+          email: savedUser.email,
+          companyId: companyId,
+          isNewCompany: !validatedData.companyId && !validatedData.invitationToken,
+        },
+        'User registered successfully. Please check your email to verify your account.'
+      );
+    });
+  } catch (error: any) {
     logger.error('Registration error:', error);
     if (error instanceof z.ZodError) {
       const errors = error.errors.map(err => ({
@@ -189,6 +185,15 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         field: err.path.join('.'),
       }));
       sendValidationError(res, errors);
+      return;
+    }
+    // Handle manual errors thrown from transaction
+    if (error.message === 'USER_EXISTS') {
+      sendError(res, 'User already exists', 409, 'USER_EXISTS');
+      return;
+    }
+    if (error.message === 'INVALID_INVITATION') {
+      sendError(res, 'Invalid or expired invitation token', 400, 'INVALID_INVITATION');
       return;
     }
     next(error);
@@ -667,11 +672,51 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
     // Mark user as verified and active
-    typedUser.isActive = true;
-    typedUser.isEmailVerified = true;
-    typedUser.security.verificationToken = undefined;
-    typedUser.security.verificationTokenExpiry = undefined;
-    await typedUser.save();
+    // ✅ FEATURE 6: Transaction safe Company Auto-Creation
+    // If user has no company, create one now within a transaction
+    if (!typedUser.companyId) {
+      await withTransaction(async (session) => {
+        // Generate unique company name
+        let companyName = `${typedUser.name}'s Company`;
+        let nameExists = await Company.findOne({ name: companyName }).session(session);
+        let attempt = 1;
+
+        while (nameExists && attempt <= 10) {
+          companyName = `${typedUser.name}'s Company ${attempt}`;
+          nameExists = await Company.findOne({ name: companyName }).session(session);
+          attempt++;
+        }
+
+        const newCompany = new Company({
+          name: companyName,
+          owner: typedUser._id,
+          status: 'pending_verification',
+          address: { country: 'India' },
+          settings: { currency: 'INR', timezone: 'Asia/Kolkata' },
+        });
+
+        await newCompany.save({ session });
+
+        // Update user
+        typedUser.companyId = newCompany._id;
+        typedUser.teamRole = 'owner';
+        typedUser.isActive = true;
+        typedUser.isEmailVerified = true;
+        typedUser.security.verificationToken = undefined;
+        typedUser.security.verificationTokenExpiry = undefined;
+
+        await typedUser.save({ session });
+
+        logger.info(`Auto-created company ${newCompany._id} for user ${typedUser._id} during verification`);
+      });
+    } else {
+      // Just activate the user
+      typedUser.isActive = true;
+      typedUser.isEmailVerified = true;
+      typedUser.security.verificationToken = undefined;
+      typedUser.security.verificationTokenExpiry = undefined;
+      await typedUser.save();
+    }
 
     // ✅ AUTO-LOGIN: Generate tokens
     const accessToken = generateAccessToken(
@@ -719,6 +764,16 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
       { message: 'Email verified and auto-logged in' },
       req
     );
+
+    // ✅ ONBOARDING HOOK: Update progress
+    try {
+      if (typedUser.companyId) {
+        await OnboardingProgressService.updateStep(typedUser.companyId.toString(), 'emailVerified', typedUser._id.toString());
+      }
+    } catch (err) {
+      logger.error('Error updating onboarding progress for email verification:', err);
+      // Don't block login on onboarding error
+    }
 
     // ✅ Return user data for frontend to update auth state
     const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';

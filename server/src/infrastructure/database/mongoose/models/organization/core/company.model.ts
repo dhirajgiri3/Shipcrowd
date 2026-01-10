@@ -6,13 +6,14 @@ import * as crypto from 'crypto';
 export interface ICompany extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
-  address: {
-    line1: string;
+  owner?: mongoose.Types.ObjectId;
+  address?: {
+    line1?: string;
     line2?: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
   };
   billingInfo: {
     gstin?: string;
@@ -48,6 +49,8 @@ export interface ICompany extends Document {
     notificationEmail?: string;
     notificationPhone?: string;
     autoGenerateInvoice?: boolean;
+    currency?: string;
+    timezone?: string;
   };
   wallet: {
     balance: number;
@@ -75,6 +78,11 @@ const CompanySchema = new Schema<ICompany>(
       required: true,
       trim: true,
       unique: true, // This creates an index automatically
+    },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
     },
     address: {
       line1: {
@@ -142,6 +150,14 @@ const CompanySchema = new Schema<ICompany>(
       autoGenerateInvoice: {
         type: Boolean,
         default: true,
+      },
+      currency: {
+        type: String,
+        default: 'INR',
+      },
+      timezone: {
+        type: String,
+        default: 'Asia/Kolkata',
       },
     },
     wallet: {

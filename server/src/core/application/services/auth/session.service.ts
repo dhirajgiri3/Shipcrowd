@@ -27,49 +27,89 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 // ✅ FEATURE 11: Concurrent Session Limit
 const MAX_CONCURRENT_SESSIONS = parseInt(process.env.MAX_SESSIONS_PER_USER || '5');
 
+// ✅ FEATURE 12: Session Type Differentiation
+const MAX_SESSIONS_DESKTOP = 1;
+const MAX_SESSIONS_MOBILE = 2; // Mobile app + Mobile Web
+
 /**
  * Enforce concurrent session limit for a user
  * Automatically terminates oldest sessions if limit exceeded
  */
 export const enforceSessionLimit = async (
   userId: string,
-  newSessionId?: string
+  newSessionId?: string,
+  deviceType: string = 'other'
 ): Promise<number> => {
   try {
-    // Get all active sessions for user, sorted by lastActivity (oldest first)
+    // Fetch all active sessions
     const sessions = await Session.find({
       userId,
       expiresAt: { $gt: new Date() },
-    }).sort({ lastActivity: 1 });
+    }).sort({ lastActivity: 1 }); // Oldest first
 
     logger.info(`User ${userId} has ${sessions.length} active sessions`);
 
-    // If at or over limit, terminate oldest sessions
-    if (sessions.length >= MAX_CONCURRENT_SESSIONS) {
-      const sessionsToTerminate = sessions.slice(
-        0,
-        sessions.length - MAX_CONCURRENT_SESSIONS + 1
-      );
+    let terminatedCount = 0;
+    const sessionsToTerminateIds: string[] = [];
 
-      let terminatedCount = 0;
-      for (const session of sessionsToTerminate) {
-        // Skip the new session we just created (if provided)
-        if (newSessionId && (session._id as mongoose.Types.ObjectId).toString() === newSessionId) {
-          continue;
-        }
+    // 1. Enforce Device-Type Specific Limits
+    const normalizeDeviceType = (type: string | undefined): 'desktop' | 'mobile' => {
+      if (type === 'mobile' || type === 'tablet') return 'mobile';
+      return 'desktop';
+    };
 
-        await session.deleteOne();
-        terminatedCount++;
+    const normalizedNewType = normalizeDeviceType(deviceType);
 
-        logger.info(
-          `Terminated session ${session._id} for user ${userId} due to session limit (${MAX_CONCURRENT_SESSIONS})`
-        );
+    const sameTypeSessions = sessions.filter(s =>
+      normalizeDeviceType(s.deviceInfo?.type) === normalizedNewType
+    );
+
+    const limit = normalizedNewType === 'mobile' ? MAX_SESSIONS_MOBILE : MAX_SESSIONS_DESKTOP;
+
+    if (sameTypeSessions.length > limit) {
+      // Sessions to remove = Total - Limit. 
+      // Since sorted by time, we take the first N.
+      const countToRemove = sameTypeSessions.length - limit;
+      const toRemove = sameTypeSessions.slice(0, countToRemove);
+
+      for (const s of toRemove) {
+        // Don't kill the one we just started
+        const sId = (s._id as mongoose.Types.ObjectId).toString();
+        if (newSessionId && sId === newSessionId) continue;
+
+        sessionsToTerminateIds.push(sId);
       }
-
-      return terminatedCount;
     }
 
-    return 0;
+    // 2. Enforce Global Limit
+    // (Optional: if we want a global cap regardless of generic types)
+    if (sessions.length > MAX_CONCURRENT_SESSIONS) {
+      const remainingSessions = sessions.filter(s => !sessionsToTerminateIds.includes((s._id as mongoose.Types.ObjectId).toString()));
+      if (remainingSessions.length > MAX_CONCURRENT_SESSIONS) {
+        const countToRemove = remainingSessions.length - MAX_CONCURRENT_SESSIONS;
+        const toRemove = remainingSessions.slice(0, countToRemove);
+
+        for (const s of toRemove) {
+          const sId = (s._id as mongoose.Types.ObjectId).toString();
+          if (newSessionId && sId === newSessionId) continue;
+          if (!sessionsToTerminateIds.includes(sId)) {
+            sessionsToTerminateIds.push(sId);
+          }
+        }
+      }
+    }
+
+    // Execute Terminations
+    if (sessionsToTerminateIds.length > 0) {
+      await Session.deleteMany({ _id: { $in: sessionsToTerminateIds } });
+      terminatedCount = sessionsToTerminateIds.length;
+
+      logger.info(
+        `Terminated ${terminatedCount} sessions for user ${userId} to enforce limits (Type: ${deviceType}, Limit: ${limit})`
+      );
+    }
+
+    return terminatedCount;
   } catch (error) {
     logger.error('Error enforcing session limit:', error);
     // Don't throw - session creation should succeed even if cleanup fails
@@ -122,8 +162,64 @@ export const createSession = async (
 
     await session.save();
 
+    // ✅ FEATURE 8 & 9: Device Tracking & Security Notifications
+    try {
+      const { User } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+      const { sendNewDeviceLoginEmail } = await import('../communication/email.service.js');
+
+      const user = await User.findById(userId);
+      if (user) {
+        const currentDeviceId = session.deviceInfo?.deviceName || `${session.deviceInfo?.os} - ${session.deviceInfo?.browser}`;
+
+        // Check if device is trusted
+        const isTrusted = user.security.trustedDevices?.some(d =>
+          (d.deviceId === currentDeviceId) ||
+          (d.ip === session.ip && d.userAgent === session.userAgent)
+        );
+
+        if (!isTrusted) {
+          // Add to trusted devices
+          user.security.trustedDevices = user.security.trustedDevices || [];
+          user.security.trustedDevices.push({
+            deviceId: currentDeviceId, // Simple identifier for now
+            userAgent: session.userAgent,
+            ip: session.ip,
+            lastActive: new Date(),
+            addedAt: new Date()
+          });
+          await user.save();
+
+          // Send Alert
+          await sendNewDeviceLoginEmail(user.email, user.name, {
+            deviceType: session.deviceInfo?.type || 'unknown',
+            os: session.deviceInfo?.os || 'unknown',
+            browser: session.deviceInfo?.browser || 'unknown',
+            ip: session.ip || 'unknown',
+            time: new Date()
+          });
+
+          logger.info(`New device detected for user ${userId}. Alert sent.`);
+        } else {
+          // Update last active for trusted device
+          if (user.security.trustedDevices) {
+            const deviceIndex = user.security.trustedDevices.findIndex(d =>
+              (d.deviceId === currentDeviceId) ||
+              (d.ip === session.ip && d.userAgent === session.userAgent)
+            );
+            if (deviceIndex > -1) {
+              user.security.trustedDevices[deviceIndex].lastActive = new Date();
+              await user.save();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      logger.error('Error in device detection/notification:', e);
+      // Don't fail login for notification error
+    }
+
     // ✅ FEATURE 11: Enforce session limit after creating session
-    await enforceSessionLimit(userId.toString(), (session._id as mongoose.Types.ObjectId).toString());
+    await enforceSessionLimit(userId.toString(), (session._id as mongoose.Types.ObjectId).toString(), deviceType);
 
     return session;
   } catch (error) {
@@ -210,9 +306,14 @@ export const validateSessionWithReuseDetection = async (
             };
             await session.save();
 
-            // Revoke ALL sessions for this user (potential breach)
-            const revokedCount = await revokeAllSessions(session.userId.toString());
-            logger.warn(`Revoked ${revokedCount} sessions for user ${session.userId} due to token reuse`);
+            // ✅ FIX: Excessive Session Revocation
+            // Only revoke the compromised session, not all user sessions
+            // This prevents legitimate sessions on other devices from being logged out
+            session.isRevoked = true;
+            await session.save();
+            const revokedCount = 1;
+
+            logger.warn(`Revoked compromised session ${session._id} for user ${session.userId} due to token reuse`);
 
             // Log security breach directly to AuditLog (avoid circular import issues)
             const { AuditLog } = await import('../../../../infrastructure/database/mongoose/models/index.js');

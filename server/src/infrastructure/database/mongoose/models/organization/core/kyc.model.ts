@@ -2,12 +2,19 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 import { fieldEncryption } from 'mongoose-field-encryption';
 import crypto from 'crypto';
+import { KYCState } from '../../../../../../core/domain/types/kyc-state.js';
 
 // Define the interface for KYC document
 export interface IKYC extends Document {
   userId: mongoose.Types.ObjectId;
   companyId: mongoose.Types.ObjectId;
+
+  // ✅ FEATURE 10: KYC State Machine
+  state: KYCState;
+
+  /** @deprecated Use `state` instead */
   status: 'pending' | 'verified' | 'rejected';
+
   documents: {
     pan?: {
       number: string;
@@ -79,6 +86,13 @@ const KYCSchema = new Schema<IKYC>(
       type: Schema.Types.ObjectId,
       ref: 'Company',
       required: true,
+    },
+    // ✅ FEATURE 10: KYC State Machine
+    state: {
+      type: String,
+      enum: Object.values(KYCState),
+      default: KYCState.DRAFT,
+      index: true
     },
     status: {
       type: String,

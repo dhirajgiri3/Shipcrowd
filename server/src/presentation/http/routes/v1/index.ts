@@ -87,4 +87,8 @@ router.use('/export', exportRoutes);
 // Week 11: Weight Disputes & COD Remittance
 router.use('/disputes/weight', weightDisputesRoutes);
 
+// Week 11: Advanced Onboarding UX
+import onboardingRoutes from './onboarding/onboarding.routes';
+router.use('/onboarding', onboardingRoutes);
+
 export default router;

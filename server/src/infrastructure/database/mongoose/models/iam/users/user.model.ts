@@ -13,6 +13,8 @@ export interface IUser extends Document {
   companyId?: mongoose.Types.ObjectId;
   teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
   teamStatus?: 'active' | 'invited' | 'suspended';
+  // ✅ FEATURE 5: Tiered Access
+  accessTier: 'explorer' | 'sandbox' | 'production';
   // OAuth fields
   googleId?: string;
   oauthProvider?: 'email' | 'google';
@@ -48,6 +50,14 @@ export interface IUser extends Document {
   };
   security: {
     tokenVersion?: number;
+    // ✅ FEATURE 8: Device Tracking
+    trustedDevices?: {
+      deviceId: string;
+      userAgent?: string;
+      ip?: string;
+      lastActive: Date;
+      addedAt: Date;
+    }[];
     verificationToken?: string;
     verificationTokenExpiry?: Date;
     resetToken?: string;
@@ -147,6 +157,12 @@ const UserSchema = new Schema<IUser>(
       enum: ['active', 'invited', 'suspended'],
       default: 'active',
     },
+    // ✅ FEATURE 5: Tiered Access
+    accessTier: {
+      type: String,
+      enum: ['explorer', 'sandbox', 'production'],
+      default: 'explorer',
+    },
     // OAuth fields
     googleId: {
       type: String,
@@ -210,6 +226,14 @@ const UserSchema = new Schema<IUser>(
         type: Number,
         default: 0,
       },
+      // ✅ FEATURE 8: Device Tracking Schema
+      trustedDevices: [{
+        deviceId: { type: String, required: true }, // UUID or hash of UA+IP
+        userAgent: String,
+        ip: String,
+        lastActive: Date,
+        addedAt: { type: Date, default: Date.now }
+      }],
       verificationToken: String,
       verificationTokenExpiry: Date,
       resetToken: String,

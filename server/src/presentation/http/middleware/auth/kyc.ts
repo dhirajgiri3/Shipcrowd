@@ -99,36 +99,34 @@ export const checkKYC = async (
 
         // ✅ FEATURE 14: Cross-Company KYC Bypass Prevention
         // Verify that the user's KYC belongs to their current company
-        // This prevents users from switching companies and bypassing KYC
         if (user.companyId) {
             const { KYC } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+            const { KYCState } = await import('../../../../core/domain/types/kyc-state.js');
 
+            // Stricter check: Must find a verified KYC for THIS specific company
             const kycRecord = await KYC.findOne({
                 userId: user._id,
-                status: 'verified',
-            }).select('companyId status');
+                companyId: user.companyId,
+                state: KYCState.VERIFIED, // Use proper Enum state
+            }).select('_id state');
 
-            if (kycRecord && kycRecord.companyId) {
-                // Check if KYC companyId matches user's current companyId
-                if (kycRecord.companyId.toString() !== user.companyId.toString()) {
-                    logger.warn(`Cross-company KYC bypass attempt detected`, {
-                        userId: user._id,
-                        userCompanyId: user.companyId,
-                        kycCompanyId: kycRecord.companyId,
-                        endpoint: req.path,
-                    });
+            if (!kycRecord) {
+                logger.warn(`KYC bypass attempt or missing KYC for company access`, {
+                    userId: user._id,
+                    userCompanyId: user.companyId,
+                    endpoint: req.path,
+                });
 
-                    res.status(403).json({
-                        success: false,
-                        message: 'Your KYC verification is associated with a different company. Please complete KYC for your current company.',
-                        code: 'KYC_COMPANY_MISMATCH',
-                        data: {
-                            kycUrl: '/kyc',
-                            requiresNewKYC: true,
-                        },
-                    });
-                    return;
-                }
+                res.status(403).json({
+                    success: false,
+                    message: 'Access denied. You must complete KYC for your current company.',
+                    code: 'KYC_REQUIRED_FOR_COMPANY',
+                    data: {
+                        kycUrl: '/kyc',
+                        requiresNewKYC: true,
+                    },
+                });
+                return;
             }
         }
 

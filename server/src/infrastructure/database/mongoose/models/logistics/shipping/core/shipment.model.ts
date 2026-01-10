@@ -133,6 +133,7 @@ export interface IShipment extends Document {
   };
 
   isDeleted: boolean;
+  isDemoData?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -402,6 +403,11 @@ const ShipmentSchema = new Schema<IShipment>(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    isDemoData: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {

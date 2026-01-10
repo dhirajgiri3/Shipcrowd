@@ -81,6 +81,7 @@ export interface IOrder extends Document {
   notes?: string;
   tags?: string[];
   isDeleted: boolean;
+  isDemoData?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -270,6 +271,11 @@ const OrderSchema = new Schema<IOrder>(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    isDemoData: {
+      type: Boolean,
+      default: false,
+      index: true, // Useful for cleanup queries
     },
   },
   {

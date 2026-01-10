@@ -128,3 +128,15 @@ export { default as AuditLog } from './system/audit/audit-log.model';
 export * from './system/audit/audit-log.model';
 export { default as ReportConfig } from './system/reporting/report-config.model';
 export * from './system/reporting/report-config.model';
+
+// Onboarding & Gamification
+export { default as OnboardingProgress } from './onboarding/onboarding-progress.model';
+export * from './onboarding/onboarding-progress.model';
+export { default as Achievement } from './onboarding/achievement.model';
+export * from './onboarding/achievement.model';
+export { default as UserPersona } from './onboarding/user-persona.model';
+export * from './onboarding/user-persona.model';
+export { default as ProductTour } from './onboarding/product-tour.model';
+export * from './onboarding/product-tour.model';
+export { default as TourCompletion } from './onboarding/tour-completion.model';
+export * from './onboarding/tour-completion.model';

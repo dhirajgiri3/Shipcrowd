@@ -22,4 +22,11 @@ export {
   permissions,
   checkPermission,
   getUserPermissions,
+  // New Authentication Middleware
+  checkKYC,
+  requireAccessTier,
+  determineUserTier
 };
+
+import { checkKYC } from './auth/kyc';
+import { requireAccessTier, determineUserTier } from './auth/access-tier.middleware';

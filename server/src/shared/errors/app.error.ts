@@ -181,7 +181,28 @@ export const normalizeError = (error: any): AppError => {
     // Handle Mongoose/MongoDB errors
     if (error.name === 'MongoError' || error.name === 'MongoServerError') {
         if (error.code === 11000) {
-            return new ConflictError('Duplicate entry exists', ErrorCode.BIZ_ALREADY_EXISTS);
+            let field = 'field';
+            let value = '';
+
+            if (error.keyPattern && error.keyValue) {
+                field = Object.keys(error.keyPattern)[0];
+                value = error.keyValue[field];
+            }
+            else if (error.message) {
+                const indexMatch = error.message.match(/index: (\w+)_/);
+                const keyMatch = error.message.match(/dup key: \{ (\w+): "?([^"}\s]+)"? \}/);
+
+                if (indexMatch) field = indexMatch[1];
+                if (keyMatch) {
+                    field = keyMatch[1];
+                    value = keyMatch[2];
+                }
+            }
+
+            const message = value
+                ? `${field.charAt(0).toUpperCase() + field.slice(1)} '${value}' already exists`
+                : 'Duplicate entry exists';
+            return new ConflictError(message, ErrorCode.BIZ_ALREADY_EXISTS);
         }
         return new DatabaseError(error.message);
     }

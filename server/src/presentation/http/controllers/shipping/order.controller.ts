@@ -24,6 +24,7 @@ import {
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
+import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 
 export const createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -48,6 +49,13 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
         });
 
         await createAuditLog(auth.userId, auth.companyId, 'create', 'order', String(order._id), { orderNumber: order.orderNumber }, req);
+
+        // ✅ ONBOARDING HOOK: Update progress
+        try {
+            await OnboardingProgressService.updateStep(auth.companyId, 'firstOrderCreated', auth.userId);
+        } catch (err) {
+            logger.error('Error updating onboarding progress for order creation:', err);
+        }
 
         sendCreated(res, { order }, 'Order created successfully');
     } catch (error) {

@@ -39,7 +39,8 @@ const AuditLogSchema = new Schema<IAuditLog>(
         'create', 'read', 'update', 'delete',
         'login', 'logout', 'verify', 'generate', 'other',
         'security', 'password_change', 'email_change',
-        'account_lock', 'account_unlock', 'session_revoke', 'profile_update', 'invite'
+        'account_lock', 'account_unlock', 'session_revoke', 'profile_update', 'invite',
+        'compliance_check', 'kyc_update', 'data_access'
       ],
       required: true,
     },

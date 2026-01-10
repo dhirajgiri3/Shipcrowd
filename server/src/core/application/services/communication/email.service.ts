@@ -793,20 +793,6 @@ export const sendAccountRecoveryEmail = async (
               <li>Reset your password</li>
               <li>Regain full access to your ShipCrowd account</li>
             </ul>
-            
-            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
-              <strong>🔐 Security Note:</strong> If you didn't request this recovery link, please ignore this email and ensure your account credentials are secure. Your account remains protected.
-            </p>
-            
-            <p>Thank you,<br>The ShipCrowd Security Team</p>
-          </div>
-          <div class="footer">
-            <p>This is an automated security email from ShipCrowd</p>
-            <p>© ${new Date().getFullYear()} ShipCrowd. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-    </html>
   `;
 
   const text = `
@@ -829,6 +815,62 @@ The ShipCrowd Security Team
   return sendEmail(to, '🔓 Account Recovery - ShipCrowd', html, text);
 };
 
+
+/**
+ * Send a new device login notification
+ */
+export const sendNewDeviceLoginEmail = async (
+  to: string,
+  name: string,
+  deviceInfo: {
+    deviceType: string;
+    os: string;
+    browser: string;
+    ip: string;
+    location?: string;
+    time: Date;
+  }
+): Promise<boolean> => {
+  // Check if we have a template ID
+  const templateId = process.env.SENDGRID_NEW_DEVICE_LOGIN_TEMPLATE_ID;
+
+  if (templateId && EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    return sendEmail(
+      to,
+      'New Sign-in to Your Account',
+      '',
+      '',
+      undefined,
+      templateId,
+      {
+        name,
+        device_type: deviceInfo.deviceType,
+        os: deviceInfo.os,
+        browser: deviceInfo.browser,
+        ip: deviceInfo.ip,
+        location: deviceInfo.location || 'Unknown Location',
+        time: deviceInfo.time.toLocaleString(),
+      }
+    );
+  } else {
+    const html = `
+      <h1>New Sign-in Detected</h1>
+      <p>Hello ${name},</p>
+      <p>We detected a new sign-in to your ShipCrowd account from a new device.</p>
+      <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <p><strong>Device:</strong> ${deviceInfo.deviceType} (${deviceInfo.os})</p>
+        <p><strong>Browser:</strong> ${deviceInfo.browser}</p>
+        <p><strong>IP Address:</strong> ${deviceInfo.ip}</p>
+        <p><strong>Time:</strong> ${deviceInfo.time.toLocaleString()}</p>
+      </div>
+      <p>If this was you, you can safely ignore this email.</p>
+      <p><strong>If this wasn't you, please reset your password immediately.</strong></p>
+      <p>Thank you,<br>The ShipCrowd Team</p>
+    `;
+    return sendEmail(to, 'New Sign-in to Your Account', html);
+  }
+};
+
 export default {
   sendEmail,
   sendVerificationEmail,
@@ -844,4 +886,5 @@ export default {
   sendMagicLinkEmail,
   sendOwnerInvitationEmail,
   sendAccountRecoveryEmail,
+  sendNewDeviceLoginEmail,
 };
