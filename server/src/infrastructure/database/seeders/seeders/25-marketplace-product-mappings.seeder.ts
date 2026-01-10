@@ -20,44 +20,63 @@ import Inventory from '../../mongoose/models/logistics/inventory/store/inventory
 import { logger, createTimer } from '../utils/logger.utils';
 import { selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 
-function generateMappingData(store: any, inventoryItem: any) {
-    const syncStatusWeight = {
-        'in-sync': 0.80,
-        'out-of-sync': 0.10,
-        'overstock': 0.05,
-        'understock': 0.05
-    };
+// Helper to generate common fields
+const generateCommonFields = (store: any, inventory: any) => ({
+    companyId: store.companyId,
+    shipcrowdSKU: inventory.sku.toUpperCase(),
+    shipcrowdProductName: inventory.productName,
+    syncInventory: true,
+    syncPrice: Math.random() > 0.8, // Occasional price sync
+    isActive: Math.random() > 0.1, // 90% active
+});
 
-    // Type casting for status
-    const statusResult = selectWeightedFromObject(syncStatusWeight) as 'in-sync' | 'out-of-sync' | 'overstock' | 'understock';
-
-    const marketplaceQty = Math.floor(inventoryItem.available * 0.95);
-
+function generateShopifyMapping(store: any, inventory: any) {
     return {
-        storeId: store._id,
-        companyId: store.companyId,
-        marketplaceProductId: `gid://${store.platform || 'shopify'}/Product/${Math.floor(Math.random() * 1000000)}`,
-        marketplaceSku: `EXT-${inventoryItem.sku}-${Math.floor(Math.random() * 1000)}`,
-        internalSku: inventoryItem.sku,
-        internalProductName: inventoryItem.productName,
-        marketplaceProductName: `${inventoryItem.productName} (Marketplace)`,
-        inventory: {
-            marketplaceQty: marketplaceQty,
-            internalQty: inventoryItem.available,
-            lastSynced: new Date(),
-            syncStatus: statusResult
-        },
-        pricing: {
-            marketplacePrice: inventoryItem.cost * 2,
-            internalPrice: inventoryItem.cost * 1.5, // Check cost field on inventory? If not use default
-            syncStatus: Math.random() > 0.05 ? 'in-sync' : 'price-mismatch',
-            currency: 'INR'
-        },
-        status: selectWeightedFromObject({ 'active': 0.85, 'archived': 0.10, 'delisted': 0.05 }),
-        isSynced: true,
-        lastSyncedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        ...generateCommonFields(store, inventory),
+        shopifyStoreId: store._id,
+        shopifyProductId: `gid://shopify/Product/${Math.floor(Math.random() * 100000000)}`,
+        shopifyVariantId: `gid://shopify/ProductVariant/${Math.floor(Math.random() * 100000000)}`,
+        shopifySKU: inventory.sku, // Ideally matches
+        shopifyTitle: inventory.productName + ' (Shopify)',
+        mappingType: selectWeightedFromObject({ 'AUTO': 0.7, 'MANUAL': 0.3 }),
+        syncErrors: 0
+    };
+}
+
+function generateWooCommerceMapping(store: any, inventory: any) {
+    return {
+        ...generateCommonFields(store, inventory),
+        woocommerceStoreId: store._id,
+        woocommerceProductId: Math.floor(Math.random() * 100000),
+        woocommerceVariationId: Math.random() > 0.5 ? Math.floor(Math.random() * 10000) : undefined,
+        woocommerceSKU: inventory.sku,
+        woocommerceTitle: inventory.productName + ' (Woo)',
+        mappingType: selectWeightedFromObject({ 'AUTO': 0.7, 'MANUAL': 0.3 }),
+        syncErrors: 0
+    };
+}
+
+function generateAmazonMapping(store: any, inventory: any) {
+    return {
+        ...generateCommonFields(store, inventory),
+        amazonStoreId: store._id,
+        amazonASIN: `B0${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        amazonSKU: `AMZ-${inventory.sku}`,
+        fulfillmentType: selectWeightedFromObject({ 'MFN': 0.8, 'FBA': 0.2 }),
+        mappingType: selectWeightedFromObject({ 'AUTO': 0.6, 'MANUAL': 0.4 }),
+        lastSyncStatus: 'SUCCESS'
+    };
+}
+
+function generateFlipkartMapping(store: any, inventory: any) {
+    return {
+        ...generateCommonFields(store, inventory),
+        flipkartStoreId: store._id,
+        flipkartFSN: `FSN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+        flipkartSKU: `FK-${inventory.sku}`,
+        flipkartTitle: inventory.productName + ' (Flipkart)',
+        mappingType: selectWeightedFromObject({ 'AUTO': 0.6, 'MANUAL': 0.4 }),
+        lastSyncStatus: 'SUCCESS'
     };
 }
 
@@ -71,51 +90,57 @@ export async function seedMarketplaceProductMappings(): Promise<void> {
         const amazonStores = await AmazonStore.find().lean();
         const flipkartStores = await FlipkartStore.find().lean();
 
-        const allStores = [
-            { type: 'shopify', stores: shopifyStores, model: ShopifyProductMapping },
-            { type: 'woocommerce', stores: wooCommerceStores, model: WooCommerceProductMapping },
-            { type: 'amazon', stores: amazonStores, model: AmazonProductMapping },
-            { type: 'flipkart', stores: flipkartStores, model: FlipkartProductMapping }
+        // Group configurations per store type
+        const configs = [
+            { type: 'shopify', stores: shopifyStores, model: ShopifyProductMapping, generator: generateShopifyMapping },
+            { type: 'woocommerce', stores: wooCommerceStores, model: WooCommerceProductMapping, generator: generateWooCommerceMapping },
+            { type: 'amazon', stores: amazonStores, model: AmazonProductMapping, generator: generateAmazonMapping },
+            { type: 'flipkart', stores: flipkartStores, model: FlipkartProductMapping, generator: generateFlipkartMapping }
         ];
 
         let totalMappings = 0;
-
-        // Fetch all inventory once (might be large, but fine for seeding)
         const allInventory = await Inventory.find().lean();
 
         if (allInventory.length === 0) {
             logger.warn('No inventory found. specific mappings will be skipped.');
-            // Should we return or try with mock data if inventory missing? Return for now.
             return;
         }
 
-        for (const { type, stores, model } of allStores) {
+        for (const config of configs) {
             const mappingsToInsert: any[] = [];
+            const uniqueKeys = new Set(); // Track unique keys to prevent duplicates
 
-            for (const store of stores) {
-                // Filter inventory for this company
+            for (const store of config.stores) {
                 const companyInventory = allInventory.filter((inv: any) => inv.companyId.toString() === (store as any).companyId.toString());
 
                 if (companyInventory.length === 0) continue;
 
-                // Map 80%
-                const mappingsCount = Math.floor(companyInventory.length * 0.8);
-                const itemsToMap = companyInventory.slice(0, mappingsCount);
+                // Map ~60% of inventory
+                const itemsToMap = companyInventory.sort(() => 0.5 - Math.random()).slice(0, Math.floor(companyInventory.length * 0.6));
 
                 for (const item of itemsToMap) {
-                    mappingsToInsert.push(generateMappingData(store, item));
+                    const mappedData = config.generator(store, item);
+
+                    // Prevent duplicates in current batch (though Model unique index also protects)
+                    // For simplicity, just push. We set ordered: false helper.
+                    mappingsToInsert.push(mappedData);
                 }
             }
 
             if (mappingsToInsert.length > 0) {
-                // Bulk insert could fail on duplicates if not careful, but we generate unique external IDs mostly
                 try {
-                    await (model as any).insertMany(mappingsToInsert, { ordered: false });
-                } catch (e) {
-                    // Continue on partial success
+                    await (config.model as any).insertMany(mappingsToInsert, { ordered: false });
+                    totalMappings += mappingsToInsert.length;
+                    logger.debug(`Seeded ${mappingsToInsert.length} ${config.type} product mappings`);
+                } catch (e: any) {
+                    // Ignore duplicate key errors (code 11000)
+                    if (e.code !== 11000) {
+                        logger.warn(`Partial error seeding ${config.type} mappings: ${e.message}`);
+                    } else {
+                        // Count actually inserted if possible, or just ignore exact count for now
+                        totalMappings += (e.result?.nInserted || 0);
+                    }
                 }
-                totalMappings += mappingsToInsert.length;
-                logger.debug(`Seeded ${mappingsToInsert.length} ${type} product mappings`);
             }
         }
 

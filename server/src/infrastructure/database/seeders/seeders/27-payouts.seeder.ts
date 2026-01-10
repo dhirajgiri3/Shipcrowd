@@ -50,9 +50,11 @@ export async function seedPayouts(): Promise<void> {
 
             // Generate Payout Record
             const payoutId = new mongoose.Types.ObjectId();
+            const payoutIdString = `PO-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
             const payoutData = {
                 _id: payoutId,
+                payoutId: payoutIdString,
                 company: rem.companyId,
                 payoutType: 'cod_remittance',
                 codRemittanceId: rem._id,

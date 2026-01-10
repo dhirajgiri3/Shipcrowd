@@ -75,19 +75,18 @@ export async function seedRateCardsAndZones(): Promise<void> {
             // Create Zones
             for (const zoneDef of ZONE_DEFINITIONS) {
                 const zone = new Zone({
-                    name: `${zoneDef.name} - ${company.name.substring(0, 10)}`,
+                    name: `${zoneDef.name} - ${company.name} - ${company._id.toString().substring(0, 4)}`,
                     companyId: company._id,
                     postalCodes: generatePostalCodes(zoneDef.postalCodePrefixes),
                     serviceability: {
                         carriers: carriers,
-                        serviceTypes: ['Standard', 'Express']
+                        serviceTypes: ['Standard', 'Express', 'Air']
                     },
-                    transitTimes: carriers.map(carrier => ({
-                        carrier,
-                        serviceType: 'Standard',
-                        minDays: zoneDef.transitDays.min,
-                        maxDays: zoneDef.transitDays.max
-                    }))
+                    transitTimes: carriers.flatMap(carrier => [
+                        { carrier, serviceType: 'Standard', minDays: zoneDef.transitDays.min, maxDays: zoneDef.transitDays.max },
+                        { carrier, serviceType: 'Express', minDays: Math.max(1, zoneDef.transitDays.min - 1), maxDays: Math.max(1, zoneDef.transitDays.max - 1) },
+                        { carrier, serviceType: 'Air', minDays: 1, maxDays: 2 }
+                    ])
                 });
 
                 await zone.save();
@@ -100,43 +99,41 @@ export async function seedRateCardsAndZones(): Promise<void> {
                         zoneId: zone._id,
                         carrier,
                         serviceType: 'Standard',
-                        additionalPrice: zoneDef.basePrice / 5, // Additional price logic
+                        additionalPrice: zoneDef.basePrice / 5,
                         transitDays: zoneDef.transitDays.max
+                    });
+                    zoneRules.push({
+                        zoneId: zone._id,
+                        carrier,
+                        serviceType: 'Express',
+                        additionalPrice: (zoneDef.basePrice / 5) * 1.5,
+                        transitDays: Math.max(1, zoneDef.transitDays.max - 1)
                     });
                 }
             }
 
             // Create Rate Card
             const rateCard = new RateCard({
-                name: `Standard Rates - ${company.name}`,
+                name: `Standard Rates - ${company.name} - ${company._id.toString().substring(0, 4)}`,
                 companyId: company._id,
                 status: 'active',
                 effectiveDates: {
                     startDate: new Date(),
                     endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
                 },
-                baseRates: carriers.map(carrier => ({
-                    carrier,
-                    serviceType: 'Standard',
-                    basePrice: 40, // Base price for local/default
-                    minWeight: 0,
-                    maxWeight: 50
-                })),
+                baseRates: carriers.flatMap(carrier => [
+                    { carrier, serviceType: 'Standard', basePrice: 40, minWeight: 0, maxWeight: 5 },
+                    { carrier, serviceType: 'Express', basePrice: 60, minWeight: 0, maxWeight: 5 },
+                    { carrier, serviceType: 'Air', basePrice: 80, minWeight: 0, maxWeight: 5 }
+                ]),
                 weightRules: [
-                    {
-                        minWeight: 0,
-                        maxWeight: 0.5,
-                        pricePerKg: 0,
-                        carrier: 'Delhivery', // Just examples
-                        serviceType: 'Standard'
-                    },
-                    {
-                        minWeight: 0.5,
-                        maxWeight: 50,
-                        pricePerKg: 20, // Extra per kg
-                        carrier: 'Delhivery',
-                        serviceType: 'Standard'
-                    }
+                    { minWeight: 0, maxWeight: 0.5, pricePerKg: 0, carrier: 'Delhivery', serviceType: 'Standard' },
+                    { minWeight: 0.5, maxWeight: 50, pricePerKg: 20, carrier: 'Delhivery', serviceType: 'Standard' },
+                    // Generic fallback logic would be handled by engine, but seeding specific examples
+                    ...carriers.flatMap(c => [
+                        { minWeight: 0.5, maxWeight: 50, pricePerKg: 25, carrier: c, serviceType: 'Express' },
+                        { minWeight: 0.5, maxWeight: 50, pricePerKg: 35, carrier: c, serviceType: 'Air' }
+                    ])
                 ],
                 zoneRules: zoneRules
             });

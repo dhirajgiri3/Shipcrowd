@@ -31,6 +31,7 @@ export async function seedAuditLogs(): Promise<void> {
 
         // 1. Seed Order Audit Logs
         // Using cursor for memory efficiency
+        const totalOrders = await Order.countDocuments();
         const orderCursor = Order.find().cursor();
         let orderCount = 0;
 
@@ -70,8 +71,23 @@ export async function seedAuditLogs(): Promise<void> {
 
             let lastTime = createdAt;
             for (const status of statuses) {
-                lastTime = new Date(lastTime.getTime() + randomInt(10, 240) * 60 * 1000); // Add minutes
-                if (lastTime > new Date()) lastTime = new Date();
+                // Advance time but clamp to now() to prevent future dates
+                const timeAdvance = randomInt(10, 240) * 60 * 1000;
+                let nextTime = new Date(lastTime.getTime() + timeAdvance);
+
+                if (nextTime > new Date()) {
+                    nextTime = new Date(); // Snap to now if future
+                }
+
+                // If snapping made it same as lastTime, add just 1 second to preserve order
+                if (nextTime <= lastTime) {
+                    nextTime = new Date(lastTime.getTime() + 1000);
+                }
+
+                // If still future (because lastTime was already now), break loop as event hasn't happened yet
+                if (nextTime > new Date()) break;
+
+                lastTime = nextTime;
 
                 logsBuffer.push({
                     userId: selectRandom(users)._id,
@@ -93,7 +109,7 @@ export async function seedAuditLogs(): Promise<void> {
                 await AuditLog.insertMany(logsBuffer, { ordered: false });
                 totalLogs += logsBuffer.length;
                 logsBuffer = [];
-                logger.progress(orderCount, 5000, 'Orders Processed (Approx)'); // 5000 is approx total
+                logger.progress(orderCount, totalOrders, 'Orders Processed');
             }
         }
 
