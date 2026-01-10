@@ -2,14 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { User } from '../../../../infrastructure/database/mongoose/models';
+import { User, RecoveryToken } from '../../../../infrastructure/database/mongoose/models';
 import {
   setupSecurityQuestions,
   setupBackupEmail,
   generateRecoveryKeys
 } from '../../../../core/application/services/user/recovery.service';
 import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
-import { sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
+import { sendAccountRecoveryEmail, sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
@@ -287,8 +287,6 @@ export const requestAccountRecovery = async (
     }
 
     // Dynamically import RecoveryToken and email service
-    const { RecoveryToken } = await import('../../../../infrastructure/database/mongoose/models/index.js');
-    const { sendAccountRecoveryEmail } = await import('../../../../core/application/services/communication/email.service.js');
 
     // Generate recovery token
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -353,7 +351,6 @@ export const verifyRecoveryToken = async (
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // Dynamically import RecoveryToken
-    const { RecoveryToken } = await import('../../../../infrastructure/database/mongoose/models/index.js');
 
     // Find valid recovery token
     const recoveryToken = await RecoveryToken.findOne({

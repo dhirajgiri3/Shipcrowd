@@ -17,6 +17,7 @@
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import { WooCommerceProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import { WooCommerceSyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { Inventory } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceClient from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -350,11 +351,33 @@ export default class WooCommerceInventorySyncService {
         count: mappings.length,
       });
 
-      // TODO: Fetch actual inventory levels from Shipcrowd inventory system
-      // For now, using placeholder logic
+      // Fetch the store to get companyId
+      const store = await WooCommerceStore.findById(storeId);
+      if (!store) {
+        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+      }
+
+      // Get SKUs to query inventory
+      const skus = mappings.map(m => m.shipcrowdSKU);
+
+      // Fetch inventory for these SKUs across all warehouses for this company
+      const inventoryItems = await Inventory.find({
+        companyId: store.companyId,
+        sku: { $in: skus }
+      }).lean();
+
+      // Create a map of SKU -> Total Available Quantity
+      const skuQuantityMap = new Map<string, number>();
+
+      inventoryItems.forEach(item => {
+        const available = Math.max(0, item.onHand - item.reserved - item.damaged);
+        const currentQty = skuQuantityMap.get(item.sku) || 0;
+        skuQuantityMap.set(item.sku, currentQty + available);
+      });
+
       const updates: InventoryUpdate[] = mappings.map((mapping) => ({
         sku: mapping.shipcrowdSKU,
-        quantity: 0, // Replace with actual inventory lookup
+        quantity: skuQuantityMap.get(mapping.shipcrowdSKU) || 0,
         productId: mapping.woocommerceProductId,
         variationId: mapping.woocommerceVariationId || undefined,
       }));

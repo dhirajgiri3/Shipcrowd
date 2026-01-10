@@ -322,10 +322,29 @@ export async function seedSalesCRM(): Promise<void> {
         }
 
         // Generate call logs from existing NDR events
-        const ndrEvents = await NDREvent.find({}).limit(200).lean();
+        // Get NDR events with their shipments in one query for efficiency
+        const ndrEvents = await NDREvent.find({})
+            .limit(500)
+            .lean();
+
         const callLogs: any[] = [];
 
         logger.info(`Found ${ndrEvents.length} NDR events for call log generation`);
+
+        // Get all shipment IDs from NDR events
+        const shipmentIds = ndrEvents
+            .map((ndr: any) => ndr.shipment)
+            .filter(Boolean);
+
+        // Fetch all shipments at once
+        const shipments = await Shipment.find({
+            _id: { $in: shipmentIds }
+        }).lean();
+
+        // Create a map for quick lookup
+        const shipmentMap = new Map(
+            shipments.map((s: any) => [s._id.toString(), s])
+        );
 
         let noShipmentCount = 0;
         let noDetailsCount = 0;
@@ -333,27 +352,28 @@ export async function seedSalesCRM(): Promise<void> {
 
         for (const ndr of ndrEvents) {
             const ndrAny = ndr as any;
-            // Get shipment details - ensure proper ObjectId conversion
-            const shipment = await Shipment.findById(
-                new mongoose.Types.ObjectId(ndrAny.shipment)
-            ).lean() as any;
+
+            // Look up shipment from our map
+            const shipment = shipmentMap.get(ndrAny.shipment?.toString());
+
             if (!shipment) {
                 noShipmentCount++;
                 continue;
             }
 
-            if (!shipment.deliveryDetails || !shipment.deliveryDetails.recipientName || !shipment.deliveryDetails.recipientPhone) {
+            // Check if shipment has delivery details
+            if (!shipment.deliveryDetails?.recipientName || !shipment.deliveryDetails?.recipientPhone) {
                 noDetailsCount++;
                 continue;
             }
 
             successCount++;
-            // Generate 1-3 call attempts per NDR
-            const callCount = randomInt(1, 3);
+            // Generate 1-2 call attempts per NDR
+            const callCount = randomInt(1, 2);
             for (let i = 0; i < callCount; i++) {
                 callLogs.push(generateCallLog(
                     ndrAny._id,
-                    ndrAny.shipment,
+                    shipment._id,
                     ndrAny.company,
                     shipment.deliveryDetails.recipientName,
                     shipment.deliveryDetails.recipientPhone

@@ -1,4 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { fieldEncryption } from 'mongoose-field-encryption';
+import * as crypto from 'crypto';
 
 // Define the interface for Integration document
 export interface IIntegration extends Document {
@@ -96,6 +98,34 @@ IntegrationSchema.index({ type: 1 });
 IntegrationSchema.index({ provider: 1 });
 IntegrationSchema.index({ isDeleted: 1 });
 IntegrationSchema.index({ 'settings.isActive': 1 });
+
+// ============================================================================
+// FIELD ENCRYPTION CONFIGURATION
+// ============================================================================
+// Encrypts sensitive credentials and PII at rest
+// Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Security
+// ============================================================================
+
+// Validate encryption key exists at startup
+if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
+  // Warn but don't crash if checking via other model first
+  console.warn(
+    '⚠️ ENCRYPTION_KEY warning in Integration model: key missing or too short. ' +
+    'Ensure .env has 64+ hex chars.'
+  );
+}
+
+// Add field-level encryption plugin
+// @ts-ignore
+IntegrationSchema.plugin(fieldEncryption, {
+  fields: [
+    'credentials'
+  ],
+  secret: process.env.ENCRYPTION_KEY || '0000000000000000000000000000000000000000000000000000000000000000', // Sane default
+  saltGenerator: () => crypto.randomBytes(8).toString('hex'),
+  encryptOnSave: true,
+  decryptOnFind: true,
+});
 
 // Create and export the Integration model
 const Integration = mongoose.model<IIntegration>('Integration', IntegrationSchema);

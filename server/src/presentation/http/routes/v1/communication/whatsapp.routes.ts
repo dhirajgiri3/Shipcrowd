@@ -1,7 +1,14 @@
 import express from 'express';
 import whatsappController from '../../../controllers/communication/whatsapp.controller';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 
 const router = express.Router();
+
+// Apply CSRF protection to all POST routes
+router.use(csrfProtection);
+
+// Protect all routes
+router.use(authenticate);
 
 /**
  * @route POST /api/whatsapp/message

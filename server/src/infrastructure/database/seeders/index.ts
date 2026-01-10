@@ -36,45 +36,45 @@ const COLLECTIONS_TO_CLEAR = [
     'inventories',
     'orders',
     'shipments',
-    'ndrevents',
-    'rtoevents',
-    'wallettransactions',
+    'ndr_events',  // Fixed: was 'ndrevents'
+    'rto_events',  // Fixed: was 'rtoevents'
+    'wallet_transactions',  // Fixed: was 'wallettransactions'
     'picklists',
-    'weightdisputes',
-    'codremittances',
+    'weight_disputes',  // Fixed: was 'weightdisputes'
+    'cod_remittances',  // Fixed: was 'codremittances'
     // New collections from Phase 2 seeders
-    'teaminvitations',
-    'teampermissions',
-    'teamactivities',
-    'salesrepresentatives',
+    'team_invitations',  // Fixed: was 'teaminvitations'
+    'team_permissions',  // Fixed: was 'teampermissions'
+    'team_activities',  // Fixed: was 'teamactivities'
+    'sales_representatives',  // Fixed: was 'salesrepresentatives'
     'leads',
-    'calllogs',
-    'commissionrules',
-    'commissiontransactions',
-    'commissionadjustments',
+    'call_logs',  // Fixed: was 'calllogs'
+    'commission_rules',  // Fixed: was 'commissionrules'
+    'commission_transactions',  // Fixed: was 'commissiontransactions'
+    'commission_adjustments',  // Fixed: was 'commissionadjustments'
     'coupons',
-    'warehousezones',
-    'warehouselocations',
-    'packingstations',
-    // Marketplace stores
-    'shopifystores',
-    'woocommercestores',
-    'amazonstores',
-    'flipkartstores',
+    'warehouse_zones',  // Fixed: was 'warehousezones'
+    'warehouse_locations',  // Fixed: was 'warehouselocations'
+    'packing_stations',  // Fixed: was 'packingstations'
+    // Marketplace stores (Note: These use camelCase in MongoDB, not snake_case)
+    'shopifystores',  // Actual MongoDB collection name
+    'woocommercestores',  // Actual MongoDB collection name
+    'amazonstores',  // Actual MongoDB collection name
+    'flipkartstores',  // Actual MongoDB collection name
     // Integrations
     'integrations',
     // Phase 3 collections
-    'ratecards',
+    'rate_cards',  // Fixed: was 'ratecards'
     'zones',
-    'shopifysynclogs',
-    'woocommercesynclogs',
-    'amazonsynclogs',
-    'flipkartsynclogs',
-    'shopifyproductmappings',
-    'woocommerceproductmappings',
-    'amazonproductmappings',
-    'flipkartproductmappings',
-    'auditlogs',
+    'shopify_sync_logs',  // Fixed: was 'shopifysynclogs'
+    'woocommerce_sync_logs',  // Fixed: was 'woocommercesynclogs'
+    'amazon_sync_logs',  // Fixed: was 'amazonsynclogs'
+    'flipkart_sync_logs',  // Fixed: was 'flipkartsynclogs'
+    'shopify_product_mappings',  // Fixed: was 'shopifyproductmappings'
+    'woocommerce_product_mappings',  // Fixed: was 'woocommerceproductmappings'
+    'amazon_product_mappings',  // Fixed: was 'amazonproductmappings'
+    'flipkart_product_mappings',  // Fixed: was 'flipkartproductmappings'
+    'audit_logs',  // Fixed: was 'auditlogs'
     'payouts',
 ];
 
@@ -198,9 +198,9 @@ async function runSeeders(): Promise<void> {
         { name: 'Companies', fn: seedCompanies },
         { name: 'KYC', fn: seedKYC },
         { name: 'Warehouses', fn: seedWarehouses },
-        { name: 'Pick Lists', fn: seedPickLists },
         { name: 'Inventory', fn: seedInventory },
         { name: 'Orders', fn: seedOrders },
+        { name: 'Pick Lists', fn: seedPickLists },
         { name: 'Shipments', fn: seedShipments },
         { name: 'NDR Events', fn: seedNDREvents },
         { name: 'RTO Events', fn: seedRTOEvents },

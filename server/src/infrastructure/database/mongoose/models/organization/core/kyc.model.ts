@@ -219,7 +219,7 @@ KYCSchema.plugin(fieldEncryption, {
     'documents.bankAccount.accountNumber'
   ],
   secret: process.env.ENCRYPTION_KEY!,
-  saltGenerator: () => crypto.randomBytes(16).toString('hex'),
+  saltGenerator: () => crypto.randomBytes(8).toString('hex'),
   encryptOnSave: true,  // Automatically encrypt on save
   decryptOnFind: true,  // Automatically decrypt on retrieval
 });

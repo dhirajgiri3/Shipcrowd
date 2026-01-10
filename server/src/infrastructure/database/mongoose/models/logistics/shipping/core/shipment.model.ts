@@ -406,6 +406,7 @@ const ShipmentSchema = new Schema<IShipment>(
   },
   {
     timestamps: true,
+    optimisticConcurrency: true, // Auto-increment version key (__v) on updates to prevent race conditions
   }
 );
 

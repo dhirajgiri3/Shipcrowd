@@ -141,25 +141,15 @@ export class ShopifyOrderSyncService {
         syncErrors: [],
       };
 
-      // Fetch and process orders with pagination
-      const limit = 250; // Shopify max per page
-      let hasMore = true;
-      let pageInfo: string | null = null;
+      // Fetch and process orders with pagination using client.paginate
+      const iterator = client.paginate<ShopifyOrder>('/orders.json', {
+        status: 'any',
+        ...(sinceDate && { updated_at_min: sinceDate.toISOString() }),
+      }, 250);
 
-      while (hasMore) {
-        const params: any = {
-          limit,
-          status: 'any', // Get all orders (open, closed, cancelled)
-          ...(sinceDate && { updated_at_min: sinceDate.toISOString() }),
-          ...(pageInfo ? { page_info: pageInfo } : {}),
-        };
-
-        const response = await client.get<{ orders: ShopifyOrder[] }>('/orders.json', params);
-        const orders = response.orders || [];
-
+      for await (const orders of iterator) {
         logger.debug('Fetched orders batch', {
           count: orders.length,
-          pageInfo,
         });
 
         // Process batch
@@ -190,14 +180,6 @@ export class ShopifyOrderSyncService {
               error: error.message,
             });
           }
-        }
-
-        // Check for next page
-        hasMore = orders.length === limit;
-        if (hasMore && orders.length > 0) {
-          // Extract page_info from link header (would be in axios interceptor)
-          pageInfo = null; // Would be set from response headers
-          hasMore = false; // For now, process single batch (pagination logic TBD)
         }
       }
 

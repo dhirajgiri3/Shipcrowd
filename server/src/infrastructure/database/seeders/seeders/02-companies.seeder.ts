@@ -141,8 +141,12 @@ export async function seedCompanies(): Promise<void> {
             }
         }
 
-        // Insert all companies
-        const insertedCompanies = await Company.insertMany(companies);
+        // Insert all companies using create() to trigger encryption middleware
+        // Note: insertMany() bypasses Mongoose middleware, leaving sensitive data unencrypted
+        logger.info('Creating companies with encryption...');
+        const insertedCompanies = await Promise.all(
+            companies.map(companyData => Company.create(companyData))
+        );
 
         // Link companies to seller users
         const bulkOps = insertedCompanies.map((company, index) => ({

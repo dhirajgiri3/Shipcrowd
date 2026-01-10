@@ -75,7 +75,7 @@ export async function seedRateCardsAndZones(): Promise<void> {
             // Create Zones
             for (const zoneDef of ZONE_DEFINITIONS) {
                 const zone = new Zone({
-                    name: `${zoneDef.name} - ${company.name} - ${company._id.toString().substring(0, 4)}`,
+                    name: `${zoneDef.name} - ${company._id.toString()}`,
                     companyId: company._id,
                     postalCodes: generatePostalCodes(zoneDef.postalCodePrefixes),
                     serviceability: {
@@ -114,7 +114,7 @@ export async function seedRateCardsAndZones(): Promise<void> {
 
             // Create Rate Card
             const rateCard = new RateCard({
-                name: `Standard Rates - ${company.name} - ${company._id.toString().substring(0, 4)}`,
+                name: `Standard Rates - ${company._id.toString()}`,
                 companyId: company._id,
                 status: 'active',
                 effectiveDates: {

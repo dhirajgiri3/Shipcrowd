@@ -186,6 +186,11 @@ export const normalizeError = (error: any): AppError => {
         return new DatabaseError(error.message);
     }
 
+    // Handle Mongoose VersionError (Optimistic Locking)
+    if (error.name === 'VersionError') {
+        return new ConflictError('The record has been updated by another process. Please refresh and try again.', ErrorCode.BIZ_CONFLICT);
+    }
+
     // Handle Zod validation errors
     if (error.name === 'ZodError') {
         const details = error.errors?.map((e: any) => ({

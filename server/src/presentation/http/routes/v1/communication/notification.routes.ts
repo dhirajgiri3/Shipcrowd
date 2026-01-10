@@ -1,7 +1,28 @@
 import express from 'express';
 import notificationController from '../../../controllers/communication/notification.controller';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 
 const router = express.Router();
+
+// Apply CSRF protection to all POST routes
+router.use(csrfProtection);
+
+/**
+ * @route POST /api/notifications/verify-phone/send
+ * @desc Send a verification code via SMS
+ * @access Public (Rate limited by controller)
+ */
+router.post('/verify-phone/send', notificationController.sendVerificationCode);
+
+/**
+ * @route POST /api/notifications/verify-phone/check
+ * @desc Verify a phone number with a code
+ * @access Public (Rate limited by controller)
+ */
+router.post('/verify-phone/check', notificationController.verifyPhoneNumber);
+
+// Protect all other routes
+router.use(authenticate);
 
 /**
  * @route POST /api/notifications/email
@@ -16,20 +37,6 @@ router.post('/email', notificationController.sendEmail);
  * @access Private
  */
 router.post('/sms', notificationController.sendSMS);
-
-/**
- * @route POST /api/notifications/verify-phone/send
- * @desc Send a verification code via SMS
- * @access Public
- */
-router.post('/verify-phone/send', notificationController.sendVerificationCode);
-
-/**
- * @route POST /api/notifications/verify-phone/check
- * @desc Verify a phone number with a code
- * @access Public
- */
-router.post('/verify-phone/check', notificationController.verifyPhoneNumber);
 
 /**
  * @route POST /api/notifications/shipment-status

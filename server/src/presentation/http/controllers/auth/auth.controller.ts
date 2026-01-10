@@ -2,15 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import passport from 'passport';
-import { User, IUser, Company, MagicLink } from '../../../../infrastructure/database/mongoose/models';
-import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
-import { Session } from '../../../../infrastructure/database/mongoose/models';
+import { User, IUser, Company, MagicLink, TeamInvitation, Session } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
-import { createSession, updateSessionActivity, revokeSession, getUserSessions, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
+import { createSession, updateSessionActivity, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
-import { formatError } from '../../../../shared/errors/error-messages';
+
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';

@@ -8,11 +8,11 @@ import { authenticate, authorize } from '../../../middleware/index';
 
 const router = Router();
 
-// All routes require authentication
-router.use(authenticate);
-
 // Public webhook (no auth)
 router.post('/webhook', PayoutController.handleWebhook);
+
+// All other routes require authentication
+router.use(authenticate);
 
 // Admin/manager only routes
 router.post('/', authorize(['admin', 'manager']), PayoutController.initiatePayout);

@@ -91,14 +91,14 @@ export async function seedPickLists(): Promise<void> {
     logger.step(5, 'Seeding Pick Lists');
 
     try {
-        // Get pending orders grouped by warehouse
+        // Get orders that need picking (confirmed, processing, or a sample of delivered for historical data)
         const orders = await Order.find({
-            currentStatus: 'pending',
+            currentStatus: { $in: ['confirmed', 'processing', 'shipped'] },
             isDeleted: false,
-        }).lean();
+        }).limit(500).lean(); // Limit to 500 for reasonable pick list generation
 
         if (orders.length === 0) {
-            logger.warn('No pending orders found. Skipping pick lists seeder.');
+            logger.warn('No orders found for pick list generation. Skipping pick lists seeder.');
             return;
         }
 
