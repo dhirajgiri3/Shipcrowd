@@ -1,0 +1,150 @@
+/**
+ * Audit Logs Seeder
+ * 
+ * Generates audit trails for user activities, orders, and shipments.
+ */
+
+import mongoose from 'mongoose';
+import AuditLog from '../../mongoose/models/system/audit/audit-log.model';
+import Order from '../../mongoose/models/orders/core/order.model';
+import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
+import User from '../../mongoose/models/iam/users/user.model';
+import { logger, createTimer } from '../utils/logger.utils';
+import { selectRandom, randomInt } from '../utils/random.utils';
+import { subMinutes, subHours, subDays } from '../utils/date.utils';
+
+export async function seedAuditLogs(): Promise<void> {
+    const timer = createTimer();
+    logger.step(26, 'Seeding Audit Logs');
+
+    try {
+        const users = await User.find({ role: { $in: ['seller', 'staff', 'admin'] } }).lean();
+
+        if (users.length === 0) {
+            logger.warn('No users found. Skipping audit log seeding.');
+            return;
+        }
+
+        let totalLogs = 0;
+        const batchSize = 1000;
+        let logsBuffer: any[] = [];
+
+        // 1. Seed Order Audit Logs
+        // Using cursor for memory efficiency
+        const orderCursor = Order.find().cursor();
+        let orderCount = 0;
+
+        for (let order = await orderCursor.next(); order != null; order = await orderCursor.next()) {
+            const orderDoc = order as any;
+            const createdBy = selectRandom(users);
+            const createdAt = new Date(orderDoc.createdAt);
+
+            // 1. Creation Log
+            logsBuffer.push({
+                userId: createdBy._id,
+                companyId: orderDoc.companyId,
+                action: 'create',
+                resource: 'Order',
+                resourceId: orderDoc._id,
+                details: {
+                    message: `Order ${orderDoc.orderId} created`,
+                    document: { orderId: orderDoc.orderId, amount: orderDoc.totalAmount }
+                },
+                timestamp: createdAt,
+                ipAddress: '192.168.1.1',
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
+            });
+
+            // 2. Status Updates
+            // Simulate: Created -> Confirmed -> Processing
+            const statuses = ['confirmed', 'processing'];
+            if (orderDoc.status === 'shipped' || orderDoc.status === 'delivered') {
+                statuses.push('shipped');
+            }
+            if (orderDoc.status === 'delivered') {
+                statuses.push('delivered');
+            }
+            if (orderDoc.status === 'cancelled') {
+                statuses.push('cancelled');
+            }
+
+            let lastTime = createdAt;
+            for (const status of statuses) {
+                lastTime = new Date(lastTime.getTime() + randomInt(10, 240) * 60 * 1000); // Add minutes
+                if (lastTime > new Date()) lastTime = new Date();
+
+                logsBuffer.push({
+                    userId: selectRandom(users)._id,
+                    companyId: orderDoc.companyId,
+                    action: 'update',
+                    resource: 'Order',
+                    resourceId: orderDoc._id,
+                    details: {
+                        message: `Order status updated to ${status}`,
+                        changes: { status: { from: 'previous', to: status } }
+                    },
+                    timestamp: lastTime,
+                    ipAddress: '192.168.1.1'
+                });
+            }
+
+            orderCount++;
+            if (logsBuffer.length >= batchSize) {
+                await AuditLog.insertMany(logsBuffer, { ordered: false });
+                totalLogs += logsBuffer.length;
+                logsBuffer = [];
+                logger.progress(orderCount, 5000, 'Orders Processed (Approx)'); // 5000 is approx total
+            }
+        }
+
+        // Flush remaining order logs
+        if (logsBuffer.length > 0) {
+            await AuditLog.insertMany(logsBuffer, { ordered: false });
+            totalLogs += logsBuffer.length;
+            logsBuffer = [];
+        }
+
+        // 2. Seed User Activity Logs (Login/Logout)
+        // Generate some random activity for each user
+        for (const user of users) {
+            const userDoc = user as any;
+            const loginCount = randomInt(5, 20);
+
+            for (let i = 0; i < loginCount; i++) {
+                const loginTime = subDays(new Date(), randomInt(0, 30));
+
+                logsBuffer.push({
+                    userId: userDoc._id,
+                    companyId: userDoc.companyId,
+                    action: 'login',
+                    resource: 'Auth',
+                    details: { message: 'User logged in' },
+                    timestamp: loginTime,
+                    ipAddress: '192.168.1.1'
+                });
+
+                // Logout after some time
+                logsBuffer.push({
+                    userId: userDoc._id,
+                    companyId: userDoc.companyId,
+                    action: 'logout',
+                    resource: 'Auth',
+                    details: { message: 'User logged out' },
+                    timestamp: new Date(loginTime.getTime() + randomInt(10, 120) * 60000),
+                    ipAddress: '192.168.1.1'
+                });
+            }
+        }
+
+        if (logsBuffer.length > 0) {
+            await AuditLog.insertMany(logsBuffer, { ordered: false });
+            totalLogs += logsBuffer.length;
+            logsBuffer = [];
+        }
+
+        logger.complete('Audit Logs', totalLogs, timer.elapsed());
+    } catch (error) {
+        logger.error('Failed to seed audit logs:', error);
+        throw error;
+    }
+}

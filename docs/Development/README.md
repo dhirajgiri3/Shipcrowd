@@ -1,53 +1,85 @@
-# 2_Development
+# ShipCrowd - What to Do Next
 
-Complete development documentation including business domains, planning, audits, and methodology.
-
-## 📁 Contents
-
-### [Domains/](./Domains/)
-Business domain documentation organized by functional area:
-- **[Auth/](./Domains/Auth/)** - Authentication and user management context
-- **[Orders/](./Domains/Orders/)** - Order management context
-- **[Payments/](./Domains/Payments/)** - Payment and wallet context
-- **[Shipping/](./Domains/Shipping/)** - Shipment, warehouse, and NDR/RTO systems
-- **[Integrations/](./Domains/Integrations/)** - External integrations by type
-  - Ecommerce (Amazon, Flipkart, Shopify, WooCommerce)
-  - Shipping (Velocity)
-  - Payment (Razorpay)
-  - KYC (DeepVue)
-
-### [Planning/](./Planning/)
-Development planning and roadmaps:
-- **[Active/](./Planning/Active/)** - Current active plans
-- **[Masterplans/](./Planning/Masterplans/)** - Week-by-week implementation plans (Weeks 1-16)
-  - [Advance/](./Planning/Masterplans/Advance/) - Advanced masterplan versions
-- **[Parallel_Execution/](./Planning/Parallel_Execution/)** - Parallel development strategy
-- **[Analysis/](./Planning/Analysis/)** - Integration and revision analysis
-
-### [Audit/](./Audit/)
-Audit reports and progress tracking:
-- **[Backend/](./Audit/Backend/)** - Backend audits and structure maps
-- **[Testing/](./Audit/Testing/)** - Test reports and failure analysis
-- **[Progress/](./Audit/Progress/)** - Day-by-day progress summaries
-
-### [Methodology/](./Methodology/)
-Development standards and guidelines:
-- `CANON.md` - Project standards and conventions
-- `AI_Prompts.md` - AI collaboration prompts and guidelines
+**Date:** January 10, 2026  
+**Status:** ✅ Ready for Testing Phase
 
 ---
 
-## 🔍 Quick Navigation
+## 🎯 YOUR EXECUTION PATH
 
-| Need... | Go to... |
-|---------|----------|
-| **Domain context for AI** | `Domains/` (Auth/Orders/Payments/Shipping) |
-| **Integration guides** | `Domains/Integrations/` (by type) |
-| **Current dev plans** | `Planning/Active/` |
-| **Week-based roadmap** | `Planning/Masterplans/` |
-| **Audit reports** | `Audit/Backend/` or `Testing/` |
-| **Dev standards** | `Methodology/CANON.md` |
+### Phase 1: TEST (Weeks 1-3)
+**Follow:** `Testing/Manual-Testing.md`
+
+Start testing the 385 working endpoints:
+- Days 1-7: Core features (Auth, Orders, Shipments, NDR, RTO, Weight Disputes)
+- Days 8-9: SKIP (Wallet/COD routes don't exist yet)
+- Days 10-20: Warehouse, Integrations, Analytics
+
+**Output:** Create `Testing/test-results.md` documenting:
+- ✅ What works
+- ⚠️ What has bugs  
+- ❌ What's broken
+
+### Phase 2: BUILD (Weeks 4-7)
+**Follow:** `Planning/Masterplans/Advance/Advanced.md`
+
+Build the 3 missing pieces:
+1. Wallet HTTP routes (10-15 hours)
+2. COD Remittance service (40-50 hours)
+3. Returns Management (40-50 hours)
+
+Fix bugs found during testing.
+
+### Phase 3: DEPLOY (Weeks 8-10)
+Complete production infrastructure:
+- Docker setup
+- CI/CD pipeline
+- Final testing
+- Launch
 
 ---
 
-[← Back to Main](../README.md)
+## 📂 Documentation Structure
+
+```
+docs/Development/
+├── Audit/
+│   ├── Testing/
+│   │   └── Manual-Testing.md          ← START HERE
+│   └── _Archive/                      ← Old audit reports (reference only)
+│
+└── Planning/
+    └── Masterplans/
+        └── Advance/
+            └── Advanced.md             ← Build plan (after testing)
+```
+
+---
+
+## ✅ What's Already Done
+
+- 385 API endpoints implemented
+- Authentication & authorization working
+- 4 marketplace integrations complete
+- Weight disputes fully implemented
+- WalletService production-ready (needs HTTP routes)
+- Server is running at `http://localhost:5005/api/v1`
+
+---
+
+## ⚠️ What's Missing
+
+1. Wallet HTTP routes (service exists, needs controller)
+2. COD Remittance service & routes
+3. Returns Management (complete module)
+
+---
+
+## 🚀 Start Testing Now
+
+1. Open Postman
+2. Navigate to `Testing/Manual-Testing.md`
+3. Follow Day 1 instructions
+4. Test your first endpoint: `POST /api/v1/auth/login`
+
+**Don't plan more. Execute.**

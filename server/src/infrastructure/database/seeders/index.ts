@@ -42,6 +42,40 @@ const COLLECTIONS_TO_CLEAR = [
     'picklists',
     'weightdisputes',
     'codremittances',
+    // New collections from Phase 2 seeders
+    'teaminvitations',
+    'teampermissions',
+    'teamactivities',
+    'salesrepresentatives',
+    'leads',
+    'calllogs',
+    'commissionrules',
+    'commissiontransactions',
+    'commissionadjustments',
+    'coupons',
+    'warehousezones',
+    'warehouselocations',
+    'packingstations',
+    // Marketplace stores
+    'shopifystores',
+    'woocommercestores',
+    'amazonstores',
+    'flipkartstores',
+    // Integrations
+    'integrations',
+    // Phase 3 collections
+    'ratecards',
+    'zones',
+    'shopifysynclogs',
+    'woocommercesynclogs',
+    'amazonsynclogs',
+    'flipkartsynclogs',
+    'shopifyproductmappings',
+    'woocommerceproductmappings',
+    'amazonproductmappings',
+    'flipkartproductmappings',
+    'auditlogs',
+    'payouts',
 ];
 
 /**
@@ -143,6 +177,20 @@ async function runSeeders(): Promise<void> {
     const { seedSessions } = await import('./seeders/13-sessions.seeder.js');
     const { seedWeightDisputes } = await import('./seeders/14-weight-disputes.seeder.js');
     const { seedCODRemittances } = await import('./seeders/15-cod-remittances.seeder.js');
+    // New Phase 2 seeders
+    const { seedTeams } = await import('./seeders/16-teams.seeder.js');
+    const { seedSalesCRM } = await import('./seeders/17-sales-crm.seeder.js');
+    const { seedCommissions } = await import('./seeders/18-commissions.seeder.js');
+    const { seedCoupons } = await import('./seeders/19-coupons.seeder.js');
+    const { seedWarehouseConfig } = await import('./seeders/20-warehouse-config.seeder.js');
+    const { seedMarketplaceStores } = await import('./seeders/21-marketplace-stores.seeder.js');
+    const { seedIntegrations } = await import('./seeders/22-integrations.seeder.js');
+    // Phase 3 seeders
+    const { seedRateCardsAndZones } = await import('./seeders/23-rate-card-and-zones.seeder.js');
+    const { seedMarketplaceSyncLogs } = await import('./seeders/24-marketplace-sync-logs.seeder.js');
+    const { seedMarketplaceProductMappings } = await import('./seeders/25-marketplace-product-mappings.seeder.js');
+    const { seedAuditLogs } = await import('./seeders/26-audit-logs.seeder.js');
+    const { seedPayouts } = await import('./seeders/27-payouts.seeder.js');
 
     // Seeder order based on dependencies
     const seeders = [
@@ -161,6 +209,20 @@ async function runSeeders(): Promise<void> {
         { name: 'Sessions', fn: seedSessions },
         { name: 'Weight Disputes', fn: seedWeightDisputes },
         { name: 'COD Remittances', fn: seedCODRemittances },
+        // New Phase 2 seeders
+        { name: 'Teams', fn: seedTeams },
+        { name: 'Sales & CRM', fn: seedSalesCRM },
+        { name: 'Commissions', fn: seedCommissions },
+        { name: 'Coupons', fn: seedCoupons },
+        { name: 'Warehouse Config', fn: seedWarehouseConfig },
+        { name: 'Marketplace Stores', fn: seedMarketplaceStores },
+        { name: 'Integrations', fn: seedIntegrations },
+        // Phase 3 seeders
+        { name: 'Rate Cards & Zones', fn: seedRateCardsAndZones },
+        { name: 'Marketplace Sync Logs', fn: seedMarketplaceSyncLogs },
+        { name: 'Product Mappings', fn: seedMarketplaceProductMappings },
+        { name: 'Audit Logs', fn: seedAuditLogs },
+        { name: 'Payouts', fn: seedPayouts },
     ];
 
     for (const seeder of seeders) {

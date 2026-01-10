@@ -12,8 +12,17 @@ export type PayoutStatus = 'pending' | 'processing' | 'completed' | 'failed' | '
 export interface IPayout extends Document {
     payoutId: string;
     company: mongoose.Types.ObjectId;
-    salesRepresentative: mongoose.Types.ObjectId;
-    commissionTransactions: mongoose.Types.ObjectId[];
+    payoutType: 'cod_remittance' | 'commission' | 'refund';
+    salesRepresentative?: mongoose.Types.ObjectId;
+    commissionTransactions?: mongoose.Types.ObjectId[];
+    codRemittanceId?: mongoose.Types.ObjectId;
+    deductions?: Array<{ type: string; amount: number; percentage?: number }>;
+    bankDetails?: {
+        accountHolder: string;
+        accountNumber: string;
+        ifscCode: string;
+        bankName: string;
+    };
     totalAmount: number;
     tdsDeducted: number;
     netAmount: number;
@@ -61,10 +70,19 @@ const PayoutSchema = new Schema<IPayout, IPayoutModel>(
             required: [true, 'Company is required'],
             index: true,
         },
+        payoutType: {
+            type: String,
+            enum: ['cod_remittance', 'commission', 'refund'],
+            default: 'commission',
+            index: true
+        },
+        // Commission related
         salesRepresentative: {
             type: Schema.Types.ObjectId,
             ref: 'SalesRepresentative',
-            required: [true, 'Sales representative is required'],
+            required: function (this: any) {
+                return this.payoutType === 'commission';
+            },
             index: true,
         },
         commissionTransactions: [
@@ -73,6 +91,13 @@ const PayoutSchema = new Schema<IPayout, IPayoutModel>(
                 ref: 'CommissionTransaction',
             },
         ],
+        // COD related
+        codRemittanceId: {
+            type: Schema.Types.ObjectId,
+            ref: 'CODRemittance',
+            index: true
+        },
+
         totalAmount: {
             type: Number,
             required: [true, 'Total amount is required'],
@@ -82,6 +107,16 @@ const PayoutSchema = new Schema<IPayout, IPayoutModel>(
             type: Number,
             default: 0,
             min: [0, 'TDS cannot be negative'],
+        },
+        deductions: {
+            type: [
+                {
+                    type: { type: String },
+                    amount: Number,
+                    percentage: Number
+                }
+            ],
+            default: []
         },
         netAmount: {
             type: Number,
@@ -108,6 +143,12 @@ const PayoutSchema = new Schema<IPayout, IPayoutModel>(
             status: String,
             utr: String,
             failureReason: String,
+        },
+        bankDetails: {
+            accountHolder: String,
+            accountNumber: String,
+            ifscCode: String,
+            bankName: String
         },
         payoutDate: {
             type: Date,

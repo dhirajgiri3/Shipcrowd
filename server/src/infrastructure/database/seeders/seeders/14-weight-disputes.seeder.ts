@@ -305,45 +305,53 @@ export async function seedWeightDisputes(): Promise<void> {
 
                 if (dispute.resolution.refundAmount > 0) {
                     walletTransactions.push({
-                        companyId: dispute.companyId,
-                        type: 'dispute_refund',
+                        company: dispute.companyId,
+                        type: 'credit',
                         amount: dispute.resolution.refundAmount,
-                        description: `Weight dispute refund (${dispute.disputeId})`,
-                        source: 'weight_dispute',
-                        sourceId: dispute._id,
                         balanceBefore: company.wallet?.balance || 0,
                         balanceAfter: (company.wallet?.balance || 0) + dispute.resolution.refundAmount,
+                        reason: 'weight_discrepancy',
+                        description: `Weight dispute refund (${dispute.disputeId})`,
+                        reference: {
+                            type: 'manual',
+                            id: dispute._id,
+                            externalId: dispute.disputeId,
+                        },
+                        createdBy: 'system',
                         status: 'completed',
-                        paymentMethod: 'credit',
-                        createdAt: dispute.resolution.resolvedAt,
-                        updatedAt: dispute.resolution.resolvedAt,
                         metadata: {
                             disputeId: dispute.disputeId,
                             outcome: dispute.resolution.outcome,
-                            reason: dispute.resolution.reasonCode,
+                            reasonCode: dispute.resolution.reasonCode,
                         },
+                        createdAt: dispute.resolution.resolvedAt,
+                        updatedAt: dispute.resolution.resolvedAt,
                     });
                 }
 
                 if (dispute.resolution.deductionAmount > 0) {
                     walletTransactions.push({
-                        companyId: dispute.companyId,
-                        type: 'dispute_deduction',
+                        company: dispute.companyId,
+                        type: 'debit',
                         amount: dispute.resolution.deductionAmount,
-                        description: `Weight dispute deduction (${dispute.disputeId})`,
-                        source: 'weight_dispute',
-                        sourceId: dispute._id,
                         balanceBefore: company.wallet?.balance || 0,
                         balanceAfter: (company.wallet?.balance || 0) - dispute.resolution.deductionAmount,
+                        reason: 'weight_discrepancy',
+                        description: `Weight dispute deduction (${dispute.disputeId})`,
+                        reference: {
+                            type: 'manual',
+                            id: dispute._id,
+                            externalId: dispute.disputeId,
+                        },
+                        createdBy: 'system',
                         status: 'completed',
-                        paymentMethod: 'debit',
-                        createdAt: dispute.resolution.resolvedAt,
-                        updatedAt: dispute.resolution.resolvedAt,
                         metadata: {
                             disputeId: dispute.disputeId,
                             outcome: dispute.resolution.outcome,
-                            reason: dispute.resolution.reasonCode,
+                            reasonCode: dispute.resolution.reasonCode,
                         },
+                        createdAt: dispute.resolution.resolvedAt,
+                        updatedAt: dispute.resolution.resolvedAt,
                     });
                 }
             }

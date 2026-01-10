@@ -32,12 +32,26 @@ export function addHours(date: Date, hours: number): Date {
 }
 
 /**
+ * Subtract hours from a date
+ */
+export function subHours(date: Date, hours: number): Date {
+    return addHours(date, -hours);
+}
+
+/**
  * Add minutes to a date
  */
 export function addMinutes(date: Date, minutes: number): Date {
     const result = new Date(date);
     result.setTime(result.getTime() + minutes * 60 * 1000);
     return result;
+}
+
+/**
+ * Subtract minutes from a date
+ */
+export function subMinutes(date: Date, minutes: number): Date {
+    return addMinutes(date, -minutes);
 }
 
 /**

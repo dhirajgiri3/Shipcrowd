@@ -2,7 +2,7 @@
 
 This comprehensive guide explains the entire ecosystem of a Shipping Aggregator from the perspective of a user (Seller) like "Riya".
 
----
+--- 
 
 ## Table of Contents
 
