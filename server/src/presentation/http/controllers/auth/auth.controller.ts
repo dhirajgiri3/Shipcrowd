@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import passport from 'passport';
-import { User, IUser } from '../../../../infrastructure/database/mongoose/models';
+import { User, IUser, Company, MagicLink } from '../../../../infrastructure/database/mongoose/models';
 import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
 import { Session } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
@@ -139,7 +139,6 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
     // ✅ FEATURE 6: Auto-create company for first user and assign as owner
     if (!companyId) {
-      const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');
       const newCompany = new Company({
         name: `${user.name}'s Company`,
         owner: user._id,
@@ -1371,7 +1370,6 @@ export const requestMagicLink = async (req: Request, res: Response, next: NextFu
     const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
     // Create magic link record
-    const { MagicLink } = await import('../../../../infrastructure/database/mongoose/models/index.js');
     await MagicLink.create({
       email: typedUser.email,
       userId: typedUser._id,
@@ -1427,7 +1425,6 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // Find magic link
-    const { MagicLink } = await import('../../../../infrastructure/database/mongoose/models/index.js');
     const magicLink = await MagicLink.findOne({
       token: hashedToken,
       expiresAt: { $gt: new Date() },
