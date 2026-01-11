@@ -47,7 +47,8 @@ const TeamInvitationSchema = new Schema<ITeamInvitation>(
     token: {
       type: String,
       required: true,
-      default: () => crypto.randomBytes(32).toString('hex'),
+      // ⚠️ NO DEFAULT - Tokens MUST be generated explicitly in controllers with hashing
+      // See AuthTokenService.generateSecureToken() for proper token generation
     },
     expiresAt: {
       type: Date,

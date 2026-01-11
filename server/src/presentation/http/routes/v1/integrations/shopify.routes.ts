@@ -1,41 +1,36 @@
 import { Router } from 'express';
 import ShopifyController from '../../../controllers/integrations/shopify.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/index';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 
 /**
  * Shopify Integration Routes
- *
- * All routes require authentication except callback (handled via state verification)
- *
- * Base path: /api/v1/integrations/shopify
+ * All routes require authentication except callback
  */
 
 const router = Router();
-
-/**
- * OAuth Flow Routes
- */
 
 // Initiate OAuth installation
 router.get(
   '/install',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can install
+  requireAccess({
+    tier: AccessTier.PRODUCTION,
+    kyc: true,
+    teamRoles: ['owner', 'admin']
+  }),
   ShopifyController.install
 );
 
-// OAuth callback (public, verified via HMAC)
+// OAuth callback (public)
 router.get('/callback', ShopifyController.callback);
-
-/**
- * Store Management Routes
- */
 
 // List all connected stores
 router.get(
   '/stores',
   authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.listStores
 );
 
@@ -43,6 +38,7 @@ router.get(
 router.get(
   '/stores/:id',
   authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.getStore
 );
 
@@ -50,7 +46,11 @@ router.get(
 router.delete(
   '/stores/:id',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can disconnect
+  requireAccess({
+    tier: AccessTier.PRODUCTION,
+    kyc: true,
+    teamRoles: ['owner', 'admin']
+  }),
   ShopifyController.disconnectStore
 );
 
@@ -58,6 +58,7 @@ router.delete(
 router.post(
   '/stores/:id/test',
   authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.testConnection
 );
 
@@ -65,7 +66,7 @@ router.post(
 router.post(
   '/stores/:id/pause',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.pauseSync
 );
 
@@ -73,7 +74,7 @@ router.post(
 router.post(
   '/stores/:id/resume',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.resumeSync
 );
 
@@ -85,7 +86,11 @@ router.post(
 router.post(
   '/stores/:storeId/orders/:orderId/fulfill',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  requireAccess({
+    tier: AccessTier.PRODUCTION,
+    kyc: true,
+    teamRoles: ['owner', 'admin', 'manager']
+  }),
   ShopifyController.createFulfillment
 );
 
@@ -93,7 +98,11 @@ router.post(
 router.put(
   '/stores/:storeId/fulfillments/:fulfillmentId',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  requireAccess({
+    tier: AccessTier.PRODUCTION,
+    kyc: true,
+    teamRoles: ['owner', 'admin', 'manager']
+  }),
   ShopifyController.updateFulfillmentTracking
 );
 
@@ -101,7 +110,7 @@ router.put(
 router.post(
   '/stores/:id/sync/orders',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.syncOrders
 );
 
@@ -109,7 +118,7 @@ router.post(
 router.post(
   '/stores/:id/sync/fulfillments',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.syncPendingFulfillments
 );
 

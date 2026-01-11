@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction, RequestHandler } from 'express';
-import { authenticate, authorize, csrfProtection } from '../../../middleware/auth/auth';
+import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/index';
 import kycController from '../../../controllers/identity/kyc.controller';
 import deepvueService from '../../../../../core/application/services/integrations/deepvue.service';
 
@@ -7,7 +8,6 @@ const router = express.Router();
 
 /**
  * Helper function to wrap controller methods and handle type issues
- * This ensures proper return types for Express route handlers
  */
 const wrapController = (controller: any): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -41,21 +41,21 @@ router.get('/', authenticate, wrapController(kycController.getKYC));
  * @desc Get all KYCs (admin only)
  * @access Private (Admin)
  */
-router.get('/all', authenticate, authorize('admin'), wrapController(kycController.getAllKYCs));
+router.get('/all', authenticate, requireAccess({ roles: ['admin'] }), wrapController(kycController.getAllKYCs));
 
 /**
  * @route POST /kyc/:kycId/verify
  * @desc Verify a KYC document (admin only)
  * @access Private (Admin)
  */
-router.post('/:kycId/verify', authenticate, authorize('admin'), csrfProtection, wrapController(kycController.verifyKYCDocument));
+router.post('/:kycId/verify', authenticate, requireAccess({ roles: ['admin'] }), csrfProtection, wrapController(kycController.verifyKYCDocument));
 
 /**
  * @route POST /kyc/:kycId/reject
  * @desc Reject a KYC (admin only)
  * @access Private (Admin)
  */
-router.post('/:kycId/reject', authenticate, authorize('admin'), csrfProtection, wrapController(kycController.rejectKYC));
+router.post('/:kycId/reject', authenticate, requireAccess({ roles: ['admin'] }), csrfProtection, wrapController(kycController.rejectKYC));
 
 /**
  * @route POST /kyc/verify-pan
@@ -104,7 +104,7 @@ router.post('/agreement', authenticate, csrfProtection, wrapController(kycContro
  * @desc Test DeepVue API connection
  * @access Private (Admin)
  */
-router.get('/test-deepvue', authenticate, authorize('admin'), wrapController(async (_req: Request, res: Response) => {
+router.get('/test-deepvue', authenticate, requireAccess({ roles: ['admin'] }), wrapController(async (_req: Request, res: Response) => {
   try {
     const result = await deepvueService.testConnection();
     res.json(result);

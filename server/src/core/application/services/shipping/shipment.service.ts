@@ -8,6 +8,8 @@ import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schem
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { CourierFactory } from '../courier/courier.factory';
 import logger from '../../../../shared/logger/winston.logger';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * ShipmentService - Business logic for shipment management

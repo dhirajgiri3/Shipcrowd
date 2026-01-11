@@ -59,7 +59,12 @@ export interface ICompany extends Document {
     lowBalanceThreshold: number;
   };
 
-  status: 'pending_verification' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
+  status: 'profile_complete' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
+  verificationLevel: 1 | 2 | 3;
+  limits: {
+    canCreateShipments: boolean;
+    requiresKYC: boolean;
+  };
   isActive: boolean;
   isDeleted: boolean;
   // ✅ FEATURE 27: Company Suspension Fields
@@ -179,8 +184,24 @@ const CompanySchema = new Schema<ICompany>(
 
     status: {
       type: String,
-      enum: ['pending_verification', 'kyc_submitted', 'approved', 'suspended', 'rejected'],
-      default: 'pending_verification',
+      enum: ['profile_complete', 'kyc_submitted', 'approved', 'suspended', 'rejected'],
+      default: 'profile_complete',
+    },
+    verificationLevel: {
+      type: Number,
+      enum: [1, 2, 3],
+      default: 1,
+      index: true,
+    },
+    limits: {
+      canCreateShipments: {
+        type: Boolean,
+        default: false,
+      },
+      requiresKYC: {
+        type: Boolean,
+        default: true,
+      },
     },
     isActive: {
       type: Boolean,

@@ -199,6 +199,23 @@ export class QueueManager {
       },
     });
 
+    // Create Email queue (Phase 4)
+    await this.createQueue({
+      name: 'email-queue',
+      defaultJobOptions: {
+        attempts: 5,  // Retry up to 5 times
+        backoff: {
+          type: 'exponential',
+          delay: 60000  // Start with 1 minute
+        },
+        removeOnComplete: {
+          age: 3600,  // Keep completed jobs for 1 hour
+          count: 1000
+        } as any,
+        removeOnFail: false  // Keep failed jobs for manual review
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });
@@ -261,6 +278,17 @@ export class QueueManager {
    */
   static getQueue(name: string): Queue | undefined {
     return this.queues.get(name);
+  }
+
+  /**
+   * Get email queue
+   */
+  static getEmailQueue(): Queue {
+    const queue = this.getQueue('email-queue');
+    if (!queue) {
+      throw new Error('Email queue not initialized');
+    }
+    return queue;
   }
 
   /**

@@ -22,6 +22,45 @@ import logger from '../../../../shared/logger/winston.logger';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { generateAccessToken, generateRefreshToken } from '../../../../shared/helpers/jwt';
+import { AuthenticationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+
+// ============================================================================
+// VALIDATION HELPERS
+// ============================================================================
+
+/**
+ * Validate OAuth profile data from Google
+ */
+const validateOAuthProfile = (profile: any): void => {
+  if (!profile?.id) {
+    throw new AuthenticationError(
+      'Invalid OAuth profile: missing Google ID',
+      ErrorCode.AUTH_OAUTH_INVALID_PROFILE
+    );
+  }
+
+  if (!profile?.emails?.[0]?.value) {
+    throw new AuthenticationError(
+      'Invalid OAuth profile: missing email address',
+      ErrorCode.AUTH_OAUTH_INVALID_PROFILE
+    );
+  }
+
+  // Validate email format
+  const email = profile.emails[0].value;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new AuthenticationError(
+      'Invalid OAuth profile: invalid email format',
+      ErrorCode.AUTH_OAUTH_INVALID_PROFILE
+    );
+  }
+};
+
+// ============================================================================
+// OAUTH CONFIGURATION
+// ============================================================================
 
 // Configure Google OAuth Strategy
 export const configureGoogleStrategy = (): void => {
@@ -35,6 +74,9 @@ export const configureGoogleStrategy = (): void => {
       },
       async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
         try {
+          // ✅ Validate OAuth profile data
+          validateOAuthProfile(profile);
+
           // Check if user already exists with this Google ID (using new field)
           let user = await User.findOne({ googleId: profile.id });
 
@@ -164,9 +206,35 @@ export const configureGoogleStrategy = (): void => {
           );
 
           return done(null, newUser);
-        } catch (error) {
-          logger.error('Google authentication error:', error);
-          return done(error, false);
+        } catch (error: any) {
+          // ✅ Structured logging with context
+          logger.error('Google OAuth authentication failed', {
+            error: {
+              message: error.message,
+              code: error.code,
+              name: error.name,
+            },
+            profile: {
+              id: profile?.id,
+              email: profile?.emails?.[0]?.value,
+            },
+            request: {
+              ip: req.ip,
+              userAgent: req.headers?.['user-agent'],
+            },
+          });
+
+          // ✅ Return specific error type
+          if (error instanceof AuthenticationError) {
+            return done(error, false);
+          }
+
+          // Wrap unknown errors
+          const authError = new AuthenticationError(
+            'OAuth authentication failed',
+            ErrorCode.AUTH_OAUTH_FAILED
+          );
+          return done(authError, false);
         }
       }
     )
@@ -192,7 +260,11 @@ export const configureGoogleStrategy = (): void => {
       } else {
         done(null, null);
       }
-    } catch (error) {
+    } catch (error: any) {
+      logger.error('Passport deserialization error', {
+        userId: id,
+        error: error.message,
+      });
       done(error, null);
     }
   });

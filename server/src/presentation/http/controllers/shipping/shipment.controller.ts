@@ -22,6 +22,8 @@ import {
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -46,8 +48,7 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
         });
 
         if (!order) {
-            sendError(res, 'Order not found', 404, 'ORDER_NOT_FOUND');
-            return;
+            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         // Validate order status
@@ -171,8 +172,7 @@ export const getShipmentById = async (req: Request, res: Response, next: NextFun
             .lean();
 
         if (!shipment) {
-            sendError(res, 'Shipment not found', 404, 'SHIPMENT_NOT_FOUND');
-            return;
+            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         sendSuccess(res, { shipment }, 'Shipment retrieved successfully');
@@ -205,8 +205,7 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
             .lean();
 
         if (!shipment) {
-            sendError(res, 'Shipment not found', 404, 'SHIPMENT_NOT_FOUND');
-            return;
+            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);
@@ -257,8 +256,7 @@ export const updateShipmentStatus = async (req: Request, res: Response, next: Ne
         });
 
         if (!shipment) {
-            sendError(res, 'Shipment not found', 404, 'SHIPMENT_NOT_FOUND');
-            return;
+            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         // Update shipment status via service
@@ -308,8 +306,7 @@ export const deleteShipment = async (req: Request, res: Response, next: NextFunc
         });
 
         if (!shipment) {
-            sendError(res, 'Shipment not found', 404, 'SHIPMENT_NOT_FOUND');
-            return;
+            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         const { canDelete, reason } = ShipmentService.canDeleteShipment(shipment.currentStatus);
@@ -349,8 +346,7 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
             .lean();
 
         if (!shipment) {
-            sendError(res, 'Shipment not found', 404, 'SHIPMENT_NOT_FOUND');
-            return;
+            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);

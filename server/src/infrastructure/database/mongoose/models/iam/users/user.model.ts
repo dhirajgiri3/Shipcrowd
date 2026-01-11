@@ -111,6 +111,9 @@ export interface IUser extends Document {
     isComplete: boolean;
     lastUpdated?: Date;
   };
+  // Progressive verification system
+  verificationLevel: 0 | 1 | 2 | 3;
+  onboardingStep: 'email_verification' | 'business_profile' | 'kyc_submission' | 'completed';
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -315,6 +318,18 @@ const UserSchema = new Schema<IUser>(
         default: false,
       },
       lastUpdated: Date,
+    },
+    // Progressive verification system
+    verificationLevel: {
+      type: Number,
+      enum: [0, 1, 2, 3],
+      default: 0,
+      index: true,
+    },
+    onboardingStep: {
+      type: String,
+      enum: ['email_verification', 'business_profile', 'kyc_submission', 'completed'],
+      default: 'email_verification',
     },
   },
   {

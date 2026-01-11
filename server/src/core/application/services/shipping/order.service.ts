@@ -4,6 +4,8 @@ import { generateOrderNumber, validateStatusTransition } from '../../../../share
 import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus';
 import logger from '../../../../shared/logger/winston.logger';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * OrderService - Business logic for order management

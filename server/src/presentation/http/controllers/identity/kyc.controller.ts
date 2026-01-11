@@ -10,6 +10,9 @@ import deepvueService from '../../../../core/application/services/integrations/d
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
+// Import validation schemas
+import { panSchema, aadhaarSchema, gstinSchema, bankAccountSchema, submitKYCSchema, verifyDocumentSchema } from '../../../../shared/validation/schemas';
+
 
 /**
  * Helper function to safely get document ID as string
@@ -85,16 +88,6 @@ const findOrCreateKyc = async (userId: mongoose.Types.ObjectId, companyId: mongo
 
   return kyc;
 };
-
-// Define validation schemas
-import {
-  panSchema,
-  aadhaarSchema,
-  gstinSchema,
-  bankAccountSchema,
-  submitKYCSchema,
-  verifyDocumentSchema
-} from '../../../../shared/validation/schemas';
 
 /**
  * Submit KYC documents
@@ -478,7 +471,6 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
 
       if (!userDoc) {
         res.status(404).json({ message: 'User not found' });
-        return;
       }
 
       // Now we know user exists, we can safely cast it
@@ -607,7 +599,6 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
 
       if (!userDoc) {
         res.status(404).json({ message: 'User not found' });
-        return;
       }
 
       // Now we know user exists, we can safely cast it
@@ -952,7 +943,6 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
 
     if (!user.companyId) {
       sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
-      return;
     }
 
     // Find existing KYC record or create a new one
@@ -1000,7 +990,7 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
 
     await createAuditLog(
       user._id.toString(),
-      user.companyId.toString(),
+      user.companyId?.toString() || '',
       'update',
       'kyc',
       getDocumentIdString(kyc),
@@ -1052,7 +1042,6 @@ export const verifyAadhaar = async (req: Request, res: Response, next: NextFunct
 
     if (!user.companyId) {
       sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
-      return;
     }
 
     // Call DeepVue API for basic Aadhaar verification
@@ -1105,7 +1094,7 @@ export const verifyAadhaar = async (req: Request, res: Response, next: NextFunct
 
       await createAuditLog(
         user._id.toString(),
-        user.companyId.toString(),
+        user.companyId?.toString() || '',
         'verify',
         'kyc',
         getDocumentIdString(kyc),

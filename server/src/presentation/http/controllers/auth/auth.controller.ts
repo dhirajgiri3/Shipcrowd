@@ -9,12 +9,91 @@ import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } fro
 import { createSession, updateSessionActivity, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
+import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
 
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { UserDTO } from '../../dtos/user.dto';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+
+// ============================================================================
+// ERROR HANDLING HELPER
+// ============================================================================
+
+/**
+ * Centralized error handler for auth controller
+ * Handles different error types and sends appropriate responses
+ */
+const handleControllerError = (
+  error: any,
+  res: Response,
+  next: NextFunction,
+  operation: string
+): void => {
+  // Log error with context
+  logger.error(`Auth controller error: ${operation}`, {
+    error: {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+    },
+  });
+
+  // Handle Zod validation errors
+  if (error instanceof z.ZodError) {
+    const errors = error.errors.map(err => ({
+      code: 'VALIDATION_ERROR',
+      message: err.message,
+      field: err.path.join('.'),
+    }));
+    sendValidationError(res, errors);
+    return;
+  }
+
+  // Handle custom authentication errors
+  if (error instanceof AuthenticationError) {
+    sendError(res, error.message, 401, error.code);
+    return;
+  }
+
+  // Handle custom validation errors
+  if (error instanceof ValidationError) {
+    sendError(res, error.message, 400, error.code);
+    return;
+  }
+
+  // Handle custom database errors
+  if (error instanceof DatabaseError) {
+    sendError(res, 'Operation failed. Please try again.', 500, ErrorCode.SYS_DB_OPERATION_FAILED);
+    return;
+  }
+
+  // Handle specific error messages (legacy pattern)
+  if (error.message === 'USER_EXISTS') {
+    sendError(res, 'User already exists', 409, 'USER_EXISTS');
+    return;
+  }
+
+  if (error.message === 'INVALID_INVITATION') {
+    sendError(res, 'Invalid or expired invitation token', 400, 'INVALID_INVITATION');
+    return;
+  }
+
+  if (error.message === 'INVALID_CREDENTIALS') {
+    sendError(res, 'Invalid email or password', 401, ErrorCode.AUTH_INVALID_CREDENTIALS);
+    return;
+  }
+
+  // Pass unknown errors to Express error handler
+  next(error);
+};
+
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
 
 // Custom password validator
 const passwordValidator = (password: string, ctx: z.RefinementCtx) => {
@@ -94,9 +173,12 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       let companyName = '';
 
       if (validatedData.invitationToken) {
+        // \u2705 PHASE 1 FIX: Hash invitation token for comparison
+        const hashedInvitationToken = AuthTokenService.hashToken(validatedData.invitationToken);
+
         // Find the invitation
         const invitation = await TeamInvitation.findOne({
-          token: validatedData.invitationToken,
+          token: hashedInvitationToken, // \u2705 Compare with HASH
           status: 'pending',
           expiresAt: { $gt: new Date() },
           email: validatedData.email.toLowerCase()
@@ -116,7 +198,10 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         await invitation.save({ session });
       }
 
-      const verificationToken = crypto.randomBytes(32).toString('hex');
+      // ✅ PHASE 1 FIX: Hash email verification token before storage
+      const { raw: rawVerificationToken, hashed: hashedVerificationToken } =
+        AuthTokenService.generateSecureToken();
+
       const verificationTokenExpiry = new Date();
       verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 1); // ✅ FEATURE 20: 1 hour expiry
 
@@ -130,7 +215,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         ...(teamRole && { teamRole }),
         isActive: false,
         security: {
-          verificationToken,
+          verificationToken: hashedVerificationToken, // ✅ Store HASH
           verificationTokenExpiry,
         },
       });
@@ -141,7 +226,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       // If it fails, we catch, log, and proceed, OR we could abort transaction.
       // Usually better to NOT abort transaction on email fail, but log it.)
       try {
-        await sendVerificationEmail(user.email, user.name, verificationToken);
+        await sendVerificationEmail(user.email, user.name, rawVerificationToken); // ✅ Send RAW token
       } catch (emailError) {
         logger.error(`Failed to send verification email to ${user.email}:`, emailError);
         // We log usage issue but do NOT rollback user creation for mail failure 
@@ -177,26 +262,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       );
     });
   } catch (error: any) {
-    logger.error('Registration error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    // Handle manual errors thrown from transaction
-    if (error.message === 'USER_EXISTS') {
-      sendError(res, 'User already exists', 409, 'USER_EXISTS');
-      return;
-    }
-    if (error.message === 'INVALID_INVITATION') {
-      sendError(res, 'Invalid or expired invitation token', 400, 'INVALID_INVITATION');
-      return;
-    }
-    next(error);
+    handleControllerError(error, res, next, 'register');
   }
 };
 
@@ -381,18 +447,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     sendSuccess(res, {
       user: UserDTO.toResponse(typedUser),
     }, 'Login successful');
-  } catch (error) {
-    logger.error('Login error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'login');
   }
 };
 
@@ -553,15 +609,18 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    // ✅ PHASE 1 FIX: Hash password reset token before storage
+    const { raw: rawResetToken, hashed: hashedResetToken } =
+      AuthTokenService.generateSecureToken();
+
     const resetTokenExpiry = new Date();
     resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
 
-    typedUser.security.resetToken = resetToken;
+    typedUser.security.resetToken = hashedResetToken; // ✅ Store HASH
     typedUser.security.resetTokenExpiry = resetTokenExpiry;
     await typedUser.save();
 
-    await sendPasswordResetEmail(typedUser.email, typedUser.name, resetToken);
+    await sendPasswordResetEmail(typedUser.email, typedUser.name, rawResetToken); // ✅ Send RAW token
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -574,18 +633,8 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
     );
 
     res.json({ message: 'If your email is registered, you will receive a password reset link' });
-  } catch (error) {
-    logger.error('Password reset request error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'requestPasswordReset');
   }
 };
 
@@ -597,8 +646,12 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
 export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = resetPasswordSchema.parse(req.body);
+
+    // ✅ PHASE 1 FIX: Hash incoming token for comparison
+    const hashedToken = AuthTokenService.hashToken(validatedData.token);
+
     const user = await User.findOne({
-      'security.resetToken': validatedData.token,
+      'security.resetToken': hashedToken, // ✅ Compare with HASH
       'security.resetTokenExpiry': { $gt: new Date() },
     });
 
@@ -636,18 +689,8 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
     );
 
     sendSuccess(res, { sessionsRevoked: revokedCount }, 'Password has been reset successfully. Please log in again.');
-  } catch (error) {
-    logger.error('Password reset error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'resetPassword');
   }
 };
 
@@ -659,8 +702,12 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = verifyEmailSchema.parse(req.body);
+
+    // ✅ PHASE 1 FIX: Hash incoming token for comparison
+    const hashedToken = AuthTokenService.hashToken(validatedData.token);
+
     const user = await User.findOne({
-      'security.verificationToken': validatedData.token,
+      'security.verificationToken': hashedToken, // ✅ Compare with HASH
       'security.verificationTokenExpiry': { $gt: new Date() },
     });
 
@@ -794,18 +841,8 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
       },
       'Email verified successfully. Logging you in...'
     );
-  } catch (error) {
-    logger.error('Email verification error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'verifyEmail');
   }
 };
 
@@ -861,9 +898,8 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
     }
 
     sendSuccess(res, null, 'Logged out successfully');
-  } catch (error) {
-    logger.error('Logout error:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'logout');
   }
 };
 
@@ -890,18 +926,20 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
       return;
     }
 
-    // Generate new verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    // ✅ PHASE 1 FIX: Hash verification token before storage
+    const { raw: rawVerificationToken, hashed: hashedVerificationToken } =
+      AuthTokenService.generateSecureToken();
+
     const verificationTokenExpiry = new Date();
     verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 1); // ✅ FEATURE 20: 1 hour expiry
 
     // Update user with new verification token
-    typedUser.security.verificationToken = verificationToken;
+    typedUser.security.verificationToken = hashedVerificationToken; // ✅ Store HASH
     typedUser.security.verificationTokenExpiry = verificationTokenExpiry;
     await typedUser.save();
 
     // Send verification email
-    await sendVerificationEmail(typedUser.email, typedUser.name, verificationToken);
+    await sendVerificationEmail(typedUser.email, typedUser.name, rawVerificationToken); // ✅ Send RAW token
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -914,18 +952,8 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
     );
 
     res.json({ message: 'If your email is registered, a new verification email will be sent' });
-  } catch (error) {
-    logger.error('Resend verification email error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'resendVerificationEmail');
   }
 };
 
@@ -952,18 +980,8 @@ export const checkPasswordStrength = async (req: Request, res: Response, next: N
       isStrong: strength.isStrong,
       requirements: PASSWORD_REQUIREMENTS,
     }, 'Password strength evaluated');
-  } catch (error) {
-    logger.error('Password strength check error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
-    }
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'checkPasswordStrength');
   }
 };
 /**
@@ -990,9 +1008,8 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
 
     // Use DTO for consistent response format
     sendSuccess(res, { user: UserDTO.toResponse(user as IUser) }, 'User retrieved successfully');
-  } catch (error) {
-    logger.error('Get user error:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'getMe');
   }
 };
 
@@ -1284,21 +1301,23 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    // ✅ PHASE 1 FIX: Hash email change verification token before storage
+    const { raw: rawVerificationToken, hashed: hashedVerificationToken } =
+      AuthTokenService.generateSecureToken();
+
     const tokenExpiry = new Date();
     tokenExpiry.setHours(tokenExpiry.getHours() + 24); // 24 hours
 
     // Store pending email change
     typedUser.pendingEmailChange = {
       email: newEmail.toLowerCase(),
-      token: verificationToken,
+      token: hashedVerificationToken, // ✅ Store HASH
       tokenExpiry: tokenExpiry,
     };
     await typedUser.save();
 
     // Send verification email to NEW email address
-    await sendVerificationEmail(newEmail, typedUser.name, verificationToken);
+    await sendVerificationEmail(newEmail, typedUser.name, rawVerificationToken); // ✅ Send RAW token
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -1337,8 +1356,11 @@ export const verifyEmailChange = async (req: Request, res: Response, next: NextF
     });
     const { token } = schema.parse(req.body);
 
+    // ✅ PHASE 1 FIX: Hash incoming token for comparison
+    const hashedToken = AuthTokenService.hashToken(token);
+
     const user = await User.findOne({
-      'pendingEmailChange.token': token,
+      'pendingEmailChange.token': hashedToken, // ✅ Compare with HASH
       'pendingEmailChange.tokenExpiry': { $gt: new Date() },
     });
 

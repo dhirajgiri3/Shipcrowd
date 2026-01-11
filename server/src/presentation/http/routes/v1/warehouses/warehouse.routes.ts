@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/index';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import warehouseController from '../../../controllers/warehouse/warehouse.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';
@@ -28,47 +29,76 @@ const upload = multer({
 /**
  * @route POST /warehouses
  * @desc Create a new warehouse
- * @access Private
+ * @access Private (Production)
  */
-router.post('/', authenticate, csrfProtection, checkKYC, asyncHandler(warehouseController.createWarehouse));
+router.post(
+  '/',
+  authenticate,
+  csrfProtection,
+  requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+  asyncHandler(warehouseController.createWarehouse)
+);
 
 /**
  * @route GET /warehouses
- * @desc Get all warehouses for the current user's company
- * @access Private
+ * @desc Get all warehouses
+ * @access Private (Sandbox+)
  */
-router.get('/', authenticate, asyncHandler(warehouseController.getWarehouses));
+router.get(
+  '/',
+  authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  asyncHandler(warehouseController.getWarehouses)
+);
 
 /**
  * @route GET /warehouses/:warehouseId
  * @desc Get a warehouse by ID
- * @access Private
+ * @access Private (Sandbox+)
  */
-router.get('/:warehouseId', authenticate, asyncHandler(warehouseController.getWarehouseById));
+router.get(
+  '/:warehouseId',
+  authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  asyncHandler(warehouseController.getWarehouseById)
+);
 
 /**
  * @route PATCH /warehouses/:warehouseId
  * @desc Update a warehouse
- * @access Private
+ * @access Private (Production)
  */
-router.patch('/:warehouseId', authenticate, csrfProtection, checkKYC, asyncHandler(warehouseController.updateWarehouse));
+router.patch(
+  '/:warehouseId',
+  authenticate,
+  csrfProtection,
+  requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+  asyncHandler(warehouseController.updateWarehouse)
+);
 
 /**
  * @route DELETE /warehouses/:warehouseId
- * @desc Delete a warehouse (soft delete)
- * @access Private
+ * @desc Delete a warehouse
+ * @access Private (Production)
  */
-router.delete('/:warehouseId', authenticate, csrfProtection, checkKYC, asyncHandler(warehouseController.deleteWarehouse));
+router.delete(
+  '/:warehouseId',
+  authenticate,
+  csrfProtection,
+  requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+  asyncHandler(warehouseController.deleteWarehouse)
+);
 
 /**
  * @route POST /warehouses/import
  * @desc Import warehouses from CSV
- * @access Private
+ * @access Private (Production)
  */
 router.post(
   '/import',
   authenticate,
   csrfProtection,
+  requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
   upload.single('file'),
   asyncHandler(warehouseController.importWarehouses)
 );

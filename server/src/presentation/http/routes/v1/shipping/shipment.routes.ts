@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/index';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import shipmentController from '../../../controllers/shipping/shipment.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
@@ -9,23 +10,39 @@ const router = express.Router();
 /**
  * @route POST /api/v1/shipments
  * @desc Create a new shipment from an order
- * @access Private
+ * @access Private (Production)
  */
-router.post('/', authenticate, csrfProtection, checkKYC, asyncHandler(shipmentController.createShipment));
+router.post(
+    '/',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(shipmentController.createShipment)
+);
 
 /**
  * @route GET /api/v1/shipments
  * @desc Get all shipments with pagination and filters
- * @access Private
+ * @access Private (Sandbox+)
  */
-router.get('/', authenticate, asyncHandler(shipmentController.getShipments));
+router.get(
+    '/',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(shipmentController.getShipments)
+);
 
 /**
  * @route GET /api/v1/shipments/tracking/:trackingNumber
  * @desc Track a shipment by AWB/tracking number
- * @access Private
+ * @access Private (Sandbox+)
  */
-router.get('/tracking/:trackingNumber', authenticate, asyncHandler(shipmentController.trackShipment));
+router.get(
+    '/tracking/:trackingNumber',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(shipmentController.trackShipment)
+);
 
 /**
  * @route GET /api/v1/shipments/public/track/:trackingNumber
@@ -37,22 +54,39 @@ router.get('/public/track/:trackingNumber', asyncHandler(shipmentController.trac
 /**
  * @route GET /api/v1/shipments/:shipmentId
  * @desc Get a single shipment by ID
- * @access Private
+ * @access Private (Sandbox+)
  */
-router.get('/:shipmentId', authenticate, asyncHandler(shipmentController.getShipmentById));
+router.get(
+    '/:shipmentId',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(shipmentController.getShipmentById)
+);
 
 /**
  * @route PATCH /api/v1/shipments/:shipmentId/status
  * @desc Update shipment status
- * @access Private
+ * @access Private (Production)
  */
-router.patch('/:shipmentId/status', authenticate, csrfProtection, checkKYC, asyncHandler(shipmentController.updateShipmentStatus));
+router.patch(
+    '/:shipmentId/status',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(shipmentController.updateShipmentStatus)
+);
 
 /**
  * @route DELETE /api/v1/shipments/:shipmentId
  * @desc Soft delete a shipment
- * @access Private
+ * @access Private (Production)
  */
-router.delete('/:shipmentId', authenticate, csrfProtection, asyncHandler(shipmentController.deleteShipment));
+router.delete(
+    '/:shipmentId',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
+    asyncHandler(shipmentController.deleteShipment)
+);
 
 export default router;

@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
 import crypto from 'crypto';
+import { AuthTokenService } from '../../../src/core/application/services/auth/token.service';
 
 // Helper to extract error message from response
 const getErrorMessage = (response: any): string => {
@@ -12,7 +13,6 @@ describe('Password Reset Flow', () => {
     let testUser: any;
     const testEmail = 'passwordreset@example.com';
     const testPassword = 'OldPassword123!';
-
 
 
 
@@ -108,12 +108,14 @@ describe('Password Reset Flow', () => {
         let resetToken: string;
 
         beforeEach(async () => {
-            // Generate reset token
-            resetToken = crypto.randomBytes(32).toString('hex');
+            // ✅ PHASE 1 FIX: Generate hashed token matching production code
+            const { raw, hashed } = AuthTokenService.generateSecureToken();
+            resetToken = raw; // Store raw token to send in request
+
             const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
             await User.findByIdAndUpdate(testUser._id, {
-                'security.resetToken': resetToken,
+                'security.resetToken': hashed, // Store HASHED token in DB
                 'security.resetTokenExpiry': tokenExpiry,
             });
         });

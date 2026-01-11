@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/index';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import orderController from '../../../controllers/shipping/order.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';
@@ -28,48 +29,76 @@ const upload = multer({
 /**
  * @route POST /api/v1/orders
  * @desc Create a new order
- * @access Private
+ * @access Private (Production)
  */
-router.post('/', authenticate, csrfProtection, checkKYC, asyncHandler(orderController.createOrder));
+router.post(
+    '/',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.createOrder)
+);
 
 /**
  * @route GET /api/v1/orders
  * @desc Get all orders with pagination and filters
- * @access Private
+ * @access Private (Sandbox+)
  */
-router.get('/', authenticate, asyncHandler(orderController.getOrders));
+router.get(
+    '/',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(orderController.getOrders)
+);
 
 /**
  * @route GET /api/v1/orders/:orderId
  * @desc Get a single order by ID
- * @access Private
+ * @access Private (Sandbox+)
  */
-router.get('/:orderId', authenticate, asyncHandler(orderController.getOrderById));
+router.get(
+    '/:orderId',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(orderController.getOrderById)
+);
 
 /**
  * @route PATCH /api/v1/orders/:orderId
  * @desc Update an order
- * @access Private
+ * @access Private (Production)
  */
-router.patch('/:orderId', authenticate, csrfProtection, checkKYC, asyncHandler(orderController.updateOrder));
+router.patch(
+    '/:orderId',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.updateOrder)
+);
 
 /**
  * @route DELETE /api/v1/orders/:orderId
  * @desc Soft delete an order
- * @access Private
+ * @access Private (Production)
  */
-router.delete('/:orderId', authenticate, csrfProtection, checkKYC, asyncHandler(orderController.deleteOrder));
+router.delete(
+    '/:orderId',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'] }),
+    asyncHandler(orderController.deleteOrder)
+);
 
 /**
  * @route POST /api/v1/orders/bulk
  * @desc Bulk import orders from CSV
- * @access Private
+ * @access Private (Production)
  */
 router.post(
     '/bulk',
     authenticate,
     csrfProtection,
-    checkKYC,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
     upload.single('file'),
     asyncHandler(orderController.bulkImportOrders)
 );

@@ -13,7 +13,7 @@ export interface IOnboardingStep {
 
 export interface IOnboardingProgress extends Document {
     _id: mongoose.Types.ObjectId;
-    companyId: mongoose.Types.ObjectId;
+    companyId?: mongoose.Types.ObjectId;
     userId: mongoose.Types.ObjectId;
 
     steps: {
@@ -73,7 +73,7 @@ const OnboardingProgressSchema = new Schema<IOnboardingProgress>(
         companyId: {
             type: Schema.Types.ObjectId,
             ref: 'Company',
-            required: true,
+            required: false,
             index: true
         },
         userId: {

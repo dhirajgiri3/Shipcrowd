@@ -2,16 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { User } from '../../../../infrastructure/database/mongoose/models';
-import { Company } from '../../../../infrastructure/database/mongoose/models';
-import { TeamInvitation } from '../../../../infrastructure/database/mongoose/models';
-import { TeamPermission } from '../../../../infrastructure/database/mongoose/models';
+import { User, Company, TeamInvitation, TeamPermission } from '../../../../infrastructure/database/mongoose/models';
+import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import emailService from '../../../../core/application/services/communication/email.service';
 import { getUserPermissions } from '../../middleware/auth/permissions';
 import activityService from '../../../../core/application/services/user/activity.service';
 import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Helper function to wrap controller methods that expect AuthRequest
 const withAuth = (handler: (req: Request, res: Response, next: NextFunction) => Promise<void>) => {
@@ -85,8 +85,7 @@ const updatePermissionsSchema = z.object({
 export const getTeamMembers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
@@ -94,7 +93,6 @@ export const getTeamMembers = async (req: Request, res: Response, next: NextFunc
 
     if (!user) {
       res.status(404).json({ message: 'User not found' });
-      return;
     }
 
     // Determine which company ID to use - from URL params or from user's record
@@ -311,6 +309,9 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
       return;
     }
 
+    // ✅ PHASE 1 FIX: Generate hashed token for team invitation
+    const { raw: rawToken, hashed: hashedToken } = AuthTokenService.generateSecureToken();
+
     // Create new invitation
     const invitation = new TeamInvitation({
       email: validatedData.email,
@@ -318,7 +319,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
       invitedBy: user._id,
       teamRole: validatedData.role,
       invitationMessage: validatedData.invitationMessage,
-      // Token and expiresAt are set by default in the schema
+      token: hashedToken, // ✅ Store HASH
     });
 
     await invitation.save();
@@ -328,7 +329,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
       validatedData.email,
       company.name,
       validatedData.role,
-      invitation.token,
+      rawToken, // ✅ Send RAW token
       validatedData.invitationMessage
     );
 
@@ -487,8 +488,10 @@ export const resendInvitation = async (req: Request, res: Response, next: NextFu
       return;
     }
 
-    // Update invitation with new token and expiry
-    invitation.token = crypto.randomBytes(32).toString('hex');
+    // ✅ PHASE 1 FIX: Hash team invitation token before storage
+    const { raw: rawToken, hashed: hashedToken } = AuthTokenService.generateSecureToken();
+
+    invitation.token = hashedToken; // ✅ Store HASH
     invitation.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     invitation.status = 'pending';
     await invitation.save();
@@ -498,7 +501,7 @@ export const resendInvitation = async (req: Request, res: Response, next: NextFu
       invitation.email,
       company.name,
       invitation.teamRole,
-      invitation.token
+      rawToken // ✅ Send RAW token
     );
 
     await createAuditLog(
@@ -807,9 +810,12 @@ export const verifyInvitation = async (req: Request, res: Response, next: NextFu
       return;
     }
 
+    // ✅ PHASE 1 FIX: Hash incoming token for comparison
+    const hashedToken = AuthTokenService.hashToken(token);
+
     // Find the invitation
     const invitation = await TeamInvitation.findOne({
-      token,
+      token: hashedToken, // ✅ Compare with HASH
       status: 'pending',
       expiresAt: { $gt: new Date() }
     }).populate('companyId', 'name').populate('invitedBy', 'name email');

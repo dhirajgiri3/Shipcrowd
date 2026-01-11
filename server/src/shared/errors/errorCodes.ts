@@ -14,6 +14,8 @@ export enum ErrorCode {
     AUTH_EMAIL_NOT_VERIFIED = 'AUTH_EMAIL_NOT_VERIFIED',
     AUTH_PASSWORD_MISMATCH = 'AUTH_PASSWORD_MISMATCH',
     AUTH_WEAK_PASSWORD = 'AUTH_WEAK_PASSWORD',
+    AUTH_OAUTH_FAILED = 'AUTH_OAUTH_FAILED',
+    AUTH_OAUTH_INVALID_PROFILE = 'AUTH_OAUTH_INVALID_PROFILE',
 
     // Authorization errors (AUTHZ_)
     AUTHZ_FORBIDDEN = 'AUTHZ_FORBIDDEN',
@@ -63,6 +65,7 @@ export enum ErrorCode {
 
     // System errors (SYS_)
     SYS_DATABASE_ERROR = 'SYS_DATABASE_ERROR',
+    SYS_DB_OPERATION_FAILED = 'SYS_DB_OPERATION_FAILED',
     SYS_INTERNAL_ERROR = 'SYS_INTERNAL_ERROR',
     SYS_MAINTENANCE = 'SYS_MAINTENANCE',
     SYS_TIMEOUT = 'SYS_TIMEOUT',
@@ -82,6 +85,8 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.AUTH_EMAIL_NOT_VERIFIED]: 401,
     [ErrorCode.AUTH_PASSWORD_MISMATCH]: 400,
     [ErrorCode.AUTH_WEAK_PASSWORD]: 400,
+    [ErrorCode.AUTH_OAUTH_FAILED]: 401,
+    [ErrorCode.AUTH_OAUTH_INVALID_PROFILE]: 400,
 
     // Authorization errors (403)
     [ErrorCode.AUTHZ_FORBIDDEN]: 403,
@@ -131,6 +136,7 @@ export const errorStatusMap: Record<ErrorCode, number> = {
 
     // System errors (500/503)
     [ErrorCode.SYS_DATABASE_ERROR]: 500,
+    [ErrorCode.SYS_DB_OPERATION_FAILED]: 500,
     [ErrorCode.SYS_INTERNAL_ERROR]: 500,
     [ErrorCode.SYS_MAINTENANCE]: 503,
     [ErrorCode.SYS_TIMEOUT]: 504,

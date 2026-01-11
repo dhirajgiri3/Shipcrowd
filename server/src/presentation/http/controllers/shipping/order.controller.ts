@@ -25,6 +25,8 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export const createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -129,8 +131,7 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
         }).populate('warehouseId', 'name address').lean();
 
         if (!order) {
-            sendError(res, 'Order not found', 404, 'ORDER_NOT_FOUND');
-            return;
+            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         sendSuccess(res, { order }, 'Order retrieved successfully');
@@ -166,8 +167,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         });
 
         if (!order) {
-            sendError(res, 'Order not found', 404, 'ORDER_NOT_FOUND');
-            return;
+            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         if (validation.data.currentStatus && validation.data.currentStatus !== order.currentStatus) {
@@ -227,8 +227,7 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
         });
 
         if (!order) {
-            sendError(res, 'Order not found', 404, 'ORDER_NOT_FOUND');
-            return;
+            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         const { canDelete, reason } = OrderService.canDeleteOrder(order.currentStatus);

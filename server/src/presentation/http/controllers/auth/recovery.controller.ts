@@ -13,6 +13,61 @@ import { sendAccountRecoveryEmail, sendRecoveryEmail } from '../../../../core/ap
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+
+// ============================================================================
+// ERROR HANDLING HELPER
+// ============================================================================
+
+/**
+ * Centralized error handler for recovery controller
+ */
+const handleControllerError = (
+  error: any,
+  res: Response,
+  next: NextFunction,
+  operation: string
+): void => {
+  logger.error(`Recovery controller error: ${operation}`, {
+    error: {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+    },
+  });
+
+  if (error instanceof z.ZodError) {
+    const errors = error.errors.map(err => ({
+      code: 'VALIDATION_ERROR',
+      message: err.message,
+      field: err.path.join('.'),
+    }));
+    sendValidationError(res, errors);
+    return;
+  }
+
+  if (error instanceof AuthenticationError) {
+    sendError(res, error.message, 401, error.code);
+    return;
+  }
+
+  if (error instanceof ValidationError) {
+    sendError(res, error.message, 400, error.code);
+    return;
+  }
+
+  if (error instanceof DatabaseError) {
+    sendError(res, 'Operation failed. Please try again.', 500, ErrorCode.SYS_DB_OPERATION_FAILED);
+    return;
+  }
+
+  next(error);
+};
+
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
 
 const securityQuestionsSchema = z.object({
   question1: z.string().min(1, 'Question 1 is required'),
@@ -89,9 +144,8 @@ export const setupSecurityQuestionsHandler = async (req: Request, res: Response,
     } else {
       sendError(res, 'Failed to set up security questions', 500, 'SETUP_FAILED');
     }
-  } catch (error) {
-    logger.error('Error setting up security questions:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'setupSecurityQuestions');
   }
 };
 
@@ -132,9 +186,8 @@ export const setupBackupEmailHandler = async (req: Request, res: Response, next:
     } else {
       sendError(res, 'Failed to set up backup email', 500, 'SETUP_FAILED');
     }
-  } catch (error) {
-    logger.error('Error setting up backup email:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'setupBackupEmail');
   }
 };
 
@@ -175,9 +228,8 @@ export const generateRecoveryKeysHandler = async (req: Request, res: Response, n
     } else {
       sendError(res, 'Failed to generate recovery keys', 500, 'KEY_GENERATION_FAILED');
     }
-  } catch (error) {
-    logger.error('Error generating recovery keys:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'generateRecoveryKeys');
   }
 };
 
@@ -203,9 +255,8 @@ export const getRecoveryStatus = async (req: Request, res: Response, next: NextF
       backupEmail: recoveryOptions.backupEmail,
       lastUpdated: recoveryOptions.lastUpdated,
     }, 'Recovery status retrieved successfully');
-  } catch (error) {
-    logger.error('Error getting recovery status:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'getRecoveryStatus');
   }
 };
 
@@ -248,9 +299,8 @@ export const sendRecoveryOptionsHandler = async (req: Request, res: Response, ne
     );
 
     sendSuccess(res, { success: true }, 'If your email is registered, a recovery options email will be sent');
-  } catch (error) {
-    logger.error('Error sending recovery options email:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'sendRecoveryOptions');
   }
 };
 
@@ -324,9 +374,8 @@ export const requestAccountRecovery = async (
     logger.info(`Account recovery requested for user ${user._id} from IP ${req.ip}`);
 
     sendSuccess(res, null, genericMessage);
-  } catch (error) {
-    logger.error('Account recovery request error:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'requestAccountRecovery');
   }
 };
 
@@ -428,9 +477,8 @@ export const verifyRecoveryToken = async (
     } finally {
       await session.endSession();
     }
-  } catch (error) {
-    logger.error('Account recovery verification error:', error);
-    next(error);
+  } catch (error: any) {
+    handleControllerError(error, res, next, 'verifyRecoveryMethod');
   }
 };
 

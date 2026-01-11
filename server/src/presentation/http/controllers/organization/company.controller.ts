@@ -8,14 +8,10 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import { generateAccessToken } from '../../../../shared/helpers/jwt';
 import { sendOwnerInvitationEmail } from '../../../../core/application/services/communication/email.service';
 import mongoose from 'mongoose';
-import {
-  sendSuccess,
-  sendError,
-  sendValidationError,
-  sendPaginated,
-  sendCreated,
-  calculatePagination
-} from '../../../../shared/utils/responseHelper';
+import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 const createCompanySchema = z.object({
   name: z.string().min(2),
@@ -59,8 +55,7 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
       const user = await User.findById(authReq.user._id).lean();
 
       if (!user) {
-        sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-        return;
+        throw new ValidationError('User not found', ErrorCode.RES_USER_NOT_FOUND);
       }
 
       if (!user.companyId) {
@@ -70,15 +65,13 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
 
       if (user.companyId.toString() !== companyId) {
         sendError(res, 'Access denied to this company', 403, 'ACCESS_DENIED');
-        return;
       }
     }
 
     const company = await Company.findById(companyId).lean() as ICompany | null;
 
     if (!company) {
-      sendError(res, 'Company not found', 404, 'COMPANY_NOT_FOUND');
-      return;
+      throw new ValidationError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
     }
 
     sendSuccess(res, { company }, 'Company retrieved successfully');
@@ -158,22 +151,19 @@ export const createCompany = async (req: Request, res: Response, next: NextFunct
 export const updateCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const companyId = req.params.companyId;
     if (!mongoose.Types.ObjectId.isValid(companyId)) {
       sendError(res, 'Invalid company ID format', 400, 'INVALID_ID');
-      return;
     }
 
     if (req.user.role !== 'admin') {
       const user = await User.findById(req.user._id).lean();
 
       if (!user) {
-        sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-        return;
+        throw new ValidationError('User not found', ErrorCode.RES_USER_NOT_FOUND);
       }
 
       if (!user.companyId) {
@@ -183,7 +173,6 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
 
       if (user.companyId.toString() !== companyId) {
         sendError(res, 'Access denied to this company', 403, 'ACCESS_DENIED');
-        return;
       }
     }
 
@@ -200,8 +189,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
 
     const company = await Company.findById(companyId) as ICompany | null;
     if (!company) {
-      sendError(res, 'Company not found', 404, 'COMPANY_NOT_FOUND');
-      return;
+      throw new ValidationError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
     }
 
     if (validation.data.name && validation.data.name !== company.name) {
@@ -235,8 +223,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
 export const getAllCompanies = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
@@ -269,8 +256,7 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
 export const inviteCompanyOwner = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
@@ -288,7 +274,7 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
 
     const company = await Company.findById(companyId).lean();
     if (!company) {
-      sendError(res, 'Company not found', 404, 'COMPANY_NOT_FOUND');
+      throw new ValidationError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
       return;
     }
 
@@ -306,8 +292,10 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
 
     if (existingInvitation) {
       sendError(res, 'Invitation already sent to this email', 400, 'INVITATION_EXISTS');
-      return;
     }
+
+    // ✅ PHASE 1 FIX: Generate hashed token for team invitation
+    const { raw: rawToken, hashed: hashedToken } = AuthTokenService.generateSecureToken();
 
     const invitation = new TeamInvitation({
       email: email.toLowerCase(),
@@ -315,11 +303,12 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
       invitedBy: req.user._id,
       teamRole: 'owner',
       invitationMessage: message || undefined,
+      token: hashedToken, // ✅ Store HASH
     });
 
     await invitation.save();
 
-    await sendOwnerInvitationEmail(email, name, company.name, invitation.token);
+    await sendOwnerInvitationEmail(email, name, company.name, rawToken); // ✅ Send RAW token
 
     await createAuditLog(req.user._id, companyId, 'invite', 'company', companyId, { message: `Invited ${email} as company owner`, email }, req);
 
@@ -340,8 +329,7 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
 export const updateCompanyStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
@@ -355,7 +343,6 @@ export const updateCompanyStatus = async (req: Request, res: Response, next: Nex
     const validStatuses = ['pending_verification', 'kyc_submitted', 'approved', 'suspended', 'rejected'];
     if (!status || !validStatuses.includes(status)) {
       sendError(res, 'Invalid status', 400, 'INVALID_STATUS');
-      return;
     }
 
     const company = await Company.findByIdAndUpdate(
@@ -365,8 +352,7 @@ export const updateCompanyStatus = async (req: Request, res: Response, next: Nex
     ) as ICompany | null;
 
     if (!company) {
-      sendError(res, 'Company not found', 404, 'COMPANY_NOT_FOUND');
-      return;
+      throw new ValidationError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
     }
 
     await createAuditLog(req.user._id, companyId, 'update', 'company', companyId, { message: `Company status updated to ${status}`, status, reason }, req);
@@ -381,8 +367,7 @@ export const updateCompanyStatus = async (req: Request, res: Response, next: Nex
 export const getCompanyStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {

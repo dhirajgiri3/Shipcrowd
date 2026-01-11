@@ -25,8 +25,10 @@ export {
   // New Authentication Middleware
   checkKYC,
   requireAccessTier,
-  determineUserTier
+  determineUserTier,
+  requireAccess
 };
 
 import { checkKYC } from './auth/kyc';
 import { requireAccessTier, determineUserTier } from './auth/access-tier.middleware';
+import { requireAccess } from './auth/unified-access';

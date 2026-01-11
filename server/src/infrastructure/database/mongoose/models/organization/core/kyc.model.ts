@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 import { fieldEncryption } from 'mongoose-field-encryption';
 import crypto from 'crypto';
-import { KYCState } from '../../../../../../core/domain/types/kyc-state.js';
+import { KYCState } from '../../../../../../core/domain/types/kyc-state';
 
 // Define the interface for KYC document
 export interface IKYC extends Document {

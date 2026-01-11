@@ -1,5 +1,7 @@
 import express from 'express';
-import { authenticate, authorize } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/index';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import analyticsController from '../../../controllers/analytics/analytics.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 
@@ -10,14 +12,24 @@ const router = express.Router();
  * @desc Get seller dashboard analytics (company-scoped)
  * @access Private
  */
-router.get('/dashboard/seller', authenticate, asyncHandler(analyticsController.getSellerDashboard));
+router.get(
+    '/dashboard/seller',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(analyticsController.getSellerDashboard)
+);
 
 /**
  * @route GET /api/v1/analytics/dashboard/admin
  * @desc Get admin dashboard analytics (multi-company, admin only)
  * @access Private (Admin)
  */
-router.get('/dashboard/admin', authenticate, authorize('admin'), asyncHandler(analyticsController.getAdminDashboard));
+router.get(
+    '/dashboard/admin',
+    authenticate,
+    requireAccess({ roles: ['admin'] }),
+    asyncHandler(analyticsController.getAdminDashboard)
+);
 
 /**
  * @route GET /api/v1/analytics/orders
