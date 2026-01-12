@@ -10,7 +10,7 @@ import emailService from '../../../../core/application/services/communication/em
 import { getUserPermissions } from '../../middleware/auth/permissions';
 import activityService from '../../../../core/application/services/user/activity.service';
 import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AuthorizationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Helper function to wrap controller methods that expect AuthRequest
@@ -92,7 +92,7 @@ export const getTeamMembers = async (req: Request, res: Response, next: NextFunc
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Determine which company ID to use - from URL params or from user's record
@@ -102,15 +102,13 @@ export const getTeamMembers = async (req: Request, res: Response, next: NextFunc
     if (req.params.companyId) {
       // Check if user has access to this company
       if (user.role !== 'admin' && (!user.companyId || user.companyId.toString() !== req.params.companyId)) {
-        res.status(403).json({ message: 'Access denied to this company' });
-        return;
+        throw new AuthorizationError('Access denied to this company', ErrorCode.AUTHZ_FORBIDDEN);
       }
       // Convert string ID to ObjectId
       companyId = new mongoose.Types.ObjectId(req.params.companyId);
     } else if (!user.companyId) {
       // If no companyId in params and user doesn't have a company
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new ValidationError('User is not associated with any company', { field: 'companyId', message: 'User is not associated with any company' });
     } else {
       // Use user's company ID
       companyId = user.companyId;

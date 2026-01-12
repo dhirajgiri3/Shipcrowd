@@ -16,6 +16,8 @@ import { ICourierAdapter } from '../../../../infrastructure/external/couriers/ba
 import { VelocityShipfastProvider } from '../../../../infrastructure/external/couriers/velocity';
 import { Integration } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export class CourierFactory {
   // Provider cache: Map<providerKey, providerInstance>
@@ -50,8 +52,9 @@ export class CourierFactory {
     });
 
     if (!integration) {
-      throw new Error(
-        `Courier integration '${providerName}' not found or not active for company ${companyId}`
+      throw new NotFoundError(
+        `Courier integration '${providerName}' not found or not active for company ${companyId}`,
+        ErrorCode.BIZ_NOT_FOUND
       );
     }
 
@@ -78,7 +81,7 @@ export class CourierFactory {
       //   break;
 
       default:
-        throw new Error(`Unknown courier provider: ${providerName}`);
+        throw new ValidationError(`Unknown courier provider: ${providerName}`);
     }
 
     // Cache the provider instance

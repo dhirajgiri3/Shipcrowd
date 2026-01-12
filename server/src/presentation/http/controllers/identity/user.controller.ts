@@ -6,11 +6,11 @@ import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import {
   sendSuccess,
-  sendError,
-  sendValidationError,
   sendPaginated,
   calculatePagination
 } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { passwordSchema } from '../../../../shared/validation/commonSchemas';
 
 // Define validation schemas
@@ -45,16 +45,14 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
     const authReq = req as Request;
 
     if (!authReq.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     // Fetch the complete user data from the database
     const user = await User.findById(authReq.user._id).select('-password').lean();
 
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
     sendSuccess(res, { user }, 'Profile retrieved successfully');
@@ -73,8 +71,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
     const authReq = req as Request;
 
     if (!authReq.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     // Validate input
@@ -85,8 +82,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         message: err.message,
         field: err.path.join('.'),
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', errors);
     }
 
     // Update user profile
@@ -97,8 +93,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
     ).select('-password').lean();
 
     if (!updatedUser) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
     await createAuditLog(
@@ -127,8 +122,7 @@ export const updatePassword = async (req: Request, res: Response, next: NextFunc
     const authReq = req as Request;
 
     if (!authReq.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     // Validate input
@@ -139,22 +133,19 @@ export const updatePassword = async (req: Request, res: Response, next: NextFunc
         message: err.message,
         field: err.path.join('.'),
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', errors);
     }
 
     // Get user with password
     const user = await User.findById(authReq.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
     // Verify current password
     const isPasswordValid = await user.comparePassword(validation.data.currentPassword);
     if (!isPasswordValid) {
-      sendError(res, 'Current password is incorrect', 400, 'INVALID_PASSWORD');
-      return;
+      throw new ValidationError('Current password is incorrect');
     }
 
     // Update password
@@ -188,8 +179,7 @@ export const getActivityLog = async (req: Request, res: Response, next: NextFunc
     const authReq = req as Request;
 
     if (!authReq.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     // Parse pagination parameters

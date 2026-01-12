@@ -1,5 +1,7 @@
 import { ProductTour, TourCompletion, ITourStep } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export class ProductTourService {
     /**
@@ -61,7 +63,7 @@ export class ProductTourService {
     async startTour(companyId: string, userId: string, tourId: string) {
         try {
             const tour = await ProductTour.findById(tourId);
-            if (!tour) throw new Error('Tour not found');
+            if (!tour) throw new NotFoundError('Product tour not found', ErrorCode.BIZ_NOT_FOUND);
 
             let completion = await TourCompletion.findOne({ companyId, userId, tourId });
 

@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { OnboardingProgress, Achievement } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export class OnboardingProgressService {
     /**
@@ -98,7 +100,7 @@ export class OnboardingProgressService {
         const optionalSteps = ['walletRecharged', 'demoDataCleared', 'platformTourCompleted'];
 
         if (!optionalSteps.includes(stepKey)) {
-            throw new Error(`Step ${stepKey} cannot be skipped`);
+            throw new ValidationError(`Step ${stepKey} cannot be skipped`, ErrorCode.VAL_INVALID_INPUT);
         }
 
         try {

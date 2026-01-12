@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import authAnalyticsService from '../../../../core/application/services/analytics/auth-analytics.service';
-import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
+import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Authentication Analytics Controller
@@ -21,8 +23,7 @@ export const getAuthMetrics = async (
     try {
         // Only admin can view analytics
         if (!req.user || req.user.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'FORBIDDEN');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         // Parse date range from query params
@@ -38,8 +39,7 @@ export const getAuthMetrics = async (
 
         // Validate date range
         if (dateRange.start > dateRange.end) {
-            sendError(res, 'Start date must be before end date', 400, 'INVALID_DATE_RANGE');
-            return;
+            throw new ValidationError('Start date must be before end date');
         }
 
         // Get comprehensive metrics
@@ -66,8 +66,7 @@ export const getLoginStats = async (
 ): Promise<void> => {
     try {
         if (!req.user || req.user.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'FORBIDDEN');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         const startDate = req.query.startDate as string;
@@ -99,8 +98,7 @@ export const getFailedLogins = async (
 ): Promise<void> => {
     try {
         if (!req.user || req.user.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'FORBIDDEN');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         const startDate = req.query.startDate as string;
@@ -132,8 +130,7 @@ export const getActiveSessions = async (
 ): Promise<void> => {
     try {
         if (!req.user || req.user.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'FORBIDDEN');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         const sessions = await authAnalyticsService.getActiveSessionsCount();
@@ -157,8 +154,7 @@ export const getRegistrationTrends = async (
 ): Promise<void> => {
     try {
         if (!req.user || req.user.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'FORBIDDEN');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         const startDate = req.query.startDate as string;
@@ -190,8 +186,7 @@ export const getSecurityIncidents = async (
 ): Promise<void> => {
     try {
         if (!req.user || req.user.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'FORBIDDEN');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         const startDate = req.query.startDate as string;

@@ -5,7 +5,9 @@ import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import cacheService from '../../../../shared/services/cache.service';
-import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Analytics Controller
@@ -184,8 +186,7 @@ export const getAdminDashboard = async (
 
         // Admin role check
         if (req.user!.role !== 'admin') {
-            sendError(res, 'Admin access required', 403, 'INSUFFICIENT_PERMISSIONS');
-            return;
+            throw new AuthorizationError('Admin access required', ErrorCode.AUTHZ_FORBIDDEN);
         }
 
         // Date filters
@@ -748,8 +749,7 @@ export const buildCustomReport = async (
 
         const validation = buildReportSchema.safeParse(req.body);
         if (!validation.success) {
-            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
-            return;
+            throw new ValidationError(validation.error.errors[0].message);
         }
 
         const { reportType, filters, metrics, groupBy } = validation.data;
@@ -783,8 +783,7 @@ export const saveReportConfig = async (
 
         const validation = saveReportConfigSchema.safeParse(req.body);
         if (!validation.success) {
-            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
-            return;
+            throw new ValidationError(validation.error.errors[0].message);
         }
 
         const config = await ReportBuilderService.saveReportConfig(

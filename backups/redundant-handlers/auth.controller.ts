@@ -10,13 +10,86 @@ import { createSession, updateSessionActivity, revokeAllSessions } from '../../.
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
+
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendError, sendValidationError, sendCreated } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { UserDTO } from '../../dtos/user.dto';
-import { AuthenticationError, ValidationError, DatabaseError, ConflictError, NotFoundError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+
+// ============================================================================
+// ERROR HANDLING HELPER
+// ============================================================================
+
+/**
+ * Centralized error handler for auth controller
+ * Handles different error types and sends appropriate responses
+ */
+const handleControllerError = (
+  error: any,
+  res: Response,
+  next: NextFunction,
+  operation: string
+): void => {
+  // Log error with context
+  logger.error(`Auth controller error: ${operation}`, {
+    error: {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+    },
+  });
+
+  // Handle Zod validation errors
+  if (error instanceof z.ZodError) {
+    const errors = error.errors.map(err => ({
+      code: 'VALIDATION_ERROR',
+      message: err.message,
+      field: err.path.join('.'),
+    }));
+    sendValidationError(res, errors);
+    return;
+  }
+
+  // Handle custom authentication errors
+  if (error instanceof AuthenticationError) {
+    sendError(res, error.message, 401, error.code);
+    return;
+  }
+
+  // Handle custom validation errors
+  if (error instanceof ValidationError) {
+    sendError(res, error.message, 400, error.code);
+    return;
+  }
+
+  // Handle custom database errors
+  if (error instanceof DatabaseError) {
+    sendError(res, 'Operation failed. Please try again.', 500, ErrorCode.SYS_DB_OPERATION_FAILED);
+    return;
+  }
+
+  // Handle specific error messages (legacy pattern)
+  if (error.message === 'USER_EXISTS') {
+    sendError(res, 'User already exists', 409, 'USER_EXISTS');
+    return;
+  }
+
+  if (error.message === 'INVALID_INVITATION') {
+    sendError(res, 'Invalid or expired invitation token', 400, 'INVALID_INVITATION');
+    return;
+  }
+
+  if (error.message === 'INVALID_CREDENTIALS') {
+    sendError(res, 'Invalid email or password', 401, ErrorCode.AUTH_INVALID_CREDENTIALS);
+    return;
+  }
+
+  // Pass unknown errors to Express error handler
+  next(error);
+};
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -189,8 +262,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       );
     });
   } catch (error: any) {
-    logger.error('register error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'register');
   }
 };
 
@@ -205,7 +277,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const user = await User.findOne({ email: validatedData.email });
 
     if (!user) {
-      throw new AuthenticationError('Invalid credentials', ErrorCode.AUTH_INVALID_CREDENTIALS);
+      sendError(res, 'Invalid credentials', 401, 'INVALID_CREDENTIALS');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -213,30 +286,39 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     // Check if account is locked
     if (typedUser.security.lockUntil && typedUser.security.lockUntil > new Date()) {
       const minutesLeft = Math.ceil((typedUser.security.lockUntil.getTime() - new Date().getTime()) / (60 * 1000));
-      throw new AuthenticationError(
+      sendError(
+        res,
         `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
-        ErrorCode.AUTH_ACCOUNT_LOCKED
+        401,
+        'ACCOUNT_LOCKED'
       );
+      return;
     }
 
     if (!typedUser.isActive) {
-      throw new AuthenticationError('Account is not active. Please verify your email.', ErrorCode.AUTH_ACCOUNT_DISABLED);
+      sendError(res, 'Account is not active. Please verify your email.', 401, 'ACCOUNT_INACTIVE');
+      return;
     }
     if (typedUser.isDeleted) {
-      throw new AuthenticationError('Account has been deleted', ErrorCode.AUTH_ACCOUNT_LOCKED);
+      sendError(res, 'Account has been deleted', 401, 'ACCOUNT_DELETED');
+      return;
     }
 
     // Check if this is an OAuth-only user (no password set)
     if (!typedUser.password && typedUser.oauthProvider && typedUser.oauthProvider !== 'email') {
-      throw new AuthenticationError(
+      sendError(
+        res,
         `This account uses ${typedUser.oauthProvider} sign-in. Please use "Continue with ${typedUser.oauthProvider.charAt(0).toUpperCase() + typedUser.oauthProvider.slice(1)}" to login.`,
-        ErrorCode.AUTH_OAUTH_FAILED
+        401,
+        'OAUTH_ACCOUNT'
       );
+      return;
     }
 
     // Check if password exists before comparing
     if (!typedUser.password) {
-      throw new AuthenticationError('Invalid credentials', ErrorCode.AUTH_INVALID_CREDENTIALS);
+      sendError(res, 'Invalid credentials', 401, 'INVALID_CREDENTIALS');
+      return;
     }
 
     const isPasswordValid = await typedUser.comparePassword(validatedData.password);
@@ -285,16 +367,21 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       );
 
       if (typedUser.security.failedLoginAttempts >= 5) {
-        throw new AuthenticationError(
+        sendError(
+          res,
           'Account is temporarily locked due to multiple failed login attempts. Please try again in 30 minutes.',
-          ErrorCode.AUTH_ACCOUNT_LOCKED
+          401,
+          'ACCOUNT_LOCKED'
         );
       } else {
-        throw new AuthenticationError(
+        sendError(
+          res,
           'Invalid credentials',
-          ErrorCode.AUTH_INVALID_CREDENTIALS
+          401,
+          'INVALID_CREDENTIALS'
         );
       }
+      return;
     }
 
     // Reset failed login attempts on successful login
@@ -361,8 +448,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       user: UserDTO.toResponse(typedUser),
     }, 'Login successful');
   } catch (error: any) {
-    logger.error('login error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'login');
   }
 };
 
@@ -379,20 +465,23 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     // Validate that we have a refresh token from either cookies or body
     const token = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken || req.body?.refreshToken;
     if (!token) {
-      throw new AuthenticationError('Refresh token is required', ErrorCode.AUTH_TOKEN_INVALID);
+      sendError(res, 'Refresh token is required', 401, 'REFRESH_TOKEN_REQUIRED');
+      return;
     }
 
     try {
       const payload = await verifyRefreshToken(token);
       const user = await User.findById(payload.userId);
       if (!user) {
-        throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+        sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
+        return;
       }
       // Assert type after null check
       const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
       if (typedUser.security.tokenVersion !== payload.tokenVersion) {
-        throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+        sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
+        return;
       }
 
       // Check if the session exists and is valid
@@ -404,7 +493,8 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       });
 
       if (!session) {
-        throw new AuthenticationError('Session expired or invalid', ErrorCode.AUTH_TOKEN_EXPIRED);
+        sendError(res, 'Session expired or invalid', 401, 'SESSION_EXPIRED');
+        return;
       }
 
       // Check for inactivity timeout (Issue #27: Use env variable)
@@ -444,7 +534,8 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
-        throw new AuthenticationError('Session expired due to inactivity', ErrorCode.AUTH_TOKEN_EXPIRED);
+        sendError(res, 'Session expired due to inactivity', 401, 'SESSION_TIMEOUT');
+        return;
       }
 
       const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
@@ -494,11 +585,11 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       }, 'Token refreshed');
     } catch (tokenError) {
       logger.error('Token verification error:', tokenError);
-      throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+      sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
     }
   } catch (error) {
     logger.error('Token refresh error:', error);
-    throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+    sendError(res, 'Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN');
   }
 };
 
@@ -543,8 +634,7 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
 
     res.json({ message: 'If your email is registered, you will receive a password reset link' });
   } catch (error: any) {
-    logger.error('requestPasswordReset error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'requestPasswordReset');
   }
 };
 
@@ -566,7 +656,8 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
     });
 
     if (!user) {
-      throw new ValidationError('Invalid or expired reset token');
+      sendError(res, 'Invalid or expired reset token', 400, 'INVALID_RESET_TOKEN');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -599,8 +690,7 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 
     sendSuccess(res, { sessionsRevoked: revokedCount }, 'Password has been reset successfully. Please log in again.');
   } catch (error: any) {
-    logger.error('resetPassword error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'resetPassword');
   }
 };
 
@@ -622,7 +712,8 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     });
 
     if (!user) {
-      throw new ValidationError('Invalid or expired verification token');
+      sendError(res, 'Invalid or expired verification token', 400, 'INVALID_VERIFICATION_TOKEN');
+      return;
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -751,8 +842,7 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
       'Email verified successfully. Logging you in...'
     );
   } catch (error: any) {
-    logger.error('verifyEmail error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'verifyEmail');
   }
 };
 
@@ -809,8 +899,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
 
     sendSuccess(res, null, 'Logged out successfully');
   } catch (error: any) {
-    logger.error('logout error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'logout');
   }
 };
 
@@ -864,8 +953,7 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
 
     res.json({ message: 'If your email is registered, a new verification email will be sent' });
   } catch (error: any) {
-    logger.error('resendVerificationEmail error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'resendVerificationEmail');
   }
 };
 
@@ -893,8 +981,7 @@ export const checkPasswordStrength = async (req: Request, res: Response, next: N
       requirements: PASSWORD_REQUIREMENTS,
     }, 'Password strength evaluated');
   } catch (error: any) {
-    logger.error('checkPasswordStrength error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'checkPasswordStrength');
   }
 };
 /**
@@ -905,7 +992,8 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
   try {
     const authReq = req as Request;
     if (!authReq.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+      sendError(res, 'Authentication required', 401, 'AUTHENTICATION_REQUIRED');
+      return;
     }
 
     // Exclude sensitive fields: password, security tokens, OAuth tokens
@@ -914,14 +1002,14 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
       .lean();
 
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     // Use DTO for consistent response format
     sendSuccess(res, { user: UserDTO.toResponse(user as IUser) }, 'User retrieved successfully');
   } catch (error: any) {
-    logger.error('getMe error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'getMe');
   }
 };
 
@@ -1019,7 +1107,8 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
   try {
     const authReq = req as Request;
     if (!authReq.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+      sendError(res, 'Authentication required', 401, 'AUTHENTICATION_REQUIRED');
+      return;
     }
 
     // ✅ FIX: Use consistent password validation (was only using min(8))
@@ -1030,14 +1119,16 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
 
     const user = await User.findById(authReq.user._id);
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
     // Check if user already has a password
     if (typedUser.password) {
-      throw new ValidationError('Password already set. Use change password instead.');
+      sendError(res, 'Password already set. Use change password instead.', 400, 'PASSWORD_EXISTS');
+      return;
     }
 
     // Set the password (will be hashed by pre-save hook)
@@ -1070,7 +1161,8 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
     next(error);
   }
@@ -1105,18 +1197,21 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
 
     // Check if user has a password (OAuth users who haven't set password should use set-password)
     if (!typedUser.password) {
-      throw new ValidationError('No password set. Please use set-password endpoint first.');
+      sendError(res, 'No password set. Please use set-password endpoint first.', 400, 'NO_PASSWORD');
+      return;
     }
 
     // Verify current password
     const isCurrentPasswordValid = await typedUser.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
-      throw new AuthenticationError('Current password is incorrect', ErrorCode.AUTH_INVALID_CREDENTIALS);
+      sendError(res, 'Current password is incorrect', 401, 'INCORRECT_PASSWORD');
+      return;
     }
 
     // Check new password is different
     if (currentPassword === newPassword) {
-      throw new ValidationError('New password must be different from current password');
+      sendError(res, 'New password must be different from current password', 400, 'SAME_PASSWORD');
+      return;
     }
 
     // Update password and increment token version (invalidate all sessions)
@@ -1151,7 +1246,8 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
     next(error);
   }
@@ -1187,19 +1283,22 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
     if (typedUser.password) {
       const isPasswordValid = await typedUser.comparePassword(password);
       if (!isPasswordValid) {
-        throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_CREDENTIALS);
+        sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
+        return;
       }
     }
 
     // Check if new email is same as current
     if (typedUser.email.toLowerCase() === newEmail.toLowerCase()) {
-      throw new ValidationError('New email is same as current email');
+      sendError(res, 'New email is same as current email', 400, 'SAME_EMAIL');
+      return;
     }
 
     // Check if new email already exists
     const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
     if (existingUser) {
-      throw new ConflictError('Email already in use', ErrorCode.BIZ_CONFLICT);
+      sendError(res, 'Email already in use', 409, 'EMAIL_IN_USE');
+      return;
     }
 
     // ✅ PHASE 1 FIX: Hash email change verification token before storage
@@ -1239,7 +1338,8 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
     next(error);
   }
@@ -1265,13 +1365,15 @@ export const verifyEmailChange = async (req: Request, res: Response, next: NextF
     });
 
     if (!user) {
-      throw new ValidationError('Invalid or expired verification token');
+      sendError(res, 'Invalid or expired verification token', 400, 'INVALID_VERIFICATION_TOKEN');
+      return;
     }
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!typedUser.pendingEmailChange) {
-      throw new ValidationError('No pending email change');
+      sendError(res, 'No pending email change', 400, 'NO_PENDING_CHANGE');
+      return;
     }
 
     const oldEmail = typedUser.email;
@@ -1301,7 +1403,8 @@ export const verifyEmailChange = async (req: Request, res: Response, next: NextF
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
     next(error);
   }
@@ -1375,7 +1478,8 @@ export const requestMagicLink = async (req: Request, res: Response, next: NextFu
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
     next(error);
   }
@@ -1403,7 +1507,8 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     });
 
     if (!magicLink) {
-      throw new ValidationError('Invalid or expired magic link');
+      sendError(res, 'Invalid or expired magic link', 400, 'INVALID_MAGIC_LINK');
+      return;
     }
 
     // Mark as used
@@ -1414,13 +1519,15 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     const user = await User.findById(magicLink.userId);
 
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!typedUser.isActive) {
-      throw new AuthenticationError('Account is not active', ErrorCode.AUTH_ACCOUNT_DISABLED);
+      sendError(res, 'Account is not active', 403, 'ACCOUNT_INACTIVE');
+      return;
     }
 
     // Generate tokens (30-day session for magic link convenience)
@@ -1505,7 +1612,8 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
     next(error);
   }
@@ -1532,4 +1640,5 @@ const authController = {
 };
 
 export default authController;
+
 

@@ -15,6 +15,9 @@
  */
 
 import logger from '../../../../../shared/logger/winston.logger';
+import { ValidationError } from '../../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../../shared/errors/errorCodes';
+
 
 export interface BaseColumn {
     header: string;
@@ -107,7 +110,7 @@ export default abstract class BaseExportService {
      */
     protected static validateData(data: any[]): void {
         if (!Array.isArray(data)) {
-            throw new Error('Export data must be an array');
+            throw new ValidationError('Export data must be an array', ErrorCode.VAL_INVALID_INPUT);
         }
     }
 

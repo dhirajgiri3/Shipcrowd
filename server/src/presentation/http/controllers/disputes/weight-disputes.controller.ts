@@ -25,11 +25,11 @@ import {
 } from '../../../../shared/helpers/controller.helpers';
 import {
     sendSuccess,
-    sendError,
-    sendValidationError,
     sendPaginated,
     calculatePagination,
 } from '../../../../shared/utils/responseHelper';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * GET /api/v1/disputes/weight
@@ -124,8 +124,7 @@ export const getDisputeDetails = async (
             .lean();
 
         if (!dispute) {
-            sendError(res, 'Dispute not found', 404, 'DISPUTE_NOT_FOUND');
-            return;
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         sendSuccess(res, { dispute }, 'Dispute details retrieved successfully');
@@ -160,14 +159,7 @@ export const submitSellerEvidence = async (
         const { photos, documents, notes } = req.body;
 
         if (!photos && !documents && !notes) {
-            sendValidationError(res, [
-                {
-                    code: 'VALIDATION_ERROR',
-                    message: 'At least one of photos, documents, or notes is required',
-                    field: 'evidence',
-                },
-            ]);
-            return;
+            throw new ValidationError('At least one of photos, documents, or notes is required');
         }
 
         // Submit evidence via service
@@ -197,18 +189,8 @@ export const submitSellerEvidence = async (
 
         sendSuccess(res, { dispute }, 'Evidence submitted successfully');
     } catch (error: any) {
-        if (error.statusCode === 403) {
-            sendError(res, error.message, 403, 'FORBIDDEN');
-            return;
-        }
-        if (error.statusCode === 404) {
-            sendError(res, error.message, 404, 'DISPUTE_NOT_FOUND');
-            return;
-        }
-        if (error.statusCode === 400) {
-            sendError(res, error.message, 400, 'INVALID_OPERATION');
-            return;
-        }
+        // Let errors propagate to global handler
+        // Service layer already throws proper AppError instances
         logger.error('Error submitting seller evidence:', error);
         next(error);
     }
@@ -238,7 +220,7 @@ export const resolveDispute = async (
         // Admin check (assuming role is in auth object)
         // TODO: Implement proper role-based authorization
         // if (!auth.roles?.includes('admin')) {
-        //   sendError(res, 'Admin access required', 403, 'FORBIDDEN');
+        //(res, 'Admin access required', 403, 'FORBIDDEN');
         //   return;
         // }
 
@@ -249,26 +231,12 @@ export const resolveDispute = async (
         const { outcome, adjustedWeight, refundAmount, deductionAmount, reasonCode, notes } = req.body;
 
         if (!outcome || !reasonCode || !notes) {
-            sendValidationError(res, [
-                {
-                    code: 'VALIDATION_ERROR',
-                    message: 'outcome, reasonCode, and notes are required',
-                    field: 'resolution',
-                },
-            ]);
-            return;
+            throw new ValidationError('outcome, reasonCode, and notes are required');
         }
 
         const validOutcomes = ['seller_favor', 'shipcrowd_favor', 'split', 'waived'];
         if (!validOutcomes.includes(outcome)) {
-            sendValidationError(res, [
-                {
-                    code: 'VALIDATION_ERROR',
-                    message: `outcome must be one of: ${validOutcomes.join(', ')}`,
-                    field: 'outcome',
-                },
-            ]);
-            return;
+            throw new ValidationError(`outcome must be one of: ${validOutcomes.join(', ')}`);
         }
 
         // Resolve dispute via service
@@ -302,14 +270,7 @@ export const resolveDispute = async (
 
         sendSuccess(res, { dispute }, 'Dispute resolved successfully');
     } catch (error: any) {
-        if (error.statusCode === 404) {
-            sendError(res, error.message, 404, 'DISPUTE_NOT_FOUND');
-            return;
-        }
-        if (error.statusCode === 400) {
-            sendError(res, error.message, 400, 'VALIDATION_ERROR');
-            return;
-        }
+        // Let errors propagate to global handler
         logger.error('Error resolving dispute:', error);
         next(error);
     }
@@ -335,7 +296,7 @@ export const getAnalytics = async (
         // Admin check
         // TODO: Implement proper role-based authorization
         // if (!auth.roles?.includes('admin')) {
-        //   sendError(res, 'Admin access required', 403, 'FORBIDDEN');
+        //(res, 'Admin access required', 403, 'FORBIDDEN');
         //   return;
         // }
 

@@ -21,9 +21,7 @@ import { Session } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 import { Request } from 'express';
 import logger from '../../../../shared/logger/winston.logger';
-import { NotFoundError, DatabaseError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { NotFoundError, DatabaseError, AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**

@@ -19,7 +19,8 @@ import { NDRWorkflow, INDRWorkflow, IWorkflowAction } from '../../../../infrastr
 import NDRActionExecutors from './actions/ndr-action-executors';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
 
 interface CustomerInfo {
@@ -67,7 +68,7 @@ export default class NDRResolutionService {
         // Execute first action immediately
         await this.executeNextAction(ndrEvent, workflow, 0);
     }
-                                     
+
     /**
      * Execute next action in workflow
      */
@@ -479,7 +480,7 @@ export default class NDRResolutionService {
                         ndrType: ndrData.ndrType,
                         companyId: ndrData.company,
                     });
-                    throw new Error('No workflow found');
+                    throw new NotFoundError('No workflow found for NDR type', ErrorCode.BIZ_NOT_FOUND);
                 }
 
                 // Extract customer info from aggregated data (no DB query)
@@ -495,7 +496,7 @@ export default class NDRResolutionService {
                     logger.warn('No customer phone found for expired NDR', {
                         ndrId: ndrData._id,
                     });
-                    throw new Error('No customer phone');
+                    throw new ValidationError('No customer phone number found', ErrorCode.VAL_MISSING_FIELD);
                 }
 
                 // FIX #1: Use aggregated data directly instead of redundant findById

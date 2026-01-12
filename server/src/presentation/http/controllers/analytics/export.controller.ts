@@ -7,7 +7,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
@@ -44,16 +46,14 @@ export const exportToCSV = async (
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
-            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
-            return;
+            throw new ValidationError(validation.error.errors[0].message);
         }
 
         const { dataType, filters } = validation.data;
         const data = await fetchData(auth.companyId!, dataType, filters);
 
         if (data.length === 0) {
-            sendError(res, 'No data to export', 400, 'NO_DATA');
-            return;
+            throw new NotFoundError('No data to export', ErrorCode.BIZ_NOT_FOUND);
         }
 
         const columns = dataType === 'orders'
@@ -104,16 +104,14 @@ export const exportToExcel = async (
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
-            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
-            return;
+            throw new ValidationError(validation.error.errors[0].message);
         }
 
         const { dataType, filters } = validation.data;
         const data = await fetchData(auth.companyId!, dataType, filters);
 
         if (data.length === 0) {
-            sendError(res, 'No data to export', 400, 'NO_DATA');
-            return;
+            throw new NotFoundError('No data to export', ErrorCode.BIZ_NOT_FOUND);
         }
 
         const columns = dataType === 'orders'
@@ -166,16 +164,14 @@ export const exportToPDF = async (
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
-            sendError(res, validation.error.errors[0].message, 400, 'VALIDATION_ERROR');
-            return;
+            throw new ValidationError(validation.error.errors[0].message);
         }
 
         const { dataType, filters } = validation.data;
         const data = await fetchData(auth.companyId!, dataType, filters);
 
         if (data.length === 0) {
-            sendError(res, 'No data to export', 400, 'NO_DATA');
-            return;
+            throw new NotFoundError('No data to export', ErrorCode.BIZ_NOT_FOUND);
         }
 
         const columns = dataType === 'orders'

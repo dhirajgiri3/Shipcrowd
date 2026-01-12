@@ -4,9 +4,9 @@ import bcrypt from 'bcrypt';
 import { getUserSessions, revokeSession, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { sendError, sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ISession } from '../../../../infrastructure/database/mongoose/models';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 const sessionIdSchema = z.object({
@@ -38,8 +38,7 @@ const findCurrentSessionId = async (sessions: ISession[], cookieToken?: string):
 export const getSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const sessions = await getUserSessions(req.user._id);
@@ -68,8 +67,7 @@ export const getSessions = async (req: Request, res: Response, next: NextFunctio
 export const terminateSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = sessionIdSchema.safeParse(req.params);
@@ -79,15 +77,13 @@ export const terminateSession = async (req: Request, res: Response, next: NextFu
         message: err.message,
         field: err.path.join('.'),
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', errors);
     }
 
     const success = await revokeSession(validation.data.sessionId, req.user._id.toString());
 
     if (!success) {
-      sendError(res, 'Session not found or already revoked', 404, 'SESSION_NOT_FOUND');
-      return;
+      throw new NotFoundError('Session', ErrorCode.BIZ_NOT_FOUND);
     }
 
     await createAuditLog(
@@ -110,8 +106,7 @@ export const terminateSession = async (req: Request, res: Response, next: NextFu
 export const terminateAllSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // ✅ FIX: Use bcrypt.compare via helper to find current session

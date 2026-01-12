@@ -42,16 +42,44 @@ function containsResponseHelper(line: string): string | null {
 }
 
 /**
- * Check if next line is a return statement or closing brace
+ * Check if next line is a return statement, closing brace, or continuation of function call
  */
-function hasReturnOrClosingBrace(line: string): boolean {
+function hasReturnOrClosingBrace(line: string, currentLine: string): boolean {
     const trimmed = line.trim();
-    return (
-        trimmed.startsWith('return') ||
-        trimmed === '}' ||
-        trimmed === '});' ||
-        trimmed === ''
-    );
+
+    // Explicit return or closing brace
+    if (trimmed.startsWith('return') || trimmed === '}' || trimmed === '});') {
+        return true;
+    }
+
+    // Empty line (might be before return)
+    if (trimmed === '') {
+        return true;
+    }
+
+    // Continuation of function call (object properties, array items, etc.)
+    if (trimmed.match(/^[a-zA-Z_$][\w$]*:/) || // Object property
+        trimmed.match(/^[\w$]+,?$/) || // Variable or property name
+        trimmed.match(/^\d/) || // Number
+        trimmed.match(/^['"]/) || // String
+        trimmed.match(/^[\[\{]/) || // Array or object start
+        trimmed.match(/^[\]\}]/) || // Array or object end
+        trimmed === ',' ||
+        trimmed.endsWith(',')) {
+        return true;
+    }
+
+    // Check if current line is incomplete (no closing paren/brace)
+    const openParens = (currentLine.match(/\(/g) || []).length;
+    const closeParens = (currentLine.match(/\)/g) || []).length;
+    const openBraces = (currentLine.match(/\{/g) || []).length;
+    const closeBraces = (currentLine.match(/\}/g) || []).length;
+
+    if (openParens > closeParens || openBraces > closeBraces) {
+        return true; // Multi-line call
+    }
+
+    return false;
 }
 
 /**
@@ -67,7 +95,7 @@ function scanFile(filePath: string): void {
 
         const helper = containsResponseHelper(currentLine);
 
-        if (helper && !hasReturnOrClosingBrace(nextLine)) {
+        if (helper && !hasReturnOrClosingBrace(nextLine, currentLine)) {
             // Get context (2 lines before and after)
             const context = [
                 lines[i - 2] || '',

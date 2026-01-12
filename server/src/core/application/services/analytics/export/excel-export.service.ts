@@ -5,6 +5,7 @@
  * 
  * DEPENDENCIES:
  * - Logger
+ * - ExcelJS
  * 
  * TESTING:
  * Unit Tests: tests/unit/services/.../{filename}.test.ts

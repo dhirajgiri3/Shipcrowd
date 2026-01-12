@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { requestEmailChange, verifyEmailChange, cancelEmailChange } from '../../../../core/application/services/user/email-change.service';
-import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 const requestEmailChangeSchema = z.object({
   newEmail: z.string().email('Invalid email format'),
@@ -22,36 +23,26 @@ const cancelEmailChangeSchema = z.object({
 export const requestEmailChangeHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     const validation = requestEmailChangeSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
-      return;
+      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_CREDENTIALS);
     }
 
     if (user.email === validation.data.newEmail) {
-      sendError(res, 'New email address is the same as your current email', 400, 'SAME_EMAIL');
-      return;
+      throw new ValidationError('New email address is the same as your current email');
     }
 
     const result = await requestEmailChange(req.user._id, user.email, validation.data.newEmail, req);
@@ -59,7 +50,7 @@ export const requestEmailChangeHandler = async (req: Request, res: Response, nex
     if (result.success) {
       sendSuccess(res, { success: true }, 'Verification email sent to your new email address. Please check your inbox.');
     } else {
-      sendError(res, result.message, 400, 'EMAIL_CHANGE_FAILED');
+      throw new ValidationError(result.message);
     }
   } catch (error) {
     logger.error('Error requesting email change:', error);
@@ -71,13 +62,7 @@ export const verifyEmailChangeHandler = async (req: Request, res: Response, next
   try {
     const validation = verifyEmailChangeSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const result = await verifyEmailChange(validation.data.token, req);
@@ -85,7 +70,7 @@ export const verifyEmailChangeHandler = async (req: Request, res: Response, next
     if (result.success) {
       sendSuccess(res, { email: result.email, success: true }, 'Email address updated successfully');
     } else {
-      sendError(res, result.message, 400, 'VERIFICATION_FAILED');
+      throw new ValidationError(result.message);
     }
   } catch (error) {
     logger.error('Error verifying email change:', error);
@@ -96,36 +81,26 @@ export const verifyEmailChangeHandler = async (req: Request, res: Response, next
 export const cancelEmailChangeHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     const validation = cancelEmailChangeSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
-      return;
+      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_CREDENTIALS);
     }
 
     if (!user.pendingEmailChange) {
-      sendError(res, 'No pending email change found', 400, 'NO_PENDING_CHANGE');
-      return;
+      throw new ValidationError('No pending email change found');
     }
 
     const result = await cancelEmailChange(req.user._id, req);
@@ -133,7 +108,7 @@ export const cancelEmailChangeHandler = async (req: Request, res: Response, next
     if (result.success) {
       sendSuccess(res, { success: true }, 'Email change request cancelled successfully');
     } else {
-      sendError(res, result.message, 400, 'CANCEL_FAILED');
+      throw new ValidationError(result.message);
     }
   } catch (error) {
     logger.error('Error cancelling email change:', error);
@@ -144,14 +119,12 @@ export const cancelEmailChangeHandler = async (req: Request, res: Response, next
 export const getEmailChangeStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     const user = await User.findById(req.user._id).lean();
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.pendingEmailChange) {

@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import whatsappService from '../../../../core/application/services/communication/whatsapp.service';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { ValidationError, ExternalServiceError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 const sendWhatsAppMessageSchema = z.object({
   to: z.string(),
@@ -34,13 +36,7 @@ export const sendWhatsAppMessage = async (req: Request, res: Response, next: Nex
   try {
     const validation = sendWhatsAppMessageSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     let phoneNumber = validation.data.to;
@@ -58,7 +54,7 @@ export const sendWhatsAppMessage = async (req: Request, res: Response, next: Nex
     if (result) {
       sendSuccess(res, { success: true, to: phoneNumber }, 'WhatsApp message sent successfully');
     } else {
-      sendError(res, 'Failed to send WhatsApp message', 500, 'WHATSAPP_SEND_FAILED');
+      throw new ExternalServiceError('WhatsApp', 'Failed to send WhatsApp message', ErrorCode.EXT_SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     next(error);
@@ -69,13 +65,7 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
   try {
     const validation = sendShipmentStatusSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     let phoneNumber = validation.data.to;
@@ -95,7 +85,7 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
     if (result) {
       sendSuccess(res, { success: true, to: phoneNumber }, 'WhatsApp shipment status notification sent successfully');
     } else {
-      sendError(res, 'Failed to send WhatsApp shipment status notification', 500, 'WHATSAPP_SEND_FAILED');
+      throw new ExternalServiceError('WhatsApp', 'Failed to send WhatsApp shipment status notification', ErrorCode.EXT_SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     next(error);
@@ -106,13 +96,7 @@ export const sendWelcome = async (req: Request, res: Response, next: NextFunctio
   try {
     const validation = sendWelcomeSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     let phoneNumber = validation.data.to;
@@ -126,7 +110,7 @@ export const sendWelcome = async (req: Request, res: Response, next: NextFunctio
     if (result) {
       sendSuccess(res, { success: true, to: phoneNumber }, 'WhatsApp welcome message sent successfully');
     } else {
-      sendError(res, 'Failed to send WhatsApp welcome message', 500, 'WHATSAPP_SEND_FAILED');
+      throw new ExternalServiceError('WhatsApp', 'Failed to send WhatsApp welcome message', ErrorCode.EXT_SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     next(error);
@@ -137,13 +121,7 @@ export const sendDeliveryConfirmation = async (req: Request, res: Response, next
   try {
     const validation = sendDeliveryConfirmationSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     let phoneNumber = validation.data.to;
@@ -162,7 +140,7 @@ export const sendDeliveryConfirmation = async (req: Request, res: Response, next
     if (result) {
       sendSuccess(res, { success: true, to: phoneNumber }, 'WhatsApp delivery confirmation sent successfully');
     } else {
-      sendError(res, 'Failed to send WhatsApp delivery confirmation', 500, 'WHATSAPP_SEND_FAILED');
+      throw new ExternalServiceError('WhatsApp', 'Failed to send WhatsApp delivery confirmation', ErrorCode.EXT_SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     next(error);

@@ -4,7 +4,7 @@ import { generateOrderNumber, validateStatusTransition } from '../../../../share
 import { ORDER_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
@@ -148,7 +148,7 @@ export class OrderService {
 
             const orderNumber = await this.getUniqueOrderNumber();
             if (!orderNumber) {
-                throw new Error('Failed to generate unique order number');
+                throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
             }
 
             const totals = this.calculateTotals(payload.products);
@@ -391,7 +391,7 @@ export class OrderService {
 
             if (created.length === 0 && errors.length > 0) {
                 await session.abortTransaction();
-                throw new Error('No orders imported');
+                throw new ValidationError('No orders imported', ErrorCode.VAL_INVALID_INPUT);
             }
 
             await session.commitTransaction();

@@ -8,7 +8,7 @@ import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schem
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { CourierFactory } from '../courier/courier.factory';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
@@ -260,7 +260,7 @@ export class ShipmentService {
             // Generate tracking number
             const trackingNumber = await this.getUniqueTrackingNumber();
             if (!trackingNumber) {
-                throw new Error('Failed to generate unique tracking number');
+                throw new AppError('Failed to generate unique tracking number', ErrorCode.SYS_INTERNAL_ERROR, 500);
             }
 
             // Determine warehouse and origin pincode
@@ -407,7 +407,11 @@ export class ShipmentService {
             );
 
             if (!updatedOrder) {
-                throw new Error('Order was updated by another process during shipment creation. Please retry.');
+                throw new AppError(
+                    'Order was updated by another process during shipment creation. Please retry.',
+                    ErrorCode.BIZ_VERSION_CONFLICT,
+                    409
+                );
             }
 
             await session.commitTransaction();
@@ -529,7 +533,7 @@ export class ShipmentService {
                 );
 
                 if (!shipment) {
-                    throw new Error('CONCURRENT_MODIFICATION');
+                    throw new AppError('CONCURRENT_MODIFICATION', ErrorCode.BIZ_VERSION_CONFLICT, 409);
                 }
 
                 // Update related order status if needed (in same transaction)

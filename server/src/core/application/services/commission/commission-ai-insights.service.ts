@@ -20,6 +20,8 @@ import OpenAIService from '../../../../infrastructure/external/ai/openai/openai.
 import CommissionAnalyticsService from './commission-analytics.service';
 import CacheService from '../../../../infrastructure/utilities/cache.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // ===== INTERFACES =====
 
@@ -149,7 +151,7 @@ export default class CommissionAIInsightsService {
 
             const salesRep = await SalesRepresentative.findById(salesRepId).populate('user');
             if (!salesRep) {
-                throw new Error('Sales representative not found');
+                throw new NotFoundError('Sales representative not found', ErrorCode.BIZ_NOT_FOUND);
             }
 
             const historicalData = await CommissionTransaction.aggregate([
@@ -396,7 +398,7 @@ export default class CommissionAIInsightsService {
         try {
             const salesRep = await SalesRepresentative.findById(salesRepId).populate('user');
             if (!salesRep) {
-                throw new Error('Sales representative not found');
+                throw new NotFoundError('Sales representative not found', ErrorCode.BIZ_NOT_FOUND);
             }
 
             // Get performance metrics
@@ -509,7 +511,7 @@ export default class CommissionAIInsightsService {
         try {
             const salesRep = await SalesRepresentative.findById(salesRepId).populate('user');
             if (!salesRep) {
-                throw new Error('Sales representative not found');
+                throw new NotFoundError('Sales representative not found', ErrorCode.BIZ_NOT_FOUND);
             }
 
             const [forecast, recommendations, anomalyReport] = await Promise.all([

@@ -9,11 +9,14 @@ import InventoryService from '@/core/application/services/warehouse/inventory.se
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
     sendSuccess,
-    sendError,
     sendCreated,
     sendPaginated,
-    sendValidationError,
 } from '@/shared/utils/responseHelper';
+import {
+    NotFoundError,
+    ValidationError
+} from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/errorCodes';
 import {
     createInventorySchema,
     receiveStockSchema,
@@ -38,7 +41,7 @@ async function createInventory(req: Request, res: Response, next: NextFunction):
 
         const validation = createInventorySchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -104,8 +107,7 @@ async function getInventoryById(req: Request, res: Response, next: NextFunction)
         const inventory = await InventoryService.getInventoryById(id);
 
         if (!inventory) {
-            sendError(res, 'Inventory not found', 404, 'INVENTORY_NOT_FOUND');
-            return;
+            throw new NotFoundError('Inventory', ErrorCode.BIZ_NOT_FOUND);
         }
 
         sendSuccess(res, inventory, 'Inventory retrieved');
@@ -124,8 +126,7 @@ async function getInventoryBySKU(req: Request, res: Response, next: NextFunction
         const inventory = await InventoryService.getInventoryBySKU(warehouseId, sku);
 
         if (!inventory) {
-            sendError(res, 'Inventory not found', 404, 'INVENTORY_NOT_FOUND');
-            return;
+            throw new NotFoundError('Inventory', ErrorCode.BIZ_NOT_FOUND);
         }
 
         sendSuccess(res, inventory, 'Inventory retrieved');
@@ -145,7 +146,7 @@ async function receiveStock(req: Request, res: Response, next: NextFunction): Pr
 
         const validation = receiveStockSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -185,7 +186,7 @@ async function adjustStock(req: Request, res: Response, next: NextFunction): Pro
 
         const validation = adjustStockSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -222,7 +223,7 @@ async function reserveStock(req: Request, res: Response, next: NextFunction): Pr
 
         const validation = reserveStockSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -248,7 +249,7 @@ async function releaseReservation(req: Request, res: Response, next: NextFunctio
         const { id } = req.params;
         const validation = releaseReservationSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -283,7 +284,7 @@ async function transferStock(req: Request, res: Response, next: NextFunction): P
 
         const validation = transferStockSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -323,7 +324,7 @@ async function markDamaged(req: Request, res: Response, next: NextFunction): Pro
 
         const validation = markDamagedSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -368,7 +369,7 @@ async function cycleCount(req: Request, res: Response, next: NextFunction): Prom
 
         const validation = cycleCountSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -402,7 +403,7 @@ async function checkAvailability(req: Request, res: Response, next: NextFunction
     try {
         const validation = checkAvailabilitySchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 

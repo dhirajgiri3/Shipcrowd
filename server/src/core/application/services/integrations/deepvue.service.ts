@@ -82,14 +82,23 @@ const getAccessToken = async (): Promise<string> => {
       return accessToken as string;
     } else {
       logger.error('Invalid response from DeepVue authorization endpoint:', response.data);
-      throw new Error('Failed to obtain access token from DeepVue API');
+      throw new ExternalServiceError(
+        'Failed to obtain access token from DeepVue API',
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
   } catch (error) {
     logger.error('Error getting DeepVue access token:', error);
     if (axios.isAxiosError(error)) {
-      throw new Error(`DeepVue authentication failed: ${error.response?.data?.message || error.message}`);
+      throw new ExternalServiceError(
+        `DeepVue authentication failed: ${error.response?.data?.message || error.message}`,
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
-    throw new Error('Failed to authenticate with DeepVue API');
+    throw new ExternalServiceError(
+      'Failed to authenticate with DeepVue API',
+      ErrorCode.EXT_SERVICE_ERROR
+    );
   }
 };
 
@@ -142,7 +151,10 @@ export const verifyPan = async (pan: string, name?: string): Promise<any> => {
   } catch (error) {
     logger.error('Error verifying PAN:', error);
     if (axios.isAxiosError(error)) {
-      throw new Error(`DeepVue PAN verification failed: ${error.response?.data?.message || error.message}`);
+      throw new ExternalServiceError(
+        `DeepVue PAN verification failed: ${error.response?.data?.message || error.message}`,
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
     throw error;
   }
@@ -220,7 +232,10 @@ export const verifyAadhaar = async (aadhaar: string): Promise<any> => {
   } catch (error) {
     logger.error('Error verifying Aadhaar:', error);
     if (axios.isAxiosError(error)) {
-      throw new Error(`DeepVue Aadhaar verification failed: ${error.response?.data?.message || error.message}`);
+      throw new ExternalServiceError(
+        `DeepVue Aadhaar verification failed: ${error.response?.data?.message || error.message}`,
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
     throw error;
   }
@@ -347,7 +362,10 @@ export const verifyGstin = async (gstin: string): Promise<any> => {
   } catch (error) {
     logger.error('Error verifying GSTIN:', error);
     if (axios.isAxiosError(error)) {
-      throw new Error(`DeepVue GSTIN verification failed: ${error.response?.data?.message || error.message}`);
+      throw new ExternalServiceError(
+        `DeepVue GSTIN verification failed: ${error.response?.data?.message || error.message}`,
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
     throw error;
   }
@@ -781,7 +799,10 @@ export const verifyIfsc = async (ifsc: string): Promise<any> => {
   } catch (error) {
     logger.error('Error verifying IFSC:', error);
     if (axios.isAxiosError(error)) {
-      throw new Error(`DeepVue IFSC verification failed: ${error.response?.data?.message || error.message}`);
+      throw new ExternalServiceError(
+        `DeepVue IFSC verification failed: ${error.response?.data?.message || error.message}`,
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
     throw error;
   }

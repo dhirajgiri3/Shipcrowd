@@ -71,9 +71,9 @@
 
 import mongoose from 'mongoose';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
-import Shipment from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
+import { Shipment, Order, Company } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Type definitions
@@ -459,7 +459,7 @@ class WeightDisputeDetectionService {
     private convertToKg(weight: WeightInfo): number {
         if (weight.unit === 'kg') return weight.value;
         if (weight.unit === 'g') return weight.value / 1000;
-        throw new Error(`Unknown weight unit: ${weight.unit}`);
+        throw new ValidationError(`Unknown weight unit: ${weight.unit}`, ErrorCode.VAL_INVALID_INPUT);
     }
 
     /**

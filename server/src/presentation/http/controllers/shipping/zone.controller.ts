@@ -6,12 +6,12 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 import {
     sendSuccess,
-    sendError,
-    sendValidationError,
     sendPaginated,
     sendCreated,
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, NotFoundError, ValidationError, ConflictError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Validation schemas
 const transitTimeSchema = z.object({
@@ -67,14 +67,12 @@ const checkPincodeOverlap = async (
 export const getZones = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required');
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company');
         }
 
         // Pagination
@@ -119,14 +117,12 @@ export const getZones = async (req: Request, res: Response, next: NextFunction):
 export const createZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required');
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company');
         }
 
         const validation = createZoneSchema.safeParse(req.body);
@@ -136,8 +132,7 @@ export const createZone = async (req: Request, res: Response, next: NextFunction
                 message: err.message,
                 field: err.path.join('.'),
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         // Check for duplicate name
@@ -148,15 +143,13 @@ export const createZone = async (req: Request, res: Response, next: NextFunction
         }).lean();
 
         if (existingName) {
-            sendError(res, 'Zone with this name already exists', 400, 'DUPLICATE_ZONE_NAME');
-            return;
+            throw new ConflictError('Zone with this name already exists');
         }
 
         // Check for overlapping postal codes
         const { overlaps, conflictingZone } = await checkPincodeOverlap(companyId, validation.data.postalCodes);
         if (overlaps) {
-            sendError(res, `Postal codes overlap with existing zone: ${conflictingZone}`, 400, 'POSTAL_CODE_OVERLAP');
-            return;
+            throw new ConflictError(`Postal codes overlap with existing zone: ${conflictingZone}`);
         }
 
         const zone = new Zone({
@@ -190,20 +183,17 @@ export const createZone = async (req: Request, res: Response, next: NextFunction
 export const getZoneById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required');
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company');
         }
 
         const zoneId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
-            sendError(res, 'Invalid zone ID format', 400, 'INVALID_ID');
-            return;
+            throw new ValidationError('Invalid zone ID format');
         }
 
         const zone = await Zone.findOne({
@@ -213,8 +203,7 @@ export const getZoneById = async (req: Request, res: Response, next: NextFunctio
         }).lean();
 
         if (!zone) {
-            sendError(res, 'Zone not found', 404, 'ZONE_NOT_FOUND');
-            return;
+            throw new NotFoundError('Zone', ErrorCode.BIZ_NOT_FOUND);
         }
 
         sendSuccess(res, { zone }, 'Zone retrieved successfully');
@@ -231,20 +220,17 @@ export const getZoneById = async (req: Request, res: Response, next: NextFunctio
 export const updateZone = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required');
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company');
         }
 
         const zoneId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(zoneId)) {
-            sendError(res, 'Invalid zone ID format', 400, 'INVALID_ID');
-            return;
+            throw new ValidationError('Invalid zone ID format');
         }
 
         const validation = updateZoneSchema.safeParse(req.body);
@@ -254,8 +240,7 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
                 message: err.message,
                 field: err.path.join('.'),
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         const zone = await Zone.findOne({
@@ -265,8 +250,7 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
         });
 
         if (!zone) {
-            sendError(res, 'Zone not found', 404, 'ZONE_NOT_FOUND');
-            return;
+            throw new NotFoundError('Zone', ErrorCode.BIZ_NOT_FOUND);
         }
 
         // Check duplicate name if name is being changed
@@ -279,8 +263,7 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
             }).lean();
 
             if (existingName) {
-                sendError(res, 'Zone with this name already exists', 400, 'DUPLICATE_ZONE_NAME');
-                return;
+                throw new ConflictError('Zone with this name already exists');
             }
         }
 
@@ -288,8 +271,7 @@ export const updateZone = async (req: Request, res: Response, next: NextFunction
         if (validation.data.postalCodes) {
             const { overlaps, conflictingZone } = await checkPincodeOverlap(companyId, validation.data.postalCodes, zoneId);
             if (overlaps) {
-                sendError(res, `Postal codes overlap with existing zone: ${conflictingZone}`, 400, 'POSTAL_CODE_OVERLAP');
-                return;
+                throw new ConflictError(`Postal codes overlap with existing zone: ${conflictingZone}`);
             }
         }
 

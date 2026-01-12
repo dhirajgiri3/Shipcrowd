@@ -19,6 +19,9 @@ import { WooCommerceProductMapping } from '../../../../infrastructure/database/m
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import { WooCommerceOrder, WooCommerceProduct } from '../../../../infrastructure/external/ecommerce/woocommerce/woocommerce.types';
 import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+
 
 export default class WooCommerceWebhookService {
   /**
@@ -66,7 +69,7 @@ export default class WooCommerceWebhookService {
       const store = await WooCommerceStore.findById(storeId);
 
       if (!store) {
-        throw new Error('Store not found');
+        throw new NotFoundError('WooCommerce store not found', ErrorCode.BIZ_NOT_FOUND);
       }
 
       // Update order status
@@ -105,7 +108,7 @@ export default class WooCommerceWebhookService {
       const store = await WooCommerceStore.findById(storeId);
 
       if (!store) {
-        throw new Error('Store not found');
+        throw new NotFoundError('WooCommerce store not found', ErrorCode.BIZ_NOT_FOUND);
       }
 
       // Cancel order
@@ -146,7 +149,7 @@ export default class WooCommerceWebhookService {
       const store = await WooCommerceStore.findById(storeId);
 
       if (!store) {
-        throw new Error('Store not found');
+        throw new NotFoundError('WooCommerce store not found', ErrorCode.BIZ_NOT_FOUND);
       }
 
       // TODO: Implement auto-mapping logic

@@ -4,7 +4,9 @@ import notificationService, { NotificationType } from '../../../../core/applicat
 import emailService from '../../../../core/application/services/communication/email.service';
 import smsService from '../../../../core/application/services/communication/sms.service';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { ValidationError, ExternalServiceError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 const sendEmailSchema = z.object({
   to: z.string().email(),
@@ -43,13 +45,7 @@ export const sendEmail = async (req: Request, res: Response, next: NextFunction)
   try {
     const validation = sendEmailSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const result = await emailService.sendEmail(
@@ -62,7 +58,7 @@ export const sendEmail = async (req: Request, res: Response, next: NextFunction)
     if (result) {
       sendSuccess(res, { success: true }, 'Email sent successfully');
     } else {
-      sendError(res, 'Failed to send email', 500, 'EMAIL_SEND_FAILED');
+      throw new ExternalServiceError('Email', 'Failed to send email', ErrorCode.EXT_EMAIL_SEND_FAILED);
     }
   } catch (error) {
     next(error);
@@ -73,13 +69,7 @@ export const sendSMS = async (req: Request, res: Response, next: NextFunction): 
   try {
     const validation = sendSMSSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     let phoneNumber = validation.data.to;
@@ -93,7 +83,7 @@ export const sendSMS = async (req: Request, res: Response, next: NextFunction): 
     if (result) {
       sendSuccess(res, { success: true, to: phoneNumber }, 'SMS sent successfully');
     } else {
-      sendError(res, 'Failed to send SMS', 500, 'SMS_SEND_FAILED');
+      throw new ExternalServiceError('SMS', 'Failed to send SMS', ErrorCode.EXT_SMS_SEND_FAILED);
     }
   } catch (error) {
     next(error);
@@ -104,13 +94,7 @@ export const sendVerificationCode = async (req: Request, res: Response, next: Ne
   try {
     const validation = sendVerificationCodeSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const result = await smsService.sendVerificationCode(validation.data.phoneNumber);
@@ -118,7 +102,7 @@ export const sendVerificationCode = async (req: Request, res: Response, next: Ne
     if (result) {
       sendSuccess(res, { success: true }, 'Verification code sent successfully');
     } else {
-      sendError(res, 'Failed to send verification code', 500, 'VERIFICATION_SEND_FAILED');
+      throw new ExternalServiceError('SMS', 'Failed to send verification code', ErrorCode.EXT_SMS_SEND_FAILED);
     }
   } catch (error) {
     next(error);
@@ -129,13 +113,7 @@ export const verifyPhoneNumber = async (req: Request, res: Response, next: NextF
   try {
     const validation = verifyPhoneNumberSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const result = await smsService.verifyPhoneNumber(validation.data.phoneNumber, validation.data.code);
@@ -143,7 +121,7 @@ export const verifyPhoneNumber = async (req: Request, res: Response, next: NextF
     if (result) {
       sendSuccess(res, { success: true }, 'Phone number verified successfully');
     } else {
-      sendError(res, 'Invalid verification code', 400, 'INVALID_CODE');
+      throw new ValidationError('Invalid verification code');
     }
   } catch (error) {
     next(error);
@@ -154,18 +132,11 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
   try {
     const validation = sendShipmentStatusSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     if (!validation.data.email && !validation.data.phone) {
-      sendError(res, 'At least one notification method (email or phone) is required', 400, 'MISSING_CONTACT');
-      return;
+      throw new ValidationError('At least one notification method (email or phone) is required');
     }
 
     const result = await notificationService.sendShipmentStatusNotification(
@@ -181,7 +152,7 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
     if (result.email || result.sms) {
       sendSuccess(res, { success: true, details: result }, 'Shipment status notification sent successfully');
     } else {
-      sendError(res, 'Failed to send shipment status notification', 500, 'NOTIFICATION_FAILED');
+      throw new ExternalServiceError('Notification', 'Failed to send shipment status notification', ErrorCode.EXT_SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     next(error);

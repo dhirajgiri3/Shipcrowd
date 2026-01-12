@@ -9,11 +9,11 @@ import PickingService from "@/core/application/services/warehouse/picking.servic
 import { createAuditLog } from '@/presentation/http/middleware/system/audit-log.middleware';
 import {
     sendSuccess,
-    sendError,
     sendCreated,
     sendPaginated,
-    sendValidationError,
 } from '@/shared/utils/responseHelper';
+import { NotFoundError, ValidationError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/errorCodes';
 import {
     createPickListSchema,
     assignPickListSchema,
@@ -36,7 +36,7 @@ async function createPickList(req: Request, res: Response, next: NextFunction): 
 
         const validation = createPickListSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -101,8 +101,7 @@ async function getPickListById(req: Request, res: Response, next: NextFunction):
         const pickList = await PickingService.getPickListById(id);
 
         if (!pickList) {
-            sendError(res, 'Pick list not found', 404, 'PICKLIST_NOT_FOUND');
-            return;
+            throw new NotFoundError('Pick list', ErrorCode.BIZ_NOT_FOUND);
         }
 
         sendSuccess(res, pickList, 'Pick list retrieved');
@@ -147,7 +146,7 @@ async function assignPickList(req: Request, res: Response, next: NextFunction): 
 
         const validation = assignPickListSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -217,7 +216,7 @@ async function pickItem(req: Request, res: Response, next: NextFunction): Promis
 
         const validation = pickItemSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -248,7 +247,7 @@ async function skipItem(req: Request, res: Response, next: NextFunction): Promis
 
         const validation = skipItemSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -286,7 +285,7 @@ async function completePickList(req: Request, res: Response, next: NextFunction)
 
         const validation = completePickListSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -328,7 +327,7 @@ async function cancelPickList(req: Request, res: Response, next: NextFunction): 
 
         const validation = cancelPickListSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 
@@ -370,7 +369,7 @@ async function verifyPickList(req: Request, res: Response, next: NextFunction): 
 
         const validation = verifyPickListSchema.safeParse(req.body);
         if (!validation.success) {
-            sendValidationError(res, validation.error.errors);
+            throw new ValidationError('Validation failed', validation.error.errors);
             return;
         }
 

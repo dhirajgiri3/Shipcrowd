@@ -12,8 +12,8 @@ import { SECURITY_QUESTIONS } from '../../../../shared/constants/security';
 import { sendAccountRecoveryEmail, sendRecoveryEmail } from '../../../../core/application/services/communication/email.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AppError } from '../../../../shared/errors/app.error';
+import { sendSuccess, sendError, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // ============================================================================
@@ -23,6 +23,47 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 /**
  * Centralized error handler for recovery controller
  */
+const handleControllerError = (
+  error: any,
+  res: Response,
+  next: NextFunction,
+  operation: string
+): void => {
+  logger.error(`Recovery controller error: ${operation}`, {
+    error: {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+    },
+  });
+
+  if (error instanceof z.ZodError) {
+    const errors = error.errors.map(err => ({
+      code: 'VALIDATION_ERROR',
+      message: err.message,
+      field: err.path.join('.'),
+    }));
+    sendValidationError(res, errors);
+    return;
+  }
+
+  if (error instanceof AuthenticationError) {
+    sendError(res, error.message, 401, error.code);
+    return;
+  }
+
+  if (error instanceof ValidationError) {
+    sendError(res, error.message, 400, error.code);
+    return;
+  }
+
+  if (error instanceof DatabaseError) {
+    sendError(res, 'Operation failed. Please try again.', 500, ErrorCode.SYS_DB_OPERATION_FAILED);
+    return;
+  }
+
+  next(error);
+};
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -58,7 +99,8 @@ export const getSecurityQuestions = async (req: Request, res: Response): Promise
 export const setupSecurityQuestionsHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
+      return;
     }
 
     const validation = securityQuestionsSchema.safeParse(req.body);
@@ -68,17 +110,20 @@ export const setupSecurityQuestionsHandler = async (req: Request, res: Response,
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
+      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
+      return;
     }
 
     const success = await setupSecurityQuestions(
@@ -97,18 +142,18 @@ export const setupSecurityQuestionsHandler = async (req: Request, res: Response,
     if (success) {
       sendSuccess(res, { success: true }, 'Security questions set up successfully');
     } else {
-      throw new AppError('Failed to set up security questions', ErrorCode.BIZ_SETUP_FAILED);
+      sendError(res, 'Failed to set up security questions', 500, 'SETUP_FAILED');
     }
   } catch (error: any) {
-    logger.error('setupSecurityQuestions error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'setupSecurityQuestions');
   }
 };
 
 export const setupBackupEmailHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
+      return;
     }
 
     const validation = backupEmailSchema.safeParse(req.body);
@@ -118,17 +163,20 @@ export const setupBackupEmailHandler = async (req: Request, res: Response, next:
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
+      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
+      return;
     }
 
     const success = await setupBackupEmail(req.user._id as string, validation.data.backupEmail, req);
@@ -136,18 +184,18 @@ export const setupBackupEmailHandler = async (req: Request, res: Response, next:
     if (success) {
       sendSuccess(res, { success: true }, 'Backup email set up successfully');
     } else {
-      throw new AppError('Failed to set up backup email', ErrorCode.BIZ_SETUP_FAILED);
+      sendError(res, 'Failed to set up backup email', 500, 'SETUP_FAILED');
     }
   } catch (error: any) {
-    logger.error('setupBackupEmail error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'setupBackupEmail');
   }
 };
 
 export const generateRecoveryKeysHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
+      return;
     }
 
     const validation = generateKeysSchema.safeParse(req.body);
@@ -157,17 +205,20 @@ export const generateRecoveryKeysHandler = async (req: Request, res: Response, n
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
+      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
+      return;
     }
 
     const recoveryKeys = await generateRecoveryKeys(req.user._id as string, req);
@@ -175,23 +226,24 @@ export const generateRecoveryKeysHandler = async (req: Request, res: Response, n
     if (recoveryKeys) {
       sendSuccess(res, { recoveryKeys, success: true }, 'Recovery keys generated successfully');
     } else {
-      throw new AppError('Failed to generate recovery keys', ErrorCode.BIZ_OPERATION_FAILED);
+      sendError(res, 'Failed to generate recovery keys', 500, 'KEY_GENERATION_FAILED');
     }
   } catch (error: any) {
-    logger.error('generateRecoveryKeys error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'generateRecoveryKeys');
   }
 };
 
 export const getRecoveryStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
+      return;
     }
 
     const user = await User.findById(req.user._id).lean();
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     const recoveryOptions = user.security.recoveryOptions || {};
@@ -204,8 +256,7 @@ export const getRecoveryStatus = async (req: Request, res: Response, next: NextF
       lastUpdated: recoveryOptions.lastUpdated,
     }, 'Recovery status retrieved successfully');
   } catch (error: any) {
-    logger.error('getRecoveryStatus error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'getRecoveryStatus');
   }
 };
 
@@ -218,7 +269,8 @@ export const sendRecoveryOptionsHandler = async (req: Request, res: Response, ne
         message: err.message,
         field: err.path.join('.'),
       }));
-      throw new ValidationError('Validation failed', errors);
+      sendValidationError(res, errors);
+      return;
     }
 
     const user = await User.findOne({ email: validation.data.email }).lean();
@@ -248,8 +300,7 @@ export const sendRecoveryOptionsHandler = async (req: Request, res: Response, ne
 
     sendSuccess(res, { success: true }, 'If your email is registered, a recovery options email will be sent');
   } catch (error: any) {
-    logger.error('sendRecoveryOptions error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'sendRecoveryOptions');
   }
 };
 
@@ -266,7 +317,8 @@ export const requestAccountRecovery = async (
     const { email } = req.body;
 
     if (!email) {
-      throw new ValidationError('Email is required', { field: 'email', message: 'Email is required' });
+      sendError(res, 'Email is required', 400, 'EMAIL_REQUIRED');
+      return;
     }
 
     // Generic response message to prevent user enumeration
@@ -323,8 +375,7 @@ export const requestAccountRecovery = async (
 
     sendSuccess(res, null, genericMessage);
   } catch (error: any) {
-    logger.error('requestAccountRecovery error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'requestAccountRecovery');
   }
 };
 
@@ -341,7 +392,8 @@ export const verifyRecoveryToken = async (
     const { token } = req.body;
 
     if (!token) {
-      throw new ValidationError('Recovery token is required', { field: 'token', message: 'Recovery token is required' });
+      sendError(res, 'Recovery token is required', 400, 'TOKEN_REQUIRED');
+      return;
     }
 
     // Hash the token to match database
@@ -358,7 +410,8 @@ export const verifyRecoveryToken = async (
 
     if (!recoveryToken) {
       logger.warn(`Invalid or expired recovery token attempted from IP ${req.ip}`);
-      throw new ValidationError('Invalid or expired recovery token', { field: 'token', message: 'Invalid or expired recovery token' });
+      sendError(res, 'Invalid or expired recovery token', 400, 'INVALID_TOKEN');
+      return;
     }
 
     // Mark token as used
@@ -371,7 +424,8 @@ export const verifyRecoveryToken = async (
     );
 
     if (!user) {
-      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
+      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+      return;
     }
 
     // Start session for atomic updates
@@ -424,8 +478,7 @@ export const verifyRecoveryToken = async (
       await session.endSession();
     }
   } catch (error: any) {
-    logger.error('verifyRecoveryMethod error:', error);
-    next(error);
+    handleControllerError(error, res, next, 'verifyRecoveryMethod');
   }
 };
 

@@ -22,6 +22,8 @@ import CustomerAnalyticsService from './customer-analytics.service';
 import InventoryAnalyticsService from './inventory-analytics.service';
 import { DateRange } from './analytics.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export interface ReportResult {
     reportType: string;
@@ -52,7 +54,7 @@ export default class ReportBuilderService {
             });
 
             if (!config) {
-                throw new Error('Report configuration not found');
+                throw new NotFoundError('Report configuration not found', ErrorCode.BIZ_NOT_FOUND);
             }
 
             const data = await this.executeReport(
@@ -164,7 +166,7 @@ export default class ReportBuilderService {
                 };
 
             default:
-                throw new Error(`Unknown report type: ${reportType}`);
+                throw new ValidationError(`Unknown report type: ${reportType}`, ErrorCode.VAL_INVALID_INPUT);
         }
     }
 
@@ -233,7 +235,7 @@ export default class ReportBuilderService {
             });
 
             if (result.deletedCount === 0) {
-                throw new Error('Report configuration not found');
+                throw new NotFoundError('Report configuration not found', ErrorCode.BIZ_NOT_FOUND);
             }
         } catch (error) {
             logger.error('Error deleting report config:', error);

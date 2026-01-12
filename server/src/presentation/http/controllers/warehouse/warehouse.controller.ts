@@ -12,12 +12,12 @@ import { formatOperatingHours } from '../../../../shared/helpers/formatOperating
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import {
   sendSuccess,
-  sendError,
-  sendValidationError,
   sendPaginated,
   sendCreated,
   calculatePagination
 } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Validation schemas
 const createWarehouseSchema = z.object({
@@ -90,19 +90,16 @@ const processOperatingHours = (operatingHours?: any) => {
 export const createWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     const companyId = req.params.companyId || req.user.companyId;
     if (!companyId) {
-      sendError(res, 'No company ID provided', 403, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.params.companyId && req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
-      sendError(res, 'You do not have permission to create warehouses for this company', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('You do not have permission to create warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
     if (req.body.operatingHours) {
@@ -120,13 +117,7 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
 
     const validation = createWarehouseSchema.safeParse(requestBody);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const existingWarehouse = await Warehouse.findOne({
@@ -136,8 +127,7 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
     }).lean();
 
     if (existingWarehouse) {
-      sendError(res, 'Warehouse with this name already exists', 400, 'DUPLICATE_WAREHOUSE');
-      return;
+      throw new ConflictError('Warehouse with this name already exists', ErrorCode.BIZ_ALREADY_EXISTS);
     }
 
     const warehouseData: any = {
@@ -203,19 +193,16 @@ export const createWarehouse = async (req: Request, res: Response, next: NextFun
 export const getWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     const companyId = req.params.companyId || req.user.companyId;
     if (!companyId) {
-      sendError(res, 'No company ID provided', 403, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.params.companyId && req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
-      sendError(res, 'You do not have permission to view warehouses for this company', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('You do not have permission to view warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -254,19 +241,16 @@ export const getWarehouses = async (req: Request, res: Response, next: NextFunct
 export const getWarehouseById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     if (!req.user.companyId) {
-      sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     const warehouseId = req.params.warehouseId;
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-      sendError(res, 'Invalid warehouse ID format', 400, 'INVALID_ID');
-      return;
+      throw new ValidationError('Invalid warehouse ID format');
     }
 
     const warehouse = await Warehouse.findOne({
@@ -276,8 +260,7 @@ export const getWarehouseById = async (req: Request, res: Response, next: NextFu
     }).lean();
 
     if (!warehouse) {
-      sendError(res, 'Warehouse not found', 404, 'WAREHOUSE_NOT_FOUND');
-      return;
+      throw new NotFoundError('Warehouse', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
     }
 
     if (warehouse.operatingHours) {
@@ -294,19 +277,16 @@ export const getWarehouseById = async (req: Request, res: Response, next: NextFu
 export const updateWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     if (!req.user.companyId) {
-      sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     const warehouseId = req.params.warehouseId;
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-      sendError(res, 'Invalid warehouse ID format', 400, 'INVALID_ID');
-      return;
+      throw new ValidationError('Invalid warehouse ID format');
     }
 
     if (req.body.operatingHours) {
@@ -315,13 +295,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 
     const validation = updateWarehouseSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', validation.error.errors);
     }
 
     const warehouse = await Warehouse.findOne({
@@ -331,8 +305,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     });
 
     if (!warehouse) {
-      sendError(res, 'Warehouse not found', 404, 'WAREHOUSE_NOT_FOUND');
-      return;
+      throw new NotFoundError('Warehouse', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
     }
 
     if (validation.data.name && validation.data.name !== warehouse.name) {
@@ -344,8 +317,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
       }).lean();
 
       if (existingWarehouse) {
-        sendError(res, 'Warehouse with this name already exists', 400, 'DUPLICATE_WAREHOUSE');
-        return;
+        throw new ConflictError('Warehouse with this name already exists', ErrorCode.BIZ_ALREADY_EXISTS);
       }
     }
 
@@ -356,8 +328,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
       );
       await Company.findByIdAndUpdate(req.user.companyId, { 'settings.defaultWarehouseId': warehouseId });
     } else if (validation.data.isDefault === false && warehouse.isDefault) {
-      sendError(res, 'Cannot unset the default warehouse. Set another warehouse as default first.', 400, 'CANNOT_UNSET_DEFAULT');
-      return;
+      throw new ValidationError('Cannot unset the default warehouse. Set another warehouse as default first.');
     }
 
     const updatedWarehouse = await Warehouse.findByIdAndUpdate(
@@ -367,8 +338,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     );
 
     if (!updatedWarehouse) {
-      sendError(res, 'Warehouse not found after update', 404, 'WAREHOUSE_NOT_FOUND');
-      return;
+      throw new NotFoundError('Warehouse not found after update', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
     }
 
     await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
@@ -388,19 +358,16 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 export const deleteWarehouse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     if (!req.user.companyId) {
-      sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     const warehouseId = req.params.warehouseId;
     if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
-      sendError(res, 'Invalid warehouse ID format', 400, 'INVALID_ID');
-      return;
+      throw new ValidationError('Invalid warehouse ID format');
     }
 
     const autoAssignDefault = req.query.autoAssignDefault === 'true';
@@ -412,8 +379,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
     });
 
     if (!warehouse) {
-      sendError(res, 'Warehouse not found', 404, 'WAREHOUSE_NOT_FOUND');
-      return;
+      throw new NotFoundError('Warehouse', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
     }
 
     if (warehouse.isDefault) {
@@ -424,8 +390,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
       });
 
       if (otherWarehousesCount === 0) {
-        sendError(res, 'Cannot delete the default warehouse as it is the only warehouse', 400, 'ONLY_WAREHOUSE');
-        return;
+        throw new ValidationError('Cannot delete the default warehouse as it is the only warehouse');
       }
 
       if (autoAssignDefault) {
@@ -442,8 +407,7 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
           await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', String(anotherWarehouse._id), { message: 'Warehouse set as default automatically' }, req);
         }
       } else {
-        sendError(res, 'Cannot delete the default warehouse. Set another warehouse as default first or add ?autoAssignDefault=true', 400, 'CANNOT_DELETE_DEFAULT');
-        return;
+        throw new ValidationError('Cannot delete the default warehouse. Set another warehouse as default first or add ?autoAssignDefault=true');
       }
     }
 
@@ -463,24 +427,20 @@ export const deleteWarehouse = async (req: Request, res: Response, next: NextFun
 export const importWarehouses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required');
     }
 
     const companyId = req.params.companyId || req.user.companyId;
     if (!companyId) {
-      sendError(res, 'No company ID provided', 403, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('No company ID provided', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.params.companyId && req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
-      sendError(res, 'You do not have permission to import warehouses for this company', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('You do not have permission to import warehouses for this company', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
     if (!req.file) {
-      sendError(res, 'CSV file is required', 400, 'FILE_REQUIRED');
-      return;
+      throw new ValidationError('CSV file is required');
     }
 
     const results: any[] = [];
