@@ -99,6 +99,10 @@ router.use('/logistics/address', addressRoutes);
 import codRemittanceRoutes from './finance/cod-remittance.routes';
 router.use('/finance/cod-remittance', codRemittanceRoutes);
 
+// Phase 4: Wallet System API
+import walletRoutes from './finance/wallet.routes';
+router.use('/finance/wallet', walletRoutes);
+
 // Razorpay Webhooks
 import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
 router.use('/webhooks/razorpay', razorpayWebhookRoutes);
