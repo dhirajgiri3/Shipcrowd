@@ -1,0 +1,596 @@
+{
+    "info": {
+        "_postman_id": "shipcrowd-orders-shipments-v1",
+        "name": "03 - Orders & Shipments",
+        "description": "## Orders & Shipments Collection\n\n**Domain:** Order creation, shipment management, tracking\n**Total Endpoints:** 13 (6 orders + 7 shipments)\n**Version:** 1.0.0\n\n### Order Endpoints (6)\n✅ POST /orders - Create single order\n✅ POST /orders/bulk - Bulk import orders (CSV)\n✅ GET /orders - List all orders (paginated)\n✅ GET /orders/:orderId - Get order details\n✅ PATCH /orders/:orderId - Update order\n✅ DELETE /orders/:orderId - Cancel order\n\n### Shipment Endpoints (7)\n✅ POST /shipments - Create shipment from order\n✅ GET /shipments - List all shipments\n✅ GET /shipments/:shipmentId - Get shipment details\n✅ GET /shipments/tracking/:awb - Track by AWB (private)\n✅ GET /shipments/public/track/:awb - Track by AWB (public)\n✅ PATCH /shipments/:shipmentId/status - Update status\n✅ DELETE /shipments/:shipmentId - Cancel shipment\n\n### Prerequisites\n- ✅ Authenticated user (Collection 01)\n- ✅ Company KYC approved (Collection 02)\n- ✅ Warehouse created (Collection 04)\n- ✅ Ratecard configured (Collection 04)\n\n### Critical Business Rules\n- **KYC Required:** Must have approved KYC before creating orders\n- **Wallet Balance:** Sufficient balance required for order creation\n- **Zone Pricing:** Rates calculated based on origin-destination zones\n- **Status Flow:** created → processed → shipped → in_transit → delivered\n\n### Quick Start\n1. Create Order → Auto-deducts from wallet\n2. Create Shipment → Generates AWB and label\n3. Track Shipment → Real-time status updates",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{ACCESS_TOKEN}}",
+                "type": "string"
+            }
+        ]
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// AUTO TOKEN REFRESH",
+                    "const tokenExpiry = pm.environment.get('ACCESS_TOKEN_EXPIRY');",
+                    "const now = Date.now();",
+                    "",
+                    "if (tokenExpiry && (tokenExpiry - now) < 30000) {",
+                    "    const refreshToken = pm.environment.get('REFRESH_TOKEN');",
+                    "    if (refreshToken) {",
+                    "        pm.sendRequest({",
+                    "            url: pm.environment.get('BASE_URL') + '/auth/refresh',",
+                    "            method: 'POST',",
+                    "            header: { 'Content-Type': 'application/json' },",
+                    "            body: {",
+                    "                mode: 'raw',",
+                    "                raw: JSON.stringify({ refreshToken: refreshToken })",
+                    "            }",
+                    "        }, function (err, res) {",
+                    "            if (!err && res.code === 200) {",
+                    "                pm.environment.set('ACCESS_TOKEN', res.json().data.accessToken);",
+                    "                pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
+                    "            }",
+                    "        });",
+                    "    }",
+                    "}"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// GLOBAL TESTS",
+                    "pm.test('⚡ Response time < 5s', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                    "if (pm.response.code !== 302 && pm.response.code !== 204) {",
+                    "    pm.test('📄 JSON response', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                    "}",
+                    "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                    "    pm.test('✅ Success structure', () => {",
+                    "        const json = pm.response.json();",
+                    "        pm.expect(json).to.have.property('success');",
+                    "        pm.expect(json).to.have.property('data');",
+                    "    });",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Order Management",
+            "description": "Order creation and management",
+            "item": [
+                {
+                    "name": "Create Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"warehouseId\": \"{{WAREHOUSE_ID}}\",\n  \"customer\": {\n    \"name\": \"Rahul Sharma\",\n    \"phone\": \"+919876543210\",\n    \"email\": \"rahul@example.com\",\n    \"address\": {\n      \"line1\": \"123, MG Road\",\n      \"line2\": \"Near Metro Station\",\n      \"city\": \"Mumbai\",\n      \"state\": \"Maharashtra\",\n      \"pincode\": \"400001\",\n      \"country\": \"India\"\n    }\n  },\n  \"items\": [\n    {\n      \"sku\": \"NECKLACE-GOLD-001\",\n      \"name\": \"Gold Necklace\",\n      \"quantity\": 1,\n      \"price\": 25000,\n      \"weight\": 0.05,\n      \"hsn\": \"7113\"\n    }\n  ],\n  \"payment\": {\n    \"mode\": \"COD\",\n    \"codAmount\": 25000\n  },\n  \"shipping\": {\n    \"weight\": 0.5,\n    \"dimensions\": {\n      \"length\": 10,\n      \"width\": 10,\n      \"height\": 5\n    },\n    \"declaredValue\": 25000\n  },\n  \"courier\": {\n    \"preferredCourier\": \"Delhivery\",\n    \"serviceType\": \"surface\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/orders",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["orders"]
+                        },
+                        "description": "**Create Single Order**\n\n**Method:** POST\n**Endpoint:** `/api/v1/orders`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved, Seller role\n\n**Business Logic:**\n1. Validates warehouse exists and belongs to company\n2. Calculates shipping rate based on zone pricing\n3. Checks wallet balance (rate + COD charges if applicable)\n4. Deducts amount from wallet\n5. Creates order with status 'created'\n6. Returns order details with calculated shipping cost\n\n**Request Body:**\n- `warehouseId` (required): Origin warehouse\n- `customer` (required): Delivery details (name, phone, address)\n- `items` (required): Product details (sku, name, qty, price, weight)\n- `payment` (required): Payment mode (COD/Prepaid) + COD amount\n- `shipping` (required): Weight, dimensions, declared value\n- `courier` (optional): Preferred courier and service type\n\n**Validation:**\n- Pincode must be serviceable\n- Weight > 0, max 30kg for courier\n- COD amount ≤ ₹50,000\n- Wallet balance sufficient\n\n**Response:**\n- Order ID\n- Calculated shipping cost\n- Estimated delivery date\n- Available couriers with rates"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Order created', () => {",
+                                    "    pm.response.to.have.status(201);",
+                                    "    const order = pm.response.json().data;",
+                                    "    pm.expect(order).to.have.property('id');",
+                                    "    pm.expect(order).to.have.property('orderNumber');",
+                                    "    pm.expect(order.status).to.eql('created');",
+                                    "    pm.environment.set('TEST_ORDER_ID', order.id);",
+                                    "    pm.environment.set('TEST_ORDER_NUMBER', order.orderNumber);",
+                                    "    console.log('📦 Order Created:', order.orderNumber);",
+                                    "    console.log('💰 Shipping Cost:', order.shippingCost);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Bulk Import Orders (CSV)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": "/path/to/orders.csv",
+                                    "description": "CSV file with orders (max 5MB)"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/orders/bulk",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["orders", "bulk"]
+                        },
+                        "description": "**Bulk Import Orders from CSV**\n\n**Method:** POST\n**Endpoint:** `/api/v1/orders/bulk`\n**Auth:** Bearer token + CSRF\n**Content-Type:** multipart/form-data\n\n**CSV Format:**\n```csv\ncustomerName,customerPhone,customerEmail,addressLine1,addressLine2,city,state,pincode,itemSku,itemName,itemQty,itemPrice,itemWeight,paymentMode,codAmount,shippingWeight,length,width,height,declaredValue\nRahul Sharma,9876543210,rahul@example.com,123 MG Road,Near Metro,Mumbai,Maharashtra,400001,NECK-001,Gold Necklace,1,25000,0.05,COD,25000,0.5,10,10,5,25000\n```\n\n**Business Logic:**\n1. Validates CSV format and headers\n2. Validates each row (max 1000 rows per file)\n3. Calculates shipping costs for all orders\n4. Checks total wallet balance required\n5. Creates all orders in batch\n6. Returns summary: success count, failed count, errors\n\n**Validation Per Row:**\n- Valid phone number (10 digits)\n- Valid pincode (6 digits, serviceable)\n- Valid email format\n- Weight and dimensions within limits\n- COD amount ≤ ₹50,000\n\n**Response:**\n- Total rows processed\n- Success count\n- Failed count\n- Error details (row number, error message)\n- Created order IDs"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Bulk import processed', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const result = pm.response.json().data;",
+                                    "    pm.expect(result).to.have.property('totalRows');",
+                                    "    pm.expect(result).to.have.property('successCount');",
+                                    "    pm.expect(result).to.have.property('failedCount');",
+                                    "    console.log('📊 Bulk Import Results:');",
+                                    "    console.log('  Total:', result.totalRows);",
+                                    "    console.log('  Success:', result.successCount);",
+                                    "    console.log('  Failed:', result.failedCount);",
+                                    "    if (result.errors && result.errors.length > 0) {",
+                                    "        console.log('  Errors:', result.errors.slice(0, 5));",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get All Orders",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/orders?page=1&limit=20&status=created&sortBy=createdAt&order=desc",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["orders"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "description": "Page number (default: 1)"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "20",
+                                    "description": "Items per page (default: 20, max: 100)"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "created",
+                                    "description": "Filter by status: created, processed, shipped, delivered, cancelled",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "search",
+                                    "value": "ORD-123",
+                                    "description": "Search by order number or customer name",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "startDate",
+                                    "value": "2026-01-01",
+                                    "description": "Filter from date (YYYY-MM-DD)",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": "2026-01-31",
+                                    "description": "Filter to date (YYYY-MM-DD)",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "sortBy",
+                                    "value": "createdAt",
+                                    "description": "Sort field: createdAt, orderNumber, shippingCost"
+                                },
+                                {
+                                    "key": "order",
+                                    "value": "desc",
+                                    "description": "Sort order: asc, desc"
+                                }
+                            ]
+                        },
+                        "description": "**Get All Orders (Paginated)**\n\n**Method:** GET\n**Endpoint:** `/api/v1/orders`\n**Auth:** Bearer token\n**Access:** Sandbox+ tier\n\n**Query Parameters:**\n- `page` (optional): Page number (default: 1)\n- `limit` (optional): Items per page (default: 20, max: 100)\n- `status` (optional): Filter by status\n- `search` (optional): Search by order number or customer name\n- `startDate` (optional): Filter from date (YYYY-MM-DD)\n- `endDate` (optional): Filter to date (YYYY-MM-DD)\n- `sortBy` (optional): Sort field (default: createdAt)\n- `order` (optional): Sort order (asc/desc, default: desc)\n\n**Status Values:**\n- `created`: Order created, payment pending\n- `processed`: Payment confirmed, ready to ship\n- `shipped`: Shipment created\n- `in_transit`: Out for delivery\n- `delivered`: Successfully delivered\n- `cancelled`: Order cancelled\n- `rto_initiated`: Return to origin\n\n**Response:**\n- Array of orders with full details\n- Pagination metadata (page, limit, total, totalPages)\n- Each order includes: id, orderNumber, customer, items, shipping, payment, status, createdAt"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Orders retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    pm.expect(data).to.have.property('orders');",
+                                    "    pm.expect(data).to.have.property('pagination');",
+                                    "    pm.expect(data.orders).to.be.an('array');",
+                                    "    console.log('📦 Total Orders:', data.pagination.total);",
+                                    "    console.log('📄 Page:', data.pagination.page, '/', data.pagination.totalPages);",
+                                    "    if (data.orders.length > 0) {",
+                                    "        console.log('First Order:', data.orders[0].orderNumber);",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Order by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/orders/{{TEST_ORDER_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["orders", "{{TEST_ORDER_ID}}"]
+                        },
+                        "description": "**Get Single Order Details**\n\n**Method:** GET\n**Endpoint:** `/api/v1/orders/:orderId`\n**Auth:** Bearer token\n**Access:** Sandbox+ tier\n\n**URL Parameters:**\n- `orderId` (required): Order ID or Order Number\n\n**Returns:**\n- Complete order details\n- Customer information\n- Item list with pricing\n- Shipping details and cost\n- Payment details\n- Status and timeline\n- Associated shipment (if created)\n- Tracking information (if shipped)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Order details retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const order = pm.response.json().data;",
+                                    "    pm.expect(order).to.have.property('id');",
+                                    "    pm.expect(order).to.have.property('orderNumber');",
+                                    "    pm.expect(order).to.have.property('customer');",
+                                    "    pm.expect(order).to.have.property('items');",
+                                    "    console.log('📦 Order:', order.orderNumber);",
+                                    "    console.log('📍 Status:', order.status);",
+                                    "    console.log('💰 Total:', order.totalAmount);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Order",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"customer\": {\n    \"phone\": \"+919876543211\",\n    \"address\": {\n      \"line2\": \"Updated: Near New Metro Station\"\n    }\n  },\n  \"shipping\": {\n    \"weight\": 0.6\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/orders/{{TEST_ORDER_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["orders", "{{TEST_ORDER_ID}}"]
+                        },
+                        "description": "**Update Order Details**\n\n**Method:** PATCH\n**Endpoint:** `/api/v1/orders/:orderId`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Editable Fields:**\n- Customer phone, email\n- Delivery address (before shipment created)\n- Shipping weight and dimensions\n- Item quantity (before shipment)\n\n**Restrictions:**\n- Cannot edit after shipment created\n- Cannot change payment mode\n- Cannot change warehouse\n\n**Business Logic:**\n1. Validates order belongs to company\n2. Checks order status (only 'created' orders can be fully edited)\n3. Recalculates shipping cost if weight/dimensions changed\n4. Updates wallet balance if cost increased/decreased\n5. Returns updated order details"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Order updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const order = pm.response.json().data;",
+                                    "    console.log('✅ Order updated:', order.orderNumber);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Cancel Order",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/orders/{{TEST_ORDER_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["orders", "{{TEST_ORDER_ID}}"]
+                        },
+                        "description": "**Cancel Order (Soft Delete)**\n\n**Method:** DELETE\n**Endpoint:** `/api/v1/orders/:orderId`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Business Logic:**\n1. Validates order belongs to company\n2. Checks order can be cancelled (status = 'created' or 'processed')\n3. Cannot cancel if shipment already created\n4. Refunds shipping cost to wallet\n5. Marks order as 'cancelled'\n6. Soft deletes (data retained for records)\n\n**Status Restrictions:**\n- ✅ Can cancel: created, processed\n- ❌ Cannot cancel: shipped, in_transit, delivered\n\n**Refund Policy:**\n- Full refund if cancelled before shipment\n- No refund if shipment created"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Order cancelled', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const result = pm.response.json().data;",
+                                    "    console.log('❌ Order cancelled');",
+                                    "    if (result.refundAmount) {",
+                                    "        console.log('💰 Refund:', result.refundAmount);",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "2. Shipment Management",
+            "description": "Shipment creation, tracking, and status updates",
+            "item": [
+                {
+                    "name": "Create Shipment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"orderId\": \"{{TEST_ORDER_ID}}\",\n  \"courier\": {\n    \"code\": \"DELHIVERY\",\n    \"serviceType\": \"surface\"\n  },\n  \"pickup\": {\n    \"date\": \"2026-01-13\",\n    \"timeSlot\": \"14:00-16:00\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments"]
+                        },
+                        "description": "**Create Shipment from Order**\n\n**Method:** POST\n**Endpoint:** `/api/v1/shipments`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Business Logic:**\n1. Validates order exists and belongs to company\n2. Checks order status (must be 'created' or 'processed')\n3. Calls Velocity API to create shipment\n4. Generates AWB (Air Waybill) number\n5. Creates shipping label (PDF)\n6. Updates order status to 'shipped'\n7. Creates shipment record\n8. Returns AWB and label URL\n\n**Request Body:**\n- `orderId` (required): Order ID to create shipment from\n- `courier` (optional): Courier selection (auto-selected if not provided)\n  - `code`: Courier code (DELHIVERY, BLUEDART, XPRESSBEES)\n  - `serviceType`: surface/air/express\n- `pickup` (optional): Pickup scheduling\n  - `date`: Pickup date (YYYY-MM-DD)\n  - `timeSlot`: Time slot (HH:MM-HH:MM)\n\n**Response:**\n- Shipment ID\n- AWB number (tracking number)\n- Label URL (PDF download link)\n- Estimated delivery date\n- Pickup confirmation"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Shipment created', () => {",
+                                    "    pm.response.to.have.status(201);",
+                                    "    const shipment = pm.response.json().data;",
+                                    "    pm.expect(shipment).to.have.property('id');",
+                                    "    pm.expect(shipment).to.have.property('awbNumber');",
+                                    "    pm.expect(shipment).to.have.property('labelUrl');",
+                                    "    pm.environment.set('TEST_SHIPMENT_ID', shipment.id);",
+                                    "    pm.environment.set('TEST_AWB_NUMBER', shipment.awbNumber);",
+                                    "    console.log('🚚 Shipment Created');",
+                                    "    console.log('📋 AWB:', shipment.awbNumber);",
+                                    "    console.log('🏷️  Label:', shipment.labelUrl);",
+                                    "    console.log('📅 EDD:', shipment.estimatedDeliveryDate);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get All Shipments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments?page=1&limit=20&status=in_transit",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "in_transit",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "courier",
+                                    "value": "DELHIVERY",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "search",
+                                    "value": "AWB123",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "**Get All Shipments (Paginated)**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments`\n**Auth:** Bearer token\n**Access:** Sandbox+ tier\n\n**Query Parameters:**\n- `page`: Page number\n- `limit`: Items per page\n- `status`: Filter by status (pending, picked_up, in_transit, out_for_delivery, delivered, failed, rto_initiated)\n- `courier`: Filter by courier code\n- `search`: Search by AWB number or order number\n\n**Response:**\n- Array of shipments\n- Pagination metadata"
+                    }
+                },
+                {
+                    "name": "Get Shipment by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments/{{TEST_SHIPMENT_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments", "{{TEST_SHIPMENT_ID}}"]
+                        },
+                        "description": "**Get Shipment Details**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments/:shipmentId`\n**Auth:** Bearer token\n\n**Returns:**\n- Complete shipment details\n- Associated order information\n- Current status and location\n- Tracking timeline\n- Courier details\n- Label URL"
+                    }
+                },
+                {
+                    "name": "Track Shipment (Private)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments/tracking/{{TEST_AWB_NUMBER}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments", "tracking", "{{TEST_AWB_NUMBER}}"]
+                        },
+                        "description": "**Track Shipment by AWB (Private)**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments/tracking/:trackingNumber`\n**Auth:** Bearer token required\n**Access:** Sandbox+ tier\n\n**Returns:**\n- Current status\n- Location history\n- Estimated delivery\n- Full tracking timeline\n- Customer & order details\n\n**Use Case:** For sellers to track their shipments"
+                    }
+                },
+                {
+                    "name": "Track Shipment (Public)",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments/public/track/{{TEST_AWB_NUMBER}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments", "public", "track", "{{TEST_AWB_NUMBER}}"]
+                        },
+                        "description": "**Track Shipment by AWB (Public)**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments/public/track/:trackingNumber`\n**Auth:** No authentication required\n**Access:** Public\n\n**Returns:**\n- Current status\n- Location (city level only)\n- Estimated delivery\n- Basic tracking timeline\n- Limited details (no customer PII)\n\n**Use Case:** For customers to track their orders via public tracking page"
+                    }
+                },
+                {
+                    "name": "Update Shipment Status",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"picked_up\",\n  \"location\": {\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\"\n  },\n  \"remarks\": \"Package picked up from warehouse\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments/{{TEST_SHIPMENT_ID}}/status",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments", "{{TEST_SHIPMENT_ID}}", "status"]
+                        },
+                        "description": "**Update Shipment Status**\n\n**Method:** PATCH\n**Endpoint:** `/api/v1/shipments/:shipmentId/status`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Status Flow:**\n1. `pending` → Initial state\n2. `picked_up` → Courier picked up\n3. `in_transit` → In transit to destination\n4. `out_for_delivery` → Out for delivery\n5. `delivered` → Successfully delivered\n6. `failed` → Delivery failed (NDR)\n7. `rto_initiated` → Return to origin started\n8. `rto_delivered` → Returned to seller\n\n**Request Body:**\n- `status` (required): New status\n- `location` (optional): Current location\n- `remarks` (optional): Status update notes\n\n**Business Logic:**\n1. Validates status transition is valid\n2. Updates shipment status\n3. Creates tracking event\n4. Triggers notifications (email, WhatsApp)\n5. Updates order status if needed"
+                    }
+                },
+                {
+                    "name": "Cancel Shipment",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/shipments/{{TEST_SHIPMENT_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["shipments", "{{TEST_SHIPMENT_ID}}"]
+                        },
+                        "description": "**Cancel Shipment**\n\n**Method:** DELETE\n**Endpoint:** `/api/v1/shipments/:shipmentId`\n**Auth:** Bearer token + CSRF\n\n**Business Logic:**\n1. Can only cancel if status = 'pending'\n2. Cannot cancel after pickup\n3. Calls Velocity API to cancel\n4. Refunds shipping cost to wallet\n5. Updates order status to 'processed'"
+                    }
+                }
+            ]
+        }
+    ]
+}

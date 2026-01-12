@@ -235,12 +235,89 @@ export const cancelRemittance = async (
     }
 };
 
-export default {
-    getEligibleShipments,
-    createRemittanceBatch,
-    getRemittanceDetails,
-    listRemittances,
-    approveRemittance,
-    initiatePayout,
-    cancelRemittance,
+
+
+/**
+ * Get dashboard stats
+ * GET /api/v1/finance/cod-remittance/dashboard
+ */
+export const getDashboard = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const stats = await CODRemittanceService.getDashboardStats(auth.companyId);
+        sendSuccess(res, stats, 'Dashboard stats retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching dashboard stats:', error);
+        next(error);
+    }
+};
+
+/**
+ * Handle Velocity settlement webhook
+ * POST /api/v1/finance/cod-remittance/webhook
+ */
+export const handleWebhook = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const payload = req.body;
+        // Verify signature here if needed
+        await CODRemittanceService.handleSettlementWebhook(payload);
+        sendSuccess(res, null, 'Webhook processed successfully');
+    } catch (error) {
+        logger.error('Error processing webhook:', error);
+        next(error);
+    }
+};
+
+/**
+ * Request on-demand payout
+ * POST /api/v1/finance/cod-remittance/request-payout
+ */
+export const requestPayout = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const { amount } = req.body;
+
+        if (!amount || amount <= 0) {
+            throw new ValidationError('Valid amount is required');
+        }
+
+        const result = await CODRemittanceService.requestPayout(auth.companyId, amount, auth.userId);
+        sendSuccess(res, result, 'Payout requested successfully');
+    } catch (error) {
+        logger.error('Error requesting payout:', error);
+        next(error);
+    }
+};
+
+/**
+ * Schedule payout preference
+ * POST /api/v1/finance/cod-remittance/schedule-payout
+ */
+export const schedulePayout = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const schedule = req.body; // Validation normally via schema
+
+        const result = await CODRemittanceService.schedulePayout(auth.companyId, schedule);
+        sendSuccess(res, result, 'Payout schedule updated successfully');
+    } catch (error) {
+        logger.error('Error scheduling payout:', error);
+        next(error);
+    }
 };

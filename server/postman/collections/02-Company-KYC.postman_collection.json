@@ -1,0 +1,694 @@
+{
+    "info": {
+        "_postman_id": "shipcrowd-company-kyc-v1",
+        "name": "02 - Company & KYC",
+        "description": "## Company & KYC Management Collection\n\n**Domain:** Company profile management, KYC verification, team setup\n**Total Endpoints:** 24\n**Version:** 1.0.0\n\n### Complete Coverage\n✅ Company Profile Management (6 endpoints)\n✅ KYC Document Submission & Verification (12 endpoints)\n✅ Company Status Management (2 endpoints)\n✅ Company Settings (4 endpoints)\n\n### Critical Business Rules\n- **KYC Required:** Company must complete KYC before shipping\n- **Multi-Tenancy:** Users can only access their own company data\n- **Company Isolation:** Strict data isolation between companies\n- **Status Transitions:** pending_verification → kyc_submitted → approved/rejected\n\n### Quick Start\n1. Prerequisites: Completed authentication (Collection 01)\n2. Get Company Profile → Update Company Info\n3. Submit KYC Documents → Wait for Approval\n4. Verify Company Status = 'approved'\n\n### Auto Features\n🔄 Auto token refresh\n✅ Global test assertions\n📊 Environment variable management\n🔐 Company ID auto-captured",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{ACCESS_TOKEN}}",
+                "type": "string"
+            }
+        ]
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// AUTO TOKEN REFRESH LOGIC",
+                    "const tokenExpiry = pm.environment.get('ACCESS_TOKEN_EXPIRY');",
+                    "const now = Date.now();",
+                    "",
+                    "if (tokenExpiry && (tokenExpiry - now) < 30000) {",
+                    "    const refreshToken = pm.environment.get('REFRESH_TOKEN');",
+                    "    if (refreshToken) {",
+                    "        console.log('🔄 Token expiring soon, refreshing...');",
+                    "        pm.sendRequest({",
+                    "            url: pm.environment.get('BASE_URL') + '/auth/refresh',",
+                    "            method: 'POST',",
+                    "            header: { 'Content-Type': 'application/json' },",
+                    "            body: {",
+                    "                mode: 'raw',",
+                    "                raw: JSON.stringify({ refreshToken: refreshToken })",
+                    "            }",
+                    "        }, function (err, res) {",
+                    "            if (!err && res.code === 200) {",
+                    "                pm.environment.set('ACCESS_TOKEN', res.json().data.accessToken);",
+                    "                pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
+                    "                console.log('✅ Token refreshed');",
+                    "            }",
+                    "        });",
+                    "    }",
+                    "}"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// GLOBAL TEST ASSERTIONS",
+                    "pm.test('⚡ Response time < 5s', () => pm.expect(pm.response.responseTime).to.be.below(5000));",
+                    "if (pm.response.code !== 302) {",
+                    "    pm.test('📄 Correct content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                    "}",
+                    "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                    "    pm.test('✅ Standard structure', () => {",
+                    "        const json = pm.response.json();",
+                    "        pm.expect(json).to.have.property('success');",
+                    "        pm.expect(json).to.have.property('data');",
+                    "    });",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Company Profile",
+            "description": "Company profile management operations",
+            "item": [
+                {
+                    "name": "Get Company Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}"]
+                        },
+                        "description": "Retrieve complete company profile including KYC status, tier, settings"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Company profile retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const company = pm.response.json().data;",
+                                    "    pm.expect(company).to.have.property('id');",
+                                    "    pm.expect(company).to.have.property('businessName');",
+                                    "    pm.expect(company).to.have.property('kycStatus');",
+                                    "    console.log('🏢 Company:', company.businessName);",
+                                    "    console.log('📊 KYC Status:', company.kycStatus);",
+                                    "    pm.environment.set('COMPANY_ID', company.id);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Company Profile",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"businessName\": \"Test Jewels Pvt Ltd\",\n  \"description\": \"Premium jewelry e-commerce seller\",\n  \"website\": \"https://testjewels.com\",\n  \"industry\": \"Jewelry & Accessories\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}"]
+                        },
+                        "description": "Update company profile information"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Company updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const company = pm.response.json().data;",
+                                    "    pm.expect(company.businessName).to.include('Jewels');",
+                                    "    console.log('✅ Company updated:', company.businessName);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Upload Company Logo",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "logo",
+                                    "type": "file",
+                                    "src": "/path/to/logo.png"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/logo",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "logo"]
+                        },
+                        "description": "Upload company logo (max 5MB, PNG/JPG)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Logo uploaded', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    pm.expect(data.logoUrl).to.exist;",
+                                    "    console.log('🖼️ Logo URL:', data.logoUrl);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Company Settings",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/settings",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "settings"]
+                        },
+                        "description": "Retrieve company settings (timezone, currency, notifications)"
+                    }
+                },
+                {
+                    "name": "Update Company Settings",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"timezone\": \"Asia/Kolkata\",\n  \"currency\": \"INR\",\n  \"notifications\": {\n    \"orderCreated\": true,\n    \"shipmentDelivered\": true,\n    \"ndrAlert\": true,\n    \"lowBalance\": true\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/settings",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "settings"]
+                        },
+                        "description": "Update company settings"
+                    }
+                },
+                {
+                    "name": "Get Company Statistics",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/stats",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "stats"]
+                        },
+                        "description": "Get company statistics (orders, revenue, performance)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Statistics retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const stats = pm.response.json().data;",
+                                    "    pm.expect(stats).to.have.property('totalOrders');",
+                                    "    pm.expect(stats).to.have.property('totalRevenue');",
+                                    "    console.log('📊 Total Orders:', stats.totalOrders);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "2. KYC Management",
+            "description": "KYC document submission and verification",
+            "item": [
+                {
+                    "name": "Get KYC Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc"]
+                        },
+                        "description": "Get current KYC status and submitted documents"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('KYC status retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const kyc = pm.response.json().data;",
+                                    "    pm.expect(kyc).to.have.property('status');",
+                                    "    console.log('🔐 KYC Status:', kyc.status);",
+                                    "    if (kyc.status === 'approved') {",
+                                    "        console.log('✅ KYC Approved - Can create orders');",
+                                    "    } else {",
+                                    "        console.log('⚠️  KYC Pending - Submit documents');",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Submit PAN Card",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"documentType\": \"PAN\",\n  \"documentNumber\": \"ABCDE1234F\",\n  \"documentUrl\": \"https://storage.example.com/pan-card.pdf\",\n  \"holderName\": \"Riya Sharma\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                        },
+                        "description": "Submit PAN card for KYC verification"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('PAN card submitted', () => {",
+                                    "    pm.response.to.have.status(201);",
+                                    "    const doc = pm.response.json().data;",
+                                    "    pm.expect(doc.documentType).to.eql('PAN');",
+                                    "    pm.expect(doc.status).to.eql('pending_verification');",
+                                    "    console.log('✅ PAN card submitted');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Submit Aadhaar Card",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"documentType\": \"AADHAAR\",\n  \"documentNumber\": \"1234-5678-9012\",\n  \"documentUrl\": \"https://storage.example.com/aadhaar-card.pdf\",\n  \"holderName\": \"Riya Sharma\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                        },
+                        "description": "Submit Aadhaar card for address verification"
+                    }
+                },
+                {
+                    "name": "Submit GST Certificate",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"documentType\": \"GST\",\n  \"documentNumber\": \"29ABCDE1234F1Z5\",\n  \"documentUrl\": \"https://storage.example.com/gst-certificate.pdf\",\n  \"businessName\": \"Test Jewels Pvt Ltd\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                        },
+                        "description": "Submit GST certificate (optional, for registered businesses)"
+                    }
+                },
+                {
+                    "name": "Submit Bank Account Details",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"documentType\": \"BANK_ACCOUNT\",\n  \"accountNumber\": \"1234567890\",\n  \"ifscCode\": \"HDFC0001234\",\n  \"accountHolderName\": \"Riya Sharma\",\n  \"bankName\": \"HDFC Bank\",\n  \"branchName\": \"Bangalore Main Branch\",\n  \"cancelledChequeUrl\": \"https://storage.example.com/cancelled-cheque.pdf\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                        },
+                        "description": "Submit bank account details for COD remittance"
+                    }
+                },
+                {
+                    "name": "Submit for KYC Verification",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/submit",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "submit"]
+                        },
+                        "description": "Submit all documents for KYC verification (triggers DeepVue API call)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('KYC submitted for verification', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const kyc = pm.response.json().data;",
+                                    "    pm.expect(kyc.status).to.eql('under_review');",
+                                    "    console.log('📝 KYC submitted, status: under_review');",
+                                    "    console.log('⏳ Waiting for DeepVue verification...');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get KYC Documents",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                        },
+                        "description": "List all submitted KYC documents"
+                    }
+                },
+                {
+                    "name": "Delete KYC Document",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents/:documentId",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents", ":documentId"],
+                            "variable": [
+                                {
+                                    "key": "documentId",
+                                    "value": "DOC-123456"
+                                }
+                            ]
+                        },
+                        "description": "Delete a KYC document (only if status is pending/rejected)"
+                    }
+                },
+                {
+                    "name": "Get KYC Verification History",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/history",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "history"]
+                        },
+                        "description": "Get KYC verification history and audit trail"
+                    }
+                },
+                {
+                    "name": "Request Manual KYC Review",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"reason\": \"DeepVue API failed, requesting manual review\",\n  \"additionalNotes\": \"All documents are valid and verified\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/request-manual-review",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "request-manual-review"]
+                        },
+                        "description": "Request manual KYC review (if automated verification fails)"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Company Status & Admin",
+            "description": "Company status management (admin only)",
+            "item": [
+                {
+                    "name": "[Admin] Approve KYC",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"approved\",\n  \"notes\": \"All documents verified successfully\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/admin/companies/{{COMPANY_ID}}/kyc/approve",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["admin", "companies", "{{COMPANY_ID}}", "kyc", "approve"]
+                        },
+                        "description": "[ADMIN ONLY] Manually approve company KYC"
+                    }
+                },
+                {
+                    "name": "[Admin] Suspend Company",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"reason\": \"Fraudulent activity detected\",\n  \"suspendedUntil\": \"2026-02-01T00:00:00Z\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/admin/companies/{{COMPANY_ID}}/suspend",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["admin", "companies", "{{COMPANY_ID}}", "suspend"]
+                        },
+                        "description": "[ADMIN ONLY] Suspend company account"
+                    }
+                },
+                {
+                    "name": "[Admin] Get All Companies",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/admin/companies?page=1&limit=50&kycStatus=pending",
+                            "host": ["{{BASE_URL}}"],
+                            "path": ["admin", "companies"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "50"
+                                },
+                                {
+                                    "key": "kycStatus",
+                                    "value": "pending"
+                                }
+                            ]
+                        },
+                        "description": "[ADMIN ONLY] List all companies with filters"
+                    }
+                }
+            ]
+        }
+    ]
+}

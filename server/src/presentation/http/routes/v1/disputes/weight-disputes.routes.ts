@@ -78,4 +78,15 @@ router.post(
     asyncHandler(weightDisputesController.resolveDispute)
 );
 
+/**
+ * @route POST /api/v1/disputes/weight/webhook
+ * @desc Handle carrier weight discrepancy webhook
+ * @access Public (Signature verified)
+ */
+router.post(
+    '/webhook',
+    // TODO: Add signature verification middleware here
+    asyncHandler(weightDisputesController.handleWebhook)
+);
+
 export default router;

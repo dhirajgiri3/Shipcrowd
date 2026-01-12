@@ -561,4 +561,136 @@ export default class CODRemittanceService {
 
         logger.info(`Remittance ${remittanceId} cancelled by ${cancelledBy}: ${reason}`);
     }
+    /**
+     * Get COD remittance dashboard stats
+     */
+    static async getDashboardStats(companyId: string): Promise<any> {
+        try {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            // 1. Pending Collection (Delivered but not remitted)
+            const eligible = await this.getEligibleShipments(companyId, now);
+
+            // 2. In Settlement (Batches created but not paid)
+            const inSettlement = await CODRemittance.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        status: { $in: ['pending_approval', 'approved'] },
+                        isDeleted: false
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        amount: { $sum: '$financial.netPayable' },
+                        count: { $sum: '$financial.totalShipments' }
+                    }
+                }
+            ]);
+
+            // 3. Available (Approved pending payout) - strictly speaking overlap with "In Settlement" 
+            // but let's define Available as 'approved' specifically if we want distinct buckets.
+            // For simplicity, let's stick to the plan's buckets.
+            const available = await CODRemittance.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        status: 'approved',
+                        'payout.status': 'pending',
+                        isDeleted: false
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        amount: { $sum: '$financial.netPayable' }
+                    }
+                }
+            ]);
+
+            // 4. This Month Stats
+            const thisMonth = await CODRemittance.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        status: 'paid',
+                        createdAt: { $gte: startOfMonth },
+                        isDeleted: false
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        collected: { $sum: '$financial.totalCODCollected' },
+                        deducted: { $sum: '$financial.deductionsSummary.grandTotal' },
+                        received: { $sum: '$financial.netPayable' }
+                    }
+                }
+            ]);
+
+            return {
+                pendingCollection: {
+                    amount: eligible.summary.totalCOD,
+                    orders: eligible.summary.totalShipments,
+                    estimatedDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000) // +2 days
+                },
+                inSettlement: {
+                    amount: (inSettlement[0]?.amount || 0) - (available[0]?.amount || 0), // Subtract available to avoid double count if overlapping
+                    orders: inSettlement[0]?.count || 0,
+                    estimatedDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000) // +1 day
+                },
+                available: {
+                    amount: available[0]?.amount || 0,
+                    estimatedPayoutDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000) // Next day
+                },
+                thisMonth: {
+                    collected: thisMonth[0]?.collected || 0,
+                    deducted: thisMonth[0]?.deducted || 0,
+                    received: thisMonth[0]?.received || 0
+                }
+            };
+        } catch (error) {
+            logger.error('Error getting dashboard stats', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Handle Velocity settlement webhook
+     */
+    static async handleSettlementWebhook(payload: any): Promise<void> {
+        logger.info('Received settlement webhook', { payload });
+        // Logic to reconcile settlements would go here
+        // For now, we mock success
+    }
+
+    /**
+     * Request on-demand payout
+     */
+    static async requestPayout(
+        companyId: string,
+        amount: number,
+        userId: string
+    ): Promise<any> {
+        // Create a special batch
+        return this.createRemittanceBatch(companyId, 'on_demand', new Date(), userId);
+    }
+
+    /**
+     * Schedule payout preference
+     */
+    static async schedulePayout(
+        companyId: string,
+        schedule: any
+    ): Promise<any> {
+        // Mock implementation - in prod, save to Company model
+        logger.info('Updated payout schedule', { companyId, schedule });
+        return {
+            scheduleId: 'SCH-' + Date.now(),
+            ...schedule,
+            nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        };
+    }
 }

@@ -6,6 +6,30 @@ import { Company } from '../../../src/infrastructure/database/mongoose/models';
 import { Session } from '../../../src/infrastructure/database/mongoose/models';
 import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 
+
+/**
+ * Helper function to extract access token from response cookies
+ * Supports both regular and secure-prefixed cookie names
+ */
+const extractAccessTokenFromCookies = (response: any): string | null => {
+    const setCookieHeader = response.headers['set-cookie'] || [];
+    // console.log('DEBUG COOKIES:', setCookieHeader); 
+
+    for (const cookie of Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader]) {
+        if (cookie.includes('accessToken')) {
+            const match = cookie.match(/accessToken=([^;]+)/);
+            if (match) return match[1];
+        }
+        if (cookie.includes('__Secure-accessToken')) {
+            const match = cookie.match(/__Secure-accessToken=([^;]+)/);
+            if (match) return match[1];
+        }
+    }
+
+    // console.log('DEBUG: No access token found in cookies');
+    return null;
+};
+
 describe('Session Limit Enforcement', () => {
     let user: any;
     let company: any;
@@ -65,7 +89,8 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
-            const token1 = response1.body.data.accessToken;
+            const token1 = extractAccessTokenFromCookies(response1);
+            expect(token1).toBeTruthy();
 
             // Verify Desktop 1 session works
             await request(app)
@@ -83,7 +108,8 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
-            const token2 = response2.body.data.accessToken;
+            const token2 = extractAccessTokenFromCookies(response2);
+            expect(token2).toBeTruthy();
 
             // Verify Desktop 2 session works
             await request(app)
@@ -114,7 +140,9 @@ describe('Session Limit Enforcement', () => {
                     })
                     .expect(200);
 
-                tokens.push(response.body.data.accessToken);
+                const token = extractAccessTokenFromCookies(response);
+                expect(token).toBeTruthy();
+                tokens.push(token!);
             }
 
             // Only the last token should work
@@ -160,7 +188,9 @@ describe('Session Limit Enforcement', () => {
                     })
                     .expect(200);
 
-                tokens.push(response.body.data.accessToken);
+                const token = extractAccessTokenFromCookies(response);
+                expect(token).toBeTruthy();
+                tokens.push(token!);
             }
 
             // Both tokens should work
@@ -201,7 +231,9 @@ describe('Session Limit Enforcement', () => {
                     })
                     .expect(200);
 
-                tokens.push(response.body.data.accessToken);
+                const token = extractAccessTokenFromCookies(response);
+                expect(token).toBeTruthy();
+                tokens.push(token!);
             }
 
             // First token should be revoked
@@ -233,6 +265,9 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
+            const mobileToken = extractAccessTokenFromCookies(mobileResponse);
+            expect(mobileToken).toBeTruthy();
+
             const tabletResponse = await request(app)
                 .post('/api/v1/auth/login')
                 .set('User-Agent', 'Mozilla/5.0 (iPad; CPU OS 14_0 like Mac OS X)')
@@ -242,15 +277,18 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
+            const tabletToken = extractAccessTokenFromCookies(tabletResponse);
+            expect(tabletToken).toBeTruthy();
+
             // Both should work
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${mobileResponse.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${mobileToken}`)
                 .expect(200);
 
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${tabletResponse.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${tabletToken}`)
                 .expect(200);
 
             // Create another mobile session (should revoke first mobile)
@@ -263,21 +301,24 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
+            const mobile2Token = extractAccessTokenFromCookies(mobile2Response);
+            expect(mobile2Token).toBeTruthy();
+
             // First mobile should be revoked
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${mobileResponse.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${mobileToken}`)
                 .expect(401);
 
             // Tablet and new mobile should work
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${tabletResponse.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${tabletToken}`)
                 .expect(200);
 
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${mobile2Response.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${mobile2Token}`)
                 .expect(200);
         });
     });
@@ -296,7 +337,9 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
-            tokens.desktop = desktopResponse.body.data.accessToken;
+            const desktopToken = extractAccessTokenFromCookies(desktopResponse);
+            expect(desktopToken).toBeTruthy();
+            tokens.desktop = desktopToken!;
 
             // Create 2 mobile sessions
             for (let i = 0; i < 2; i++) {
@@ -309,7 +352,9 @@ describe('Session Limit Enforcement', () => {
                     })
                     .expect(200);
 
-                tokens[`mobile${i}`] = response.body.data.accessToken;
+                const mobileToken = extractAccessTokenFromCookies(response);
+                expect(mobileToken).toBeTruthy();
+                tokens[`mobile${i}`] = mobileToken!;
             }
 
             // All 3 sessions should work
@@ -350,7 +395,7 @@ describe('Session Limit Enforcement', () => {
 
         it('should not affect mobile sessions when desktop limit is reached', async () => {
             // Create 2 mobile sessions
-            const mobile1 = await request(app)
+            const mobile1Resp = await request(app)
                 .post('/api/v1/auth/login')
                 .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)')
                 .send({
@@ -359,7 +404,10 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
-            const mobile2 = await request(app)
+            const mobile1Token = extractAccessTokenFromCookies(mobile1Resp);
+            expect(mobile1Token).toBeTruthy();
+
+            const mobile2Resp = await request(app)
                 .post('/api/v1/auth/login')
                 .set('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)')
                 .send({
@@ -368,8 +416,11 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
+            const mobile2Token = extractAccessTokenFromCookies(mobile2Resp);
+            expect(mobile2Token).toBeTruthy();
+
             // Create 2 desktop sessions (should revoke first)
-            const desktop1 = await request(app)
+            const desktop1Resp = await request(app)
                 .post('/api/v1/auth/login')
                 .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
                 .send({
@@ -378,7 +429,10 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
-            const desktop2 = await request(app)
+            const desktop1Token = extractAccessTokenFromCookies(desktop1Resp);
+            expect(desktop1Token).toBeTruthy();
+
+            const desktop2Resp = await request(app)
                 .post('/api/v1/auth/login')
                 .set('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
                 .send({
@@ -387,27 +441,30 @@ describe('Session Limit Enforcement', () => {
                 })
                 .expect(200);
 
+            const desktop2Token = extractAccessTokenFromCookies(desktop2Resp);
+            expect(desktop2Token).toBeTruthy();
+
             // Mobile sessions should still work
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${mobile1.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${mobile1Token}`)
                 .expect(200);
 
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${mobile2.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${mobile2Token}`)
                 .expect(200);
 
             // First desktop should be revoked
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${desktop1.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${desktop1Token}`)
                 .expect(401);
 
             // Second desktop should work
             await request(app)
                 .get('/api/v1/auth/me')
-                .set('Authorization', `Bearer ${desktop2.body.data.accessToken}`)
+                .set('Authorization', `Bearer ${desktop2Token}`)
                 .expect(200);
         });
     });
@@ -437,7 +494,9 @@ describe('Session Limit Enforcement', () => {
                     })
                     .expect(200);
 
-                tokens.push(response.body.data.accessToken);
+                const token = extractAccessTokenFromCookies(response);
+                expect(token).toBeTruthy();
+                tokens.push(token!);
             }
 
             // Verify total active sessions doesn't exceed global limit

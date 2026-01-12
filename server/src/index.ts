@@ -8,6 +8,8 @@ import connectDB from './config/database';
 import { initializeScheduler } from './config/scheduler';
 import logger from './shared/logger/winston.logger';
 import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-resolution.job';
+import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.job';
+import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 
 // Load environment variables
@@ -30,6 +32,14 @@ const startServer = async (): Promise<void> => {
         // Initialize NDR/RTO Background Jobs
         await NDRResolutionJob.initialize();
         logger.info('NDR/RTO background jobs initialized');
+
+        // Initialize Weight Dispute Background Jobs
+        await WeightDisputeJob.initialize();
+        logger.info('Weight dispute background jobs initialized');
+
+        // Initialize COD Remittance Background Jobs
+        await CODRemittanceJob.initialize();
+        logger.info('COD remittance background jobs initialized');
 
         // Initialize Commission System Event Handlers
         initializeCommissionEventHandlers();

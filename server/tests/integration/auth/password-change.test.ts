@@ -308,11 +308,12 @@ describe('Password Change Flow', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            expect(response.body).toHaveProperty('score');
-            expect(response.body).toHaveProperty('strength');
-            expect(response.body.score).toBeGreaterThanOrEqual(0);
-            expect(response.body.score).toBeLessThanOrEqual(4);
-            expect(['weak', 'fair', 'good', 'strong']).toContain(response.body.strength);
+            expect(response.body).toHaveProperty('data');
+            expect(response.body.data).toHaveProperty('score');
+            expect(response.body.data).toHaveProperty('strength');
+            expect(response.body.data.score).toBeGreaterThanOrEqual(0);
+            expect(response.body.data.score).toBeLessThanOrEqual(4);
+            expect(['weak', 'fair', 'good', 'strong']).toContain(response.body.data.strength);
         });
 
         it('should return low score for weak password', async () => {
@@ -323,8 +324,8 @@ describe('Password Change Flow', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            expect(response.body.score).toBeLessThan(2);
-            expect(['weak', 'fair']).toContain(response.body.strength);
+            expect(response.body.data.score).toBeLessThan(2);
+            expect(['weak', 'fair']).toContain(response.body.data.strength);
         });
 
         it('should return high score for strong password', async () => {
@@ -335,8 +336,8 @@ describe('Password Change Flow', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            expect(response.body.score).toBeGreaterThan(2);
-            expect(['good', 'strong']).toContain(response.body.strength);
+            expect(response.body.data.score).toBeGreaterThan(2);
+            expect(['good', 'strong']).toContain(response.body.data.strength);
         });
 
         it('should provide feedback and suggestions', async () => {
@@ -347,10 +348,10 @@ describe('Password Change Flow', () => {
                 .set('X-CSRF-Token', 'frontend-request')
                 .expect(200);
 
-            expect(response.body).toHaveProperty('feedback');
-            expect(response.body.feedback).toHaveProperty('warning');
-            expect(response.body.feedback).toHaveProperty('suggestions');
-            expect(Array.isArray(response.body.feedback.suggestions)).toBe(true);
+            expect(response.body.data).toHaveProperty('feedback');
+            expect(response.body.data.feedback).toHaveProperty('warning');
+            expect(response.body.data.feedback).toHaveProperty('suggestions');
+            expect(Array.isArray(response.body.data.feedback.suggestions)).toBe(true);
         });
 
         it('should require authentication', async () => {

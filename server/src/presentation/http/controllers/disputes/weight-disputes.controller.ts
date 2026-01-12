@@ -11,6 +11,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import {
     WeightDisputeDetectionService,
     WeightDisputeResolutionService,
@@ -370,11 +371,75 @@ export const getMetrics = async (
     }
 };
 
+/**
+ * POST /api/v1/disputes/weight/webhook
+ * Handle carrier weight discrepancy webhook
+ * 
+ * Body:
+ * - awb: string
+ * - actualWeight: number
+ * - unit: 'kg' | 'g'
+ * - scannedAt: Date
+ * - location: string
+ * - photoUrl: string
+ * - carrier: string
+ */
+export const handleWebhook = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        // Basic validation
+        const { awb, actualWeight, unit, scannedAt, location, photoUrl, carrier } = req.body;
+
+        if (!awb || !actualWeight || !unit) {
+            throw new ValidationError('awb, actualWeight, and unit are required');
+        }
+
+        logger.info('Received weight webhook', { awb, actualWeight, unit, carrier });
+
+        // Find shipment by AWB
+        const shipment = await Shipment.findOne({ trackingNumber: awb });
+
+        if (!shipment) {
+            // Log but don't error to carrier (idempotency)
+            logger.warn('Shipment not found for weight webhook', { awb });
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+        }
+
+        // Call service
+        const dispute = await WeightDisputeDetectionService.detectOnCarrierScan(
+            shipment._id as string,
+            { value: actualWeight, unit },
+            {
+                scannedAt: new Date(scannedAt || Date.now()),
+                location,
+                photoUrl,
+                carrierName: carrier || shipment.carrier,
+            }
+        );
+
+        sendSuccess(
+            res,
+            {
+                disputeId: dispute?.disputeId || null,
+                action: dispute ? 'dispute_created' : 'weight_verified'
+            },
+            'Weight update processed'
+        );
+    } catch (error) {
+        logger.error('Error processing weight webhook:', error);
+        next(error);
+    }
+};
+
 export default {
     listDisputes,
     getDisputeDetails,
     submitSellerEvidence,
     resolveDispute,
+    handleWebhook,
     getAnalytics,
     getMetrics,
 };

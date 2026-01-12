@@ -1,6 +1,8 @@
 import { CronJob } from 'cron';
 import logger from '../shared/logger/winston.logger';
 import { processScheduledDeletions } from '../infrastructure/jobs/system/maintenance/account-deletion.job';
+import WeightDisputeJob from '../infrastructure/jobs/disputes/weight-dispute.job';
+import CODRemittanceJob from '../infrastructure/jobs/finance/cod-remittance.job';
 
 /**
  * Initialize all scheduled jobs
@@ -18,6 +20,58 @@ export const initializeScheduler = (): void => {
 
     // Start the jobs
     accountDeletionJob.start();
+
+    // Weight Dispute Automation
+    // 1. Auto-resolve expired disputes (Daily at 2 AM)
+    const wdAutoResolveJob = new CronJob('0 2 * * *', async () => {
+      try {
+        await WeightDisputeJob.queueAutoResolve();
+      } catch (error) {
+        logger.error('Error queuing WD auto-resolve job:', error);
+      }
+    });
+    wdAutoResolveJob.start();
+
+    // 2. Fraud Pattern Detection (Hourly at :00)
+    const wdFraudCheckJob = new CronJob('0 * * * *', async () => {
+      try {
+        await WeightDisputeJob.queueFraudCheck();
+      } catch (error) {
+        logger.error('Error queuing WD fraud check job:', error);
+      }
+    });
+    wdFraudCheckJob.start();
+
+    // 3. Scan for pending updates (Hourly at :30)
+    const wdScanUpdatesJob = new CronJob('30 * * * *', async () => {
+      try {
+        await WeightDisputeJob.queueScanUpdates();
+      } catch (error) {
+        logger.error('Error queuing WD scan updates job:', error);
+      }
+    });
+    wdScanUpdatesJob.start();
+
+    // COD Remittance Automation
+    // 1. Daily Batch Creation (Daily at 4 AM)
+    const codBatchJob = new CronJob('0 4 * * *', async () => {
+      try {
+        await CODRemittanceJob.queueDailyBatch();
+      } catch (error) {
+        logger.error('Error queuing COD daily batch job:', error);
+      }
+    });
+    codBatchJob.start();
+
+    // 2. Auto-Payout Processor (Every hour at :15)
+    const codPayoutJob = new CronJob('15 * * * *', async () => {
+      try {
+        await CODRemittanceJob.queueAutoPayouts();
+      } catch (error) {
+        logger.error('Error queuing COD auto-payout job:', error);
+      }
+    });
+    codPayoutJob.start();
 
     logger.info('Scheduler initialized successfully');
   } catch (error) {

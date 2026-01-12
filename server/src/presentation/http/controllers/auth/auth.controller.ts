@@ -15,7 +15,7 @@ import mongoose from 'mongoose';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { UserDTO } from '../../dtos/user.dto';
-import { AuthenticationError, ValidationError, DatabaseError, ConflictError, NotFoundError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // ============================================================================
@@ -431,7 +431,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
             role: typedUser.role,
             companyId: typedUser.companyId,
           }
-        }, 'Token already refreshed');
+        }, 'Token already refreshed by concurrent request');
         return;
       }
 
@@ -899,6 +899,8 @@ export const checkPasswordStrength = async (req: Request, res: Response, next: N
 };
 /**
  * Get current user
+ * ✅ SECURITY: Excludes all sensitive fields (passwords, tokens, etc)
+ * ✅ FEATURE: Returns comprehensive user data for frontend auth state
  * @route GET /auth/me
  */
 export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -908,17 +910,23 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
       throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    // Exclude sensitive fields: password, security tokens, OAuth tokens
+    // Exclude sensitive fields: password, security tokens, OAuth tokens, email pending changes
     const user = await User.findById(authReq.user._id)
-      .select('-password -security -oauth.google.accessToken -oauth.google.refreshToken -pendingEmailChange')
+      .select('-password -security -oauth.google.accessToken -oauth.google.refreshToken -pendingEmailChange -oauthProvider')
       .lean();
 
     if (!user) {
       throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
+    // ✅ FEATURE: Add last activity timestamp
+    const userResponse = {
+      ...UserDTO.toResponse(user as IUser),
+      lastRequested: new Date().toISOString(),
+    };
+
     // Use DTO for consistent response format
-    sendSuccess(res, { user: UserDTO.toResponse(user as IUser) }, 'User retrieved successfully');
+    sendSuccess(res, { user: userResponse }, 'User retrieved successfully');
   } catch (error: any) {
     logger.error('getMe error:', error);
     next(error);
@@ -1078,27 +1086,37 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
 
 /**
  * Change password for authenticated user
+ * ✅ SECURITY: Invalidates all sessions to prevent session hijacking
+ * ✅ FEATURE: Requires current password verification
  * @route POST /auth/change-password
  */
 export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authReq = req as Request;
     if (!authReq.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const schema = z.object({
-      currentPassword: z.string(),
+      currentPassword: z.string().min(1, 'Current password is required'),
       // ✅ FIX: Use consistent password validation (was only using min(8))
       newPassword: z.string().min(PASSWORD_REQUIREMENTS.minLength).superRefine(passwordValidator),
     });
-    const { currentPassword, newPassword } = schema.parse(req.body);
+
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      const details = validation.error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
+      throw new ValidationError('Validation failed', details);
+    }
+
+    const { currentPassword, newPassword } = validation.data;
 
     const user = await User.findById(authReq.user._id);
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -1111,6 +1129,15 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     // Verify current password
     const isCurrentPasswordValid = await typedUser.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
+      await createAuditLog(
+        typedUser._id.toString(),
+        typedUser.companyId,
+        'security',
+        'user',
+        typedUser._id.toString(),
+        { message: 'Failed password change attempt - incorrect current password', success: false },
+        req
+      );
       throw new AuthenticationError('Current password is incorrect', ErrorCode.AUTH_INVALID_CREDENTIALS);
     }
 
@@ -1124,8 +1151,8 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     typedUser.security.tokenVersion = (typedUser.security.tokenVersion || 0) + 1;
     await typedUser.save();
 
-    // Revoke all existing sessions
-    await Session.updateMany(
+    // ✅ SECURITY: Revoke ALL existing sessions to prevent session hijacking
+    const revokedCount = await Session.updateMany(
       { userId: typedUser._id, isRevoked: false },
       { isRevoked: true }
     );
@@ -1136,49 +1163,56 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       'password_change',
       'user',
       typedUser._id.toString(),
-      { message: 'Password changed successfully', success: true },
+      {
+        message: 'Password changed successfully',
+        success: true,
+        sessionsRevoked: revokedCount.modifiedCount
+      },
       req
     );
 
     sendSuccess(res, {
-      sessionInvalidated: true
+      sessionInvalidated: true,
+      sessionsRevoked: revokedCount.modifiedCount
     }, 'Password changed successfully. Please login again with your new password.');
   } catch (error) {
     logger.error('Change password error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      throw new ValidationError('Validation failed', errors);
-    }
     next(error);
   }
 };
 
 /**
  * Request email change (sends verification to new email)
+ * ✅ SECURITY: Requires password confirmation for sensitive operation
+ * ✅ FEATURE: Stores verification token securely (hashed)
  * @route POST /auth/change-email
  */
 export const changeEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authReq = req as Request;
     if (!authReq.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const schema = z.object({
       newEmail: z.string().email('Invalid email format'),
-      password: z.string(), // Require password for security
+      password: z.string().min(1, 'Password is required for security'), // Require password for security
     });
-    const { newEmail, password } = schema.parse(req.body);
+
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      const details = validation.error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+      }));
+      throw new ValidationError('Validation failed', details);
+    }
+
+    const { newEmail, password } = validation.data;
 
     const user = await User.findById(authReq.user._id);
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -1187,19 +1221,40 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
     if (typedUser.password) {
       const isPasswordValid = await typedUser.comparePassword(password);
       if (!isPasswordValid) {
+        await createAuditLog(
+          typedUser._id.toString(),
+          typedUser.companyId,
+          'security',
+          'user',
+          typedUser._id.toString(),
+          { message: 'Failed email change attempt - incorrect password', success: false, newEmail },
+          req
+        );
         throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_CREDENTIALS);
       }
+    } else if (!typedUser.oauthProvider) {
+      // OAuth users without password cannot change email this way
+      throw new ValidationError('No password set. Please use your OAuth provider to manage your email.');
     }
 
     // Check if new email is same as current
-    if (typedUser.email.toLowerCase() === newEmail.toLowerCase()) {
-      throw new ValidationError('New email is same as current email');
+    const normalizedNewEmail = newEmail.toLowerCase();
+    const normalizedCurrentEmail = typedUser.email.toLowerCase();
+
+    if (normalizedCurrentEmail === normalizedNewEmail) {
+      throw new ValidationError('New email is the same as your current email');
     }
 
     // Check if new email already exists
-    const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
+    const existingUser = await User.findOne({ email: normalizedNewEmail });
     if (existingUser) {
-      throw new ConflictError('Email already in use', ErrorCode.BIZ_CONFLICT);
+      logger.warn('Email change attempt with already registered email', {
+        userId: typedUser._id,
+        attemptedEmail: normalizedNewEmail
+      });
+      // Don't reveal that email exists (security)
+      sendSuccess(res, null, `Verification email sent to ${newEmail}. Please check your inbox to confirm the change.`);
+      return;
     }
 
     // ✅ PHASE 1 FIX: Hash email change verification token before storage
@@ -1211,36 +1266,36 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
 
     // Store pending email change
     typedUser.pendingEmailChange = {
-      email: newEmail.toLowerCase(),
+      email: normalizedNewEmail,
       token: hashedVerificationToken, // ✅ Store HASH
       tokenExpiry: tokenExpiry,
     };
     await typedUser.save();
 
     // Send verification email to NEW email address
-    await sendVerificationEmail(newEmail, typedUser.name, rawVerificationToken); // ✅ Send RAW token
+    try {
+      await sendVerificationEmail(newEmail, typedUser.name, rawVerificationToken); // ✅ Send RAW token
+    } catch (emailError) {
+      logger.error('Failed to send email change verification:', emailError);
+      // Clear pending email change if email fails
+      typedUser.pendingEmailChange = undefined;
+      await typedUser.save();
+      throw new Error('Failed to send verification email. Please try again.');
+    }
 
     await createAuditLog(
       typedUser._id.toString(),
       typedUser.companyId,
-      'other',
+      'email_change',
       'user',
       typedUser._id.toString(),
-      { message: 'Email change requested', newEmail, success: true },
+      { message: 'Email change requested', newEmail: normalizedNewEmail, success: true },
       req
     );
 
     sendSuccess(res, null, `Verification email sent to ${newEmail}. Please check your inbox to confirm the change.`);
   } catch (error) {
     logger.error('Change email error:', error);
-    if (error instanceof z.ZodError) {
-      const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      throw new ValidationError('Validation failed', errors);
-    }
     next(error);
   }
 };
@@ -1494,8 +1549,9 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
           teamRole: typedUser.teamRole,
         },
         redirectUrl,
+        autoLogin: true,
       },
-      'Login successful'
+      'Magic link verified. Logging you in...'
     );
   } catch (error) {
     logger.error('Magic link verification error:', error);

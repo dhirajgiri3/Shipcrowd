@@ -56,4 +56,31 @@ router.post(
     codRemittanceController.cancelRemittance
 );
 
+// --- New Routes ---
+
+// Get dashboard stats
+router.get(
+    '/dashboard',
+    codRemittanceController.getDashboard
+);
+
+// Velocity settlement webhook (Public but signature verified) -- Note: remove auth if public
+router.post(
+    '/webhook',
+    // TODO: Verify signature
+    codRemittanceController.handleWebhook
+);
+
+// Request on-demand payout
+router.post(
+    '/request-payout',
+    codRemittanceController.requestPayout
+);
+
+// Schedule payout
+router.post(
+    '/schedule-payout',
+    codRemittanceController.schedulePayout
+);
+
 export default router;

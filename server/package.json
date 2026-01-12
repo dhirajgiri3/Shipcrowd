@@ -28,6 +28,7 @@
     "@types/json2csv": "^5.0.7",
     "@types/morgan": "^1.9.9",
     "bcrypt": "^5.1.1",
+    "bullmq": "^5.66.5",
     "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
