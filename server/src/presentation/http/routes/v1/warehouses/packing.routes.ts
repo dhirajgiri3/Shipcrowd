@@ -7,7 +7,8 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import packingController from '@/presentation/http/controllers/warehouse/packing.controller';
-import { authenticate, authorize } from '@/presentation/http/middleware';
+import { authenticate } from '@/presentation/http/middleware';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 
 const router = Router();
 
@@ -35,30 +36,37 @@ router.use(packingGeneralLimiter);
 // All routes require authentication (company context enforced in controllers)
 router.use(authenticate);
 
+// All packing routes require KYC verification
+router.use(requireAccess({ kyc: true }));
+
+// Access controls
+const packingManagers = requireAccess({ teamRoles: ['admin', 'warehouse_manager'] });
+const packers = requireAccess({ teamRoles: ['admin', 'warehouse_manager', 'packer'] });
+
 // Station management (manager only)
-router.post('/stations', authorize(['admin', 'warehouse_manager']), packingController.createStation);
+router.post('/stations', packingManagers, packingController.createStation);
 router.get('/stations', packingController.getStations);
 router.get('/stations/available/:warehouseId', packingController.getAvailableStations);
 router.get('/stations/:id', packingController.getStationById);
 
 // Station status management
-router.post('/stations/:id/assign', authorize(['admin', 'warehouse_manager']), packingController.assignPacker);
-router.post('/stations/:id/unassign', authorize(['admin', 'warehouse_manager']), packingController.unassignPacker);
-router.post('/stations/:id/offline', authorize(['admin', 'warehouse_manager']), packingController.setOffline);
-router.post('/stations/:id/online', authorize(['admin', 'warehouse_manager']), packingController.setOnline);
+router.post('/stations/:id/assign', packingManagers, packingController.assignPacker);
+router.post('/stations/:id/unassign', packingManagers, packingController.unassignPacker);
+router.post('/stations/:id/offline', packingManagers, packingController.setOffline);
+router.post('/stations/:id/online', packingManagers, packingController.setOnline);
 
 // Packing session operations (packer role) - with stricter rate limiting
-router.post('/stations/:id/session/start', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.startSession);
-router.post('/stations/:id/pack', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.packItem);
-router.post('/stations/:id/packages', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.createPackage);
-router.post('/stations/:id/verify-weight', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.verifyWeight);
-router.post('/stations/:id/session/complete', packOperationLimiter, authorize(['admin', 'warehouse_manager', 'packer']), packingController.completeSession);
-router.post('/stations/:id/session/cancel', authorize(['admin', 'warehouse_manager', 'packer']), packingController.cancelSession);
+router.post('/stations/:id/session/start', packOperationLimiter, packers, packingController.startSession);
+router.post('/stations/:id/pack', packOperationLimiter, packers, packingController.packItem);
+router.post('/stations/:id/packages', packOperationLimiter, packers, packingController.createPackage);
+router.post('/stations/:id/verify-weight', packOperationLimiter, packers, packingController.verifyWeight);
+router.post('/stations/:id/session/complete', packOperationLimiter, packers, packingController.completeSession);
+router.post('/stations/:id/session/cancel', packers, packingController.cancelSession);
 
 // Labels
 router.get('/stations/:id/packages/:packageNumber/label', packingController.getPackageLabel);
 
 // Statistics
-router.get('/stats/station/:stationId', authorize(['admin', 'warehouse_manager']), packingController.getStationStats);
+router.get('/stats/station/:stationId', packingManagers, packingController.getStationStats);
 
 export default router;

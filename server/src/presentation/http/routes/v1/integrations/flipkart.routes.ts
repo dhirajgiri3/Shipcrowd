@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import FlipkartController from '../../../controllers/integrations/flipkart.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 /**
  * Flipkart Integration Routes
@@ -22,8 +21,8 @@ const router = Router();
 router.post(
   '/connect',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can connect
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.connect
 );
 
@@ -49,8 +48,8 @@ router.get(
 router.delete(
   '/stores/:id',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can disconnect
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.disconnectStore
 );
 
@@ -65,8 +64,8 @@ router.post(
 router.post(
   '/stores/:id/pause',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.pauseSync
 );
 
@@ -74,8 +73,8 @@ router.post(
 router.post(
   '/stores/:id/resume',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  authenticate,
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.resumeSync
 );
 

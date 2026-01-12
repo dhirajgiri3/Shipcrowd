@@ -7,7 +7,8 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import pickingController from '@/presentation/http/controllers/warehouse/picking.controller';
-import { authenticate, authorize } from '@/presentation/http/middleware';
+import { authenticate } from '@/presentation/http/middleware';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 
 const router = Router();
 
@@ -35,30 +36,37 @@ router.use(pickingGeneralLimiter);
 // All routes require authentication (company context enforced in controllers)
 router.use(authenticate);
 
+// All picking routes require KYC verification
+router.use(requireAccess({ kyc: true }));
+
+// Access controls
+const pickingManagers = requireAccess({ teamRoles: ['admin', 'warehouse_manager'] });
+const pickers = requireAccess({ teamRoles: ['admin', 'warehouse_manager', 'picker'] });
+
 // Pick list management
-router.post('/pick-lists', authorize(['admin', 'warehouse_manager']), pickingController.createPickList);
+router.post('/pick-lists', pickingManagers, pickingController.createPickList);
 router.get('/pick-lists', pickingController.getPickLists);
 router.get('/my-pick-lists', pickingController.getMyPickLists);
 router.get('/pick-lists/:id', pickingController.getPickListById);
 
 // Pick list assignment (manager only)
-router.post('/pick-lists/:id/assign', authorize(['admin', 'warehouse_manager']), pickingController.assignPickList);
+router.post('/pick-lists/:id/assign', pickingManagers, pickingController.assignPickList);
 
 // Picking operations (picker role) - with stricter rate limiting
-router.post('/pick-lists/:id/start', pickOperationLimiter, authorize(['admin', 'warehouse_manager', 'picker']), pickingController.startPicking);
-router.post('/pick-lists/:id/pick', pickOperationLimiter, authorize(['admin', 'warehouse_manager', 'picker']), pickingController.pickItem);
-router.post('/pick-lists/:id/skip', pickOperationLimiter, authorize(['admin', 'warehouse_manager', 'picker']), pickingController.skipItem);
-router.post('/pick-lists/:id/complete', pickOperationLimiter, authorize(['admin', 'warehouse_manager', 'picker']), pickingController.completePickList);
-router.post('/pick-lists/:id/cancel', authorize(['admin', 'warehouse_manager']), pickingController.cancelPickList);
+router.post('/pick-lists/:id/start', pickOperationLimiter, pickers, pickingController.startPicking);
+router.post('/pick-lists/:id/pick', pickOperationLimiter, pickers, pickingController.pickItem);
+router.post('/pick-lists/:id/skip', pickOperationLimiter, pickers, pickingController.skipItem);
+router.post('/pick-lists/:id/complete', pickOperationLimiter, pickers, pickingController.completePickList);
+router.post('/pick-lists/:id/cancel', pickingManagers, pickingController.cancelPickList);
 
 // Verification (manager only)
-router.post('/pick-lists/:id/verify', authorize(['admin', 'warehouse_manager']), pickingController.verifyPickList);
+router.post('/pick-lists/:id/verify', pickingManagers, pickingController.verifyPickList);
 
 // Helpers
 router.get('/pick-lists/:id/next-item', pickingController.getNextItem);
 
 // Statistics
-router.get('/stats/picker/:pickerId', authorize(['admin', 'warehouse_manager']), pickingController.getPickerStats);
-router.get('/stats/warehouse/:warehouseId', authorize(['admin', 'warehouse_manager']), pickingController.getWarehouseStats);
+router.get('/stats/picker/:pickerId', pickingManagers, pickingController.getPickerStats);
+router.get('/stats/warehouse/:warehouseId', pickingManagers, pickingController.getWarehouseStats);
 
 export default router;

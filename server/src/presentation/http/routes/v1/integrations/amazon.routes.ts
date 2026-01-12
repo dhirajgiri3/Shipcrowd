@@ -2,8 +2,7 @@ import { Router } from 'express';
 import AmazonController from '../../../controllers/integrations/amazon.controller';
 import amazonProductMappingRoutes from './amazon-product-mapping.routes';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 /**
  * Amazon Integration Routes
@@ -23,8 +22,8 @@ const router = Router();
 router.post(
     '/connect',
     authenticate,
-    checkKYC,
-    authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can connect
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.connect
 );
 
@@ -50,8 +49,8 @@ router.get(
 router.delete(
     '/stores/:id',
     authenticate,
-    checkKYC,
-    authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can disconnect
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.disconnectStore
 );
 
@@ -66,8 +65,8 @@ router.post(
 router.post(
     '/stores/:id/pause',
     authenticate,
-    checkKYC,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.pauseSync
 );
 
@@ -75,8 +74,8 @@ router.post(
 router.post(
     '/stores/:id/resume',
     authenticate,
-    checkKYC,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.resumeSync
 );
 
@@ -84,8 +83,8 @@ router.post(
 router.post(
     '/stores/:id/sync-orders',
     authenticate,
-    checkKYC,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.syncOrders
 );
 
@@ -93,8 +92,8 @@ router.post(
 router.post(
     '/stores/:id/refresh',
     authenticate,
-    checkKYC,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.refreshCredentials
 );
 

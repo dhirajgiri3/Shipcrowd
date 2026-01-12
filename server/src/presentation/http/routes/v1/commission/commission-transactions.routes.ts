@@ -6,12 +6,20 @@
 
 import { Router } from 'express';
 import { CommissionTransactionController } from '../../../controllers/commission/index';
-import { authenticate, authorize } from '../../../middleware/index';
+import { authenticate } from '../../../middleware/index';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// All commission transaction routes require KYC verification
+// All commission transaction routes require KYC verification
+router.use(requireAccess({ kyc: true }));
+
+// Admin/manager auth
+const adminManager = requireAccess({ teamRoles: ['admin', 'manager'] });
 
 /**
  * GET /commission/transactions
@@ -25,28 +33,28 @@ router.get('/', CommissionTransactionController.listTransactions);
  * Get pending transactions for approval
  * Auth: admin, manager
  */
-router.get('/pending', authorize(['admin', 'manager']), CommissionTransactionController.getPending);
+router.get('/pending', adminManager, CommissionTransactionController.getPending);
 
 /**
  * POST /commission/transactions/bulk-approve
  * Bulk approve transactions
  * Auth: admin, manager
  */
-router.post('/bulk-approve', authorize(['admin', 'manager']), CommissionTransactionController.bulkApprove);
+router.post('/bulk-approve', adminManager, CommissionTransactionController.bulkApprove);
 
 /**
  * POST /commission/transactions/bulk-reject
  * Bulk reject transactions
  * Auth: admin, manager
  */
-router.post('/bulk-reject', authorize(['admin', 'manager']), CommissionTransactionController.bulkReject);
+router.post('/bulk-reject', adminManager, CommissionTransactionController.bulkReject);
 
 /**
  * POST /commission/transactions/bulk-calculate
  * Bulk calculate commissions
  * Auth: admin, manager
  */
-router.post('/bulk-calculate', authorize(['admin', 'manager']), CommissionTransactionController.bulkCalculate);
+router.post('/bulk-calculate', adminManager, CommissionTransactionController.bulkCalculate);
 
 /**
  * GET /commission/transactions/:id
@@ -60,20 +68,20 @@ router.get('/:id', CommissionTransactionController.getTransaction);
  * Approve a transaction
  * Auth: admin, manager
  */
-router.post('/:id/approve', authorize(['admin', 'manager']), CommissionTransactionController.approveTransaction);
+router.post('/:id/approve', adminManager, CommissionTransactionController.approveTransaction);
 
 /**
  * POST /commission/transactions/:id/reject
  * Reject a transaction
  * Auth: admin, manager
  */
-router.post('/:id/reject', authorize(['admin', 'manager']), CommissionTransactionController.rejectTransaction);
+router.post('/:id/reject', adminManager, CommissionTransactionController.rejectTransaction);
 
 /**
  * POST /commission/transactions/:id/adjustment
  * Add adjustment to a transaction
  * Auth: admin, manager
  */
-router.post('/:id/adjustment', authorize(['admin', 'manager']), CommissionTransactionController.addAdjustment);
+router.post('/:id/adjustment', adminManager, CommissionTransactionController.addAdjustment);
 
 export default router;

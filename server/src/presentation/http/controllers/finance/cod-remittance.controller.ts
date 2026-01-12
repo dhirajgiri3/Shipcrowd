@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendCreated, sendPaginated } from '../../../../shared/utils/responseHelper';
 import { ValidationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
@@ -127,12 +127,13 @@ export const listRemittances = async (
             limit,
         });
 
-        res.status(200).json({
-            success: true,
-            data: result.remittances,
-            pagination: result.pagination,
-            message: 'Remittances retrieved successfully',
-        });
+        const pagination = {
+            ...result.pagination,
+            pages: result.pagination.totalPages,
+            hasNext: result.pagination.page < result.pagination.totalPages,
+            hasPrev: result.pagination.page > 1
+        };
+        sendPaginated(res, result.remittances, pagination, 'Remittances retrieved successfully');
     } catch (error) {
         logger.error('Error listing remittances:', error);
         next(error);

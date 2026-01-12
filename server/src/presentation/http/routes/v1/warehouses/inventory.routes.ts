@@ -7,7 +7,8 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import inventoryController from '@/presentation/http/controllers/warehouse/inventory.controller';
-import { authenticate, authorize } from '@/presentation/http/middleware';
+import { authenticate } from '@/presentation/http/middleware';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 
 const router = Router();
 
@@ -35,20 +36,27 @@ router.use(warehouseGeneralLimiter);
 // All routes require authentication (company context enforced in controllers)
 router.use(authenticate);
 
+// All inventory routes require KYC verification
+router.use(requireAccess({ kyc: true }));
+
+// Access controls
+const inventoryManagers = requireAccess({ teamRoles: ['admin', 'warehouse_manager', 'inventory_manager'] });
+const viewers = requireAccess({ teamRoles: ['admin', 'warehouse_manager'] });
+
 // Inventory CRUD
-router.post('/', authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.createInventory);
+router.post('/', inventoryManagers, inventoryController.createInventory);
 router.get('/', inventoryController.getInventoryList);
 router.get('/sku/:warehouseId/:sku', inventoryController.getInventoryBySKU);
 router.get('/:id', inventoryController.getInventoryById);
 
 // Stock operations (inventory manager role) - with stricter rate limiting
-router.post('/receive', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.receiveStock);
-router.post('/:id/adjust', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.adjustStock);
-router.post('/:id/reserve', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.reserveStock);
-router.post('/:id/release', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.releaseReservation);
-router.post('/:id/transfer', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.transferStock);
-router.post('/:id/damage', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.markDamaged);
-router.post('/:id/cycle-count', stockOperationLimiter, authorize(['admin', 'warehouse_manager', 'inventory_manager']), inventoryController.cycleCount);
+router.post('/receive', stockOperationLimiter, inventoryManagers, inventoryController.receiveStock);
+router.post('/:id/adjust', stockOperationLimiter, inventoryManagers, inventoryController.adjustStock);
+router.post('/:id/reserve', stockOperationLimiter, inventoryManagers, inventoryController.reserveStock);
+router.post('/:id/release', stockOperationLimiter, inventoryManagers, inventoryController.releaseReservation);
+router.post('/:id/transfer', stockOperationLimiter, inventoryManagers, inventoryController.transferStock);
+router.post('/:id/damage', stockOperationLimiter, inventoryManagers, inventoryController.markDamaged);
+router.post('/:id/cycle-count', stockOperationLimiter, inventoryManagers, inventoryController.cycleCount);
 
 // Availability check
 router.post('/check-availability', inventoryController.checkAvailability);
@@ -60,7 +68,7 @@ router.get('/alerts/low-stock', inventoryController.getLowStockAlerts);
 router.get('/movements', inventoryController.getMovements);
 
 // Statistics
-router.get('/stats/:warehouseId', authorize(['admin', 'warehouse_manager']), inventoryController.getInventoryStats);
-router.get('/stats/:warehouseId/movements', authorize(['admin', 'warehouse_manager']), inventoryController.getMovementSummary);
+router.get('/stats/:warehouseId', viewers, inventoryController.getInventoryStats);
+router.get('/stats/:warehouseId/movements', viewers, inventoryController.getMovementSummary);
 
 export default router;

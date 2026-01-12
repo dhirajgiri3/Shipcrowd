@@ -1,11 +1,15 @@
 import express from 'express';
-import { authenticate, authorize } from '../../../middleware';
+import { authenticate } from '../../../middleware';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 import * as walletController from '../../../controllers/finance/wallet.controller';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// All wallet routes require KYC verification
+router.use(requireAccess({ kyc: true }));
 
 // Get wallet balance
 router.get('/balance', walletController.getBalance);
@@ -25,7 +29,7 @@ router.put('/threshold', walletController.updateLowBalanceThreshold);
 // Refund transaction (admin action)
 router.post(
     '/refund/:transactionId',
-    authorize(['ADMIN']),
+    requireAccess({ roles: ['admin'] }),
     walletController.refundTransaction
 );
 

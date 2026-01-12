@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import ProductMappingController from '../../../controllers/integrations/product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 /**
  * Product Mapping Routes
@@ -20,8 +19,7 @@ const router = Router();
 router.post(
   '/stores/:id/mappings/auto',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.autoMapProducts
 );
 
@@ -31,16 +29,14 @@ router.post(
 router.post(
   '/stores/:id/mappings/import',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.importCSV
 );
 
 router.get(
   '/stores/:id/mappings/export',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.exportCSV
 );
 
@@ -50,7 +46,7 @@ router.get(
 router.get(
   '/stores/:id/mappings/stats',
   authenticate,
-  checkKYC,
+  requireAccess({ kyc: true }),
   ProductMappingController.getStats
 );
 
@@ -66,8 +62,7 @@ router.get(
 router.post(
   '/stores/:id/mappings',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.createMapping
 );
 
@@ -77,24 +72,21 @@ router.post(
 router.delete(
   '/mappings/:id',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.deleteMapping
 );
 
 router.post(
   '/mappings/:id/toggle',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.toggleStatus
 );
 
 router.post(
   '/mappings/:id/sync',
   authenticate,
-  checkKYC,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   ProductMappingController.syncInventory
 );
 

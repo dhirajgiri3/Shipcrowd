@@ -14,16 +14,16 @@
 import { Router } from 'express';
 import WooCommerceController from '../../../controllers/integrations/woocommerce.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
-import { checkKYC } from '../../../middleware/auth/kyc';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
 /**
  * All WooCommerce routes require authentication
  */
+// Basic checks
 router.use(authenticate);
-router.use(checkKYC);
+router.use(requireAccess({ kyc: true }));
 
 /**
  * Store Management Routes
@@ -52,7 +52,7 @@ router.use(checkKYC);
  */
 router.post(
   '/install',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.installStore
 );
 
@@ -114,7 +114,7 @@ router.post('/stores/:id/test', WooCommerceController.testConnection);
  */
 router.delete(
   '/stores/:id',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.disconnectStore
 );
 
@@ -136,7 +136,7 @@ router.delete(
  */
 router.post(
   '/stores/:id/pause',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.pauseSync
 );
 
@@ -154,7 +154,7 @@ router.post(
  */
 router.post(
   '/stores/:id/resume',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.resumeSync
 );
 
@@ -182,7 +182,7 @@ router.post(
  */
 router.put(
   '/stores/:id/credentials',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.refreshCredentials
 );
 
@@ -205,7 +205,7 @@ router.put(
  */
 router.post(
   '/stores/:id/webhooks/register',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.registerWebhooks
 );
 
@@ -233,7 +233,7 @@ router.post(
  */
 router.post(
   '/stores/:id/sync/orders',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.syncOrders
 );
 
@@ -277,7 +277,7 @@ router.get('/sync/jobs/:jobId', WooCommerceController.getSyncJobStatus);
  */
 router.put(
   '/stores/:storeId/orders/:orderId/status',
-  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'admin', 'manager'] }),
   WooCommerceController.updateOrderStatus
 );
 
@@ -303,7 +303,7 @@ router.put(
  */
 router.post(
   '/stores/:storeId/orders/:orderId/tracking',
-  authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'admin', 'manager'] }),
   WooCommerceController.addTrackingNote
 );
 
@@ -322,7 +322,7 @@ router.post(
  */
 router.post(
   '/stores/:id/sync/fulfillments',
-  authorize(['ADMIN', 'COMPANY_OWNER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner'] }),
   WooCommerceController.syncPendingUpdates
 );
 

@@ -12,6 +12,8 @@ import {
  * Validate Pincode
  * GET /api/v1/logistics/address/validate-pincode/:pincode
  */
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+
 export const validatePincode = async (
     req: Request,
     res: Response,
@@ -27,10 +29,7 @@ export const validatePincode = async (
 
         const result = await AddressValidationService.validatePincode(pincode);
 
-        res.status(200).json({
-            success: true,
-            data: result
-        });
+        sendSuccess(res, result, 'Pincode validated successfully');
     } catch (error) {
         next(error);
     }
@@ -63,10 +62,7 @@ export const checkServiceability = async (
             courierId
         );
 
-        res.status(200).json({
-            success: true,
-            data: result
-        });
+        sendSuccess(res, result, 'Serviceability checked successfully');
     } catch (error) {
         next(error);
     }
@@ -98,10 +94,7 @@ export const calculateDistance = async (
             toPincode
         );
 
-        res.status(200).json({
-            success: true,
-            data: result
-        });
+        sendSuccess(res, result, 'Distance calculated successfully');
     } catch (error) {
         next(error);
     }

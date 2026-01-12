@@ -6,19 +6,24 @@
 
 import { Router } from 'express';
 import { SalesRepresentativeController } from '../../../controllers/commission/index';
-import { authenticate, authorize } from '../../../middleware/index';
+import { authenticate } from '../../../middleware/index';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
 
+// All sales representative routes require KYC verification
+// All sales representative routes require KYC verification
+router.use(requireAccess({ kyc: true }));
+
 /**
  * POST /commission/sales-reps
  * Create a new sales representative
  * Auth: admin, manager
  */
-router.post('/', authorize(['admin', 'manager']), SalesRepresentativeController.createSalesRep);
+router.post('/', requireAccess({ teamRoles: ['admin', 'manager'] }), SalesRepresentativeController.createSalesRep);
 
 /**
  * GET /commission/sales-reps
@@ -39,14 +44,14 @@ router.get('/:id', SalesRepresentativeController.getSalesRep);
  * Update a sales representative
  * Auth: admin, manager (self with limited fields)
  */
-router.put('/:id', authorize(['admin', 'manager']), SalesRepresentativeController.updateSalesRep);
+router.put('/:id', requireAccess({ teamRoles: ['admin', 'manager'] }), SalesRepresentativeController.updateSalesRep);
 
 /**
  * DELETE /commission/sales-reps/:id
  * Deactivate a sales representative
  * Auth: admin
  */
-router.delete('/:id', authorize(['admin']), SalesRepresentativeController.deleteSalesRep);
+router.delete('/:id', requireAccess({ teamRoles: ['admin'] }), SalesRepresentativeController.deleteSalesRep);
 
 /**
  * GET /commission/sales-reps/:id/performance
@@ -60,20 +65,20 @@ router.get('/:id/performance', SalesRepresentativeController.getPerformance);
  * Assign territories
  * Auth: admin, manager
  */
-router.put('/:id/territory', authorize(['admin', 'manager']), SalesRepresentativeController.assignTerritory);
+router.put('/:id/territory', requireAccess({ teamRoles: ['admin', 'manager'] }), SalesRepresentativeController.assignTerritory);
 
 /**
  * POST /commission/sales-reps/:id/refresh-metrics
  * Refresh cached performance metrics
  * Auth: admin, manager
  */
-router.post('/:id/refresh-metrics', authorize(['admin', 'manager']), SalesRepresentativeController.refreshMetrics);
+router.post('/:id/refresh-metrics', requireAccess({ teamRoles: ['admin', 'manager'] }), SalesRepresentativeController.refreshMetrics);
 
 /**
  * GET /commission/sales-reps/:id/team
  * Get team hierarchy
  * Auth: admin, manager
  */
-router.get('/:id/team', authorize(['admin', 'manager']), SalesRepresentativeController.getTeam);
+router.get('/:id/team', requireAccess({ teamRoles: ['admin', 'manager'] }), SalesRepresentativeController.getTeam);
 
 export default router;

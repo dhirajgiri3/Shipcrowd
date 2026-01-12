@@ -6,7 +6,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
 
 type UserRole = 'admin' | 'seller' | 'staff';
-type TeamRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
+type TeamRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer' | 'warehouse_manager' | 'inventory_manager' | 'picker' | 'packer';
 
 interface AccessOptions {
     /** Allowed platform roles. Default: all authenticated users */
@@ -105,7 +105,7 @@ export const requireAccess = (options: AccessOptions) => {
             }
 
             // 5. Team Role Check
-            if (options.teamRoles && !options.teamRoles.includes(user.teamRole)) {
+            if (options.teamRoles && user.role !== 'admin' && !options.teamRoles.includes(user.teamRole)) {
                 res.status(403).json({
                     success: false,
                     code: 'INSUFFICIENT_TEAM_ROLE',

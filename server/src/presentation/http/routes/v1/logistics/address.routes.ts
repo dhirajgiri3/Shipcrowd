@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../../../middleware';
+import { checkKYC } from '../../../middleware/auth/kyc';
 import * as addressController from '../../../controllers/logistics/address.controller';
 
 const router = express.Router();
@@ -8,8 +9,9 @@ const router = express.Router();
 // For now, requiring authentication as per typical internal API usage
 router.use(authenticate);
 
-router.get('/validate-pincode/:pincode', addressController.validatePincode);
-router.post('/check-serviceability', addressController.checkServiceability);
-router.post('/calculate-distance', addressController.calculateDistance);
+// Validate Pincode and Check Serviceability should check KYC
+router.get('/validate-pincode/:pincode', checkKYC, addressController.validatePincode);
+router.post('/check-serviceability', checkKYC, addressController.checkServiceability);
+router.post('/calculate-distance', checkKYC, addressController.calculateDistance);
 
 export default router;

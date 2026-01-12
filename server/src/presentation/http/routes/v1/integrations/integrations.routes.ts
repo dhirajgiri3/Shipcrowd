@@ -6,7 +6,8 @@
 
 import express from 'express';
 import IntegrationsController from '../../../controllers/integrations/integrations.controller';
-import { authenticate, authorize } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = express.Router();
 
@@ -45,7 +46,7 @@ const router = express.Router();
 router.get(
     '/health',
     authenticate,
-    authorize(['ADMIN', 'COMPANY_OWNER', 'MANAGER']),
+    requireAccess({ teamRoles: ['owner', 'admin', 'manager'] }),
     IntegrationsController.getHealth
 );
 

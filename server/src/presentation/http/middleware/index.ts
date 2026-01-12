@@ -2,6 +2,9 @@ import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './
 import auth, { authenticate, authorize, checkCompany, loginRateLimiter, csrfProtection } from './auth/auth';
 import permissions, { checkPermission, getUserPermissions } from './auth/permissions';
 import { requireCompany } from './auth/company';
+import { checkKYC } from './auth/kyc';
+import { requireAccessTier, determineUserTier } from './auth/access-tier.middleware';
+import { requireAccess } from './auth/unified-access';
 
 export {
   auditLog,
@@ -29,6 +32,4 @@ export {
   requireAccess
 };
 
-import { checkKYC } from './auth/kyc';
-import { requireAccessTier, determineUserTier } from './auth/access-tier.middleware';
-import { requireAccess } from './auth/unified-access';
+

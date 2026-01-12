@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import WalletService from '../../../../core/application/services/wallet/wallet.service';
 import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { ValidationError } from '../../../../shared/errors/app.error';
+import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
+import { ValidationError, AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import {
     rechargeWalletSchema,
@@ -59,20 +59,19 @@ export const getTransactionHistory = async (
 
         const result = await WalletService.getTransactionHistory(auth.companyId, options);
 
-        res.status(200).json({
-            success: true,
-            data: {
-                transactions: result.transactions,
-                balance: result.balance,
-            },
-            pagination: {
+        sendPaginated(
+            res,
+            result.transactions,
+            {
                 page,
                 limit,
                 total: result.total,
-                totalPages: Math.ceil(result.total / limit),
+                pages: Math.ceil(result.total / limit),
+                hasNext: page < Math.ceil(result.total / limit),
+                hasPrev: page > 1,
             },
-            message: 'Transaction history retrieved successfully',
-        });
+            'Transaction history retrieved successfully'
+        );
     } catch (error) {
         logger.error('Error fetching transaction history:', error);
         next(error);
@@ -119,10 +118,7 @@ export const rechargeWallet = async (
                 'Wallet recharged successfully'
             );
         } else {
-            res.status(400).json({
-                success: false,
-                message: result.error || 'Recharge failed',
-            });
+            throw new AppError(result.error || 'Recharge failed', 'WALLET_RECHARGE_FAILED', 400);
         }
     } catch (error) {
         logger.error('Error recharging wallet:', error);
@@ -172,10 +168,7 @@ export const refundTransaction = async (
                 'Transaction refunded successfully'
             );
         } else {
-            res.status(400).json({
-                success: false,
-                message: result.error || 'Refund failed',
-            });
+            throw new AppError(result.error || 'Refund failed', 'WALLET_REFUND_FAILED', 400);
         }
     } catch (error) {
         logger.error('Error refunding transaction:', error);

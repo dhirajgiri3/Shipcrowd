@@ -9,8 +9,17 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import logger from '../../../../shared/logger/winston.logger';
 
-// Webhook secret - should be stored in environment variables
-const WEBHOOK_SECRET = process.env.VELOCITY_WEBHOOK_SECRET || 'default-webhook-secret-change-me';
+// Webhook secret - must be set in environment variables
+const WEBHOOK_SECRET = (() => {
+  const secret = process.env.VELOCITY_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error(
+      'CRITICAL: VELOCITY_WEBHOOK_SECRET environment variable is required. ' +
+      'Cannot start application without proper webhook authentication.'
+    );
+  }
+  return secret;
+})();
 
 // Replay attack protection - reject webhooks older than 5 minutes
 const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;

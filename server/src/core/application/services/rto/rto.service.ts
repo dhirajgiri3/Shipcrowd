@@ -392,11 +392,13 @@ export default class RTOService {
      * Create reverse shipment via courier API
      */
     private static async createReverseShipment(shipment: ShipmentInfo): Promise<string> {
-        // TODO: Integrate with actual courier API
-        // For now, generate mock reverse AWB
-        const reverseAwb = `RTO-${shipment.awb}`;
+        // TODO: Integrate with Courier Adapter when reverse pickup API is supported
+        // Current adapters (Velocity, etc.) in CourierFactory do not yet expose createReverseShipment
+        // For now, generate a unique internal reverse AWB
+        const timestamp = Date.now().toString().slice(-6);
+        const reverseAwb = `RTO-${shipment.awb}-${timestamp}`;
 
-        logger.info('Reverse shipment created', {
+        logger.info('Reverse shipment created (Mock)', {
             originalAwb: shipment.awb,
             reverseAwb,
         });
@@ -408,9 +410,10 @@ export default class RTOService {
      * Calculate RTO charges
      */
     private static async calculateRTOCharges(shipment: ShipmentInfo): Promise<number> {
-        // TODO: Calculate based on rate card
-        // For now, return flat rate
-        return 50; // ₹50 flat RTO charge
+        // TODO: In future, integrate with a RateCardService for dynamic calculation based on zone/weight
+        // Current implementation uses a configurable flat rate
+        const flatRate = Number(process.env.RTO_FLAT_CHARGE) || 50;
+        return flatRate;
     }
 
     /**
@@ -494,11 +497,15 @@ export default class RTOService {
         warehouseId: string,
         rtoEvent: IRTOEvent
     ): Promise<void> {
+        // Fetch shipment to get actual AWB
+        const shipmentInfo = await this.getShipmentInfo(String(rtoEvent.shipment));
+        const awb = shipmentInfo?.awb || String(rtoEvent.shipment);
+
         await WarehouseNotificationService.notifyRTOIncoming(
             String(rtoEvent._id),
             warehouseId,
             {
-                awb: rtoEvent.shipment.toString(), // TODO: Get actual AWB from shipment
+                awb,
                 reverseAwb: rtoEvent.reverseAwb,
                 expectedReturnDate: rtoEvent.expectedReturnDate || new Date(), // Fallback to current date
                 rtoReason: rtoEvent.rtoReason,
@@ -546,8 +553,7 @@ export default class RTOService {
      * Get shipment info (mock for now)
      */
     private static async getShipmentInfo(shipmentId: string): Promise<ShipmentInfo | null> {
-        // TODO: Use ShipmentService
-        // For now, return mock data or fetch from Shipment model
+        // Direct DB access for performance and simplicity
         try {
             const shipment = await Shipment.findById(shipmentId) as any;
 
@@ -704,7 +710,7 @@ export default class RTOService {
             total: totalStats[0]?.total || 0,
             byReason,
             avgCharges: totalStats[0]?.avgCharges || 0,
-            returnRate: 0, // TODO: Calculate based on total shipments
+            returnRate: 0, // Metric requires total shipment count context, to be implemented in AnalyticsService
         };
     }
 }

@@ -6,7 +6,8 @@
 
 import { Router } from 'express';
 import NDRController from '../../../controllers/ndr/ndr.controller';
-import { authenticate, authorize } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
@@ -60,6 +61,6 @@ router.get('/dashboard', NDRController.getDashboard);
 router.get('/workflows', NDRController.getWorkflows);
 
 // Admin only: Seed default workflows
-router.post('/workflows/seed', authorize(['admin']), NDRController.seedWorkflows);
+router.post('/workflows/seed', requireAccess({ roles: ['admin'] }), NDRController.seedWorkflows);
 
 export default router;

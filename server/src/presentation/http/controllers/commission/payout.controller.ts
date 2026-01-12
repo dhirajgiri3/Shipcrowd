@@ -12,6 +12,7 @@ import {
     listPayoutsQuerySchema,
     idParamSchema,
 } from '../../../../shared/validation/commission-schemas';
+import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class PayoutController {
     /**
@@ -42,11 +43,7 @@ export class PayoutController {
                 String(companyId)
             );
 
-            res.status(201).json({
-                success: true,
-                message: 'Payout initiated successfully',
-                data: payout,
-            });
+            sendCreated(res, payout, 'Payout initiated successfully');
         } catch (error) {
             next(error);
         }
@@ -80,11 +77,7 @@ export class PayoutController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: `Batch processing completed: ${result.success} succeeded, ${result.failed} failed`,
-                data: result,
-            });
+            sendSuccess(res, result, `Batch processing completed: ${result.success} succeeded, ${result.failed} failed`);
         } catch (error) {
             next(error);
         }
@@ -105,7 +98,7 @@ export class PayoutController {
 
             await PayoutProcessingService.handleWebhook(req.body, signature, webhookSecret);
 
-            res.status(200).json({ success: true });
+            sendSuccess(res, { success: true });
         } catch (error) {
             next(error);
         }
@@ -145,16 +138,8 @@ export class PayoutController {
                 { page, limit }
             );
 
-            res.status(200).json({
-                success: true,
-                data: result.data,
-                pagination: {
-                    page,
-                    limit,
-                    total: result.total,
-                    totalPages: Math.ceil(result.total / limit),
-                },
-            });
+            const pagination = calculatePagination(result.total, page, limit);
+            sendPaginated(res, result.data, pagination);
         } catch (error) {
             next(error);
         }
@@ -180,10 +165,7 @@ export class PayoutController {
 
             const payout = await PayoutProcessingService.getPayout(id, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: payout,
-            });
+            sendSuccess(res, payout);
         } catch (error) {
             next(error);
         }
@@ -209,11 +191,7 @@ export class PayoutController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Payout retry initiated',
-                data: payout,
-            });
+            sendSuccess(res, payout, 'Payout retry initiated');
         } catch (error) {
             next(error);
         }
@@ -239,11 +217,7 @@ export class PayoutController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Payout cancelled successfully',
-                data: payout,
-            });
+            sendSuccess(res, payout, 'Payout cancelled successfully');
         } catch (error) {
             next(error);
         }
