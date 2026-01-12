@@ -1,6 +1,7 @@
 import { Response, NextFunction, Request } from 'express';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment, Warehouse } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
+import AddressValidationService from '../../../../core/application/services/logistics/address-validation.service'; // Import Service
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -65,6 +66,41 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
             return;
         }
 
+        // VALIDATE ADDRESSES (Phase 2 Requirement)
+        // 1. Validate Delivery Address from Order
+        if (order.customerInfo?.address?.postalCode) {
+            const deliveryVal = await AddressValidationService.validatePincode(order.customerInfo.address.postalCode);
+            if (!deliveryVal.valid) {
+                sendValidationError(res, [{
+                    code: 'VAL_PINCODE_INVALID',
+                    message: 'Invalid delivery pincode in order details',
+                    field: 'order.customerInfo.address.postalCode'
+                }]);
+                return;
+            }
+        }
+
+        // 2. Validate Pickup Address from Warehouse
+        if (order.warehouseId) {
+            const warehouse = await Warehouse.findById(order.warehouseId);
+            if (!warehouse) {
+                // Should not happen if data integrity is maintained, but safety check
+                throw new ValidationError('Warehouse associated with order not found', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
+            }
+
+            if (warehouse.address?.postalCode) {
+                const pickupVal = await AddressValidationService.validatePincode(warehouse.address.postalCode);
+                if (!pickupVal.valid) {
+                    sendValidationError(res, [{
+                        code: 'VAL_PINCODE_INVALID',
+                        message: 'Invalid pickup (warehouse) pincode',
+                        field: 'warehouse.address.postalCode'
+                    }]);
+                    return;
+                }
+            }
+        }
+
         // Create shipment via service
         const result = await ShipmentService.createShipment({
             order,
@@ -112,7 +148,7 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
             return;
         }
 
-        const { page, limit, skip } = parsePagination(req.query as any);
+        const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 
         const filter: Record<string, any> = { companyId: auth.companyId, isDeleted: false };
 

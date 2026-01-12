@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
+import AddressValidationService from '../../../../core/application/services/logistics/address-validation.service'; // Import Service
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
@@ -43,6 +43,20 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
             sendValidationError(res, errors);
             return;
         }
+        // Address Validation Logic
+        if (validation.data.customerInfo?.address?.postalCode) {
+            const deliveryVal = await AddressValidationService.validatePincode(validation.data.customerInfo.address.postalCode);
+            if (!deliveryVal.valid) {
+                sendValidationError(res, [{
+                    code: 'VAL_PINCODE_INVALID',
+                    message: 'Invalid delivery pincode',
+                    field: 'customerInfo.address.postalCode'
+                }]);
+                return;
+            }
+        }
+
+        // Note: Pickup address is determined by warehouse selection, validation should happen getting warehouse details or during shipment creation
 
         const order = await OrderService.createOrder({
             companyId: new mongoose.Types.ObjectId(auth.companyId),
@@ -75,7 +89,7 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
         const auth = guardChecks(req, res);
         if (!auth) return;
 
-        const { page, limit, skip } = parsePagination(req.query as any);
+        const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 
         const filter: Record<string, any> = { companyId: auth.companyId, isDeleted: false };
 
@@ -190,7 +204,10 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         }
 
         if (validation.data.customerInfo) {
-            order.customerInfo = { ...order.customerInfo, ...validation.data.customerInfo } as any;
+            order.customerInfo = {
+                ...order.customerInfo,
+                ...validation.data.customerInfo
+            };
         }
         if (validation.data.products) {
             order.products = validation.data.products;

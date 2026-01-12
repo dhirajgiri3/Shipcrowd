@@ -34,6 +34,11 @@ export enum ErrorCode {
     VAL_INVALID_PHONE = 'VAL_INVALID_PHONE',
     VAL_INVALID_ID = 'VAL_INVALID_ID',
 
+    // Address validation errors
+    VAL_ADDRESS_INVALID = 'VAL_ADDRESS_INVALID',
+    VAL_PINCODE_INVALID = 'VAL_PINCODE_INVALID',
+    VAL_PINCODE_NOT_SERVICEABLE = 'VAL_PINCODE_NOT_SERVICEABLE',
+
     // Business logic errors (BIZ_)
     BIZ_NOT_FOUND = 'BIZ_NOT_FOUND',
     BIZ_ALREADY_EXISTS = 'BIZ_ALREADY_EXISTS',
@@ -59,6 +64,8 @@ export enum ErrorCode {
     RES_WAREHOUSE_NOT_FOUND = 'RES_WAREHOUSE_NOT_FOUND',
     RES_ZONE_NOT_FOUND = 'RES_ZONE_NOT_FOUND',
     RES_RATECARD_NOT_FOUND = 'RES_RATECARD_NOT_FOUND',
+    RES_REMITTANCE_NOT_FOUND = 'RES_REMITTANCE_NOT_FOUND',
+    RES_NOT_FOUND = 'RES_NOT_FOUND',
 
     // External service errors (EXT_)
     EXT_SERVICE_UNAVAILABLE = 'EXT_SERVICE_UNAVAILABLE',
@@ -114,6 +121,11 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.VAL_INVALID_PHONE]: 400,
     [ErrorCode.VAL_INVALID_ID]: 400,
 
+    // Address validation errors (400)
+    [ErrorCode.VAL_ADDRESS_INVALID]: 400,
+    [ErrorCode.VAL_PINCODE_INVALID]: 400,
+    [ErrorCode.VAL_PINCODE_NOT_SERVICEABLE]: 400,
+
     // Business errors (400/404/409)
     [ErrorCode.BIZ_NOT_FOUND]: 404,
     [ErrorCode.BIZ_ALREADY_EXISTS]: 409,
@@ -139,6 +151,8 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.RES_WAREHOUSE_NOT_FOUND]: 404,
     [ErrorCode.RES_ZONE_NOT_FOUND]: 404,
     [ErrorCode.RES_RATECARD_NOT_FOUND]: 404,
+    [ErrorCode.RES_REMITTANCE_NOT_FOUND]: 404,
+    [ErrorCode.RES_NOT_FOUND]: 404,
 
     // External service errors (502/503)
     [ErrorCode.EXT_SERVICE_UNAVAILABLE]: 503,

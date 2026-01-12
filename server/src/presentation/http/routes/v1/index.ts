@@ -91,4 +91,16 @@ router.use('/disputes/weight', weightDisputesRoutes);
 import onboardingRoutes from './onboarding/onboarding.routes';
 router.use('/onboarding', onboardingRoutes);
 
+// Phase 2: Address Validation
+import addressRoutes from './logistics/address.routes';
+router.use('/logistics/address', addressRoutes);
+
+// Phase 3: COD Remittance Dashboard
+import codRemittanceRoutes from './finance/cod-remittance.routes';
+router.use('/finance/cod-remittance', codRemittanceRoutes);
+
+// Razorpay Webhooks
+import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
+router.use('/webhooks/razorpay', razorpayWebhookRoutes);
+
 export default router;

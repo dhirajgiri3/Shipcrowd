@@ -123,11 +123,11 @@ export interface IShipment extends Document {
     financialImpact?: number; // Quick reference to dispute amount
   };
 
-  // COD Remittance Tracking (Week 11 Enhancement)
-  remittanceStatus?: {
-    eligible: boolean; // True if delivered + hold period elapsed
-    eligibleDate?: Date; // When it becomes eligible
-    remittanceId?: mongoose.Types.ObjectId; // If included in a remittance batch
+
+  // COD Remittance Tracking
+  remittance?: {
+    included: boolean; // True if included in a remittance batch
+    remittanceId?: string; // Remittance batch ID
     remittedAt?: Date;
     remittedAmount?: number; // Net amount after deductions
   };
@@ -387,16 +387,12 @@ const ShipmentSchema = new Schema<IShipment>(
       detectedAt: Date,
       financialImpact: Number,
     },
-    remittanceStatus: {
-      eligible: {
+    remittance: {
+      included: {
         type: Boolean,
         default: false,
       },
-      eligibleDate: Date,
-      remittanceId: {
-        type: Schema.Types.ObjectId,
-        ref: 'CODRemittance',
-      },
+      remittanceId: String,
       remittedAt: Date,
       remittedAmount: Number,
     },
@@ -440,8 +436,8 @@ ShipmentSchema.index({ companyId: 1, carrier: 1, createdAt: -1 }); // Carrier pe
 // Week 11: Weight Dispute & Remittance indexes
 ShipmentSchema.index({ 'weights.verified': 1, createdAt: -1 }); // Unverified weights scan
 ShipmentSchema.index({ 'weightDispute.exists': 1, 'weightDispute.status': 1 }); // Active disputes
-ShipmentSchema.index({ 'remittanceStatus.eligible': 1, 'paymentDetails.type': 1 }); // Eligible COD shipments
-ShipmentSchema.index({ companyId: 1, 'remittanceStatus.eligible': 1, 'remittanceStatus.remittanceId': 1 }); // Remittance batch creation
+ShipmentSchema.index({ 'remittance.included': 1, 'paymentDetails.type': 1, currentStatus: 1 }); // Eligible COD shipments for remittance
+ShipmentSchema.index({ companyId: 1, 'remittance.included': 1, 'remittance.remittanceId': 1 }); // Remittance batch tracking
 
 // Pre-save hook to ensure the first status is added to history
 ShipmentSchema.pre('save', function (next) {

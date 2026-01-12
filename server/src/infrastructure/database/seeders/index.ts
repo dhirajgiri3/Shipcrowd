@@ -76,6 +76,7 @@ const COLLECTIONS_TO_CLEAR = [
     'flipkart_product_mappings',  // Fixed: was 'flipkartproductmappings'
     'audit_logs',  // Fixed: was 'auditlogs'
     'payouts',
+    'pincodes', // Phase 2: Address Validation
 ];
 
 /**
@@ -191,6 +192,7 @@ async function runSeeders(): Promise<void> {
     const { seedMarketplaceProductMappings } = await import('./seeders/25-marketplace-product-mappings.seeder.js');
     const { seedAuditLogs } = await import('./seeders/26-audit-logs.seeder.js');
     const { seedPayouts } = await import('./seeders/27-payouts.seeder.js');
+    const { seedPincodes } = await import('./seeders/28-pincodes.seeder.js');
 
     // Seeder order based on dependencies
     const seeders = [
@@ -223,6 +225,7 @@ async function runSeeders(): Promise<void> {
         { name: 'Product Mappings', fn: seedMarketplaceProductMappings },
         { name: 'Audit Logs', fn: seedAuditLogs },
         { name: 'Payouts', fn: seedPayouts },
+        { name: 'Pincodes', fn: seedPincodes },
     ];
 
     for (const seeder of seeders) {
