@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import AddressValidationService from '../../../../core/application/services/logistics/address-validation.service';
-import { AppError } from '../../../../shared/errors/app.error';
+import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import {
+    validatePincodeSchema,
+    checkServiceabilitySchema,
+    calculateDistanceSchema
+} from '../../../../shared/validation/schemas/address.schemas';
 
 /**
  * Validate Pincode
@@ -13,11 +18,12 @@ export const validatePincode = async (
     next: NextFunction
 ) => {
     try {
-        const { pincode } = req.params;
-
-        if (!pincode) {
-            throw new AppError('Pincode is required', ErrorCode.VAL_MISSING_FIELD, 400);
+        const validation = validatePincodeSchema.safeParse(req);
+        if (!validation.success) {
+            throw new ValidationError('Invalid pincode', ErrorCode.VAL_PINCODE_INVALID);
         }
+
+        const { pincode } = validation.data.params;
 
         const result = await AddressValidationService.validatePincode(pincode);
 
@@ -40,11 +46,16 @@ export const checkServiceability = async (
     next: NextFunction
 ) => {
     try {
-        const { fromPincode, toPincode, courierId } = req.body;
-
-        if (!fromPincode || !toPincode || !courierId) {
-            throw new AppError('From pincode, to pincode and courier ID are required', ErrorCode.VAL_MISSING_FIELD, 400);
+        const validation = checkServiceabilitySchema.safeParse(req.body);
+        if (!validation.success) {
+            const details = validation.error.errors.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', details);
         }
+
+        const { fromPincode, toPincode, courierId } = validation.data;
 
         const result = await AddressValidationService.checkServiceability(
             fromPincode,
@@ -71,11 +82,16 @@ export const calculateDistance = async (
     next: NextFunction
 ) => {
     try {
-        const { fromPincode, toPincode } = req.body;
-
-        if (!fromPincode || !toPincode) {
-            throw new AppError('Both pincodes are required', ErrorCode.VAL_MISSING_FIELD, 400);
+        const validation = calculateDistanceSchema.safeParse(req.body);
+        if (!validation.success) {
+            const details = validation.error.errors.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', details);
         }
+
+        const { fromPincode, toPincode } = validation.data;
 
         const result = await AddressValidationService.calculateDistance(
             fromPincode,
@@ -90,3 +106,4 @@ export const calculateDistance = async (
         next(error);
     }
 };
+

@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../../../middleware';
+import { authenticate, authorize } from '../../../middleware';
 import * as walletController from '../../../controllers/finance/wallet.controller';
 
 const router = express.Router();
@@ -22,7 +22,11 @@ router.get('/stats', walletController.getWalletStats);
 // Update low balance threshold
 router.put('/threshold', walletController.updateLowBalanceThreshold);
 
-// Refund transaction (admin action - can add role check if needed)
-router.post('/refund/:transactionId', walletController.refundTransaction);
+// Refund transaction (admin action)
+router.post(
+    '/refund/:transactionId',
+    authorize(['ADMIN']),
+    walletController.refundTransaction
+);
 
 export default router;

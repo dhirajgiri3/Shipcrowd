@@ -16,7 +16,9 @@ import { Consent, ConsentHistory, ConsentType } from '../../../../infrastructure
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendError, sendCreated, sendValidationError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Validation schemas
 const acceptConsentSchema = z.object({
@@ -36,8 +38,7 @@ const withdrawConsentSchema = z.object({
 export const getConsents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const consents = await Consent.find({ userId: req.user._id });
@@ -67,8 +68,7 @@ export const getConsents = async (req: Request, res: Response, next: NextFunctio
 export const acceptConsent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const validatedData = acceptConsentSchema.parse(req.body);
@@ -142,13 +142,7 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
     } catch (error) {
         logger.error('Error accepting consent:', error);
         if (error instanceof z.ZodError) {
-            const errors = error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
-                field: err.path.join('.'),
-            }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError(error.errors[0].message);
         }
         next(error);
     }
@@ -161,29 +155,25 @@ export const acceptConsent = async (req: Request, res: Response, next: NextFunct
 export const withdrawConsent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const type = req.params.type as ConsentType;
 
         // Validate type
         if (!['terms', 'privacy', 'marketing', 'cookies', 'data_processing'].includes(type)) {
-            sendError(res, 'Invalid consent type', 400, 'INVALID_CONSENT_TYPE');
-            return;
+            throw new ValidationError('Invalid consent type', ErrorCode.VAL_INVALID_INPUT);
         }
 
         // Cannot withdraw core consents (terms and privacy) - must delete account instead
         if (type === 'terms' || type === 'privacy') {
-            sendError(res, 'Cannot withdraw terms or privacy consent. Please delete your account instead.', 400, 'CANNOT_WITHDRAW_CORE_CONSENT');
-            return;
+            throw new ValidationError('Cannot withdraw terms or privacy consent. Please delete your account instead.', ErrorCode.VAL_INVALID_INPUT);
         }
 
         const consent = await Consent.findOne({ userId: req.user._id, type });
 
         if (!consent) {
-            sendError(res, 'Consent not found', 404, 'CONSENT_NOT_FOUND');
-            return;
+            throw new NotFoundError('Consent not found', ErrorCode.RES_NOT_FOUND);
         }
 
         const ip = req.ip || 'unknown';
@@ -236,8 +226,7 @@ export const withdrawConsent = async (req: Request, res: Response, next: NextFun
 export const exportUserData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         // Collect all user data
@@ -248,8 +237,7 @@ export const exportUserData = async (req: Request, res: Response, next: NextFunc
         ]);
 
         if (!user) {
-            sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-            return;
+            throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
         }
 
         // Build export data
@@ -312,8 +300,7 @@ export const exportUserData = async (req: Request, res: Response, next: NextFunc
 export const getConsentHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const history = await ConsentHistory.find({ userId: req.user._id })

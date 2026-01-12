@@ -19,7 +19,8 @@
     },
     "isolatedModules": true,
     "types": [
-      "node"
+      "node",
+      "jest"
     ]
   },
   "ts-node": {

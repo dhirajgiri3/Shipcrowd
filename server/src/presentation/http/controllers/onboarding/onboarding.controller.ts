@@ -1,6 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../../../types/express';
-import { sendSuccess, sendError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import AchievementService from '../../../../core/application/services/onboarding/achievement.service';
 import PersonalizationService from '../../../../core/application/services/onboarding/personalization.service';
@@ -35,8 +37,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const progress = await OnboardingProgressService.getProgress(companyId, userId);
             sendSuccess(res, progress, 'Onboarding progress retrieved');
@@ -49,8 +50,7 @@ export class OnboardingController {
         try {
             const { companyId } = req.user!;
             if (!companyId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const action = await OnboardingProgressService.getNextAction(companyId);
             sendSuccess(res, action, 'Next recommended action');
@@ -63,14 +63,12 @@ export class OnboardingController {
         try {
             const { companyId } = req.user!;
             if (!companyId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const result = skipStepSchema.safeParse(req.params);
 
             if (!result.success) {
-                sendError(res, 'Invalid step', 400);
-                return;
+                throw new ValidationError('Invalid step');
             }
 
             const progress = await OnboardingProgressService.skipStep(companyId, result.data.step);
@@ -86,14 +84,12 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const result = personalizeSchema.safeParse(req.body);
 
             if (!result.success) {
-                sendError(res, 'Invalid survey data', 400);
-                return;
+                throw new ValidationError('Invalid survey data');
             }
 
             const persona = await PersonalizationService.savePersona(companyId, userId, result.data);
@@ -111,8 +107,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const recommendations = await PersonalizationService.getRecommendations(companyId, userId);
             sendSuccess(res, recommendations, 'Recommendations retrieved');
@@ -127,8 +122,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
 
             // Update streak on view (optional, or rely on explicit login event)
@@ -153,8 +147,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             await DemoDataService.generateDemoData({ companyId, userId });
             sendSuccess(res, null, 'Demo data generation started');
@@ -167,8 +160,7 @@ export class OnboardingController {
         try {
             const { companyId } = req.user!;
             if (!companyId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             await DemoDataService.clearDemoData(companyId);
 
@@ -187,8 +179,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId, role } = req.user!;
             if (!companyId || !userId || !role) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const tours = await ProductTourService.getAvailableTours(companyId, userId, role);
             sendSuccess(res, tours, 'Available tours retrieved');
@@ -201,8 +192,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const { id } = req.params;
 
@@ -217,8 +207,7 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const { id } = req.params;
 
@@ -233,15 +222,13 @@ export class OnboardingController {
         try {
             const { companyId, _id: userId } = req.user!;
             if (!companyId || !userId) {
-                sendError(res, 'User not properly authenticated', 401);
-                return;
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
             }
             const { id } = req.params;
             const result = progressUpdateSchema.safeParse(req.body);
 
             if (!result.success) {
-                sendError(res, 'Invalid progress data', 400);
-                return;
+                throw new ValidationError('Invalid progress data');
             }
 
             await ProductTourService.updateProgress(companyId, userId, id, result.data.stepIndex, result.data.status);

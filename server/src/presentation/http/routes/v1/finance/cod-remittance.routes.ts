@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../../../middleware';
+import { authenticate, authorize } from '../../../middleware';
 import * as codRemittanceController from '../../../controllers/finance/cod-remittance.controller';
 
 const router = express.Router();
@@ -31,21 +31,24 @@ router.get(
     codRemittanceController.getRemittanceDetails
 );
 
-// Approve remittance (admin action - can add role check if needed)
+// Approve remittance (admin action)
 router.post(
     '/:id/approve',
+    authorize(['ADMIN']),
     codRemittanceController.approveRemittance
 );
 
 // Initiate payout (admin action)
 router.post(
     '/:id/initiate-payout',
+    authorize(['ADMIN']),
     codRemittanceController.initiatePayout
 );
 
 // Cancel remittance
 router.post(
     '/:id/cancel',
+    authorize(['ADMIN']),
     codRemittanceController.cancelRemittance
 );
 

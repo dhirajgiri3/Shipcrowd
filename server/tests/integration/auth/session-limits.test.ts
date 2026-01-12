@@ -4,7 +4,7 @@ import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
 import { Company } from '../../../src/infrastructure/database/mongoose/models';
 import { Session } from '../../../src/infrastructure/database/mongoose/models';
-import { generateToken } from '../../../src/core/application/services/auth/token.service';
+import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 
 describe('Session Limit Enforcement', () => {
     let user: any;

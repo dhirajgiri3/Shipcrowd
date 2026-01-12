@@ -2,6 +2,7 @@ import { Router } from 'express';
 import FlipkartController from '../../../controllers/integrations/flipkart.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 
 /**
  * Flipkart Integration Routes
@@ -21,6 +22,7 @@ const router = Router();
 router.post(
   '/connect',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can connect
   FlipkartController.connect
 );
@@ -47,6 +49,7 @@ router.get(
 router.delete(
   '/stores/:id',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can disconnect
   FlipkartController.disconnectStore
 );
@@ -62,6 +65,7 @@ router.post(
 router.post(
   '/stores/:id/pause',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER']),
   FlipkartController.pauseSync
 );
@@ -70,6 +74,7 @@ router.post(
 router.post(
   '/stores/:id/resume',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER']),
   FlipkartController.resumeSync
 );

@@ -46,8 +46,7 @@ export const listDisputes = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { page, limit, skip } = parsePagination(req.query as any);
 
@@ -108,11 +107,10 @@ export const getDisputeDetails = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { disputeId } = req.params;
-        if (!validateObjectId(disputeId, res, 'dispute')) return;
+        validateObjectId(disputeId, 'dispute');
 
         const dispute = await WeightDispute.findOne({
             _id: disputeId,
@@ -149,11 +147,10 @@ export const submitSellerEvidence = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { disputeId } = req.params;
-        if (!validateObjectId(disputeId, res, 'dispute')) return;
+        validateObjectId(disputeId, 'dispute');
 
         // Validation
         const { photos, documents, notes } = req.body;
@@ -214,8 +211,7 @@ export const resolveDispute = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         // Admin check (assuming role is in auth object)
         // TODO: Implement proper role-based authorization
@@ -225,7 +221,7 @@ export const resolveDispute = async (
         // }
 
         const { disputeId } = req.params;
-        if (!validateObjectId(disputeId, res, 'dispute')) return;
+        validateObjectId(disputeId, 'dispute');
 
         // Validation
         const { outcome, adjustedWeight, refundAmount, deductionAmount, reasonCode, notes } = req.body;
@@ -290,8 +286,7 @@ export const getAnalytics = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         // Admin check
         // TODO: Implement proper role-based authorization
@@ -354,8 +349,7 @@ export const getMetrics = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const dateRange = req.query.startDate && req.query.endDate
             ? {

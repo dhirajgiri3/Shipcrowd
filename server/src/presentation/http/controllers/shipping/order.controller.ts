@@ -17,42 +17,35 @@ import {
 } from '../../../../shared/validation/schemas';
 import {
     sendSuccess,
-    sendError,
-    sendValidationError,
     sendPaginated,
     sendCreated,
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
 import { OrderService } from '../../../../core/application/services/shipping/order.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export const createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = createOrderSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
         // Address Validation Logic
         if (validation.data.customerInfo?.address?.postalCode) {
             const deliveryVal = await AddressValidationService.validatePincode(validation.data.customerInfo.address.postalCode);
             if (!deliveryVal.valid) {
-                sendValidationError(res, [{
-                    code: 'VAL_PINCODE_INVALID',
-                    message: 'Invalid delivery pincode',
-                    field: 'customerInfo.address.postalCode'
+                throw new ValidationError('Invalid delivery pincode', [{
+                    field: 'customerInfo.address.postalCode',
+                    message: 'Invalid delivery pincode'
                 }]);
-                return;
             }
         }
 
@@ -76,8 +69,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
         sendCreated(res, { order }, 'Order created successfully');
     } catch (error) {
         if (error instanceof Error && error.message === 'Failed to generate unique order number') {
-            sendError(res, 'Failed to generate unique order number', 500, 'ORDER_NUMBER_GENERATION_FAILED');
-            return;
+            throw new DatabaseError('Failed to generate unique order number');
         }
         logger.error('Error creating order:', error);
         next(error);
@@ -86,8 +78,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const getOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
 
@@ -132,11 +123,10 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
 
 export const getOrderById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { orderId } = req.params;
-        if (!validateObjectId(orderId, res, 'order')) return;
+        validateObjectId(orderId, 'order');
 
         const order = await Order.findOne({
             _id: orderId,
@@ -145,7 +135,7 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
         }).populate('warehouseId', 'name address').lean();
 
         if (!order) {
-            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
+            throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         sendSuccess(res, { order }, 'Order retrieved successfully');
@@ -157,21 +147,18 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
 
 export const updateOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { orderId } = req.params;
-        if (!validateObjectId(orderId, res, 'order')) return;
+        validateObjectId(orderId, 'order');
 
         const validation = updateOrderSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         const order = await Order.findOne({
@@ -181,7 +168,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         });
 
         if (!order) {
-            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
+            throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         if (validation.data.currentStatus && validation.data.currentStatus !== order.currentStatus) {
@@ -195,11 +182,10 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
 
             if (!result.success) {
                 if (result.code === 'CONCURRENT_MODIFICATION') {
-                    sendError(res, result.error!, 409, result.code);
+                    throw new ConflictError(result.error || 'Concurrent modification detected');
                 } else {
-                    sendError(res, result.error!, 400, 'INVALID_STATUS_TRANSITION');
+                    throw new ValidationError(result.error || 'Invalid status transition');
                 }
-                return;
             }
         }
 
@@ -231,11 +217,10 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const deleteOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { orderId } = req.params;
-        if (!validateObjectId(orderId, res, 'order')) return;
+        validateObjectId(orderId, 'order');
 
         const order = await Order.findOne({
             _id: orderId,
@@ -244,13 +229,12 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
         });
 
         if (!order) {
-            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
+            throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         const { canDelete, reason } = OrderService.canDeleteOrder(order.currentStatus);
         if (!canDelete) {
-            sendError(res, reason!, 400, 'CANNOT_DELETE_ORDER');
-            return;
+            throw new AppError(reason || 'Cannot delete order', 'CANNOT_DELETE_ORDER', 400);
         }
 
         order.isDeleted = true;
@@ -266,12 +250,10 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const bulkImportOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         if (!req.file) {
-            sendError(res, 'CSV file is required', 400, 'FILE_REQUIRED');
-            return;
+            throw new ValidationError('CSV file is required');
         }
 
         const rows: any[] = [];
@@ -298,15 +280,15 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
                     }, `Imported ${result.created.length} orders`);
                 } catch (error) {
                     if (error instanceof Error && error.message === 'No orders imported') {
-                        sendError(res, 'No orders imported', 400, 'IMPORT_FAILED');
-                        return;
+                        // This seems like a validation error or just a bad request
+                        throw new ValidationError('No orders imported');
                     }
                     throw error;
                 }
             })
             .on('error', (error) => {
                 logger.error('CSV parsing error:', error);
-                sendError(res, 'Failed to parse CSV file', 400, 'CSV_PARSE_ERROR');
+                next(new AppError('Failed to parse CSV file', 'CSV_PARSE_ERROR', 400));
             });
     } catch (error) {
         logger.error('Error importing orders:', error);

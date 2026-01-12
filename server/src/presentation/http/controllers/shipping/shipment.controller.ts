@@ -16,30 +16,25 @@ import {
 } from '../../../../shared/validation/schemas';
 import {
     sendSuccess,
-    sendError,
-    sendValidationError,
     sendPaginated,
     sendCreated,
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = createShipmentSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         const order = await Order.findOne({
@@ -49,21 +44,19 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
         });
 
         if (!order) {
-            throw new ValidationError('Order not found', ErrorCode.RES_ORDER_NOT_FOUND);
+            throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
         // Validate order status
         const orderValidation = ShipmentService.validateOrderForShipment(order);
         if (!orderValidation.canCreate) {
-            sendError(res, orderValidation.reason!, 400, orderValidation.code!);
-            return;
+            throw new AppError(orderValidation.reason || 'Cannot create shipment', orderValidation.code!, 400);
         }
 
         // Check for existing active shipment
         const hasActive = await ShipmentService.hasActiveShipment(order._id as mongoose.Types.ObjectId);
         if (hasActive) {
-            sendError(res, 'An active shipment already exists for this order', 400, 'SHIPMENT_EXISTS');
-            return;
+            throw new ConflictError('An active shipment already exists for this order', ErrorCode.BIZ_SHIPMENT_EXISTS);
         }
 
         // VALIDATE ADDRESSES (Phase 2 Requirement)
@@ -71,12 +64,10 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
         if (order.customerInfo?.address?.postalCode) {
             const deliveryVal = await AddressValidationService.validatePincode(order.customerInfo.address.postalCode);
             if (!deliveryVal.valid) {
-                sendValidationError(res, [{
-                    code: 'VAL_PINCODE_INVALID',
-                    message: 'Invalid delivery pincode in order details',
-                    field: 'order.customerInfo.address.postalCode'
+                throw new ValidationError('Invalid delivery pincode in order details', [{
+                    field: 'order.customerInfo.address.postalCode',
+                    message: 'Invalid delivery pincode in order details'
                 }]);
-                return;
             }
         }
 
@@ -85,18 +76,16 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
             const warehouse = await Warehouse.findById(order.warehouseId);
             if (!warehouse) {
                 // Should not happen if data integrity is maintained, but safety check
-                throw new ValidationError('Warehouse associated with order not found', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
+                throw new NotFoundError('Warehouse associated with order', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
             }
 
             if (warehouse.address?.postalCode) {
                 const pickupVal = await AddressValidationService.validatePincode(warehouse.address.postalCode);
                 if (!pickupVal.valid) {
-                    sendValidationError(res, [{
-                        code: 'VAL_PINCODE_INVALID',
-                        message: 'Invalid pickup (warehouse) pincode',
-                        field: 'warehouse.address.postalCode'
+                    throw new ValidationError('Invalid pickup (warehouse) pincode', [{
+                        field: 'warehouse.address.postalCode',
+                        message: 'Invalid pickup (warehouse) pincode'
                     }]);
-                    return;
                 }
             }
         }
@@ -121,12 +110,10 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
     } catch (error) {
         if (error instanceof Error) {
             if (error.message === 'Failed to generate unique tracking number') {
-                sendError(res, 'Failed to generate unique tracking number', 500, 'TRACKING_NUMBER_GENERATION_FAILED');
-                return;
+                throw new DatabaseError('Failed to generate unique tracking number');
             }
             if (error.message.includes('Order was updated by another process')) {
-                sendError(res, error.message, 409, 'CONCURRENT_MODIFICATION');
-                return;
+                throw new ConflictError(error.message, ErrorCode.BIZ_CONCURRENT_MODIFICATION);
             }
         }
         logger.error('Error creating shipment:', error);
@@ -136,8 +123,7 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
 
 export const getShipments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: false });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: false });
 
         if (!auth.companyId) {
             sendSuccess(res, {
@@ -192,11 +178,10 @@ export const getShipments = async (req: Request, res: Response, next: NextFuncti
 
 export const getShipmentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { shipmentId } = req.params;
-        if (!validateObjectId(shipmentId, res, 'shipment')) return;
+        validateObjectId(shipmentId, 'shipment');
 
         const shipment = await Shipment.findOne({
             _id: shipmentId,
@@ -208,7 +193,7 @@ export const getShipmentById = async (req: Request, res: Response, next: NextFun
             .lean();
 
         if (!shipment) {
-            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         sendSuccess(res, { shipment }, 'Shipment retrieved successfully');
@@ -220,15 +205,13 @@ export const getShipmentById = async (req: Request, res: Response, next: NextFun
 
 export const trackShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { trackingNumber } = req.params;
 
         const awbRegex = /^SHP-\d{8}-\d{4}$/;
         if (!awbRegex.test(trackingNumber)) {
-            sendError(res, 'Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 400, 'INVALID_TRACKING_FORMAT');
-            return;
+            throw new AppError('Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 'INVALID_TRACKING_FORMAT', 400);
         }
 
         const shipment = await Shipment.findOne({
@@ -241,7 +224,7 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
             .lean();
 
         if (!shipment) {
-            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);
@@ -268,21 +251,18 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
 
 export const updateShipmentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { shipmentId } = req.params;
-        if (!validateObjectId(shipmentId, res, 'shipment')) return;
+        validateObjectId(shipmentId, 'shipment');
 
         const validation = updateShipmentStatusSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         const shipment = await Shipment.findOne({
@@ -292,7 +272,7 @@ export const updateShipmentStatus = async (req: Request, res: Response, next: Ne
         });
 
         if (!shipment) {
-            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         // Update shipment status via service
@@ -308,11 +288,10 @@ export const updateShipmentStatus = async (req: Request, res: Response, next: Ne
 
         if (!result.success) {
             if (result.code === 'CONCURRENT_MODIFICATION') {
-                sendError(res, result.error!, 409, result.code);
+                throw new ConflictError(result.error || 'Concurrent modification detected', ErrorCode.BIZ_CONCURRENT_MODIFICATION);
             } else {
-                sendError(res, result.error!, 400, result.code!);
+                throw new AppError(result.error || 'Update failed', result.code!, 400);
             }
-            return;
         }
 
         // Update related order status
@@ -329,11 +308,10 @@ export const updateShipmentStatus = async (req: Request, res: Response, next: Ne
 
 export const deleteShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { shipmentId } = req.params;
-        if (!validateObjectId(shipmentId, res, 'shipment')) return;
+        validateObjectId(shipmentId, 'shipment');
 
         const shipment = await Shipment.findOne({
             _id: shipmentId,
@@ -342,13 +320,12 @@ export const deleteShipment = async (req: Request, res: Response, next: NextFunc
         });
 
         if (!shipment) {
-            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         const { canDelete, reason } = ShipmentService.canDeleteShipment(shipment.currentStatus);
         if (!canDelete) {
-            sendError(res, reason!, 400, 'CANNOT_DELETE_SHIPMENT');
-            return;
+            throw new AppError(reason || 'Cannot delete shipment', 'CANNOT_DELETE_SHIPMENT', 400);
         }
 
         shipment.isDeleted = true;
@@ -369,8 +346,7 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
         // Basic format validation
         const awbRegex = /^SHP-\d{8}-\d{4}$/;
         if (!awbRegex.test(trackingNumber)) {
-            sendError(res, 'Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 400, 'INVALID_TRACKING_FORMAT');
-            return;
+            throw new AppError('Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 'INVALID_TRACKING_FORMAT', 400);
         }
 
         const shipment = await Shipment.findOne({
@@ -382,7 +358,7 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
             .lean();
 
         if (!shipment) {
-            throw new ValidationError('Shipment not found', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         const timeline = ShipmentService.formatTrackingTimeline(shipment.statusHistory);

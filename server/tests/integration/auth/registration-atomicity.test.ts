@@ -48,8 +48,8 @@ describe('Registration Transaction Safety', () => {
             // Verify company created
             const company = await Company.findById(user!.companyId);
             expect(company).toBeDefined();
-            expect(company!.owner.toString()).toBe(user!._id.toString());
-            expect(company!.name).toBe("Success User's Company");
+            expect((company as any)!.owner.toString()).toBe((user as any)!._id.toString());
+            expect((company as any)!.name).toBe("Success User's Company");
         });
 
         it('should not create duplicate users on concurrent registration', async () => {
@@ -173,8 +173,8 @@ describe('Registration Transaction Safety', () => {
             const user = await User.findOne({ email: 'integrity@example.com' });
             const company = await Company.findById(user!.companyId);
 
-            expect(user!.companyId.toString()).toBe(company!._id.toString());
-            expect(company!.owner.toString()).toBe(user!._id.toString());
+            expect((user as any)!.companyId.toString()).toBe((company as any)!._id.toString());
+            expect((company as any)!.owner.toString()).toBe((user as any)!._id.toString());
         });
 
         it('should set correct default values for new user', async () => {
@@ -211,9 +211,9 @@ describe('Registration Transaction Safety', () => {
             const user = await User.findOne({ email: 'company-defaults@example.com' });
             const company = await Company.findById(user!.companyId);
 
-            expect(company!.status).toBe('active');
-            expect(company!.name).toBe("Company Defaults User's Company");
-            expect(company!.owner.toString()).toBe(user!._id.toString());
+            expect((company as any)!.status).toBe('active');
+            expect((company as any)!.name).toBe("Company Defaults User's Company");
+            expect((company as any)!.owner.toString()).toBe((user as any)!._id.toString());
         });
     });
 
@@ -239,7 +239,7 @@ describe('Registration Transaction Safety', () => {
 
                 expect(user).toBeDefined();
                 expect(company).toBeDefined();
-                expect(user!.companyId.toString()).toBe(company!._id.toString());
+                expect((user as any)!.companyId.toString()).toBe((company as any)!._id.toString());
             }
         });
 

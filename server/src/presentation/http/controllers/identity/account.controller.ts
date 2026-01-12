@@ -10,11 +10,9 @@ import {
 } from '../../../../core/application/services/user/account.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import {
-  sendSuccess,
-  sendError,
-  sendValidationError
-} from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, NotFoundError, ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Define validation schemas
 const deactivateAccountSchema = z.object({
@@ -49,33 +47,28 @@ const permanentDeleteSchema = z.object({
 export const deactivateUserAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Validate input
     const validation = deactivateAccountSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     // Verify password
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
-      return;
+      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
     }
 
     // Deactivate account
@@ -94,7 +87,7 @@ export const deactivateUserAccount = async (req: Request, res: Response, next: N
         'Your account has been deactivated. You can reactivate it by logging in again.'
       );
     } else {
-      sendError(res, 'Failed to deactivate account. Please try again later.', 500, 'DEACTIVATION_FAILED');
+      throw new AppError('Failed to deactivate account. Please try again later.', ErrorCode.BIZ_OPERATION_FAILED, 500);
     }
   } catch (error) {
     logger.error('Error deactivating account:', error);
@@ -109,44 +102,37 @@ export const deactivateUserAccount = async (req: Request, res: Response, next: N
 export const reactivateUserAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Validate input
     const validation = reactivateAccountSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     // Verify password
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
-      return;
+      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
     }
 
     // Check if account is deleted
     if (user.isDeleted) {
-      sendError(res, 'Your account has been deleted and cannot be reactivated.', 400, 'ACCOUNT_DELETED');
-      return;
+      throw new AppError('Your account has been deleted and cannot be reactivated.', ErrorCode.BIZ_INVALID_STATE, 400);
     }
 
     if (user.isActive) {
-      sendError(res, 'Your account is already active.', 400, 'ALREADY_ACTIVE');
-      return;
+      throw new AppError('Your account is already active.', ErrorCode.BIZ_CONFLICT, 400);
     }
 
     // Reactivate account
@@ -155,7 +141,7 @@ export const reactivateUserAccount = async (req: Request, res: Response, next: N
     if (success) {
       sendSuccess(res, null, 'Your account has been reactivated successfully.');
     } else {
-      sendError(res, 'Failed to reactivate account. Please try again later.', 500, 'REACTIVATION_FAILED');
+      throw new AppError('Failed to reactivate account. Please try again later.', ErrorCode.BIZ_OPERATION_FAILED, 500);
     }
   } catch (error) {
     logger.error('Error reactivating account:', error);
@@ -170,33 +156,28 @@ export const reactivateUserAccount = async (req: Request, res: Response, next: N
 export const scheduleAccountDeletionHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Validate input
     const validation = scheduleDeleteAccountSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     // Verify password
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
-      return;
+      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
     }
 
     // Schedule account deletion
@@ -220,7 +201,7 @@ export const scheduleAccountDeletionHandler = async (req: Request, res: Response
         `Your account has been scheduled for deletion on ${deletionDate.toDateString()}. You can cancel this action by logging in before that date.`
       );
     } else {
-      sendError(res, 'Failed to schedule account deletion. Please try again later.', 500, 'DELETION_SCHEDULE_FAILED');
+      throw new AppError('Failed to schedule account deletion. Please try again later.', ErrorCode.BIZ_OPERATION_FAILED, 500);
     }
   } catch (error) {
     logger.error('Error scheduling account deletion:', error);
@@ -235,39 +216,33 @@ export const scheduleAccountDeletionHandler = async (req: Request, res: Response
 export const cancelScheduledDeletionHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Validate input
     const validation = cancelDeletionSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     // Verify password
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     const isPasswordValid = await user.comparePassword(validation.data.password);
     if (!isPasswordValid) {
-      sendError(res, 'Invalid password', 401, 'INVALID_PASSWORD');
-      return;
+      throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_PASSWORD);
     }
 
     // Check if deletion is scheduled
     if (!user.scheduledDeletionDate) {
-      sendError(res, 'No scheduled deletion found for your account.', 400, 'NO_SCHEDULED_DELETION');
-      return;
+      throw new AppError('No scheduled deletion found for your account.', ErrorCode.BIZ_NOT_FOUND, 400);
     }
 
     // Cancel scheduled deletion
@@ -276,7 +251,7 @@ export const cancelScheduledDeletionHandler = async (req: Request, res: Response
     if (success) {
       sendSuccess(res, null, 'Your account deletion has been cancelled. Your account is now active again.');
     } else {
-      sendError(res, 'Failed to cancel account deletion. Please try again later.', 500, 'CANCEL_DELETION_FAILED');
+      throw new AppError('Failed to cancel account deletion. Please try again later.', ErrorCode.BIZ_OPERATION_FAILED, 500);
     }
   } catch (error) {
     logger.error('Error cancelling scheduled deletion:', error);

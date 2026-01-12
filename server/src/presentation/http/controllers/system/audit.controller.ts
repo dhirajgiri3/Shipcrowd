@@ -3,7 +3,9 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendSuccess, sendError, sendValidationError, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 const getAuditLogsSchema = z.object({
   page: z.string().optional().transform(val => (val ? parseInt(val, 10) : 1)),
@@ -20,19 +22,16 @@ const getAuditLogsSchema = z.object({
 export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = getAuditLogsSchema.safeParse(req.query);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const { page, limit, startDate, endDate, action, resource } = validation.data;
@@ -77,24 +76,20 @@ export const getMyAuditLogs = async (req: Request, res: Response, next: NextFunc
 export const getCompanyAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
-      sendError(res, 'Insufficient permissions', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('Insufficient permissions', ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
     }
 
     const validation = getAuditLogsSchema.safeParse(req.query);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const { page, limit, startDate, endDate, action, resource, resourceId, userId, search } = validation.data;
@@ -159,19 +154,16 @@ export const getCompanyAuditLogs = async (req: Request, res: Response, next: Nex
 export const getSecurityAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = getAuditLogsSchema.safeParse(req.query);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const { page, limit } = validation.data;

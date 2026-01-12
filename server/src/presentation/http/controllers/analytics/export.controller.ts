@@ -41,8 +41,7 @@ export const exportToCSV = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -99,8 +98,7 @@ export const exportToExcel = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {
@@ -159,8 +157,7 @@ export const exportToPDF = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const validation = exportRequestSchema.safeParse(req.body);
         if (!validation.success) {

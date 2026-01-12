@@ -16,7 +16,9 @@
 import { Request, Response, NextFunction } from 'express';
 import AmazonProductMappingService from '../../../../core/application/services/amazon/amazon-product-mapping.service';
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
-import { AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, NotFoundError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 export class AmazonProductMappingController {
@@ -37,16 +39,14 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             const result = await AmazonProductMappingService.autoMapProducts(storeId);
 
-            res.json({
-                success: true,
-                message: 'Auto-mapping completed',
+            sendSuccess(res, {
                 result,
-            });
+            }, 'Auto-mapping completed');
         } catch (error) {
             next(error);
         }
@@ -78,7 +78,7 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             const result = await AmazonProductMappingService.getMappings(
@@ -94,10 +94,7 @@ export class AmazonProductMappingController {
                 parseInt(limit as string, 10)
             );
 
-            res.json({
-                success: true,
-                ...result,
-            });
+            sendSuccess(res, result, 'Mappings retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -133,20 +130,20 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             // Validate required fields
             if (!amazonASIN) {
-                throw new AppError('Amazon ASIN is required', 'AMAZON_ASIN_REQUIRED', 400);
+                throw new ValidationError('Amazon ASIN is required');
             }
 
             if (!amazonSKU) {
-                throw new AppError('Amazon SKU is required', 'AMAZON_SKU_REQUIRED', 400);
+                throw new ValidationError('Amazon SKU is required');
             }
 
             if (!shipcrowdSKU) {
-                throw new AppError('Shipcrowd SKU is required', 'SHIPCROWD_SKU_REQUIRED', 400);
+                throw new ValidationError('Shipcrowd SKU is required');
             }
 
             const mapping = await AmazonProductMappingService.createManualMapping({
@@ -164,9 +161,7 @@ export class AmazonProductMappingController {
                 syncPrice,
             });
 
-            res.status(201).json({
-                success: true,
-                message: 'Mapping created successfully',
+            sendCreated(res, {
                 mapping: {
                     id: mapping._id,
                     amazonASIN: mapping.amazonASIN,
@@ -174,7 +169,7 @@ export class AmazonProductMappingController {
                     shipcrowdSKU: mapping.shipcrowdSKU,
                     fulfillmentType: mapping.fulfillmentType,
                 },
-            });
+            }, 'Mapping created successfully');
         } catch (error) {
             next(error);
         }
@@ -197,15 +192,12 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             await AmazonProductMappingService.deleteMapping(id);
 
-            res.json({
-                success: true,
-                message: 'Mapping deleted successfully',
-            });
+            sendSuccess(res, null, 'Mapping deleted successfully');
         } catch (error) {
             next(error);
         }
@@ -229,20 +221,18 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             if (!csvData) {
-                throw new AppError('CSV data is required', 'AMAZON_CSV_REQUIRED', 400);
+                throw new ValidationError('CSV data is required');
             }
 
             const result = await AmazonProductMappingService.importMappingsFromCSV(storeId, csvData);
 
-            res.json({
-                success: true,
-                message: `Imported ${result.imported} mappings, ${result.failed} failed`,
+            sendSuccess(res, {
                 result,
-            });
+            }, `Imported ${result.imported} mappings, ${result.failed} failed`);
         } catch (error) {
             next(error);
         }
@@ -265,7 +255,7 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             const csv = await AmazonProductMappingService.exportMappingsToCSV(storeId);
@@ -295,15 +285,12 @@ export class AmazonProductMappingController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             const stats = await AmazonProductMappingService.getMappingStats(storeId);
 
-            res.json({
-                success: true,
-                stats,
-            });
+            sendSuccess(res, { stats }, 'Mapping stats retrieved');
         } catch (error) {
             next(error);
         }

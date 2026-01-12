@@ -1,6 +1,9 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager.js';
 import logger from '../../../../shared/logger/winston.logger.js';
+import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
+import { AppError, NotFoundError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Email Queue Controller
@@ -11,7 +14,7 @@ import logger from '../../../../shared/logger/winston.logger.js';
 /**
  * Get email queue statistics
  */
-export async function getEmailQueueStats(req: Request, res: Response): Promise<void> {
+export async function getEmailQueueStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const emailQueue = QueueManager.getEmailQueue();
 
@@ -26,33 +29,26 @@ export async function getEmailQueueStats(req: Request, res: Response): Promise<v
         const total = waiting + active + completed + failed + delayed;
         const health = failed < 10 ? 'healthy' : failed < 50 ? 'degraded' : 'critical';
 
-        res.json({
-            success: true,
-            data: {
-                waiting,
-                active,
-                completed,
-                failed,
-                delayed,
-                total,
-                health,
-                successRate: total > 0 ? ((completed / total) * 100).toFixed(2) + '%' : 'N/A',
-            },
-        });
+        sendSuccess(res, {
+            waiting,
+            active,
+            completed,
+            failed,
+            delayed,
+            total,
+            health,
+            successRate: total > 0 ? ((completed / total) * 100).toFixed(2) + '%' : 'N/A',
+        }, 'Queue stats retrieved');
     } catch (error) {
         logger.error('Error getting email queue stats:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get email queue statistics',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        next(error);
     }
 }
 
 /**
  * Get failed emails
  */
-export async function getFailedEmails(req: Request, res: Response): Promise<void> {
+export async function getFailedEmails(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { page = 1, limit = 50 } = req.query;
         const start = (Number(page) - 1) * Number(limit);
@@ -75,32 +71,22 @@ export async function getFailedEmails(req: Request, res: Response): Promise<void
 
         const totalFailed = await emailQueue.getFailedCount();
 
-        res.json({
-            success: true,
-            data: {
-                jobs: failedJobs,
-                pagination: {
-                    page: Number(page),
-                    limit: Number(limit),
-                    total: totalFailed,
-                    pages: Math.ceil(totalFailed / Number(limit)),
-                },
-            },
-        });
+        sendPaginated(res, failedJobs, {
+            page: Number(page),
+            limit: Number(limit),
+            total: totalFailed,
+            pages: Math.ceil(totalFailed / Number(limit))
+        }, 'Failed emails retrieved');
     } catch (error) {
         logger.error('Error getting failed emails:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get failed emails',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        next(error);
     }
 }
 
 /**
  * Retry a failed email
  */
-export async function retryFailedEmail(req: Request, res: Response): Promise<void> {
+export async function retryFailedEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { jobId } = req.params;
         const emailQueue = QueueManager.getEmailQueue();
@@ -108,11 +94,7 @@ export async function retryFailedEmail(req: Request, res: Response): Promise<voi
         const job = await emailQueue.getJob(jobId);
 
         if (!job) {
-            res.status(404).json({
-                success: false,
-                message: 'Email job not found',
-            });
-            return;
+            throw new NotFoundError('Email job not found', ErrorCode.RES_NOT_FOUND);
         }
 
         await job.retry();
@@ -122,29 +104,21 @@ export async function retryFailedEmail(req: Request, res: Response): Promise<voi
             to: job.data.to,
         });
 
-        res.json({
-            success: true,
-            message: `Email job ${jobId} queued for retry`,
-            data: {
-                jobId,
-                type: job.data.type,
-                to: job.data.to,
-            },
-        });
+        sendSuccess(res, {
+            jobId,
+            type: job.data.type,
+            to: job.data.to,
+        }, `Email job ${jobId} queued for retry`);
     } catch (error) {
         logger.error('Error retrying failed email:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to retry email',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        next(error);
     }
 }
 
 /**
  * Retry all failed emails
  */
-export async function retryAllFailedEmails(req: Request, res: Response): Promise<void> {
+export async function retryAllFailedEmails(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const emailQueue = QueueManager.getEmailQueue();
         const failed = await emailQueue.getFailed(0, 1000); // Get up to 1000 failed jobs
@@ -182,7 +156,7 @@ export async function retryAllFailedEmails(req: Request, res: Response): Promise
 /**
  * Delete a failed email job
  */
-export async function deleteFailedEmail(req: Request, res: Response): Promise<void> {
+export async function deleteFailedEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { jobId } = req.params;
         const emailQueue = QueueManager.getEmailQueue();
@@ -190,11 +164,7 @@ export async function deleteFailedEmail(req: Request, res: Response): Promise<vo
         const job = await emailQueue.getJob(jobId);
 
         if (!job) {
-            res.status(404).json({
-                success: false,
-                message: 'Email job not found',
-            });
-            return;
+            throw new NotFoundError('Email job not found', ErrorCode.RES_NOT_FOUND);
         }
 
         await job.remove();
@@ -204,24 +174,17 @@ export async function deleteFailedEmail(req: Request, res: Response): Promise<vo
             to: job.data.to,
         });
 
-        res.json({
-            success: true,
-            message: `Email job ${jobId} deleted`,
-        });
+        sendSuccess(res, null, `Email job ${jobId} deleted`);
     } catch (error) {
         logger.error('Error deleting failed email:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to delete email job',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        next(error);
     }
 }
 
 /**
  * Clean completed jobs from queue
  */
-export async function cleanCompletedJobs(req: Request, res: Response): Promise<void> {
+export async function cleanCompletedJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { olderThan = 3600000 } = req.query; // Default: 1 hour
         const emailQueue = QueueManager.getEmailQueue();
@@ -230,24 +193,17 @@ export async function cleanCompletedJobs(req: Request, res: Response): Promise<v
 
         logger.info(`Cleaned completed email jobs older than ${olderThan}ms`);
 
-        res.json({
-            success: true,
-            message: 'Completed jobs cleaned successfully',
-        });
+        sendSuccess(res, null, 'Completed jobs cleaned successfully');
     } catch (error) {
         logger.error('Error cleaning completed jobs:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to clean completed jobs',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        next(error);
     }
 }
 
 /**
  * Get recent email jobs (completed and failed)
  */
-export async function getRecentJobs(req: Request, res: Response): Promise<void> {
+export async function getRecentJobs(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { limit = 20 } = req.query;
         const emailQueue = QueueManager.getEmailQueue();
@@ -283,18 +239,11 @@ export async function getRecentJobs(req: Request, res: Response): Promise<void> 
             return timeB - timeA;
         }).slice(0, Number(limit));
 
-        res.json({
-            success: true,
-            data: {
-                jobs: recentJobs,
-            },
-        });
+        sendSuccess(res, {
+            jobs: recentJobs,
+        }, 'Recent jobs retrieved');
     } catch (error) {
         logger.error('Error getting recent jobs:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get recent jobs',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        next(error);
     }
 }

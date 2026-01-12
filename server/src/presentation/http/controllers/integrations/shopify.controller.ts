@@ -3,7 +3,9 @@ import ShopifyOAuthService from '../../../../core/application/services/shopify/s
 import ShopifyFulfillmentService from '../../../../core/application/services/shopify/shopify-fulfillment.service';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
 import ShopifyStore from '../../../../infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model';
-import { AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -37,11 +39,11 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       if (!shop || typeof shop !== 'string') {
-        throw new AppError('Shop parameter is required', 'ERROR_CODE', 400);
+        throw new ValidationError('Shop parameter is required');
       }
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'ERROR_CODE', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Generate OAuth install URL
@@ -56,11 +58,7 @@ export class ShopifyController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        installUrl,
-        message: 'Redirecting to Shopify for authorization',
-      });
+      sendSuccess(res, { installUrl }, 'Redirecting to Shopify for authorization');
     } catch (error) {
       next(error);
     }
@@ -83,7 +81,7 @@ export class ShopifyController {
       const { shop, code, hmac, state, timestamp } = req.query;
 
       if (!shop || !code || !hmac || !state || !timestamp) {
-        throw new AppError('Missing required OAuth parameters', 'ERROR_CODE', 400);
+        throw new ValidationError('Missing required OAuth parameters');
       }
 
       // Handle callback and install store
@@ -125,13 +123,12 @@ export class ShopifyController {
       const companyId = req.user?.companyId;
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'ERROR_CODE', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       const stores = await ShopifyOAuthService.getActiveStores(companyId);
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         count: stores.length,
         stores: stores.map((store) => ({
           id: store._id,
@@ -148,7 +145,7 @@ export class ShopifyController {
           stats: store.stats,
           activeWebhooksCount: store.webhooks.filter((w) => w.isActive).length,
         })),
-      });
+      }, 'Stores retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -170,11 +167,10 @@ export class ShopifyController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         store: {
           id: store._id,
           shopDomain: store.shopDomain,
@@ -191,7 +187,7 @@ export class ShopifyController {
           webhooks: store.webhooks,
           stats: store.stats,
         },
-      });
+      }, 'Store details retrieved');
     } catch (error) {
       next(error);
     }
@@ -215,7 +211,7 @@ export class ShopifyController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Disconnect store
@@ -228,10 +224,7 @@ export class ShopifyController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Store disconnected successfully',
-      });
+      sendSuccess(res, null, 'Store disconnected successfully');
     } catch (error) {
       next(error);
     }
@@ -255,17 +248,13 @@ export class ShopifyController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Test connection
       const isValid = await ShopifyOAuthService.refreshConnection(id);
 
-      res.json({
-        success: true,
-        connected: isValid,
-        message: isValid ? 'Connection is valid' : 'Connection failed',
-      });
+      sendSuccess(res, { connected: isValid }, isValid ? 'Connection is valid' : 'Connection failed');
     } catch (error) {
       next(error);
     }
@@ -289,7 +278,7 @@ export class ShopifyController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       await ShopifyOAuthService.togglePauseSync(id, true);
@@ -301,10 +290,7 @@ export class ShopifyController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Sync paused successfully',
-      });
+      sendSuccess(res, null, 'Sync paused successfully');
     } catch (error) {
       next(error);
     }
@@ -327,7 +313,7 @@ export class ShopifyController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       await ShopifyOAuthService.togglePauseSync(id, false);
@@ -339,10 +325,7 @@ export class ShopifyController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Sync resumed successfully',
-      });
+      sendSuccess(res, null, 'Sync resumed successfully');
     } catch (error) {
       next(error);
     }
@@ -360,14 +343,14 @@ export class ShopifyController {
       const { trackingNumber, trackingCompany, trackingUrl, notifyCustomer } = req.body;
 
       if (!companyId) {
-        throw new AppError('Company ID not found', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
       }
 
       // Validate store access
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found or access denied', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Create fulfillment via service
@@ -385,11 +368,7 @@ export class ShopifyController {
         companyId,
       });
 
-      res.status(201).json({
-        success: true,
-        message: 'Fulfillment created successfully',
-        data: { fulfillment },
-      });
+      sendCreated(res, { fulfillment }, 'Fulfillment created successfully');
     } catch (error) {
       next(error);
     }
@@ -407,14 +386,14 @@ export class ShopifyController {
       const { trackingNumber, trackingCompany, trackingUrl } = req.body;
 
       if (!companyId) {
-        throw new AppError('Company ID not found', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
       }
 
       // Validate store access
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found or access denied', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Update fulfillment tracking
@@ -430,11 +409,7 @@ export class ShopifyController {
         companyId,
       });
 
-      res.json({
-        success: true,
-        message: 'Tracking information updated successfully',
-        data: { fulfillment: updatedFulfillment },
-      });
+      sendSuccess(res, { fulfillment: updatedFulfillment }, 'Tracking information updated successfully');
     } catch (error) {
       next(error);
     }
@@ -452,19 +427,19 @@ export class ShopifyController {
       const { sinceDate } = req.body;
 
       if (!companyId) {
-        throw new AppError('Company ID not found', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
       }
 
       // Validate store access
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found or access denied', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Check if sync is paused
       if (store.isPaused) {
-        throw new AppError('Order sync is paused for this store', 'SYNC_PAUSED', 400);
+        throw new AppError('Order sync is paused for this store', ErrorCode.BIZ_INVALID_STATE, 400);
       }
 
       logger.info('Manual order sync initiated', {
@@ -479,17 +454,13 @@ export class ShopifyController {
         sinceDate ? new Date(sinceDate) : undefined
       );
 
-      res.json({
-        success: true,
-        message: 'Order synchronization completed',
-        data: {
-          itemsProcessed: syncResult.itemsProcessed,
-          itemsSynced: syncResult.itemsSynced,
-          itemsFailed: syncResult.itemsFailed,
-          itemsSkipped: syncResult.itemsSkipped,
-          errors: syncResult.syncErrors,
-        },
-      });
+      sendSuccess(res, {
+        itemsProcessed: syncResult.itemsProcessed,
+        itemsSynced: syncResult.itemsSynced,
+        itemsFailed: syncResult.itemsFailed,
+        itemsSkipped: syncResult.itemsSkipped,
+        errors: syncResult.syncErrors,
+      }, 'Order synchronization completed');
     } catch (error) {
       next(error);
     }
@@ -506,14 +477,14 @@ export class ShopifyController {
       const { id: storeId } = req.params;
 
       if (!companyId) {
-        throw new AppError('Company ID not found', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
       }
 
       // Validate store access
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found or access denied', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       logger.info('Pending fulfillments sync initiated', {
@@ -524,13 +495,7 @@ export class ShopifyController {
       // Sync pending fulfillments
       const fulfillmentCount = await ShopifyFulfillmentService.syncPendingFulfillments(storeId);
 
-      res.json({
-        success: true,
-        message: 'Fulfillment synchronization completed',
-        data: {
-          fulfillmentsSynced: fulfillmentCount,
-        },
-      });
+      sendSuccess(res, { fulfillmentsSynced: fulfillmentCount }, 'Fulfillment synchronization completed');
     } catch (error) {
       next(error);
     }

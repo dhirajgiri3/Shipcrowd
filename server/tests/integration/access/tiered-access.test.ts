@@ -4,7 +4,7 @@ import app from '../../../src/app';
 import { User } from '../../../src/infrastructure/database/mongoose/models';
 import { Company } from '../../../src/infrastructure/database/mongoose/models';
 import { KYC } from '../../../src/infrastructure/database/mongoose/models';
-import { generateToken } from '../../../src/core/application/services/auth/token.service';
+import { generateAccessToken as generateToken } from '../../../src/shared/helpers/jwt';
 import { AccessTier } from '../../../src/core/domain/types/access-tier';
 import { KYCState } from '../../../src/core/domain/types/kyc-state';
 
@@ -128,7 +128,7 @@ describe('Tiered Access Control', () => {
                 .expect(403);
 
             expect(response.body.code).toBe('INSUFFICIENT_ACCESS_TIER');
-            expect(response.body.currentTier).toBe(AccessTier.AUTHENTICATED);
+            expect(response.body.currentTier).toBe(AccessTier.SANDBOX);
             expect(response.body.requiredTier).toBe(AccessTier.PRODUCTION);
         });
     });
@@ -385,8 +385,7 @@ describe('Tiered Access Control', () => {
             ];
 
             for (const endpoint of endpoints) {
-                const response = await request(app)
-                [endpoint.method](endpoint.path)
+                const response = await (request(app) as any)[endpoint.method](endpoint.path)
                     .set('Authorization', `Bearer ${token}`);
 
                 expect([200, 404]).toContain(response.status);
@@ -423,7 +422,7 @@ describe('Tiered Access Control', () => {
             user.companyId = company._id;
             await user.save();
 
-            let token = generateToken(user._id.toString(), 'seller', company._id.toString());
+            let token = generateToken((user as any)._id.toString(), 'seller', (company as any)._id.toString());
 
             // Should be blocked from production features
             let response = await request(app)
@@ -475,7 +474,7 @@ describe('Tiered Access Control', () => {
             await user.save();
 
             // Generate new token
-            token = generateToken(user._id.toString(), 'seller', company._id.toString());
+            token = generateToken((user as any)._id.toString(), 'seller', (company as any)._id.toString());
 
             // Should now have access to production features
             response = await request(app)

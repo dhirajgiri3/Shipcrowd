@@ -18,7 +18,9 @@ import { Request, Response, NextFunction } from 'express';
 import AmazonOAuthService from '../../../../core/application/services/amazon/amazon-oauth.service';
 import AmazonOrderSyncService from '../../../../core/application/services/amazon/amazon-order-sync.service';
 import { AmazonStore } from '../../../../infrastructure/database/mongoose/models';
-import { AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 export class AmazonController {
@@ -48,35 +50,27 @@ export class AmazonController {
 
             // Validate required fields
             if (!sellerId) {
-                throw new AppError('Seller ID is required', 'AMAZON_SELLER_ID_REQUIRED', 400);
+                throw new ValidationError('Seller ID is required');
             }
 
             if (!marketplaceId) {
-                throw new AppError('Marketplace ID is required', 'AMAZON_MARKETPLACE_ID_REQUIRED', 400);
+                throw new ValidationError('Marketplace ID is required');
             }
 
             if (!lwaClientId || !lwaClientSecret || !lwaRefreshToken) {
-                throw new AppError(
-                    'LWA credentials are required (clientId, clientSecret, refreshToken)',
-                    'AMAZON_LWA_CREDENTIALS_REQUIRED',
-                    400
-                );
+                throw new ValidationError('LWA credentials are required (clientId, clientSecret, refreshToken)');
             }
 
             if (!awsAccessKeyId || !awsSecretAccessKey) {
-                throw new AppError(
-                    'AWS credentials are required (accessKeyId, secretAccessKey)',
-                    'AMAZON_AWS_CREDENTIALS_REQUIRED',
-                    400
-                );
+                throw new ValidationError('AWS credentials are required (accessKeyId, secretAccessKey)');
             }
 
             if (!roleArn) {
-                throw new AppError('IAM Role ARN is required', 'AMAZON_ROLE_ARN_REQUIRED', 400);
+                throw new ValidationError('IAM Role ARN is required');
             }
 
             if (!companyId) {
-                throw new AppError('Company ID not found in request', 'AUTH_COMPANY_REQUIRED', 401);
+                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
             }
 
             // Connect Amazon seller account
@@ -104,8 +98,7 @@ export class AmazonController {
                 userId,
             });
 
-            res.json({
-                success: true,
+            sendSuccess(res, {
                 store: {
                     id: store._id,
                     sellerId: store.sellerId,
@@ -113,8 +106,7 @@ export class AmazonController {
                     sellerName: store.sellerName,
                     isActive: store.isActive,
                 },
-                message: 'Amazon seller account connected successfully',
-            });
+            }, 'Amazon seller account connected successfully');
         } catch (error) {
             next(error);
         }
@@ -130,13 +122,12 @@ export class AmazonController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Company ID not found in request', 'AUTH_COMPANY_REQUIRED', 401);
+                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
             }
 
             const stores = await AmazonOAuthService.getActiveStores(String(companyId));
 
-            res.json({
-                success: true,
+            sendSuccess(res, {
                 count: stores.length,
                 stores: stores.map((store) => ({
                     id: store._id,
@@ -154,7 +145,7 @@ export class AmazonController {
                     errorCount: store.errorCount,
                     lastError: store.lastError,
                 })),
-            });
+            }, 'Amazon stores retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -176,11 +167,10 @@ export class AmazonController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
-            res.json({
-                success: true,
+            sendSuccess(res, {
                 store: {
                     id: store._id,
                     sellerId: store.sellerId,
@@ -199,7 +189,7 @@ export class AmazonController {
                     errorCount: store.errorCount,
                     lastError: store.lastError,
                 },
-            });
+            }, 'Amazon store details retrieved');
         } catch (error) {
             next(error);
         }
@@ -222,7 +212,7 @@ export class AmazonController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             // Disconnect store
@@ -235,10 +225,7 @@ export class AmazonController {
                 userId: req.user?._id,
             });
 
-            res.json({
-                success: true,
-                message: 'Amazon store disconnected successfully',
-            });
+            sendSuccess(res, null, 'Amazon store disconnected successfully');
         } catch (error) {
             next(error);
         }
@@ -260,7 +247,7 @@ export class AmazonController {
             );
 
             if (!store || String(store.companyId) !== String(companyId)) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             // Decrypt credentials and test
@@ -277,11 +264,9 @@ export class AmazonController {
                 marketplaceId: store.marketplaceId,
             });
 
-            res.json({
-                success: true,
+            sendSuccess(res, {
                 connected: isValid,
-                message: isValid ? 'Connection is valid' : 'Connection failed',
-            });
+            }, isValid ? 'Connection is valid' : 'Connection failed');
         } catch (error) {
             next(error);
         }
@@ -304,7 +289,7 @@ export class AmazonController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             await AmazonOAuthService.pauseSync(id);
@@ -316,10 +301,7 @@ export class AmazonController {
                 userId: req.user?._id,
             });
 
-            res.json({
-                success: true,
-                message: 'Sync paused successfully',
-            });
+            sendSuccess(res, null, 'Sync paused successfully');
         } catch (error) {
             next(error);
         }
@@ -342,7 +324,7 @@ export class AmazonController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             await AmazonOAuthService.resumeSync(id);
@@ -354,10 +336,7 @@ export class AmazonController {
                 userId: req.user?._id,
             });
 
-            res.json({
-                success: true,
-                message: 'Sync resumed successfully',
-            });
+            sendSuccess(res, null, 'Sync resumed successfully');
         } catch (error) {
             next(error);
         }
@@ -381,7 +360,7 @@ export class AmazonController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             // Trigger sync
@@ -397,9 +376,7 @@ export class AmazonController {
                 userId: req.user?._id,
             });
 
-            res.json({
-                success: true,
-                message: 'Order sync completed',
+            sendSuccess(res, {
                 result: {
                     itemsProcessed: result.itemsProcessed,
                     itemsSynced: result.itemsSynced,
@@ -407,7 +384,7 @@ export class AmazonController {
                     itemsSkipped: result.itemsSkipped,
                     errors: result.syncErrors.length > 0 ? result.syncErrors.slice(0, 10) : [],
                 },
-            });
+            }, 'Order sync completed');
         } catch (error) {
             next(error);
         }
@@ -438,24 +415,16 @@ export class AmazonController {
             });
 
             if (!store) {
-                throw new AppError('Amazon store not found', 'AMAZON_STORE_NOT_FOUND', 404);
+                throw new NotFoundError('Amazon store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
             }
 
             // Validate required fields
             if (!lwaClientId || !lwaClientSecret || !lwaRefreshToken) {
-                throw new AppError(
-                    'LWA credentials are required',
-                    'AMAZON_LWA_CREDENTIALS_REQUIRED',
-                    400
-                );
+                throw new ValidationError('LWA credentials are required');
             }
 
             if (!awsAccessKeyId || !awsSecretAccessKey) {
-                throw new AppError(
-                    'AWS credentials are required',
-                    'AMAZON_AWS_CREDENTIALS_REQUIRED',
-                    400
-                );
+                throw new ValidationError('AWS credentials are required');
             }
 
             // Refresh connection
@@ -475,10 +444,7 @@ export class AmazonController {
                 userId: req.user?._id,
             });
 
-            res.json({
-                success: true,
-                message: 'Credentials refreshed successfully',
-            });
+            sendSuccess(res, null, 'Credentials refreshed successfully');
         } catch (error) {
             next(error);
         }

@@ -2,11 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import TokenService from '../../../../shared/services/token.service';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
-import { AppError } from '../../../../shared/errors/app.error';
+import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import WarehouseNotificationService from '../../../../core/application/services/warehouse/warehouse-notification.service';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { publicAddressUpdateSchema } from '../../../../shared/validation/ndr-schemas';
 
 /**
@@ -48,19 +48,16 @@ export class AddressUpdateController {
             }
 
             // Return shipment details for form rendering
-            res.status(200).json({
-                success: true,
-                data: {
-                    shipment: {
-                        trackingNumber: shipment.trackingNumber,
-                        currentAddress: shipment.deliveryDetails.address,
-                        recipientName: shipment.deliveryDetails.recipientName,
-                        recipientPhone: shipment.deliveryDetails.recipientPhone,
-                    },
-                    ndrReason: ndrEvent?.ndrReason,
-                    token, // Return token for form submission
+            sendSuccess(res, {
+                shipment: {
+                    trackingNumber: shipment.trackingNumber,
+                    currentAddress: shipment.deliveryDetails.address,
+                    recipientName: shipment.deliveryDetails.recipientName,
+                    recipientPhone: shipment.deliveryDetails.recipientPhone,
                 },
-            });
+                ndrReason: ndrEvent?.ndrReason,
+                token, // Return token for form submission
+            }, 'Address update form data');
 
             logger.info('Address update form accessed', {
                 shipmentId,
@@ -83,12 +80,10 @@ export class AddressUpdateController {
             const validation = publicAddressUpdateSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { newAddress: address, customerPhone: phone } = validation.data;
@@ -214,14 +209,10 @@ We'll attempt delivery to the new address shortly.
             // Invalidate token (one-time use)
             TokenService.invalidateToken(token);
 
-            res.status(200).json({
-                success: true,
-                message: 'Address updated successfully. We will attempt delivery to the new address.',
-                data: {
-                    trackingNumber: shipment.trackingNumber,
-                    newAddress: shipment.deliveryDetails.address,
-                },
-            });
+            sendSuccess(res, {
+                trackingNumber: shipment.trackingNumber,
+                newAddress: shipment.deliveryDetails.address,
+            }, 'Address updated successfully. We will attempt delivery to the new address.');
 
             logger.info('Address updated via magic link', {
                 shipmentId,

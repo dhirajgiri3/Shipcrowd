@@ -4,9 +4,9 @@ import bcrypt from 'bcrypt';
 import { getUserSessions, revokeSession, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import { sendError, sendSuccess } from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { ISession } from '../../../../infrastructure/database/mongoose/models';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 const sessionIdSchema = z.object({

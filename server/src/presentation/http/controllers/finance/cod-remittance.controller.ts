@@ -1,28 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendError,
-    sendValidationError,
-    sendCreated,
-} from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
+import { ValidationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
-
-// Validation schemas
-const createRemittanceSchema = z.object({
-    scheduleType: z.enum(['scheduled', 'on_demand', 'manual']),
-    cutoffDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
-});
-
-const approveRemittanceSchema = z.object({
-    approvalNotes: z.string().max(500).optional(),
-});
-
-const cancelRemittanceSchema = z.object({
-    reason: z.string().min(10).max(500),
-});
+import {
+    createRemittanceSchema,
+    approveRemittanceSchema,
+    cancelRemittanceSchema
+} from '../../../../shared/validation/schemas/financial.schemas';
 
 /**
  * Get eligible shipments for remittance
@@ -34,8 +21,7 @@ export const getEligibleShipments = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const cutoffDate = req.query.cutoffDate
             ? new Date(req.query.cutoffDate as string)
@@ -63,18 +49,15 @@ export const createRemittanceBatch = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = createRemittanceSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
+            const details = validation.error.errors.map((err) => ({
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', details);
         }
 
         const cutoffDate = new Date(validation.data.cutoffDate);
@@ -103,8 +86,7 @@ export const getRemittanceDetails = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
 
@@ -127,8 +109,7 @@ export const listRemittances = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const status = req.query.status as string | undefined;
         const startDate = req.query.startDate
@@ -168,20 +149,17 @@ export const approveRemittance = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
 
         const validation = approveRemittanceSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
+            const details = validation.error.errors.map((err) => ({
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', details);
         }
 
         const result = await CODRemittanceService.approveRemittance(
@@ -207,8 +185,7 @@ export const initiatePayout = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
 
@@ -217,7 +194,7 @@ export const initiatePayout = async (
         if (result.success) {
             sendSuccess(res, result, 'Payout initiated successfully');
         } else {
-            sendError(res, result.failureReason || 'Payout initiation failed', 500, 'PAYOUT_FAILED');
+            throw new AppError(result.failureReason || 'Payout initiation failed', ErrorCode.EXT_PAYMENT_FAILURE, 500);
         }
     } catch (error) {
         logger.error('Error initiating payout:', error);
@@ -235,20 +212,17 @@ export const cancelRemittance = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
 
         const validation = cancelRemittanceSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
+            const details = validation.error.errors.map((err) => ({
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', details);
         }
 
         await CODRemittanceService.cancelRemittance(id, auth.userId, validation.data.reason);

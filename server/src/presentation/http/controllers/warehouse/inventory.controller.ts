@@ -36,8 +36,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
  */
 async function createInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = createInventorySchema.safeParse(req.body);
         if (!validation.success) {
@@ -72,8 +71,7 @@ async function createInventory(req: Request, res: Response, next: NextFunction):
  */
 async function getInventoryList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { warehouseId, sku, status, category, lowStockOnly } = req.query;
         const pagination = parsePagination(req.query);
@@ -102,7 +100,7 @@ async function getInventoryList(req: Request, res: Response, next: NextFunction)
 async function getInventoryById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'inventory')) return;
+        validateObjectId(id, 'inventory');
 
         const inventory = await InventoryService.getInventoryById(id);
 
@@ -141,8 +139,7 @@ async function getInventoryBySKU(req: Request, res: Response, next: NextFunction
  */
 async function receiveStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = receiveStockSchema.safeParse(req.body);
         if (!validation.success) {
@@ -178,11 +175,10 @@ async function receiveStock(req: Request, res: Response, next: NextFunction): Pr
  */
 async function adjustStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'inventory')) return;
+        validateObjectId(id, 'inventory');
 
         const validation = adjustStockSchema.safeParse(req.body);
         if (!validation.success) {
@@ -219,7 +215,7 @@ async function adjustStock(req: Request, res: Response, next: NextFunction): Pro
 async function reserveStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'inventory')) return;
+        validateObjectId(id, 'inventory');
 
         const validation = reserveStockSchema.safeParse(req.body);
         if (!validation.success) {
@@ -276,11 +272,10 @@ async function releaseReservation(req: Request, res: Response, next: NextFunctio
  */
 async function transferStock(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'inventory')) return;
+        validateObjectId(id, 'inventory');
 
         const validation = transferStockSchema.safeParse(req.body);
         if (!validation.success) {
@@ -316,11 +311,10 @@ async function transferStock(req: Request, res: Response, next: NextFunction): P
  */
 async function markDamaged(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'inventory')) return;
+        validateObjectId(id, 'inventory');
 
         const validation = markDamagedSchema.safeParse(req.body);
         if (!validation.success) {
@@ -361,11 +355,10 @@ async function markDamaged(req: Request, res: Response, next: NextFunction): Pro
  */
 async function cycleCount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'inventory')) return;
+        validateObjectId(id, 'inventory');
 
         const validation = cycleCountSchema.safeParse(req.body);
         if (!validation.success) {
@@ -422,8 +415,7 @@ async function checkAvailability(req: Request, res: Response, next: NextFunction
  */
 async function getLowStockAlerts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const alerts = await InventoryService.getLowStockAlerts(auth.companyId);
 
@@ -439,8 +431,7 @@ async function getLowStockAlerts(req: Request, res: Response, next: NextFunction
  */
 async function getMovements(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { warehouseId, inventoryId, type, startDate, endDate } = req.query;
         const pagination = parsePagination(req.query);

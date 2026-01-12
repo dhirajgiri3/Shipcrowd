@@ -1,26 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import WalletService from '../../../../core/application/services/wallet/wallet.service';
+import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import {
-    sendSuccess,
-    sendValidationError,
-} from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
-
-// Validation schemas
-const rechargeSchema = z.object({
-    amount: z.number().positive('Amount must be positive').max(1000000, 'Amount cannot exceed ₹10,00,000'),
-    paymentId: z.string().min(1, 'Payment ID is required'),
-});
-
-const updateThresholdSchema = z.object({
-    threshold: z.number().min(0, 'Threshold must be non-negative').max(100000, 'Threshold cannot exceed ₹1,00,000'),
-});
-
-const refundSchema = z.object({
-    reason: z.string().min(10, 'Reason must be at least 10 characters').max(500, 'Reason too long'),
-});
+import {
+    rechargeWalletSchema,
+    updateWalletThresholdSchema,
+    refundTransactionSchema
+} from '../../../../shared/validation/schemas/financial.schemas';
 
 /**
  * Get wallet balance
@@ -32,8 +21,7 @@ export const getBalance = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const balance = await WalletService.getBalance(auth.companyId);
 
@@ -54,16 +42,15 @@ export const getTransactionHistory = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
         const offset = (page - 1) * limit;
 
         const options = {
-            type: req.query.type as any,
-            reason: req.query.reason as any,
+            type: req.query.type as TransactionType | undefined,
+            reason: req.query.reason as TransactionReason | undefined,
             startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
             endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
             limit,
@@ -102,18 +89,15 @@ export const rechargeWallet = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
-        const validation = rechargeSchema.safeParse(req.body);
+        const validation = rechargeWalletSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
+            const details = validation.error.errors.map((err) => ({
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', details);
         }
 
         const { amount, paymentId } = validation.data;
@@ -156,20 +140,17 @@ export const refundTransaction = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { transactionId } = req.params;
 
-        const validation = refundSchema.safeParse(req.body);
+        const validation = refundTransactionSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
+            const details = validation.error.errors.map((err) => ({
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', details);
         }
 
         const { reason } = validation.data;
@@ -212,8 +193,7 @@ export const getWalletStats = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const dateRange = req.query.startDate && req.query.endDate
             ? {
@@ -241,18 +221,15 @@ export const updateLowBalanceThreshold = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
-        const validation = updateThresholdSchema.safeParse(req.body);
+        const validation = updateWalletThresholdSchema.safeParse(req.body);
         if (!validation.success) {
-            const errors = validation.error.errors.map((err) => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
+            const details = validation.error.errors.map((err) => ({
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', details);
         }
 
         const { threshold } = validation.data;

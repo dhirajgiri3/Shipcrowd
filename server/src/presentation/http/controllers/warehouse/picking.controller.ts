@@ -31,8 +31,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
  */
 async function createPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = createPickListSchema.safeParse(req.body);
         if (!validation.success) {
@@ -67,8 +66,7 @@ async function createPickList(req: Request, res: Response, next: NextFunction): 
  */
 async function getPickLists(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { warehouseId, status, assignedTo, priority } = req.query;
         const pagination = parsePagination(req.query);
@@ -96,7 +94,7 @@ async function getPickLists(req: Request, res: Response, next: NextFunction): Pr
 async function getPickListById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const pickList = await PickingService.getPickListById(id);
 
@@ -116,8 +114,7 @@ async function getPickListById(req: Request, res: Response, next: NextFunction):
  */
 async function getMyPickLists(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { status } = req.query;
 
@@ -138,11 +135,10 @@ async function getMyPickLists(req: Request, res: Response, next: NextFunction): 
  */
 async function assignPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const validation = assignPickListSchema.safeParse(req.body);
         if (!validation.success) {
@@ -178,11 +174,10 @@ async function assignPickList(req: Request, res: Response, next: NextFunction): 
  */
 async function startPicking(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const pickList = await PickingService.startPicking({
             pickListId: id,
@@ -212,7 +207,7 @@ async function startPicking(req: Request, res: Response, next: NextFunction): Pr
 async function pickItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const validation = pickItemSchema.safeParse(req.body);
         if (!validation.success) {
@@ -239,11 +234,10 @@ async function pickItem(req: Request, res: Response, next: NextFunction): Promis
  */
 async function skipItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const validation = skipItemSchema.safeParse(req.body);
         if (!validation.success) {
@@ -277,11 +271,10 @@ async function skipItem(req: Request, res: Response, next: NextFunction): Promis
  */
 async function completePickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const validation = completePickListSchema.safeParse(req.body);
         if (!validation.success) {
@@ -319,11 +312,10 @@ async function completePickList(req: Request, res: Response, next: NextFunction)
  */
 async function cancelPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const validation = cancelPickListSchema.safeParse(req.body);
         if (!validation.success) {
@@ -361,11 +353,10 @@ async function cancelPickList(req: Request, res: Response, next: NextFunction): 
  */
 async function verifyPickList(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'pick list')) return;
+        validateObjectId(id, 'pick list');
 
         const validation = verifyPickListSchema.safeParse(req.body);
         if (!validation.success) {

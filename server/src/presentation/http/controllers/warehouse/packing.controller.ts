@@ -33,8 +33,7 @@ import { guardChecks, parsePagination, validateObjectId } from '@/shared/helpers
  */
 async function createStation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const validation = createPackingStationSchema.safeParse(req.body);
         if (!validation.success) {
@@ -69,8 +68,7 @@ async function createStation(req: Request, res: Response, next: NextFunction): P
  */
 async function getStations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { warehouseId, status, type } = req.query;
         const pagination = parsePagination(req.query);
@@ -97,7 +95,7 @@ async function getStations(req: Request, res: Response, next: NextFunction): Pro
 async function getStationById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const station = await PackingService.getStationById(id);
 
@@ -132,11 +130,10 @@ async function getAvailableStations(req: Request, res: Response, next: NextFunct
  */
 async function assignPacker(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = assignPackerSchema.safeParse(req.body);
         if (!validation.success) {
@@ -171,11 +168,10 @@ async function assignPacker(req: Request, res: Response, next: NextFunction): Pr
  */
 async function unassignPacker(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const station = await PackingService.unassignPacker(id);
 
@@ -201,11 +197,10 @@ async function unassignPacker(req: Request, res: Response, next: NextFunction): 
  */
 async function setOffline(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = setStationOfflineSchema.safeParse(req.body);
         const reason = validation.success ? validation.data.reason : undefined;
@@ -234,11 +229,10 @@ async function setOffline(req: Request, res: Response, next: NextFunction): Prom
  */
 async function setOnline(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const station = await PackingService.setStationOnline(id);
 
@@ -264,11 +258,10 @@ async function setOnline(req: Request, res: Response, next: NextFunction): Promi
  */
 async function startSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = startPackingSessionSchema.safeParse(req.body);
 
@@ -306,7 +299,7 @@ async function startSession(req: Request, res: Response, next: NextFunction): Pr
 async function packItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = packItemSchema.safeParse(req.body);
         if (!validation.success) {
@@ -332,7 +325,7 @@ async function packItem(req: Request, res: Response, next: NextFunction): Promis
 async function createPackage(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = createPackageSchema.safeParse(req.body);
 
@@ -359,7 +352,7 @@ async function createPackage(req: Request, res: Response, next: NextFunction): P
 async function verifyWeight(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = verifyWeightSchema.safeParse(req.body);
 
@@ -385,11 +378,10 @@ async function verifyWeight(req: Request, res: Response, next: NextFunction): Pr
  */
 async function completeSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
-        if (!validateObjectId(id, res, 'packing station')) return;
+        validateObjectId(id, 'packing station');
 
         const validation = completePackingSessionSchema.safeParse(req.body);
         if (!validation.success) {
@@ -427,8 +419,7 @@ async function completeSession(req: Request, res: Response, next: NextFunction):
  */
 async function cancelSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const auth = guardChecks(req, res);
-        if (!auth) return;
+        const auth = guardChecks(req);
 
         const { id } = req.params;
         const validation = cancelPackingSessionSchema.safeParse(req.body);

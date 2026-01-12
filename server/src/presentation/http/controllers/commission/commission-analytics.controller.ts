@@ -4,8 +4,9 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { CommissionAnalyticsService } from '../../../../core/application/services/commission/index';
-import { AppError } from '../../../../shared/errors/index';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { AppError, ValidationError, AuthenticationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
     analyticsDateRangeSchema,
     generateReportSchema,
@@ -22,18 +23,16 @@ export class CommissionAnalyticsController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
             }
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { startDate, endDate } = validation.data;
@@ -45,10 +44,7 @@ export class CommissionAnalyticsController {
                     : undefined
             );
 
-            res.status(200).json({
-                success: true,
-                data: metrics,
-            });
+            sendSuccess(res, metrics, 'Commission metrics retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -63,18 +59,16 @@ export class CommissionAnalyticsController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
             }
 
             const validation = topPerformersQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { limit, startDate, endDate } = validation.data;
@@ -87,10 +81,7 @@ export class CommissionAnalyticsController {
                     : undefined
             );
 
-            res.status(200).json({
-                success: true,
-                data: performers,
-            });
+            sendSuccess(res, performers, 'Top performers retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -105,24 +96,22 @@ export class CommissionAnalyticsController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
             }
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { groupBy, startDate, endDate } = validation.data;
 
             if (!startDate || !endDate) {
-                throw new AppError('Start date and end date are required for trend analysis', 'BAD_REQUEST', 400);
+                throw new ValidationError('Start date and end date are required for trend analysis');
             }
 
             const trend = await CommissionAnalyticsService.getCommissionTrend(
@@ -131,10 +120,7 @@ export class CommissionAnalyticsController {
                 { start: new Date(startDate), end: new Date(endDate) }
             );
 
-            res.status(200).json({
-                success: true,
-                data: trend,
-            });
+            sendSuccess(res, trend, 'Commission trend retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -150,7 +136,7 @@ export class CommissionAnalyticsController {
             const { salesRepId } = req.params;
 
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
             }
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
@@ -164,10 +150,7 @@ export class CommissionAnalyticsController {
                     : undefined
             );
 
-            res.status(200).json({
-                success: true,
-                data: dashboard,
-            });
+            sendSuccess(res, dashboard, 'Sales rep dashboard retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -182,7 +165,7 @@ export class CommissionAnalyticsController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
             }
 
             const validation = analyticsDateRangeSchema.safeParse(req.query);
@@ -195,10 +178,7 @@ export class CommissionAnalyticsController {
                     : undefined
             );
 
-            res.status(200).json({
-                success: true,
-                data: stats,
-            });
+            sendSuccess(res, stats, 'Payout stats retrieved successfully');
         } catch (error) {
             next(error);
         }
@@ -213,18 +193,16 @@ export class CommissionAnalyticsController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
             }
 
             const validation = generateReportSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { startDate, endDate, format } = validation.data;
@@ -240,10 +218,7 @@ export class CommissionAnalyticsController {
                 res.setHeader('Content-Disposition', `attachment; filename=commission-report-${Date.now()}.csv`);
                 res.status(200).send(report);
             } else {
-                res.status(200).json({
-                    success: true,
-                    data: report,
-                });
+                sendSuccess(res, report, 'Commission report generated successfully');
             }
         } catch (error) {
             next(error);

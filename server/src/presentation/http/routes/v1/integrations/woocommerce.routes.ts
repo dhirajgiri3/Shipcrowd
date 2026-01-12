@@ -15,6 +15,7 @@ import { Router } from 'express';
 import WooCommerceController from '../../../controllers/integrations/woocommerce.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ const router = Router();
  * All WooCommerce routes require authentication
  */
 router.use(authenticate);
+router.use(checkKYC);
 
 /**
  * Store Management Routes

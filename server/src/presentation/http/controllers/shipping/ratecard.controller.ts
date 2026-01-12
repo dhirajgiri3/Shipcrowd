@@ -7,12 +7,12 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import mongoose from 'mongoose';
 import {
     sendSuccess,
-    sendError,
-    sendValidationError,
     sendPaginated,
     sendCreated,
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -76,30 +76,25 @@ const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number
 export const createRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
         }
 
         const validation = createRateCardSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         if (validation.data.weightRules && !validateWeightSlabs(validation.data.weightRules)) {
-            sendError(res, 'Weight slabs cannot overlap', 400, 'WEIGHT_SLABS_OVERLAP');
-            return;
+            throw new ValidationError('Weight slabs cannot overlap');
         }
 
         const existingCard = await RateCard.findOne({
@@ -109,8 +104,7 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
         }).lean();
 
         if (existingCard) {
-            sendError(res, 'Rate card with this name already exists', 400, 'DUPLICATE_RATECARD');
-            return;
+            throw new ConflictError('Rate card with this name already exists', ErrorCode.BIZ_ALREADY_EXISTS);
         }
 
         const zoneRules = validation.data.zoneRules?.map(rule => ({
@@ -146,14 +140,12 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
 export const getRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
         }
 
         const filter: any = { companyId, isDeleted: false };
@@ -184,20 +176,17 @@ export const getRateCards = async (req: Request, res: Response, next: NextFuncti
 export const getRateCardById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
         }
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
-            sendError(res, 'Invalid rate card ID format', 400, 'INVALID_ID');
-            return;
+            throw new ValidationError('Invalid rate card ID format');
         }
 
         const rateCard = await RateCard.findOne({
@@ -207,8 +196,7 @@ export const getRateCardById = async (req: Request, res: Response, next: NextFun
         }).populate('zoneRules.zoneId', 'name postalCodes').lean();
 
         if (!rateCard) {
-            sendError(res, 'Rate card not found', 404, 'RATECARD_NOT_FOUND');
-            return;
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
         }
 
         sendSuccess(res, { rateCard }, 'Rate card retrieved successfully');
@@ -221,36 +209,30 @@ export const getRateCardById = async (req: Request, res: Response, next: NextFun
 export const updateRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
         }
 
         const rateCardId = req.params.id;
         if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
-            sendError(res, 'Invalid rate card ID format', 400, 'INVALID_ID');
-            return;
+            throw new ValidationError('Invalid rate card ID format');
         }
 
         const validation = updateRateCardSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         if (validation.data.weightRules && !validateWeightSlabs(validation.data.weightRules)) {
-            sendError(res, 'Weight slabs cannot overlap', 400, 'WEIGHT_SLABS_OVERLAP');
-            return;
+            throw new ValidationError('Weight slabs cannot overlap');
         }
 
         const rateCard = await RateCard.findOne({
@@ -260,8 +242,7 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
         });
 
         if (!rateCard) {
-            sendError(res, 'Rate card not found', 404, 'RATECARD_NOT_FOUND');
-            return;
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
         }
 
         if (validation.data.name && validation.data.name !== rateCard.name) {
@@ -273,8 +254,7 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
             }).lean();
 
             if (existingCard) {
-                sendError(res, 'Rate card with this name already exists', 400, 'DUPLICATE_RATECARD');
-                return;
+                throw new ConflictError('Rate card with this name already exists', ErrorCode.BIZ_ALREADY_EXISTS);
             }
         }
 
@@ -309,25 +289,21 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
 export const calculateRate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.user) {
-            sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         const companyId = req.user.companyId;
         if (!companyId) {
-            sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-            return;
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
         }
 
         const validation = calculateRateSchema.safeParse(req.body);
         if (!validation.success) {
             const errors = validation.error.errors.map(err => ({
-                code: 'VALIDATION_ERROR',
-                message: err.message,
                 field: err.path.join('.'),
+                message: err.message,
             }));
-            sendValidationError(res, errors);
-            return;
+            throw new ValidationError('Validation failed', errors);
         }
 
         const rateCard = await RateCard.findOne({
@@ -337,8 +313,7 @@ export const calculateRate = async (req: Request, res: Response, next: NextFunct
         }).populate('zoneRules.zoneId', 'name postalCodes').lean();
 
         if (!rateCard) {
-            sendError(res, 'No active rate card found', 404, 'NO_ACTIVE_RATECARD');
-            return;
+            throw new NotFoundError('No active rate card found', ErrorCode.RES_RATECARD_NOT_FOUND);
         }
 
         const weight = validation.data.weight;

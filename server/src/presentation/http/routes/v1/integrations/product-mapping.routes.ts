@@ -2,6 +2,7 @@ import { Router } from 'express';
 import ProductMappingController from '../../../controllers/integrations/product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 
 /**
  * Product Mapping Routes
@@ -19,6 +20,7 @@ const router = Router();
 router.post(
   '/stores/:id/mappings/auto',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.autoMapProducts
 );
@@ -29,6 +31,7 @@ router.post(
 router.post(
   '/stores/:id/mappings/import',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.importCSV
 );
@@ -36,6 +39,7 @@ router.post(
 router.get(
   '/stores/:id/mappings/export',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.exportCSV
 );
@@ -46,6 +50,7 @@ router.get(
 router.get(
   '/stores/:id/mappings/stats',
   authenticate,
+  checkKYC,
   ProductMappingController.getStats
 );
 
@@ -61,6 +66,7 @@ router.get(
 router.post(
   '/stores/:id/mappings',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.createMapping
 );
@@ -71,6 +77,7 @@ router.post(
 router.delete(
   '/mappings/:id',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.deleteMapping
 );
@@ -78,6 +85,7 @@ router.delete(
 router.post(
   '/mappings/:id/toggle',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.toggleStatus
 );
@@ -85,6 +93,7 @@ router.post(
 router.post(
   '/mappings/:id/sync',
   authenticate,
+  checkKYC,
   authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
   ProductMappingController.syncInventory
 );

@@ -5,14 +5,14 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { NDREvent } from '../../../../infrastructure/database/mongoose/models';
-import { NDRWorkflow } from '../../../../infrastructure/database/mongoose/models';
+import { NDREvent, NDRWorkflow } from '../../../../infrastructure/database/mongoose/models';
+import { AppError, ValidationError, NotFoundError, AuthenticationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import NDRDetectionService from '../../../../core/application/services/ndr/ndr-detection.service';
 import NDRClassificationService from '../../../../core/application/services/ndr/ndr-classification.service';
 import NDRResolutionService from '../../../../core/application/services/ndr/ndr-resolution.service';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
-import { AppError } from '../../../../shared/errors';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
 import {
     listNDREventsQuerySchema,
     resolveNDRSchema,
@@ -21,6 +21,7 @@ import {
     getNDRTrendsQuerySchema,
     getTopNDRReasonsQuerySchema,
 } from '../../../../shared/validation/ndr-schemas';
+
 
 export class NDRController {
     /**
@@ -31,19 +32,17 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = listNDREventsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const {
@@ -76,8 +75,7 @@ export class NDRController {
                 NDREvent.countDocuments(filter),
             ]);
 
-            res.status(200).json({
-                success: true,
+            sendSuccess(res, {
                 data: events,
                 pagination: {
                     page,
@@ -104,13 +102,10 @@ export class NDRController {
                 .populate('shipment order');
 
             if (!ndrEvent) {
-                throw new AppError('NDR event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
 
-            res.status(200).json({
-                success: true,
-                data: ndrEvent,
-            });
+            sendSuccess(res, { data: ndrEvent });
         } catch (error) {
             next(error);
         }
@@ -130,12 +125,10 @@ export class NDRController {
             const validation = resolveNDRSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { resolution, notes, resolutionMethod } = validation.data;
@@ -143,16 +136,13 @@ export class NDRController {
             // Verify ownership
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
             if (!ndrEvent) {
-                throw new AppError('NDR event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
 
             // Issue #15: Now passing all validated fields to service
             await NDRResolutionService.resolveNDR(id, resolution, userId || 'system', notes);
 
-            res.status(200).json({
-                success: true,
-                message: 'NDR resolved successfully',
-            });
+            sendSuccess(res, null, 'NDR resolved successfully');
         } catch (error) {
             next(error);
         }
@@ -171,12 +161,10 @@ export class NDRController {
             const validation = escalateNDRSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { reason, escalateTo, priority, notes } = validation.data;
@@ -184,16 +172,13 @@ export class NDRController {
             // Verify ownership
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
             if (!ndrEvent) {
-                throw new AppError('NDR event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
 
             // Issue #15: Now passing all validated fields to service
             await NDRResolutionService.escalateNDR(id, reason, priority, escalateTo);
 
-            res.status(200).json({
-                success: true,
-                message: 'NDR escalated successfully',
-            });
+            sendSuccess(res, null, 'NDR escalated successfully');
         } catch (error) {
             next(error);
         }
@@ -210,15 +195,12 @@ export class NDRController {
 
             const ndrEvent = await NDREvent.findOne({ _id: id, company: companyId });
             if (!ndrEvent) {
-                throw new AppError('NDR event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('NDR event', ErrorCode.RES_NOT_FOUND);
             }
 
             await NDRResolutionService.executeResolutionWorkflow(id);
 
-            res.status(200).json({
-                success: true,
-                message: 'Workflow triggered',
-            });
+            sendSuccess(res, null, 'Workflow triggered');
         } catch (error) {
             next(error);
         }
@@ -232,19 +214,17 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = getNDRAnalyticsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { startDate, endDate, ndrType } = validation.data;
@@ -259,10 +239,7 @@ export class NDRController {
 
             const stats = await NDRAnalyticsService.getNDRStats(companyId, dateRange);
 
-            res.status(200).json({
-                success: true,
-                data: stats,
-            });
+            sendSuccess(res, { data: stats });
         } catch (error) {
             next(error);
         }
@@ -276,15 +253,12 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             const byType = await NDRAnalyticsService.getNDRByType(companyId);
 
-            res.status(200).json({
-                success: true,
-                data: byType,
-            });
+            sendSuccess(res, { data: byType });
         } catch (error) {
             next(error);
         }
@@ -298,19 +272,17 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = getNDRTrendsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { startDate, endDate, groupBy } = validation.data;
@@ -326,10 +298,7 @@ export class NDRController {
                 groupBy
             );
 
-            res.status(200).json({
-                success: true,
-                data: trends,
-            });
+            sendSuccess(res, { data: trends });
         } catch (error) {
             next(error);
         }
@@ -343,15 +312,12 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             const rates = await NDRAnalyticsService.getResolutionRates(companyId);
 
-            res.status(200).json({
-                success: true,
-                data: rates,
-            });
+            sendSuccess(res, { data: rates });
         } catch (error) {
             next(error);
         }
@@ -365,19 +331,17 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = getTopNDRReasonsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { limit, startDate, endDate } = validation.data;
@@ -387,10 +351,7 @@ export class NDRController {
                 limit
             );
 
-            res.status(200).json({
-                success: true,
-                data: reasons,
-            });
+            sendSuccess(res, { data: reasons });
         } catch (error) {
             next(error);
         }
@@ -404,15 +365,12 @@ export class NDRController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             const dashboard = await NDRAnalyticsService.getDashboardSummary(companyId);
 
-            res.status(200).json({
-                success: true,
-                data: dashboard,
-            });
+            sendSuccess(res, { data: dashboard });
         } catch (error) {
             next(error);
         }
@@ -426,10 +384,7 @@ export class NDRController {
         try {
             await NDRWorkflow.seedDefaultWorkflows();
 
-            res.status(200).json({
-                success: true,
-                message: 'Default workflows seeded',
-            });
+            sendSuccess(res, null, 'Default workflows seeded');
         } catch (error) {
             next(error);
         }
@@ -448,10 +403,7 @@ export class NDRController {
                 isActive: true,
             });
 
-            res.status(200).json({
-                success: true,
-                data: workflows,
-            });
+            sendSuccess(res, { data: workflows });
         } catch (error) {
             next(error);
         }

@@ -8,8 +8,10 @@ import { formatError } from '../../../../shared/errors/error-messages';
 import logger from '../../../../shared/logger/winston.logger';
 import deepvueService from '../../../../core/application/services/integrations/deepvue.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
-import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
+import { AuthenticationError, AuthorizationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 // Import validation schemas
 import { panSchema, aadhaarSchema, gstinSchema, bankAccountSchema, submitKYCSchema, verifyDocumentSchema } from '../../../../shared/validation/schemas';
 
@@ -37,24 +39,21 @@ const getDocumentIdString = (doc: any): string => {
  */
 const validateUserAndCompany = async (req: Request, res: Response): Promise<(IUser & { _id: mongoose.Types.ObjectId, companyId: mongoose.Types.ObjectId }) | null> => {
   if (!req.user) {
-    sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-    return null;
+    throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
   }
 
   // Get the latest user data from the database to ensure we have the most up-to-date companyId
   const userDoc = await User.findById(req.user._id);
 
   if (!userDoc) {
-    sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-    return null;
+    throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
   }
 
   // Now we know user exists, we can safely cast it
   const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
   if (!user.companyId) {
-    sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
-    return null;
+    throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
   }
 
   // Return user with guaranteed companyId
@@ -96,13 +95,11 @@ const findOrCreateKyc = async (userId: mongoose.Types.ObjectId, companyId: mongo
 export const submitKYC = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (!req.user.companyId) {
-      sendError(res, 'User is not associated with any company', 400, 'NO_COMPANY');
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     const validatedData = submitKYCSchema.parse(req.body);
@@ -190,12 +187,10 @@ export const submitKYC = async (req: Request, res: Response, next: NextFunction)
     logger.error('Error submitting KYC:', error);
     if (error instanceof z.ZodError) {
       const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', errors);
     }
     next(error);
   }
@@ -208,15 +203,13 @@ export const submitKYC = async (req: Request, res: Response, next: NextFunction)
 export const getKYC = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const kyc = await KYC.findOne({ userId: req.user._id });
 
     if (!kyc) {
-      sendError(res, 'KYC not found', 404, 'KYC_NOT_FOUND');
-      return;
+      throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
     }
 
     sendSuccess(res, { kyc }, 'KYC retrieved successfully');
@@ -233,13 +226,11 @@ export const getKYC = async (req: Request, res: Response, next: NextFunction): P
 export const verifyKYCDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
-      res.status(403).json({ message: 'Access denied' });
-      return;
+      throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const kycId = req.params.kycId;
@@ -247,8 +238,7 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
 
     const kyc = await KYC.findById(kycId);
     if (!kyc) {
-      sendError(res, 'KYC not found', 404, 'KYC_NOT_FOUND');
-      return;
+      throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
     }
 
     // Update the document verification status
@@ -256,8 +246,7 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
     const documentPath = `documents.${validatedData.documentType}`;
 
     if (!kyc.documents[validatedData.documentType]) {
-      sendError(res, `${validatedData.documentType} document not found`, 400, 'DOCUMENT_NOT_FOUND');
-      return;
+      throw new ValidationError(`${validatedData.documentType} document not found`);
     }
 
     updateData[`${documentPath}.verified`] = validatedData.verified;
@@ -323,12 +312,10 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
     logger.error('Error verifying KYC document:', error);
     if (error instanceof z.ZodError) {
       const errors = error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', errors);
     }
     next(error);
   }
@@ -341,27 +328,23 @@ export const verifyKYCDocument = async (req: Request, res: Response, next: NextF
 export const rejectKYC = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
-      res.status(403).json({ message: 'Access denied' });
-      return;
+      throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const kycId = req.params.kycId;
     const { reason } = req.body;
 
     if (!reason) {
-      sendError(res, 'Rejection reason is required', 400, 'REASON_REQUIRED');
-      return;
+      throw new ValidationError('Rejection reason is required');
     }
 
     const kyc = await KYC.findById(kycId);
     if (!kyc) {
-      sendError(res, 'KYC not found', 404, 'KYC_NOT_FOUND');
-      return;
+      throw new NotFoundError('KYC record', ErrorCode.RES_RESOURCE_NOT_FOUND);
     }
 
     const updatedKYC = await KYC.findByIdAndUpdate(
@@ -399,13 +382,11 @@ export const rejectKYC = async (req: Request, res: Response, next: NextFunction)
 export const getAllKYCs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin') {
-      res.status(403).json({ message: 'Access denied' });
-      return;
+      throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Pagination
@@ -448,21 +429,18 @@ export const getAllKYCs = async (req: Request, res: Response, next: NextFunction
 export const verifyPanCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const { pan, name } = req.body;
 
     if (!pan) {
-      sendError(res, 'PAN number is required', 400, 'PAN_REQUIRED');
-      return;
+      throw new ValidationError('PAN number is required');
     }
 
     // Validate PAN format
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) {
-      sendError(res, 'Invalid PAN format', 400, 'INVALID_PAN_FORMAT');
-      return;
+      throw new ValidationError('Invalid PAN format');
     }
 
     try {
@@ -470,15 +448,14 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
       const userDoc = await User.findById(req.user._id);
 
       if (!userDoc) {
-        res.status(404).json({ message: 'User not found' });
+        throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
       }
 
       // Now we know user exists, we can safely cast it
       const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
       if (!user.companyId) {
-        res.status(400).json({ message: 'User is not associated with any company. Please create a company first.' });
-        return;
+        throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
       }
 
       // Call DeepVue API to verify PAN
@@ -559,7 +536,7 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
     } catch (error) {
       logger.error('Error in DeepVue PAN verification:', error);
 
-      sendError(res, 'PAN verification failed', 400, 'PAN_VERIFICATION_FAILED');
+      throw new AppError('PAN verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
   } catch (error) {
     logger.error('Error verifying PAN:', error);
@@ -576,21 +553,18 @@ export const verifyPanCard = async (req: Request, res: Response, next: NextFunct
 export const verifyGstin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const { gstin } = req.body;
 
     if (!gstin) {
-      sendError(res, 'GSTIN is required', 400, 'GSTIN_REQUIRED');
-      return;
+      throw new ValidationError('GSTIN is required');
     }
 
     // Validate GSTIN format
     if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
-      sendError(res, 'Invalid GSTIN format', 400, 'INVALID_GSTIN_FORMAT');
-      return;
+      throw new ValidationError('Invalid GSTIN format');
     }
 
     try {
@@ -598,15 +572,14 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
       const userDoc = await User.findById(req.user._id);
 
       if (!userDoc) {
-        res.status(404).json({ message: 'User not found' });
+        throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
       }
 
       // Now we know user exists, we can safely cast it
       const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
       if (!user.companyId) {
-        res.status(400).json({ message: 'User is not associated with any company. Please create a company first.' });
-        return;
+        throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
       }
 
       // Call DeepVue API to verify GSTIN
@@ -752,11 +725,11 @@ export const verifyGstin = async (req: Request, res: Response, next: NextFunctio
         rawData: verificationResult.data || verificationResult,
       };
 
-      res.json(enhancedResponse);
+      sendSuccess(res, enhancedResponse, 'GSTIN verification completed');
     } catch (error) {
       logger.error('Error in DeepVue GSTIN verification:', error);
 
-      sendError(res, 'GSTIN verification failed', 400, 'GSTIN_VERIFICATION_FAILED');
+      throw new AppError('GSTIN verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
   } catch (error) {
     logger.error('Error verifying GSTIN:', error);
@@ -776,20 +749,17 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
     const { accountNumber, ifsc, accountHolderName } = req.body;
 
     if (!accountNumber || !ifsc) {
-      sendError(res, 'Account number and IFSC code are required', 400, 'MISSING_REQUIRED_FIELDS');
-      return;
+      throw new ValidationError('Account number and IFSC code are required');
     }
 
     // Validate account number format (basic validation)
     if (!/^\d{9,18}$/.test(accountNumber)) {
-      sendError(res, 'Invalid account number format. Account number should be 9-18 digits.', 400, 'INVALID_ACCOUNT_NUMBER');
-      return;
+      throw new ValidationError('Invalid account number format. Account number should be 9-18 digits.');
     }
 
     // Validate IFSC code format
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-      sendError(res, 'Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.', 400, 'INVALID_IFSC');
-      return;
+      throw new ValidationError('Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.');
     }
 
     try {
@@ -901,10 +871,10 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
         },
       };
 
-      res.json(enhancedResponse);
+      sendSuccess(res, enhancedResponse, 'GSTIN verification completed');
     } catch (error) {
       logger.error('Error in DeepVue bank account verification:', error);
-      sendError(res, 'Bank account verification failed', 400, 'BANK_VERIFICATION_FAILED');
+      throw new AppError('Bank account verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
   } catch (error) {
     logger.error('Error verifying bank account:', error);
@@ -919,30 +889,27 @@ export const verifyBankAccount = async (req: Request, res: Response, next: NextF
 export const updateAgreement = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const { agreed } = req.body;
 
     if (agreed !== true) {
-      sendError(res, 'Agreement acceptance is required', 400, 'AGREEMENT_REQUIRED');
-      return;
+      throw new ValidationError('Agreement acceptance is required');
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
     const userDoc = await User.findById(req.user._id);
 
     if (!userDoc) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Now we know user exists, we can safely cast it
     const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!user.companyId) {
-      sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
+      throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
     }
 
     // Find existing KYC record or create a new one
@@ -1012,36 +979,32 @@ export const updateAgreement = async (req: Request, res: Response, next: NextFun
 export const verifyAadhaar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const { aadhaar } = req.body;
 
     if (!aadhaar) {
-      sendError(res, 'Aadhaar number is required', 400, 'AADHAAR_REQUIRED');
-      return;
+      throw new ValidationError('Aadhaar number is required');
     }
 
     // Validate Aadhaar format
     if (!/^\d{12}$/.test(aadhaar)) {
-      sendError(res, 'Invalid Aadhaar format', 400, 'INVALID_AADHAAR_FORMAT');
-      return;
+      throw new ValidationError('Invalid Aadhaar format');
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
     const userDoc = await User.findById(req.user._id);
 
     if (!userDoc) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Now we know user exists, we can safely cast it
     const user = userDoc as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!user.companyId) {
-      sendError(res, 'User is not associated with any company. Please create a company first.', 400, 'NO_COMPANY');
+      throw new AuthenticationError('User is not associated with any company. Please create a company first.', ErrorCode.AUTH_REQUIRED);
     }
 
     // Call DeepVue API for basic Aadhaar verification
@@ -1115,7 +1078,7 @@ export const verifyAadhaar = async (req: Request, res: Response, next: NextFunct
 
       sendSuccess(res, responseData, 'Aadhaar verification successful');
     } else {
-      sendError(res, verificationResult.message || 'Failed to verify Aadhaar', 400, 'AADHAAR_VERIFICATION_FAILED');
+      throw new AppError(verificationResult.message || 'Failed to verify Aadhaar', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
   } catch (error) {
     logger.error('Error verifying Aadhaar:', error);
@@ -1131,21 +1094,18 @@ export const verifyIfscCode = async (req: Request, res: Response, next: NextFunc
   try {
     // Validate user (authentication check only, no need for company association)
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const { ifsc } = req.body;
 
     if (!ifsc) {
-      sendError(res, 'IFSC code is required', 400, 'IFSC_REQUIRED');
-      return;
+      throw new ValidationError('IFSC code is required');
     }
 
     // Validate IFSC code format
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-      sendError(res, 'Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.', 400, 'INVALID_IFSC_FORMAT');
-      return;
+      throw new ValidationError('Invalid IFSC code format. IFSC should be in the format AAAA0XXXXXX.');
     }
 
     try {
@@ -1170,11 +1130,11 @@ export const verifyIfscCode = async (req: Request, res: Response, next: NextFunc
 
         sendSuccess(res, bankDetails, 'IFSC verification completed successfully');
       } else {
-        sendError(res, verificationResult.message || 'Invalid IFSC code', 400, 'IFSC_VERIFICATION_FAILED');
+        throw new ValidationError(verificationResult.message || 'Invalid IFSC code');
       }
     } catch (error) {
       logger.error('Error in DeepVue IFSC verification:', error);
-      sendError(res, 'IFSC verification failed', 400, 'IFSC_VERIFICATION_FAILED');
+      throw new AppError('IFSC verification failed', ErrorCode.EXT_SERVICE_ERROR, 400);
     }
   } catch (error) {
     logger.error('Error verifying IFSC:', error);

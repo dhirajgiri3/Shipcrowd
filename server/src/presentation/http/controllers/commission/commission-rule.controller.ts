@@ -10,7 +10,7 @@
 import { Request, Response, NextFunction } from 'express';
 import CommissionRuleService from '../../../../core/application/services/commission/commission-rule.service';
 import { AppError } from '../../../../shared/errors/index';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import {
     createCommissionRuleSchema,
     updateCommissionRuleSchema,
@@ -39,13 +39,11 @@ export class CommissionRuleController {
             // Validate request body
             const validation = createCommissionRuleSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const rule = await CommissionRuleService.createRule(
@@ -80,13 +78,11 @@ export class CommissionRuleController {
             // Validate query parameters
             const validation = listRulesQuerySchema.safeParse(req.query);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const { page, limit, ruleType, isActive, effectiveFrom, effectiveTo, sortBy, sortOrder } =
@@ -172,13 +168,11 @@ export class CommissionRuleController {
 
             const validation = updateCommissionRuleSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map((err: any) => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map((err: any) => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const rule = await CommissionRuleService.updateRule(
@@ -253,13 +247,11 @@ export class CommissionRuleController {
             // Validate test data
             const validation = testRuleSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const result = await CommissionRuleService.testRule(id, validation.data, String(companyId));

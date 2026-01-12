@@ -9,8 +9,8 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import emailService from '../../../../core/application/services/communication/email.service';
 import { getUserPermissions } from '../../middleware/auth/permissions';
 import activityService from '../../../../core/application/services/user/activity.service';
-import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AuthorizationError } from '../../../../shared/errors/app.error';
+import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, AuthorizationError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Helper function to wrap controller methods that expect AuthRequest
@@ -157,27 +157,23 @@ export const getTeamMembers = async (req: Request, res: Response, next: NextFunc
 export const getTeamInvitations = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Only managers can see invitations
     if (user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'Only managers can view team invitations' });
-      return;
+      throw new AuthorizationError('Only managers can view team invitations', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Pagination
@@ -201,15 +197,8 @@ export const getTeamInvitations = async (req: Request, res: Response, next: Next
       status: 'pending'
     });
 
-    res.json({
-      invitations,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit),
-      },
-    });
+    const pagination = calculatePagination(total, page, limit);
+    sendPaginated(res, invitations, pagination, 'Team invitations retrieved successfully');
   } catch (error) {
     logger.error('Error fetching team invitations:', error);
     next(error);
@@ -223,16 +212,14 @@ export const getTeamInvitations = async (req: Request, res: Response, next: Next
 export const inviteTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Determine which company ID to use - from URL params or from user's record
@@ -242,15 +229,13 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
     if (req.params.companyId) {
       // Check if user has access to this company
       if (user.role !== 'admin' && (!user.companyId || user.companyId.toString() !== req.params.companyId)) {
-        res.status(403).json({ message: 'Access denied to this company' });
-        return;
+        throw new AuthorizationError('Access denied to this company', ErrorCode.AUTHZ_FORBIDDEN);
       }
       // Convert string ID to ObjectId
       companyId = new mongoose.Types.ObjectId(req.params.companyId);
     } else if (!user.companyId) {
       // If no companyId in params and user doesn't have a company
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     } else {
       // Use user's company ID
       companyId = user.companyId;
@@ -258,8 +243,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
 
     // Check if user has permission to invite team members based on role hierarchy
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to invite team members' });
-      return;
+      throw new AuthorizationError('You do not have permission to invite team members', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const validatedData = inviteTeamMemberSchema.parse(req.body);
@@ -268,10 +252,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
     if (
       (user.teamRole === 'manager' && ['admin'].includes(validatedData.role))
     ) {
-      res.status(403).json({
-        message: 'You cannot invite team members with higher privileges than your own role'
-      });
-      return;
+      throw new AuthorizationError('You cannot invite team members with higher privileges than your own role', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Check if user already exists
@@ -279,13 +260,11 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
     if (existingUser) {
       // If user exists and is already in this company
       if (existingUser.companyId && existingUser.companyId.toString() === companyId.toString()) {
-        res.status(400).json({ message: 'User is already a member of this company' });
-        return;
+        throw new ConflictError('User is already a member of this company', ErrorCode.BIZ_CONFLICT);
       }
 
       // If user exists but is in another company
-      res.status(400).json({ message: 'User is already registered with another company' });
-      return;
+      throw new ConflictError('User is already registered with another company', ErrorCode.BIZ_CONFLICT);
     }
 
     // Check if there's already a pending invitation
@@ -296,15 +275,13 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
     });
 
     if (existingInvitation) {
-      res.status(400).json({ message: 'An invitation has already been sent to this email' });
-      return;
+      throw new ConflictError('An invitation has already been sent to this email', ErrorCode.BIZ_CONFLICT);
     }
 
     // Get company details for the invitation email
     const company = await Company.findById(companyId);
     if (!company) {
-      res.status(404).json({ message: 'Company not found' });
-      return;
+      throw new NotFoundError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
     }
 
     // ✅ PHASE 1 FIX: Generate hashed token for team invitation
@@ -345,8 +322,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
   } catch (error) {
     logger.error('Error inviting team member:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return;
+      throw new ValidationError(error.errors[0].message);
     }
     next(error);
   }
@@ -359,8 +335,7 @@ export const inviteTeamMember = async (req: Request, res: Response, next: NextFu
 export const cancelInvitation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const invitationId = req.params.invitationId;
@@ -369,27 +344,23 @@ export const cancelInvitation = async (req: Request, res: Response, next: NextFu
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Only managers can cancel invitations
     if (user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'Only managers can cancel team invitations' });
-      return;
+      throw new AuthorizationError('Only managers can cancel team invitations', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Find the invitation
     const invitation = await TeamInvitation.findById(invitationId);
 
     if (!invitation) {
-      res.status(404).json({ message: 'Invitation not found' });
-      return;
+      throw new NotFoundError('Invitation not found', ErrorCode.RES_NOT_FOUND);
     }
 
     // Check if the invitation belongs to the user's company
@@ -400,8 +371,7 @@ export const cancelInvitation = async (req: Request, res: Response, next: NextFu
 
     // Check if the invitation is still pending
     if (invitation.status !== 'pending') {
-      res.status(400).json({ message: 'Only pending invitations can be cancelled' });
-      return;
+      throw new ValidationError('Only pending invitations can be cancelled', ErrorCode.VAL_INVALID_INPUT);
     }
 
     // Update invitation status to expired
@@ -418,9 +388,7 @@ export const cancelInvitation = async (req: Request, res: Response, next: NextFu
       req
     );
 
-    res.json({
-      message: 'Team invitation cancelled successfully',
-    });
+    sendSuccess(res, null, 'Team invitation cancelled successfully');
   } catch (error) {
     logger.error('Error cancelling team invitation:', error);
     next(error);
@@ -434,8 +402,7 @@ export const cancelInvitation = async (req: Request, res: Response, next: NextFu
 export const resendInvitation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const invitationId = req.params.invitationId;
@@ -444,46 +411,39 @@ export const resendInvitation = async (req: Request, res: Response, next: NextFu
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Only managers can resend invitations
     if (user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'Only managers can resend team invitations' });
-      return;
+      throw new AuthorizationError('Only managers can resend team invitations', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Find the invitation
     const invitation = await TeamInvitation.findById(invitationId);
 
     if (!invitation) {
-      res.status(404).json({ message: 'Invitation not found' });
-      return;
+      throw new NotFoundError('Invitation not found', ErrorCode.RES_NOT_FOUND);
     }
 
     // Check if the invitation belongs to the user's company
     if (invitation.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this invitation' });
-      return;
+      throw new AuthorizationError('Access denied to this invitation', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Check if the invitation is expired
     if (invitation.status !== 'pending' && invitation.status !== 'expired') {
-      res.status(400).json({ message: 'Only pending or expired invitations can be resent' });
-      return;
+      throw new ValidationError('Only pending or expired invitations can be resent', ErrorCode.VAL_INVALID_INPUT);
     }
 
     // Get company details for the invitation email
     const company = await Company.findById(user.companyId);
     if (!company) {
-      res.status(404).json({ message: 'Company not found' });
-      return;
+      throw new NotFoundError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
     }
 
     // ✅ PHASE 1 FIX: Hash team invitation token before storage
@@ -512,11 +472,11 @@ export const resendInvitation = async (req: Request, res: Response, next: NextFu
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       message: 'Team invitation resent successfully',
       invitation,
       emailSent
-    });
+    }, 'Team invitation resent successfully');
   } catch (error) {
     logger.error('Error resending team invitation:', error);
     next(error);
@@ -530,8 +490,7 @@ export const resendInvitation = async (req: Request, res: Response, next: NextFu
 export const updateTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const targetUserId = req.params.userId;
@@ -540,19 +499,16 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Check if user has permission to update team members based on role hierarchy
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to update team members' });
-      return;
+      throw new AuthorizationError('You do not have permission to update team members', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const validatedData = updateTeamMemberSchema.parse(req.body);
@@ -561,20 +517,17 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
     const targetUser = await User.findById(targetUserId);
 
     if (!targetUser) {
-      res.status(404).json({ message: 'Team member not found' });
-      return;
+      throw new NotFoundError('Team member not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Check if the target user belongs to the same company
     if (!targetUser.companyId || targetUser.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this team member' });
-      return;
+      throw new AuthorizationError('Access denied to this team member', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Prevent users from changing their own role
     if (String(targetUser._id) === String(user._id)) {
-      res.status(400).json({ message: 'You cannot change your own role' });
-      return;
+      throw new ValidationError('You cannot change your own role', ErrorCode.VAL_INVALID_INPUT);
     }
 
     // Role hierarchy validation - users can only manage members with equal or lower roles
@@ -586,10 +539,7 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
       // Trying to promote someone to a role higher than the current user
       (user.teamRole === 'manager' && ['admin'].includes(validatedData.teamRole))
     ) {
-      res.status(403).json({
-        message: 'You cannot modify team members with higher privileges than your own role'
-      });
-      return;
+      throw new AuthorizationError('You cannot modify team members with higher privileges than your own role', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Prevent removing the last owner
@@ -606,10 +556,7 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
       });
 
       if (ownersCount <= 1) {
-        res.status(400).json({
-          message: 'Cannot change the role of the last owner. Transfer ownership to another user first.'
-        });
-        return;
+        throw new ValidationError('Cannot change the role of the last owner. Transfer ownership to another user first.', ErrorCode.VAL_INVALID_INPUT);
       }
     }
 
@@ -622,8 +569,7 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
       // Only owners and admins can suspend users
       if (validatedData.teamStatus === 'suspended' &&
         user.teamRole !== 'owner' && user.teamRole !== 'admin') {
-        res.status(403).json({ message: 'Only owners and admins can suspend team members' });
-        return;
+        throw new AuthorizationError('Only owners and admins can suspend team members', ErrorCode.AUTHZ_FORBIDDEN);
       }
 
       // Prevent suspending the last owner
@@ -635,10 +581,7 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
         });
 
         if (ownersCount <= 1) {
-          res.status(400).json({
-            message: 'Cannot suspend the last owner. Transfer ownership to another user first.'
-          });
-          return;
+          throw new ValidationError('Cannot suspend the last owner. Transfer ownership to another user first.', ErrorCode.VAL_INVALID_INPUT);
         }
       }
 
@@ -669,7 +612,7 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       message: 'Team member updated successfully',
       teamMember: {
         _id: targetUser._id,
@@ -678,12 +621,11 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
         teamRole: targetUser.teamRole,
         teamStatus: targetUser.teamStatus
       }
-    });
+    }, 'Team member updated successfully');
   } catch (error) {
     logger.error('Error updating team member:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return;
+      throw new ValidationError(error.errors[0].message);
     }
     next(error);
   }
@@ -696,8 +638,7 @@ export const updateTeamMember = async (req: Request, res: Response, next: NextFu
 export const removeTeamMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const targetUserId = req.params.userId;
@@ -706,39 +647,33 @@ export const removeTeamMember = async (req: Request, res: Response, next: NextFu
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Check if user has permission to remove team members based on role hierarchy
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to remove team members' });
-      return;
+      throw new AuthorizationError('You do not have permission to remove team members', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Find the target user
     const targetUser = await User.findById(targetUserId);
 
     if (!targetUser) {
-      res.status(404).json({ message: 'Team member not found' });
-      return;
+      throw new NotFoundError('Team member not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Check if the target user belongs to the same company
     if (!targetUser.companyId || targetUser.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this team member' });
-      return;
+      throw new AuthorizationError('Access denied to this team member', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Prevent users from removing themselves
     if (String(targetUser._id) === String(user._id)) {
-      res.status(400).json({ message: 'You cannot remove yourself from the team' });
-      return;
+      throw new ValidationError('You cannot remove yourself from the team', ErrorCode.VAL_INVALID_INPUT);
     }
 
     // Role hierarchy validation - users can only remove members with equal or lower roles
@@ -748,10 +683,7 @@ export const removeTeamMember = async (req: Request, res: Response, next: NextFu
       // Current user is admin trying to remove an owner
       (user.teamRole === 'admin' && targetUser.teamRole === 'owner')
     ) {
-      res.status(403).json({
-        message: 'You cannot remove team members with higher privileges than your own role'
-      });
-      return;
+      throw new AuthorizationError('You cannot remove team members with higher privileges than your own role', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Prevent removing the last owner
@@ -764,10 +696,7 @@ export const removeTeamMember = async (req: Request, res: Response, next: NextFu
       });
 
       if (ownersCount <= 1) {
-        res.status(400).json({
-          message: 'Cannot remove the last owner. Transfer ownership to another user first.'
-        });
-        return;
+        throw new ValidationError('Cannot remove the last owner. Transfer ownership to another user first.', ErrorCode.VAL_INVALID_INPUT);
       }
     }
 
@@ -786,9 +715,9 @@ export const removeTeamMember = async (req: Request, res: Response, next: NextFu
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       message: 'Team member removed successfully',
-    });
+    }, 'Team member removed successfully');
   } catch (error) {
     logger.error('Error removing team member:', error);
     next(error);
@@ -804,8 +733,7 @@ export const verifyInvitation = async (req: Request, res: Response, next: NextFu
     const token = req.query.token as string;
 
     if (!token) {
-      res.status(400).json({ message: 'Invitation token is required' });
-      return;
+      throw new ValidationError('Invitation token is required', ErrorCode.VAL_INVALID_INPUT);
     }
 
     // ✅ PHASE 1 FIX: Hash incoming token for comparison
@@ -819,12 +747,12 @@ export const verifyInvitation = async (req: Request, res: Response, next: NextFu
     }).populate('companyId', 'name').populate('invitedBy', 'name email');
 
     if (!invitation) {
-      res.status(404).json({ message: 'Invalid or expired invitation' });
-      return;
+      throw new NotFoundError('Invalid or expired invitation', ErrorCode.RES_NOT_FOUND);
     }
 
     // Return invitation details
-    res.json({
+    // Return invitation details
+    sendSuccess(res, {
       valid: true,
       invitation: {
         email: invitation.email,
@@ -837,7 +765,7 @@ export const verifyInvitation = async (req: Request, res: Response, next: NextFu
           email: (invitation.invitedBy as any).email,
         } : undefined,
       }
-    });
+    }, 'Invitation verified successfully');
   } catch (error) {
     logger.error('Error verifying team invitation:', error);
     next(error);
@@ -851,8 +779,7 @@ export const verifyInvitation = async (req: Request, res: Response, next: NextFu
 export const getTeamMemberPermissions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const targetUserId = req.params.userId;
@@ -861,45 +788,41 @@ export const getTeamMemberPermissions = async (req: Request, res: Response, next
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Check if user has permission to view team member permissions
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to view team member permissions' });
-      return;
+      throw new AuthorizationError('You do not have permission to view team member permissions', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Find the target user
     const targetUser = await User.findById(targetUserId);
 
     if (!targetUser) {
-      res.status(404).json({ message: 'Team member not found' });
-      return;
+      throw new NotFoundError('Team member not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Check if the target user belongs to the same company
     if (!targetUser.companyId || targetUser.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this team member' });
+      throw new AuthorizationError('Access denied to this team member', ErrorCode.AUTHZ_FORBIDDEN);
       return;
     }
 
     // Get the user's permissions
     const permissions = await getUserPermissions(targetUserId);
 
-    res.json({
+    sendSuccess(res, {
       userId: targetUser._id,
       name: targetUser.name,
       email: targetUser.email,
       teamRole: targetUser.teamRole,
       ...permissions
-    });
+    }, 'Team member permissions retrieved successfully');
   } catch (error) {
     logger.error('Error getting team member permissions:', error);
     next(error);
@@ -913,8 +836,7 @@ export const getTeamMemberPermissions = async (req: Request, res: Response, next
 export const updateTeamMemberPermissions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const targetUserId = req.params.userId;
@@ -923,19 +845,16 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Check if user has permission to update team member permissions
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to update team member permissions' });
-      return;
+      throw new AuthorizationError('You do not have permission to update team member permissions', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const validatedData = updatePermissionsSchema.parse(req.body);
@@ -944,22 +863,17 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
     const targetUser = await User.findById(targetUserId);
 
     if (!targetUser) {
-      res.status(404).json({ message: 'Team member not found' });
-      return;
+      throw new NotFoundError('Team member not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Check if the target user belongs to the same company
     if (!targetUser.companyId || targetUser.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this team member' });
-      return;
+      throw new AuthorizationError('Access denied to this team member', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Users with elevated roles have all permissions by default, can't be modified
     if (targetUser.teamRole === 'owner' || targetUser.teamRole === 'admin' || targetUser.teamRole === 'manager') {
-      res.status(400).json({
-        message: `Cannot modify permissions for users with ${targetUser.teamRole} role`
-      });
-      return;
+      throw new ValidationError(`Cannot modify permissions for users with ${targetUser.teamRole} role`, ErrorCode.VAL_INVALID_INPUT);
     }
 
     // Role hierarchy validation - users can only manage permissions of members with equal or lower roles
@@ -967,10 +881,7 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
       // Current user is manager trying to modify permissions of an owner or admin
       (user.teamRole === 'manager' && ['owner', 'admin'].includes(targetUser.teamRole || ''))
     ) {
-      res.status(403).json({
-        message: 'You cannot modify permissions of team members with higher privileges than your own role'
-      });
-      return;
+      throw new AuthorizationError('You cannot modify permissions of team members with higher privileges than your own role', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Find or create permissions document
@@ -1011,16 +922,15 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       message: 'Team member permissions updated successfully',
       userId: targetUser._id,
       permissions: permission.permissions
-    });
+    }, 'Team member permissions updated successfully');
   } catch (error) {
     logger.error('Error updating team member permissions:', error);
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: 'Validation error', errors: error.errors });
-      return;
+      throw new ValidationError(error.errors[0].message);
     }
     next(error);
   }
@@ -1033,14 +943,13 @@ export const updateTeamMemberPermissions = async (req: Request, res: Response, n
 export const getMyPermissions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Get the user's permissions
     const permissions = await getUserPermissions(req.user._id);
 
-    res.json(permissions);
+    sendSuccess(res, permissions, 'User permissions retrieved successfully');
   } catch (error) {
     logger.error('Error getting user permissions:', error);
     next(error);
@@ -1054,8 +963,7 @@ export const getMyPermissions = async (req: Request, res: Response, next: NextFu
 export const getTeamMemberActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const targetUserId = req.params.userId;
@@ -1064,33 +972,28 @@ export const getTeamMemberActivity = async (req: Request, res: Response, next: N
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Check if user has permission to view team member activity
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to view team member activity' });
-      return;
+      throw new AuthorizationError('You do not have permission to view team member activity', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Find the target user
     const targetUser = await User.findById(targetUserId);
 
     if (!targetUser) {
-      res.status(404).json({ message: 'Team member not found' });
-      return;
+      throw new NotFoundError('Team member not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Check if the target user belongs to the same company
     if (!targetUser.companyId || targetUser.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this team member' });
-      return;
+      throw new AuthorizationError('Access denied to this team member', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Parse query parameters
@@ -1125,13 +1028,13 @@ export const getTeamMemberActivity = async (req: Request, res: Response, next: N
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       userId: targetUser._id,
       name: targetUser.name,
       email: targetUser.email,
       activities: result.activities,
       pagination: result.pagination,
-    });
+    }, 'Team member activity retrieved successfully');
   } catch (error) {
     logger.error('Error getting team member activity:', error);
     next(error);
@@ -1145,27 +1048,24 @@ export const getTeamMemberActivity = async (req: Request, res: Response, next: N
 export const getCompanyActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
       return;
     }
 
     // Check if user has permission to view company activity
     if (user.teamRole !== 'owner' && user.teamRole !== 'admin' && user.teamRole !== 'manager') {
-      res.status(403).json({ message: 'You do not have permission to view company activity' });
-      return;
+      throw new AuthorizationError('You do not have permission to view company activity', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Parse query parameters
@@ -1218,21 +1118,18 @@ export const getCompanyActivity = async (req: Request, res: Response, next: Next
 export const getMyActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     // Get the latest user data from the database to ensure we have the most up-to-date companyId
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      throw new NotFoundError('User not found', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     if (!user.companyId) {
-      res.status(403).json({ message: 'User is not associated with any company' });
-      return;
+      throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     // Parse query parameters
@@ -1285,7 +1182,7 @@ export default {
   resendInvitation: withAuth(resendInvitation),
   updateTeamMember: withAuth(updateTeamMember),
   removeTeamMember: withAuth(removeTeamMember),
-  verifyInvitation,  // This one might not need auth, check implementation
+  verifyInvitation,
   getTeamMemberPermissions: withAuth(getTeamMemberPermissions),
   updateTeamMemberPermissions: withAuth(updateTeamMemberPermissions),
   getMyPermissions: withAuth(getMyPermissions),

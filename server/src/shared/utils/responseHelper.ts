@@ -1,10 +1,7 @@
 import { Response } from 'express';
 import {
-    ApiResponse,
     SuccessResponse,
-    ErrorResponse,
     PaginatedResponse,
-    ApiError,
     PaginationMeta,
 } from '../types/apiResponse';
 
@@ -34,70 +31,6 @@ export const sendSuccess = <T>(
     };
 
     return res.status(statusCode).json(response);
-};
-
-/**
- * Send a standardized error response
- * 
- * @param res - Express response object
- * @param error - Error object or message
- * @param statusCode - HTTP status code (default: 400)
- * @param code - Error code for client-side handling
- * @returns Response object
- * 
- * @example
- * sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
- */
-export const sendError = (
-    res: Response,
-    error: string | ApiError,
-    statusCode: number = 400,
-    code?: string
-): Response<ErrorResponse> => {
-    const errorObj: ApiError = typeof error === 'string'
-        ? {
-            code: code || 'ERROR',
-            message: error,
-        }
-        : error;
-
-    const response: ErrorResponse = {
-        success: false,
-        error: errorObj,
-        timestamp: new Date().toISOString(),
-    };
-
-    return res.status(statusCode).json(response);
-};
-
-/**
- * Send a standardized validation error response
- * 
- * @param res - Express response object
- * @param errors - Array of validation errors
- * @returns Response object
- * 
- * @example
- * sendValidationError(res, [
- *   { code: 'INVALID_EMAIL', message: 'Email is invalid', field: 'email' },
- *   { code: 'REQUIRED', message: 'Password is required', field: 'password' }
- * ]);
- */
-export const sendValidationError = (
-    res: Response,
-    errors: ApiError[]
-): Response<ApiResponse> => {
-    const response: ApiResponse = {
-        success: false,
-        error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Validation failed',
-        },
-        errors,
-        timestamp: new Date().toISOString(),
-    };
-
-    return res.status(400).json(response);
 };
 
 /**

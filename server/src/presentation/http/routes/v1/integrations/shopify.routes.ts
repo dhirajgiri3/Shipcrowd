@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import ShopifyController from '../../../controllers/integrations/shopify.controller';
 import { authenticate } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 import { requireAccess } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 
@@ -15,6 +16,7 @@ const router = Router();
 router.get(
   '/install',
   authenticate,
+  checkKYC,
   requireAccess({
     tier: AccessTier.PRODUCTION,
     kyc: true,
@@ -30,6 +32,7 @@ router.get('/callback', ShopifyController.callback);
 router.get(
   '/stores',
   authenticate,
+  checkKYC,
   requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.listStores
 );
@@ -38,6 +41,7 @@ router.get(
 router.get(
   '/stores/:id',
   authenticate,
+  checkKYC,
   requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.getStore
 );
@@ -58,6 +62,7 @@ router.delete(
 router.post(
   '/stores/:id/test',
   authenticate,
+  checkKYC,
   requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.testConnection
 );
@@ -66,6 +71,7 @@ router.post(
 router.post(
   '/stores/:id/pause',
   authenticate,
+  checkKYC,
   requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.pauseSync
 );
@@ -74,6 +80,7 @@ router.post(
 router.post(
   '/stores/:id/resume',
   authenticate,
+  checkKYC,
   requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.resumeSync
 );
@@ -86,6 +93,7 @@ router.post(
 router.post(
   '/stores/:storeId/orders/:orderId/fulfill',
   authenticate,
+  checkKYC,
   requireAccess({
     tier: AccessTier.PRODUCTION,
     kyc: true,
@@ -98,6 +106,7 @@ router.post(
 router.put(
   '/stores/:storeId/fulfillments/:fulfillmentId',
   authenticate,
+  checkKYC,
   requireAccess({
     tier: AccessTier.PRODUCTION,
     kyc: true,
@@ -110,6 +119,7 @@ router.put(
 router.post(
   '/stores/:id/sync/orders',
   authenticate,
+  checkKYC,
   requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.syncOrders
 );
@@ -118,6 +128,7 @@ router.post(
 router.post(
   '/stores/:id/sync/fulfillments',
   authenticate,
+  checkKYC,
   requireAccess({ teamRoles: ['owner', 'admin'] }),
   ShopifyController.syncPendingFulfillments
 );

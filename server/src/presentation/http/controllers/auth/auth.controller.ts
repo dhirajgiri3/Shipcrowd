@@ -541,7 +541,7 @@ export const requestPasswordReset = async (req: Request, res: Response, next: Ne
       req
     );
 
-    res.json({ message: 'If your email is registered, you will receive a password reset link' });
+    sendSuccess(res, null, 'If your email is registered, you will receive a password reset link');
   } catch (error: any) {
     logger.error('requestPasswordReset error:', error);
     next(error);
@@ -862,7 +862,7 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
       req
     );
 
-    res.json({ message: 'If your email is registered, a new verification email will be sent' });
+    sendSuccess(res, null, 'If your email is registered, a new verification email will be sent');
   } catch (error: any) {
     logger.error('resendVerificationEmail error:', error);
     next(error);

@@ -5,7 +5,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PayoutProcessingService } from '../../../../core/application/services/commission/index';
 import { AppError } from '../../../../shared/errors/index';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import {
     initiatePayoutSchema,
     processBatchPayoutsSchema,
@@ -29,13 +29,11 @@ export class PayoutController {
 
             const validation = initiatePayoutSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const payout = await PayoutProcessingService.initiatePayout(
@@ -69,13 +67,11 @@ export class PayoutController {
 
             const validation = processBatchPayoutsSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const result = await PayoutProcessingService.processBatchPayouts(
@@ -129,13 +125,11 @@ export class PayoutController {
 
             const validation = listPayoutsQuerySchema.safeParse(req.query);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const { page, limit, status, salesRepId, startDate, endDate } = validation.data;

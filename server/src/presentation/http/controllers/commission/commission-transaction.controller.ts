@@ -15,7 +15,7 @@ import {
     CommissionApprovalService,
 } from '../../../../core/application/services/commission/index';
 import { AppError } from '../../../../shared/errors/index';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import {
     listTransactionsQuerySchema,
     approveTransactionSchema,
@@ -45,13 +45,11 @@ export class CommissionTransactionController {
             // Validate query parameters
             const validation = listTransactionsQuerySchema.safeParse(req.query);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const { page, limit, status, salesRepId, startDate, endDate, sortBy, sortOrder } =
@@ -132,13 +130,11 @@ export class CommissionTransactionController {
             // Validate request body
             const validation = approveTransactionSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const transaction = await CommissionApprovalService.approveTransaction(
@@ -175,13 +171,11 @@ export class CommissionTransactionController {
             // Validate request body
             const validation = rejectTransactionSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const transaction = await CommissionApprovalService.rejectTransaction(
@@ -217,13 +211,11 @@ export class CommissionTransactionController {
             // Validate request body
             const validation = bulkApproveSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const result = await CommissionApprovalService.bulkApprove(
@@ -259,13 +251,11 @@ export class CommissionTransactionController {
             // Validate request body
             const validation = bulkRejectSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const result = await CommissionApprovalService.bulkReject(
@@ -305,13 +295,11 @@ export class CommissionTransactionController {
             // Validate request body
             const validation = addAdjustmentSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const transaction = await CommissionApprovalService.addAdjustment(
@@ -390,13 +378,11 @@ export class CommissionTransactionController {
             // Validate request body
             const validation = bulkCalculateSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const { orderIds, salesRepId } = validation.data;

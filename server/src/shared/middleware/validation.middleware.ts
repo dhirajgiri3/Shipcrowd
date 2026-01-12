@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema, ZodError } from 'zod';
-import { sendValidationError } from '../utils/responseHelper';
+import { ValidationError } from '../errors/app.error';
 import { sanitizeObject } from '../utils/sanitize';
 import logger from '../logger/winston.logger';
 
@@ -93,24 +93,23 @@ export const validate = (
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                // Transform Zod errors to our format
-                const errors = error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                // Transform Zod errors to ValidationError
+                const details = error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
 
                 if (logErrors) {
                     logger.warn('Validation error', {
                         target,
-                        errors,
+                        errors: details,
                         path: req.path,
                         method: req.method,
                     });
                 }
 
-                sendValidationError(res, errors);
-                return;
+                // Throw ValidationError - global error handler will catch it
+                throw new ValidationError('Validation failed', details);
             }
 
             // Unexpected error - pass to error handler
@@ -172,22 +171,22 @@ export const validateMultiple = (
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                const errors = error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                // Transform Zod errors to ValidationError
+                const details = error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
 
                 if (logErrors) {
                     logger.warn('Validation error', {
-                        errors,
+                        errors: details,
                         path: req.path,
                         method: req.method,
                     });
                 }
 
-                sendValidationError(res, errors);
-                return;
+                // Throw ValidationError - global error handler will catch it
+                throw new ValidationError('Validation failed', details);
             }
 
             next(error);

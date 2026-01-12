@@ -7,7 +7,9 @@
 
 import { Request, Response, NextFunction } from 'express';
 import IntegrationHealthService from '../../../../core/application/services/integrations/integration-health.service';
-import { AppError } from '../../../../shared/errors/app.error';
+import { AuthenticationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 export default class IntegrationsController {
@@ -21,7 +23,7 @@ export default class IntegrationsController {
             const companyId = req.user?.companyId;
 
             if (!companyId) {
-                throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
             }
 
             const health = await IntegrationHealthService.getHealth(companyId);
@@ -32,10 +34,7 @@ export default class IntegrationsController {
                 totalStores: health.summary.totalStores,
             });
 
-            res.json({
-                success: true,
-                data: health,
-            });
+            sendSuccess(res, health, 'Integration health retrieved');
         } catch (error) {
             next(error);
         }

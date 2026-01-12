@@ -19,8 +19,7 @@ export const getSellerDashboard = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: false });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: false });
 
         // If user has no company, return empty dashboard data with helpful message
         if (!auth.companyId) {
@@ -181,8 +180,7 @@ export const getAdminDashboard = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: false });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: false });
 
         // Admin role check
         if (req.user!.role !== 'admin') {
@@ -348,8 +346,7 @@ export const getOrderTrends = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: false });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: false });
 
         const companyId = auth.companyId;
         const isAdmin = req.user!.role === 'admin';
@@ -423,8 +420,7 @@ export const getShipmentPerformance = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: false });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: false });
 
         const companyId = auth.companyId;
         const isAdmin = req.user!.role === 'admin';
@@ -540,8 +536,7 @@ export const getRevenueStats = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -574,8 +569,7 @@ export const getWalletStats = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -608,8 +602,7 @@ export const getCustomerStats = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
         const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -642,8 +635,7 @@ export const getTopCustomers = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const limit = parseInt(req.query.limit as string) || 10;
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
@@ -677,8 +669,7 @@ export const getInventoryStats = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const warehouseId = req.query.warehouseId as string | undefined;
 
@@ -709,8 +700,7 @@ export const getTopProducts = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const limit = parseInt(req.query.limit as string) || 10;
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
@@ -744,8 +734,7 @@ export const buildCustomReport = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const validation = buildReportSchema.safeParse(req.body);
         if (!validation.success) {
@@ -778,8 +767,7 @@ export const saveReportConfig = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const validation = saveReportConfigSchema.safeParse(req.body);
         if (!validation.success) {
@@ -809,8 +797,7 @@ export const listReportConfigs = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
@@ -833,8 +820,7 @@ export const deleteReportConfig = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        const auth = guardChecks(req, res, { requireCompany: true });
-        if (!auth) return;
+        const auth = guardChecks(req, { requireCompany: true });
 
         await ReportBuilderService.deleteReportConfig(req.params.id, auth.companyId!);
         sendSuccess(res, null, 'Report configuration deleted successfully');

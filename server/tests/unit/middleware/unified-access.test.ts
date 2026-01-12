@@ -81,7 +81,7 @@ describe('Unified Access Middleware', () => {
 
     // --- 4. KYC Check ---
     test('should 403 if KYC required but incomplete', async () => {
-        req.user = { role: 'user', kycStatus: { isComplete: false, state: KYCState.PENDING } } as any;
+        req.user = { role: 'user', kycStatus: { isComplete: false, state: KYCState.DRAFT } } as any;
         mockDetermineUserTier.mockReturnValue(AccessTier.SANDBOX);
 
         await requireAccess({ kyc: true })(req as Request, res, next);

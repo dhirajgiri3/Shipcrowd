@@ -9,9 +9,9 @@ import { generateAccessToken } from '../../../../shared/helpers/jwt';
 import { sendOwnerInvitationEmail } from '../../../../core/application/services/communication/email.service';
 import mongoose from 'mongoose';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
-import { AuthenticationError, ValidationError, DatabaseError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, AuthorizationError, ConflictError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
-import { sendSuccess, sendError, sendValidationError, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 const createCompanySchema = z.object({
   name: z.string().min(2),
@@ -45,8 +45,7 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
   try {
     const companyId = req.params.companyId;
     if (!mongoose.Types.ObjectId.isValid(companyId)) {
-      sendError(res, 'Invalid company ID format', 400, 'INVALID_ID');
-      return;
+      throw new ValidationError('Invalid company ID format', ErrorCode.VAL_INVALID_INPUT);
     }
 
     const authReq = req as Request;
@@ -59,12 +58,11 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
       }
 
       if (!user.companyId) {
-        sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-        return;
+        throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
       }
 
       if (user.companyId.toString() !== companyId) {
-        sendError(res, 'Access denied to this company', 403, 'ACCESS_DENIED');
+        throw new AuthorizationError('Access denied to this company', ErrorCode.AUTHZ_FORBIDDEN);
       }
     }
 
@@ -84,32 +82,22 @@ export const getCompanyById = async (req: Request, res: Response, next: NextFunc
 export const createCompany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (req.user.role !== 'admin' && req.user.companyId) {
-      sendError(res, 'User already has a company', 403, 'COMPANY_EXISTS');
-      return;
+      throw new ConflictError('User already has a company', ErrorCode.BIZ_CONFLICT);
     }
 
     const validation = createCompanySchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError(validation.error.errors[0].message);
     }
 
     const existingCompany = await Company.findOne({ name: validation.data.name }).lean();
     if (existingCompany) {
-      sendError(res, 'Company with this name already exists', 400, 'DUPLICATE_COMPANY');
-      return;
+      throw new ConflictError('Company with this name already exists', ErrorCode.BIZ_CONFLICT);
     }
-
     const company = new Company({
       ...validation.data,
       isActive: true,
@@ -156,7 +144,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
 
     const companyId = req.params.companyId;
     if (!mongoose.Types.ObjectId.isValid(companyId)) {
-      sendError(res, 'Invalid company ID format', 400, 'INVALID_ID');
+      throw new ValidationError('Invalid company ID format', ErrorCode.VAL_INVALID_INPUT);
     }
 
     if (req.user.role !== 'admin') {
@@ -167,24 +155,17 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
       }
 
       if (!user.companyId) {
-        sendError(res, 'User is not associated with any company', 403, 'NO_COMPANY');
-        return;
+        throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
       }
 
       if (user.companyId.toString() !== companyId) {
-        sendError(res, 'Access denied to this company', 403, 'ACCESS_DENIED');
+        throw new AuthorizationError('Access denied to this company', ErrorCode.AUTHZ_FORBIDDEN);
       }
     }
 
     const validation = updateCompanySchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
-        field: err.path.join('.'),
-      }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError(validation.error.errors[0].message);
     }
 
     const company = await Company.findById(companyId) as ICompany | null;
@@ -195,8 +176,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
     if (validation.data.name && validation.data.name !== company.name) {
       const existingCompany = await Company.findOne({ name: validation.data.name }).lean();
       if (existingCompany) {
-        sendError(res, 'Company with this name already exists', 400, 'DUPLICATE_COMPANY');
-        return;
+        throw new ConflictError('Company with this name already exists', ErrorCode.BIZ_CONFLICT);
       }
     }
 
@@ -207,8 +187,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
     ) as ICompany | null;
 
     if (!updatedCompany) {
-      sendError(res, 'Company not found after update', 404, 'COMPANY_NOT_FOUND');
-      return;
+      throw new NotFoundError('Company not found after update', ErrorCode.RES_COMPANY_NOT_FOUND);
     }
 
     await createAuditLog(req.user._id, companyId, 'update', 'company', companyId, { message: 'Company updated' }, req);
@@ -227,8 +206,7 @@ export const getAllCompanies = async (req: Request, res: Response, next: NextFun
     }
 
     if (req.user.role !== 'admin') {
-      sendError(res, 'Access denied', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -260,30 +238,25 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
     }
 
     if (req.user.role !== 'admin') {
-      sendError(res, 'Only admins can invite company owners', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('Only admins can invite company owners', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const companyId = req.params.companyId;
     const { email, name, message } = req.body;
 
     if (!email || !name) {
-      sendError(res, 'Email and name are required', 400, 'MISSING_FIELDS');
-      return;
+      throw new ValidationError('Email and name are required', ErrorCode.VAL_INVALID_INPUT);
     }
 
     const company = await Company.findById(companyId).lean();
     if (!company) {
       throw new ValidationError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
-      return;
     }
 
     const existingUser = await User.findOne({ email: email.toLowerCase() }).lean();
     if (existingUser) {
-      sendError(res, 'User with this email already exists', 400, 'USER_EXISTS');
-      return;
+      throw new ConflictError('User with this email already exists', ErrorCode.BIZ_CONFLICT);
     }
-
     const existingInvitation = await TeamInvitation.findOne({
       email: email.toLowerCase(),
       companyId,
@@ -291,7 +264,7 @@ export const inviteCompanyOwner = async (req: Request, res: Response, next: Next
     }).lean();
 
     if (existingInvitation) {
-      sendError(res, 'Invitation already sent to this email', 400, 'INVITATION_EXISTS');
+      throw new ConflictError('Invitation already sent to this email', ErrorCode.BIZ_CONFLICT);
     }
 
     // ✅ PHASE 1 FIX: Generate hashed token for team invitation
@@ -333,8 +306,7 @@ export const updateCompanyStatus = async (req: Request, res: Response, next: Nex
     }
 
     if (req.user.role !== 'admin') {
-      sendError(res, 'Only admins can update company status', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('Only admins can update company status', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const companyId = req.params.companyId;
@@ -342,7 +314,7 @@ export const updateCompanyStatus = async (req: Request, res: Response, next: Nex
 
     const validStatuses = ['pending_verification', 'kyc_submitted', 'approved', 'suspended', 'rejected'];
     if (!status || !validStatuses.includes(status)) {
-      sendError(res, 'Invalid status', 400, 'INVALID_STATUS');
+      throw new ValidationError('Invalid status', ErrorCode.VAL_INVALID_INPUT);
     }
 
     const company = await Company.findByIdAndUpdate(
@@ -371,8 +343,7 @@ export const getCompanyStats = async (req: Request, res: Response, next: NextFun
     }
 
     if (req.user.role !== 'admin') {
-      sendError(res, 'Access denied', 403, 'INSUFFICIENT_PERMISSIONS');
-      return;
+      throw new AuthorizationError('Access denied', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     const [stats, totalCompanies, activeCompanies] = await Promise.all([

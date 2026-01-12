@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import logger from '../logger/winston.logger';
+import { AuthenticationError, ValidationError } from '../errors/app.error';
+import { ErrorCode } from '../errors/errorCodes';
 
 /**
  * Standard API error response format (RFC 7807 inspired)
@@ -15,21 +17,18 @@ export interface ApiError {
 
 /**
  * Handle common controller guard checks
- * Returns null if all checks pass, otherwise sends error response
+ * Throws errors if checks fail
  */
 export const guardChecks = (
     req: Request,
-    res: Response,
     options: { requireCompany?: boolean } = { requireCompany: true }
-): { userId: string; companyId: string } | null => {
+): { userId: string; companyId: string } => {
     if (!req.user) {
-        res.status(401).json({ message: 'Authentication required' });
-        return null;
+        throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     if (options.requireCompany && !req.user.companyId) {
-        res.status(403).json({ message: 'User is not associated with any company' });
-        return null;
+        throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     return {
@@ -46,24 +45,21 @@ export const isValidObjectId = (id: string): boolean => {
 };
 
 /**
- * Validate ObjectId and send error response if invalid
- * Returns true if valid, false if invalid (and sends response)
+ * Validate ObjectId and throw error if invalid
  */
 export const validateObjectId = (
     id: string,
-    res: Response,
     entityName: string = 'resource'
-): boolean => {
+): void => {
     if (!isValidObjectId(id)) {
-        res.status(400).json({ message: `Invalid ${entityName} ID format` });
-        return false;
+        throw new ValidationError(`Invalid ${entityName} ID format`, ErrorCode.VAL_INVALID_INPUT);
     }
-    return true;
 };
 
 /**
  * Handle Zod validation errors
  * Returns true if handled (error response sent), false if not a Zod error
+ * @deprecated Use standardized error handling middleware instead
  */
 export const handleZodError = (error: unknown, res: Response): boolean => {
     if (error instanceof z.ZodError) {
@@ -161,6 +157,7 @@ export const generateTrackingNumber = (): string => generateDatePrefixedId('SHP'
 
 /**
  * Wrap async controller functions with standardized error handling
+ * @deprecated Use try-catch blocks with standard Error classes in controllers
  */
 export const asyncHandler = <T extends (...args: any[]) => Promise<void>>(
     fn: T
@@ -169,16 +166,8 @@ export const asyncHandler = <T extends (...args: any[]) => Promise<void>>(
         try {
             await fn(...args);
         } catch (error) {
-            const [, res, next] = args;
-            if (error instanceof z.ZodError) {
-                res.status(400).json({
-                    message: 'Validation error',
-                    errors: error.errors,
-                });
-            } else {
-                logger.error('Controller error:', error);
-                next(error);
-            }
+            const [, , next] = args; // req, res, next
+            next(error);
         }
     }) as T;
 };

@@ -15,7 +15,9 @@ import { Request, Response, NextFunction } from 'express';
 import WooCommerceOAuthService from '../../../../core/application/services/woocommerce/woocommerce-oauth.service';
 import { WooCommerceStore } from '../../../../infrastructure/database/mongoose/models';
 import WooCommerceOrderSyncJob from '../../../../infrastructure/jobs/marketplaces/woocommerce/woocommerce-order-sync.job';
-import { AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 export default class WooCommerceController {
@@ -38,15 +40,11 @@ export default class WooCommerceController {
 
       // Validation
       if (!storeUrl || !consumerKey || !consumerSecret) {
-        throw new AppError(
-          'Store URL, consumer key, and consumer secret are required',
-          'VALIDATION_ERROR',
-          400
-        );
+        throw new ValidationError('Store URL, consumer key, and consumer secret are required');
       }
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Validate store URL format
@@ -70,9 +68,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.status(201).json({
-        success: true,
-        message: 'WooCommerce store connected successfully',
+      sendCreated(res, {
         store: {
           id: store._id,
           storeUrl: store.storeUrl,
@@ -82,7 +78,7 @@ export default class WooCommerceController {
           webhooksRegistered: store.webhooks.length,
           installedAt: store.installedAt,
         },
-      });
+      }, 'WooCommerce store connected successfully');
     } catch (error) {
       next(error);
     }
@@ -102,8 +98,7 @@ export default class WooCommerceController {
 
       const stores = await WooCommerceOAuthService.getActiveStores(companyId);
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         count: stores.length,
         stores: stores.map((store) => ({
           id: store._id,
@@ -118,7 +113,7 @@ export default class WooCommerceController {
           stats: store.stats,
           activeWebhooksCount: store.webhooks.filter((w: any) => w.isActive).length,
         })),
-      });
+      }, 'WooCommerce stores retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -134,7 +129,7 @@ export default class WooCommerceController {
       const companyId = req.user?.companyId;
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       const store = await WooCommerceStore.findOne({
@@ -143,11 +138,10 @@ export default class WooCommerceController {
       }).select('-consumerKey -consumerSecret');
 
       if (!store) {
-        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         store: {
           id: store._id,
           storeUrl: store.storeUrl,
@@ -171,7 +165,7 @@ export default class WooCommerceController {
             lastDeliveryAt: webhook.lastDeliveryAt,
           })),
         },
-      });
+      }, 'WooCommerce store details retrieved');
     } catch (error) {
       next(error);
     }
@@ -187,7 +181,7 @@ export default class WooCommerceController {
       const companyId = req.user?.companyId;
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       const store = await WooCommerceStore.findOne({
@@ -196,7 +190,7 @@ export default class WooCommerceController {
       });
 
       if (!store) {
-        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Test connection
@@ -206,11 +200,9 @@ export default class WooCommerceController {
         store.decryptConsumerSecret()
       );
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         connected,
-        message: connected ? 'Connection is valid' : 'Connection failed',
-      });
+      }, connected ? 'Connection is valid' : 'Connection failed');
     } catch (error) {
       next(error);
     }
@@ -248,10 +240,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'WooCommerce store disconnected successfully',
-      });
+      sendSuccess(res, null, 'WooCommerce store disconnected successfully');
     } catch (error) {
       next(error);
     }
@@ -289,10 +278,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Sync paused successfully',
-      });
+      sendSuccess(res, null, 'Sync paused successfully');
     } catch (error) {
       next(error);
     }
@@ -330,10 +316,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Sync resumed successfully',
-      });
+      sendSuccess(res, null, 'Sync resumed successfully');
     } catch (error) {
       next(error);
     }
@@ -356,15 +339,11 @@ export default class WooCommerceController {
       const companyId = req.user?.companyId;
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       if (!consumerKey || !consumerSecret) {
-        throw new AppError(
-          'Consumer key and consumer secret are required',
-          'VALIDATION_ERROR',
-          400
-        );
+        throw new ValidationError('Consumer key and consumer secret are required');
       }
 
       // Verify ownership
@@ -386,10 +365,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Credentials updated successfully',
-      });
+      sendSuccess(res, null, 'Credentials updated successfully');
     } catch (error) {
       next(error);
     }
@@ -431,15 +407,14 @@ export default class WooCommerceController {
         total: results.length,
       });
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         message: `Registered ${successCount} out of ${results.length} webhooks`,
         results: results.map((r) => ({
           topic: r.topic,
           success: r.success,
           error: r.error,
         })),
-      });
+      }, 'Webhooks processed');
     } catch (error) {
       next(error);
     }
@@ -485,11 +460,7 @@ export default class WooCommerceController {
         hoursBack,
       });
 
-      res.json({
-        success: true,
-        message: 'Order sync queued successfully',
-        jobId,
-      });
+      sendSuccess(res, { jobId }, 'Order sync queued successfully');
     } catch (error) {
       next(error);
     }
@@ -506,13 +477,10 @@ export default class WooCommerceController {
       const status = await WooCommerceOrderSyncJob.getJobStatus(jobId);
 
       if (!status) {
-        throw new AppError('Job not found', 'JOB_NOT_FOUND', 404);
+        throw new NotFoundError('Job', ErrorCode.RES_NOT_FOUND);
       }
 
-      res.json({
-        success: true,
-        job: status,
-      });
+      sendSuccess(res, { job: status }, 'Job status retrieved');
     } catch (error) {
       next(error);
     }
@@ -529,11 +497,11 @@ export default class WooCommerceController {
       const companyId = req.user?.companyId;
 
       if (!status) {
-        throw new AppError('Status is required', 'VALIDATION_ERROR', 400);
+        throw new ValidationError('Status is required');
       }
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Verify store ownership
@@ -543,7 +511,7 @@ export default class WooCommerceController {
       });
 
       if (!store) {
-        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Import fulfillment service from barrel export
@@ -570,10 +538,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: `Order status updated to ${status} in WooCommerce`,
-      });
+      sendSuccess(res, null, `Order status updated to ${status} in WooCommerce`);
     } catch (error) {
       next(error);
     }
@@ -590,11 +555,11 @@ export default class WooCommerceController {
       const companyId = req.user?.companyId;
 
       if (!awbNumber || !courierName) {
-        throw new AppError('AWB number and courier name are required', 'VALIDATION_ERROR', 400);
+        throw new ValidationError('AWB number and courier name are required');
       }
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Verify store ownership
@@ -604,7 +569,7 @@ export default class WooCommerceController {
       });
 
       if (!store) {
-        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Import fulfillment service from barrel export
@@ -629,10 +594,7 @@ export default class WooCommerceController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Tracking note added to order',
-      });
+      sendSuccess(res, null, 'Tracking note added to order');
     } catch (error) {
       next(error);
     }
@@ -648,7 +610,7 @@ export default class WooCommerceController {
       const companyId = req.user?.companyId;
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'UNAUTHORIZED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Verify store ownership
@@ -658,7 +620,7 @@ export default class WooCommerceController {
       });
 
       if (!store) {
-        throw new AppError('WooCommerce store not found', 'WOOCOMMERCE_STORE_NOT_FOUND', 404);
+        throw new NotFoundError('WooCommerce store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Import fulfillment service from barrel export
@@ -674,11 +636,9 @@ export default class WooCommerceController {
         syncedCount,
       });
 
-      res.json({
-        success: true,
-        message: `Synced ${syncedCount} orders to WooCommerce`,
+      sendSuccess(res, {
         syncedCount,
-      });
+      }, `Synced ${syncedCount} orders to WooCommerce`);
     } catch (error) {
       next(error);
     }

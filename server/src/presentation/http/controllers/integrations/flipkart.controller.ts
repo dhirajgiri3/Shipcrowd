@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import FlipkartOAuthService from '../../../../core/application/services/flipkart/flipkart-oauth.service';
-import { AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -37,19 +39,19 @@ export class FlipkartController {
       const userId = req.user?._id;
 
       if (!sellerId || typeof sellerId !== 'string') {
-        throw new AppError('Seller ID is required', 'FLIPKART_SELLER_ID_REQUIRED', 400);
+        throw new ValidationError('Seller ID is required');
       }
 
       if (!apiKey || typeof apiKey !== 'string') {
-        throw new AppError('API key is required', 'FLIPKART_API_KEY_REQUIRED', 400);
+        throw new ValidationError('API key is required');
       }
 
       if (!apiSecret || typeof apiSecret !== 'string') {
-        throw new AppError('API secret is required', 'FLIPKART_API_SECRET_REQUIRED', 400);
+        throw new ValidationError('API secret is required');
       }
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'AUTH_COMPANY_REQUIRED', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       // Connect Flipkart seller account
@@ -70,16 +72,14 @@ export class FlipkartController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         store: {
           id: store._id,
           sellerId: store.sellerId,
           sellerName: store.sellerName,
           isActive: store.isActive,
         },
-        message: 'Flipkart seller account connected successfully',
-      });
+      }, 'Flipkart seller account connected successfully');
     } catch (error) {
       next(error);
     }
@@ -95,13 +95,12 @@ export class FlipkartController {
       const companyId = req.user?.companyId;
 
       if (!companyId) {
-        throw new AppError('Company ID not found in request', 'ERROR_CODE', 401);
+        throw new AuthenticationError('Company ID not found in request', ErrorCode.AUTH_REQUIRED);
       }
 
       const stores = await FlipkartOAuthService.getActiveStores(companyId);
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         count: stores.length,
         stores: stores.map((store) => ({
           id: store._id,
@@ -115,7 +114,7 @@ export class FlipkartController {
           stats: store.stats,
           activeWebhooksCount: store.webhooks.filter((w: any) => w.isActive).length,
         })),
-      });
+      }, 'Flipkart stores retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -138,11 +137,10 @@ export class FlipkartController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         store: {
           id: store._id,
           sellerEmail: store.sellerEmail,
@@ -155,7 +153,7 @@ export class FlipkartController {
           webhooks: store.webhooks,
           stats: store.stats,
         },
-      });
+      }, 'Flipkart store details retrieved');
     } catch (error) {
       next(error);
     }
@@ -179,7 +177,7 @@ export class FlipkartController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Disconnect store
@@ -192,10 +190,7 @@ export class FlipkartController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Store disconnected successfully',
-      });
+      sendSuccess(res, null, 'Store disconnected successfully');
     } catch (error) {
       next(error);
     }
@@ -216,7 +211,7 @@ export class FlipkartController {
       const store = await FlipkartStore.findById(id).select('+apiKey +apiSecret');
 
       if (!store || String(store.companyId) !== String(companyId)) {
-        throw new AppError('Store not found', 'FLIPKART_STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Test connection using credentials
@@ -226,11 +221,9 @@ export class FlipkartController {
         store.sellerId
       );
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         connected: isValid,
-        message: isValid ? 'Connection is valid' : 'Connection failed',
-      });
+      }, isValid ? 'Connection is valid' : 'Connection failed');
     } catch (error) {
       next(error);
     }
@@ -254,7 +247,7 @@ export class FlipkartController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       await FlipkartOAuthService.togglePauseSync(id, true);
@@ -266,10 +259,7 @@ export class FlipkartController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Sync paused successfully',
-      });
+      sendSuccess(res, null, 'Sync paused successfully');
     } catch (error) {
       next(error);
     }
@@ -293,7 +283,7 @@ export class FlipkartController {
       });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Flipkart store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       await FlipkartOAuthService.togglePauseSync(id, false);
@@ -305,10 +295,7 @@ export class FlipkartController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Sync resumed successfully',
-      });
+      sendSuccess(res, null, 'Sync resumed successfully');
     } catch (error) {
       next(error);
     }

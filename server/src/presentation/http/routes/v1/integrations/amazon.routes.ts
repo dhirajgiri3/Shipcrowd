@@ -3,6 +3,7 @@ import AmazonController from '../../../controllers/integrations/amazon.controlle
 import amazonProductMappingRoutes from './amazon-product-mapping.routes';
 import { authenticate } from '../../../middleware/auth/auth';
 import { authorize } from '../../../middleware/auth/auth';
+import { checkKYC } from '../../../middleware/auth/kyc';
 
 /**
  * Amazon Integration Routes
@@ -22,6 +23,7 @@ const router = Router();
 router.post(
     '/connect',
     authenticate,
+    checkKYC,
     authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can connect
     AmazonController.connect
 );
@@ -48,6 +50,7 @@ router.get(
 router.delete(
     '/stores/:id',
     authenticate,
+    checkKYC,
     authorize(['ADMIN', 'COMPANY_OWNER']), // Only admins can disconnect
     AmazonController.disconnectStore
 );
@@ -63,6 +66,7 @@ router.post(
 router.post(
     '/stores/:id/pause',
     authenticate,
+    checkKYC,
     authorize(['ADMIN', 'COMPANY_OWNER']),
     AmazonController.pauseSync
 );
@@ -71,6 +75,7 @@ router.post(
 router.post(
     '/stores/:id/resume',
     authenticate,
+    checkKYC,
     authorize(['ADMIN', 'COMPANY_OWNER']),
     AmazonController.resumeSync
 );
@@ -79,6 +84,7 @@ router.post(
 router.post(
     '/stores/:id/sync-orders',
     authenticate,
+    checkKYC,
     authorize(['ADMIN', 'COMPANY_OWNER']),
     AmazonController.syncOrders
 );
@@ -87,6 +93,7 @@ router.post(
 router.post(
     '/stores/:id/refresh',
     authenticate,
+    checkKYC,
     authorize(['ADMIN', 'COMPANY_OWNER']),
     AmazonController.refreshCredentials
 );

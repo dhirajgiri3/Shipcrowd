@@ -11,7 +11,7 @@
 import { Request, Response, NextFunction } from 'express';
 import SalesRepresentativeService from '../../../../core/application/services/commission/sales-representative.service';
 import { AppError } from '../../../../shared/errors/index';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { ValidationError } from '../../../../shared/errors/app.error';
 import {
     createSalesRepSchema,
     updateSalesRepSchema,
@@ -39,13 +39,11 @@ export class SalesRepresentativeController {
             // Validate request body
             const validation = createSalesRepSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const salesRep = await SalesRepresentativeService.createSalesRep(
@@ -80,13 +78,11 @@ export class SalesRepresentativeController {
             // Validate query parameters
             const validation = listSalesRepsQuerySchema.safeParse(req.query);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const { page, limit, status, role, territory, sortBy, sortOrder } = validation.data;
@@ -178,13 +174,11 @@ export class SalesRepresentativeController {
             // Validate request body
             const validation = updateSalesRepSchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const salesRep = await SalesRepresentativeService.updateSalesRep(
@@ -295,13 +289,11 @@ export class SalesRepresentativeController {
             // Validate request body
             const validation = assignTerritorySchema.safeParse(req.body);
             if (!validation.success) {
-                const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
+                const details = validation.error.errors.map(err => ({
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', details);
             }
 
             const salesRep = await SalesRepresentativeService.assignTerritory(

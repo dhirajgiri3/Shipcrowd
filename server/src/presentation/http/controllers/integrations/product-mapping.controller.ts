@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
 import ShopifyInventorySyncService from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
-import { AppError } from '../../../../shared/errors/app.error';
+import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import logger from '../../../../shared/logger/winston.logger';
 
 /**
@@ -38,7 +40,7 @@ export class ProductMappingController {
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       const result = await ProductMappingService.autoMapProducts(storeId);
@@ -50,11 +52,10 @@ export class ProductMappingController {
         result,
       });
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         ...result,
         message: `Auto-mapped ${result.mapped} products, skipped ${result.skipped}, failed ${result.failed}`,
-      });
+      }, 'Auto-mapping completed');
     } catch (error) {
       next(error);
     }
@@ -75,7 +76,7 @@ export class ProductMappingController {
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       const page = parseInt(req.query.page as string) || 1;
@@ -97,10 +98,7 @@ export class ProductMappingController {
 
       const result = await ProductMappingService.getMappings(storeId, filters, page, limit);
 
-      res.json({
-        success: true,
-        ...result,
-      });
+      sendSuccess(res, result, 'Mappings retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -121,7 +119,7 @@ export class ProductMappingController {
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       const mapping = await ProductMappingService.createManualMapping({
@@ -136,11 +134,7 @@ export class ProductMappingController {
         userId: req.user?._id,
       });
 
-      res.status(201).json({
-        success: true,
-        mapping,
-        message: 'Product mapping created successfully',
-      });
+      sendCreated(res, { mapping }, 'Product mapping created successfully');
     } catch (error) {
       next(error);
     }
@@ -161,11 +155,11 @@ export class ProductMappingController {
       const mapping = await ProductMapping.findById(mappingId);
 
       if (!mapping) {
-        throw new AppError('Mapping not found', 'MAPPING_NOT_FOUND', 404);
+        throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
       if (mapping.companyId.toString() !== companyId) {
-        throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+        throw new AuthorizationError('Unauthorized');
       }
 
       await ProductMappingService.deleteMapping(mappingId);
@@ -176,10 +170,7 @@ export class ProductMappingController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Product mapping deleted successfully',
-      });
+      sendSuccess(res, null, 'Product mapping deleted successfully');
     } catch (error) {
       next(error);
     }
@@ -200,14 +191,14 @@ export class ProductMappingController {
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       // Get CSV data from request body or file upload
       const csvData = req.body.csvData || req.file?.buffer?.toString('utf-8');
 
       if (!csvData) {
-        throw new AppError('CSV data is required', 'CSV_DATA_REQUIRED', 400);
+        throw new ValidationError('CSV data is required');
       }
 
       const result = await ProductMappingService.importMappingsFromCSV(storeId, csvData);
@@ -219,11 +210,10 @@ export class ProductMappingController {
         ...result,
       });
 
-      res.json({
-        success: true,
+      sendSuccess(res, {
         ...result,
         message: `Imported ${result.imported} mappings, failed ${result.failed}`,
-      });
+      }, 'CSV import completed');
     } catch (error) {
       next(error);
     }
@@ -244,7 +234,7 @@ export class ProductMappingController {
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       const csv = await ProductMappingService.exportMappingsToCSV(storeId);
@@ -278,15 +268,12 @@ export class ProductMappingController {
       const store = await ShopifyStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
-        throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
       const stats = await ProductMappingService.getMappingStats(storeId);
 
-      res.json({
-        success: true,
-        stats,
-      });
+      sendSuccess(res, { stats }, 'Mapping stats retrieved');
     } catch (error) {
       next(error);
     }
@@ -308,11 +295,11 @@ export class ProductMappingController {
       const mapping = await ProductMapping.findById(mappingId);
 
       if (!mapping) {
-        throw new AppError('Mapping not found', 'MAPPING_NOT_FOUND', 404);
+        throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
       if (mapping.companyId.toString() !== companyId) {
-        throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+        throw new AuthorizationError('Unauthorized');
       }
 
       await ProductMappingService.toggleMappingStatus(mappingId, isActive);
@@ -323,10 +310,7 @@ export class ProductMappingController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: `Mapping ${isActive ? 'activated' : 'deactivated'} successfully`,
-      });
+      sendSuccess(res, null, `Mapping ${isActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       next(error);
     }
@@ -348,15 +332,15 @@ export class ProductMappingController {
       const mapping = await ProductMapping.findById(mappingId);
 
       if (!mapping) {
-        throw new AppError('Mapping not found', 'MAPPING_NOT_FOUND', 404);
+        throw new NotFoundError('Mapping', ErrorCode.RES_NOT_FOUND);
       }
 
       if (mapping.companyId.toString() !== companyId) {
-        throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+        throw new AuthorizationError('Unauthorized');
       }
 
       if (quantity === undefined || quantity < 0) {
-        throw new AppError('Valid quantity is required', 'INVALID_QUANTITY', 400);
+        throw new ValidationError('Valid quantity is required');
       }
 
       await ShopifyInventorySyncService.syncProductInventory(mappingId, quantity);
@@ -367,10 +351,7 @@ export class ProductMappingController {
         userId: req.user?._id,
       });
 
-      res.json({
-        success: true,
-        message: 'Inventory synced successfully',
-      });
+      sendSuccess(res, null, 'Inventory synced successfully');
     } catch (error) {
       next(error);
     }

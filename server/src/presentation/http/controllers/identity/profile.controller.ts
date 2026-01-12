@@ -7,11 +7,9 @@ import {
 } from '../../../../core/application/services/user/profile.service';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
-import {
-  sendSuccess,
-  sendError,
-  sendValidationError
-} from '../../../../shared/utils/responseHelper';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
+import { AuthenticationError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Define validation schemas for different profile sections
 const basicProfileSchema = z.object({
@@ -55,14 +53,12 @@ const preferencesProfileSchema = z.object({
 export const getProfileCompletion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     let user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // If profile completion status doesn't exist or is outdated, update it
@@ -73,8 +69,7 @@ export const getProfileCompletion = async (req: Request, res: Response, next: Ne
       // Refresh user data
       const updatedUser = await User.findById(req.user._id);
       if (!updatedUser) {
-        sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-        return;
+        throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
       }
       user = updatedUser;
     }
@@ -99,25 +94,21 @@ export const getProfileCompletion = async (req: Request, res: Response, next: Ne
 export const updateBasicProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = basicProfileSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Update user name if provided
@@ -173,25 +164,21 @@ export const updateBasicProfile = async (req: Request, res: Response, next: Next
 export const updateAddressProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = addressProfileSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Update profile fields
@@ -245,25 +232,21 @@ export const updateAddressProfile = async (req: Request, res: Response, next: Ne
 export const updatePersonalProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = personalProfileSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Update profile fields
@@ -315,25 +298,21 @@ export const updatePersonalProfile = async (req: Request, res: Response, next: N
 export const updateSocialProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = socialProfileSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Update social links
@@ -382,25 +361,21 @@ export const updateSocialProfile = async (req: Request, res: Response, next: Nex
 export const updatePreferencesProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const validation = preferencesProfileSchema.safeParse(req.body);
     if (!validation.success) {
-      const errors = validation.error.errors.map(err => ({
-        code: 'VALIDATION_ERROR',
-        message: err.message,
+      const details = validation.error.errors.map(err => ({
         field: err.path.join('.'),
+        message: err.message,
       }));
-      sendValidationError(res, errors);
-      return;
+      throw new ValidationError('Validation failed', details);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Update preferences
@@ -450,14 +425,12 @@ export const updatePreferencesProfile = async (req: Request, res: Response, next
 export const getProfilePrompts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     let user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // If profile completion doesn't exist, update it
@@ -466,8 +439,7 @@ export const getProfilePrompts = async (req: Request, res: Response, next: NextF
       // Refresh user data
       const updatedUser = await User.findById(req.user._id);
       if (!updatedUser) {
-        sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-        return;
+        throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
       }
       user = updatedUser;
     }
@@ -508,14 +480,12 @@ export const getProfilePrompts = async (req: Request, res: Response, next: NextF
 export const dismissProfilePrompt = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.user) {
-      sendError(res, 'Authentication required', 401, 'AUTH_REQUIRED');
-      return;
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
-      return;
+      throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
     }
 
     // Set next prompt date to 7 days later

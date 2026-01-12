@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
+import { AuthenticationError, NotFoundError, AuthorizationError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
  * Middleware to check if user has completed KYC verification
@@ -24,12 +26,7 @@ export const checkKYC = async (
 
         // Check if user is authenticated
         if (!authUser) {
-            res.status(401).json({
-                success: false,
-                message: 'Authentication required',
-                code: 'AUTHENTICATION_REQUIRED',
-            });
-            return;
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
 
         // ✅ Platform admin exempt from KYC
@@ -42,12 +39,7 @@ export const checkKYC = async (
         const user = await User.findById(authUser._id).select('kycStatus role teamRole companyId');
 
         if (!user) {
-            res.status(404).json({
-                success: false,
-                message: 'User not found',
-                code: 'USER_NOT_FOUND',
-            });
-            return;
+            throw new NotFoundError('User', ErrorCode.RES_USER_NOT_FOUND);
         }
 
         // ✅ Viewer role exempt (read-only access, no KYC needed)
@@ -82,19 +74,10 @@ export const checkKYC = async (
                 req
             );
 
-            res.status(403).json({
-                success: false,
-                message: 'Complete KYC verification to perform this action',
-                code: 'KYC_REQUIRED',
-                data: {
-                    kycUrl: '/kyc',
-                    kycStatus: {
-                        isComplete: user.kycStatus?.isComplete || false,
-                        lastUpdated: user.kycStatus?.lastUpdated,
-                    },
-                },
-            });
-            return;
+            throw new AuthorizationError(
+                'Complete KYC verification to perform this action',
+                ErrorCode.AUTH_KYC_NOT_VERIFIED
+            );
         }
 
         // ✅ FEATURE 14: Cross-Company KYC Bypass Prevention
@@ -117,16 +100,10 @@ export const checkKYC = async (
                     endpoint: req.path,
                 });
 
-                res.status(403).json({
-                    success: false,
-                    message: 'Access denied. You must complete KYC for your current company.',
-                    code: 'KYC_REQUIRED_FOR_COMPANY',
-                    data: {
-                        kycUrl: '/kyc',
-                        requiresNewKYC: true,
-                    },
-                });
-                return;
+                throw new AuthorizationError(
+                    'Access denied. You must complete KYC for your current company.',
+                    ErrorCode.AUTH_KYC_NOT_VERIFIED
+                );
             }
         }
 
@@ -134,11 +111,8 @@ export const checkKYC = async (
         next();
     } catch (error) {
         logger.error('KYC check middleware error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            code: 'INTERNAL_ERROR',
-        });
+        // Pass error to global error handler
+        next(error);
     }
 };
 

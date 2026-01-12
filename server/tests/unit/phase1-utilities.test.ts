@@ -6,7 +6,7 @@ import {
     sanitizeSql,
     sanitizeNoSql,
     sanitizePath,
-} from '../src/shared/utils/sanitize';
+} from '../../src/shared/utils/sanitize';
 
 describe('Sanitization Utilities', () => {
     describe('stripHtml', () => {

@@ -8,8 +8,9 @@ import { Request, Response, NextFunction } from 'express';
 import { RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import RTOService from '../../../../core/application/services/rto/rto.service';
 import NDRAnalyticsService from '../../../../core/application/services/ndr/ndr-analytics.service';
-import { AppError } from '../../../../shared/errors';
-import { sendValidationError } from '../../../../shared/utils/responseHelper';
+import { AppError, ValidationError, NotFoundError, AuthenticationError, RateLimitError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import {
     listRTOEventsQuerySchema,
     triggerManualRTOSchema,
@@ -28,19 +29,17 @@ export class RTOController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = listRTOEventsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const {
@@ -78,8 +77,7 @@ export class RTOController {
                 RTOEvent.countDocuments(filter),
             ]);
 
-            res.status(200).json({
-                success: true,
+            sendSuccess(res, {
                 data: events,
                 pagination: {
                     page,
@@ -106,13 +104,10 @@ export class RTOController {
                 .populate('shipment order warehouse ndrEvent');
 
             if (!rtoEvent) {
-                throw new AppError('RTO event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('RTO event', ErrorCode.RES_NOT_FOUND);
             }
 
-            res.status(200).json({
-                success: true,
-                data: rtoEvent,
-            });
+            sendSuccess(res, { data: rtoEvent });
         } catch (error) {
             next(error);
         }
@@ -131,12 +126,10 @@ export class RTOController {
             const validation = triggerManualRTOSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { shipmentId, reason, notes, warehouseId, expectedReturnDate } = validation.data;
@@ -156,20 +149,18 @@ export class RTOController {
                     if (retryAfterMatch) {
                         const retryAfter = parseInt(retryAfterMatch[1], 10);
                         res.set('Retry-After', String(retryAfter));
-                        throw new AppError(result.error, 'RATE_LIMIT_EXCEEDED', 429);
+                        throw new RateLimitError(result.error, retryAfter);
                     }
                 }
-                throw new AppError(result.error || 'Failed to trigger RTO', 'RTO_ERROR', 400);
+                throw new AppError(result.error || 'Failed to trigger RTO', ErrorCode.EXT_SERVICE_ERROR, 400);
             }
 
-            res.status(200).json({
-                success: true,
+            sendSuccess(res, {
                 data: {
                     rtoEventId: result.rtoEventId,
                     reverseAwb: result.reverseAwb,
-                },
-                message: 'RTO triggered successfully',
-            });
+                }
+            }, 'RTO triggered successfully');
         } catch (error) {
             next(error);
         }
@@ -188,12 +179,10 @@ export class RTOController {
             const validation = updateRTOStatusSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { returnStatus, notes, actualReturnDate, reverseAwb } = validation.data;
@@ -201,7 +190,7 @@ export class RTOController {
             // Verify ownership
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
             if (!rtoEvent) {
-                throw new AppError('RTO event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('RTO event', ErrorCode.RES_NOT_FOUND);
             }
 
             await RTOService.updateRTOStatus(id, returnStatus, {
@@ -210,10 +199,7 @@ export class RTOController {
                 reverseAwb,
             });
 
-            res.status(200).json({
-                success: true,
-                message: 'RTO status updated',
-            });
+            sendSuccess(res, null, 'RTO status updated');
         } catch (error) {
             next(error);
         }
@@ -233,12 +219,10 @@ export class RTOController {
             const validation = recordQCResultSchema.safeParse(req.body);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { qcResult, nextAction } = validation.data;
@@ -246,7 +230,7 @@ export class RTOController {
             // Verify ownership
             const rtoEvent = await RTOEvent.findOne({ _id: id, company: companyId });
             if (!rtoEvent) {
-                throw new AppError('RTO event not found', 'NOT_FOUND', 404);
+                throw new NotFoundError('RTO event', ErrorCode.RES_NOT_FOUND);
             }
 
             await RTOService.recordQCResult(id, {
@@ -254,10 +238,7 @@ export class RTOController {
                 inspectedBy: qcResult.inspectedBy || userId || 'system',
             });
 
-            res.status(200).json({
-                success: true,
-                message: 'QC result recorded',
-            });
+            sendSuccess(res, null, 'QC result recorded');
         } catch (error) {
             next(error);
         }
@@ -271,19 +252,17 @@ export class RTOController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = getRTOStatsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { startDate, endDate, warehouseId, rtoReason } = validation.data;
@@ -298,10 +277,7 @@ export class RTOController {
 
             const stats = await NDRAnalyticsService.getRTOStats(companyId, dateRange);
 
-            res.status(200).json({
-                success: true,
-                data: stats,
-            });
+            sendSuccess(res, { data: stats });
         } catch (error) {
             next(error);
         }
@@ -315,29 +291,24 @@ export class RTOController {
         try {
             const companyId = req.user?.companyId;
             if (!companyId) {
-                throw new AppError('Unauthorized', 'UNAUTHORIZED', 401);
+                throw new AuthenticationError('Unauthorized', ErrorCode.AUTH_REQUIRED);
             }
 
             // Validate query parameters
             const validation = getPendingRTOsQuerySchema.safeParse(req.query);
             if (!validation.success) {
                 const errors = validation.error.errors.map(err => ({
-                    code: 'VALIDATION_ERROR',
-                    message: err.message,
                     field: err.path.join('.'),
+                    message: err.message,
                 }));
-                sendValidationError(res, errors);
-                return;
+                throw new ValidationError('Validation failed', errors);
             }
 
             const { warehouseId, daysUntilReturn } = validation.data;
 
             const pendingRTOs = await RTOEvent.getPendingRTOs(companyId);
 
-            res.status(200).json({
-                success: true,
-                data: pendingRTOs,
-            });
+            sendSuccess(res, { data: pendingRTOs });
         } catch (error) {
             next(error);
         }
