@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import { requestDeduplicator, deduplicationMetrics } from './requestDeduplication';
 
 /**
  * Normalized API error format
@@ -210,6 +211,14 @@ const createApiClient = (): AxiosInstance => {
      */
     client.interceptors.request.use(
         async (config: InternalAxiosRequestConfig) => {
+            // Deduplication check for GET requests
+            if (config.method?.toUpperCase() === 'GET') {
+                if (requestDeduplicator.isRequestPending(config)) {
+                    // Mark as deduplicated for analytics
+                    (config as any).deduplicated = true;
+                }
+            }
+            
             // Add CSRF token for state-changing requests
             if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
                 // Check if CSRF token is already set (from function call)

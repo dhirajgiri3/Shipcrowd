@@ -140,7 +140,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -156,7 +156,7 @@ export class ShopifyWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -184,7 +184,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -200,7 +200,7 @@ export class ShopifyWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -228,7 +228,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -245,7 +245,7 @@ export class ShopifyWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -273,7 +273,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -290,7 +290,7 @@ export class ShopifyWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -318,7 +318,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -335,7 +335,7 @@ export class ShopifyWebhookController {
         { priority: 1 } // Highest priority
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -363,7 +363,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -380,7 +380,7 @@ export class ShopifyWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }

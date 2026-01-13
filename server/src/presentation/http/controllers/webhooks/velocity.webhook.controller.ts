@@ -10,6 +10,7 @@ import { VelocityWebhookService } from '../../../../core/application/services/we
 import { VelocityWebhookPayload } from '../../../../infrastructure/external/couriers/velocity/velocity-webhook.types';
 import { WebhookRequest } from '../../middleware/webhooks/velocity-webhook-auth.middleware';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 // Initialize webhook service
 const webhookService = new VelocityWebhookService();
@@ -104,17 +105,13 @@ export const handleVelocityWebhook = async (
     });
 
     // Return success response (always return 200 for Velocity to stop retrying)
-    res.status(200).json({
-      success: result.success,
-      message: result.success ? 'Webhook processed successfully' : 'Webhook processing failed',
-      data: {
-        awb: result.awb,
-        orderId: result.orderId,
-        statusUpdated: result.statusUpdated,
-        timestamp: result.timestamp
-      },
+    sendSuccess(res, {
+      awb: result.awb,
+      orderId: result.orderId,
+      statusUpdated: result.statusUpdated,
+      timestamp: result.timestamp,
       error: result.error
-    });
+    }, result.success ? 'Webhook processed successfully' : 'Webhook processing failed');
   } catch (error) {
     const processingTime = Date.now() - startTime;
     metrics.failedProcessed++;
@@ -126,11 +123,9 @@ export const handleVelocityWebhook = async (
 
     // Return 200 to prevent Velocity from retrying
     // Log error internally for investigation
-    res.status(200).json({
-      success: false,
-      message: 'Internal error processing webhook',
+    sendSuccess(res, {
       error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    }, 'Internal error processing webhook');
   }
 };
 
@@ -149,18 +144,15 @@ export const getWebhookMetrics = async (
       ? metrics.processingTimes.reduce((a, b) => a + b, 0) / metrics.processingTimes.length
       : 0;
 
-    res.status(200).json({
-      success: true,
-      data: {
-        totalReceived: metrics.totalReceived,
-        successfulProcessed: metrics.successfulProcessed,
-        failedProcessed: metrics.failedProcessed,
-        successRate: metrics.totalReceived > 0
-          ? (metrics.successfulProcessed / metrics.totalReceived * 100).toFixed(2) + '%'
-          : '0%',
-        averageProcessingTimeMs: Math.round(avgProcessingTime),
-        lastProcessedAt: metrics.lastProcessedAt
-      }
+    sendSuccess(res, {
+      totalReceived: metrics.totalReceived,
+      successfulProcessed: metrics.successfulProcessed,
+      failedProcessed: metrics.failedProcessed,
+      successRate: metrics.totalReceived > 0
+        ? (metrics.successfulProcessed / metrics.totalReceived * 100).toFixed(2) + '%'
+        : '0%',
+      averageProcessingTimeMs: Math.round(avgProcessingTime),
+      lastProcessedAt: metrics.lastProcessedAt
     });
   } catch (error) {
     logger.error('Error retrieving webhook metrics', { error });
@@ -178,11 +170,9 @@ export const webhookHealthCheck = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    res.status(200).json({
-      success: true,
-      message: 'Velocity webhook endpoint is healthy',
+    sendSuccess(res, {
       timestamp: new Date()
-    });
+    }, 'Velocity webhook endpoint is healthy');
   } catch (error) {
     logger.error('Error in webhook health check', { error });
     next(error);

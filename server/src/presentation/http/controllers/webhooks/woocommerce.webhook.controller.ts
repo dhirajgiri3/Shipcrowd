@@ -8,6 +8,7 @@
 import { Request, Response, NextFunction } from 'express';
 import WooCommerceWebhookService from '../../../../core/application/services/woocommerce/woocommerce-webhook.service';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 export default class WooCommerceWebhookController {
   /**
@@ -35,7 +36,7 @@ export default class WooCommerceWebhookController {
       );
 
       // Return 200 immediately
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -64,7 +65,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -93,7 +94,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -122,7 +123,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -151,7 +152,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -180,7 +181,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -209,7 +210,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -238,7 +239,7 @@ export default class WooCommerceWebhookController {
         }
       );
 
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }

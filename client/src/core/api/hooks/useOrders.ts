@@ -6,6 +6,8 @@ import {
     UseMutationOptions
 } from '@tanstack/react-query';
 import { orderApi } from '../order.api';
+import { queryKeys } from '../queryKeys';
+import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../cacheConfig';
 import { handleApiError, showSuccessToast } from '@/lib/error-handler';
 import { ApiError } from '../client';
 import type {
@@ -18,37 +20,42 @@ import type {
 
 /**
  * React Query hook for fetching orders list with pagination
+ * Uses centralized cache configuration with medium cache time
  */
 export const useOrdersList = (
     params?: OrderListParams,
     options?: UseQueryOptions<GetOrdersResponse, ApiError>
 ) => {
     return useQuery<GetOrdersResponse, ApiError>({
-        queryKey: ['orders', params],
+        queryKey: queryKeys.orders.list(params),
         queryFn: async () => await orderApi.getOrders(params),
-        staleTime: 30000, // 30 seconds
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * React Query hook for fetching a single order
+ * Enabled only when orderId is provided
  */
 export const useOrder = (
     orderId: string,
     options?: UseQueryOptions<GetOrderResponse, ApiError>
 ) => {
     return useQuery<GetOrderResponse, ApiError>({
-        queryKey: ['orders', orderId],
+        queryKey: queryKeys.orders.detail(orderId),
         queryFn: async () => await orderApi.getOrder(orderId),
         enabled: !!orderId,
-        staleTime: 60000, // 1 minute
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * React Query mutation hook for creating orders
+ * Invalidates orders list and analytics after successful creation
  */
 export const useCreateOrder = (
     options?: UseMutationOptions<Order, ApiError, CreateOrderRequest>
@@ -61,18 +68,23 @@ export const useCreateOrder = (
             return response.data.order;
         },
         onSuccess: (order) => {
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            // Invalidate related caches using centralized patterns
+            INVALIDATION_PATTERNS.ORDER_MUTATIONS.CREATE().forEach((pattern) => {
+                queryClient.invalidateQueries(pattern);
+            });
             showSuccessToast(`Order ${order.orderNumber} created successfully`);
         },
         onError: (error) => {
             handleApiError(error, 'Create Order Failed');
         },
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * React Query mutation hook for updating orders
+ * Uses optimistic update pattern to reduce UI flickering
  */
 export const useUpdateOrder = (
     options?: UseMutationOptions<
@@ -92,23 +104,44 @@ export const useUpdateOrder = (
             const response = await orderApi.updateOrder(orderId, data);
             return response.data.order;
         },
-        onSuccess: (order, variables) => {
-            queryClient.setQueryData(['orders', variables.orderId], (old: any) => ({
+        // Optimistic update: update UI immediately
+        onMutate: async ({ orderId, data }) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ queryKey: queryKeys.orders.detail(orderId) });
+
+            // Snapshot previous data
+            const previousData = queryClient.getQueryData(queryKeys.orders.detail(orderId));
+
+            // Optimistically update cache
+            queryClient.setQueryData(queryKeys.orders.detail(orderId), (old: any) => ({
                 ...old,
-                data: { order }
+                data: { order: { ...old?.data?.order, ...data } }
             }));
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
+
+            return { previousData, orderId };
+        },
+        onSuccess: (order, variables) => {
+            // Invalidate related caches
+            INVALIDATION_PATTERNS.ORDER_MUTATIONS.UPDATE().forEach((pattern) => {
+                queryClient.invalidateQueries(pattern);
+            });
             showSuccessToast('Order updated successfully');
         },
-        onError: (error) => {
+        onError: (error, variables, context) => {
+            // Rollback on error
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.orders.detail(variables.orderId), context.previousData);
+            }
             handleApiError(error, 'Update Order Failed');
         },
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * React Query mutation hook for deleting orders
+ * Removes query data after successful deletion
  */
 export const useDeleteOrder = (
     options?: UseMutationOptions<void, ApiError, string>
@@ -120,13 +153,18 @@ export const useDeleteOrder = (
             await orderApi.deleteOrder(orderId);
         },
         onSuccess: (_, orderId) => {
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
-            queryClient.removeQueries({ queryKey: ['orders', orderId] });
+            // Invalidate related caches using centralized patterns
+            INVALIDATION_PATTERNS.ORDER_MUTATIONS.DELETE().forEach((pattern) => {
+                queryClient.invalidateQueries(pattern);
+            });
+            // Remove specific order from cache
+            queryClient.removeQueries({ queryKey: queryKeys.orders.detail(orderId) });
             showSuccessToast('Order deleted successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Delete Order Failed');
         },
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };

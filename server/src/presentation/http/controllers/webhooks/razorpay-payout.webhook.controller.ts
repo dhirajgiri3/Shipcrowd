@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import logger from '../../../../shared/logger/winston.logger';
 import crypto from 'crypto';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Verify Razorpay webhook signature
@@ -70,11 +71,11 @@ export const handlePayoutWebhook = async (
         }
 
         // Always respond with 200 to acknowledge receipt
-        res.status(200).json({ received: true });
+        sendSuccess(res, { received: true });
     } catch (error) {
         logger.error('Error processing Razorpay payout webhook:', error);
         // Still return 200 to prevent Razorpay from retrying
-        res.status(200).json({ received: true, error: 'Processing failed' });
+        sendSuccess(res, { received: true, error: 'Processing failed' });
     }
 };
 

@@ -3,6 +3,7 @@ import { WebhookEvent } from '../../../../infrastructure/database/mongoose/model
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 import crypto from 'crypto';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * FlipkartWebhookController
@@ -64,7 +65,7 @@ export class FlipkartWebhookController {
         logger.info('Duplicate webhook received', {
           topic: 'order/create',
         });
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -85,7 +86,7 @@ export class FlipkartWebhookController {
       await store.recordWebhookReceived();
 
       // Return 200 immediately
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -115,7 +116,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -131,7 +132,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -161,7 +162,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -177,7 +178,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -207,7 +208,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -224,7 +225,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -254,7 +255,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -270,7 +271,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -300,7 +301,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -317,7 +318,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -347,7 +348,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -364,7 +365,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -394,7 +395,7 @@ export class FlipkartWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -411,7 +412,7 @@ export class FlipkartWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }

@@ -1,4 +1,6 @@
 import { apiClient, ApiError } from '../client';
+import { queryKeys } from '../queryKeys';
+import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../cacheConfig';
 import { handleApiError, showSuccessToast } from '@/lib/error-handler';
 import {
     useQuery,
@@ -82,54 +84,61 @@ export interface TrackingResponse {
 }
 
 /**
- * Fetch paginated shipments list
+ * Fetch paginated shipments list with filters
+ * Uses medium cache time since shipments status changes frequently
  */
 export const useShipments = (filters: ShipmentFilters = {}, options?: UseQueryOptions<ShipmentsResponse, ApiError>) => {
     return useQuery<ShipmentsResponse, ApiError>({
-        queryKey: ['shipments', filters],
+        queryKey: queryKeys.shipments.list(filters),
         queryFn: async () => {
             const response = await apiClient.get('/shipments', { params: filters });
             return response.data;
         },
-        staleTime: 30000,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * Fetch single shipment by ID
+ * Real-time cache for accurate status display
  */
 export const useShipment = (shipmentId: string, options?: UseQueryOptions<Shipment, ApiError>) => {
     return useQuery<Shipment, ApiError>({
-        queryKey: ['shipments', shipmentId],
+        queryKey: queryKeys.shipments.detail(shipmentId),
         queryFn: async () => {
             const response = await apiClient.get(`/shipments/${shipmentId}`);
             return response.data.shipment;
         },
         enabled: !!shipmentId,
-        staleTime: 30000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * Track shipment by AWB/tracking number
+ * Real-time tracking data with aggressive refresh
  */
 export const useTrackShipment = (trackingNumber: string, options?: UseQueryOptions<TrackingResponse, ApiError>) => {
     return useQuery<TrackingResponse, ApiError>({
-        queryKey: ['shipments', 'tracking', trackingNumber],
+        queryKey: queryKeys.tracking.byNumber(trackingNumber),
         queryFn: async () => {
             const response = await apiClient.get(`/shipments/tracking/${trackingNumber}`);
             return response.data;
         },
         enabled: !!trackingNumber && trackingNumber.length > 0,
-        staleTime: 60000, // 1 minute for tracking data
+        ...CACHE_TIMES.REALTIME,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * Create shipment from order (returns carrier alternatives)
+ * Invalidates shipments list and related orders
  */
 export const useCreateShipment = (options?: UseMutationOptions<CreateShipmentResponse, ApiError, CreateShipmentPayload>) => {
     const queryClient = useQueryClient();
@@ -140,21 +149,23 @@ export const useCreateShipment = (options?: UseMutationOptions<CreateShipmentRes
             return response.data;
         },
         onSuccess: (data) => {
-            // Invalidate shipments list and related order
-            queryClient.invalidateQueries({ queryKey: ['shipments'] });
-            queryClient.invalidateQueries({ queryKey: ['orders', data.shipment.orderId] });
-            queryClient.invalidateQueries({ queryKey: ['orders'] });
+            // Invalidate related caches using centralized patterns
+            INVALIDATION_PATTERNS.SHIPMENT_MUTATIONS.CREATE().forEach((pattern) => {
+                queryClient.invalidateQueries(pattern);
+            });
             showSuccessToast(`Shipment created with ${data.carrierSelection.selectedCarrier}`);
         },
         onError: (error) => {
             handleApiError(error, 'Create Shipment Failed');
         },
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
  * Update shipment status with timeline update
+ * Uses optimistic update for immediate UI feedback
  */
 export const useUpdateShipmentStatus = (
     options?: UseMutationOptions<Shipment, ApiError, { shipmentId: string; status: string; location?: string; description?: string }>
@@ -166,20 +177,45 @@ export const useUpdateShipmentStatus = (
             const response = await apiClient.patch(`/shipments/${shipmentId}/status`, { status, location, description });
             return response.data.shipment;
         },
+        // Optimistic update
+        onMutate: async ({ shipmentId, status, location, description }) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.shipments.detail(shipmentId) });
+            const previousData = queryClient.getQueryData(queryKeys.shipments.detail(shipmentId));
+
+            queryClient.setQueryData(queryKeys.shipments.detail(shipmentId), (old: any) => ({
+                ...old,
+                currentStatus: status,
+                timeline: [...(old?.timeline || []), {
+                    status,
+                    timestamp: new Date().toISOString(),
+                    location,
+                    description,
+                }]
+            }));
+
+            return { previousData, shipmentId };
+        },
         onSuccess: (data, { shipmentId }) => {
-            queryClient.invalidateQueries({ queryKey: ['shipments', shipmentId] });
-            queryClient.invalidateQueries({ queryKey: ['shipments'] });
+            // Invalidate related caches
+            INVALIDATION_PATTERNS.SHIPMENT_MUTATIONS.UPDATE().forEach((pattern) => {
+                queryClient.invalidateQueries(pattern);
+            });
             showSuccessToast('Shipment status updated');
         },
-        onError: (error) => {
+        onError: (error, variables, context) => {
+            // Rollback on error
+            if (context?.previousData) {
+                queryClient.setQueryData(queryKeys.shipments.detail(variables.shipmentId), context.previousData);
+            }
             handleApiError(error, 'Update Status Failed');
         },
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
 
 /**
- * Delete shipment
+ * Delete shipment with cache cleanup
  */
 export const useDeleteShipment = (options?: UseMutationOptions<void, ApiError, string>) => {
     const queryClient = useQueryClient();
@@ -188,13 +224,19 @@ export const useDeleteShipment = (options?: UseMutationOptions<void, ApiError, s
         mutationFn: async (shipmentId) => {
             await apiClient.delete(`/shipments/${shipmentId}`);
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['shipments'] });
+        onSuccess: (_, shipmentId) => {
+            // Invalidate related caches
+            INVALIDATION_PATTERNS.SHIPMENT_MUTATIONS.CANCEL().forEach((pattern) => {
+                queryClient.invalidateQueries(pattern);
+            });
+            // Remove specific shipment from cache
+            queryClient.removeQueries({ queryKey: queryKeys.shipments.detail(shipmentId) });
             showSuccessToast('Shipment deleted successfully');
         },
         onError: (error) => {
             handleApiError(error, 'Delete Shipment Failed');
         },
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
