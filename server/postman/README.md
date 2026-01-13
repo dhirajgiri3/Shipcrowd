@@ -6,10 +6,10 @@
 
 This directory contains a comprehensive, production-grade Postman testing suite for the ShipCrowd backend API. The collections are organized by business domain, following industry best practices for API testing, documentation, and maintenance.
 
-**Total Endpoints:** 385+ across 45 route files  
-**Collections:** 10 domain-specific collections  
-**Environment:** 1 unified environment file  
-**Version:** 1.0.0
+**Total Endpoints:** 108+ documented (385+ total across 51 route files)
+**Collections:** 6 domain-specific collections (in progress)
+**Environment:** 1 unified environment file
+**Version:** 2.0.0
 
 ---
 
@@ -22,24 +22,17 @@ Our Postman collections follow a **domain-driven design** where each collection 
 ```
 postman/
 ├── README.md (this file)
-├── SETUP-GUIDE.md (detailed setup instructions)
-├── TESTING-GUIDE.md (testing methodology)
 ├── environments/
 │   └── shipcrowd.postman_environment.json (unified environment)
 ├── collections/
-│   ├── 01-Authentication-Identity.postman_collection.json
-│   ├── 02-Organization-Management.postman_collection.json
-│   ├── 03-Order-Shipment.postman_collection.json
-│   ├── 04-Operations-NDR-RTO.postman_collection.json
-│   ├── 05-Warehouse-Management.postman_collection.json
-│   ├── 06-Marketplace-Integrations.postman_collection.json
-│   ├── 07-Financial-Operations.postman_collection.json
-│   ├── 08-Communications.postman_collection.json
-│   ├── 09-Analytics-Reporting.postman_collection.json
-│   └── 10-Webhooks.postman_collection.json
-└── scripts/
-    ├── pre-request-scripts.js (reusable pre-request scripts)
-    └── test-scripts.js (reusable test assertions)
+│   ├── 01-Authentication-Identity.postman_collection.json (34 endpoints)
+│   ├── 02-Company-KYC.postman_collection.json (24 endpoints)
+│   ├── 03-Orders-Shipments.postman_collection.json (13 endpoints)
+│   ├── 04-Warehouse-Ratecard.postman_collection.json (52 endpoints)
+│   ├── 05-NDR-RTO-Disputes.postman_collection.json (26 endpoints)
+│   └── 06-Finance-Wallet.postman_collection.json (17 endpoints)
+└── Docs/
+    └── SETUP-GUIDE.md (detailed setup instructions)
 ```
 
 ---
@@ -80,210 +73,303 @@ Execute requests in this order (from Collection 01):
 
 ## 📚 Collections Reference
 
-### 01. Authentication & Identity
-**Purpose:** User authentication, session management, OAuth, profile operations  
-**Endpoints:** 21  
-**Use Cases:**
-- User registration & email verification
-- Login (email/password, OAuth, magic link)
-- Token management (refresh, revoke)
-- Password operations (reset, change)
-- Session management
-- Profile updates
+### 01. Authentication & Identity ✅
+**Purpose:** Complete user authentication, session management, and identity operations
+**Endpoints:** 34
+**Folders:**
+- Auth Operations (9 endpoints): Register, login, logout, OAuth, magic link
+- Session Management (6 endpoints): Refresh, revoke, validate tokens
+- Password Operations (4 endpoints): Reset, change, forgot password
+- User Management (6 endpoints): Profile, preferences, account settings
+- KYC Operations (5 endpoints): Document submission, verification status
+- Account Operations (4 endpoints): Consent management, account closure
 
 **Key Features:**
-- Automatic token refresh
-- CSRF protection
-- Rate limiting tests
+- ✅ Automatic token refresh on 401 responses
+- ✅ CSRF protection for state-changing operations
+- ✅ Auto-stores ACCESS_TOKEN, REFRESH_TOKEN, CSRF_TOKEN
+- ✅ Global test assertions (status, response time, JSON validation)
+- ✅ Comprehensive API documentation in each endpoint description
 
 ---
 
-### 02. Organization Management
-**Purpose:** Company setup, KYC verification, team management  
-**Endpoints:** 38  
-**Use Cases:**
-- Company profile management
-- KYC document submission & verification
-- Team member invitations
-- Role & permission management
-- Multi-tenancy testing
+### 02. Company & KYC ✅
+**Purpose:** Company profile management and KYC verification workflow
+**Endpoints:** 24
+**Folders:**
+- Company Profile (7 endpoints): CRUD operations, settings, billing
+- KYC Management (12 endpoints): Document upload, verification, status tracking
+- Admin Operations (5 endpoints): KYC approval, rejection, company verification
 
 **Key Features:**
-- Company isolation testing
-- Role-based access control
-- KYC workflow simulation
+- ✅ Multi-tenancy testing (company isolation)
+- ✅ Document upload simulation (PAN, Aadhaar, GST, Bank)
+- ✅ KYC workflow state transitions
+- ✅ Role-based access control (admin vs seller)
+- ✅ Auto-stores COMPANY_ID, KYC_DOCUMENT_ID
+
+**Business Logic:**
+- Production tier requires KYC approval
+- Cannot ship without verified KYC
+- Admin-only approval workflow
 
 ---
 
-### 03. Order & Shipment
-**Purpose:** Core shipping operations, order lifecycle  
-**Endpoints:** 13  
-**Use Cases:**
-- Order creation (single & bulk)
-- Rate calculation
-- Shipment creation
-- Manifest generation
-- Tracking updates
-- Label generation
+### 03. Orders & Shipments ✅
+**Purpose:** Core shipping operations - order and shipment lifecycle
+**Endpoints:** 13
+**Folders:**
+- Order Management (6 endpoints): Create, bulk import, list, view, update, cancel
+- Shipment Management (7 endpoints): Create, list, view, track (public/private), update status, cancel
 
 **Key Features:**
-- Zone-based pricing tests
-- Wallet balance validation
-- Courier selection
+- ✅ Single & bulk order creation (CSV import)
+- ✅ Zone-based rate calculation
+- ✅ Wallet balance validation before shipment
+- ✅ Public & private tracking endpoints
+- ✅ Order lifecycle states (created → processed → shipped → in_transit → delivered)
+- ✅ Auto-stores TEST_ORDER_ID, TEST_SHIPMENT_ID, TEST_AWB_NUMBER
+
+**Business Logic:**
+- Orders require sufficient wallet balance
+- KYC verification required for production shipments
+- Shipment creation deducts wallet balance
+- Tracking supports both authenticated and public access
 
 ---
 
-### 04. Operations - NDR, RTO, Disputes
-**Purpose:** Exception handling, NDR/RTO management, weight disputes  
-**Endpoints:** 26  
-**Use Cases:**
-- NDR detection & resolution
-- RTO initiation & QC
-- Weight discrepancy handling
-- Automated escalation
+### 04. Warehouse & Ratecard ✅
+**Purpose:** Complete warehouse operations, inventory, picking, packing, and pricing
+**Endpoints:** 52
+**Folders:**
+- Warehouse Management (6 endpoints): CRUD, CSV import
+- Inventory Management (14 endpoints): Stock operations, movements, alerts, QC
+- Picking Management (13 endpoints): Pick lists, workflows, assignments, stats
+- Packing Management (14 endpoints): Stations, sessions, packages, labels
+- Ratecard Management (5 endpoints): CRUD, rate calculation
 
 **Key Features:**
-- Webhook simulation
-- Financial impact tracking
-- Analytics validation
+- ✅ Multi-warehouse support with capacity tracking
+- ✅ Complete inventory lifecycle (receive, adjust, reserve, release, transfer, damage, cycle count)
+- ✅ Optimized picking workflows (batch, wave, zone picking)
+- ✅ Packing station management with real-time sessions
+- ✅ Zone-based pricing (A, B, C, D zones)
+- ✅ Weight slab calculations (base + additional)
+- ✅ Auto-stores WAREHOUSE_ID, INVENTORY_ID, PICK_LIST_ID, STATION_ID, RATECARD_ID
+
+**Business Logic:**
+- Stock reservations prevent overselling
+- Pick lists optimize warehouse floor navigation
+- Packing includes weight verification to prevent disputes
+- Rate calculation: basePrice + (additionalSlabs × additionalPrice)
+- Zone determination: A (same city), B (same state), C (metro-metro), D (rest of India)
 
 ---
 
-### 05. Warehouse Management
-**Purpose:** Warehouse operations, picking, packing, inventory  
-**Endpoints:** 46  
-**Use Cases:**
-- Pick list generation (batch, wave, zone)
-- Packing workflows
-- Inventory tracking
-- Stock movements
-- Location management
+### 05. NDR, RTO & Disputes ✅
+**Purpose:** Exception handling - Non-Delivery Reports, Returns, and Weight Disputes
+**Endpoints:** 26
+**Folders:**
+- NDR Management (14 endpoints): Events, resolution, escalation, analytics, workflows, dashboard
+- RTO Management (7 endpoints): Tracking, QC, status updates, analytics
+- Weight Disputes (5 endpoints): List, details, evidence submission, resolution, metrics
 
 **Key Features:**
-- Multi-strategy picking tests
-- Inventory audit trail
-- Replenishment automation
+- ✅ NDR resolution workflows (reattempt, address correction, RTO initiation)
+- ✅ RTO lifecycle tracking (initiated → in_transit → delivered → QC → restocked/damaged)
+- ✅ Weight dispute evidence submission with photo/document support
+- ✅ Comprehensive analytics (resolution rates, trends, top reasons)
+- ✅ Admin approval workflows
+- ✅ Auto-stores NDR_EVENT_ID, RTO_EVENT_ID, DISPUTE_ID
+
+**Business Logic:**
+- NDR types: customer_unavailable, wrong_address, refused, premises_closed, damaged
+- RTO triggers after exhausted NDR attempts
+- RTO QC determines if product can be restocked
+- Weight disputes compare declared vs carrier-measured weight
+- Cooling period (2-7 days) before COD remittance eligibility
 
 ---
 
-### 06. Marketplace Integrations
-**Purpose:** E-commerce platform integrations  
-**Endpoints:** 50  
-**Use Cases:**
-- Shopify OAuth & webhooks
-- WooCommerce API integration
-- Amazon SP-API
-- Flipkart integration
-- Product mapping
-- Inventory sync
+### 06. Finance & Wallet ✅
+**Purpose:** Wallet management and COD remittance system
+**Endpoints:** 17
+**Folders:**
+- Wallet Management (6 endpoints): Balance, transactions, recharge, stats, threshold, refunds
+- COD Remittance (11 endpoints): Eligible shipments, batch creation, approvals, payouts, dashboard, webhooks
 
 **Key Features:**
-- Webhook signature validation
-- OAuth flow testing
-- Duplicate prevention
-- Order sync validation
+- ✅ Prepaid wallet model for shipping charges
+- ✅ Auto-deduction on shipment creation
+- ✅ COD collection and periodic settlement
+- ✅ Remittance batch creation with automatic deductions (shipping + COD fees + disputes)
+- ✅ Admin approval workflow for payouts
+- ✅ On-demand and scheduled payout options
+- ✅ Velocity/Razorpay integration for settlements
+- ✅ Auto-stores TRANSACTION_ID, REMITTANCE_ID
+
+**Business Logic:**
+- Wallet recharge via payment gateway (Razorpay)
+- Low balance threshold triggers alerts
+- COD remittance deductions: shipping charges (2%) + COD collection charges (2%) + RTO + disputes
+- Settlement cycle: 2-7 day cooling period
+- Payout methods: bank_transfer, UPI
+- Refunds for cancelled shipments, weight disputes in seller favor
 
 ---
 
-### 07. Financial Operations
-**Purpose:** Commission, payouts, sales management  
-**Endpoints:** 33  
-**Use Cases:**
-- Sales representative management
-- Commission calculation
-- Payout processing
-- Transaction tracking
+## 🚧 Upcoming Collections (In Development)
 
-**Key Features:**
-- Commission rule testing
-- Automated payout validation
-- Referral tracking
+### 07. Integrations (Planned)
+**Scope:** E-commerce platform integrations (Shopify, Amazon, Flipkart, WooCommerce)
+**Estimated Endpoints:** ~60
 
----
+### 08. Commission System (Planned)
+**Scope:** Sales representatives, commission rules, transactions, payouts
+**Estimated Endpoints:** ~25
 
-### 08. Communications
-**Purpose:** Email, WhatsApp, SMS, notifications  
-**Endpoints:** 13  
-**Use Cases:**
-- Email templates
-- WhatsApp messages
-- In-app notifications
-- Preference management
+### 09. Communication (Planned)
+**Scope:** Email, WhatsApp, notifications, preferences
+**Estimated Endpoints:** ~15
 
-**Key Features:**
-- Delivery tracking
-- Template rendering
-- Multi-channel testing
-
----
-
-### 09. Analytics & Reporting
-**Purpose:** Business intelligence, dashboards, reports  
-**Endpoints:** 20  
-**Use Cases:**
-- System-wide analytics
-- Seller performance metrics
-- Custom reports
-- Data exports
-
-**Key Features:**
-- Date range filtering
-- Export format testing
-- Metric accuracy validation
-
----
-
-### 10. Webhooks
-**Purpose:** External webhook handling  
-**Endpoints:** 24  
-**Use Cases:**
-- Velocity status updates
-- Shopify order sync
-- Flipkart lifecycle events
-- WooCommerce webhooks
-
-**Key Features:**
-- Signature verification
-- Retry mechanism testing
-- Duplicate prevention
-- Queue management
+### 10. System & Admin (Planned)
+**Scope:** Audit logs, analytics, onboarding, webhooks
+**Estimated Endpoints:** ~30+
 
 ---
 
 ## 🔧 Environment Variables
 
-### Authentication Variables
+### Core Configuration
 ```javascript
-ACCESS_TOKEN          // JWT access token (auto-managed)
-REFRESH_TOKEN         // JWT refresh token (auto-managed)
-ACCESS_TOKEN_EXPIRY   // Token expiry timestamp (auto-managed)
-CSRF_TOKEN           // CSRF token (auto-refreshed)
+BASE_URL             // API base URL (default: http://localhost:5005/api/v1)
+NODE_ENV             // Environment (development | staging | production)
 ```
 
-### User & Company Variables
+### Authentication Variables (Auto-Managed)
 ```javascript
-USER_ID              // Current user ID
-COMPANY_ID           // Current company ID
-WAREHOUSE_ID         // Default warehouse ID
-TEAM_MEMBER_ID       // Team member ID for testing
+ACCESS_TOKEN         // JWT access token (auto-refreshed on 401)
+REFRESH_TOKEN        // JWT refresh token (stored on login)
+TOKEN_EXPIRY         // Token expiry timestamp (auto-calculated)
+CSRF_TOKEN           // CSRF token for state-changing operations (auto-fetched)
 ```
 
-### Test Data Variables
+### User & Company Context (Auto-Stored)
 ```javascript
-TEST_ORDER_ID        // Sample order ID
-TEST_SHIPMENT_ID     // Sample shipment ID
-TEST_AWB_NUMBER      // Sample AWB tracking number
-TEST_PINCODE_ORIGIN  // Test origin pincode (560001)
-TEST_PINCODE_DEST    // Test destination pincode (400001)
+USER_ID              // Current authenticated user ID
+COMPANY_ID           // Current company ID (multi-tenancy)
+USER_ROLE            // User role (seller | admin | staff)
+TEAM_ROLE            // Team role (owner | admin | member)
 ```
 
-### Integration Variables
+### Collection 01: Authentication Variables
 ```javascript
-SHOPIFY_STORE_URL    // Test Shopify store
-SHOPIFY_ACCESS_TOKEN // Shopify API token
-AMAZON_SELLER_ID     // Amazon seller ID
-FLIPKART_TOKEN       // Flipkart access token
+TEST_EMAIL           // Test account email (test.seller@shipcrowd.com)
+TEST_PASSWORD        // Test account password
+TEST_PHONE           // Test phone number (+919876543210)
 ```
+
+### Collection 02: Company & KYC Variables
+```javascript
+TEAM_MEMBER_ID       // Team member ID for invite testing
+INVITATION_ID        // Team invitation ID
+```
+
+### Collection 03: Orders & Shipments Variables
+```javascript
+TEST_ORDER_ID        // Order ID (auto-stored on creation)
+TEST_SHIPMENT_ID     // Shipment ID (auto-stored on creation)
+TEST_AWB_NUMBER      // AWB tracking number (auto-stored)
+TEST_PINCODE_ORIGIN  // Origin pincode (560001 - Bangalore)
+TEST_PINCODE_DEST    // Destination pincode (400001 - Mumbai)
+TEST_PINCODE_REMOTE  // Remote area pincode (791001 - Arunachal)
+TEST_SKU             // Product SKU (PROD-12345)
+TEST_CUSTOMER_NAME   // Test customer name (John Doe)
+TEST_CUSTOMER_PHONE  // Test customer phone
+TEST_CUSTOMER_EMAIL  // Test customer email
+TEST_ADDRESS_LINE1   // Test address line 1
+TEST_ADDRESS_CITY    // Test city (Mumbai)
+TEST_ADDRESS_STATE   // Test state (Maharashtra)
+TEST_CARRIER         // Test carrier (Delhivery)
+TEST_SERVICE_TYPE    // Service type (standard | express | surface)
+```
+
+### Collection 04: Warehouse & Ratecard Variables
+```javascript
+WAREHOUSE_ID         // Warehouse ID (auto-stored on creation)
+INVENTORY_ID         // Inventory item ID (auto-stored)
+PICK_LIST_ID         // Pick list ID (auto-stored)
+STATION_ID           // Packing station ID (auto-stored)
+RATECARD_ID          // Ratecard ID (auto-stored)
+PACKAGE_NUMBER       // Package number (default: 1)
+PACKING_SESSION_ID   // Active packing session ID
+INVENTORY_ITEM_ID    // Legacy inventory item ID
+PACK_TASK_ID         // Legacy packing task ID
+```
+
+### Collection 05: NDR, RTO & Disputes Variables
+```javascript
+NDR_EVENT_ID         // NDR event ID (auto-stored)
+RTO_EVENT_ID         // RTO event ID (auto-stored)
+DISPUTE_ID           // Weight dispute ID (auto-stored)
+WEIGHT_DISPUTE_ID    // Legacy dispute ID (same as DISPUTE_ID)
+```
+
+### Collection 06: Finance & Wallet Variables
+```javascript
+TRANSACTION_ID       // Wallet transaction ID (auto-stored)
+REMITTANCE_ID        // COD remittance batch ID (auto-stored)
+WALLET_BALANCE       // Current wallet balance (auto-updated)
+LOW_BALANCE_THRESHOLD // Balance alert threshold (default: 5000)
+COD_SHIPMENT_ID      // COD shipment for remittance testing
+PAYOUT_ID            // Payout ID for commission/remittance
+```
+
+### Integration Variables (For Future Collections)
+```javascript
+// Shopify
+SHOPIFY_STORE_URL         // Shopify store URL
+SHOPIFY_ACCESS_TOKEN      // Shopify API access token (secret)
+SHOPIFY_INTEGRATION_ID    // Integration record ID
+
+// WooCommerce
+WOOCOMMERCE_STORE_URL     // WooCommerce store URL
+WOOCOMMERCE_CONSUMER_KEY  // WooCommerce API key (secret)
+WOOCOMMERCE_CONSUMER_SECRET // WooCommerce API secret (secret)
+
+// Amazon
+AMAZON_SELLER_ID          // Amazon seller ID
+AMAZON_MARKETPLACE_ID     // Amazon marketplace (A21TJRUUN4KGV for India)
+AMAZON_ACCESS_TOKEN       // Amazon SP-API token (secret)
+
+// Flipkart
+FLIPKART_TOKEN            // Flipkart API token (secret)
+FLIPKART_INTEGRATION_ID   // Integration record ID
+```
+
+### Commission System Variables (For Future Collection)
+```javascript
+SALES_REP_ID         // Sales representative ID
+COMMISSION_RULE_ID   // Commission rule ID
+```
+
+### Communication Variables (For Future Collection)
+```javascript
+NOTIFICATION_ID      // In-app notification ID
+```
+
+### System Variables (For Future Collection)
+```javascript
+WEBHOOK_EVENT_ID     // Webhook event ID
+ZONE_ID              // Zone ID for rate calculations
+SHIPMENT_MANIFEST_ID // Manifest ID for bulk operations
+```
+
+### Variable Naming Convention
+- **Auto-Stored:** Variables automatically populated by test scripts (e.g., ORDER_ID, SHIPMENT_ID)
+- **Auto-Managed:** Variables managed by pre-request/test scripts (e.g., ACCESS_TOKEN, CSRF_TOKEN)
+- **User-Configured:** Variables you need to set manually (e.g., BASE_URL, TEST_EMAIL)
+- **Secret Type:** Sensitive data (passwords, API keys) - marked as "secret" type in Postman
 
 ---
 
@@ -431,6 +517,7 @@ Internal use only - ShipCrowd Platform
 
 ---
 
-**Last Updated:** 2026-01-10  
-**Maintained By:** Development Team  
-**Version:** 1.0.0
+**Last Updated:** 2026-01-13
+**Maintained By:** Development Team
+**Version:** 2.0.0
+**Status:** Active Development (6/10 collections complete)

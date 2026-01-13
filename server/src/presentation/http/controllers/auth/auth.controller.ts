@@ -14,9 +14,11 @@ import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
+import { AUTH_COOKIES, SESSION_CONSTANTS } from '../../../../shared/constants/security';
 import { UserDTO } from '../../dtos/user.dto';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ExternalServiceError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import MFAService from '../../../../core/application/services/auth/mfa.service';
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -149,15 +151,18 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
       await user.save({ session });
 
-      // Send email (outside transaction logic technically, but we call it here. 
-      // If it fails, we catch, log, and proceed, OR we could abort transaction.
-      // Usually better to NOT abort transaction on email fail, but log it.)
+      // Send verification email (CRITICAL: Must succeed for security)
       try {
         await sendVerificationEmail(user.email, user.name, rawVerificationToken); // ✅ Send RAW token
       } catch (emailError) {
         logger.error(`Failed to send verification email to ${user.email}:`, emailError);
-        // We log usage issue but do NOT rollback user creation for mail failure 
-        // unless strict requirement. User can resend verification.
+        // ⚠️ SECURITY: Throw error to rollback transaction
+        // We cannot leave users in "unverified" state without a way to verify
+        throw new ExternalServiceError(
+          'Email Service',
+          'Failed to send verification email. Please try again later or contact support.',
+          ErrorCode.EXT_SERVICE_ERROR
+        );
       }
 
       // Assert type after save if necessary, Mongoose methods usually return typed docs
@@ -241,14 +246,34 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
     const isPasswordValid = await typedUser.comparePassword(validatedData.password);
     if (!isPasswordValid) {
-      // Increment failed login attempts
-      typedUser.security.failedLoginAttempts = (typedUser.security.failedLoginAttempts || 0) + 1;
+      // ATOMIC increment to prevent race condition bypass
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: typedUser._id },
+        {
+          $inc: { 'security.failedLoginAttempts': 1 },
+          $set: {
+            'security.lastLogin': {
+              timestamp: new Date(),
+              ip: req.ip || 'unknown',
+              userAgent: req.headers['user-agent'] || 'unknown',
+              success: false,
+            }
+          }
+        },
+        { new: true }
+      );
+
+      const failedAttempts = updatedUser?.security?.failedLoginAttempts || 1;
 
       // Lock account after 5 failed attempts
-      if (typedUser.security.failedLoginAttempts >= 5) {
+      if (failedAttempts >= 5) {
         const lockUntil = new Date();
-        lockUntil.setMinutes(lockUntil.getMinutes() + 30); // Lock for 30 minutes
-        typedUser.security.lockUntil = lockUntil;
+        lockUntil.setMinutes(lockUntil.getMinutes() + 30);
+
+        await User.updateOne(
+          { _id: typedUser._id },
+          { $set: { 'security.lockUntil': lockUntil } }
+        );
 
         await createAuditLog(
           typedUser._id.toString(),
@@ -259,20 +284,12 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
           {
             message: 'Account locked due to multiple failed login attempts',
             success: false,
-            failedAttempts: typedUser.security.failedLoginAttempts,
-            lockDuration: '30 minutes'
+            failedAttempts,
+            lockDuration: `${SESSION_CONSTANTS.LOCKOUT_DURATION_MINS} minutes`
           },
           req
         );
       }
-
-      typedUser.security.lastLogin = {
-        timestamp: new Date(),
-        ip: req.ip || 'unknown',
-        userAgent: req.headers['user-agent'] || 'unknown',
-        success: false,
-      };
-      await typedUser.save();
 
       await createAuditLog(
         typedUser._id.toString(),
@@ -280,13 +297,13 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
         'login',
         'user',
         typedUser._id.toString(),
-        { message: 'Failed login attempt', success: false, attempts: typedUser.security.failedLoginAttempts },
+        { message: 'Failed login attempt', success: false, attempts: failedAttempts },
         req
       );
 
-      if (typedUser.security.failedLoginAttempts >= 5) {
+      if (failedAttempts >= SESSION_CONSTANTS.MAX_LOGIN_ATTEMPTS) {
         throw new AuthenticationError(
-          'Account is temporarily locked due to multiple failed login attempts. Please try again in 30 minutes.',
+          `Account is temporarily locked due to multiple failed login attempts. Please try again in ${SESSION_CONSTANTS.LOCKOUT_DURATION_MINS} minutes.`,
           ErrorCode.AUTH_ACCOUNT_LOCKED
         );
       } else {
@@ -296,10 +313,53 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
         );
       }
     }
-
-    // Reset failed login attempts on successful login
     typedUser.security.failedLoginAttempts = 0;
     typedUser.security.lockUntil = undefined;
+
+    // ============================================================================
+    // MFA CHECK - Phase 1 Implementation
+    // ============================================================================
+    // Check if user has MFA enabled
+    const mfaEnabled = await MFAService.isMFAEnabled(typedUser._id.toString());
+
+    if (mfaEnabled) {
+      // Generate temporary token (using standard access token - 15min expiry)
+      const tempToken = generateAccessToken(
+        typedUser._id.toString(),
+        typedUser.role,
+        typedUser.companyId
+      );
+
+      // Update last login attempt (not successful yet)
+      typedUser.security.lastLogin = {
+        timestamp: new Date(),
+        ip: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+        success: false, // Not successful until MFA verified
+      };
+      await typedUser.save();
+
+      await createAuditLog(
+        typedUser._id.toString(),
+        typedUser.companyId,
+        'login', // Using standard login action
+        'user',
+        typedUser._id.toString(),
+        { message: 'MFA verification required', mfaRequired: true, success: false },
+        req
+      );
+
+      // Return MFA required response with temp token
+      res.status(200).json({
+        success: true,
+        mfaRequired: true,
+        tempToken,
+        message: 'MFA verification required. Please provide your TOTP code or backup code.',
+        expiresIn: '15m', // Standard access token expiry
+      });
+      return;
+    }
+    // ============================================================================
 
     // Handle "Remember Me" functionality
     const rememberMe = req.body.rememberMe === true;
@@ -339,8 +399,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     await createSession(typedUser._id, refreshToken, req, expiresAt);
 
     // Cookie name with secure prefix in production
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
+    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
@@ -408,18 +468,22 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       }
 
       // Check for inactivity timeout (Issue #27: Use env variable)
-      const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(8 * 60 * 60 * 1000)); // Default 8 hours
+      const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(SESSION_CONSTANTS.DEFAULT_TIMEOUT_MS));
 
-      // Update session activity BEFORE timeout check (Fix #5)
-      await updateSessionActivity(token);
+      // ✅ FIX: Atomic session retrieval and activity update
+      // This eliminates the race condition between finding and updating session
+      const updatedSession = await Session.findOneAndUpdate(
+        {
+          userId: typedUser._id,
+          refreshToken: token,
+          isRevoked: false,
+          expiresAt: { $gt: new Date() }
+        },
+        { $set: { lastActive: new Date() } },
+        { new: true }
+      );
 
-      // Re-fetch session after activity update
-      const updatedSession = await Session.findOne({
-        userId: typedUser._id,
-        refreshToken: token,
-        isRevoked: false,
-        expiresAt: { $gt: new Date() }
-      });
+      // (Lines 438-440 are redundant now as we check updatedSession below)
 
       if (!updatedSession) {
         // Session was already rotated by concurrent request (Fix #9: Idempotency)
@@ -510,7 +574,9 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 export const requestPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = resetPasswordRequestSchema.parse(req.body);
-    const user = await User.findOne({ email: validatedData.email });
+    // ✅ FIX: Normalize email to lowercase
+    const normalizedEmail = validatedData.email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       sendSuccess(res, null, 'If your email is registered, you will receive a password reset link');
       return;
@@ -560,42 +626,51 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
     // ✅ PHASE 1 FIX: Hash incoming token for comparison
     const hashedToken = AuthTokenService.hashToken(validatedData.token);
 
-    const user = await User.findOne({
-      'security.resetToken': hashedToken, // ✅ Compare with HASH
-      'security.resetTokenExpiry': { $gt: new Date() },
+    let revokedCount = 0;
+
+    // ✅ FIX: Wrap in transaction for atomicity
+    await withTransaction(async (session) => {
+      const user = await User.findOne({
+        'security.resetToken': hashedToken,
+        'security.resetTokenExpiry': { $gt: new Date() },
+      }).session(session);
+
+      if (!user) {
+        throw new ValidationError('Invalid or expired reset token');
+      }
+
+      const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+      typedUser.password = validatedData.password;
+      typedUser.security.resetToken = undefined;
+      typedUser.security.resetTokenExpiry = undefined;
+      typedUser.security.tokenVersion = (typedUser.security.tokenVersion || 0) + 1;
+      await typedUser.save({ session });
+
+      // Revoke all active sessions within transaction
+      const result = await Session.updateMany(
+        { userId: typedUser._id, isRevoked: false },
+        { isRevoked: true },
+        { session }
+      );
+      revokedCount = result.modifiedCount;
+      logger.info(`Password reset: Revoked ${revokedCount} sessions for user ${typedUser._id}`);
+
+      await createAuditLog(
+        typedUser._id.toString(),
+        typedUser.companyId,
+        'password_change',
+        'user',
+        typedUser._id.toString(),
+        {
+          message: 'Password reset completed',
+          method: 'reset_token',
+          success: true,
+          sessionsRevoked: revokedCount,
+        },
+        req
+      );
     });
-
-    if (!user) {
-      throw new ValidationError('Invalid or expired reset token');
-    }
-    // Assert type after null check
-    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
-
-    typedUser.password = validatedData.password;
-    typedUser.security.resetToken = undefined;
-    typedUser.security.resetTokenExpiry = undefined;
-    typedUser.security.tokenVersion = (typedUser.security.tokenVersion || 0) + 1;
-    await typedUser.save();
-
-    // ✅ FEATURE 12: Password Reset Auto-Logout
-    // Revoke all active sessions to force re-login everywhere
-    const revokedCount = await revokeAllSessions(typedUser._id.toString());
-    logger.info(`Password reset: Revoked ${revokedCount} sessions for user ${typedUser._id}`);
-
-    await createAuditLog(
-      typedUser._id.toString(),
-      typedUser.companyId,
-      'password_change',
-      'user',
-      typedUser._id.toString(),
-      {
-        message: 'Password reset completed',
-        method: 'reset_token',
-        success: true,
-        sessionsRevoked: revokedCount,
-      },
-      req
-    );
 
     sendSuccess(res, { sessionsRevoked: revokedCount }, 'Password has been reset successfully. Please log in again.');
   } catch (error: any) {
@@ -666,12 +741,14 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
         logger.info(`Auto-created company ${newCompany._id} for user ${typedUser._id} during verification`);
       });
     } else {
-      // Just activate the user
-      typedUser.isActive = true;
-      typedUser.isEmailVerified = true;
-      typedUser.security.verificationToken = undefined;
-      typedUser.security.verificationTokenExpiry = undefined;
-      await typedUser.save();
+      // ✅ FIX: Wrap in transaction for atomicity
+      await withTransaction(async (session) => {
+        typedUser.isActive = true;
+        typedUser.isEmailVerified = true;
+        typedUser.security.verificationToken = undefined;
+        typedUser.security.verificationTokenExpiry = undefined;
+        await typedUser.save({ session });
+      });
     }
 
     // ✅ AUTO-LOGIN: Generate tokens
@@ -821,7 +898,9 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
 export const resendVerificationEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = resendVerificationEmailSchema.parse(req.body);
-    const user = await User.findOne({ email: validatedData.email });
+    // ✅ FIX: Normalize email to lowercase
+    const normalizedEmail = validatedData.email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       sendSuccess(res, null, 'If your email is registered, a new verification email will be sent');
@@ -1157,6 +1236,36 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       { isRevoked: true }
     );
 
+    // ✅ FIX: Create new session for current user so they stay logged in
+    const accessToken = generateAccessToken(
+      typedUser._id.toString(),
+      typedUser.role,
+      typedUser.companyId
+    );
+    const refreshToken = generateRefreshToken(
+      typedUser._id.toString(),
+      typedUser.security.tokenVersion || 0,
+      '7d'
+    );
+
+    // Set httpOnly cookies
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
+    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+
+    res.cookie(refreshCookieName, refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.cookie(accessCookieName, accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
     await createAuditLog(
       typedUser._id.toString(),
       typedUser.companyId,
@@ -1232,9 +1341,10 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
         );
         throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_CREDENTIALS);
       }
-    } else if (!typedUser.oauthProvider) {
-      // OAuth users without password cannot change email this way
-      throw new ValidationError('No password set. Please use your OAuth provider to manage your email.');
+    } else {
+      // ✅ FIX: OAuth users must set password before changing email
+      // This prevents account takeover if OAuth provider email changes
+      throw new ValidationError('No password set. Please use set-password endpoint first.');
     }
 
     // Check if new email is same as current
@@ -1461,9 +1571,10 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
       throw new ValidationError('Invalid or expired magic link');
     }
 
-    // Mark as used
-    magicLink.usedAt = new Date();
-    await magicLink.save();
+    // ✅ CLEANUP: Delete magic link after successful verification
+    await MagicLink.deleteOne({ _id: magicLink._id });
+
+    // (We deleted it, so no need to mark as used)
 
     // Get user
     const user = await User.findById(magicLink.userId);

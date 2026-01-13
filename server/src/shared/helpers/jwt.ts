@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
 import crypto from 'crypto';
+import Redis from 'ioredis';
 import logger from '../logger/winston.logger';
 
 // Define token types
@@ -27,14 +28,42 @@ const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'refresh_token_
 const ACCESS_TOKEN_EXPIRY = '15m'; // 15 minutes
 const REFRESH_TOKEN_EXPIRY = '7d'; // 7 days
 
-// In-memory token blacklist with expiry
+// Redis client for token blacklist (persistent storage)
+let redisClient: Redis | null = null;
+let redisAvailable = false;
+
+// Initialize Redis connection for token blacklist
+const initRedisBlacklist = async (): Promise<void> => {
+  try {
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    redisClient = new Redis(redisUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        if (times > 3) return null; // Stop retrying
+        return Math.min(times * 100, 3000);
+      },
+      lazyConnect: true,
+    });
+
+    await redisClient.connect();
+    redisAvailable = true;
+    logger.info('Token blacklist Redis connected - tokens will persist across restarts');
+  } catch (error) {
+    logger.warn('Redis unavailable for token blacklist - falling back to in-memory (tokens lost on restart)', error);
+    redisClient = null;
+    redisAvailable = false;
+  }
+};
+
+// Initialize Redis on module load
+initRedisBlacklist().catch(() => { });
+
+// Fallback in-memory blacklist (only used if Redis unavailable)
 interface BlacklistedToken {
   jti: string;
-  expiresAt: number; // Unix timestamp
+  expiresAt: number;
 }
-
-// Store blacklisted tokens in memory
-const blacklistedTokens: BlacklistedToken[] = [];
+const fallbackBlacklist: BlacklistedToken[] = [];
 
 /**
  * Generate a unique JWT ID
@@ -44,40 +73,29 @@ const generateJwtId = (): string => {
 };
 
 /**
- * Clean up expired tokens from the blacklist
- * This should be called periodically to prevent memory leaks
- */
-const cleanupBlacklist = (): void => {
-  const now = Math.floor(Date.now() / 1000);
-  const initialLength = blacklistedTokens.length;
-
-  // Remove expired tokens
-  for (let i = blacklistedTokens.length - 1; i >= 0; i--) {
-    if (blacklistedTokens[i].expiresAt < now) {
-      blacklistedTokens.splice(i, 1);
-    }
-  }
-
-  if (initialLength !== blacklistedTokens.length) {
-    logger.debug(`Cleaned up token blacklist. Removed ${initialLength - blacklistedTokens.length} expired tokens.`);
-  }
-};
-
-/**
- * Add a token to the blacklist
+ * Add a token to the blacklist (Redis or in-memory fallback)
  * @param jti JWT ID
  * @param expiry Expiration time in seconds
  */
 export const blacklistToken = async (jti: string, expiry: number): Promise<boolean> => {
   try {
-    // Clean up expired tokens first
-    cleanupBlacklist();
-
-    // Add new token to blacklist
-    const expiresAt = Math.floor(Date.now() / 1000) + expiry;
-    blacklistedTokens.push({ jti, expiresAt });
-
-    logger.debug(`Token ${jti} blacklisted until ${new Date(expiresAt * 1000).toISOString()}`);
+    if (redisAvailable && redisClient) {
+      // Use Redis with automatic expiration
+      await redisClient.setex(`token:blacklist:${jti}`, expiry, '1');
+      logger.debug(`Token ${jti} blacklisted in Redis for ${expiry}s`);
+    } else {
+      // Fallback to in-memory
+      const expiresAt = Math.floor(Date.now() / 1000) + expiry;
+      fallbackBlacklist.push({ jti, expiresAt });
+      // Cleanup expired tokens
+      const now = Math.floor(Date.now() / 1000);
+      for (let i = fallbackBlacklist.length - 1; i >= 0; i--) {
+        if (fallbackBlacklist[i].expiresAt < now) {
+          fallbackBlacklist.splice(i, 1);
+        }
+      }
+      logger.debug(`Token ${jti} blacklisted in memory (Redis unavailable)`);
+    }
     return true;
   } catch (error) {
     logger.error('Error blacklisting token:', error);
@@ -91,11 +109,14 @@ export const blacklistToken = async (jti: string, expiry: number): Promise<boole
  */
 export const isTokenBlacklisted = async (jti: string): Promise<boolean> => {
   try {
-    // Clean up expired tokens first
-    cleanupBlacklist();
-
-    // Check if token is in blacklist
-    return blacklistedTokens.some(token => token.jti === jti);
+    if (redisAvailable && redisClient) {
+      const exists = await redisClient.exists(`token:blacklist:${jti}`);
+      return exists === 1;
+    } else {
+      // Fallback check
+      const now = Math.floor(Date.now() / 1000);
+      return fallbackBlacklist.some(token => token.jti === jti && token.expiresAt > now);
+    }
   } catch (error) {
     logger.error('Error checking token blacklist:', error);
     return false;

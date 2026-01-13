@@ -4,8 +4,16 @@ import { requireAccess } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import shipmentController from '../../../controllers/shipping/shipment.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
+import labelRoutes from '../shipments/label.routes';
+import manifestRoutes from '../shipments/manifest.routes';
 
 const router = express.Router();
+
+// Mount label routes
+router.use(labelRoutes);
+
+// Mount manifest routes
+router.use(manifestRoutes);
 
 /**
  * @route POST /api/v1/shipments

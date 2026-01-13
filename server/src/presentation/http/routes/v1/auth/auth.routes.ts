@@ -9,11 +9,18 @@ import {
   passwordResetRateLimiter,
   emailVerificationRateLimiter,
   resendVerificationRateLimiter,
+  magicLinkRateLimiter,
+  setPasswordRateLimiter,
 } from '../../../middleware/system/rate-limiter.middleware';
 import { generateAuthTokens } from '../../../../../core/application/services/auth/oauth.service';
 import logger from '../../../../../shared/logger/winston.logger';
+import mfaRoutes from './mfa.routes';
 
 const router = express.Router();
+
+// Mount MFA routes
+router.use('/mfa', mfaRoutes);
+
 
 /**
  * @route GET /auth/csrf-token
@@ -95,7 +102,7 @@ router.post('/resend-verification', csrfProtection, resendVerificationRateLimite
  * @desc Request magic link for passwordless login
  * @access Public
  */
-router.post('/magic-link', csrfProtection, emailVerificationRateLimiter, authController.requestMagicLink);
+router.post('/magic-link', csrfProtection, magicLinkRateLimiter, authController.requestMagicLink);
 
 /**
  * @route POST /auth/verify-magic-link
@@ -157,7 +164,7 @@ router.post('/logout', authenticate, authController.logout);
  * @desc Set password for OAuth users (enables email/password login)
  * @access Private
  */
-router.post('/set-password', authenticate, authController.setPassword);
+router.post('/set-password', authenticate, setPasswordRateLimiter, authController.setPassword);
 
 /**
  * @route POST /auth/change-password

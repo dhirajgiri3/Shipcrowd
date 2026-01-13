@@ -7,6 +7,7 @@ import app from './app';
 import connectDB from './config/database';
 import { initializeScheduler } from './config/scheduler';
 import logger from './shared/logger/winston.logger';
+import QueueManager from './infrastructure/utilities/queue-manager';
 import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-resolution.job';
 import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.job';
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
@@ -26,8 +27,12 @@ const startServer = async (): Promise<void> => {
         await connectDB();
         logger.info('Database connected successfully');
 
-        // Initialize Scheduler
-        initializeScheduler();
+        // Initialize Queue Manager FIRST (creates all queues)
+        await QueueManager.initialize();
+        logger.info('Queue Manager initialized');
+
+        // Initialize Background Job Workers (registers workers for existing queues)
+        // This prevents race conditions where cron jobs try to queue to unregistered queues
 
         // Initialize NDR/RTO Background Jobs
         await NDRResolutionJob.initialize();
@@ -40,6 +45,9 @@ const startServer = async (): Promise<void> => {
         // Initialize COD Remittance Background Jobs
         await CODRemittanceJob.initialize();
         logger.info('COD remittance background jobs initialized');
+
+        // NOW Initialize Scheduler (after all workers are registered)
+        initializeScheduler();
 
         // Initialize Commission System Event Handlers
         initializeCommissionEventHandlers();

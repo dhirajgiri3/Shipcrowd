@@ -1,0 +1,780 @@
+{
+  "info": {
+    "name": "05 - NDR, RTO & Disputes",
+    "description": "Non-Delivery Reports (NDR), Return to Origin (RTO), and Weight Dispute management.\n\n**Total Endpoints:** 26\n\n**Folders:**\n- NDR Management (14 endpoints)\n- RTO Management (7 endpoints)\n- Weight Disputes (5 endpoints)\n\n**Prerequisites:**\n- Valid JWT access token (auto-refreshed)\n- Authentication required for all endpoints\n- Admin role required for certain operations\n\n**Key Concepts:**\n- **NDR (Non-Delivery Report):** Failed delivery attempts that need resolution (customer unavailable, wrong address, refused, etc.)\n- **RTO (Return to Origin):** Packages being returned to seller after multiple failed delivery attempts\n- **Weight Disputes:** Discrepancies between declared and charged weight by carrier\n\n**Auto Features:**\n- Token refresh on 401 responses\n- Auto-stores NDR_EVENT_ID, RTO_EVENT_ID, DISPUTE_ID\n- Global test assertions for all responses\n- Console logging for debugging",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{ACCESS_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto token refresh logic",
+          "const accessToken = pm.environment.get('ACCESS_TOKEN');",
+          "const tokenExpiry = pm.environment.get('TOKEN_EXPIRY');",
+          "",
+          "if (!accessToken || !tokenExpiry || Date.now() >= parseInt(tokenExpiry)) {",
+          "    console.log('Token expired or missing, refreshing...');",
+          "    ",
+          "    const refreshToken = pm.environment.get('REFRESH_TOKEN');",
+          "    if (!refreshToken) {",
+          "        console.error('No refresh token available. Please login first.');",
+          "        return;",
+          "    }",
+          "    ",
+          "    pm.sendRequest({",
+          "        url: pm.environment.get('BASE_URL') + '/auth/refresh',",
+          "        method: 'POST',",
+          "        header: {",
+          "            'Content-Type': 'application/json'",
+          "        },",
+          "        body: {",
+          "            mode: 'raw',",
+          "            raw: JSON.stringify({",
+          "                refreshToken: refreshToken",
+          "            })",
+          "        }",
+          "    }, (err, res) => {",
+          "        if (err) {",
+          "            console.error('Token refresh failed:', err);",
+          "            return;",
+          "        }",
+          "        ",
+          "        const data = res.json().data;",
+          "        pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+          "        pm.environment.set('TOKEN_EXPIRY', Date.now() + (14 * 60 * 1000));",
+          "        console.log('Token refreshed successfully');",
+          "    });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test assertions",
+          "pm.test('Status code is 2xx or 3xx', function () {",
+          "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204, 301, 302, 304]);",
+          "});",
+          "",
+          "pm.test('Response time is less than 5s', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "if (pm.response.code !== 204) {",
+          "    pm.test('Response has correct content-type', function () {",
+          "        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "    });",
+          "    ",
+          "    pm.test('Response has valid JSON body', function () {",
+          "        pm.response.to.be.json;",
+          "    });",
+          "}",
+          "",
+          "// Log response for debugging",
+          "console.log('Response Status:', pm.response.code);",
+          "console.log('Response Body:', pm.response.text());"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "NDR Management",
+      "item": [
+        {
+          "name": "List NDR Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/events?status=open&page=1&limit=20",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "events"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "ndrType",
+                  "value": "customer_unavailable",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /ndr/events**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve paginated list of NDR (Non-Delivery Report) events with filtering options.\n\n**NDR Overview:**\nNDR occurs when a delivery attempt fails. Common reasons:\n- Customer unavailable\n- Wrong/incomplete address\n- Customer refused delivery\n- Premises closed\n- Shipment damaged\n\n**Query Parameters:**\n- `status` (optional): open|in_progress|resolved|escalated\n- `ndrType` (optional): Filter by NDR reason type\n- `startDate` (optional): Filter by date range\n- `endDate` (optional): Filter by date range\n- `page` (optional): Page number (default: 1)\n- `limit` (optional): Items per page (default: 20)\n\n**Response:**\n```json\n{\n  \"events\": [\n    {\n      \"id\": \"ndr_event_id\",\n      \"shipmentId\": \"shipment_id\",\n      \"awbNumber\": \"AWB123456789\",\n      \"ndrType\": \"customer_unavailable\",\n      \"ndrReason\": \"Customer not reachable on phone\",\n      \"attemptNumber\": 2,\n      \"status\": \"open\",\n      \"createdAt\": \"2024-01-15T10:30:00Z\",\n      \"customer\": {...},\n      \"lastAction\": \"retry_scheduled\"\n    }\n  ],\n  \"pagination\": {...}\n}\n```\n\n**Use Cases:**\n- NDR dashboard\n- Monitoring failed deliveries\n- Customer support operations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get NDR Event Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/events/{{NDR_EVENT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "events", "{{NDR_EVENT_ID}}"]
+            },
+            "description": "**GET /ndr/events/:id**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve detailed information about a specific NDR event including history and resolution attempts.\n\n**Response:**\n```json\n{\n  \"id\": \"ndr_event_id\",\n  \"shipment\": {...},\n  \"ndrType\": \"customer_unavailable\",\n  \"ndrReason\": \"Customer not reachable\",\n  \"attemptNumber\": 2,\n  \"maxAttempts\": 3,\n  \"status\": \"in_progress\",\n  \"timeline\": [\n    {\n      \"timestamp\": \"2024-01-15T10:30:00Z\",\n      \"action\": \"ndr_raised\",\n      \"details\": \"First delivery attempt failed\"\n    },\n    {\n      \"timestamp\": \"2024-01-15T14:00:00Z\",\n      \"action\": \"customer_contacted\",\n      \"details\": \"Called customer, will be available tomorrow\"\n    }\n  ],\n  \"resolutionWorkflow\": {...},\n  \"escalated\": false\n}\n```\n\n**Use Cases:**\n- Viewing NDR details\n- Customer support investigation\n- Resolution tracking"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.environment.set('NDR_EVENT_ID', response.data.id);",
+                  "        console.log('Stored NDR_EVENT_ID:', response.data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolve NDR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"reattempt\",\n  \"notes\": \"Customer will be available tomorrow 2-5 PM\",\n  \"scheduledTime\": \"2024-01-16T14:00:00Z\",\n  \"updatedAddress\": {\n    \"line1\": \"Building A, Flat 305\",\n    \"line2\": \"Green Park Society\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"pincode\": \"400001\",\n    \"phone\": \"+919876543210\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/events/{{NDR_EVENT_ID}}/resolve",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "events", "{{NDR_EVENT_ID}}", "resolve"]
+            },
+            "description": "**POST /ndr/events/:id/resolve**\n\n**Access:** Authenticated\n\n**Purpose:**\nManually resolve NDR by specifying action to take.\n\n**Business Logic:**\n- Different actions available based on NDR type\n- May update delivery address\n- Can schedule reattempt\n- Updates shipment status\n- Triggers carrier notification\n\n**Request Body:**\n```json\n{\n  \"action\": string (required) - reattempt|address_correction|return_to_origin|cancel,\n  \"notes\": string (optional) - Resolution notes,\n  \"scheduledTime\": datetime (optional) - For reattempt,\n  \"updatedAddress\": object (optional) - For address correction,\n  \"customerContact\": string (optional) - Updated phone number\n}\n```\n\n**Resolution Actions:**\n- **reattempt:** Schedule another delivery attempt\n- **address_correction:** Update delivery address and retry\n- **return_to_origin:** Initiate RTO process\n- **cancel:** Cancel shipment (with customer consent)\n\n**Validation:**\n- Cannot resolve if already resolved\n- Action must be valid for NDR type\n- Reattempt requires scheduled time\n- Address correction requires valid address\n\n**Response:** Updated NDR event with resolution details\n\n**Use Cases:**\n- Customer support resolution\n- Correcting address errors\n- Scheduling redelivery\n- Initiating returns"
+          },
+          "response": []
+        },
+        {
+          "name": "Escalate NDR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Customer unresponsive after 5 attempts\",\n  \"notes\": \"All contact methods tried - phone, SMS, email. No response.\",\n  \"priority\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/events/{{NDR_EVENT_ID}}/escalate",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "events", "{{NDR_EVENT_ID}}", "escalate"]
+            },
+            "description": "**POST /ndr/events/:id/escalate**\n\n**Access:** Authenticated\n\n**Purpose:**\nEscalate NDR to higher support tier when standard resolution fails.\n\n**Business Logic:**\n- Marks NDR as escalated\n- Assigns to senior support team\n- Sets priority level\n- Triggers escalation notifications\n- Updates SLA timers\n\n**Request Body:**\n```json\n{\n  \"reason\": string (required) - Escalation reason,\n  \"notes\": string (optional) - Additional context,\n  \"priority\": string (optional) - low|medium|high|urgent (default: medium)\n}\n```\n\n**Escalation Reasons:**\n- Customer unresponsive\n- Complex address issue\n- Repeated delivery failures\n- Customer dispute\n- Special handling required\n\n**Use Cases:**\n- Complex resolution cases\n- VIP customer NDRs\n- Repeated failures\n- Time-sensitive shipments"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Resolution Workflow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workflowId\": \"workflow_auto_retry\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/events/{{NDR_EVENT_ID}}/trigger-workflow",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "events", "{{NDR_EVENT_ID}}", "trigger-workflow"]
+            },
+            "description": "**POST /ndr/events/:id/trigger-workflow**\n\n**Access:** Authenticated\n\n**Purpose:**\nTrigger automated resolution workflow for NDR.\n\n**Business Logic:**\n- Executes predefined workflow steps\n- May include: SMS to customer, email notification, auto-retry\n- Tracks workflow execution\n- Updates NDR status based on workflow outcome\n\n**Request Body:**\n```json\n{\n  \"workflowId\": string (required) - Workflow template ID\n}\n```\n\n**Common Workflows:**\n- **auto_retry:** Automatic reattempt next day\n- **customer_contact:** Send SMS/email to customer\n- **address_verification:** Request address confirmation\n- **rto_initiation:** Start RTO process after max attempts\n\n**Use Cases:**\n- Automating common resolutions\n- Bulk NDR processing\n- Consistent resolution handling"
+          },
+          "response": []
+        },
+        {
+          "name": "Get NDR Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/analytics/stats?period=month",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "analytics", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /ndr/analytics/stats**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve overall NDR statistics and metrics.\n\n**Query Parameters:**\n- `period` (optional): today|week|month|custom\n- `startDate` (optional): For custom period\n- `endDate` (optional): For custom period\n\n**Response:**\n```json\n{\n  \"period\": \"month\",\n  \"totalNDRs\": 450,\n  \"byStatus\": {\n    \"open\": 120,\n    \"in_progress\": 80,\n    \"resolved\": 230,\n    \"escalated\": 20\n  },\n  \"resolutionRate\": 51.1,\n  \"avgResolutionTime\": \"36 hours\",\n  \"ndrRate\": 3.2,\n  \"successfulReattempts\": 180,\n  \"rtoConversions\": 40\n}\n```\n\n**Use Cases:**\n- Performance monitoring\n- NDR dashboard\n- Identifying trends\n- Management reporting"
+          },
+          "response": []
+        },
+        {
+          "name": "Get NDR Breakdown by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/analytics/by-type?period=month",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "analytics", "by-type"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": "**GET /ndr/analytics/by-type**\n\n**Access:** Authenticated\n\n**Purpose:**\nGet NDR breakdown categorized by reason type.\n\n**Query Parameters:**\n- `period` (optional): today|week|month|custom\n- `startDate`, `endDate`: For custom period\n\n**Response:**\n```json\n{\n  \"breakdown\": [\n    {\n      \"ndrType\": \"customer_unavailable\",\n      \"count\": 180,\n      \"percentage\": 40.0,\n      \"resolved\": 95,\n      \"resolutionRate\": 52.8\n    },\n    {\n      \"ndrType\": \"wrong_address\",\n      \"count\": 120,\n      \"percentage\": 26.7,\n      \"resolved\": 70,\n      \"resolutionRate\": 58.3\n    },\n    {\n      \"ndrType\": \"customer_refused\",\n      \"count\": 90,\n      \"percentage\": 20.0,\n      \"resolved\": 10,\n      \"resolutionRate\": 11.1\n    },\n    {\n      \"ndrType\": \"premises_closed\",\n      \"count\": 60,\n      \"percentage\": 13.3,\n      \"resolved\": 55,\n      \"resolutionRate\": 91.7\n    }\n  ]\n}\n```\n\n**Use Cases:**\n- Identifying common NDR causes\n- Targeting improvement areas\n- Resolution strategy optimization"
+          },
+          "response": []
+        },
+        {
+          "name": "Get NDR Trends",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/analytics/trends?period=month&groupBy=day",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "analytics", "trends"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "day"
+                }
+              ]
+            },
+            "description": "**GET /ndr/analytics/trends**\n\n**Access:** Authenticated\n\n**Purpose:**\nGet NDR trends over time for visualization.\n\n**Query Parameters:**\n- `period` (optional): week|month|quarter|year\n- `groupBy` (optional): day|week|month\n- `startDate`, `endDate`: Custom date range\n\n**Response:**\n```json\n{\n  \"trends\": [\n    {\n      \"date\": \"2024-01-01\",\n      \"totalNDRs\": 15,\n      \"resolved\": 8,\n      \"rtoConverted\": 2\n    },\n    {\n      \"date\": \"2024-01-02\",\n      \"totalNDRs\": 18,\n      \"resolved\": 10,\n      \"rtoConverted\": 1\n    }\n  ],\n  \"trend\": \"increasing\",\n  \"percentageChange\": 12.5\n}\n```\n\n**Use Cases:**\n- Trend visualization\n- Seasonal pattern analysis\n- Performance tracking over time"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Resolution Rates by Action",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/analytics/resolution-rates?period=month",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "analytics", "resolution-rates"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": "**GET /ndr/analytics/resolution-rates**\n\n**Access:** Authenticated\n\n**Purpose:**\nAnalyze effectiveness of different resolution actions.\n\n**Query Parameters:**\n- `period` (optional): today|week|month|custom\n\n**Response:**\n```json\n{\n  \"resolutionActions\": [\n    {\n      \"action\": \"reattempt\",\n      \"attempts\": 250,\n      \"successful\": 180,\n      \"successRate\": 72.0,\n      \"avgTime\": \"24 hours\"\n    },\n    {\n      \"action\": \"address_correction\",\n      \"attempts\": 120,\n      \"successful\": 95,\n      \"successRate\": 79.2,\n      \"avgTime\": \"48 hours\"\n    },\n    {\n      \"action\": \"customer_contact\",\n      \"attempts\": 200,\n      \"successful\": 150,\n      \"successRate\": 75.0,\n      \"avgTime\": \"12 hours\"\n    }\n  ]\n}\n```\n\n**Use Cases:**\n- Evaluating resolution strategies\n- Process optimization\n- Training improvements"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Top NDR Reasons",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/analytics/top-reasons?limit=10&period=month",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "analytics", "top-reasons"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": "**GET /ndr/analytics/top-reasons**\n\n**Access:** Authenticated\n\n**Purpose:**\nIdentify most common NDR reasons for targeted intervention.\n\n**Query Parameters:**\n- `limit` (optional): Number of top reasons (default: 10)\n- `period` (optional): Time period\n\n**Response:**\n```json\n{\n  \"topReasons\": [\n    {\n      \"reason\": \"Customer phone not reachable\",\n      \"ndrType\": \"customer_unavailable\",\n      \"count\": 85,\n      \"percentage\": 18.9\n    },\n    {\n      \"reason\": \"Incomplete address\",\n      \"ndrType\": \"wrong_address\",\n      \"count\": 72,\n      \"percentage\": 16.0\n    },\n    {\n      \"reason\": \"Customer not at home\",\n      \"ndrType\": \"customer_unavailable\",\n      \"count\": 65,\n      \"percentage\": 14.4\n    }\n  ]\n}\n```\n\n**Use Cases:**\n- Root cause analysis\n- Preventive action planning\n- Customer communication improvements"
+          },
+          "response": []
+        },
+        {
+          "name": "Get NDR Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/dashboard",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "dashboard"]
+            },
+            "description": "**GET /ndr/dashboard**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve comprehensive NDR dashboard data including stats, trends, and actionable insights.\n\n**Response:**\n```json\n{\n  \"summary\": {\n    \"openNDRs\": 120,\n    \"pendingAction\": 80,\n    \"todayNDRs\": 25,\n    \"ndrRate\": 3.2\n  },\n  \"trends\": [...],\n  \"byType\": [...],\n  \"urgentActions\": [\n    {\n      \"ndrId\": \"ndr_123\",\n      \"awbNumber\": \"AWB123456789\",\n      \"reason\": \"customer_unavailable\",\n      \"attemptNumber\": 3,\n      \"hoursOpen\": 48,\n      \"priority\": \"urgent\"\n    }\n  ],\n  \"resolutionMetrics\": {...}\n}\n```\n\n**Use Cases:**\n- Operations dashboard\n- Morning standup review\n- Quick status overview"
+          },
+          "response": []
+        },
+        {
+          "name": "Get NDR Workflows",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/workflows",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "workflows"]
+            },
+            "description": "**GET /ndr/workflows**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve list of available NDR resolution workflows.\n\n**Response:**\n```json\n{\n  \"workflows\": [\n    {\n      \"id\": \"workflow_auto_retry\",\n      \"name\": \"Auto Retry Next Day\",\n      \"description\": \"Automatically schedule reattempt for next business day\",\n      \"applicableFor\": [\"customer_unavailable\", \"premises_closed\"],\n      \"steps\": [...]\n    },\n    {\n      \"id\": \"workflow_customer_contact\",\n      \"name\": \"Customer Contact & Confirm\",\n      \"description\": \"Send SMS/email and wait for customer response\",\n      \"applicableFor\": [\"customer_unavailable\", \"wrong_address\"],\n      \"steps\": [...]\n    }\n  ]\n}\n```\n\n**Use Cases:**\n- Viewing available workflows\n- Workflow configuration\n- Process documentation"
+          },
+          "response": []
+        },
+        {
+          "name": "Seed Default Workflows (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/workflows/seed",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "workflows", "seed"]
+            },
+            "description": "**POST /ndr/workflows/seed**\n\n**Access:** Admin only\n\n**Purpose:**\nInitialize default NDR resolution workflows for the system.\n\n**Business Logic:**\n- Creates predefined workflow templates\n- Only runs if workflows don't exist\n- Idempotent operation\n\n**Response:** List of created workflows\n\n**Use Cases:**\n- Initial system setup\n- Resetting to default workflows\n- System migration"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending NDRs (Quick Access)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ndr/events?status=open&sortBy=priority&order=desc&limit=50",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ndr", "events"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "priority"
+                },
+                {
+                  "key": "order",
+                  "value": "desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "**GET /ndr/events (Quick Access - Pending Only)**\n\n**Purpose:**\nQuick access endpoint for viewing urgent/pending NDRs requiring action.\n\n**Pre-configured Filters:**\n- Status: open (pending action)\n- Sort: by priority (high to low)\n- Limit: 50 most urgent cases\n\n**Use Cases:**\n- Morning work queue\n- Support team dashboard\n- Priority resolution"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RTO Management",
+      "item": [
+        {
+          "name": "List RTO Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/rto/events?status=in_transit&page=1&limit=20",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "events"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "in_transit"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /rto/events**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve paginated list of RTO (Return to Origin) events.\n\n**RTO Overview:**\nRTO is initiated when shipment cannot be delivered after multiple NDR attempts and needs to be returned to seller's warehouse.\n\n**RTO Lifecycle:**\n1. **initiated:** RTO process started after failed NDR resolution\n2. **in_transit:** Package being returned to origin warehouse\n3. **delivered:** Package received back at warehouse\n4. **qc_pending:** Awaiting quality check\n5. **qc_passed:** QC completed, stock can be reused\n6. **qc_failed:** Damaged/unusable, marked as loss\n\n**Query Parameters:**\n- `status` (optional): initiated|in_transit|delivered|qc_pending|qc_passed|qc_failed\n- `startDate` (optional): Filter by RTO initiation date\n- `endDate` (optional): Filter by date range\n- `page`, `limit`: Pagination\n\n**Response:**\n```json\n{\n  \"events\": [\n    {\n      \"id\": \"rto_event_id\",\n      \"shipmentId\": \"shipment_id\",\n      \"awbNumber\": \"AWB123456789\",\n      \"status\": \"in_transit\",\n      \"initiatedAt\": \"2024-01-15T10:30:00Z\",\n      \"expectedDelivery\": \"2024-01-20T18:00:00Z\",\n      \"reason\": \"Multiple failed delivery attempts\",\n      \"ndrHistory\": [...]\n    }\n  ],\n  \"pagination\": {...}\n}\n```\n\n**Use Cases:**\n- RTO tracking dashboard\n- Monitoring returns\n- Warehouse receiving planning"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending RTOs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/rto/pending",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "pending"]
+            },
+            "description": "**GET /rto/pending**\n\n**Access:** Authenticated\n\n**Purpose:**\nQuick access to RTOs requiring action (delivered but QC pending).\n\n**Response:**\n```json\n{\n  \"pending\": [\n    {\n      \"id\": \"rto_event_id\",\n      \"awbNumber\": \"AWB123456789\",\n      \"deliveredAt\": \"2024-01-18T14:30:00Z\",\n      \"daysPending\": 2,\n      \"product\": \"Product name\",\n      \"value\": 1500\n    }\n  ],\n  \"count\": 25\n}\n```\n\n**Use Cases:**\n- QC team work queue\n- Warehouse receiving dashboard\n- Action items list"
+          },
+          "response": []
+        },
+        {
+          "name": "Get RTO Event Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/rto/events/{{RTO_EVENT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "events", "{{RTO_EVENT_ID}}"]
+            },
+            "description": "**GET /rto/events/:id**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve detailed information about specific RTO event.\n\n**Response:**\n```json\n{\n  \"id\": \"rto_event_id\",\n  \"shipment\": {...},\n  \"order\": {...},\n  \"status\": \"qc_pending\",\n  \"initiatedAt\": \"2024-01-15T10:30:00Z\",\n  \"deliveredAt\": \"2024-01-18T14:30:00Z\",\n  \"transitTime\": \"3 days\",\n  \"reason\": \"Customer refused after 3 attempts\",\n  \"ndrAttempts\": 3,\n  \"ndrHistory\": [...],\n  \"tracking\": [...],\n  \"qcResult\": null,\n  \"financials\": {\n    \"shippingCost\": 150,\n    \"rtoShippingCost\": 120,\n    \"totalLoss\": 270\n  }\n}\n```\n\n**Use Cases:**\n- RTO investigation\n- Financial reconciliation\n- Process analysis"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.environment.set('RTO_EVENT_ID', response.data.id);",
+                  "        console.log('Stored RTO_EVENT_ID:', response.data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger RTO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentId\": \"{{TEST_SHIPMENT_ID}}\",\n  \"reason\": \"Customer refused delivery after 3 attempts\",\n  \"notes\": \"Customer confirmed they don't want the product\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/rto/trigger",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "trigger"]
+            },
+            "description": "**POST /rto/trigger**\n\n**Access:** Authenticated\n\n**Purpose:**\nManually initiate RTO process for a shipment.\n\n**Business Logic:**\n- Shipment must be in delivery phase\n- Validates NDR attempts exhausted (or override)\n- Notifies carrier to return package\n- Updates shipment status to 'rto_initiated'\n- Creates RTO event record\n- Updates order status\n- May trigger refund/cancellation\n\n**Request Body:**\n```json\n{\n  \"shipmentId\": string (required),\n  \"reason\": string (required) - RTO reason,\n  \"notes\": string (optional) - Additional context,\n  \"skipNDRCheck\": boolean (optional) - Override NDR validation\n}\n```\n\n**Common RTO Reasons:**\n- Multiple failed delivery attempts\n- Customer refused delivery\n- Customer not available\n- Address issue unresolved\n- Product damaged in transit\n- Customer request\n\n**Validation:**\n- Shipment exists and belongs to company\n- Shipment not already delivered\n- Shipment not already in RTO\n\n**Response:** Created RTO event details\n\n**Use Cases:**\n- Manual RTO initiation\n- Customer-requested returns\n- Unresolvable NDRs"
+          },
+          "response": []
+        },
+        {
+          "name": "Update RTO Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"delivered\",\n  \"notes\": \"Package received at warehouse receiving dock\",\n  \"receivedBy\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/rto/events/{{RTO_EVENT_ID}}/status",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "events", "{{RTO_EVENT_ID}}", "status"]
+            },
+            "description": "**PATCH /rto/events/:id/status**\n\n**Access:** Authenticated\n\n**Purpose:**\nUpdate RTO status as it progresses through return journey.\n\n**Request Body:**\n```json\n{\n  \"status\": string (required) - New status,\n  \"notes\": string (optional),\n  \"receivedBy\": string (optional) - For 'delivered' status\n}\n```\n\n**Valid Status Transitions:**\n- initiated → in_transit\n- in_transit → delivered\n- delivered → qc_pending (automatic)\n\n**Use Cases:**\n- Tracking RTO progress\n- Warehouse receiving updates\n- Status synchronization"
+          },
+          "response": []
+        },
+        {
+          "name": "Record QC Result",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"passed\",\n  \"condition\": \"good\",\n  \"notes\": \"Product in original packaging, no damage\",\n  \"qcBy\": \"Jane Smith\",\n  \"restockable\": true,\n  \"photos\": [\n    \"https://storage.example.com/qc/photo1.jpg\",\n    \"https://storage.example.com/qc/photo2.jpg\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/rto/events/{{RTO_EVENT_ID}}/qc",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "events", "{{RTO_EVENT_ID}}", "qc"]
+            },
+            "description": "**POST /rto/events/:id/qc**\n\n**Access:** Authenticated\n\n**Purpose:**\nRecord quality check result for returned product.\n\n**Business Logic:**\n- Evaluates product condition\n- Determines if restockable\n- Updates inventory accordingly\n- Records loss if damaged\n- Triggers financial reconciliation\n- Completes RTO lifecycle\n\n**Request Body:**\n```json\n{\n  \"result\": string (required) - passed|failed,\n  \"condition\": string (required) - excellent|good|fair|poor|damaged,\n  \"notes\": string (optional) - QC notes,\n  \"qcBy\": string (required) - QC inspector name,\n  \"restockable\": boolean (required),\n  \"photos\": array (optional) - Evidence photos,\n  \"damageType\": string (optional) - If failed: transit|packaging|customer|other\n}\n```\n\n**QC Results:**\n- **passed:** Product in good condition, can be restocked\n- **failed:** Product damaged, cannot be resold\n\n**Inventory Actions:**\n- **Passed:** Increase available stock, release reservation\n- **Failed:** Mark as damaged inventory, record loss\n\n**Financial Impact:**\n- Passed: Minimal loss (shipping costs only)\n- Failed: Full product value + shipping costs\n\n**Response:** Updated RTO event with QC result\n\n**Use Cases:**\n- Warehouse QC process\n- Inventory restocking\n- Loss reporting\n- Insurance claims"
+          },
+          "response": []
+        },
+        {
+          "name": "Get RTO Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/rto/analytics/stats?period=month",
+              "host": ["{{BASE_URL}}"],
+              "path": ["rto", "analytics", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /rto/analytics/stats**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve comprehensive RTO statistics and metrics.\n\n**Query Parameters:**\n- `period` (optional): today|week|month|quarter|year|custom\n- `startDate`, `endDate`: For custom period\n\n**Response:**\n```json\n{\n  \"period\": \"month\",\n  \"totalRTOs\": 85,\n  \"rtoRate\": 6.5,\n  \"byStatus\": {\n    \"in_transit\": 15,\n    \"delivered\": 10,\n    \"qc_pending\": 8,\n    \"qc_passed\": 42,\n    \"qc_failed\": 10\n  },\n  \"qcPassRate\": 80.8,\n  \"restockedUnits\": 42,\n  \"avgTransitTime\": \"4.2 days\",\n  \"financials\": {\n    \"totalShippingLoss\": 23800,\n    \"totalProductLoss\": 15000,\n    \"totalLoss\": 38800,\n    \"avgLossPerRTO\": 456\n  },\n  \"topReasons\": [\n    {\"reason\": \"Customer refused\", \"count\": 35, \"percentage\": 41.2},\n    {\"reason\": \"Multiple failed attempts\", \"count\": 28, \"percentage\": 32.9},\n    {\"reason\": \"Wrong address\", \"count\": 22, \"percentage\": 25.9}\n  ]\n}\n```\n\n**Key Metrics:**\n- **RTO Rate:** RTOs as percentage of total shipments\n- **QC Pass Rate:** Percentage of restockable returns\n- **Financial Loss:** Total cost including shipping + product value\n- **Transit Time:** Average time for package to return\n\n**Use Cases:**\n- Performance monitoring\n- Cost analysis\n- Process improvement\n- Management reporting\n- Identifying prevention opportunities"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Weight Disputes",
+      "item": [
+        {
+          "name": "List Weight Disputes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/disputes/weight?status=pending&page=1&limit=20",
+              "host": ["{{BASE_URL}}"],
+              "path": ["disputes", "weight"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /disputes/weight**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve paginated list of weight disputes with filtering options.\n\n**Weight Dispute Overview:**\nOccurs when carrier's measured weight differs from seller's declared weight, resulting in additional charges. Common causes:\n- Incorrect weight declaration\n- Volumetric weight higher than actual\n- Measurement errors\n- Packaging weight not accounted\n\n**Dispute Lifecycle:**\n1. **pending:** Dispute raised, awaiting seller evidence\n2. **under_review:** Seller submitted evidence, admin reviewing\n3. **resolved:** Dispute resolved with outcome\n\n**Query Parameters:**\n- `status` (optional): pending|under_review|resolved\n- `startDate` (optional): Filter by dispute creation date\n- `endDate` (optional): Date range filter\n- `search` (optional): Search by dispute ID or AWB\n- `page`, `limit`: Pagination\n\n**Response:**\n```json\n{\n  \"disputes\": [\n    {\n      \"id\": \"dispute_id\",\n      \"disputeNumber\": \"WD-2024-001\",\n      \"shipmentId\": \"shipment_id\",\n      \"awbNumber\": \"AWB123456789\",\n      \"status\": \"pending\",\n      \"declaredWeight\": 1500,\n      \"chargedWeight\": 2000,\n      \"discrepancy\": 500,\n      \"discrepancyPercentage\": 33.3,\n      \"originalCharge\": 95,\n      \"disputedCharge\": 110,\n      \"amountInDispute\": 15,\n      \"createdAt\": \"2024-01-15T10:30:00Z\",\n      \"deadlineAt\": \"2024-01-20T10:30:00Z\"\n    }\n  ],\n  \"pagination\": {...}\n}\n```\n\n**Use Cases:**\n- Dispute management dashboard\n- Tracking disputed shipments\n- Financial reconciliation"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Weight Dispute Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/disputes/weight/{{DISPUTE_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["disputes", "weight", "{{DISPUTE_ID}}"]
+            },
+            "description": "**GET /disputes/weight/:disputeId**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve detailed information about specific weight dispute including evidence and resolution.\n\n**Response:**\n```json\n{\n  \"id\": \"dispute_id\",\n  \"disputeNumber\": \"WD-2024-001\",\n  \"status\": \"under_review\",\n  \"shipment\": {...},\n  \"order\": {...},\n  \"weights\": {\n    \"declared\": {\n      \"weight\": 1500,\n      \"dimensions\": {\"length\": 30, \"width\": 25, \"height\": 15},\n      \"volumetricWeight\": 1875\n    },\n    \"charged\": {\n      \"weight\": 2000,\n      \"dimensions\": {\"length\": 32, \"width\": 26, \"height\": 16},\n      \"volumetricWeight\": 2171,\n      \"source\": \"carrier_measurement\"\n    },\n    \"discrepancy\": {\n      \"weight\": 500,\n      \"percentage\": 33.3,\n      \"type\": \"volumetric\"\n    }\n  },\n  \"charges\": {\n    \"original\": 95,\n    \"disputed\": 110,\n    \"difference\": 15\n  },\n  \"evidence\": {\n    \"seller\": {\n      \"photos\": [...],\n      \"documents\": [...],\n      \"notes\": \"Package measured on calibrated scale\",\n      \"submittedAt\": \"2024-01-16T14:00:00Z\"\n    },\n    \"carrier\": {\n      \"photos\": [...],\n      \"measurementReport\": \"...\"\n    }\n  },\n  \"timeline\": [...],\n  \"resolution\": null\n}\n```\n\n**Use Cases:**\n- Dispute investigation\n- Evidence review\n- Resolution decision making"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.environment.set('DISPUTE_ID', response.data.id);",
+                  "        console.log('Stored DISPUTE_ID:', response.data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Seller Evidence",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{CSRF_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photos\": [\n    \"https://storage.example.com/evidence/package-on-scale.jpg\",\n    \"https://storage.example.com/evidence/dimensions-measurement.jpg\"\n  ],\n  \"documents\": [\n    \"https://storage.example.com/evidence/scale-calibration.pdf\"\n  ],\n  \"notes\": \"Package was measured on calibrated scale showing 1.5kg. Dimensions are 30x25x15cm as declared. Carrier seems to have measured outer shipping box instead of actual package.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/disputes/weight/{{DISPUTE_ID}}/submit",
+              "host": ["{{BASE_URL}}"],
+              "path": ["disputes", "weight", "{{DISPUTE_ID}}", "submit"]
+            },
+            "description": "**POST /disputes/weight/:disputeId/submit**\n\n**Access:** Authenticated\n\n**Purpose:**\nSubmit evidence to support seller's declared weight.\n\n**Business Logic:**\n- Seller can submit evidence before deadline\n- Photos of package on scale\n- Dimension measurements\n- Packing slip showing weight\n- Scale calibration certificates\n- Updates dispute status to 'under_review'\n- Notifies admin team for review\n\n**Request Body:**\n```json\n{\n  \"photos\": array (optional) - Evidence photo URLs,\n  \"documents\": array (optional) - Supporting document URLs,\n  \"notes\": string (required) - Explanation/context\n}\n```\n\n**Evidence Best Practices:**\n- Clear photos of package on calibrated scale\n- Scale display showing weight clearly visible\n- Multiple angles of package dimensions\n- Packing slip or invoice showing declared weight\n- Scale calibration certificate if available\n\n**Validation:**\n- Dispute must be in 'pending' status\n- At least one photo or document required\n- Notes must be descriptive\n- Submission before deadline\n\n**Response:** Updated dispute with submitted evidence\n\n**Use Cases:**\n- Contesting weight charges\n- Providing proof of correct weight\n- Resolving measurement discrepancies"
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve Dispute (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{CSRF_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"seller_favor\",\n  \"adjustedWeight\": 1500,\n  \"refundAmount\": 15,\n  \"reasonCode\": \"measurement_error\",\n  \"notes\": \"Seller provided clear evidence of correct weight. Carrier measurement appears to have included outer shipping box. Refunding difference.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/disputes/weight/{{DISPUTE_ID}}/resolve",
+              "host": ["{{BASE_URL}}"],
+              "path": ["disputes", "weight", "{{DISPUTE_ID}}", "resolve"]
+            },
+            "description": "**POST /disputes/weight/:disputeId/resolve**\n\n**Access:** Admin only\n\n**Purpose:**\nResolve weight dispute with outcome decision.\n\n**Business Logic:**\n- Admin reviews seller evidence vs carrier data\n- Makes resolution decision\n- Processes refund or confirms charges\n- Updates dispute status to 'resolved'\n- Notifies seller\n- Updates financial records\n\n**Request Body:**\n```json\n{\n  \"outcome\": string (required) - Resolution outcome,\n  \"adjustedWeight\": number (optional) - Final agreed weight,\n  \"refundAmount\": number (optional) - Amount to refund,\n  \"deductionAmount\": number (optional) - Additional charge,\n  \"reasonCode\": string (required) - Resolution reason,\n  \"notes\": string (required) - Resolution explanation\n}\n```\n\n**Resolution Outcomes:**\n- **seller_favor:** Seller's declared weight accepted, refund issued\n- **shipcrowd_favor:** Carrier's weight accepted, charges upheld\n- **split:** Compromise - both parties share difference\n- **waived:** Dispute waived as goodwill gesture\n\n**Reason Codes:**\n- `measurement_error`: Carrier measurement incorrect\n- `volumetric_calculation`: Volumetric weight difference\n- `packaging_included`: Outer packaging measured\n- `scale_calibration`: Scale accuracy issue\n- `seller_error`: Seller declared wrong weight\n- `goodwill`: Waived for customer satisfaction\n\n**Financial Actions:**\n- **seller_favor:** Credit seller wallet with refund amount\n- **shipcrowd_favor:** Deduct additional amount from wallet\n- **split:** Partial refund/charge\n- **waived:** No financial transaction\n\n**Validation:**\n- Dispute must be in 'under_review' status\n- Valid outcome and reason code\n- Refund/deduction amounts logical\n- Admin authorization required\n\n**Response:** Resolved dispute with outcome details\n\n**Use Cases:**\n- Dispute adjudication\n- Financial reconciliation\n- Customer satisfaction\n- Fair resolution enforcement"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Weight Dispute Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/disputes/weight/metrics?startDate=2024-01-01&endDate=2024-01-31",
+              "host": ["{{BASE_URL}}"],
+              "path": ["disputes", "weight", "metrics"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31"
+                }
+              ]
+            },
+            "description": "**GET /disputes/weight/metrics**\n\n**Access:** Authenticated\n\n**Purpose:**\nRetrieve weight dispute metrics for company dashboard.\n\n**Query Parameters:**\n- `startDate` (optional): Metrics start date\n- `endDate` (optional): Metrics end date\n\n**Response:**\n```json\n{\n  \"period\": {\n    \"startDate\": \"2024-01-01\",\n    \"endDate\": \"2024-01-31\"\n  },\n  \"summary\": {\n    \"totalDisputes\": 45,\n    \"pending\": 12,\n    \"underReview\": 8,\n    \"resolved\": 25\n  },\n  \"outcomes\": {\n    \"sellerFavor\": 12,\n    \"shipcrowdFavor\": 8,\n    \"split\": 3,\n    \"waived\": 2\n  },\n  \"winRate\": 48.0,\n  \"financials\": {\n    \"totalDisputed\": 1250,\n    \"totalRefunded\": 620,\n    \"totalUphold\": 480,\n    \"netImpact\": -140\n  },\n  \"avgDiscrepancy\": 18.5,\n  \"avgResolutionTime\": \"3.2 days\"\n}\n```\n\n**Use Cases:**\n- Monitoring dispute trends\n- Financial impact tracking\n- Performance metrics\n- Dashboard display"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

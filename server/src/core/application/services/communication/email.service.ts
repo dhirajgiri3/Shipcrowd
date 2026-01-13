@@ -17,24 +17,41 @@
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import { MailDataRequired } from '@sendgrid/mail';
+import axios from 'axios';
 import logger from '../../../../shared/logger/winston.logger';
 import dotenv from 'dotenv';
-import { ExternalServiceError } from '../../../../shared/errors/app.error';
-import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Email service configuration
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@Shipcrowd.com';
-const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'sendgrid'; // 'sendgrid' or 'smtp'
+const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'sendgrid'; // 'sendgrid', 'smtp', or 'zeptomail'
 const MAX_RETRY_ATTEMPTS = parseInt(process.env.EMAIL_MAX_RETRY || '3');
 const RETRY_DELAY_MS = parseInt(process.env.EMAIL_RETRY_DELAY_MS || '1000');
+const MAX_RETRY_DELAY_MS = 30000; // Cap at 30 seconds to prevent infinite waits
+const EMAIL_TIMEOUT_MS = parseInt(process.env.EMAIL_TIMEOUT_MS || '15000'); // 15 second timeout
+
+// Circuit Breaker Configuration
+let circuitBreakerFailures = 0;
+let circuitBreakerLastFailure: Date | null = null;
+const CIRCUIT_BREAKER_THRESHOLD = 5; // Open circuit after 5 consecutive failures
+const CIRCUIT_BREAKER_RESET_MS = 60000; // Reset after 1 minute
+
+// ZeptoMail Configuration
+const ZEPTOMAIL_API_URL = 'https://api.zeptomail.in/v1.1/email';
+const ZEPTOMAIL_API_KEY = process.env.ZEPTOMAIL_API_KEY || process.env.SMTP_PASS; // Can reuse SMTP password
 
 // Initialize SendGrid if API key is available
 if (process.env.SENDGRID_API_KEY && EMAIL_SERVICE === 'sendgrid') {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   logger.info('SendGrid initialized successfully');
+} else if (EMAIL_SERVICE === 'zeptomail') {
+  if (!ZEPTOMAIL_API_KEY) {
+    logger.warn('ZeptoMail API key not found (check ZEPTOMAIL_API_KEY or SMTP_PASS)');
+  } else {
+    logger.info('ZeptoMail API service initialized');
+  }
 } else if (EMAIL_SERVICE === 'smtp') {
   logger.info('Using SMTP email service');
 } else {
@@ -68,7 +85,61 @@ if (EMAIL_SERVICE === 'smtp') {
 }
 
 /**
- * Helper function to retry a function with exponential backoff
+ * Check if error is retryable (temporary) or permanent
+ */
+const isRetryableError = (error: any): boolean => {
+  // Permanent errors that should NOT be retried
+  const permanentCodes = [
+    'EAUTH', // Authentication failed
+    'TM_3601', // Trial limit exceeded (ZeptoMail)
+    'SM_133', // Trial limit (ZeptoMail)
+    'SMI_115', // Daily limit (ZeptoMail)
+  ];
+
+  const errorCode = error.code || error.response?.data?.error?.code;
+  if (permanentCodes.includes(errorCode)) {
+    return false;
+  }
+
+  // SMTP "Sender Org Blocked" is permanent
+  if (error.response?.includes('Sender Org Blocked')) {
+    return false;
+  }
+
+  // Network errors are retryable
+  if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+    return true;
+  }
+
+  // Default: retry for unknown errors
+  return true;
+};
+
+/**
+ * Check circuit breaker status
+ */
+const checkCircuitBreaker = (): void => {
+  if (circuitBreakerFailures >= CIRCUIT_BREAKER_THRESHOLD) {
+    const timeSinceLastFailure = circuitBreakerLastFailure
+      ? Date.now() - circuitBreakerLastFailure.getTime()
+      : Infinity;
+
+    if (timeSinceLastFailure < CIRCUIT_BREAKER_RESET_MS) {
+      throw new Error(
+        `Email service circuit breaker is OPEN. Too many failures (${circuitBreakerFailures}). ` +
+        `Retry after ${Math.ceil((CIRCUIT_BREAKER_RESET_MS - timeSinceLastFailure) / 1000)}s`
+      );
+    } else {
+      // Reset circuit breaker
+      logger.info('Circuit breaker reset - attempting email service recovery');
+      circuitBreakerFailures = 0;
+      circuitBreakerLastFailure = null;
+    }
+  }
+};
+
+/**
+ * Helper function to retry a function with exponential backoff and timeout protection
  */
 const retryWithBackoff = async <T>(
   fn: () => Promise<T>,
@@ -79,14 +150,61 @@ const retryWithBackoff = async <T>(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      return await fn();
+      // Check circuit breaker before attempting
+      checkCircuitBreaker();
+
+      // Add timeout protection
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Email operation timeout')), EMAIL_TIMEOUT_MS);
+      });
+
+      const result = await Promise.race([fn(), timeoutPromise]);
+
+      // Success - reset circuit breaker
+      if (circuitBreakerFailures > 0) {
+        logger.info('Email service recovered - resetting circuit breaker');
+        circuitBreakerFailures = 0;
+        circuitBreakerLastFailure = null;
+      }
+
+      return result;
     } catch (error) {
       lastError = error as Error;
-      logger.warn(`Email attempt ${attempt + 1} failed, retrying in ${delayMs * Math.pow(2, attempt)}ms`);
-      await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
+
+      // Check if error is retryable
+      if (!isRetryableError(error)) {
+        logger.error('Non-retryable email error detected:', {
+          error: (error as Error).message,
+          code: (error as any).code
+        });
+        throw error; // Don't retry permanent errors
+      }
+
+      // Update circuit breaker
+      circuitBreakerFailures++;
+      circuitBreakerLastFailure = new Date();
+
+      // Don't retry on last attempt
+      if (attempt === maxRetries - 1) {
+        break;
+      }
+
+      // Calculate delay with exponential backoff, capped at MAX_RETRY_DELAY_MS
+      const delay = Math.min(delayMs * Math.pow(2, attempt), MAX_RETRY_DELAY_MS);
+      logger.warn(`Email attempt ${attempt + 1}/${maxRetries} failed, retrying in ${delay}ms`, {
+        error: (error as Error).message,
+        circuitBreakerFailures
+      });
+
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 
+  // All retries exhausted
+  logger.error('All email retry attempts exhausted', {
+    attempts: maxRetries,
+    circuitBreakerFailures
+  });
   throw lastError;
 };
 
@@ -109,8 +227,44 @@ export const sendEmail = async (
     // Generate plain text from HTML if not provided
     const plainText = text || html.replace(/<[^>]*>/g, '');
 
-    if (EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
-      // Use SendGrid
+    if (EMAIL_SERVICE === 'zeptomail' && ZEPTOMAIL_API_KEY) {
+      // Use ZeptoMail API
+      const zeptoRecipients = recipients.map(email => ({
+        email_address: {
+          address: email,
+          // Extract name from email if possible/needed, or optional
+        }
+      }));
+
+      const payload = {
+        from: {
+          address: EMAIL_FROM,
+          name: process.env.EMAIL_FROM_NAME || 'Shipcrowd'
+        },
+        to: zeptoRecipients,
+        subject,
+        htmlbody: html,
+        // textbody: plainText, // ZeptoMail uses htmlbody mostly
+      };
+
+      await retryWithBackoff(
+        async () => {
+          const response = await axios.post(ZEPTOMAIL_API_URL, payload, {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': `Zoho-enczapikey ${ZEPTOMAIL_API_KEY}`
+            }
+          });
+          return response.data;
+        },
+        MAX_RETRY_ATTEMPTS,
+        RETRY_DELAY_MS
+      );
+
+      logger.info(`ZeptoMail API email sent to ${recipients.join(', ')}`);
+
+    } else if (EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
       const msg: MailDataRequired = {
         to: recipients,
         from: {
@@ -120,27 +274,16 @@ export const sendEmail = async (
         subject,
         html,
         text: plainText,
+        attachments: attachments ? attachments.map(a => ({
+          content: a.content,
+          filename: a.filename,
+          type: a.mimetype,
+          disposition: 'attachment',
+        })) : undefined,
+        templateId,
+        dynamicTemplateData
       };
 
-      // Add attachments if provided
-      if (attachments && attachments.length > 0) {
-        msg.attachments = attachments.map(attachment => ({
-          content: attachment.content,
-          filename: attachment.filename,
-          type: attachment.mimetype,
-          disposition: 'attachment',
-        }));
-      }
-
-      // Add template if provided
-      if (templateId) {
-        msg.templateId = templateId;
-        if (dynamicTemplateData) {
-          msg.dynamicTemplateData = dynamicTemplateData;
-        }
-      }
-
-      // Send email with retry mechanism
       await retryWithBackoff(
         () => sgMail.send(msg),
         MAX_RETRY_ATTEMPTS,
@@ -171,18 +314,38 @@ export const sendEmail = async (
     }
 
     return true;
-  } catch (error) {
-    if (error instanceof Error) {
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      // Handle Axios/ZeptoMail specific errors
+      const apiError = error.response?.data;
+      logger.error('ZeptoMail API Error:', {
+        status: error.response?.status,
+        code: apiError?.error?.code,
+        message: apiError?.message || apiError?.error?.message,
+        details: apiError?.error?.details,
+        recipients: to
+      });
+
+      // Enhance error object for the controller to catch
+      error.message = `ZeptoMail Error: ${apiError?.message || apiError?.error?.message || error.message}`;
+      (error as any).code = apiError?.error?.code;
+      (error as any).response = apiError;
+    } else if (error instanceof Error) {
       logger.error('Error sending email:', {
         error: error.message,
         stack: error.stack,
         recipients: Array.isArray(to) ? to.join(', ') : to,
         subject,
+        // @ts-ignore
+        code: (error as any).code,
+        // @ts-ignore
+        response: (error as any).response,
       });
     } else {
       logger.error('Unknown error sending email:', error);
     }
-    return false;
+    // Re-throw the error so callers can handle it
+    throw error;
   }
 };
 

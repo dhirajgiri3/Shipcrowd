@@ -33,3 +33,18 @@ export const PASSWORD_REQUIREMENTS = {
     REQUIRE_NUMBER: true,
     REQUIRE_SPECIAL: true,
 };
+
+// Cookie names
+export const AUTH_COOKIES = {
+    ACCESS_TOKEN: 'accessToken',
+    REFRESH_TOKEN: 'refreshToken',
+    SECURE_ACCESS_TOKEN: '__Secure-accessToken',
+    SECURE_REFRESH_TOKEN: '__Secure-refreshToken',
+};
+
+// Session constants
+export const SESSION_CONSTANTS = {
+    DEFAULT_TIMEOUT_MS: 8 * 60 * 60 * 1000, // 8 hours
+    MAX_LOGIN_ATTEMPTS: 5,
+    LOCKOUT_DURATION_MINS: 30,
+};

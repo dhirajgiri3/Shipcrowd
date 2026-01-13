@@ -71,6 +71,30 @@ export const resendVerificationRateLimiter = rateLimit({
 });
 
 /**
+ * Rate limiter for magic link requests
+ * Strict to prevent email enumeration and spam
+ */
+export const magicLinkRateLimiter = rateLimit({
+  ...defaultOptions,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 5, // 5 requests per hour
+
+  message: { message: 'Too many magic link requests, please try again later' },
+});
+
+/**
+ * Rate limiter for setting password
+ * Strict to prevent brute force
+ */
+export const setPasswordRateLimiter = rateLimit({
+  ...defaultOptions,
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 5, // 5 attempts per hour
+
+  message: { message: 'Too many password set attempts, please try again later' },
+});
+
+/**
  * Rate limiter for API endpoints
  * Less restrictive for normal API usage
  */
@@ -109,6 +133,8 @@ export default {
   registrationRateLimiter,
   emailVerificationRateLimiter,
   resendVerificationRateLimiter,
+  magicLinkRateLimiter,
+  setPasswordRateLimiter,
   apiRateLimiter,
   publicRateLimiter,
   globalRateLimiter,

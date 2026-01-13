@@ -1,0 +1,524 @@
+{
+  "info": {
+    "name": "06 - Finance & Wallet",
+    "description": "Wallet management and COD remittance system for prepaid shipping model.\n\n**Total Endpoints:** 17\n\n**Folders:**\n- Wallet Management (6 endpoints)\n- COD Remittance (11 endpoints)\n\n**Prerequisites:**\n- Valid JWT access token (auto-refreshed)\n- KYC verification required for all operations\n- Admin role required for certain operations\n\n**Business Model:**\n- **Prepaid Wallet:** Sellers maintain wallet balance to pay for shipping\n- **Auto-deduction:** Shipping charges deducted from wallet on shipment creation\n- **COD Collection:** Cash on Delivery amounts collected by carriers\n- **COD Remittance:** Periodic settlement of COD amounts to seller wallet\n\n**Key Concepts:**\n- **Wallet Balance:** Available funds for shipping charges\n- **Low Balance Threshold:** Alert trigger for recharge reminder\n- **COD Remittance:** Process of settling collected COD amounts\n- **Settlement Cycle:** Periodic (weekly/monthly) or on-demand payouts\n\n**Auto Features:**\n- Token refresh on 401 responses\n- Auto-stores TRANSACTION_ID, REMITTANCE_ID\n- Global test assertions\n- Console logging for debugging",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{ACCESS_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto token refresh logic",
+          "const accessToken = pm.environment.get('ACCESS_TOKEN');",
+          "const tokenExpiry = pm.environment.get('TOKEN_EXPIRY');",
+          "",
+          "if (!accessToken || !tokenExpiry || Date.now() >= parseInt(tokenExpiry)) {",
+          "    console.log('Token expired or missing, refreshing...');",
+          "    ",
+          "    const refreshToken = pm.environment.get('REFRESH_TOKEN');",
+          "    if (!refreshToken) {",
+          "        console.error('No refresh token available. Please login first.');",
+          "        return;",
+          "    }",
+          "    ",
+          "    pm.sendRequest({",
+          "        url: pm.environment.get('BASE_URL') + '/auth/refresh',",
+          "        method: 'POST',",
+          "        header: {",
+          "            'Content-Type': 'application/json'",
+          "        },",
+          "        body: {",
+          "            mode: 'raw',",
+          "            raw: JSON.stringify({",
+          "                refreshToken: refreshToken",
+          "            })",
+          "        }",
+          "    }, (err, res) => {",
+          "        if (err) {",
+          "            console.error('Token refresh failed:', err);",
+          "            return;",
+          "        }",
+          "        ",
+          "        const data = res.json().data;",
+          "        pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+          "        pm.environment.set('TOKEN_EXPIRY', Date.now() + (14 * 60 * 1000));",
+          "        console.log('Token refreshed successfully');",
+          "    });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test assertions",
+          "pm.test('Status code is 2xx or 3xx', function () {",
+          "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204, 301, 302, 304]);",
+          "});",
+          "",
+          "pm.test('Response time is less than 5s', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "if (pm.response.code !== 204) {",
+          "    pm.test('Response has correct content-type', function () {",
+          "        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "    });",
+          "    ",
+          "    pm.test('Response has valid JSON body', function () {",
+          "        pm.response.to.be.json;",
+          "    });",
+          "}",
+          "",
+          "// Log response for debugging",
+          "console.log('Response Status:', pm.response.code);",
+          "console.log('Response Body:', pm.response.text());"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Wallet Management",
+      "item": [
+        {
+          "name": "Get Wallet Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/wallet/balance",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "wallet", "balance"]
+            },
+            "description": "**GET /finance/wallet/balance**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve current wallet balance and status.\n\n**Response:**\n```json\n{\n  \"balance\": 15000.50,\n  \"currency\": \"INR\",\n  \"lowBalanceThreshold\": 5000,\n  \"belowThreshold\": false,\n  \"status\": \"active\",\n  \"lastTransaction\": {\n    \"id\": \"txn_id\",\n    \"type\": \"debit\",\n    \"amount\": 120,\n    \"description\": \"Shipping charge for AWB123456789\",\n    \"timestamp\": \"2024-01-15T10:30:00Z\"\n  }\n}\n```\n\n**Use Cases:**\n- Dashboard display\n- Pre-shipment validation\n- Balance monitoring"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/wallet/transactions?page=1&limit=50&type=all&startDate=2024-01-01&endDate=2024-01-31",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "wallet", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "type",
+                  "value": "all"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31"
+                }
+              ]
+            },
+            "description": "**GET /finance/wallet/transactions**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve paginated wallet transaction history with filtering options.\n\n**Query Parameters:**\n- `page` (optional): Page number (default: 1)\n- `limit` (optional): Items per page (default: 50, max: 100)\n- `type` (optional): all|credit|debit|refund\n- `startDate` (optional): Filter by date range\n- `endDate` (optional): Filter by date range\n\n**Transaction Types:**\n- **credit:** Money added to wallet (recharge, COD remittance, refund)\n- **debit:** Money deducted (shipping charges, additional fees)\n- **refund:** Reversed charges (cancelled shipments, disputes)\n\n**Response:**\n```json\n{\n  \"transactions\": [\n    {\n      \"id\": \"txn_123456\",\n      \"type\": \"credit\",\n      \"amount\": 10000,\n      \"balanceAfter\": 15000.50,\n      \"description\": \"Wallet recharge via Razorpay\",\n      \"reference\": \"pay_ABC123\",\n      \"status\": \"completed\",\n      \"timestamp\": \"2024-01-15T09:00:00Z\"\n    },\n    {\n      \"id\": \"txn_123457\",\n      \"type\": \"debit\",\n      \"amount\": 120,\n      \"balanceAfter\": 14880.50,\n      \"description\": \"Shipping charge - AWB123456789\",\n      \"reference\": \"shipment_xyz\",\n      \"status\": \"completed\",\n      \"timestamp\": \"2024-01-15T10:30:00Z\"\n    }\n  ],\n  \"pagination\": {...},\n  \"summary\": {\n    \"totalCredits\": 25000,\n    \"totalDebits\": 9999.50,\n    \"netChange\": 15000.50\n  }\n}\n```\n\n**Use Cases:**\n- Transaction history view\n- Financial reconciliation\n- Audit trail\n- Accounting integration"
+          },
+          "response": []
+        },
+        {
+          "name": "Recharge Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10000,\n  \"paymentMethod\": \"razorpay\",\n  \"metadata\": {\n    \"source\": \"dashboard\",\n    \"notes\": \"Monthly recharge\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/wallet/recharge",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "wallet", "recharge"]
+            },
+            "description": "**POST /finance/wallet/recharge**\n\n**Access:** KYC required\n\n**Purpose:**\nInitiate wallet recharge with payment gateway integration.\n\n**Business Logic:**\n- Creates payment order with Razorpay/other gateway\n- Generates payment link\n- On payment success, credits wallet\n- Creates transaction record\n- Sends confirmation notification\n\n**Request Body:**\n```json\n{\n  \"amount\": number (required) - Amount in INR,\n  \"paymentMethod\": string (required) - razorpay|bank_transfer|upi,\n  \"metadata\": object (optional) - Additional info\n}\n```\n\n**Validation:**\n- Minimum recharge: ₹1000\n- Maximum recharge: ₹5,00,000\n- Amount must be positive integer\n\n**Response:**\n```json\n{\n  \"orderId\": \"order_ABC123\",\n  \"amount\": 10000,\n  \"currency\": \"INR\",\n  \"paymentLink\": \"https://razorpay.com/pay/...\",\n  \"status\": \"pending\",\n  \"expiresAt\": \"2024-01-15T11:30:00Z\",\n  \"razorpayOrderId\": \"order_xyz\"\n}\n```\n\n**Payment Flow:**\n1. Create recharge request → Get payment link\n2. User completes payment on gateway\n3. Gateway webhook updates transaction\n4. Wallet credited automatically\n5. Notification sent to user\n\n**Use Cases:**\n- Adding funds to wallet\n- Proactive recharge before shipping\n- Auto-recharge on low balance"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/wallet/stats?period=month",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "wallet", "stats"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": "**GET /finance/wallet/stats**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve wallet usage statistics and spending patterns.\n\n**Query Parameters:**\n- `period` (optional): today|week|month|quarter|year\n\n**Response:**\n```json\n{\n  \"period\": \"month\",\n  \"currentBalance\": 15000.50,\n  \"startingBalance\": 5000,\n  \"totalRecharges\": 25000,\n  \"totalSpent\": 14999.50,\n  \"transactionCount\": {\n    \"credits\": 3,\n    \"debits\": 125,\n    \"total\": 128\n  },\n  \"avgTransactionSize\": 119.99,\n  \"largestTransaction\": {\n    \"amount\": 500,\n    \"type\": \"debit\",\n    \"description\": \"Bulk shipment charges\"\n  },\n  \"spendingByCategory\": {\n    \"shipping\": 12000,\n    \"additional_charges\": 2500,\n    \"disputes\": 499.50\n  },\n  \"projectedBurnRate\": 15000,\n  \"daysUntilEmpty\": 30\n}\n```\n\n**Use Cases:**\n- Financial dashboard\n- Budget planning\n- Usage analysis\n- Recharge planning"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Low Balance Threshold",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"threshold\": 10000,\n  \"enableAlerts\": true\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/wallet/threshold",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "wallet", "threshold"]
+            },
+            "description": "**PUT /finance/wallet/threshold**\n\n**Access:** KYC required\n\n**Purpose:**\nSet or update low balance alert threshold.\n\n**Business Logic:**\n- Configures balance level for alerts\n- When balance drops below threshold:\n  - Email notification sent\n  - Dashboard warning shown\n  - Optional SMS alert\n  - Blocks new shipments (if configured)\n\n**Request Body:**\n```json\n{\n  \"threshold\": number (required) - Minimum balance in INR,\n  \"enableAlerts\": boolean (optional) - Enable/disable alerts\n}\n```\n\n**Validation:**\n- Threshold must be positive\n- Minimum threshold: ₹1000\n- Maximum threshold: ₹1,00,000\n\n**Response:**\n```json\n{\n  \"threshold\": 10000,\n  \"enableAlerts\": true,\n  \"currentBalance\": 15000.50,\n  \"status\": \"above_threshold\",\n  \"updatedAt\": \"2024-01-15T10:30:00Z\"\n}\n```\n\n**Use Cases:**\n- Setting up balance alerts\n- Preventing service disruption\n- Proactive cash flow management"
+          },
+          "response": []
+        },
+        {
+          "name": "Refund Transaction (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Shipment cancelled before pickup\",\n  \"notes\": \"Full refund for AWB123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/wallet/refund/{{TRANSACTION_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "wallet", "refund", "{{TRANSACTION_ID}}"]
+            },
+            "description": "**POST /finance/wallet/refund/:transactionId**\n\n**Access:** Admin only\n\n**Purpose:**\nProcess refund for a specific transaction (admin operation).\n\n**Business Logic:**\n- Validates transaction exists and is refundable\n- Credits wallet with transaction amount\n- Creates refund transaction record\n- Links to original transaction\n- Sends refund notification\n- Updates shipment/order status\n\n**Request Body:**\n```json\n{\n  \"reason\": string (required) - Refund reason,\n  \"notes\": string (optional) - Additional context\n}\n```\n\n**Refund Scenarios:**\n- Shipment cancelled before pickup\n- Service failure\n- Weight dispute in seller favor\n- Overcharge correction\n- Goodwill refund\n\n**Validation:**\n- Transaction must be completed debit\n- Cannot refund already refunded transaction\n- Cannot refund transactions older than 180 days\n\n**Response:**\n```json\n{\n  \"refundId\": \"txn_refund_123\",\n  \"originalTransactionId\": \"txn_123456\",\n  \"amount\": 120,\n  \"reason\": \"Shipment cancelled\",\n  \"status\": \"completed\",\n  \"processedAt\": \"2024-01-15T11:00:00Z\",\n  \"newBalance\": 15120.50\n}\n```\n\n**Use Cases:**\n- Processing cancellation refunds\n- Resolving billing disputes\n- Service failure compensation\n- Manual refund processing"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.environment.set('TRANSACTION_ID', response.data.id);",
+                  "        console.log('Stored TRANSACTION_ID:', response.data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "COD Remittance",
+      "item": [
+        {
+          "name": "Get Eligible COD Shipments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/eligible-shipments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "eligible-shipments"]
+            },
+            "description": "**GET /finance/cod-remittance/eligible-shipments**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve list of delivered COD shipments eligible for remittance.\n\n**Eligibility Criteria:**\n- Shipment status: delivered\n- Payment method: COD\n- Not already included in a batch\n- Delivered at least 2-7 days ago (cooling period)\n- No active disputes\n\n**Response:**\n```json\n{\n  \"eligibleShipments\": [\n    {\n      \"shipmentId\": \"shipment_id\",\n      \"awbNumber\": \"AWB123456789\",\n      \"orderId\": \"order_id\",\n      \"codAmount\": 1500,\n      \"deliveredAt\": \"2024-01-10T14:30:00Z\",\n      \"daysSinceDelivery\": 5,\n      \"customer\": {...}\n    }\n  ],\n  \"summary\": {\n    \"totalShipments\": 45,\n    \"totalCODAmount\": 67500,\n    \"oldestShipment\": \"2024-01-08T10:00:00Z\"\n  }\n}\n```\n\n**Cooling Period:**\nWaiting period before COD amount can be remitted (allows for returns/disputes).\n\n**Use Cases:**\n- Creating remittance batch\n- Checking pending COD settlements\n- Cash flow planning"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Remittance Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentIds\": [\n    \"shipment_id_1\",\n    \"shipment_id_2\",\n    \"shipment_id_3\"\n  ],\n  \"notes\": \"Weekly COD settlement - Week 3\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/create",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "create"]
+            },
+            "description": "**POST /finance/cod-remittance/create**\n\n**Access:** KYC required\n\n**Purpose:**\nCreate a new COD remittance batch for selected shipments.\n\n**Business Logic:**\n- Validates all shipments are eligible\n- Groups shipments into batch\n- Calculates total remittance amount\n- Deducts applicable fees:\n  - Shipping charges (if not prepaid)\n  - COD collection charges (2% of COD amount)\n  - RTO charges (if applicable)\n  - Weight dispute charges\n- Creates remittance record with 'pending' status\n- Awaits admin approval\n\n**Request Body:**\n```json\n{\n  \"shipmentIds\": array (required) - Shipment IDs to include,\n  \"notes\": string (optional) - Batch notes\n}\n```\n\n**Validation:**\n- All shipments must be eligible\n- Minimum batch size: 1 shipment\n- Maximum batch size: 1000 shipments\n- Shipments must belong to requesting company\n\n**Response:**\n```json\n{\n  \"remittanceId\": \"rem_123456\",\n  \"batchNumber\": \"REM-2024-001\",\n  \"status\": \"pending\",\n  \"shipmentsCount\": 45,\n  \"totalCODCollected\": 67500,\n  \"deductions\": {\n    \"shippingCharges\": 5400,\n    \"codCharges\": 1350,\n    \"rtoCharges\": 0,\n    \"disputeCharges\": 0,\n    \"total\": 6750\n  },\n  \"netRemittanceAmount\": 60750,\n  \"createdAt\": \"2024-01-15T10:00:00Z\",\n  \"expectedPayoutDate\": \"2024-01-20T00:00:00Z\"\n}\n```\n\n**Use Cases:**\n- Weekly COD settlement\n- Monthly COD batch\n- Custom batch creation\n- Cash flow management"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.environment.set('REMITTANCE_ID', response.data.id);",
+                  "        console.log('Stored REMITTANCE_ID:', response.data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Remittances",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance?status=pending&page=1&limit=20",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**GET /finance/cod-remittance**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve paginated list of all COD remittance batches.\n\n**Query Parameters:**\n- `status` (optional): pending|approved|processing|completed|cancelled\n- `startDate` (optional): Filter by creation date\n- `endDate` (optional): Date range filter\n- `page`, `limit`: Pagination\n\n**Remittance Lifecycle:**\n1. **pending:** Created, awaiting admin approval\n2. **approved:** Approved by admin, ready for payout\n3. **processing:** Payout initiated with payment gateway\n4. **completed:** Funds transferred successfully\n5. **cancelled:** Batch cancelled\n\n**Response:**\n```json\n{\n  \"remittances\": [\n    {\n      \"id\": \"rem_123456\",\n      \"batchNumber\": \"REM-2024-001\",\n      \"status\": \"pending\",\n      \"shipmentsCount\": 45,\n      \"totalCODCollected\": 67500,\n      \"netRemittanceAmount\": 60750,\n      \"createdAt\": \"2024-01-15T10:00:00Z\",\n      \"expectedPayoutDate\": \"2024-01-20T00:00:00Z\"\n    }\n  ],\n  \"pagination\": {...}\n}\n```\n\n**Use Cases:**\n- Remittance history\n- Settlement tracking\n- Financial dashboard"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Remittance Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/{{REMITTANCE_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "{{REMITTANCE_ID}}"]
+            },
+            "description": "**GET /finance/cod-remittance/:id**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve detailed information about specific remittance batch.\n\n**Response:**\n```json\n{\n  \"id\": \"rem_123456\",\n  \"batchNumber\": \"REM-2024-001\",\n  \"status\": \"completed\",\n  \"shipments\": [\n    {\n      \"shipmentId\": \"shipment_id\",\n      \"awbNumber\": \"AWB123456789\",\n      \"codAmount\": 1500,\n      \"shippingCharge\": 120,\n      \"codCharge\": 30,\n      \"netAmount\": 1350\n    }\n  ],\n  \"summary\": {\n    \"totalShipments\": 45,\n    \"totalCODCollected\": 67500,\n    \"deductions\": {\n      \"shippingCharges\": 5400,\n      \"codCharges\": 1350,\n      \"total\": 6750\n    },\n    \"netRemittanceAmount\": 60750\n  },\n  \"timeline\": [\n    {\"timestamp\": \"2024-01-15T10:00:00Z\", \"action\": \"created\"},\n    {\"timestamp\": \"2024-01-16T09:00:00Z\", \"action\": \"approved\"},\n    {\"timestamp\": \"2024-01-17T14:00:00Z\", \"action\": \"payout_initiated\"},\n    {\"timestamp\": \"2024-01-18T10:30:00Z\", \"action\": \"completed\"}\n  ],\n  \"payout\": {\n    \"method\": \"bank_transfer\",\n    \"accountNumber\": \"****1234\",\n    \"utr\": \"UTR123456789\",\n    \"processedAt\": \"2024-01-18T10:30:00Z\"\n  }\n}\n```\n\n**Use Cases:**\n- Viewing remittance details\n- Reconciliation\n- Audit trail\n- UTR reference for accounting"
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Remittance (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Verified all shipments and deductions. Approved for payout.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/{{REMITTANCE_ID}}/approve",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "{{REMITTANCE_ID}}", "approve"]
+            },
+            "description": "**POST /finance/cod-remittance/:id/approve**\n\n**Access:** Admin only\n\n**Purpose:**\nApprove remittance batch for payout processing.\n\n**Business Logic:**\n- Admin verifies batch details\n- Confirms deductions are accurate\n- Checks no disputed shipments included\n- Updates status to 'approved'\n- Makes batch ready for payout initiation\n\n**Request Body:**\n```json\n{\n  \"notes\": string (optional) - Approval notes\n}\n```\n\n**Validation:**\n- Remittance must be in 'pending' status\n- All shipments must still be eligible\n- Company bank details must be verified\n\n**Response:** Updated remittance with approved status\n\n**Use Cases:**\n- Admin approval workflow\n- Financial control\n- Fraud prevention"
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Payout (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payoutMethod\": \"bank_transfer\",\n  \"scheduledDate\": \"2024-01-20T00:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/{{REMITTANCE_ID}}/initiate-payout",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "{{REMITTANCE_ID}}", "initiate-payout"]
+            },
+            "description": "**POST /finance/cod-remittance/:id/initiate-payout**\n\n**Access:** Admin only\n\n**Purpose:**\nInitiate actual payout to seller's bank account.\n\n**Business Logic:**\n- Creates payout request with Velocity/Razorpay X\n- Initiates bank transfer\n- Updates status to 'processing'\n- Records payout reference\n- Sends notification to seller\n- Waits for settlement webhook\n\n**Request Body:**\n```json\n{\n  \"payoutMethod\": string (optional) - bank_transfer|upi (default: bank_transfer),\n  \"scheduledDate\": datetime (optional) - For scheduled payouts\n}\n```\n\n**Validation:**\n- Remittance must be 'approved'\n- Bank account verified\n- Sufficient balance in settlement account\n\n**Response:**\n```json\n{\n  \"payoutId\": \"payout_xyz\",\n  \"status\": \"processing\",\n  \"amount\": 60750,\n  \"bankAccount\": \"****1234\",\n  \"initiatedAt\": \"2024-01-17T14:00:00Z\",\n  \"estimatedSettlement\": \"2024-01-18T10:00:00Z\"\n}\n```\n\n**Use Cases:**\n- Processing approved payouts\n- Scheduled settlements\n- Manual payout trigger"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Remittance (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Disputed shipments found in batch\",\n  \"notes\": \"Shipment AWB123456789 has active weight dispute. Cancelling batch for correction.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/{{REMITTANCE_ID}}/cancel",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "{{REMITTANCE_ID}}", "cancel"]
+            },
+            "description": "**POST /finance/cod-remittance/:id/cancel**\n\n**Access:** Admin only\n\n**Purpose:**\nCancel remittance batch (before payout).\n\n**Business Logic:**\n- Validates batch not yet paid out\n- Releases shipments back to eligible pool\n- Updates status to 'cancelled'\n- Records cancellation reason\n- Notifies seller\n- Allows shipments to be included in new batch\n\n**Request Body:**\n```json\n{\n  \"reason\": string (required) - Cancellation reason,\n  \"notes\": string (optional) - Additional context\n}\n```\n\n**Cancellation Reasons:**\n- Disputed shipments included\n- Incorrect deductions\n- Seller request\n- Bank account issues\n- Fraud detection\n\n**Validation:**\n- Cannot cancel if payout already processed\n- Can only cancel 'pending' or 'approved' status\n\n**Response:** Updated remittance with cancelled status\n\n**Use Cases:**\n- Correcting errors\n- Handling disputes\n- Fraud prevention"
+          },
+          "response": []
+        },
+        {
+          "name": "Get COD Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/dashboard",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "dashboard"]
+            },
+            "description": "**GET /finance/cod-remittance/dashboard**\n\n**Access:** KYC required\n\n**Purpose:**\nRetrieve comprehensive COD remittance dashboard with key metrics.\n\n**Response:**\n```json\n{\n  \"pendingSettlement\": {\n    \"totalShipments\": 45,\n    \"totalAmount\": 67500,\n    \"oldestShipment\": \"2024-01-08T10:00:00Z\"\n  },\n  \"inProgress\": {\n    \"batches\": 2,\n    \"totalAmount\": 125000,\n    \"expectedDate\": \"2024-01-20T00:00:00Z\"\n  },\n  \"thisMonth\": {\n    \"remittances\": 4,\n    \"totalCODCollected\": 250000,\n    \"totalDeductions\": 25000,\n    \"netReceived\": 225000\n  },\n  \"recentRemittances\": [...],\n  \"avgSettlementTime\": \"5.2 days\",\n  \"codPerformance\": {\n    \"codShipments\": 120,\n    \"totalShipments\": 180,\n    \"codPercentage\": 66.7,\n    \"avgCODValue\": 1562\n  }\n}\n```\n\n**Use Cases:**\n- Dashboard overview\n- Cash flow monitoring\n- Settlement tracking"
+          },
+          "response": []
+        },
+        {
+          "name": "Request On-Demand Payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"reason\": \"Urgent business requirement\",\n  \"shipmentIds\": [\"shipment_1\", \"shipment_2\"]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/request-payout",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "request-payout"]
+            },
+            "description": "**POST /finance/cod-remittance/request-payout**\n\n**Access:** KYC required\n\n**Purpose:**\nRequest immediate/on-demand payout before regular settlement cycle.\n\n**Business Logic:**\n- Premium feature (may have fees)\n- Validates sufficient eligible COD amount\n- May have minimum threshold (₹10,000)\n- Faster processing (1-2 days vs 5-7 days)\n- Additional fees: 0.5-1% of amount\n- Creates priority remittance batch\n\n**Request Body:**\n```json\n{\n  \"amount\": number (required) - Requested amount,\n  \"reason\": string (optional) - Request reason,\n  \"shipmentIds\": array (optional) - Specific shipments to include\n}\n```\n\n**Validation:**\n- Minimum amount: ₹10,000\n- Sufficient eligible COD available\n- No pending disputes on selected shipments\n\n**Response:**\n```json\n{\n  \"requestId\": \"ondemand_123\",\n  \"amount\": 50000,\n  \"fees\": 500,\n  \"netAmount\": 49500,\n  \"status\": \"pending_approval\",\n  \"estimatedPayout\": \"2024-01-17T00:00:00Z\"\n}\n```\n\n**Use Cases:**\n- Emergency cash flow needs\n- Business expansion funding\n- Urgent payments"
+          },
+          "response": []
+        },
+        {
+          "name": "Schedule Payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"frequency\": \"weekly\",\n  \"dayOfWeek\": \"friday\",\n  \"minimumAmount\": 10000,\n  \"autoApprove\": false\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/schedule-payout",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "schedule-payout"]
+            },
+            "description": "**POST /finance/cod-remittance/schedule-payout**\n\n**Access:** KYC required\n\n**Purpose:**\nConfigure automatic scheduled payouts for COD settlements.\n\n**Business Logic:**\n- Sets up recurring settlement schedule\n- Auto-creates remittance batches\n- Optional auto-approval for trusted sellers\n- Notifies before each payout\n- Skips if below minimum threshold\n\n**Request Body:**\n```json\n{\n  \"frequency\": string (required) - daily|weekly|biweekly|monthly,\n  \"dayOfWeek\": string (optional) - For weekly: monday-sunday,\n  \"dayOfMonth\": number (optional) - For monthly: 1-28,\n  \"minimumAmount\": number (optional) - Skip if below threshold,\n  \"autoApprove\": boolean (optional) - Auto-approve batches (default: false)\n}\n```\n\n**Validation:**\n- Valid frequency and schedule\n- Minimum amount at least ₹5000\n- Auto-approve only for verified accounts\n\n**Response:**\n```json\n{\n  \"scheduleId\": \"schedule_123\",\n  \"frequency\": \"weekly\",\n  \"dayOfWeek\": \"friday\",\n  \"nextPayoutDate\": \"2024-01-19T00:00:00Z\",\n  \"minimumAmount\": 10000,\n  \"autoApprove\": false,\n  \"status\": \"active\"\n}\n```\n\n**Use Cases:**\n- Automated cash flow\n- Consistent settlement schedule\n- Hands-off COD management"
+          },
+          "response": []
+        },
+        {
+          "name": "Handle Settlement Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Velocity-Signature",
+                "value": "signature_here"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"payout.processed\",\n  \"payout_id\": \"payout_xyz\",\n  \"amount\": 60750,\n  \"status\": \"success\",\n  \"utr\": \"UTR123456789\",\n  \"processed_at\": \"2024-01-18T10:30:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/finance/cod-remittance/webhook",
+              "host": ["{{BASE_URL}}"],
+              "path": ["finance", "cod-remittance", "webhook"]
+            },
+            "description": "**POST /finance/cod-remittance/webhook**\n\n**Access:** Public (Signature verified)\n\n**Purpose:**\nHandle Velocity/payment gateway webhook for payout status updates.\n\n**Business Logic:**\n- Verifies webhook signature\n- Updates remittance status based on event\n- Records UTR reference\n- Sends notification to seller\n- Updates financial records\n\n**Webhook Events:**\n- `payout.processing`: Payout initiated\n- `payout.processed`: Funds transferred successfully\n- `payout.failed`: Payout failed (retry or manual intervention)\n- `payout.reversed`: Payout reversed (rare)\n\n**Request Body:** (Varies by gateway)\n```json\n{\n  \"event\": string - Event type,\n  \"payout_id\": string - Gateway payout ID,\n  \"amount\": number,\n  \"status\": string,\n  \"utr\": string (optional) - Bank UTR reference,\n  \"failure_reason\": string (optional),\n  \"processed_at\": datetime\n}\n```\n\n**Response:** 200 OK (acknowledges webhook)\n\n**Use Cases:**\n- Automatic status updates\n- Real-time settlement tracking\n- UTR recording for reconciliation"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

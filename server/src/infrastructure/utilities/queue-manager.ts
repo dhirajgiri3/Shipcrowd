@@ -216,6 +216,34 @@ export class QueueManager {
       },
     });
 
+    // Create Weight Dispute queue (Week 9)
+    await this.createQueue({
+      name: 'weight-dispute',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: 200,
+        removeOnFail: 500,
+      },
+    });
+
+    // Create COD Remittance queue (Week 9)
+    await this.createQueue({
+      name: 'cod-remittance',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+        removeOnComplete: 200,
+        removeOnFail: 500,
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });

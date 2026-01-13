@@ -1,0 +1,429 @@
+import mongoose from 'mongoose';
+import PDFDocument from 'pdfkit';
+import Manifest from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest.model';
+import ManifestCounter from '../../../../infrastructure/database/mongoose/models/logistics/shipping/manifest-counter.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
+
+/**
+ * Manifest Service
+ * Handles manifest creation, numbering, and pickup scheduling
+ * 
+ * Features:
+ * - Transaction-safe manifest numbering
+ * - Carrier validation (1 manifest = 1 carrier)
+ * - Pickup scheduling
+ * - A4 handover sheet generation
+ */
+
+interface CreateManifestData {
+    companyId: string;
+    warehouseId: string;
+    carrier: 'velocity' | 'delhivery' | 'ekart' | 'india_post';
+    shipmentIds: string[];
+    pickup: {
+        scheduledDate: Date;
+        timeSlot: string;
+        contactPerson: string;
+        contactPhone: string;
+    };
+    notes?: string;
+}
+
+class ManifestService {
+    /**
+     * Generate manifest number (transaction-safe)
+     * Format: MAN-YYYYMM-XXXX
+     */
+    private async generateManifestNumber(
+        session: mongoose.ClientSession
+    ): Promise<string> {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+
+        // Atomic increment using findOneAndUpdate
+        const counter = await ManifestCounter.findOneAndUpdate(
+            { year, month },
+            { $inc: { sequence: 1 } },
+            {
+                upsert: true,
+                new: true,
+                session,
+            }
+        );
+
+        const paddedSeq = String(counter.sequence).padStart(4, '0');
+        const yearMonth = `${year}${String(month).padStart(2, '0')}`;
+
+        return `MAN-${yearMonth}-${paddedSeq}`;
+    }
+
+    /**
+     * Create manifest from shipments
+     */
+    async createManifest(data: CreateManifestData) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            // Validate shipment IDs
+            if (!data.shipmentIds || data.shipmentIds.length === 0) {
+                throw new ValidationError('At least one shipment is required');
+            }
+
+            // Fetch shipments
+            const shipments = await Shipment.find({
+                _id: { $in: data.shipmentIds },
+            }).session(session);
+
+            if (shipments.length === 0) {
+                throw new NotFoundError('No valid shipments found');
+            }
+
+            if (shipments.length !== data.shipmentIds.length) {
+                throw new ValidationError('Some shipment IDs are invalid');
+            }
+
+            // Validate all shipments belong to same carrier
+            const carriers = [...new Set(shipments.map((s: any) => s.carrier))];
+            if (carriers.length > 1) {
+                throw new ValidationError(
+                    'Cannot create manifest with shipments from different carriers'
+                );
+            }
+
+            if (carriers[0] !== data.carrier) {
+                throw new ValidationError(
+                    `Shipments belong to ${carriers[0]}, but manifest is for ${data.carrier}`
+                );
+            }
+
+            // Generate manifest number
+            const manifestNumber = await this.generateManifestNumber(session);
+
+            // Calculate summary
+            const summary = {
+                totalShipments: shipments.length,
+                totalWeight: shipments.reduce((sum, s: any) => sum + (s.weights?.total || 0), 0),
+                totalPackages: shipments.reduce((sum, s: any) => sum + (s.no_of_boxes || 1), 0),
+                totalCODAmount: shipments.reduce(
+                    (sum, s: any) => sum + (s.payment_method === 'cod' ? s.cod_amount || 0 : 0),
+                    0
+                ),
+            };
+
+            // Prepare shipment data
+            const manifestShipments = shipments.map((s: any) => ({
+                shipmentId: s._id,
+                awb: s.awb,
+                weight: s.weights?.total || 0,
+                packages: s.no_of_boxes || 1,
+                codAmount: s.payment_method === 'cod' ? s.cod_amount || 0 : 0,
+            }));
+
+            // Create manifest
+            const manifest = await Manifest.create(
+                [
+                    {
+                        manifestNumber,
+                        companyId: data.companyId,
+                        warehouseId: data.warehouseId,
+                        carrier: data.carrier,
+                        shipments: manifestShipments,
+                        pickup: data.pickup,
+                        summary,
+                        status: 'open',
+                        notes: data.notes,
+                    },
+                ],
+                { session }
+            );
+
+            await session.commitTransaction();
+
+            logger.info(
+                `Manifest created: ${manifestNumber} with ${shipments.length} shipments`
+            );
+
+            return manifest[0];
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Error creating manifest:', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Generate manifest PDF (A4 handover sheet)
+     */
+    async generatePDF(manifestId: string): Promise<Buffer> {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const manifest = await Manifest.findById(manifestId)
+                    .populate('warehouseId')
+                    .populate('companyId');
+
+                if (!manifest) {
+                    throw new NotFoundError('Manifest not found');
+                }
+
+                // Create PDF document (A4 size)
+                const doc = new PDFDocument({
+                    size: 'A4',
+                    margins: { top: 50, bottom: 50, left: 50, right: 50 },
+                });
+
+                const chunks: Buffer[] = [];
+                doc.on('data', (chunk) => chunks.push(chunk));
+                doc.on('end', () => resolve(Buffer.concat(chunks)));
+                doc.on('error', reject);
+
+                // ====== Header ======
+                doc
+                    .fontSize(20)
+                    .font('Helvetica-Bold')
+                    .text('SHIPPING MANIFEST', { align: 'center' });
+
+                doc.moveDown(0.5);
+
+                doc
+                    .fontSize(12)
+                    .font('Helvetica')
+                    .text(`Manifest #: ${manifest.manifestNumber}`, { align: 'center' });
+
+                doc.moveDown(1);
+
+                // ====== Warehouse & Carrier Info ======
+                doc.fontSize(10).font('Helvetica-Bold').text('Warehouse Details:');
+                doc
+                    .fontSize(9)
+                    .font('Helvetica')
+                    .text(`Name: ${(manifest.warehouseId as any)?.name || 'N/A'}`);
+                doc.text(
+                    `Address: ${(manifest.warehouseId as any)?.address || 'N/A'}`
+                );
+                doc.text(
+                    `Contact: ${(manifest.warehouseId as any)?.phone || 'N/A'}`
+                );
+
+                doc.moveDown(0.5);
+
+                doc.fontSize(10).font('Helvetica-Bold').text('Carrier & Pickup:');
+                doc
+                    .fontSize(9)
+                    .font('Helvetica')
+                    .text(`Carrier: ${manifest.carrier.toUpperCase()}`);
+                doc.text(
+                    `Scheduled Date: ${manifest.pickup.scheduledDate.toLocaleDateString()}`
+                );
+                doc.text(`Time Slot: ${manifest.pickup.timeSlot}`);
+                doc.text(`Contact Person: ${manifest.pickup.contactPerson}`);
+                doc.text(`Contact Phone: ${manifest.pickup.contactPhone}`);
+
+                doc.moveDown(1);
+
+                // ====== Shipments Table ======
+                doc.fontSize(10).font('Helvetica-Bold').text('Shipments:');
+                doc.moveDown(0.5);
+
+                const tableTop = doc.y;
+                const colWidths = [30, 100, 150, 60, 50, 60];
+                const headers = ['#', 'AWB', 'Consignee', 'Weight', 'Pkgs', 'COD'];
+
+                // Table headers
+                doc.fontSize(8).font('Helvetica-Bold');
+                let xPos = 50;
+                headers.forEach((header, i) => {
+                    doc.text(header, xPos, tableTop, { width: colWidths[i] });
+                    xPos += colWidths[i];
+                });
+
+                // Underline headers
+                doc
+                    .moveTo(50, tableTop + 12)
+                    .lineTo(50 + colWidths.reduce((a, b) => a + b, 0), tableTop + 12)
+                    .stroke();
+
+                // Table rows
+                let yPos = tableTop + 20;
+                doc.fontSize(7).font('Helvetica');
+
+                for (let i = 0; i < manifest.shipments.length; i++) {
+                    const shipment = manifest.shipments[i];
+                    xPos = 50;
+
+                    doc.text(String(i + 1), xPos, yPos, { width: colWidths[0] });
+                    xPos += colWidths[0];
+
+                    doc.text(shipment.awb, xPos, yPos, { width: colWidths[1] });
+                    xPos += colWidths[1];
+
+                    doc.text('Customer Name', xPos, yPos, { width: colWidths[2] }); // Placeholder
+                    xPos += colWidths[2];
+
+                    doc.text(`${shipment.weight}kg`, xPos, yPos, { width: colWidths[3] });
+                    xPos += colWidths[3];
+
+                    doc.text(String(shipment.packages), xPos, yPos, { width: colWidths[4] });
+                    xPos += colWidths[4];
+
+                    doc.text(`₹${shipment.codAmount}`, xPos, yPos, { width: colWidths[5] });
+
+                    yPos += 15;
+
+                    // Add new page if needed
+                    if (yPos > 700 && i < manifest.shipments.length - 1) {
+                        doc.addPage();
+                        yPos = 50;
+                    }
+                }
+
+                // ====== Summary ======
+                doc.moveDown(2);
+                doc.fontSize(10).font('Helvetica-Bold').text('Summary:');
+                doc.fontSize(9).font('Helvetica');
+                doc.text(`Total Shipments: ${manifest.summary.totalShipments}`);
+                doc.text(`Total Weight: ${manifest.summary.totalWeight}kg`);
+                doc.text(`Total Packages: ${manifest.summary.totalPackages}`);
+                doc.text(`Total COD Amount: ₹${manifest.summary.totalCODAmount}`);
+
+                // ====== Signature Blocks ======
+                doc.moveDown(3);
+                doc.fontSize(9);
+
+                doc.text('_____________________', 50, doc.y);
+                doc.text('Seller Signature', 50, doc.y + 5);
+                doc.text('Date: __________', 50, doc.y + 5);
+
+                doc.text('_____________________', 350, doc.y - 35);
+                doc.text('Carrier Signature', 350, doc.y + 5);
+                doc.text('Date: __________', 350, doc.y + 5);
+
+                // ====== Footer ======
+                doc
+                    .fontSize(8)
+                    .text(
+                        `Generated on ${new Date().toLocaleString()}`,
+                        50,
+                        750,
+                        { align: 'center' }
+                    );
+
+                doc.end();
+            } catch (error: any) {
+                logger.error(`Error generating manifest PDF for ${manifestId}:`, error);
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Close manifest and schedule pickup
+     */
+    async closeManifest(manifestId: string, userId: string) {
+        const manifest = await Manifest.findById(manifestId);
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        if (manifest.status !== 'open') {
+            throw new ValidationError('Manifest is already closed or handed over');
+        }
+
+        // TODO: Call carrier API to schedule pickup
+        // For now, just update status
+        manifest.status = 'closed';
+        manifest.closedAt = new Date();
+        manifest.closedBy = new mongoose.Types.ObjectId(userId);
+
+        await manifest.save();
+
+        logger.info(`Manifest ${manifest.manifestNumber} closed by user ${userId}`);
+
+        return manifest;
+    }
+
+    /**
+     * Mark manifest as handed over
+     */
+    async handoverManifest(manifestId: string, userId: string) {
+        const manifest = await Manifest.findById(manifestId);
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        if (manifest.status !== 'closed') {
+            throw new ValidationError('Manifest must be closed before handover');
+        }
+
+        manifest.status = 'handed_over';
+        manifest.handedOverAt = new Date();
+        manifest.handedOverBy = new mongoose.Types.ObjectId(userId);
+
+        await manifest.save();
+
+        logger.info(
+            `Manifest ${manifest.manifestNumber} handed over by user ${userId}`
+        );
+
+        return manifest;
+    }
+
+    /**
+     * Get manifest by ID
+     */
+    async getManifest(manifestId: string) {
+        const manifest = await Manifest.findById(manifestId)
+            .populate('companyId')
+            .populate('warehouseId')
+            .populate('shipments.shipmentId');
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        return manifest;
+    }
+
+    /**
+     * List manifests with filters
+     */
+    async listManifests(filters: {
+        companyId?: string;
+        warehouseId?: string;
+        status?: string;
+        carrier?: string;
+        limit?: number;
+        skip?: number;
+    }) {
+        const query: any = {};
+
+        if (filters.companyId) query.companyId = filters.companyId;
+        if (filters.warehouseId) query.warehouseId = filters.warehouseId;
+        if (filters.status) query.status = filters.status;
+        if (filters.carrier) query.carrier = filters.carrier;
+
+        const manifests = await Manifest.find(query)
+            .sort({ createdAt: -1 })
+            .limit(filters.limit || 50)
+            .skip(filters.skip || 0)
+            .populate('warehouseId');
+
+        const total = await Manifest.countDocuments(query);
+
+        return {
+            manifests,
+            total,
+            page: Math.floor((filters.skip || 0) / (filters.limit || 50)) + 1,
+            pages: Math.ceil(total / (filters.limit || 50)),
+        };
+    }
+}
+
+export default new ManifestService();
