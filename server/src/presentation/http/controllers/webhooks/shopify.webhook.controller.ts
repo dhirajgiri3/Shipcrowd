@@ -3,6 +3,7 @@ import { WebhookEvent } from '../../../../infrastructure/database/mongoose/model
 import ShopifyWebhookService from '../../../../core/application/services/shopify/shopify-webhook.service';
 import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * ShopifyWebhookController
@@ -46,7 +47,7 @@ export class ShopifyWebhookController {
           webhookId: webhookMeta.webhookId,
           topic: 'orders/create',
         });
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -67,7 +68,7 @@ export class ShopifyWebhookController {
       await store.recordWebhookReceived();
 
       // Return 200 immediately
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }
@@ -95,7 +96,7 @@ export class ShopifyWebhookController {
       });
 
       if (isDuplicate) {
-        res.status(200).json({ received: true, duplicate: true });
+        sendSuccess(res, { received: true, duplicate: true });
         return;
       }
 
@@ -111,7 +112,7 @@ export class ShopifyWebhookController {
       );
 
       await store.recordWebhookReceived();
-      res.status(200).json({ received: true });
+      sendSuccess(res, { received: true });
     } catch (error) {
       next(error);
     }

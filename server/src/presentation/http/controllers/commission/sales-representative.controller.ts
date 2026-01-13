@@ -20,6 +20,7 @@ import {
     idParamSchema,
 } from '../../../../shared/validation/commission-schemas';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class SalesRepresentativeController {
     /**
@@ -52,11 +53,7 @@ export class SalesRepresentativeController {
                 String(companyId)
             );
 
-            res.status(201).json({
-                success: true,
-                message: 'Sales representative created successfully',
-                data: salesRep,
-            });
+            sendCreated(res, salesRep, 'Sales representative created successfully');
         } catch (error) {
             next(error);
         }
@@ -93,16 +90,8 @@ export class SalesRepresentativeController {
                 { page, limit, sortBy, sortOrder }
             );
 
-            res.status(200).json({
-                success: true,
-                data: result.data,
-                pagination: {
-                    page: result.page,
-                    limit: result.limit,
-                    total: result.total,
-                    totalPages: result.totalPages,
-                },
-            });
+            const pagination = calculatePagination(result.total, result.page, result.limit);
+            sendPaginated(res, result.data, pagination);
         } catch (error) {
             next(error);
         }
@@ -141,10 +130,7 @@ export class SalesRepresentativeController {
                 includeBankDetails
             );
 
-            res.status(200).json({
-                success: true,
-                data: salesRep,
-            });
+            sendSuccess(res, salesRep);
         } catch (error) {
             next(error);
         }
@@ -188,11 +174,7 @@ export class SalesRepresentativeController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Sales representative updated successfully',
-                data: salesRep,
-            });
+            sendSuccess(res, salesRep, 'Sales representative updated successfully');
         } catch (error) {
             next(error);
         }
@@ -221,10 +203,7 @@ export class SalesRepresentativeController {
 
             await SalesRepresentativeService.deleteSalesRep(id, String(userId), String(companyId));
 
-            res.status(200).json({
-                success: true,
-                message: 'Sales representative deactivated successfully',
-            });
+            sendSuccess(res, null, 'Sales representative deactivated successfully');
         } catch (error) {
             next(error);
         }
@@ -252,13 +231,10 @@ export class SalesRepresentativeController {
 
             const salesRep = await SalesRepresentativeService.getSalesRep(id, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    employeeId: salesRep.employeeId,
-                    performanceMetrics: salesRep.performanceMetrics,
-                    kpiTargets: salesRep.kpiTargets,
-                },
+            sendSuccess(res, {
+                employeeId: salesRep.employeeId,
+                performanceMetrics: salesRep.performanceMetrics,
+                kpiTargets: salesRep.kpiTargets,
             });
         } catch (error) {
             next(error);
@@ -303,14 +279,10 @@ export class SalesRepresentativeController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Territories assigned successfully',
-                data: {
-                    employeeId: salesRep.employeeId,
-                    territory: salesRep.territory,
-                },
-            });
+            sendSuccess(res, {
+                employeeId: salesRep.employeeId,
+                territory: salesRep.territory,
+            }, 'Territories assigned successfully');
         } catch (error) {
             next(error);
         }
@@ -338,10 +310,7 @@ export class SalesRepresentativeController {
 
             await SalesRepresentativeService.updatePerformanceMetrics(id, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                message: 'Performance metrics refreshed successfully',
-            });
+            sendSuccess(res, null, 'Performance metrics refreshed successfully');
         } catch (error) {
             next(error);
         }
@@ -369,9 +338,8 @@ export class SalesRepresentativeController {
 
             const team = await SalesRepresentativeService.getTeamHierarchy(id, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: team,
+            sendSuccess(res, {
+                team,
                 count: team.length,
             });
         } catch (error) {

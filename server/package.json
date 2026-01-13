@@ -16,7 +16,8 @@
     "verify-seed": "npx tsx src/scripts/verify-seed.ts",
     "test:velocity:live": "npx tsx src/scripts/testVelocityLive.ts",
     "test:webhook:local": "npx tsx src/scripts/testWebhookLocal.ts",
-    "seed:velocity": "npx tsx src/scripts/seedVelocityIntegration.ts"
+    "seed:velocity": "npx tsx src/scripts/seedVelocityIntegration.ts",
+    "test:pdf": "npx ts-node-dev --transpile-only src/scripts/test-all-pdfs.ts"
   },
   "keywords": [],
   "author": "",
@@ -57,7 +58,6 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pdfkit": "^0.17.2",
-    "qrcode": "^1.5.4",
     "razorpay": "^2.9.6",
     "speakeasy": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
@@ -88,7 +88,10 @@
     "@types/ua-parser-js": "^0.7.39",
     "@types/zxcvbn": "^4.4.5",
     "jest": "^29.7.0",
+    "jsbarcode": "^3.12.3",
     "mongodb-memory-server": "^10.1.4",
+    "pdfmake": "^0.3.2",
+    "qrcode": "^1.5.4",
     "supertest": "^7.1.0",
     "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",

@@ -286,7 +286,7 @@ export const exportUserData = async (req: Request, res: Response, next: NextFunc
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', `attachment; filename="user-data-export-${user._id}.json"`);
 
-        res.json(exportData);
+        sendSuccess(res, exportData, 'User data exported successfully');
     } catch (error) {
         logger.error('Error exporting user data:', error);
         next(error);

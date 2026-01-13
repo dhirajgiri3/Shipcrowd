@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import ManifestService from '../../../../core/application/services/shipping/manifest.service';
 import { ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 
 /**
  * Manifest Controller
@@ -57,11 +58,7 @@ class ManifestController {
 
             logger.info(`Manifest created: ${manifest.manifestNumber} by user ${userId}`);
 
-            res.status(201).json({
-                success: true,
-                message: 'Manifest created successfully',
-                data: manifest,
-            });
+            sendCreated(res, manifest, 'Manifest created successfully');
         } catch (error) {
             next(error);
         }
@@ -94,10 +91,7 @@ class ManifestController {
                 skip,
             });
 
-            res.status(200).json({
-                success: true,
-                data: result,
-            });
+            sendSuccess(res, result);
         } catch (error) {
             next(error);
         }
@@ -113,10 +107,7 @@ class ManifestController {
 
             const manifest = await ManifestService.getManifest(id);
 
-            res.status(200).json({
-                success: true,
-                data: manifest,
-            });
+            sendSuccess(res, manifest);
         } catch (error) {
             next(error);
         }
@@ -161,11 +152,7 @@ class ManifestController {
 
             const manifest = await ManifestService.closeManifest(id, userId);
 
-            res.status(200).json({
-                success: true,
-                message: 'Manifest closed and pickup scheduled',
-                data: manifest,
-            });
+            sendSuccess(res, manifest, 'Manifest closed and pickup scheduled');
         } catch (error) {
             next(error);
         }
@@ -186,11 +173,7 @@ class ManifestController {
 
             const manifest = await ManifestService.handoverManifest(id, userId);
 
-            res.status(200).json({
-                success: true,
-                message: 'Manifest marked as handed over',
-                data: manifest,
-            });
+            sendSuccess(res, manifest, 'Manifest marked as handed over');
         } catch (error) {
             next(error);
         }

@@ -365,8 +365,7 @@ export const cancelInvitation = async (req: Request, res: Response, next: NextFu
 
     // Check if the invitation belongs to the user's company
     if (invitation.companyId.toString() !== user.companyId.toString()) {
-      res.status(403).json({ message: 'Access denied to this invitation' });
-      return;
+      throw new AuthorizationError('Access denied to this invitation', ErrorCode.AUTHZ_FORBIDDEN);
     }
 
     // Check if the invitation is still pending
@@ -1101,10 +1100,10 @@ export const getCompanyActivity = async (req: Request, res: Response, next: Next
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       activities: result.activities,
       pagination: result.pagination,
-    });
+    }, 'Company activity retrieved successfully');
   } catch (error) {
     logger.error('Error getting company activity:', error);
     next(error);
@@ -1164,10 +1163,10 @@ export const getMyActivity = async (req: Request, res: Response, next: NextFunct
       req
     );
 
-    res.json({
+    sendSuccess(res, {
       activities: result.activities,
       pagination: result.pagination,
-    });
+    }, 'User activity retrieved successfully');
   } catch (error) {
     logger.error('Error getting user activity:', error);
     next(error);

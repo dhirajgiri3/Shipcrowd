@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import NDRCommunicationService from '../../../../core/application/services/communication/ndr-communication.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * NDR Communication Controller
@@ -39,11 +40,7 @@ class NDRCommunicationController {
                 customMessage,
             });
 
-            res.status(200).json({
-                success: true,
-                message: 'NDR notification sent',
-                data: result,
-            });
+            sendSuccess(res, result, 'NDR notification sent');
         } catch (error) {
             next(error);
         }
@@ -69,16 +66,12 @@ class NDRCommunicationController {
 
             const successCount = results.filter((r) => r.success).length;
 
-            res.status(200).json({
-                success: true,
-                message: `Sent ${successCount}/${results.length} notifications`,
-                data: {
-                    total: results.length,
-                    successful: successCount,
-                    failed: results.length - successCount,
-                    results,
-                },
-            });
+            sendSuccess(res, {
+                total: results.length,
+                successful: successCount,
+                failed: results.length - successCount,
+                results,
+            }, `Sent ${successCount}/${results.length} notifications`);
         } catch (error) {
             next(error);
         }
@@ -113,11 +106,7 @@ class NDRCommunicationController {
                 templateType,
             });
 
-            res.status(200).json({
-                success: true,
-                message: 'Status update sent',
-                data: result,
-            });
+            sendSuccess(res, result, 'Status update sent');
         } catch (error) {
             next(error);
         }
@@ -179,10 +168,7 @@ class NDRCommunicationController {
                 ],
             };
 
-            res.status(200).json({
-                success: true,
-                data: templates,
-            });
+            sendSuccess(res, templates);
         } catch (error) {
             next(error);
         }

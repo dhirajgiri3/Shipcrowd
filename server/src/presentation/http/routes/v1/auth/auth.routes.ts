@@ -2,7 +2,8 @@ import express from 'express';
 import passport from 'passport';
 import crypto from 'crypto';
 import authController from '../../../controllers/auth/auth.controller';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { authenticate, csrfProtection as oldCSRFProtection } from '../../../middleware/auth/auth';
+import { csrfProtection } from '../../../middleware/auth/csrf';
 import {
   loginRateLimiter,
   registrationRateLimiter,
@@ -24,28 +25,11 @@ router.use('/mfa', mfaRoutes);
 
 /**
  * @route GET /auth/csrf-token
- * @desc Generate and return a CSRF token
- * @access Public
+ * @desc Generate and return a CSRF token (stored in Redis)
+ * @access Public (but requires session)
+ * @security Uses new Redis-based CSRF token validation
  */
-router.get('/csrf-token', (req, res) => {
-  try {
-    // Generate a cryptographically secure random token
-    const csrfToken = crypto.randomBytes(32).toString('hex');
-
-    res.json({
-      success: true,
-      data: {
-        csrfToken
-      }
-    });
-  } catch (error) {
-    logger.error('CSRF token generation error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate CSRF token'
-    });
-  }
-});
+router.get('/csrf-token', authenticate, authController.getCSRFToken);
 
 
 /**
@@ -53,14 +37,14 @@ router.get('/csrf-token', (req, res) => {
  * @desc Register a new user
  * @access Public
  */
-router.post('/register', csrfProtection, registrationRateLimiter, authController.register);
+router.post('/register', registrationRateLimiter, authController.register);
 
 /**
  * @route POST /auth/login
  * @desc Login a user
  * @access Public
  */
-router.post('/login', loginRateLimiter, csrfProtection, authController.login);
+router.post('/login', loginRateLimiter, authController.login);
 
 /**
  * @route POST /auth/refresh
@@ -74,14 +58,14 @@ router.post('/refresh', authController.refreshToken);
  * @desc Request password reset
  * @access Public
  */
-router.post('/reset-password', csrfProtection, passwordResetRateLimiter, authController.requestPasswordReset);
+router.post('/reset-password', passwordResetRateLimiter, authController.requestPasswordReset);
 
 /**
  * @route POST /auth/reset-password/confirm
  * @desc Reset password with token
  * @access Public
  */
-router.post('/reset-password/confirm', csrfProtection, passwordResetRateLimiter, authController.resetPassword);
+router.post('/reset-password/confirm', passwordResetRateLimiter, authController.resetPassword);
 
 /**
  * @route POST /auth/verify-email
@@ -95,14 +79,14 @@ router.post('/verify-email', emailVerificationRateLimiter, authController.verify
  * @desc Resend verification email
  * @access Public
  */
-router.post('/resend-verification', csrfProtection, resendVerificationRateLimiter, authController.resendVerificationEmail); // ✅ FEATURE 22
+router.post('/resend-verification', resendVerificationRateLimiter, authController.resendVerificationEmail); // ✅ FEATURE 22
 
 /**
  * @route POST /auth/magic-link
  * @desc Request magic link for passwordless login
  * @access Public
  */
-router.post('/magic-link', csrfProtection, magicLinkRateLimiter, authController.requestMagicLink);
+router.post('/magic-link', magicLinkRateLimiter, authController.requestMagicLink);
 
 /**
  * @route POST /auth/verify-magic-link
@@ -121,7 +105,6 @@ import recoveryController from '../../../controllers/auth/recovery.controller';
  */
 router.post(
   '/recovery/request-unlock',
-  csrfProtection,
   emailVerificationRateLimiter,
   recoveryController.requestAccountRecovery
 );
@@ -133,7 +116,6 @@ router.post(
  */
 router.post(
   '/recovery/verify-unlock',
-  csrfProtection,
   emailVerificationRateLimiter,
   recoveryController.verifyRecoveryToken
 );
@@ -143,7 +125,7 @@ router.post(
  * @desc Check password strength
  * @access Public
  */
-router.post('/check-password-strength', csrfProtection, authController.checkPasswordStrength);
+router.post('/check-password-strength', authController.checkPasswordStrength);
 
 /**
  * @route GET /auth/me
@@ -171,14 +153,14 @@ router.post('/set-password', authenticate, setPasswordRateLimiter, authControlle
  * @desc Change password for authenticated user (requires current password)
  * @access Private
  */
-router.post('/change-password', authenticate, csrfProtection, authController.changePassword);
+router.post('/change-password', authenticate, authController.changePassword);
 
 /**
  * @route POST /auth/change-email
  * @desc Request email change (sends verification to new email)
  * @access Private
  */
-router.post('/change-email', authenticate, csrfProtection, authController.changeEmail);
+router.post('/change-email', authenticate, authController.changeEmail);
 
 /**
  * @route POST /auth/verify-email-change

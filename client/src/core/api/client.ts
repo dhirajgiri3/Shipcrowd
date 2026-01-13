@@ -402,8 +402,34 @@ const createApiClient = (): AxiosInstance => {
                 const responseData = error.response.data as any;
                 let userMessage = 'You do not have permission to perform this action.';
 
+                // ✅ NEW: Handle CSRF token invalid/expired
+                if (responseData?.code === 'CSRF_TOKEN_INVALID' || responseData?.code === 'CSRF_ORIGIN_INVALID') {
+                    // Clear cached token and fetch new one
+                    csrfManager.clearToken();
+
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('[CSRF] Token consumed or invalid, fetching new one');
+                    }
+
+                    // Retry with new token
+                    if (!originalRequest._retry) {
+                        originalRequest._retry = true;
+                        try {
+                            const newToken = await csrfManager.getToken();
+                            originalRequest.headers['X-CSRF-Token'] = newToken;
+                            return client(originalRequest);
+                        } catch (tokenError) {
+                            return Promise.reject({
+                                code: 'CSRF_FETCH_ERROR',
+                                message: 'Failed to fetch CSRF token. Please refresh the page.',
+                            } as ApiError);
+                        }
+                    }
+
+                    userMessage = 'Security token expired. Please try again.';
+                }
                 // Check for specific 403 reasons in response
-                if (responseData?.code === 'KYC_REQUIRED' || responseData?.message?.toLowerCase().includes('kyc')) {
+                else if (responseData?.code === 'KYC_REQUIRED' || responseData?.message?.toLowerCase().includes('kyc')) {
                     userMessage = 'Please complete your KYC verification to access this feature.';
                     if (typeof window !== 'undefined') {
                         // Optionally redirect to KYC page after short delay

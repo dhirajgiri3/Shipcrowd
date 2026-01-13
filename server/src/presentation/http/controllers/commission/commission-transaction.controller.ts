@@ -27,6 +27,7 @@ import {
     idParamSchema,
 } from '../../../../shared/validation/commission-schemas';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class CommissionTransactionController {
     /**
@@ -66,16 +67,8 @@ export class CommissionTransactionController {
                 { page, limit }
             );
 
-            res.status(200).json({
-                success: true,
-                data: result.data,
-                pagination: {
-                    page,
-                    limit,
-                    total: result.total,
-                    totalPages: Math.ceil(result.total / limit),
-                },
-            });
+            const pagination = calculatePagination(result.total, page, limit);
+            sendPaginated(res, result.data, pagination);
         } catch (error) {
             next(error);
         }
@@ -103,10 +96,7 @@ export class CommissionTransactionController {
 
             const transaction = await CommissionCalculationService.getTransaction(id, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: transaction,
-            });
+            sendSuccess(res, transaction);
         } catch (error) {
             next(error);
         }
@@ -143,11 +133,7 @@ export class CommissionTransactionController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Commission transaction approved successfully',
-                data: transaction,
-            });
+            sendSuccess(res, transaction, 'Commission transaction approved successfully');
         } catch (error) {
             next(error);
         }
@@ -184,11 +170,7 @@ export class CommissionTransactionController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Commission transaction rejected successfully',
-                data: transaction,
-            });
+            sendSuccess(res, transaction, 'Commission transaction rejected successfully');
         } catch (error) {
             next(error);
         }
@@ -224,11 +206,7 @@ export class CommissionTransactionController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: `Bulk approve completed: ${result.success} succeeded, ${result.failed} failed`,
-                data: result,
-            });
+            sendSuccess(res, result, `Bulk approve completed: ${result.success} succeeded, ${result.failed} failed`);
         } catch (error) {
             next(error);
         }
@@ -267,11 +245,7 @@ export class CommissionTransactionController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: `Bulk reject completed: ${result.success} succeeded, ${result.failed} failed`,
-                data: result,
-            });
+            sendSuccess(res, result, `Bulk reject completed: ${result.success} succeeded, ${result.failed} failed`);
         } catch (error) {
             next(error);
         }
@@ -313,11 +287,7 @@ export class CommissionTransactionController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Adjustment added successfully',
-                data: transaction,
-            });
+            sendSuccess(res, transaction, 'Adjustment added successfully');
         } catch (error) {
             next(error);
         }
@@ -337,6 +307,8 @@ export class CommissionTransactionController {
             }
 
             const { salesRepId, minAmount, page = 1, limit = 20 } = req.query;
+            const pageNum = Number(page);
+            const limitNum = Number(limit);
 
             const result = await CommissionApprovalService.getPendingTransactions(
                 String(companyId),
@@ -344,19 +316,11 @@ export class CommissionTransactionController {
                     salesRepId: salesRepId as string,
                     minAmount: minAmount ? Number(minAmount) : undefined,
                 },
-                { page: Number(page), limit: Number(limit) }
+                { page: pageNum, limit: limitNum }
             );
 
-            res.status(200).json({
-                success: true,
-                data: result.data,
-                pagination: {
-                    page: Number(page),
-                    limit: Number(limit),
-                    total: result.total,
-                    totalPages: Math.ceil(result.total / Number(limit)),
-                },
-            });
+            const pagination = calculatePagination(result.total, pageNum, limitNum);
+            sendPaginated(res, result.data, pagination);
         } catch (error) {
             next(error);
         }
@@ -393,11 +357,7 @@ export class CommissionTransactionController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: `Bulk calculation completed: ${result.success} succeeded, ${result.failed} failed`,
-                data: result,
-            });
+            sendSuccess(res, result, `Bulk calculation completed: ${result.success} succeeded, ${result.failed} failed`);
         } catch (error) {
             next(error);
         }

@@ -36,3 +36,6 @@ coverage/
 dist/
 *.js.map
 *.tsbuildinfo
+
+# Test output
+public/test-pdfs/

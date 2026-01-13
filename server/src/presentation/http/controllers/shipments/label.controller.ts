@@ -8,6 +8,7 @@ import VelocityLabelAdapter from '../../../../infrastructure/external/couriers/v
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import axios from 'axios';
+import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Label Controller
@@ -88,16 +89,12 @@ class LabelController {
 
             logger.info(`Label generated for shipment ${id} in ${format} format`);
 
-            res.status(200).json({
-                success: true,
-                message: 'Label generated successfully',
-                data: {
-                    shipmentId: id,
-                    awb: shipmentData.awb,
-                    format,
-                    labelData: labelBuffer.toString('base64'),
-                },
-            });
+            sendSuccess(res, {
+                shipmentId: id,
+                awb: shipmentData.awb,
+                format,
+                labelData: labelBuffer.toString('base64'),
+            }, 'Label generated successfully');
         } catch (error) {
             next(error);
         }
@@ -252,13 +249,10 @@ class LabelController {
             const adapter = this.carrierAdapters[shipment.carrier];
             const formats = adapter ? adapter.getFormats() : ['pdf', 'zpl'];
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    carrier: shipment.carrier,
-                    supportedFormats: formats,
-                    internalFormats: ['pdf', 'zpl'], // Always available via label service
-                },
+            sendSuccess(res, {
+                carrier: shipment.carrier,
+                supportedFormats: formats,
+                internalFormats: ['pdf', 'zpl'], // Always available via label service
             });
         } catch (error) {
             next(error);

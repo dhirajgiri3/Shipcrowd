@@ -1678,6 +1678,40 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
   }
 };
 
+/**
+ * Get CSRF Token
+ * @route GET /auth/csrf-token
+ * @access Public (but requires session)
+ */
+export const getCSRFToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = (req as any).session?.id || (req as any).user?.id;
+
+    if (!sessionId) {
+      throw new AuthenticationError('Session required to get CSRF token', ErrorCode.AUTH_SESSION_REQUIRED);
+    }
+
+    // Import CSRF function
+    const { generateCSRFToken } = await import('../../middleware/auth/csrf');
+
+    const csrfToken = await generateCSRFToken(sessionId);
+
+    sendSuccess(
+      res,
+      { csrfToken },
+      'CSRF token generated',
+      200
+    );
+  } catch (error) {
+    logger.error('Get CSRF token error:', error);
+    next(error);
+  }
+};
+
 
 const authController = {
   register,
@@ -1696,6 +1730,7 @@ const authController = {
   verifyEmailChange,
   requestMagicLink,
   verifyMagicLink,
+  getCSRFToken,
 };
 
 export default authController;

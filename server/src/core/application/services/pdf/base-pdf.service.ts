@@ -360,12 +360,22 @@ export class BasePDFService {
     }
 
     /**
-     * Add QR code from base64 data
+     * Add QR code from base64 data or data URL
      */
     async addQRCode(base64Data: string, x: number, y: number, size: number): Promise<this> {
         try {
+            // Handle data URLs (e.g., data:image/png;base64,...)
+            let base64String = base64Data;
+            if (base64Data.startsWith('data:image')) {
+                // Extract base64 part from data URL
+                const matches = base64Data.match(/^data:image\/\w+;base64,(.+)$/);
+                if (matches && matches[1]) {
+                    base64String = matches[1];
+                }
+            }
+
             // Convert base64 to buffer
-            const buffer = Buffer.from(base64Data, 'base64');
+            const buffer = Buffer.from(base64String, 'base64');
             this.doc.image(buffer, x, y, { width: size, height: size });
         } catch (error) {
             console.error('Error adding QR code:', error);

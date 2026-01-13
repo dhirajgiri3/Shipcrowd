@@ -188,7 +188,10 @@ export const loginRateLimiter = rateLimit({
 });
 
 /**
- * CSRF protection middleware
+ * ⚠️ DEPRECATED: Use csrfProtection from /middleware/auth/csrf.ts instead
+ * This function is kept only for backwards compatibility
+ *
+ * CSRF protection middleware (legacy - origin/referer check only)
  */
 export const csrfProtection = (
   req: Request,
@@ -210,17 +213,9 @@ export const csrfProtection = (
   const csrfToken = req.headers['x-csrf-token'];
   const origin = req.headers.origin || '';
   const referer = req.headers.referer || '';
-  const userAgent = req.headers['user-agent'] || '';
 
-  // Check if request is coming from Postman in development mode
-  const isPostmanRequest = userAgent.includes('PostmanRuntime');
-  const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-
-  // Allow Postman requests in development mode
-  if (isDevelopment && isPostmanRequest) {
-    next();
-    return;
-  }
+  // ✅ REMOVED: Development Postman bypass (security fix)
+  // Development bypasses are NOT allowed - use proper CSRF tokens everywhere
 
   // Check if request is coming from our frontend
   const allowedOrigins = [

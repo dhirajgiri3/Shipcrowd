@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import PromoCodeService from '../../../../core/application/services/marketing/promo-code.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { apiRateLimiter } from '../../middleware/system/rate-limiter.middleware';
+import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 
 /**
  * Promo Code Controller
@@ -48,11 +49,7 @@ class PromoCodeController {
                 carriers,
             });
 
-            res.status(201).json({
-                success: true,
-                message: 'Promo code created successfully',
-                data: promo,
-            });
+            sendCreated(res, promo, 'Promo code created successfully');
         } catch (error) {
             next(error);
         }
@@ -82,17 +79,13 @@ class PromoCodeController {
                 { carrier, serviceType }
             );
 
-            res.status(200).json({
-                success: result.valid,
-                message: result.message || (result.valid ? 'Promo code valid' : 'Invalid promo code'),
-                data: {
-                    valid: result.valid,
-                    discountAmount: result.discountAmount,
-                    code: result.coupon?.code,
-                    discountType: result.coupon?.discount.type,
-                    discountValue: result.coupon?.discount.value,
-                },
-            });
+            sendSuccess(res, {
+                valid: result.valid,
+                discountAmount: result.discountAmount,
+                code: result.coupon?.code,
+                discountType: result.coupon?.discount.type,
+                discountValue: result.coupon?.discount.value,
+            }, result.message || (result.valid ? 'Promo code valid' : 'Invalid promo code'));
         } catch (error) {
             next(error);
         }
@@ -111,10 +104,7 @@ class PromoCodeController {
             const activeOnly = req.query.active === 'true';
             const promos = await PromoCodeService.listPromos(req.user.companyId.toString(), activeOnly);
 
-            res.status(200).json({
-                success: true,
-                data: promos,
-            });
+            sendSuccess(res, promos);
         } catch (error) {
             next(error);
         }

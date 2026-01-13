@@ -20,6 +20,7 @@ import {
     orderIdParamSchema,
 } from '../../../../shared/validation/commission-schemas';
 import logger from '../../../../shared/logger/winston.logger';
+import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '../../../../shared/utils/responseHelper';
 
 export class CommissionRuleController {
     /**
@@ -52,11 +53,7 @@ export class CommissionRuleController {
                 String(companyId)
             );
 
-            res.status(201).json({
-                success: true,
-                message: 'Commission rule created successfully',
-                data: rule,
-            });
+            sendCreated(res, rule, 'Commission rule created successfully');
         } catch (error) {
             next(error);
         }
@@ -99,16 +96,8 @@ export class CommissionRuleController {
                 { page, limit, sortBy, sortOrder }
             );
 
-            res.status(200).json({
-                success: true,
-                data: result.data,
-                pagination: {
-                    page: result.page,
-                    limit: result.limit,
-                    total: result.total,
-                    totalPages: result.totalPages,
-                },
-            });
+            const pagination = calculatePagination(result.total, result.page, result.limit);
+            sendPaginated(res, result.data, pagination);
         } catch (error) {
             next(error);
         }
@@ -136,10 +125,7 @@ export class CommissionRuleController {
 
             const rule = await CommissionRuleService.getRule(id, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: rule,
-            });
+            sendSuccess(res, rule);
         } catch (error) {
             next(error);
         }
@@ -182,11 +168,7 @@ export class CommissionRuleController {
                 String(companyId)
             );
 
-            res.status(200).json({
-                success: true,
-                message: 'Commission rule updated successfully',
-                data: rule,
-            });
+            sendSuccess(res, rule, 'Commission rule updated successfully');
         } catch (error) {
             next(error);
         }
@@ -215,10 +197,7 @@ export class CommissionRuleController {
 
             await CommissionRuleService.deleteRule(id, String(userId), String(companyId));
 
-            res.status(200).json({
-                success: true,
-                message: 'Commission rule deleted successfully',
-            });
+            sendSuccess(res, null, 'Commission rule deleted successfully');
         } catch (error) {
             next(error);
         }
@@ -256,10 +235,7 @@ export class CommissionRuleController {
 
             const result = await CommissionRuleService.testRule(id, validation.data, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: result,
-            });
+            sendSuccess(res, result);
         } catch (error) {
             next(error);
         }
@@ -287,9 +263,8 @@ export class CommissionRuleController {
 
             const rules = await CommissionRuleService.findApplicableRules(orderId, String(companyId));
 
-            res.status(200).json({
-                success: true,
-                data: rules,
+            sendSuccess(res, {
+                rules,
                 count: rules.length,
             });
         } catch (error) {
@@ -324,11 +299,7 @@ export class CommissionRuleController {
                 String(companyId)
             );
 
-            res.status(201).json({
-                success: true,
-                message: 'Commission rule cloned successfully',
-                data: rule,
-            });
+            sendCreated(res, rule, 'Commission rule cloned successfully');
         } catch (error) {
             next(error);
         }
