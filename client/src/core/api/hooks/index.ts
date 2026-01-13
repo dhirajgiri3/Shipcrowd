@@ -22,3 +22,4 @@ export * from './useIntegrations';
 export * from './useSettlements';
 export * from './useSellerActions';
 export * from './useRecentCustomers';
+export * from './useWallet';

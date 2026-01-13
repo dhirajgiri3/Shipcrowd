@@ -1,142 +1,129 @@
 /**
  * Pincode Seeder
  * 
- * Populates initial pincode data for address validation.
+ * Populates pincode data from CSV file for serviceability management.
+ * 
+ * Strategy:
+ * - Loads all pincodes from CSV (154k records)
+ * - Stores only pincode + serviceability flags in DB
+ * - City/State data is cached in memory via PincodeLookupService
  */
 
+import fs from 'fs';
+import path from 'path';
+import csv from 'csv-parser';
 import { Pincode, IPincode } from '../../mongoose/models/logistics/pincode.model';
 import { logger, createTimer } from '../utils/logger.utils';
 
-// Sample pincode data for different regions
-const SAMPLE_PINCODES: Partial<IPincode>[] = [
-    // North - Delhi
-    {
-        pincode: '110001',
-        postOffice: 'New Delhi GPO',
-        district: 'New Delhi',
-        state: 'Delhi',
-        city: 'New Delhi',
-        region: 'North',
-        serviceability: {
-            delhivery: { available: true, lastChecked: new Date() },
-            bluedart: { available: true, lastChecked: new Date() },
-            ecom: { available: true, lastChecked: new Date() },
-            dtdc: { available: true, lastChecked: new Date() },
-            xpressbees: { available: true, lastChecked: new Date() },
-            shadowfax: { available: true, lastChecked: new Date() },
-        },
-        coordinates: { latitude: 28.6327, longitude: 77.2197 },
-        isActive: true
-    },
-    // West - Mumbai
-    {
-        pincode: '400001',
-        postOffice: 'Mumbai GPO',
-        district: 'Mumbai',
-        state: 'Maharashtra',
-        city: 'Mumbai',
-        region: 'West',
-        serviceability: {
-            delhivery: { available: true, lastChecked: new Date() },
-            bluedart: { available: true, lastChecked: new Date() },
-            ecom: { available: true, lastChecked: new Date() },
-            dtdc: { available: true, lastChecked: new Date() },
-            xpressbees: { available: true, lastChecked: new Date() },
-            shadowfax: { available: true, lastChecked: new Date() },
-        },
-        coordinates: { latitude: 18.9388, longitude: 72.8354 },
-        isActive: true
-    },
-    // South - Bengaluru
-    {
-        pincode: '560001',
-        postOffice: 'Bangalore GPO',
-        district: 'Bangalore Urban',
-        state: 'Karnataka',
-        city: 'Bengaluru',
-        region: 'South',
-        serviceability: {
-            delhivery: { available: true, lastChecked: new Date() },
-            bluedart: { available: true, lastChecked: new Date() },
-            ecom: { available: true, lastChecked: new Date() },
-            dtdc: { available: true, lastChecked: new Date() },
-            xpressbees: { available: true, lastChecked: new Date() },
-            shadowfax: { available: true, lastChecked: new Date() },
-        },
-        coordinates: { latitude: 12.9847, longitude: 77.5971 },
-        isActive: true
-    },
-    // East - Kolkata
-    {
-        pincode: '700001',
-        postOffice: 'Kolkata GPO',
-        district: 'Kolkata',
-        state: 'West Bengal',
-        city: 'Kolkata',
-        region: 'East',
-        serviceability: {
-            delhivery: { available: true, lastChecked: new Date() },
-            bluedart: { available: true, lastChecked: new Date() },
-            ecom: { available: true, lastChecked: new Date() },
-            dtdc: { available: true, lastChecked: new Date() },
-            xpressbees: { available: true, lastChecked: new Date() },
-            shadowfax: { available: true, lastChecked: new Date() },
-        },
-        coordinates: { latitude: 22.5697, longitude: 88.3697 },
-        isActive: true
-    },
-    // Northeast - Guwahati
-    {
-        pincode: '781001',
-        postOffice: 'Guwahati GPO',
-        district: 'Kamrup',
-        state: 'Assam',
-        city: 'Guwahati',
-        region: 'Northeast',
-        serviceability: {
-            delhivery: { available: true, lastChecked: new Date() },
-            bluedart: { available: true, lastChecked: new Date() },
-            ecom: { available: false, lastChecked: new Date() },
-            dtdc: { available: true, lastChecked: new Date() },
-            xpressbees: { available: true, lastChecked: new Date() },
-            shadowfax: { available: false, lastChecked: new Date() },
-        },
-        coordinates: { latitude: 26.1851, longitude: 91.7516 },
-        isActive: true
-    },
-    // Central - Bhopal
-    {
-        pincode: '462001',
-        postOffice: 'Bhopal GPO',
-        district: 'Bhopal',
-        state: 'Madhya Pradesh',
-        city: 'Bhopal',
-        region: 'Central',
-        serviceability: {
-            delhivery: { available: true, lastChecked: new Date() },
-            bluedart: { available: true, lastChecked: new Date() },
-            ecom: { available: true, lastChecked: new Date() },
-            dtdc: { available: true, lastChecked: new Date() },
-            xpressbees: { available: true, lastChecked: new Date() },
-            shadowfax: { available: true, lastChecked: new Date() },
-        },
-        coordinates: { latitude: 23.2599, longitude: 77.4126 },
-        isActive: true
-    }
-];
+interface CSVRow {
+    pincode: string;
+    city: string;
+    state: string;
+}
 
 export async function seedPincodes(): Promise<void> {
     const timer = createTimer();
-    logger.step(28, 'Seeding Pincodes');
+    logger.step(28, 'Seeding Pincodes from CSV');
 
     try {
-        await Pincode.deleteMany({}); // Clear existing for this specific run if needed, but handled by global clean usually
+        // Clear existing pincodes
+        await Pincode.deleteMany({});
 
-        await Pincode.insertMany(SAMPLE_PINCODES);
+        const csvPath = path.join(__dirname, '../../../../../assets/pincodes.csv');
+        const pincodes: Partial<IPincode>[] = [];
 
-        logger.complete('pincodes', SAMPLE_PINCODES.length, timer.elapsed());
-    } catch (error) {
-        logger.error('Failed to seed pincodes:', error);
-        throw error;
+        // Read and parse CSV
+        await new Promise<void>((resolve, reject) => {
+            fs.createReadStream(csvPath)
+                .pipe(csv())
+                .on('data', (row: CSVRow) => {
+                    const pincode = row.pincode?.trim();
+                    const city = row.city?.trim();
+                    const state = row.state?.trim();
+
+                    if (pincode && city && state) {
+                        pincodes.push({
+                            pincode,
+                            postOffice: `${city} Post Office`,
+                            district: city,
+                            state,
+                            city,
+                            region: getRegion(state),
+                            serviceability: {
+                                delhivery: { available: false, lastChecked: new Date() },
+                                bluedart: { available: false, lastChecked: new Date() },
+                                ecom: { available: false, lastChecked: new Date() },
+                                dtdc: { available: false, lastChecked: new Date() },
+                                xpressbees: { available: false, lastChecked: new Date() },
+                                shadowfax: { available: false, lastChecked: new Date() },
+                            },
+                            isActive: true
+                        });
+                    }
+                })
+                .on('end', () => resolve())
+                .on('error', (error) => reject(error));
+        });
+
+        logger.info(`Parsed ${pincodes.length} pincodes from CSV`);
+
+        // Batch insert to avoid memory issues
+        const BATCH_SIZE = 5000;
+        let inserted = 0;
+
+        for (let i = 0; i < pincodes.length; i += BATCH_SIZE) {
+            const batch = pincodes.slice(i, i + BATCH_SIZE);
+            await Pincode.insertMany(batch, { ordered: false });
+            inserted += batch.length;
+
+            if (inserted % 25000 === 0) {
+                logger.info(`Inserted ${inserted}/${pincodes.length} pincodes...`);
+            }
+        }
+
+        logger.complete('pincodes', inserted, timer.elapsed());
+    } catch (error: any) {
+        // Ignore duplicate key errors (code 11000)
+        if (error.code === 11000) {
+            logger.warn('Some duplicate pincodes skipped');
+        } else {
+            logger.error('Failed to seed pincodes:', error);
+            throw error;
+        }
     }
+}
+
+/**
+ * Determine region from state name
+ */
+function getRegion(state: string): 'North' | 'South' | 'East' | 'West' | 'Northeast' | 'Central' {
+    const stateUpper = state.toUpperCase();
+
+    // North
+    if (['DELHI', 'PUNJAB', 'HARYANA', 'HIMACHAL PRADESH', 'UTTARAKHAND', 'CHANDIGARH'].includes(stateUpper)) {
+        return 'North';
+    }
+
+    // South
+    if (['KARNATAKA', 'TAMIL NADU', 'KERALA', 'ANDHRA PRADESH', 'TELANGANA', 'PUDUCHERRY'].includes(stateUpper)) {
+        return 'South';
+    }
+
+    // East
+    if (['WEST BENGAL', 'ODISHA', 'BIHAR', 'JHARKHAND'].includes(stateUpper)) {
+        return 'East';
+    }
+
+    // West
+    if (['MAHARASHTRA', 'GUJARAT', 'RAJASTHAN', 'GOA', 'DADRA AND NAGAR HAVELI', 'DAMAN AND DIU'].includes(stateUpper)) {
+        return 'West';
+    }
+
+    // Northeast
+    if (['ASSAM', 'ARUNACHAL PRADESH', 'MANIPUR', 'MEGHALAYA', 'MIZORAM', 'NAGALAND', 'TRIPURA', 'SIKKIM'].includes(stateUpper)) {
+        return 'Northeast';
+    }
+
+    // Central (default)
+    return 'Central';
 }

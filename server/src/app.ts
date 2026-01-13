@@ -83,6 +83,10 @@ if (process.env.NODE_ENV !== 'test') {
 // Configure Passport for OAuth
 configurePassport(app);
 
+// Serve static files from uploads directory (PDFs, documents)
+const path = require('path');
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({

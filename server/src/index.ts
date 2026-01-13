@@ -12,6 +12,7 @@ import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-r
 import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.job';
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
+import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,10 @@ const startServer = async (): Promise<void> => {
         // Connect to MongoDB
         await connectDB();
         logger.info('Database connected successfully');
+
+        // Load Pincode Cache from CSV (in-memory for fast lookups)
+        await PincodeLookupService.loadPincodesFromCSV();
+        logger.info('Pincode cache loaded successfully');
 
         // Initialize Queue Manager FIRST (creates all queues)
         await QueueManager.initialize();

@@ -59,7 +59,6 @@ const ManifestSchema = new Schema<IManifest>(
             type: String,
             required: true,
             unique: true,
-            index: true,
         },
         companyId: {
             type: Schema.Types.ObjectId,

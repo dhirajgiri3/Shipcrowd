@@ -29,6 +29,8 @@ import flipkartWebhookRoutes from './webhooks/flipkart.webhook.routes';
 import warehouseWorkflowRoutes from './warehouses';
 // Week 7: Marketplace Integrations (Flipkart, Amazon)
 import integrationsRoutes from './integrations';
+// Week 7: NDR Communication
+import ndrCommunicationRoutes from './ndr/ndr-communication.routes';
 // Week 8: NDR/RTO Automation
 import ndrRoutes from './ndr/ndr.routes';
 import rtoRoutes from './rto/rto.routes';
@@ -95,6 +97,10 @@ router.use('/onboarding', onboardingRoutes);
 import addressRoutes from './logistics/address.routes';
 router.use('/logistics/address', addressRoutes);
 
+// Pincode routes
+import pincodeRoutes from './logistics/pincode.routes';
+router.use('/logistics/pincode', pincodeRoutes);
+
 // Phase 3: COD Remittance Dashboard
 import codRemittanceRoutes from './finance/cod-remittance.routes';
 router.use('/finance/cod-remittance', codRemittanceRoutes);
@@ -103,8 +109,19 @@ router.use('/finance/cod-remittance', codRemittanceRoutes);
 import walletRoutes from './finance/wallet.routes';
 router.use('/finance/wallet', walletRoutes);
 
+// Week 8: Invoice System
+import invoiceRoutes from './finance/invoice.routes';
+router.use('/billing/invoices', invoiceRoutes);
+
 // Razorpay Webhooks
 import razorpayWebhookRoutes from './webhooks/razorpay.webhook.routes';
 router.use('/webhooks/razorpay', razorpayWebhookRoutes);
+
+// Week 7: NDR Communication
+router.use('/ndr/communication', ndrCommunicationRoutes);
+
+// Week 10: Promo Codes
+import promoCodeRoutes from './marketing/promo-code.routes';
+router.use('/promos', promoCodeRoutes);
 
 export default router;

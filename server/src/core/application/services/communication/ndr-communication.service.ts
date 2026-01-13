@@ -104,17 +104,20 @@ class NDRCommunicationService {
             // Send via Email (fallback or all)
             if ((channel === 'email' || channel === 'all') && recipientEmail) {
                 try {
-                    await sendEmail({
-                        to: [recipientEmail],
-                        subject: `Delivery Update - ${awb}`,
-                        text: customMessage || `Update for shipment ${awb}`,
-                        html: this.generateEmailTemplate(templateType, {
-                            recipientName,
-                            awb,
-                            ndrReason,
-                            customMessage,
-                        }),
+                    const htmlContent = this.generateEmailTemplate(templateType, {
+                        recipientName,
+                        awb,
+                        ndrReason,
+                        customMessage,
                     });
+                    const textContent = customMessage || `Update for shipment ${awb}`;
+
+                    await sendEmail(
+                        [recipientEmail],
+                        `Delivery Update - ${awb}`,
+                        htmlContent,
+                        textContent
+                    );
 
                     results.channelsSent.push('email');
                     results.success = true;

@@ -1,6 +1,7 @@
 import { Pincode, IPincode } from '../../../../infrastructure/database/mongoose/models/logistics/pincode.model';
 import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import PincodeLookupService from './pincode-lookup.service';
 
 export interface AddressInput {
     line1: string;
@@ -20,6 +21,7 @@ export interface StandardizedAddress extends AddressInput {
 export default class AddressValidationService {
     /**
      * Validate Indian pincode and return location details
+     * Uses CSV cache for fast lookup, falls back to database for serviceability
      */
     static async validatePincode(pincode: string): Promise<{
         valid: boolean;
@@ -50,11 +52,10 @@ export default class AddressValidationService {
             };
         }
 
-        const pincodeData = await Pincode.findOne({ pincode });
+        // Try CSV cache first (fast)
+        const csvDetails = PincodeLookupService.getPincodeDetails(pincode);
 
-        if (!pincodeData) {
-            // In a real scenario, we might want to fetch from an external API if not found locally
-            // For now, if not in our DB, we consider it invalid or at least unverified
+        if (!csvDetails) {
             return {
                 valid: false,
                 serviceability: {
@@ -68,18 +69,29 @@ export default class AddressValidationService {
             };
         }
 
+        // Get serviceability from database (dynamic data)
+        const pincodeData = await Pincode.findOne({ pincode });
+
         return {
             valid: true,
-            city: pincodeData.city,
-            state: pincodeData.state,
-            district: pincodeData.district,
-            serviceability: {
+            city: csvDetails.city,
+            state: csvDetails.state,
+            district: csvDetails.city, // Using city as district from CSV
+            serviceability: pincodeData ? {
                 delhivery: pincodeData.serviceability.delhivery.available,
                 bluedart: pincodeData.serviceability.bluedart.available,
                 ecom: pincodeData.serviceability.ecom.available,
                 dtdc: pincodeData.serviceability.dtdc.available,
                 xpressbees: pincodeData.serviceability.xpressbees.available,
                 shadowfax: pincodeData.serviceability.shadowfax.available,
+            } : {
+                // Default to false if not in database yet
+                delhivery: false,
+                bluedart: false,
+                ecom: false,
+                dtdc: false,
+                xpressbees: false,
+                shadowfax: false
             }
         };
     }
