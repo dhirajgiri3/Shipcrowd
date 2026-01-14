@@ -23,6 +23,8 @@ interface AddMoneyModalProps {
 }
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000];
+const MIN_AMOUNT = 100;
+const MAX_AMOUNT = 500000;
 
 type PaymentMethod = 'upi' | 'card' | 'netbanking' | 'wallet';
 
@@ -65,6 +67,18 @@ export function AddMoneyModal({ isOpen, onClose, currentBalance = 0 }: AddMoneyM
             }
         );
     };
+
+    // Validation helper
+    const getAmountError = (): string | null => {
+        if (!amount || !customAmount) return null;
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount) || numAmount <= 0) return 'Please enter a valid amount';
+        if (numAmount < MIN_AMOUNT) return `Minimum amount is ₹${MIN_AMOUNT.toLocaleString()}`;
+        if (numAmount > MAX_AMOUNT) return `Maximum amount is ₹${MAX_AMOUNT.toLocaleString()}`;
+        return null;
+    };
+
+    const amountError = getAmountError();
 
     if (!isOpen) return null;
 
@@ -147,10 +161,21 @@ export function AddMoneyModal({ isOpen, onClose, currentBalance = 0 }: AddMoneyM
                                     placeholder="Enter amount"
                                     min="1"
                                     step="1"
-                                    className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    className={`w-full pl-8 pr-4 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${amountError
+                                        ? 'border-red-500 dark:border-red-400'
+                                        : 'border-gray-300 dark:border-gray-600'
+                                        }`}
                                     autoFocus
                                 />
                             </div>
+                            {amountError && (
+                                <div className="mt-2 flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>{amountError}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -247,8 +272,8 @@ export function AddMoneyModal({ isOpen, onClose, currentBalance = 0 }: AddMoneyM
                         </button>
                         <button
                             type="submit"
-                            disabled={!amount || parseFloat(amount) <= 0 || isPending}
-                            className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-md font-medium transition-colors disabled:cursor-not-allowed"
+                            disabled={!amount || parseFloat(amount) <= 0 || isPending || !!amountError}
+                            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                         >
                             {isPending ? 'Processing...' : `Add ${amount ? formatCurrency(parseFloat(amount)) : '₹0'}`}
                         </button>
