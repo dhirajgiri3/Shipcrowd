@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { authApi } from '@/src/core/api/auth.api';
+import { authApi } from '@/src/core/api/authApi';
 import { useAuth } from '@/src/features/auth';
 import { Card } from '@/components/ui';
 import { toast } from 'sonner';

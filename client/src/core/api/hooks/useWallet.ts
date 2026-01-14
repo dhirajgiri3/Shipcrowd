@@ -10,71 +10,24 @@ import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstac
 import { apiClient } from '@/src/core/api/client';
 import { queryKeys } from '../queryKeys';
 import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../cacheConfig';
-import { 
-  createOptimisticUpdateHandler, 
-  createOptimisticListUpdateHandler,
-  optimisticListUpdate,
+import {
+    createOptimisticUpdateHandler,
+    createOptimisticListUpdateHandler,
+    optimisticListUpdate,
 } from '../optimisticUpdates';
 import { handleApiError, showSuccessToast } from '@/lib/error-handler';
 
-// ==================== TypeScript Types ====================
-
-export interface WalletBalance {
-    balance: number;
-    currency?: string;
-    lastUpdated?: Date;
-}
-
-export interface WalletTransaction {
-    _id: string;
-    company: string;
-    type: 'credit' | 'debit';
-    amount: number;
-    balanceBefore: number;
-    balanceAfter: number;
-    reason: 'recharge' | 'shipping_cost' | 'rto_charge' | 'cod_remittance' | 'refund' | 'other';
-    description: string;
-    reference?: {
-        type: string;
-        id?: string;
-        externalId?: string;
-    };
-    status: 'completed' | 'pending' | 'failed';
-    createdBy?: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface TransactionFilters {
-    type?: 'credit' | 'debit';
-    reason?: 'recharge' | 'shipping_cost' | 'rto_charge' | 'cod_remittance' | 'refund' | 'other';
-    startDate?: string;
-    endDate?: string;
-    page?: number;
-    limit?: number;
-}
-
-export interface PaginationMeta {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-}
-
-export interface WalletTransactionResponse {
-    transactions: WalletTransaction[];
-    pagination: PaginationMeta;
-}
-
-export interface WalletStats {
-    totalCredits: number;
-    totalDebits: number;
-    netFlow: number;
-    transactionCount: number;
-    averageTransaction: number;
-}
+// ==================== Import Centralized Types ====================
+import type {
+    WalletBalance,
+    WalletTransaction,
+    WalletTransactionResponse,
+    WalletStats,
+    TransactionFilters,
+    RechargeWalletPayload,
+    WithdrawWalletPayload,
+    TransferWalletPayload,
+} from '@/src/types/api/wallet.types';
 
 // ==================== Hooks ====================
 

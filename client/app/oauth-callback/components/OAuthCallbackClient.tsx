@@ -4,7 +4,7 @@ import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
-import { authApi } from '@/src/core/api/auth.api';
+import { authApi } from '@/src/core/api/authApi';
 import { Loader } from '@/components/ui';
 
 function OAuthCallbackContent() {

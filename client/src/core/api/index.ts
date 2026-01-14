@@ -10,7 +10,7 @@ export { apiClient, normalizeError, isApiEnabled } from './client';
 export type { ApiError } from './client';
 
 // Auth API
-export { authApi } from './auth.api';
+export { authApi } from './authApi';
 // export type {
 //     AuthUser,
 //     LoginCredentials,

@@ -1,25 +1,21 @@
 /**
  * Session Management API
- *
- * Handles user session management including viewing active sessions,
- * revoking individual sessions, and logging out from all devices.
+ * Handles user session operations: list, revoke, and revoke all
  */
 
 import { apiClient } from './client';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
+/**
+ * User session information
+ */
 export interface Session {
     _id: string;
-    userId: string;
     userAgent: string;
     ip: string;
     deviceInfo: {
         type: 'desktop' | 'mobile' | 'tablet' | 'other';
-        browser?: string;
-        os?: string;
+        browser: string;
+        os: string;
         deviceName?: string;
     };
     location?: {
@@ -27,48 +23,40 @@ export interface Session {
         city?: string;
         region?: string;
     };
-    lastActive: string;
-    createdAt: string;
-    expiresAt: string;
+    lastActive: Date;
+    expiresAt: Date;
     isRevoked: boolean;
-}
-
-export interface GetSessionsResponse {
-    sessions: Session[];
-    currentSessionId?: string;
+    createdAt: Date;
+    isCurrent?: boolean; // Added by frontend to mark current session
 }
 
 /**
- * Session Management API Service
- * Handles user session management including viewing active sessions,
- * revoking individual sessions, and logging out from all devices.
- * Class-based pattern for consistency and maintainability
+ * Session API endpoints
  */
-class SessionApiService {
-    async getSessions(): Promise<GetSessionsResponse> {
-        const response = await apiClient.get<GetSessionsResponse>('/auth/sessions');
-        return response.data;
-    }
+export const sessionApi = {
+    /**
+     * Get all active sessions for the current user
+     * @returns List of active sessions
+     */
+    getSessions: async (): Promise<Session[]> => {
+        const response = await apiClient.get('/auth/sessions');
+        return response.data.data.sessions;
+    },
 
-    async revokeSession(sessionId: string): Promise<{ message: string }> {
-        const response = await apiClient.delete<{ message: string }>(`/auth/sessions/${sessionId}`);
-        return response.data;
-    }
+    /**
+     * Revoke a specific session
+     * @param sessionId - ID of the session to revoke
+     */
+    revokeSession: async (sessionId: string): Promise<void> => {
+        await apiClient.delete(`/auth/sessions/${sessionId}`);
+    },
 
-    async revokeAllSessions(): Promise<{ message: string; revokedCount: number }> {
-        const response = await apiClient.delete<{ message: string; revokedCount: number }>('/auth/sessions');
-        return response.data;
-    }
-
-    async checkSessionStatus(sessionId: string): Promise<{ isActive: boolean; lastActive: string }> {
-        const response = await apiClient.get<{ isActive: boolean; lastActive: string }>(`/auth/sessions/${sessionId}/status`);
-        return response.data;
-    }
-}
-
-/**
- * Singleton instance
- */
-export const sessionApi = new SessionApiService();
-
-export default sessionApi;
+    /**
+     * Revoke all sessions except the current one
+     * @returns Number of sessions revoked
+     */
+    revokeAllSessions: async (): Promise<{ revoked: number }> => {
+        const response = await apiClient.delete('/auth/sessions');
+        return response.data.data;
+    },
+};

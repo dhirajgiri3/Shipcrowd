@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useState } from 'react';
 import type { Order, CreateOrderRequest, OrderListParams, OrderContextType } from '@/src/types/order';
-import { orderApi } from '@/src/core/api/order.api';
+import { orderApi } from '@/src/core/api/orderApi';
 import { normalizeError } from '@/src/core/api/client';
 
 /**

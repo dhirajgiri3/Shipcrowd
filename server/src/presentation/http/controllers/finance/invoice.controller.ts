@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import InvoiceService from '../../../../core/application/services/finance/invoice.service';
 import IRNService from '../../../../core/application/services/finance/irn.service';
+import CreditNoteService from '../../../../core/application/services/finance/credit-note.service';
+import GSTRExportService from '../../../../core/application/services/finance/gstr-export.service';
 import DiskStorageService from '../../../../core/application/services/storage/disk-storage.service';
 import { InvoicePDFTemplate } from '../../../../core/application/services/pdf/templates/invoice-pdf.template';
+import { CreditNotePDFTemplate } from '../../../../core/application/services/pdf/templates/credit-note-pdf.template';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { sendEmail } from '../../../../core/application/services/communication/email.service';
 import { formatFinancialPeriod } from '../../../../shared/utils/date-format.util';
@@ -306,20 +309,44 @@ class InvoiceController {
      */
     async createCreditNote(req: Request, res: Response, next: NextFunction) {
         try {
-            const { originalInvoiceId, reason, lineItems } = req.body;
+            const { invoiceId, reason, reasonDescription, adjustmentPercentage, referenceDocument } = req.body;
 
-            if (!originalInvoiceId) {
-                throw new ValidationError('Original invoice ID required');
+            if (!req.user?.companyId) {
+                throw new ValidationError('Company ID required');
             }
 
-            // TODO: Implement credit note creation
+            if (!invoiceId) {
+                throw new ValidationError('Invoice ID required');
+            }
+
+            if (!reason) {
+                throw new ValidationError('Reason required');
+            }
+
+            if (!reasonDescription) {
+                throw new ValidationError('Reason description required');
+            }
+
+            const creditNote = await CreditNoteService.createCreditNote({
+                companyId: req.user.companyId.toString(),
+                invoiceId,
+                reason,
+                reasonDescription,
+                adjustmentPercentage,
+                referenceDocument,
+                createdBy: req.user._id.toString(),
+            });
+
+            logger.info(`Credit note created: ${creditNote.creditNoteNumber}`, {
+                creditNoteId: creditNote._id,
+                invoiceId,
+                reason,
+            });
+
             res.status(201).json({
                 success: true,
-                message: 'Credit note creation not yet implemented',
-                data: {
-                    originalInvoiceId,
-                    reason,
-                },
+                message: 'Credit note created successfully',
+                data: creditNote,
             });
         } catch (error) {
             next(error);
@@ -370,15 +397,23 @@ class InvoiceController {
                 throw new ValidationError('Month must be in YYYYMM format (e.g., 202601)');
             }
 
-            // TODO: Implement GSTR-1 JSON export
-            res.status(200).json({
-                success: true,
-                message: 'GSTR-1 export not yet implemented',
-                data: {
-                    month,
-                    format: 'JSON',
-                },
+            // Parse month and year
+            const monthNum = parseInt(month.substring(4, 6));
+            const yearNum = parseInt(month.substring(0, 4));
+
+            // Generate GSTR-1 export
+            const gstr1Export = await GSTRExportService.generateGSTR1Export(monthNum, yearNum);
+
+            // Set appropriate headers for JSON download
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', `attachment; filename="GSTR1_${month}.json"`);
+
+            logger.info(`GSTR-1 export generated for ${month}`, {
+                invoiceCount: gstr1Export.b2b.length,
+                grandTotal: gstr1Export.gt,
             });
+
+            res.status(200).json(gstr1Export);
         } catch (error) {
             next(error);
         }

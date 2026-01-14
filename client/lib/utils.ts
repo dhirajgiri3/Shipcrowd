@@ -24,14 +24,63 @@ export function cn(...inputs: ClassValue[]) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Format number as Indian Rupee currency
+ * Format number as currency with optional currency code
+ * @param amount - The amount to format
+ * @param currency - Currency code (default: 'INR')
+ * @param options - Additional formatting options
  */
-export function formatCurrency(amount: number): string {
+export function formatCurrency(
+    amount: number,
+    currency: string = 'INR',
+    options?: { compact?: boolean; decimals?: number }
+): string {
+    const decimals = options?.decimals ?? (currency === 'INR' ? 0 : 2);
+
+    if (options?.compact) {
+        return formatCompactCurrency(amount, currency);
+    }
+
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
+        currency: currency,
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
     }).format(amount);
+}
+
+/**
+ * Format currency with compact notation (K, L, Cr)
+ * Useful for displaying large amounts in limited space
+ */
+export function formatCompactCurrency(amount: number, currency: string = 'INR'): string {
+    const absAmount = Math.abs(amount);
+    const sign = amount < 0 ? '-' : '';
+    const symbol = currency === 'INR' ? '₹' : new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency
+    }).format(0).replace(/[\d.,\s]/g, '');
+
+    // Indian number system
+    if (currency === 'INR') {
+        if (absAmount >= 10000000) { // >= 1 Crore
+            return `${sign}${symbol}${(absAmount / 10000000).toFixed(2)}Cr`;
+        } else if (absAmount >= 100000) { // >= 1 Lakh
+            return `${sign}${symbol}${(absAmount / 100000).toFixed(2)}L`;
+        } else if (absAmount >= 1000) { // >= 1 Thousand
+            return `${sign}${symbol}${(absAmount / 1000).toFixed(1)}K`;
+        }
+    } else {
+        // International number system (K, M, B)
+        if (absAmount >= 1000000000) {
+            return `${sign}${symbol}${(absAmount / 1000000000).toFixed(2)}B`;
+        } else if (absAmount >= 1000000) {
+            return `${sign}${symbol}${(absAmount / 1000000).toFixed(2)}M`;
+        } else if (absAmount >= 1000) {
+            return `${sign}${symbol}${(absAmount / 1000).toFixed(1)}K`;
+        }
+    }
+
+    return formatCurrency(amount, currency);
 }
 
 /**
@@ -137,9 +186,32 @@ export const getStatusColor = (status: string): string => {
 /**
  * Truncate text with ellipsis
  */
-export function truncate(str: string, length: number): string {
+export function truncate(str: string, length: number, suffix: string = '...'): string {
     if (str.length <= length) return str;
-    return str.slice(0, length) + '...';
+    return str.slice(0, length - suffix.length) + suffix;
+}
+
+/**
+ * Capitalize first letter of a string
+ */
+export function capitalize(text: string): string {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Format file size in human-readable format
+ */
+export function formatFileSize(bytes: number): string {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = bytes;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+    }
+
+    return `${size.toFixed(2)} ${units[unitIndex]}`;
 }
 
 /**

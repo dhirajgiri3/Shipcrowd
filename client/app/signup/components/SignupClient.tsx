@@ -30,7 +30,7 @@ import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } 
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
 import { LoadingButton } from '@/components/ui/utility/LoadingButton';
-import { consentApi } from '@/src/core/api/consent.api';
+import { consentApi } from '@/src/core/api/consentApi';
 
 export function SignupClient() {
   const router = useRouter();

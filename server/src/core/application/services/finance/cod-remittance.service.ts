@@ -429,25 +429,27 @@ export default class CODRemittanceService {
     /**
      * Get remittance details by ID
      */
-    static async getRemittanceDetails(
-        remittanceId: string,
-        companyId?: string
-    ): Promise<ICODRemittance> {
-        const query: Record<string, any> = { remittanceId };
-        if (companyId) {
-            query.companyId = new mongoose.Types.ObjectId(companyId);
-        }
-
-        const remittance = await CODRemittance.findOne(query)
-            .populate('approvedBy', 'name email')
-            .populate('cancelledBy', 'name email')
+    static async getRemittanceDetails(remittanceId: string, companyId: string): Promise<any> {
+        const remittance = await CODRemittance.findOne({
+            _id: remittanceId,
+            companyId,
+            isDeleted: false,
+        })
+            .populate({
+                path: 'shipments.shipmentId',
+                select: 'awb orderId deliveredAt status courierPartner weight packageDetails',
+                populate: {
+                    path: 'orderId',
+                    select: 'orderNumber productDetails customerDetails',
+                },
+            })
             .lean();
 
         if (!remittance) {
-            throw new ValidationError('Remittance not found', ErrorCode.RES_REMITTANCE_NOT_FOUND);
+            throw new AppError('Remittance not found', ErrorCode.RES_RESOURCE_NOT_FOUND, 404);
         }
 
-        return remittance as ICODRemittance;
+        return remittance;
     }
 
     /**

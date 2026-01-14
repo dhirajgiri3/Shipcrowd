@@ -195,6 +195,7 @@ export const queryKeys = {
     balance: () => ['wallet', 'balance'],
     transactions: (params?: FilterParams) => ['wallet', 'transactions', params],
     history: (limit?: number) => ['wallet', 'history', limit || 50],
+    stats: (dateRange?: { start: string; end: string }) => ['wallet', 'stats', dateRange],
     topup: () => ['wallet', 'topup'],
     withdraw: () => ['wallet', 'withdraw'],
     settings: () => ['wallet', 'settings'],
@@ -231,6 +232,15 @@ export const queryKeys = {
       all: () => ['disputes', 'weight'],
       list: (params?: FilterParams) => ['disputes', 'weight', 'list', params],
       detail: (id: string) => ['disputes', 'weight', 'detail', id],
+    },
+
+    // ==================== Disputes ====================
+    disputes: {
+      all: ['disputes'] as const,
+      list: (filters?: any) => [...queryKeys.disputes.all(), 'list', filters] as const,
+      detail: (id: string) => [...queryKeys.disputes.all(), 'detail', id] as const,
+      metrics: (dateRange?: any) => [...queryKeys.disputes.all(), 'metrics', dateRange] as const,
+      analytics: (filters?: any) => [...queryKeys.disputes.all(), 'analytics', filters] as const,
     },
     other: {
       all: () => ['disputes', 'other'],

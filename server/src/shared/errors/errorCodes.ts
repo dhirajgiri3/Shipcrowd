@@ -6,6 +6,7 @@
 export enum ErrorCode {
     // Authentication errors (AUTH_)
     AUTH_REQUIRED = 'AUTH_REQUIRED',
+    AUTH_SESSION_REQUIRED = 'AUTH_SESSION_REQUIRED',
     AUTH_INVALID_CREDENTIALS = 'AUTH_INVALID_CREDENTIALS',
     AUTH_TOKEN_EXPIRED = 'AUTH_TOKEN_EXPIRED',
     AUTH_TOKEN_INVALID = 'AUTH_TOKEN_INVALID',
@@ -115,6 +116,7 @@ export enum ErrorCode {
 export const errorStatusMap: Record<ErrorCode, number> = {
     // Auth errors (401)
     [ErrorCode.AUTH_REQUIRED]: 401,
+    [ErrorCode.AUTH_SESSION_REQUIRED]: 401,
     [ErrorCode.AUTH_INVALID_CREDENTIALS]: 401,
     [ErrorCode.AUTH_TOKEN_EXPIRED]: 401,
     [ErrorCode.AUTH_TOKEN_INVALID]: 401,

@@ -64,6 +64,6 @@
     "eslint-config-next": "16.0.4",
     "glob": "^13.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "5.9.3"
   }
 }

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Clock, Mail } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { authApi } from '@/src/core/api/auth.api';
+import { authApi } from '@/src/core/api/authApi';
 import { toast } from 'sonner';
 import { Loader } from '@/components/ui';
 

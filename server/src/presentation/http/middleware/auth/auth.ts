@@ -228,6 +228,7 @@ export const csrfProtection = (
   );
 
   if (!isValidOrigin || !csrfToken) {
+    const userAgent = req.headers['user-agent'];
     logger.warn('CSRF protection triggered', {
       origin,
       referer,

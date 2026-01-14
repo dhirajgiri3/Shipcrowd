@@ -1,10 +1,11 @@
 # Shipcrowd Frontend Implementation Plan
 ## Complete Roadmap to 100% Feature Completion
 
-**Created**: 2026-01-13
+**Created**: 2026-01-13 | **Updated**: 2026-01-14
 **Scope**: All features from Feature_List.md + Advanced.md (200+ features)
-**Approach**: Mock Data Only (No Backend Integration)
-**Timeline**: 12 Weeks (Organized by Domain → Journey → Sprint → Priority)
+**Approach**: Hybrid Backend-First (90% Real API + 10% Mock Data)
+**Timeline**: 10 Weeks (Organized by Phase → Priority → Domain)
+**Backend**: Running on port 5005 | 28 seeders | 8K-15K records
 
 ---
 
@@ -18,14 +19,20 @@
 - **Mock Data Patterns**: Established in `/lib/mockData.ts` and `/app/track/data/mockShipments.ts`
 - **Design System**: Tailwind CSS v4 + Custom CSS Variables (Premium Software Aesthetic)
 
-### Backend Status (From Advanced.md & Fixes.md)
-- **Overall Completion**: 98% (385 API endpoints)
-- **Critical Gaps**:
-  - ❌ COD Remittance API: Model exists, NO routes/controller (65% complete)
-  - ❌ Wallet System API: Service exists, NO routes/controller (70% complete)
-  - ❌ Address Validation Service: Completely missing (0%)
-  - ❌ Returns Management: Completely missing (0%)
-  - ⚠️ Weight Dispute API: Exists but webhooks missing (70% complete)
+### Backend Status (Verified 2026-01-14)
+- **Server**: Running on `http://localhost:5005/api/v1` ✅
+- **Database**: MongoDB with 28 seeders, 8K-15K records ✅
+- **API Endpoints**: 385+ routes ✅
+- **Real API Ready**:
+  - ✅ Wallet System: `/finance/wallet/*` (balance, transactions, recharge, stats)
+  - ✅ COD Remittance: `/finance/cod/*` (remittances, analytics)
+  - ✅ Weight Disputes: `/disputes/weight/*` (list, create, resolve)
+  - ✅ NDR Management: `/ndr/*` (events, automation)
+  - ✅ Orders & Shipments: Full CRUD operations
+  - ✅ Analytics: Dashboard, revenue, shipments, courier performance
+  - ✅ Integrations: Shopify, WooCommerce setup
+- **Mock Data Only**:
+  - ⚠️ Returns Management: Backend API 0% complete (use mock DTOs)
 
 ### Business Impact Features (80-20 Rule Priority)
 1. **COD Remittance Dashboard** (₹85-180K/month revenue) - P0
@@ -36,6 +43,36 @@
 6. **Bulk Operations** (60% efficiency gain) - P1
 7. **Advanced Analytics** (Decision-making critical) - P1
 8. **E-Commerce Integrations UI** (Shopify, WooCommerce, Amazon, Flipkart) - P2
+
+### Hybrid Implementation Strategy
+
+**Data Source Approach: Backend-First with Fallback**
+
+| Feature Domain | Data Source | Rationale |
+|----------------|-------------|-----------|
+| **Wallet System** | Real API ✅ | Backend complete, 8K-15K transactions seeded |
+| **COD Remittance** | Real API ✅ | Backend complete, remittance batches seeded |
+| **Weight Disputes** | Real API ✅ | Backend complete, disputes seeded |
+| **NDR Management** | Real API ✅ | Backend complete, NDR events seeded |
+| **Orders & Shipments** | Real API ✅ | Backend complete, full CRUD ready |
+| **Analytics** | Real API ✅ | Backend complete, all dashboards ready |
+| **Integrations** | Real API ✅ | Shopify, WooCommerce routes exist |
+| **Returns Management** | Mock Data ⚠️ | Backend 0%, use mockData pattern |
+
+**Implementation Pattern**:
+```typescript
+// Example: Wallet hooks using real API
+const { data } = useWalletBalance(); // → GET /finance/wallet/balance
+
+// Example: Returns using mock data (fallback)
+const { data } = useReturns(); // → /lib/mockData/returns.ts
+```
+
+**Benefits**:
+- ✅ **Faster shipping**: No duplicate work (build mocks → replace with API)
+- ✅ **Real data testing**: Test with 8K-15K seeded records
+- ✅ **Production-ready**: API integration done from day 1
+- ✅ **3 weeks saved**: Compared to mock-first approach
 
 ---
 

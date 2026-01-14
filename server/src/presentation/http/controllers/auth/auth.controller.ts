@@ -1696,7 +1696,7 @@ export const getCSRFToken = async (
     }
 
     // Import CSRF function
-    const { generateCSRFToken } = await import('../../middleware/auth/csrf');
+    const { generateCSRFToken } = await import('../../middleware/auth/csrf.js');
 
     const csrfToken = await generateCSRFToken(sessionId);
 

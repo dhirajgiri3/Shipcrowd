@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/src/features/auth";
 import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
 import { Toaster } from "@/components/ui/feedback/Toaster";
+import { ErrorBoundary } from "@/src/components/ErrorBoundary";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION
@@ -146,11 +147,13 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <QueryProviders>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </QueryProviders>
+        <ErrorBoundary>
+          <QueryProviders>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </QueryProviders>
+        </ErrorBoundary>
         <Toaster position="top-right" richColors />
       </body>
     </html>

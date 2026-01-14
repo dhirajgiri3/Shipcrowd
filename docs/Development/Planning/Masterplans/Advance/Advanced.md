@@ -1,12 +1,49 @@
-ADVANCED.MD PLAN IMPLEMENTATION STATUS REPORT
-Executive Summary: Reality Check
-Plan Claims: "98% complete (385 of 391 endpoints)"
+SHIPCROWD BACKEND: COMPREHENSIVE AUDIT & IMPLEMENTATION PLAN
+Executive Summary: Complete End-to-End Analysis
 
-Actual Reality: ~28% complete with critical infrastructure missing
+Status: Existing implementation 71% complete (core features) + Critical gaps requiring immediate attention
+Audit Date: January 14, 2026
+Audit Scope: Complete backend system (logistics, pricing, integrations, business logic)
 
-📊 IMPLEMENTATION BREAKDOWN BY WEEK
-WEEK 11: Weight Disputes & COD Remittance ⚠️ 68% Complete
-✅ What's Actually Implemented:
+📊 AUDIT-DRIVEN IMPLEMENTATION ROADMAP
+
+## CRITICAL INSIGHT FROM AUDIT (January 14, 2026)
+
+**Core Issue Discovered:** While frontend/API layer appears 71% complete, the **business logic layer is only 28% implemented**:
+
+✅ **What EXISTS (Infrastructure):**
+- Clean architecture (DDD pattern)
+- Multi-tenant support
+- Webhook infrastructure
+- Basic wallet system
+- Order/shipment models
+
+❌ **What's MISSING (Business Logic):**
+- Pricing calculation (currently returns 0)
+- GST calculation (tax always 0)
+- COD charges (not implemented)
+- RateCard lookup (hardcoded rates)
+- Real-time serviceability (static database)
+- Zone-based pricing (disconnected)
+- 3 of 4 courier integrations (stubs only)
+
+**Decision:** Prioritize business logic fixes BEFORE adding new features
+
+---
+
+## REVISED IMPLEMENTATION PLAN (Audit-Based)
+
+### PHASE 0: CRITICAL BUSINESS LOGIC FIXES (NEW - Weeks 11-12)
+**Priority:** P0 - Production Blockers
+**Effort:** 200 hours (3-4 weeks with team)
+
+#### Week 11: Pricing & Tax Foundation
+
+**Goal:** Make `OrderService.calculateTotals()` return correct values
+
+📊 IMPLEMENTATION BREAKDOWN BY TASK
+TASK 11.1: Pricing Calculation Service (40 hours)
+✅ What Needs Implementation:
 Weight Dispute Management (70% complete):
 
 ✅ Full model with all required fields at weight-dispute.model.ts
