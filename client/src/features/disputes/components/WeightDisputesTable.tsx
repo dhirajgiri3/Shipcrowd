@@ -12,11 +12,12 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
+import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import type { DisputeStatus, DisputeFilters } from '@/src/types/api/dispute.types';
 
 const STATUS_FILTERS: { value: DisputeStatus | 'all'; label: string; count?: number }[] = [
@@ -30,10 +31,20 @@ const STATUS_FILTERS: { value: DisputeStatus | 'all'; label: string; count?: num
 export function WeightDisputesTable() {
     const router = useRouter();
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [filters, setFilters] = useState<DisputeFilters>({
         page: 1,
         limit: 20,
     });
+
+    // Auto-update filters when debounced search changes
+    useEffect(() => {
+        setFilters(prev => ({
+            ...prev,
+            search: debouncedSearch || undefined,
+            page: 1,
+        }));
+    }, [debouncedSearch]);
 
     const { data, isLoading, isError } = useWeightDisputes(filters);
 
@@ -41,14 +52,6 @@ export function WeightDisputesTable() {
         setFilters({
             ...filters,
             status: status === 'all' ? undefined : status,
-            page: 1,
-        });
-    };
-
-    const handleSearch = () => {
-        setFilters({
-            ...filters,
-            search: search || undefined,
             page: 1,
         });
     };
@@ -89,8 +92,8 @@ export function WeightDisputesTable() {
                             key={statusFilter.value}
                             onClick={() => handleStatusFilter(statusFilter.value)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${(filters.status === statusFilter.value || (!filters.status && statusFilter.value === 'all'))
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {statusFilter.label}
@@ -99,36 +102,37 @@ export function WeightDisputesTable() {
                 </div>
 
                 {/* Search Bar */}
-                <div className="flex gap-3">
-                    <div className="relative flex-1">
-                        <svg
-                            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                            placeholder="Search by AWB or Dispute ID..."
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                    </div>
-                    <button
-                        onClick={handleSearch}
-                        className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                <div className="relative flex-1 max-w-md">
+                    <svg
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                     >
-                        Search
-                    </button>
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                    </svg>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search by AWB or Dispute ID..."
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                    {search && (
+                        <button
+                            onClick={() => setSearch('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -232,8 +236,8 @@ export function WeightDisputesTable() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
                                                 <span className={`text-sm font-bold ${dispute.discrepancy.thresholdExceeded
-                                                        ? 'text-red-600 dark:text-red-400'
-                                                        : 'text-yellow-600 dark:text-yellow-400'
+                                                    ? 'text-red-600 dark:text-red-400'
+                                                    : 'text-yellow-600 dark:text-yellow-400'
                                                     }`}>
                                                     {dispute.discrepancy.percentage.toFixed(1)}%
                                                 </span>
@@ -255,8 +259,8 @@ export function WeightDisputesTable() {
                                         {/* Financial Impact */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className={`text-sm font-semibold ${dispute.financialImpact.chargeDirection === 'debit'
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : 'text-green-600 dark:text-green-400'
+                                                ? 'text-red-600 dark:text-red-400'
+                                                : 'text-green-600 dark:text-green-400'
                                                 }`}>
                                                 {dispute.financialImpact.chargeDirection === 'debit' ? '-' : '+'}
                                                 {formatCurrency(dispute.financialImpact.difference)}

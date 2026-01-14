@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useReturn, useApproveReturn, useProcessRefund } from '@/src/core/api/hooks';
-import { QualityCheckModal, ReturnLabelModal } from '@/src/features/returns/components';
+import { QualityCheckModal, ReturnLabelModal, RefundModal } from '@/src/features/returns/components';
 import { ConfirmationModal } from '@/src/components/ui/ConfirmationModal';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -47,6 +47,7 @@ export default function ReturnDetailPage() {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showRefundModal, setShowRefundModal] = useState(false);
     const [showLabelModal, setShowLabelModal] = useState(false);
+    const [refundMethod, setRefundMethod] = useState<'wallet' | 'original_payment' | 'bank_transfer'>('wallet');
 
     const { data: returnReq, isLoading } = useReturn(returnId);
     const approveReturn = useApproveReturn();
@@ -88,7 +89,7 @@ export default function ReturnDetailPage() {
                 returnId,
                 payload: {
                     refundAmount: returnReq.qualityCheck.refundAmount,
-                    refundMethod: returnReq.refundDetails?.method || 'original_payment',
+                    refundMethod: refundMethod,
                 },
             });
             toast.success('Refund processed successfully!');
@@ -362,17 +363,18 @@ export default function ReturnDetailPage() {
                 isLoading={approveReturn.isPending}
             />
 
-            {/* Refund Confirmation Modal */}
-            <ConfirmationModal
-                isOpen={showRefundModal}
-                title="Process Refund"
-                message={`Process refund of ${returnReq?.qualityCheck ? formatCurrency(returnReq.qualityCheck.refundAmount) : '0'} to the customer?`}
-                variant="warning"
-                confirmText="Process Refund"
-                onConfirm={handleProcessRefund}
-                onCancel={() => setShowRefundModal(false)}
-                isLoading={processRefund.isPending}
-            />
+            {/* Refund Modal */}
+            {returnReq?.qualityCheck && (
+                <RefundModal
+                    isOpen={showRefundModal}
+                    onClose={() => setShowRefundModal(false)}
+                    onConfirm={handleProcessRefund}
+                    amount={returnReq.qualityCheck.refundAmount}
+                    refundMethod={refundMethod}
+                    onMethodChange={setRefundMethod}
+                    isLoading={processRefund.isPending}
+                />
+            )}
 
             {/* Return Label Modal */}
             {returnReq && (
