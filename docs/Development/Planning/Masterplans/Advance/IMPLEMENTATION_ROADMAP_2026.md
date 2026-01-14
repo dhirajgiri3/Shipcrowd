@@ -1,3 +1,9 @@
+# CORRECTION NOTE (Verified Jan 14, 2026)
+> **⚠️ CRITICAL UPDATE:** Actual codebase verification has revealed that **Zone, RateCard, and GST services ALREADY EXIST** but are disconnected. Velocity is **95% complete**.
+> **Corrected Effort:** 368-461 hours (vs 890h originally estimated).
+> **Key Action:** Focus on **wiring existing services** rather than building from scratch.
+> See [AUDIT_VERIFICATION_2026-01-14.md](file:///Users/dhirajgiri/.gemini/antigravity/brain/c2b7a7af-c0f5-41aa-85a0-6bf3e70e89f5/AUDIT_VERIFICATION_2026-01-14.md) for full details.
+
 # ShipCrowd Backend: Complete Implementation Roadmap (2026)
 
 **Version:** 3.0 (Audit-Driven)

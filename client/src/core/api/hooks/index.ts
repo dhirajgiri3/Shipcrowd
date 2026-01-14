@@ -1,31 +1,24 @@
 /**
- * API Hooks - Barrel Export
+ * Central export point for all API hooks
  * 
- * Central export point for all API-related React Query hooks.
- * Import from here for cleaner, more maintainable code.
- * 
- * @example
- * ```tsx
- * import { useOrders, useCreateOrder } from '@/src/hooks/api';
+ * Usage:
+ * ```ts
+ * import { useOrders, useShipments } from '@/src/core/api/hooks';
  * ```
  */
 
-export * from './useAuth';
-export * from './useUser';
-export * from './useCompany';
 export * from './useOrders';
 export * from './useShipments';
-export * from './useAddress';
-export * from './useNDR';
 export * from './useWallet';
 export * from './useCOD';
 export * from './useDisputes';
-export * from './useAnalytics'; // Retained from original, not in snippet but implied by context
-export * from './useWarehouses'; // Retained from original, not in snippet but implied by context
-export * from './useRateCards'; // Retained from original, not in snippet but implied by context
-export * from './useProfile'; // Retained from original, not in snippet but implied by context
-export * from './useCompanies'; // Retained from original, not in snippet but implied by context
-export * from './useKYC'; // Retained from original, not in snippet but implied by context
+export * from './useNDR';
+export * from './useReturns';
+export * from './useAnalytics';
+export * from './useWarehouses';
+export * from './useRateCards';
+export * from './useProfile';
+export * from './useCompanies';
 export * from './useIntegrations';
 export * from './useSettlements';
 export * from './useSellerActions';

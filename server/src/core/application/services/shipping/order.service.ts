@@ -101,10 +101,91 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 export class OrderService {
     /**
      * Calculate order totals from products
+     * 
+     * Feature Flag: USE_DYNAMIC_PRICING
+     * - false (default): Uses legacy calculation (shipping: 0, tax: 0)
+     * - true: Uses dynamic pricing with RateCard, Zone, GST services
+     * 
+     * @deprecated Legacy implementation - will be removed after Phase 0 validation
      */
-    static calculateTotals(products: Array<{ price: number; quantity: number }>) {
+    static calculateTotalsLegacy(products: Array<{ price: number; quantity: number }>) {
         const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
         return { subtotal, tax: 0, shipping: 0, discount: 0, total: subtotal };
+    }
+
+    /**
+     * Calculate order totals with dynamic pricing (WIRED)
+     * 
+     * Phase 0.2 Implementation:
+     * ✅ Zone lookup via PincodeLookupService
+     * ✅ RateCard query for shipping cost
+     * ✅ COD charges (2% or ₹30 minimum)
+     * ✅ GST calculation via GSTService
+     * ✅ Redis caching for performance
+     * 
+     * @param products - Array of products with price and quantity
+     * @param shipmentDetails - Required shipment details for dynamic pricing
+     * @returns Order totals with shipping and tax
+     */
+    static async calculateTotals(
+        products: Array<{ price: number; quantity: number }>,
+        shipmentDetails?: {
+            companyId?: string;
+            fromPincode?: string;
+            toPincode?: string;
+            paymentMode?: 'cod' | 'prepaid';
+            weight?: number;
+        }
+    ) {
+        const useDynamicPricing = process.env.USE_DYNAMIC_PRICING === 'true';
+
+        // Fallback to legacy if flag disabled or shipment details missing
+        if (!useDynamicPricing || !shipmentDetails?.fromPincode || !shipmentDetails?.toPincode) {
+            return this.calculateTotalsLegacy(products);
+        }
+
+        try {
+            // Import DynamicPricingService
+            const { DynamicPricingService } = await import('../pricing/dynamic-pricing.service');
+            const pricingService = new DynamicPricingService();
+
+            // Calculate product subtotal
+            const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+
+            // Calculate shipping, COD, and GST using wired services
+            const pricing = await pricingService.calculatePricing({
+                companyId: shipmentDetails.companyId || '',
+                fromPincode: shipmentDetails.fromPincode,
+                toPincode: shipmentDetails.toPincode,
+                weight: shipmentDetails.weight || 0.5, // Default 0.5kg if not provided
+                paymentMode: shipmentDetails.paymentMode || 'prepaid',
+                orderValue: subtotal, // For COD charge calculation
+                carrier: 'velocity', // Default carrier
+                serviceType: 'standard',
+            });
+
+            // Combine product subtotal with shipping/COD/tax
+            const total = subtotal + pricing.shipping + pricing.codCharge + pricing.tax.total;
+
+            return {
+                subtotal,
+                shipping: pricing.shipping,
+                tax: pricing.tax.total,
+                codCharge: pricing.codCharge,
+                discount: 0,
+                total,
+                breakdown: {
+                    cgst: pricing.tax.cgst,
+                    sgst: pricing.tax.sgst,
+                    igst: pricing.tax.igst,
+                    zone: pricing.metadata.zone,
+                    rateCardUsed: true,
+                },
+            };
+        } catch (error) {
+            console.error('[OrderService] Dynamic pricing failed, falling back to legacy:', error);
+            return this.calculateTotalsLegacy(products);
+        }
     }
 
     /**

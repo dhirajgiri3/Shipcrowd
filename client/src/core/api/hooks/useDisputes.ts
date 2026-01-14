@@ -27,6 +27,14 @@ import type {
     DisputeAnalytics,
 } from '@/src/types/api/dispute.types';
 
+// Analytics filter type extending base filters
+interface DisputeAnalyticsFilters {
+    startDate?: string;
+    endDate?: string;
+    companyId?: string;
+    groupBy?: 'day' | 'week' | 'month';
+}
+
 // ==================== QUERY HOOKS ====================
 
 /**
@@ -77,7 +85,7 @@ export function useDisputeMetrics(
     dateRange?: { startDate?: string; endDate?: string }
 ): UseQueryResult<DisputeMetrics> {
     return useQuery({
-        queryKey: queryKeys.disputes.metrics(dateRange),
+        queryKey: queryKeys.disputes.metrics(dateRange as any),
         queryFn: async () => {
             const params = new URLSearchParams();
             if (dateRange?.startDate) params.append('startDate', dateRange.startDate);
@@ -94,15 +102,10 @@ export function useDisputeMetrics(
  * Get comprehensive analytics (admin only)
  */
 export function useDisputeAnalytics(
-    filters?: {
-        startDate?: string;
-        endDate?: string;
-        companyId?: string;
-        groupBy?: 'day' | 'week' | 'month';
-    }
+    filters?: DisputeAnalyticsFilters
 ): UseQueryResult<DisputeAnalytics> {
     return useQuery({
-        queryKey: queryKeys.disputes.analytics(filters),
+        queryKey: queryKeys.disputes.analytics(filters as any),
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filters?.startDate) params.append('startDate', filters.startDate);
@@ -139,7 +142,7 @@ export function useSubmitEvidence(): UseMutationResult<
         },
         onSuccess: (data, variables) => {
             // Invalidate and refetch
-            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.detail(variables.disputeId) });
         },
     });
@@ -165,10 +168,10 @@ export function useResolveDispute(): UseMutationResult<
         },
         onSuccess: (data, variables) => {
             // Invalidate all dispute-related queries
-            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.detail(variables.disputeId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.metrics() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.analytics() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.metrics(undefined) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.disputes.analytics(undefined) });
         },
     });
 }

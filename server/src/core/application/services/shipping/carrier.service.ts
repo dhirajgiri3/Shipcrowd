@@ -1,18 +1,17 @@
 /**
- * Carrier
+ * Carrier Service - REFACTORED (Phase 0.3)
  * 
- * Purpose: Intelligent Carrier Selection Service
- * 
- * DEPENDENCIES:
- * - None specified
- * 
- * TESTING:
- * Unit Tests: tests/unit/services/.../{filename}.test.ts
- * Coverage: TBD
- * 
- * NOTE: This service needs comprehensive documentation.
- * See SERVICE_TEMPLATE.md for documentation standards.
+ * Changes from original:
+ * - Removed hardcoded CARRIERS array
+ * - Use DynamicPricingService for Velocity (real rates from RateCard)
+ * - Use stub adapters for Delhivery/Ekart/India Post (comparison only)
+ * - All rates now database-driven or stub-based
  */
+
+import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
+import { getDelhiveryStub } from '../../../../infrastructure/external/couriers/delhivery/delhivery-stub.adapter';
+import { getEkartStub } from '../../../../infrastructure/external/couriers/ekart/ekart-stub.adapter';
+import { getIndiaPostStub } from '../../../../infrastructure/external/couriers/india-post/india-post-stub.adapter';
 
 export interface CarrierOption {
     carrier: string;
@@ -20,6 +19,8 @@ export interface CarrierOption {
     deliveryTime: number;
     score: number;
     serviceType: string;
+    isStub?: boolean; // True for stub adapters
+    message?: string; // Warning message for stubs
 }
 
 export interface CarrierSelectionResult {
@@ -30,189 +31,193 @@ export interface CarrierSelectionResult {
     alternativeOptions: CarrierOption[];
 }
 
-interface CarrierConfig {
-    name: string;
-    baseRate: number;
-    perKgRate: number;
-    expressMultiplier: number;
-    metroDiscount: number;
-    baseDeliveryTime: { express: number; standard: number };
-    strongZones: string[];
+export interface GetRatesInput {
+    companyId: string;
+    fromPincode: string;
+    toPincode: string;
+    weight: number;
+    paymentMode: 'cod' | 'prepaid';
+    orderValue?: number;
+    serviceType?: 'standard' | 'express';
 }
 
-// Static carrier configuration (no third-party API dependencies)
-const CARRIERS: CarrierConfig[] = [
-    {
-        name: 'Delhivery',
-        baseRate: 40,
-        perKgRate: 20,
-        expressMultiplier: 1.3,
-        metroDiscount: 0.9,
-        baseDeliveryTime: { express: 2, standard: 3 },
-        strongZones: ['metro', 'tier1'],
-    },
-    {
-        name: 'DTDC',
-        baseRate: 45,
-        perKgRate: 18,
-        expressMultiplier: 1.2,
-        metroDiscount: 1.0,
-        baseDeliveryTime: { express: 3, standard: 4 },
-        strongZones: ['tier1', 'tier2', 'tier3'],
-    },
-    {
-        name: 'Xpressbees',
-        baseRate: 35,
-        perKgRate: 22,
-        expressMultiplier: 1.4,
-        metroDiscount: 1.1,
-        baseDeliveryTime: { express: 3, standard: 5 },
-        strongZones: ['tier2', 'tier3'],
-    },
-];
+export class CarrierService {
+    private pricingService: DynamicPricingService;
+    private delhiveryStub = getDelhiveryStub();
+    private ekartStub = getEkartStub();
+    private indiaPostStub = getIndiaPostStub();
 
-// Metro city pincode prefixes (first 3 or 6 digits)
-const METRO_PINCODES = [
-    '110001', '110002', '110003', '110004', '110005', // Delhi
-    '400001', '400002', '400003', '400004', '400005', // Mumbai
-    '560001', '560002', '560003', '560004', '560005', // Bangalore
-    '600001', '600002', '600003', '600004', '600005', // Chennai
-    '500001', '500002', '500003', '500004', '500005', // Hyderabad
-    '411001', '411002', '411003', '411004', '411005', // Pune
-    '700001', '700002', '700003', '700004', '700005', // Kolkata
-];
-
-/**
- * Check if a pincode is in a metro area
- */
-const isMetroPincode = (pincode: string): boolean => {
-    const prefix = pincode.slice(0, 3);
-    return METRO_PINCODES.some(metro => metro.startsWith(prefix));
-};
-
-/**
- * Calculate the zone type based on origin and destination
- */
-const getZoneType = (originPincode: string, destinationPincode: string): string => {
-    const originPrefix = originPincode.slice(0, 3);
-    const destPrefix = destinationPincode.slice(0, 3);
-
-    // Same pincode prefix = Local
-    if (originPrefix === destPrefix) {
-        return 'local';
+    constructor() {
+        this.pricingService = new DynamicPricingService();
     }
 
-    // Both metro = Metro
-    if (isMetroPincode(originPincode) && isMetroPincode(destinationPincode)) {
-        return 'metro';
+    /**
+     * Get rates from all carriers (Velocity + Stubs)
+     * 
+     * Returns:
+     * - Velocity: Real rates from RateCard database
+     * - Delhivery/Ekart/India Post: Stub rates for comparison
+     */
+    async getAllRates(input: GetRatesInput): Promise<CarrierOption[]> {
+        const serviceType = input.serviceType || 'standard';
+        const carriers: CarrierOption[] = [];
+
+        try {
+            // 1. Velocity - Real rates from DynamicPricingService
+            const velocityPricing = await this.pricingService.calculatePricing({
+                companyId: input.companyId,
+                fromPincode: input.fromPincode,
+                toPincode: input.toPincode,
+                weight: input.weight,
+                paymentMode: input.paymentMode,
+                orderValue: input.orderValue,
+                carrier: 'velocity',
+                serviceType,
+            });
+
+            carriers.push({
+                carrier: 'velocity',
+                rate: velocityPricing.total,
+                deliveryTime: this.estimateDeliveryDays(velocityPricing.metadata.zone, serviceType),
+                score: 100, // Velocity is preferred (only real integration)
+                serviceType,
+                isStub: false,
+            });
+        } catch (error) {
+            console.error('[CarrierService] Velocity rates failed:', error);
+        }
+
+        try {
+            // 2. Delhivery - Stub rates
+            const delhiveryRate = await this.delhiveryStub.getRates(
+                input.fromPincode,
+                input.toPincode,
+                input.weight,
+                serviceType
+            );
+
+            carriers.push({
+                carrier: 'delhivery',
+                rate: delhiveryRate.total,
+                deliveryTime: delhiveryRate.estimatedDays,
+                score: 70, // Lower score - stub only
+                serviceType,
+                isStub: true,
+                message: delhiveryRate.message,
+            });
+        } catch (error) {
+            console.error('[CarrierService] Delhivery stub failed:', error);
+        }
+
+        try {
+            // 3. Ekart - Stub rates
+            const ekartRate = await this.ekartStub.getRates(
+                input.fromPincode,
+                input.toPincode,
+                input.weight,
+                serviceType
+            );
+
+            carriers.push({
+                carrier: 'ekart',
+                rate: ekartRate.total,
+                deliveryTime: ekartRate.estimatedDays,
+                score: 65,
+                serviceType,
+                isStub: true,
+                message: ekartRate.message,
+            });
+        } catch (error) {
+            console.error('[CarrierService] Ekart stub failed:', error);
+        }
+
+        try {
+            // 4. India Post - Stub rates
+            const indiaPostRate = await this.indiaPostStub.getRates(
+                input.fromPincode,
+                input.toPincode,
+                input.weight,
+                serviceType
+            );
+
+            carriers.push({
+                carrier: 'india_post',
+                rate: indiaPostRate.total,
+                deliveryTime: indiaPostRate.estimatedDays,
+                score: 60,
+                serviceType,
+                isStub: true,
+                message: indiaPostRate.message,
+            });
+        } catch (error) {
+            console.error('[CarrierService] India Post stub failed:', error);
+        }
+
+        // Sort by rate (cheapest first)
+        return carriers.sort((a, b) => a.rate - b.rate);
     }
 
-    // Same state (first 2 digits often indicate state/region)
-    if (originPincode.slice(0, 2) === destinationPincode.slice(0, 2)) {
-        return 'zonal';
-    }
+    /**
+     * Select best carrier (Velocity preferred)
+     */
+    async selectBestCarrier(input: GetRatesInput): Promise<CarrierSelectionResult> {
+        const allRates = await this.getAllRates(input);
 
-    // Rest of India
-    return 'roi';
-};
-
-/**
- * Select the best carrier for a shipment
- *
- * @param weight - Package weight in kg
- * @param originPincode - Origin pincode
- * @param destinationPincode - Destination pincode
- * @param serviceType - 'express' or 'standard'
- * @returns CarrierSelectionResult with selected carrier and alternatives
- */
-export const selectBestCarrier = (
-    weight: number,
-    originPincode: string,
-    destinationPincode: string,
-    serviceType: 'express' | 'standard' = 'standard'
-): CarrierSelectionResult => {
-    const isMetro = isMetroPincode(destinationPincode);
-    const zoneType = getZoneType(originPincode, destinationPincode);
-
-    // Calculate rates and scores for each carrier
-    const carrierOptions: CarrierOption[] = CARRIERS.map(carrier => {
-        // Base rate calculation
-        let rate = carrier.baseRate + (weight * carrier.perKgRate);
-
-        // Apply express surcharge
-        if (serviceType === 'express') {
-            rate *= carrier.expressMultiplier;
+        if (allRates.length === 0) {
+            throw new Error('No carriers available for this route');
         }
 
-        // Apply metro discount for applicable carriers
-        if (isMetro) {
-            rate *= carrier.metroDiscount;
+        // Always prefer Velocity (only real integration)
+        const velocity = allRates.find(c => c.carrier === 'velocity');
+        if (velocity) {
+            return {
+                selectedCarrier: velocity.carrier,
+                selectedRate: velocity.rate,
+                selectedDeliveryTime: velocity.deliveryTime,
+                selectedServiceType: velocity.serviceType,
+                alternativeOptions: allRates.filter(c => c.carrier !== 'velocity'),
+            };
         }
 
-        // Zone-based adjustments
-        switch (zoneType) {
-            case 'local':
-                rate *= 0.85; // 15% discount for local
-                break;
-            case 'zonal':
-                rate *= 0.95; // 5% discount for zonal
-                break;
-            case 'roi':
-                rate *= 1.1; // 10% surcharge for ROI
-                break;
-        }
-
-        // Get delivery time based on service type
-        const deliveryTime = carrier.baseDeliveryTime[serviceType];
-
-        // Adjust delivery time based on zone
-        const adjustedDeliveryTime = zoneType === 'local'
-            ? deliveryTime - 1
-            : zoneType === 'roi'
-                ? deliveryTime + 1
-                : deliveryTime;
-
-        // Calculate score: prioritizes cost (70%) and speed (30%)
-        // Score = (rate × 0.7) + (deliveryTime × 5)
-        const score = (rate * 0.7) + (Math.max(1, adjustedDeliveryTime) * 5);
-
+        // Fallback: cheapest carrier (but it's a stub!)
+        const cheapest = allRates[0];
         return {
-            carrier: carrier.name,
-            rate: Math.round(rate * 100) / 100, // Round to 2 decimal places
-            deliveryTime: Math.max(1, adjustedDeliveryTime),
-            score: Math.round(score * 100) / 100,
-            serviceType,
+            selectedCarrier: cheapest.carrier,
+            selectedRate: cheapest.rate,
+            selectedDeliveryTime: cheapest.deliveryTime,
+            selectedServiceType: cheapest.serviceType,
+            alternativeOptions: allRates.slice(1),
         };
-    });
+    }
 
-    // Sort by score (lowest/best first)
-    carrierOptions.sort((a, b) => a.score - b.score);
+    /**
+     * Estimate delivery days based on zone
+     */
+    private estimateDeliveryDays(zone: string, serviceType: string): number {
+        const deliveryMap: Record<string, { standard: number; express: number }> = {
+            zoneA: { standard: 1, express: 1 },
+            zoneB: { standard: 2, express: 1 },
+            zoneC: { standard: 3, express: 2 },
+            zoneD: { standard: 4, express: 2 },
+            zoneE: { standard: 6, express: 4 },
+        };
 
-    return {
-        selectedCarrier: carrierOptions[0].carrier,
-        selectedRate: carrierOptions[0].rate,
-        selectedDeliveryTime: carrierOptions[0].deliveryTime,
-        selectedServiceType: carrierOptions[0].serviceType,
-        alternativeOptions: carrierOptions,
-    };
-};
+        return deliveryMap[zone]?.[serviceType as 'standard' | 'express'] || 5;
+    }
+}
 
-/**
- * Get all available carriers (for display purposes)
- */
-export const getAvailableCarriers = (): string[] => {
-    return CARRIERS.map(c => c.name);
-};
+// Singleton instance
+let carrierServiceInstance: CarrierService | null = null;
 
-/**
- * Validate carrier name
- */
-export const isValidCarrier = (carrier: string): boolean => {
-    return CARRIERS.some(c => c.name.toLowerCase() === carrier.toLowerCase());
-};
+export function getCarrierService(): CarrierService {
+    if (!carrierServiceInstance) {
+        carrierServiceInstance = new CarrierService();
+    }
+    return carrierServiceInstance;
+}
 
+// Default export for convenience
 export default {
-    selectBestCarrier,
-    getAvailableCarriers,
-    isValidCarrier,
+    CarrierService,
+    getCarrierService,
 };

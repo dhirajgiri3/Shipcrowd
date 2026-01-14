@@ -17,7 +17,9 @@
     "test:velocity:live": "npx tsx src/scripts/testVelocityLive.ts",
     "test:webhook:local": "npx tsx src/scripts/testWebhookLocal.ts",
     "seed:velocity": "npx tsx src/scripts/seedVelocityIntegration.ts",
-    "test:pdf": "npx ts-node-dev --transpile-only src/scripts/test-all-pdfs.ts"
+    "test:pdf": "npx ts-node-dev --transpile-only src/scripts/test-all-pdfs.ts",
+    "migrate:up": "npx ts-node src/infrastructure/database/migrations/runner.ts up",
+    "migrate:down": "npx ts-node src/infrastructure/database/migrations/runner.ts down"
   },
   "keywords": [],
   "author": "",

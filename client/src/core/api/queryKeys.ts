@@ -228,19 +228,14 @@ export const queryKeys = {
   // ========================================================================
   disputes: {
     all: () => ['disputes'],
+    list: (params?: FilterParams) => ['disputes', 'list', params],
+    detail: (id: string) => ['disputes', 'detail', id],
+    metrics: (dateRange?: DateRangeParams) => ['disputes', 'metrics', dateRange],
+    analytics: (filters?: any) => ['disputes', 'analytics', filters],
     weight: {
       all: () => ['disputes', 'weight'],
       list: (params?: FilterParams) => ['disputes', 'weight', 'list', params],
       detail: (id: string) => ['disputes', 'weight', 'detail', id],
-    },
-
-    // ==================== Disputes ====================
-    disputes: {
-      all: ['disputes'] as const,
-      list: (filters?: any) => [...queryKeys.disputes.all(), 'list', filters] as const,
-      detail: (id: string) => [...queryKeys.disputes.all(), 'detail', id] as const,
-      metrics: (dateRange?: any) => [...queryKeys.disputes.all(), 'metrics', dateRange] as const,
-      analytics: (filters?: any) => [...queryKeys.disputes.all(), 'analytics', filters] as const,
     },
     other: {
       all: () => ['disputes', 'other'],
@@ -273,14 +268,15 @@ export const queryKeys = {
   },
 
   // ========================================================================
-  // NDR DOMAIN
+  // NDR (Non-Delivery Report) DOMAIN
   // ========================================================================
   ndr: {
     all: () => ['ndr'],
-    events: (params?: FilterParams) => ['ndr', 'events', params],
-    event: (eventId: string) => ['ndr', 'event', eventId],
-    analytics: (period?: string) => ['ndr', 'analytics', period || '30d'],
-    automation: () => ['ndr', 'automation'],
+    list: (filters?: FilterParams) => ['ndr', 'cases', 'list', filters],
+    detail: (id: string) => ['ndr', 'cases', 'detail', id],
+    metrics: () => ['ndr', 'metrics'],
+    analytics: (filters?: DateRangeParams) => ['ndr', 'analytics', filters],
+    settings: () => ['ndr', 'settings'],
   },
 
   // ========================================================================

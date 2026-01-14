@@ -34,6 +34,7 @@ export interface IRateCard extends Document {
     carrier?: string;
     serviceType?: string;
   }>;
+  zoneMultipliers?: Record<string, number>; // Zone-based rate multipliers (e.g., zoneA: 0.85)
   effectiveDates: {
     startDate: Date;
     endDate?: Date;
@@ -173,10 +174,16 @@ const RateCardSchema = new Schema<IRateCard>(
         'Maximum 500 customer overrides (supports customer-specific discounts)',
       ],
     },
+    zoneMultipliers: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
     effectiveDates: {
       startDate: {
         type: Date,
         required: true,
+        default: Date.now,
       },
       endDate: Date,
     },

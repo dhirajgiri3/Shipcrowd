@@ -132,6 +132,7 @@ export class VelocityMapper {
     const request: VelocityForwardOrderRequest = {
       order_id: data.orderNumber,
       order_date: this.formatDate(new Date()),
+      channel_id: process.env.VELOCITY_CHANNEL_ID || '27202',  // Required by Velocity API
       billing_customer_name: firstName,
       billing_last_name: lastName,
       billing_address: data.destination.address,
