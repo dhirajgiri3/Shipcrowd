@@ -1,8 +1,8 @@
 "use client";
 
 import { Badge } from '@/components/ui/core/Badge';
-import { getStatusColor } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { getStatusColor } from '@/src/lib/utils';
+import { cn } from '@/src/lib/utils';
 
 interface StatusBadgeProps {
     status: string;

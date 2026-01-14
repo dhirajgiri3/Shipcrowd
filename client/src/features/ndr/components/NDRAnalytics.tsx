@@ -12,7 +12,7 @@
 
 import React, { useState } from 'react';
 import { useNDRAnalytics } from '@/src/core/api/hooks';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];

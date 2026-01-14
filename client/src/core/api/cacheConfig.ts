@@ -59,7 +59,7 @@ export const INVALIDATION_PATTERNS = {
     ],
     UPDATE: () => [
       { queryKey: queryKeys.shipments.list() },
-      { queryKey: queryKeys.tracking.list() },
+      { queryKey: queryKeys.shipments.all() },
     ],
     CANCEL: () => [
       { queryKey: queryKeys.shipments.list() },
@@ -83,7 +83,7 @@ export const INVALIDATION_PATTERNS = {
   },
   COD_MUTATIONS: {
     UPDATE_STATUS: () => [
-      { queryKey: queryKeys.cod.list() },
+      { queryKey: queryKeys.cod.remittances() },
       { queryKey: queryKeys.analytics.dashboard() },
     ],
   },

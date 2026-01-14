@@ -1,5 +1,5 @@
 import { ButtonHTMLAttributes, forwardRef, memo } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 /**

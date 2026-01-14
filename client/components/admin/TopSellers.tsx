@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 import { ArrowUpRight, Trophy, TrendingUp, TrendingDown, Crown } from 'lucide-react';
 import Link from 'next/link';
 

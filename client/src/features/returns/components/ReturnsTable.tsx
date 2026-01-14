@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useReturns } from '@/src/core/api/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 import type { ReturnStatus, ReturnFilters } from '@/src/types/api/returns.types';
 
 const STATUS_CONFIG: Record<ReturnStatus, { label: string; color: string }> = {

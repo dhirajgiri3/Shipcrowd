@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/core/Button';
 import { Input } from '@/components/ui/core/Input';
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 
 // Since we cannot rely on shadcn's table being present, I will create a simple Tailwind Table implementation inside this file
 // or better, I will implement the logic directly if I don't use tanstack table, 

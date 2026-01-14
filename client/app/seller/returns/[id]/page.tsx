@@ -18,9 +18,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useReturn, useApproveReturn, useProcessRefund } from '@/src/core/api/hooks';
 import { QualityCheckModal, ReturnLabelModal, RefundModal } from '@/src/features/returns/components';
 import { ConfirmationModal } from '@/src/components/ui/ConfirmationModal';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { toast } from 'sonner';
-import { handleApiError } from '@/lib/error-handler';
+import { handleApiError } from '@/src/lib/error-handler';
 
 const STATUS_COLORS = {
     requested: 'bg-yellow-100 text-yellow-700',

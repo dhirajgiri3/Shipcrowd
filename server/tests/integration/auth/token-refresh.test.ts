@@ -166,7 +166,8 @@ describe('Token Refresh Race Conditions', () => {
 
             // Check that session is marked as revoked or expired
             const updatedSession = await Session.findById(testSession._id);
-            expect(updatedSession.isRevoked).toBe(true);
+            expect(updatedSession).toBeDefined();
+            expect(updatedSession!.isRevoked).toBe(true);
         });
     });
 

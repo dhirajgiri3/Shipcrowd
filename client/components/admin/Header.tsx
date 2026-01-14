@@ -6,7 +6,7 @@ import { Search, Menu } from 'lucide-react';
 import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 
 export function Header({ onMenuClick }: { onMenuClick?: () => void }) {

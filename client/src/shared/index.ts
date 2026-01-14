@@ -8,8 +8,8 @@
 // Components (migrated to @/components/ui)
 // export * from './components';
 
-// Hooks
-export * from './hooks';
+// Hooks - now at @/src/hooks
+// export * from './hooks';
 
 // Utilities
 export * from './utils';

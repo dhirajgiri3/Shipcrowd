@@ -1,4 +1,4 @@
-import { Shipment, Order, Company, Status } from '@/types/admin';
+import { Shipment, Order, Company, Status } from '@/src/types/admin';
 
 // --- SHIPMENT MOCK DATA ---
 export const MOCK_SHIPMENTS: Shipment[] = [

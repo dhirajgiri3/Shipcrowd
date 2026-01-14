@@ -31,7 +31,7 @@ export { authApi } from './authApi';
 // export type { KYCData, KYCDocument, SubmitKYCRequest, VerifyPANRequest, VerifyBankAccountRequest, VerifyGSTINRequest } from './kycApi';
 
 // Error Handling
-// export { handleApiError, showSuccessToast, showInfoToast } from '@/lib/error-handler';
+// export { handleApiError, showSuccessToast, showInfoToast } from '@/src/lib/error-handler';
 
 // React Query Hooks
 export * from './hooks';

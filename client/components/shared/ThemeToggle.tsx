@@ -2,7 +2,7 @@
 
 import { useTheme } from './ThemeProvider';
 import { Sun, Moon, Monitor } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 
 /**
  * Modern Animated Theme Toggle

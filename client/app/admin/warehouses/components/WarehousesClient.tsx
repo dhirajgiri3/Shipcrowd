@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/C
 import { Button } from '@/components/ui/core/Button';
 import { Badge } from '@/components/ui/core/Badge';
 import { Input } from '@/components/ui/core/Input';
-import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/lib/mockData';
+import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/src/lib/mockData';
 import {
     Warehouse,
     MapPin,

@@ -15,7 +15,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCODStats } from '@/src/core/api/hooks';
 import { CODRemittanceTable, RequestPayoutModal } from '@/src/features/cod';
-import { formatCurrency, formatCompactCurrency } from '@/lib/utils';
+import { formatCurrency, formatCompactCurrency } from '@/src/lib/utils';
 
 export default function CODRemittancePage() {
     const router = useRouter();

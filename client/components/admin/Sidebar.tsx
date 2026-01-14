@@ -25,7 +25,7 @@ import {
     ChevronRight,
     Zap
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import { Button } from '@/components/ui/core/Button';
 import { useAuth } from '@/src/features/auth';
 

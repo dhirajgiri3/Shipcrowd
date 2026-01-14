@@ -16,7 +16,7 @@ import React, { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useSubmitEvidence } from '@/src/core/api/hooks';
 import { uploadEvidenceFiles, UploadError } from '@/src/lib/upload';
-import { handleApiError } from '@/lib/error-handler';
+import { handleApiError } from '@/src/lib/error-handler';
 
 interface SubmitEvidenceModalProps {
     isOpen: boolean;

@@ -14,7 +14,7 @@ import React, { useState } from 'react';
 import { usePerformQC } from '@/src/core/api/hooks';
 import type { PerformQCPayload, ReturnItem } from '@/src/types/api/returns.types';
 import { toast } from 'sonner';
-import { handleApiError } from '@/lib/error-handler';
+import { handleApiError } from '@/src/lib/error-handler';
 import { uploadQCImages, UploadError } from '@/src/lib/upload';
 
 interface QCModalProps {

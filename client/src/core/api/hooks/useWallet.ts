@@ -15,7 +15,7 @@ import {
     createOptimisticListUpdateHandler,
     optimisticListUpdate,
 } from '../optimisticUpdates';
-import { handleApiError, showSuccessToast } from '@/lib/error-handler';
+import { handleApiError, showSuccessToast } from '@/src/lib/error-handler';
 
 // ==================== Import Centralized Types ====================
 import type {

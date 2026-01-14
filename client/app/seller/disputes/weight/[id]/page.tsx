@@ -18,7 +18,7 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWeightDispute } from '@/src/core/api/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
 import { DisputeTimeline, SubmitEvidenceModal } from '@/src/features/disputes';
 

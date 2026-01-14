@@ -26,7 +26,7 @@ import {
     ChevronDown,
     MapPin
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
 import { Badge } from '@/components/ui/core/Badge';

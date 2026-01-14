@@ -16,7 +16,7 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCODRemittance } from '@/src/core/api/hooks';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
 import { ShipmentsTable } from '@/src/features/cod';
 

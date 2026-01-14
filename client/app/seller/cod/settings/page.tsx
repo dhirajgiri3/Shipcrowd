@@ -15,7 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 type PayoutFrequency = 'daily' | 'weekly' | 'bi-weekly' | 'monthly';
 

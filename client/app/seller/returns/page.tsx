@@ -9,7 +9,7 @@
 import React from 'react';
 import { useReturnMetrics } from '@/src/core/api/hooks';
 import { ReturnsTable } from '@/src/features/returns/components/ReturnsTable';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 export default function ReturnsDashboardPage() {
     const { data: metrics, isLoading } = useReturnMetrics();

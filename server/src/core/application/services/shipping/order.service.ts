@@ -6,6 +6,7 @@ import eventBus, { OrderEventPayload } from '../../../../shared/events/eventBus'
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
 
 /**
  * OrderService - Business logic for order management
@@ -145,8 +146,7 @@ export class OrderService {
         }
 
         try {
-            // Import DynamicPricingService
-            const { DynamicPricingService } = await import('../pricing/dynamic-pricing.service');
+            // Use DynamicPricingService for enhanced pricing
             const pricingService = new DynamicPricingService();
 
             // Calculate product subtotal

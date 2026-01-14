@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ReactNode, memo } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 
 /**
  * AuthLayout Component

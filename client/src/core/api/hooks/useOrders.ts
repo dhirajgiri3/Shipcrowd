@@ -8,7 +8,7 @@ import {
 import { orderApi } from '../orderApi';
 import { queryKeys } from '../queryKeys';
 import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../cacheConfig';
-import { handleApiError, showSuccessToast } from '@/lib/error-handler';
+import { handleApiError, showSuccessToast } from '@/src/lib/error-handler';
 import { ApiError } from '../client';
 import type {
     Order,
@@ -90,7 +90,8 @@ export const useUpdateOrder = (
     options?: UseMutationOptions<
         Order,
         ApiError,
-        { orderId: string; data: Partial<CreateOrderRequest> }
+        { orderId: string; data: Partial<CreateOrderRequest> },
+        { previousData: any; orderId: string } // Add context type
     >
 ) => {
     const queryClient = useQueryClient();
@@ -98,7 +99,8 @@ export const useUpdateOrder = (
     return useMutation<
         Order,
         ApiError,
-        { orderId: string; data: Partial<CreateOrderRequest> }
+        { orderId: string; data: Partial<CreateOrderRequest> },
+        { previousData: any; orderId: string } // Add context type
     >({
         mutationFn: async ({ orderId, data }) => {
             const response = await orderApi.updateOrder(orderId, data);

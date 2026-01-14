@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCODRemittances } from '@/src/core/api/hooks';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
 import type { RemittanceStatus, RemittanceFilters } from '@/src/types/api/cod.types';
 

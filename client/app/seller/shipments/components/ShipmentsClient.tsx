@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MOCK_SHIPMENTS } from '@/lib/mockData';
+import { MOCK_SHIPMENTS } from '@/src/lib/mockData';
 import { DataTable } from '@/components/ui/data/DataTable';
 import { Button } from '@/components/ui/core/Button';
 import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/components/admin/StatusBadge';
-import { getCourierLogo } from '@/lib/constants';
+import { getCourierLogo } from '@/src/lib/constants';
 import {
     Search,
     Eye,
@@ -24,7 +24,7 @@ import {
     Download,
     BarChart3
 } from 'lucide-react';
-import { Shipment } from '@/types/admin';
+import { Shipment } from '@/src/types/admin';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');

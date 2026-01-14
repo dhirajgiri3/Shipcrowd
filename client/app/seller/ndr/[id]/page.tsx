@@ -20,7 +20,7 @@ import { useNDRCase, useEscalateNDR } from '@/src/core/api/hooks';
 import { TakeActionModal } from '@/src/features/ndr/components/TakeActionModal';
 import { CommunicationHistory } from '@/src/features/ndr/components/CommunicationHistory';
 import { NDRTimeline } from '@/src/features/ndr/components/NDRTimeline';
-import { formatDate } from '@/lib/utils';
+import { formatDate } from '@/src/lib/utils';
 import type { NDRAction } from '@/src/types/api/ndr.types';
 
 const STATUS_COLORS = {

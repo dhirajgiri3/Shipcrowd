@@ -1,7 +1,7 @@
 import { apiClient, ApiError } from '../client';
 import { queryKeys } from '../queryKeys';
 import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../cacheConfig';
-import { handleApiError, showSuccessToast } from '@/lib/error-handler';
+import { handleApiError, showSuccessToast } from '@/src/lib/error-handler';
 import {
     useQuery,
     useMutation,
@@ -124,7 +124,7 @@ export const useShipment = (shipmentId: string, options?: UseQueryOptions<Shipme
  */
 export const useTrackShipment = (trackingNumber: string, options?: UseQueryOptions<TrackingResponse, ApiError>) => {
     return useQuery<TrackingResponse, ApiError>({
-        queryKey: queryKeys.tracking.byNumber(trackingNumber),
+        queryKey: queryKeys.shipments.tracking(trackingNumber),
         queryFn: async () => {
             const response = await apiClient.get(`/shipments/tracking/${trackingNumber}`);
             return response.data;
@@ -168,11 +168,21 @@ export const useCreateShipment = (options?: UseMutationOptions<CreateShipmentRes
  * Uses optimistic update for immediate UI feedback
  */
 export const useUpdateShipmentStatus = (
-    options?: UseMutationOptions<Shipment, ApiError, { shipmentId: string; status: string; location?: string; description?: string }>
+    options?: UseMutationOptions<
+        Shipment,
+        ApiError,
+        { shipmentId: string; status: string; location?: string; description?: string },
+        { previousData: any; shipmentId: string } // Add context type
+    >
 ) => {
     const queryClient = useQueryClient();
 
-    return useMutation<Shipment, ApiError, { shipmentId: string; status: string; location?: string; description?: string }>({
+    return useMutation<
+        Shipment,
+        ApiError,
+        { shipmentId: string; status: string; location?: string; description?: string },
+        { previousData: any; shipmentId: string } // Add context type
+    >({
         mutationFn: async ({ shipmentId, status, location, description }) => {
             const response = await apiClient.patch(`/shipments/${shipmentId}/status`, { status, location, description });
             return response.data.shipment;

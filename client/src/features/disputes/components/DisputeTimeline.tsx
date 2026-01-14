@@ -11,7 +11,7 @@
 'use client';
 
 import React from 'react';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/src/lib/utils';
 import type { TimelineEntry } from '@/src/types/api/dispute.types';
 
 interface DisputeTimelineProps {

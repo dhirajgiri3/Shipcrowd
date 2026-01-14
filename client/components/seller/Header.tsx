@@ -7,7 +7,7 @@ import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Tooltip } from '@/components/ui/feedback/Tooltip';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 
 export function Header({ onMenuClick }: { onMenuClick?: () => void }) {

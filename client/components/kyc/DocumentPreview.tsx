@@ -4,7 +4,7 @@
  */
 
 import { CheckCircle2, XCircle, Clock, AlertCircle, FileText, Building2, CreditCard } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/src/lib/utils"
 
 // ========================================================================
 // STATUS BADGE

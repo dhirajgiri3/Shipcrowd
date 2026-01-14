@@ -9,8 +9,8 @@ import {
     IndianRupee, Copy, ExternalLink, Clock, FileText
 } from 'lucide-react';
 import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { Shipment } from '@/types/admin';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
+import { Shipment } from '@/src/types/admin';
 
 interface ShipmentDetailModalProps {
     isOpen: boolean;

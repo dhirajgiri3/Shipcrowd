@@ -14,7 +14,7 @@
 import React from 'react';
 import { useDisputeMetrics } from '@/src/core/api/hooks';
 import { WeightDisputesTable } from '@/src/features/disputes';
-import { formatCurrency, formatCompactCurrency } from '@/lib/utils';
+import { formatCurrency, formatCompactCurrency } from '@/src/lib/utils';
 
 export default function WeightDisputesPage() {
     const { data: metrics, isLoading: metricsLoading } = useDisputeMetrics();

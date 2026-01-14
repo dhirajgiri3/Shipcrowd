@@ -14,7 +14,7 @@
 import React from 'react';
 import { useDisputeAnalytics, useDisputeMetrics } from '@/src/core/api/hooks';
 import { AdminDisputesTable } from '@/src/features/disputes/components/AdminDisputesTable';
-import { formatCurrency, formatCompactCurrency } from '@/lib/utils';
+import { formatCurrency, formatCompactCurrency } from '@/src/lib/utils';
 
 export default function AdminDisputesDashboard() {
     const { data: metrics, isLoading: metricsLoading } = useDisputeMetrics();

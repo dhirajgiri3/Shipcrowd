@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
 import { ResponsiveContainer } from 'recharts';
-import { cn } from '@/lib/utils';
+import { cn } from '@/src/lib/utils';
 
 interface ChartCardProps {
     title: string;

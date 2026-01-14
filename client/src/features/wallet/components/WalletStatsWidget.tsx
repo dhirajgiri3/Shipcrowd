@@ -13,7 +13,7 @@
 
 import React, { useState } from 'react';
 import { useWalletStats } from '@/src/core/api/hooks';
-import { formatCurrency, formatCompactCurrency } from '@/lib/utils';
+import { formatCurrency, formatCompactCurrency } from '@/src/lib/utils';
 
 export function WalletStatsWidget() {
     const [dateRange] = useState<{ start: string; end: string } | undefined>(undefined);

@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { useWalletBalance } from '@/src/core/api/hooks';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface WalletBalanceCardProps {
     onAddMoney?: () => void;

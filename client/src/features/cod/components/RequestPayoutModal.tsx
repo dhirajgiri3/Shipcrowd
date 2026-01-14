@@ -13,7 +13,7 @@
 
 import React, { useState } from 'react';
 import { useRequestPayout, useCODStats } from '@/src/core/api/hooks';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface RequestPayoutModalProps {
     isOpen: boolean;

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/shared/utils';
-import { getCourierLogo } from '@/lib/constants';
+import { getCourierLogo } from '@/src/lib/constants';
 
 // Note: The backend `/ratecards/calculate` endpoint requires full implementation
 // For now, this calculates client-side but validates against available carriers

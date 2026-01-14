@@ -1,11 +1,9 @@
 /**
  * Mock Data Index
- * 
+ *
  * Central export point for all mock data modules
+ * TODO: Add mock data files as needed
  */
 
-// Existing mock data
-export * from './mockData';
+// No mock data files currently exist
 
-// New mock data modules
-export * from './wallet';

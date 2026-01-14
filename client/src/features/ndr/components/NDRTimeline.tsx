@@ -12,7 +12,7 @@
 
 import React from 'react';
 import type { NDRAttempt, AutomatedAction } from '@/src/types/api/ndr.types';
-import { formatDate } from '@/lib/utils';
+import { formatDate } from '@/src/lib/utils';
 
 interface NDRTimelineProps {
     attempts: NDRAttempt[];

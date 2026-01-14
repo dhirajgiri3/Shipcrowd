@@ -14,7 +14,7 @@
 
 import React, { useState } from 'react';
 import { useWithdrawWallet } from '@/src/core/api/hooks';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 interface WithdrawMoneyModalProps {
     isOpen: boolean;

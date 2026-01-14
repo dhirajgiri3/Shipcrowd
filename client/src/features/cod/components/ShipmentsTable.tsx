@@ -12,7 +12,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
 import type { ShipmentInRemittance } from '@/src/types/api/cod.types';
 

@@ -14,7 +14,7 @@
 
 import React, { useState } from 'react';
 import { useWalletTransactions } from '@/src/core/api/hooks';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/src/lib/utils';
 import type { TransactionFilters, WalletTransaction } from '@/src/types/api/wallet.types';
 
 export function WalletTransactionList() {
