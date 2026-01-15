@@ -79,6 +79,16 @@ router.post('/reports/build', authenticate, asyncHandler(analyticsController.bui
 router.post('/reports/save', authenticate, asyncHandler(analyticsController.saveReportConfig));
 router.delete('/reports/:id', authenticate, asyncHandler(analyticsController.deleteReportConfig));
 
+/**
+ * Seller Actions (Dashboard Widgets)
+ */
+router.get('/seller-actions', authenticate, asyncHandler(analyticsController.getSellerActions));
+
+/**
+ * Recent Customers
+ */
+router.get('/recent-customers', authenticate, asyncHandler(analyticsController.getRecentCustomers));
+
 // ✅ FEATURE 10: Authentication Analytics Dashboard
 import authAnalyticsRouter from '../analytics/auth.routes';
 router.use('/auth', authAnalyticsRouter);

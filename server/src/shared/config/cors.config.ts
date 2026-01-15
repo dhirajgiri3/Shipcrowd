@@ -66,6 +66,8 @@ const corsOptions: CorsOptions = {
         'Authorization',
         'X-Requested-With',
         'X-API-Key',
+        'X-Skip-Refresh',
+        'X-CSRF-Token',
         'Accept',
         'Origin',
     ],
@@ -108,6 +110,16 @@ export const configureCORSDev = (app: Express) => {
             origin: true, // Allow all origins
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+            allowedHeaders: [
+                'Content-Type',
+                'Authorization',
+                'X-Requested-With',
+                'X-API-Key',
+                'X-Skip-Refresh',
+                'X-CSRF-Token',
+                'Accept',
+                'Origin',
+            ],
         })
     );
 

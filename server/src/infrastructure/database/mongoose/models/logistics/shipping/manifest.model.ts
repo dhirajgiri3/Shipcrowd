@@ -198,7 +198,7 @@ ManifestSchema.pre('save', async function (next) {
 ManifestSchema.index({ companyId: 1, status: 1, createdAt: -1 });
 ManifestSchema.index({ warehouseId: 1, carrier: 1 });
 ManifestSchema.index({ 'pickup.scheduledDate': 1 });
-ManifestSchema.index({ manifestNumber: 1 }, { unique: true });
+
 
 const Manifest = mongoose.model<IManifest>('Manifest', ManifestSchema);
 export default Manifest;

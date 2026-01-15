@@ -74,8 +74,12 @@ export const handlePayoutWebhook = async (
         sendSuccess(res, { received: true });
     } catch (error) {
         logger.error('Error processing Razorpay payout webhook:', error);
-        // Still return 200 to prevent Razorpay from retrying
-        sendSuccess(res, { received: true, error: 'Processing failed' });
+        // SECURITY: Return 500 to trigger webhook retry - don't swallow failures
+        res.status(500).json({
+            success: false,
+            error: 'Processing failed',
+            message: 'Please retry'
+        });
     }
 };
 

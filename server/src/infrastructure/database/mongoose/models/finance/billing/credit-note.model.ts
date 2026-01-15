@@ -292,7 +292,7 @@ const CreditNoteSchema = new Schema<ICreditNote>(
 
 // Indexes for performance
 CreditNoteSchema.index({ companyId: 1, status: 1, createdAt: -1 });
-CreditNoteSchema.index({ 'originalInvoice.invoiceId': 1 });
+
 CreditNoteSchema.index({ status: 1, createdAt: -1 });
 CreditNoteSchema.index({ createdAt: -1 });
 

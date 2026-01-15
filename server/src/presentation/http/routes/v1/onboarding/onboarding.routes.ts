@@ -14,6 +14,10 @@ router.get('/progress', onboardingController.getProgress.bind(onboardingControll
 router.get('/next-action', onboardingController.getNextAction.bind(onboardingController));
 router.post('/skip-step/:step', onboardingController.skipStep.bind(onboardingController));
 
+// Complete onboarding - validates company profile and unlocks seller dashboard
+router.post('/complete', onboardingController.completeOnboarding.bind(onboardingController));
+
+
 // Personalization
 router.post('/personalize', onboardingController.submitPersonalization.bind(onboardingController));
 router.get('/recommendations', onboardingController.getRecommendations.bind(onboardingController));

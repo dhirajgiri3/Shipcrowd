@@ -161,6 +161,7 @@ export default function AIShowcase() {
                                         delay: delay,
                                         ease: "easeInOut"
                                     }}
+                                    suppressHydrationWarning
                                 />
                             )
                         })}

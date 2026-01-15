@@ -17,11 +17,15 @@ const getTierLevel = (tier: AccessTier): number => {
 
 /**
  * Determine the current tier of a user dynamically
+ * 
+ * SECURITY NOTE: This checks GLOBAL KYC status. For company-specific operations,
+ * always use requireAccess() middleware which validates company-specific KYC records.
  */
 export const determineUserTier = (user: any): AccessTier => {
     if (!user) return AccessTier.EXPLORER;
 
     // Production check: KYC Verified
+    // WARNING: This is a global check. Company-specific KYC is validated in requireAccess()
     if (user.kycStatus?.isComplete || (user.kycStatus?.state === KYCState.VERIFIED) || (user.kycStatus?.status === 'verified')) {
         return AccessTier.PRODUCTION;
     }

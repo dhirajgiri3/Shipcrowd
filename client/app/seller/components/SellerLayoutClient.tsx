@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/seller/Sidebar';
 import { Header } from '@/components/seller/Header';
 import { ThemeProvider } from '@/components/shared/ThemeProvider';
 import { ToastProvider } from '@/components/ui/feedback/Toast';
 import { OrderProvider } from '@/src/features/orders/context/OrderContext';
 import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
+import { useAuth } from '@/src/features/auth';
 import { X } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
 
@@ -26,6 +28,23 @@ export function SellerLayoutClient({
     children: React.ReactNode;
 }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const router = useRouter();
+    const pathname = usePathname();
+    const { user, isInitialized } = useAuth();
+
+    // Check if user has completed onboarding (has a company)
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        // Skip check if already on onboarding page
+        if (pathname?.startsWith('/onboarding')) return;
+
+        // If authenticated user has no company, redirect to onboarding
+        if (user && !user.companyId) {
+            console.log('[SellerLayout] User has no company - redirecting to onboarding');
+            router.push('/onboarding');
+        }
+    }, [user, isInitialized, pathname, router]);
 
     return (
         <AuthGuard requiredRole="seller" redirectTo="/login">

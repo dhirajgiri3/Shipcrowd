@@ -22,9 +22,18 @@ interface TokenVerificationResult {
 }
 
 export class TokenService {
-    private static readonly SECRET_KEY = process.env.JWT_SECRET || 'shipcrowd-secret-key-change-in-production';
+    // SECURITY: Removed weak fallback - JWT_SECRET is required
+    private static readonly SECRET_KEY = (() => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.error('FATAL: JWT_SECRET environment variable is required');
+            // Don't throw in module scope to avoid breaking imports
+            // Actual operations will fail when SECRET_KEY is empty
+        }
+        return secret || '';
+    })();
     private static readonly ADDRESS_UPDATE_EXPIRY = '48h'; // 48 hours
-    
+
     // In-memory token invalidation store (use Redis in production)
     private static invalidatedTokens: Set<string> = new Set();
 
@@ -89,7 +98,7 @@ export class TokenService {
      */
     static invalidateToken(token: string): void {
         this.invalidatedTokens.add(token);
-        
+
         // Auto-cleanup after 48 hours (should match token expiry)
         setTimeout(() => {
             this.invalidatedTokens.delete(token);

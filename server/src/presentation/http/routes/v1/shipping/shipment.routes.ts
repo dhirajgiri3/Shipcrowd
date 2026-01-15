@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/index';
+import { requireAccess, requireCompleteCompany } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import shipmentController from '../../../controllers/shipping/shipment.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
@@ -18,12 +18,13 @@ router.use(manifestRoutes);
 /**
  * @route POST /api/v1/shipments
  * @desc Create a new shipment from an order
- * @access Private (Production)
+ * @access Private (Production, Complete Profile)
  */
 router.post(
     '/',
     authenticate,
     csrfProtection,
+    requireCompleteCompany,
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true }),
     asyncHandler(shipmentController.createShipment)
 );

@@ -286,7 +286,10 @@ export const queryKeys = {
     all: () => ['communication'],
     templates: () => ['communication', 'templates'],
     templates_list: (type?: string) => ['communication', 'templates', 'list', type],
+    template: (id: string) => ['communication', 'template', id],
     rules: () => ['communication', 'rules'],
+    rules_list: (filters?: any) => ['communication', 'rules', 'list', filters],
+    rule: (id: string) => ['communication', 'rule', id],
     history: (params?: FilterParams) => ['communication', 'history', params],
     campaigns: (params?: FilterParams) => ['communication', 'campaigns', params],
   },
@@ -300,6 +303,33 @@ export const queryKeys = {
     byTrackingNumber: (trackingNumber: string) => ['tracking', 'tracking-number', trackingNumber],
     byOrderId: (orderId: string) => ['tracking', 'order', orderId],
     timeline: (shipmentId: string) => ['tracking', shipmentId, 'timeline'],
+  },
+
+  // ========================================================================
+  // ADDRESS & SERVICEABILITY DOMAIN
+  // ========================================================================
+  address: {
+    all: () => ['address'],
+    serviceability: (pincode: string) => ['address', 'serviceability', pincode],
+    routeServiceability: (origin: string, destination: string) =>
+      ['address', 'serviceability', 'route', origin, destination],
+    cityState: (pincode: string) => ['address', 'city-state', pincode],
+    bulkValidation: (batchId: string) => ['address', 'bulk-validation', batchId],
+    suggestions: (query: string) => ['address', 'suggestions', query],
+  },
+
+  // ========================================================================
+  // MANIFESTS DOMAIN
+  // ========================================================================
+  manifests: {
+    all: () => ['manifests'],
+    list: (filters?: any) => ['manifests', 'list', filters],
+    detail: (id: string) => ['manifests', 'detail', id],
+    stats: () => ['manifests', 'stats'],
+    byStatus: (status: string) => ['manifests', 'status', status],
+    byCourier: (courier: string) => ['manifests', 'courier', courier],
+    pendingReconciliation: () => ['manifests', 'pending-reconciliation'],
+    eligibleShipments: (courier?: string) => ['manifests', 'eligible-shipments', courier],
   },
 
   // ========================================================================

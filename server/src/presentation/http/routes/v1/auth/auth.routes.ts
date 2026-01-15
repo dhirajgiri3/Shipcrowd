@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import authController from '../../../controllers/auth/auth.controller';
 import { authenticate, csrfProtection as oldCSRFProtection } from '../../../middleware/auth/auth';
 import { csrfProtection } from '../../../middleware/auth/csrf';
+import { authRateLimiter } from '../../../middleware/security/rate-limit.middleware';
 import {
   loginRateLimiter,
   registrationRateLimiter,
@@ -26,10 +27,10 @@ router.use('/mfa', mfaRoutes);
 /**
  * @route GET /auth/csrf-token
  * @desc Generate and return a CSRF token (stored in Redis)
- * @access Public (but requires session)
+ * @access Public (session created automatically if not exists)
  * @security Uses new Redis-based CSRF token validation
  */
-router.get('/csrf-token', authenticate, authController.getCSRFToken);
+router.get('/csrf-token', authController.getCSRFToken);
 
 
 /**

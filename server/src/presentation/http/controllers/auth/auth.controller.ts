@@ -10,6 +10,7 @@ import { createSession, updateSessionActivity, revokeAllSessions } from '../../.
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
+import { generateCSRFToken } from '../../middleware/auth/csrf';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
@@ -42,7 +43,8 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(PASSWORD_REQUIREMENTS.minLength).superRefine(passwordValidator),
   name: z.string().min(2),
-  role: z.enum(['admin', 'seller', 'staff']).optional(),
+  // SECURITY: Admin role removed from registration - admins created via DB only
+  role: z.enum(['seller', 'staff']).optional(),
   companyId: z.string().optional(),
   teamRole: z.enum(['owner', 'admin', 'manager', 'member', 'viewer']).optional(),
   invitationToken: z.string().optional(),
@@ -143,6 +145,11 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         ...(companyId && { companyId }),
         ...(teamRole && { teamRole }),
         isActive: false,
+        // SECURITY: Explicitly initialize KYC status to prevent undefined bypass
+        kycStatus: {
+          isComplete: false,
+          lastUpdated: new Date(),
+        },
         security: {
           verificationToken: hashedVerificationToken, // ✅ Store HASH
           verificationTokenExpiry,
@@ -721,7 +728,9 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
         const newCompany = new Company({
           name: companyName,
           owner: typedUser._id,
-          status: 'pending_verification',
+          status: 'profile_complete',
+          // SECURITY: Mark company profile as incomplete until onboarding is done
+          profileStatus: 'incomplete',
           address: { country: 'India' },
           settings: { currency: 'INR', timezone: 'Asia/Kolkata' },
         });
@@ -1681,7 +1690,7 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
 /**
  * Get CSRF Token
  * @route GET /auth/csrf-token
- * @access Public (but requires session)
+ * @access Public (session created automatically if not exists)
  */
 export const getCSRFToken = async (
   req: Request,
@@ -1689,14 +1698,18 @@ export const getCSRFToken = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const sessionId = (req as any).session?.id || (req as any).user?.id;
+    // Get session ID from authenticated user or generate one
+    // For authenticated users: use user ID
+    // For unauthenticated users: use a temporary session identifier
+    let sessionId = (req as any).user?.id;
 
     if (!sessionId) {
-      throw new AuthenticationError('Session required to get CSRF token', ErrorCode.AUTH_SESSION_REQUIRED);
+      // For unauthenticated users, create a temporary session ID
+      // This can be based on IP + User-Agent for basic tracking
+      const crypto = await import('crypto');
+      const identifier = `${req.ip || 'unknown'}-${req.headers['user-agent'] || 'unknown'}`;
+      sessionId = crypto.createHash('sha256').update(identifier).digest('hex');
     }
-
-    // Import CSRF function
-    const { generateCSRFToken } = await import('../../middleware/auth/csrf.js');
 
     const csrfToken = await generateCSRFToken(sessionId);
 

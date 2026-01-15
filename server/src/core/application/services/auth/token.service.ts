@@ -88,9 +88,22 @@ export class AuthTokenService {
      *   user.security.resetToken
      * );
      */
+    /**
+     * Verify a token matches the stored hash using constant-time comparison
+     * to prevent timing attacks
+     */
     static verifyToken(rawToken: string, hashedToken: string): boolean {
         const computedHash = this.hashToken(rawToken);
-        return computedHash === hashedToken;
+        try {
+            // Use constant-time comparison to prevent timing attacks
+            return crypto.timingSafeEqual(
+                Buffer.from(computedHash, 'hex'),
+                Buffer.from(hashedToken, 'hex')
+            );
+        } catch {
+            // Buffers must be same length - if not, tokens don't match
+            return false;
+        }
     }
 }
 

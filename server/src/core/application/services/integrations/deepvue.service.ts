@@ -32,12 +32,17 @@ dotenv.config();
 // DeepVue API base URL - Updated to match the production URL from the examples
 const DEEPVUE_API_BASE_URL = 'https://production.deepvue.tech/v1';
 
-// DeepVue API credentials
-const DEEPVUE_CLIENT_ID = process.env.DEEPVUE_CLIENT_ID || 'free_tier_hello_24083411f2';
-const DEEPVUE_API_KEY = process.env.DEEPVUE_API_KEY || '066c1703385e4fd8bb3e34ddb526df89';
+// SECURITY: Removed hardcoded fallback API keys
+const DEEPVUE_CLIENT_ID = process.env.DEEPVUE_CLIENT_ID;
+const DEEPVUE_API_KEY = process.env.DEEPVUE_API_KEY;
 
 // Development mode flag - set to 'true' to use mock responses instead of real API calls
 const DEEPVUE_DEV_MODE = process.env.DEEPVUE_DEV_MODE === 'true';
+
+// Validate credentials are present (skip if in dev mode)
+if (!DEEPVUE_DEV_MODE && (!DEEPVUE_CLIENT_ID || !DEEPVUE_API_KEY)) {
+  logger.warn('DEEPVUE_CLIENT_ID or DEEPVUE_API_KEY not configured - DeepVue API calls will fail');
+}
 
 // Access token storage and management
 let accessToken: string | null = null;
@@ -56,6 +61,12 @@ const getAccessToken = async (): Promise<string> => {
 
     // Create form data for the request
     const formData = new URLSearchParams();
+    if (!DEEPVUE_CLIENT_ID || !DEEPVUE_API_KEY) {
+      throw new ExternalServiceError(
+        'DeepVue API credentials not configured. Set DEEPVUE_CLIENT_ID and DEEPVUE_API_KEY environment variables.',
+        ErrorCode.EXT_SERVICE_ERROR
+      );
+    }
     formData.append('client_id', DEEPVUE_CLIENT_ID);
     formData.append('client_secret', DEEPVUE_API_KEY);
 

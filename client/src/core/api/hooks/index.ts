@@ -23,7 +23,9 @@ export * from './useIntegrations';
 export * from './useSettlements';
 export * from './useSellerActions';
 export * from './useRecentCustomers';
-// The following named exports for useWallet and useCOD are now redundant
+export * from './useAddress';
+export * from './useManifests';
+export * from './useCommunication';
 // because 'export * from './useWallet';' and 'export * from './useCOD';'
 // are now present above, as per the provided Code Edit.
 // However, to faithfully apply the *exact* snippet provided, I will keep the

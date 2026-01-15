@@ -1,18 +1,20 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../../../types/express';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import { AuthenticationError, ValidationError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import AchievementService from '../../../../core/application/services/onboarding/achievement.service';
 import PersonalizationService from '../../../../core/application/services/onboarding/personalization.service';
 import DemoDataService from '../../../../core/application/services/onboarding/demo-data.service';
 import ProductTourService from '../../../../core/application/services/onboarding/product-tour.service';
+import { Company } from '../../../../infrastructure/database/mongoose/models';
 import { z } from 'zod';
 
 // Validation Schemas
+// SECURITY: Only non-critical steps can be skipped
 const skipStepSchema = z.object({
-    step: z.enum(['walletRecharged', 'demoDataCleared'])
+    step: z.enum(['demoDataCleared']) // walletRecharged removed - cannot be skipped
 });
 
 const personalizeSchema = z.object({
@@ -237,6 +239,70 @@ export class OnboardingController {
             next(error);
         }
     }
+
+    /**
+     * Complete Onboarding - Validates minimum company profile and sets profileStatus to 'complete'
+     * SECURITY: This is the gate that unlocks seller dashboard access
+     */
+    async completeOnboarding(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { companyId, _id: userId } = req.user!;
+            if (!companyId || !userId) {
+                throw new AuthenticationError('User not properly authenticated', ErrorCode.AUTH_REQUIRED);
+            }
+
+            // Fetch company with all required fields
+            const company = await Company.findById(companyId);
+            if (!company) {
+                throw new NotFoundError('Company not found', ErrorCode.RES_COMPANY_NOT_FOUND);
+            }
+
+            // Validate minimum required fields
+            const errors: string[] = [];
+
+            // Company name should not be auto-generated default
+            if (!company.name || company.name.includes("'s Company")) {
+                errors.push('Please set a proper company name');
+            }
+
+            // Address validation
+            if (!company.address?.line1) {
+                errors.push('Address line 1 is required');
+            }
+            if (!company.address?.city) {
+                errors.push('City is required');
+            }
+            if (!company.address?.state) {
+                errors.push('State is required');
+            }
+            if (!company.address?.postalCode) {
+                errors.push('Postal code is required');
+            }
+
+            // If there are validation errors, return them
+            if (errors.length > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Please complete your company profile',
+                    code: 'ONBOARDING_INCOMPLETE',
+                    errors,
+                });
+                return;
+            }
+
+            // Update company profileStatus to complete
+            company.profileStatus = 'complete';
+            await company.save();
+
+            sendSuccess(res, {
+                profileStatus: 'complete',
+                redirectTo: '/seller'
+            }, 'Onboarding completed successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export default new OnboardingController();
+

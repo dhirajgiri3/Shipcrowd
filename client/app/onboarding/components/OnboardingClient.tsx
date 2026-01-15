@@ -651,15 +651,7 @@ export function OnboardingClient() {
                     )}
                 </motion.div>
 
-                {/* Skip for now - Hidden on step 5 */}
-                {step < 5 && (
-                    <p className="text-center mt-6 text-sm text-gray-500">
-                        <Link href="/seller" className="text-primaryBlue hover:underline">
-                            Skip for now
-                        </Link>
-                        {" "}— you can complete this later
-                    </p>
-                )}
+                {/* SECURITY: Skip button removed - onboarding is mandatory */}
             </div>
         </div>
     )

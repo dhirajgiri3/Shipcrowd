@@ -1,11 +1,20 @@
 import express from 'express';
 import { authenticate } from '../../../middleware';
 import { requireAccess } from '../../../middleware/auth/unified-access';
+import { verifyVelocityWebhookSignature } from '../../../middleware/webhooks/velocity-signature.middleware';
 import * as codRemittanceController from '../../../controllers/finance/cod-remittance.controller';
 
 const router = express.Router();
 
-// All routes require authentication
+// Velocity settlement webhook - MUST be BEFORE authenticate middleware
+// SECURITY: Public endpoint but signature-verified
+router.post(
+    '/webhook',
+    verifyVelocityWebhookSignature,
+    codRemittanceController.handleWebhook
+);
+
+// All routes below require authentication
 router.use(authenticate);
 
 // All COD remittance routes require KYC verification
@@ -64,12 +73,7 @@ router.get(
     codRemittanceController.getDashboard
 );
 
-// Velocity settlement webhook (Public but signature verified) -- Note: remove auth if public
-router.post(
-    '/webhook',
-    // TODO: Verify signature
-    codRemittanceController.handleWebhook
-);
+// Note: /webhook route is defined BEFORE authenticate middleware at the top of this file
 
 // Request on-demand payout
 router.post(

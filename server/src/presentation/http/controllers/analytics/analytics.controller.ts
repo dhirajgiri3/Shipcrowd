@@ -830,6 +830,158 @@ export const deleteReportConfig = async (
     }
 };
 
+
+/**
+ * Get seller actions (quick actions/notifications)
+ * @route GET /api/v1/analytics/seller-actions
+ */
+export const getSellerActions = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+
+        // If no company, return empty actions (user hasn't completed onboarding)
+        if (!auth.companyId) {
+            sendSuccess(res, [], 'No company associated - complete onboarding first');
+            return;
+        }
+
+        const companyObjectId = new mongoose.Types.ObjectId(auth.companyId);
+
+        // Calculate action items dynamically
+        // 1. Pending Manifests
+        const readyToShipCount = await Order.countDocuments({
+            companyId: companyObjectId,
+            currentStatus: 'ready_to_ship',
+            isDeleted: false
+        });
+
+        // 2. NDR Actions needed
+        const ndrCount = await Shipment.countDocuments({
+            companyId: companyObjectId,
+            currentStatus: 'ndr',
+            'ndrDetails.requiresAction': true,
+            isDeleted: false
+        });
+
+        // 3. Weight Disputes
+        // Mocking this for now as WeightDispute model might not be fully linked here yet or to keep it simple
+        const disputeCount = 0;
+
+        const actions = [
+            {
+                type: 'manifest',
+                count: readyToShipCount,
+                label: 'Orders to Manifest',
+                priority: readyToShipCount > 0 ? 'high' : 'low',
+                link: '/shipments/manifest'
+            },
+            {
+                type: 'ndr',
+                count: ndrCount,
+                label: 'NDR Actions Required',
+                priority: ndrCount > 0 ? 'critical' : 'low',
+                link: '/ndr'
+            },
+            {
+                type: 'dispute',
+                count: disputeCount,
+                label: 'Weight Disputes',
+                priority: disputeCount > 0 ? 'medium' : 'low',
+                link: '/disputes'
+            }
+        ].filter(a => a.count > 0);
+
+        sendSuccess(res, actions, 'Seller actions retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching seller actions:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get recent unique customers
+ * @route GET /api/v1/analytics/recent-customers
+ */
+export const getRecentCustomers = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: false });
+        const limit = parseInt(req.query.limit as string) || 6;
+
+        // If no company, return empty customers (user hasn't completed onboarding)
+        if (!auth.companyId) {
+            sendSuccess(res, [], 'No company associated - complete onboarding first');
+            return;
+        }
+
+        const companyObjectId = new mongoose.Types.ObjectId(auth.companyId);
+
+        // Aggregate orders to find unique customers recently
+        // Group by email OR phone to handle customers without emails (COD orders)
+        const recentCustomers = await Order.aggregate([
+            {
+                $match: {
+                    companyId: companyObjectId,
+                    isDeleted: false
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+                $addFields: {
+                    // Create a unique customer identifier (email if available, otherwise phone)
+                    customerId: {
+                        $ifNull: ['$customerInfo.email', '$customerInfo.phone']
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$customerId',
+                    name: { $first: '$customerInfo.name' },
+                    phone: { $first: '$customerInfo.phone' },
+                    email: { $first: '$customerInfo.email' },
+                    lastOrderDate: { $first: '$createdAt' },
+                    totalOrders: { $sum: 1 },
+                    totalSpent: { $sum: '$totals.total' },
+                    lastOrderAmount: { $first: '$totals.total' }
+                }
+            },
+            {
+                $match: {
+                    _id: { $ne: null } // Exclude customers with no email or phone
+                }
+            },
+            { $sort: { lastOrderDate: -1 } },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 0,
+                    customerId: '$_id',
+                    name: 1,
+                    phone: 1,
+                    email: 1,
+                    lastOrderDate: 1,
+                    totalOrders: 1,
+                    totalSpent: 1,
+                    lastOrderAmount: 1
+                }
+            }
+        ]);
+
+        sendSuccess(res, recentCustomers, 'Recent customers retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching recent customers:', error);
+        next(error);
+    }
+};
+
 export default {
     getSellerDashboard,
     getAdminDashboard,
@@ -846,4 +998,6 @@ export default {
     saveReportConfig,
     listReportConfigs,
     deleteReportConfig,
+    getSellerActions,
+    getRecentCustomers,
 };

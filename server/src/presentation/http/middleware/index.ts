@@ -5,6 +5,7 @@ import { requireCompany } from './auth/company';
 import { checkKYC } from './auth/kyc';
 import { requireAccessTier, determineUserTier } from './auth/access-tier.middleware';
 import { requireAccess } from './auth/unified-access';
+import { requireCompleteCompany } from './auth/require-complete-company.middleware';
 
 export {
   auditLog,
@@ -29,7 +30,8 @@ export {
   checkKYC,
   requireAccessTier,
   determineUserTier,
-  requireAccess
+  requireAccess,
+  requireCompleteCompany
 };
 
 

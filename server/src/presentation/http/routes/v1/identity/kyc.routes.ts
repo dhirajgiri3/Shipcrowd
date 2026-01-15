@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction, RequestHandler } from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
+import { AccessTier } from '../../../../../core/domain/types/access-tier';
+import { kycRateLimiter } from '../../../middleware/security/rate-limit.middleware';
 import kycController from '../../../controllers/identity/kyc.controller';
 import deepvueService from '../../../../../core/application/services/integrations/deepvue.service';
 
@@ -58,39 +60,54 @@ router.post('/:kycId/verify', authenticate, requireAccess({ roles: ['admin'] }),
 router.post('/:kycId/reject', authenticate, requireAccess({ roles: ['admin'] }), csrfProtection, wrapController(kycController.rejectKYC));
 
 /**
+ * SECURITY: Requires SANDBOX tier - users must complete onboarding
  * @route POST /kyc/verify-pan
  * @desc Verify PAN card in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-pan', authenticate, csrfProtection, wrapController(kycController.verifyPanCard));
+router.post('/verify-pan', kycRateLimiter, authenticate, csrfProtection,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  wrapController(kycController.verifyPanCard));
 
 /**
+ * SECURITY: Requires SANDBOX tier
  * @route POST /kyc/verify-aadhaar
  * @desc Verify Aadhaar in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-aadhaar', authenticate, csrfProtection, wrapController(kycController.verifyAadhaar));
+router.post('/verify-aadhaar', kycRateLimiter, authenticate, csrfProtection,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  wrapController(kycController.verifyAadhaar));
 
 /**
+ * SECURITY: Requires SANDBOX tier
  * @route POST /kyc/verify-gstin
  * @desc Verify GSTIN in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-gstin', authenticate, csrfProtection, wrapController(kycController.verifyGstin));
+router.post('/verify-gstin', authenticate, csrfProtection,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  wrapController(kycController.verifyGstin));
 
 /**
+ * SECURITY: Requires SANDBOX tier
  * @route POST /kyc/verify-bank-account
  * @desc Verify bank account in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-bank-account', authenticate, csrfProtection, wrapController(kycController.verifyBankAccount));
+router.post('/verify-bank-account', authenticate, csrfProtection,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  wrapController(kycController.verifyBankAccount));
 
 /**
+ * SECURITY: Requires SANDBOX tier
  * @route POST /kyc/verify-ifsc
  * @desc Verify IFSC code in real-time using DeepVue API
  * @access Private
  */
-router.post('/verify-ifsc', authenticate, csrfProtection, wrapController(kycController.verifyIfscCode));
+router.post('/verify-ifsc', authenticate, csrfProtection,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  wrapController(kycController.verifyIfscCode));
 
 /**
  * @route POST /kyc/agreement

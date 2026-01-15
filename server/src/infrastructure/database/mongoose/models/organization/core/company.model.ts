@@ -59,6 +59,7 @@ export interface ICompany extends Document {
     lowBalanceThreshold: number;
   };
 
+  profileStatus: 'incomplete' | 'complete';
   status: 'profile_complete' | 'kyc_submitted' | 'approved' | 'suspended' | 'rejected';
   verificationLevel: 1 | 2 | 3;
   limits: {
@@ -182,6 +183,12 @@ const CompanySchema = new Schema<ICompany>(
       },
     },
 
+    // SECURITY: Track onboarding completion state
+    profileStatus: {
+      type: String,
+      enum: ['incomplete', 'complete'],
+      default: 'incomplete',
+    },
     status: {
       type: String,
       enum: ['profile_complete', 'kyc_submitted', 'approved', 'suspended', 'rejected'],

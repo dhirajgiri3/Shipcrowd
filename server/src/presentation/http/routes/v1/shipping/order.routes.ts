@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/index';
+import { requireAccess, requireCompleteCompany } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import orderController from '../../../controllers/shipping/order.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
@@ -29,12 +29,13 @@ const upload = multer({
 /**
  * @route POST /api/v1/orders
  * @desc Create a new order
- * @access Private (Production)
+ * @access Private (Production, Complete Profile)
  */
 router.post(
     '/',
     authenticate,
     csrfProtection,
+    requireCompleteCompany,
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
     asyncHandler(orderController.createOrder)
 );
@@ -92,12 +93,13 @@ router.delete(
 /**
  * @route POST /api/v1/orders/bulk
  * @desc Bulk import orders from CSV
- * @access Private (Production)
+ * @access Private (Production, Complete Profile)
  */
 router.post(
     '/bulk',
     authenticate,
     csrfProtection,
+    requireCompleteCompany,
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
     upload.single('file'),
     asyncHandler(orderController.bulkImportOrders)
