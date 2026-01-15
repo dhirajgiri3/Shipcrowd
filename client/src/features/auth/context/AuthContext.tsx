@@ -441,12 +441,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Confirm password reset with token and new password
    */
   const resetPasswordConfirm = useCallback(
-    async (token: string, password: string) => {
+    async (token: string, newPassword: string) => {
       try {
         setIsLoading(true);
         setError(null);
 
-        await authApi.resetPasswordConfirm(token, password);
+        await authApi.resetPasswordConfirm(token, newPassword);
 
         return { success: true };
       } catch (err) {

@@ -96,8 +96,7 @@ export const queryKeys = {
   // ========================================================================
   analytics: {
     all: () => ['analytics'],
-    dashboard: (period?: '7d' | '30d' | '90d' | '1y') =>
-      ['analytics', 'dashboard', period || '30d'],
+    dashboard: (filters?: any) => ['analytics', 'dashboard', filters],
     revenue: (period?: '7d' | '30d' | '90d' | '1y') =>
       ['analytics', 'revenue', period || '30d'],
     shipments: (period?: '7d' | '30d' | '90d') =>
@@ -113,6 +112,18 @@ export const queryKeys = {
       ['analytics', 'trends', metric, period || '30d'],
     costs: (period?: string) =>
       ['analytics', 'costs', period || '30d'],
+
+    // New advanced analytics keys
+    savedReports: () => ['analytics', 'reports', 'saved'],
+    report: (reportId: string) => ['analytics', 'reports', reportId],
+    sla: (filters?: any) => ['analytics', 'sla', filters],
+    slaByCourier: (courierId: string, filters?: any) => ['analytics', 'sla', 'courier', courierId, filters],
+    courierComparison: (filters?: any) => ['analytics', 'courier-comparison', filters],
+    cost: (filters?: any) => ['analytics', 'cost', filters],
+    costTrend: (filters?: any) => ['analytics', 'cost', 'trend', filters],
+    zones: (filters?: any) => ['analytics', 'zones', filters],
+    topCouriers: (limit?: number, filters?: any) => ['analytics', 'top-couriers', limit, filters],
+    trend: (metric: string, filters?: any) => ['analytics', 'trend', metric, filters],
   },
 
   // ========================================================================
@@ -348,6 +359,32 @@ export const queryKeys = {
     list: (params?: FilterParams) => ['seller', 'actions', 'list', params],
   },
 
+
+  // ========================================================================
+  // ECOMMERCE INTEGRATIONS DOMAIN
+  // ========================================================================
+  ecommerce: {
+    all: () => ['ecommerce'],
+    integrations: () => ['ecommerce', 'integrations'],
+    integration: (id: string) => ['ecommerce', 'integration', id],
+    integrationsList: (filters?: any) => ['ecommerce', 'integrations', 'list', filters],
+    syncLogs: (integrationId: string) => ['ecommerce', 'sync-logs', integrationId],
+    syncHistory: (integrationId: string, params?: any) => ['ecommerce', 'sync-history', integrationId, params],
+    testConnection: (type: string) => ['ecommerce', 'test-connection', type],
+  },
+
+  // ========================================================================
+  // FRAUD DETECTION DOMAIN
+  // ========================================================================
+  fraud: {
+    all: () => ['fraud'],
+    alerts: (filters?: any) => ['fraud', 'alerts', filters],
+    alert: (id: string) => ['fraud', 'alert', id],
+    stats: () => ['fraud', 'stats'],
+    rules: () => ['fraud', 'rules'],
+    blockedEntities: () => ['fraud', 'blocked'],
+  },
+
   // ========================================================================
   // SETTINGS DOMAIN
   // ========================================================================
@@ -357,8 +394,13 @@ export const queryKeys = {
     security: () => ['settings', 'security'],
     notifications: () => ['settings', 'notifications'],
     webhooks: () => ['settings', 'webhooks'],
-    apiKeys: () => ['settings', 'api-keys'],
+    webhookLogs: (webhookId: string) => ['settings', 'webhooks', webhookId, 'logs'],
+    teamMembers: () => ['settings', 'team'],
+    auditLogs: (filters?: any) => ['settings', 'audit-logs', filters],
+    subscription: () => ['settings', 'subscription'],
+    plans: () => ['settings', 'plans'],
     billing: () => ['settings', 'billing'],
+    apiKeys: () => ['settings', 'api-keys'],
   },
 };
 

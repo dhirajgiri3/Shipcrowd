@@ -59,12 +59,20 @@ app.use(securityHeaders);
 // Body parsing middleware with raw body capture for webhook signature verification
 app.use(express.json({
     limit: '10mb',
-    verify: (req: any, res, buf, encoding) => {
+    verify: (req: any, _res, buf, _encoding) => {
         // Store raw body for webhook signature verification
         if (req.url.includes('/webhooks/')) {
             req.rawBody = buf;
         }
-    }
+
+        // ✅ DEBUG: Log request body for JSON parsing issues
+        if (process.env.NODE_ENV === 'development' && req.url.includes('/verify-email')) {
+            logger.debug('verify-email - Raw buffer:', buf.toString());
+            logger.debug('verify-email - Buffer length:', buf.length);
+        }
+    },
+    // ✅ FIX: Strict JSON parsing with better error messages
+    strict: true
 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

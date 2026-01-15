@@ -2,11 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import passport from 'passport';
-import { User, IUser, Company, MagicLink, TeamInvitation, Session } from '../../../../infrastructure/database/mongoose/models';
+import { User, IUser, MagicLink, TeamInvitation, Session } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
+import jwt from 'jsonwebtoken';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
-import { createSession, updateSessionActivity, revokeAllSessions } from '../../../../core/application/services/auth/session.service';
+import { createSession, updateSessionActivity } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
@@ -17,7 +18,7 @@ import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelpe
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { AUTH_COOKIES, SESSION_CONSTANTS } from '../../../../shared/constants/security';
 import { UserDTO } from '../../dtos/user.dto';
-import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ExternalServiceError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, NotFoundError, ExternalServiceError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import MFAService from '../../../../core/application/services/auth/mfa.service';
 
@@ -64,7 +65,7 @@ const resetPasswordRequestSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string(),
-  password: z.string().min(PASSWORD_REQUIREMENTS.minLength).superRefine(passwordValidator),
+  newPassword: z.string().min(PASSWORD_REQUIREMENTS.minLength).superRefine(passwordValidator),
 });
 
 const verifyEmailSchema = z.object({
@@ -81,8 +82,6 @@ const checkPasswordStrengthSchema = z.object({
   name: z.string().optional(),
 });
 
-
-
 /**
  * Register a new user
  * @route POST /auth/register
@@ -95,7 +94,10 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       // Check if user exists (inside transaction to be safe, though unique index helps)
       const existingUser = await User.findOne({ email: validatedData.email }).session(session);
       if (existingUser) {
-        throw new Error('USER_EXISTS'); // Will be caught below
+        throw new ConflictError(
+          'An account with this email already exists. Please log in or use a different email address.',
+          ErrorCode.BIZ_ALREADY_EXISTS
+        ); // Will be caught below
       }
 
       // Check if there's an invitation token
@@ -116,7 +118,9 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         }).populate('companyId', 'name').session(session);
 
         if (!invitation) {
-          throw new Error('INVALID_INVITATION');
+          throw new ValidationError(
+            'This invitation link is invalid or has expired. Please request a new invitation from your team admin.'
+          );
         }
 
         // Use the company and role from the invitation
@@ -193,9 +197,13 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         res,
         {
           userId: savedUser._id.toString(),
+          name: savedUser.name,
           email: savedUser.email,
-          companyId: companyId,
+          role: savedUser.role,
+          companyId: companyId?.toString(),
           isNewCompany: !validatedData.companyId && !validatedData.invitationToken,
+          nextStep: 'email_verification',
+          verificationRequired: true,
         },
         'User registered successfully. Please check your email to verify your account.'
       );
@@ -214,10 +222,19 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = loginSchema.parse(req.body);
-    const user = await User.findOne({ email: validatedData.email });
+    // ✅ CRITICAL FIX: Normalize email to lowercase for consistent lookups
+    const normalizedEmail = validatedData.email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
 
+    // ✅ CRITICAL FIX: Timing attack protection - always hash a dummy password even if user not found
     if (!user) {
-      throw new AuthenticationError('Invalid credentials', ErrorCode.AUTH_INVALID_CREDENTIALS);
+      // Constant-time comparison: hash a dummy password to prevent timing attacks
+      const bcrypt = require('bcrypt');
+      await bcrypt.compare(validatedData.password, '$2b$10$YourDummyHashHereToPreventTimingAttack1234567890');
+      throw new AuthenticationError(
+        'No account found with this email. Please check your email or sign up for a new account.',
+        ErrorCode.AUTH_INVALID_CREDENTIALS
+      );
     }
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
@@ -232,10 +249,16 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     }
 
     if (!typedUser.isActive) {
-      throw new AuthenticationError('Account is not active. Please verify your email.', ErrorCode.AUTH_ACCOUNT_DISABLED);
+      throw new AuthenticationError(
+        'Please verify your email address before logging in. Check your inbox for the verification link or request a new one.',
+        ErrorCode.AUTH_ACCOUNT_DISABLED
+      );
     }
     if (typedUser.isDeleted) {
-      throw new AuthenticationError('Account has been deleted', ErrorCode.AUTH_ACCOUNT_LOCKED);
+      throw new AuthenticationError(
+        'This account has been deactivated. Please contact support if you believe this is an error.',
+        ErrorCode.AUTH_ACCOUNT_LOCKED
+      );
     }
 
     // Check if this is an OAuth-only user (no password set)
@@ -248,7 +271,10 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
     // Check if password exists before comparing
     if (!typedUser.password) {
-      throw new AuthenticationError('Invalid credentials', ErrorCode.AUTH_INVALID_CREDENTIALS);
+      throw new AuthenticationError(
+        'No password set for this account. Please use "Forgot Password" to set up a password or sign in with your social account.',
+        ErrorCode.AUTH_INVALID_CREDENTIALS
+      );
     }
 
     const isPasswordValid = await typedUser.comparePassword(validatedData.password);
@@ -310,12 +336,13 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
       if (failedAttempts >= SESSION_CONSTANTS.MAX_LOGIN_ATTEMPTS) {
         throw new AuthenticationError(
-          `Account is temporarily locked due to multiple failed login attempts. Please try again in ${SESSION_CONSTANTS.LOCKOUT_DURATION_MINS} minutes.`,
+          `Your account has been temporarily locked due to multiple failed login attempts. Please try again in ${SESSION_CONSTANTS.LOCKOUT_DURATION_MINS} minutes or reset your password.`,
           ErrorCode.AUTH_ACCOUNT_LOCKED
         );
       } else {
+        const attemptsLeft = SESSION_CONSTANTS.MAX_LOGIN_ATTEMPTS - failedAttempts;
         throw new AuthenticationError(
-          'Invalid credentials',
+          `Incorrect password. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''} remaining before account lockout. Use "Forgot Password" if you don't remember it.`,
           ErrorCode.AUTH_INVALID_CREDENTIALS
         );
       }
@@ -426,6 +453,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
     sendSuccess(res, {
       user: UserDTO.toResponse(typedUser),
+      redirectUrl: typedUser.role === 'admin' ? '/admin/dashboard' : '/seller/dashboard',
+      nextStep: typedUser.onboardingStep || 'completed',
     }, 'Login successful');
   } catch (error: any) {
     logger.error('login error:', error);
@@ -437,7 +466,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
  * Refresh access token
  * @route POST /auth/refresh
  */
-export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Cookie names with secure prefix in production
     const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
@@ -446,7 +475,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     // Validate that we have a refresh token from either cookies or body
     const token = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken || req.body?.refreshToken;
     if (!token) {
-      throw new AuthenticationError('Refresh token is required', ErrorCode.AUTH_TOKEN_INVALID);
+      throw new AuthenticationError(
+        'Your session has expired. Please log in again to continue.',
+        ErrorCode.AUTH_TOKEN_INVALID
+      );
     }
 
     try {
@@ -471,7 +503,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       });
 
       if (!session) {
-        throw new AuthenticationError('Session expired or invalid', ErrorCode.AUTH_TOKEN_EXPIRED);
+        throw new AuthenticationError(
+          'Your session has expired. Please log in again to access your account.',
+          ErrorCode.AUTH_TOKEN_EXPIRED
+        );
       }
 
       // Check for inactivity timeout (Issue #27: Use env variable)
@@ -515,7 +550,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
-        throw new AuthenticationError('Session expired due to inactivity', ErrorCode.AUTH_TOKEN_EXPIRED);
+        throw new AuthenticationError(
+          'Your session expired due to inactivity. For security, please log in again.',
+          ErrorCode.AUTH_TOKEN_EXPIRED
+        );
       }
 
       const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
@@ -565,11 +603,15 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       }, 'Token refreshed');
     } catch (tokenError) {
       logger.error('Token verification error:', tokenError);
-      throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+      // ✅ CRITICAL FIX: Pass error to Express error handler instead of throwing
+      next(new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID));
+      return;
     }
   } catch (error) {
     logger.error('Token refresh error:', error);
-    throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+    // ✅ CRITICAL FIX: Pass error to Express error handler instead of throwing
+    next(new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID));
+    return;
   }
 };
 
@@ -637,18 +679,29 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 
     // ✅ FIX: Wrap in transaction for atomicity
     await withTransaction(async (session) => {
+      // First try to find user by token (valid or expired)
       const user = await User.findOne({
         'security.resetToken': hashedToken,
-        'security.resetTokenExpiry': { $gt: new Date() },
       }).session(session);
 
       if (!user) {
-        throw new ValidationError('Invalid or expired reset token');
+        throw new ValidationError(
+          'This password reset link is invalid or has already been used. Please request a new one.',
+          [{ field: 'token', message: 'Invalid token' }]
+        );
+      }
+
+      // Check if token is expired
+      if (user.security.resetTokenExpiry && user.security.resetTokenExpiry <= new Date()) {
+        throw new ValidationError(
+          'This password reset link has expired. Password reset links are valid for 1 hour. Please request a new one.',
+          [{ field: 'token', message: 'Token expired' }]
+        );
       }
 
       const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
-      typedUser.password = validatedData.password;
+      typedUser.password = validatedData.newPassword;
       typedUser.security.resetToken = undefined;
       typedUser.security.resetTokenExpiry = undefined;
       typedUser.security.tokenVersion = (typedUser.security.tokenVersion || 0) + 1;
@@ -686,11 +739,88 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+
 /**
- * Verify email
+ * Logout user
+ * @route POST /auth/logout
+ */
+export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    // Cookie names with secure prefix in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+
+    const refreshToken = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken;
+
+    // ✅ FIX: Get access token to blacklist it immediately
+    const accessToken = req.cookies?.[accessCookieName] || req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
+
+    // Clear both cookies (regular and secure-prefixed)
+    res.clearCookie(refreshCookieName);
+    res.clearCookie(accessCookieName);
+    res.clearCookie('refreshToken'); // Clear regular cookie for backwards compatibility
+    res.clearCookie('accessToken');
+
+    // Cast to AuthRequest to access user property
+    const authReq = req as Request;
+    if (authReq.user) {
+      // 1. Blacklist Access Token (Immediate invalidation)
+      if (accessToken) {
+        try {
+          // Decode without verifying to get JTI and expiry
+          const decoded = jwt.decode(accessToken) as any;
+          if (decoded && decoded.jti && decoded.exp) {
+            const timeUntilExpiry = decoded.exp - Math.floor(Date.now() / 1000);
+            if (timeUntilExpiry > 0) {
+              const { blacklistToken } = await import('../../../../shared/helpers/jwt.js');
+              await blacklistToken(decoded.jti, timeUntilExpiry);
+            }
+          }
+        } catch (err) {
+          logger.warn('Failed to blacklist access token on logout', err);
+        }
+      }
+
+      // 2. Revoke the current session if refresh token is available
+      if (refreshToken) {
+        // Revoke the refresh token in the blacklist
+        await revokeRefreshToken(refreshToken);
+
+        // Also mark the session as revoked in the database
+        const session = await Session.findOne({
+          refreshToken,
+          userId: authReq.user._id,
+          isRevoked: false
+        });
+
+        if (session) {
+          session.isRevoked = true;
+          await session.save();
+        }
+      }
+
+      await createAuditLog(
+        authReq.user._id,
+        authReq.user.companyId,
+        'logout',
+        'user',
+        authReq.user._id,
+        { message: 'User logged out' },
+        req
+      );
+    }
+
+    sendSuccess(res, null, 'Logged out successfully');
+  } catch (error: any) {
+    logger.error('logout error:', error);
+    next(error);
+  }
+};
+
+/**
+ * Verify email with token
  * @route POST /auth/verify-email
  */
-// Add NextFunction and Promise<void> return type
 export const verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validatedData = verifyEmailSchema.parse(req.body);
@@ -698,67 +828,43 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     // ✅ PHASE 1 FIX: Hash incoming token for comparison
     const hashedToken = AuthTokenService.hashToken(validatedData.token);
 
+    // First, try to find user by token (valid or expired)
     const user = await User.findOne({
-      'security.verificationToken': hashedToken, // ✅ Compare with HASH
-      'security.verificationTokenExpiry': { $gt: new Date() },
+      'security.verificationToken': hashedToken,
     });
 
     if (!user) {
+      // Token doesn't exist in database - either invalid or already used
+      // Check if there's a user with this email who is already verified
       throw new ValidationError('Invalid or expired verification token');
     }
+
     // Assert type after null check
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
-    // Mark user as verified and active
-    // ✅ FEATURE 6: Transaction safe Company Auto-Creation
-    // If user has no company, create one now within a transaction
-    if (!typedUser.companyId) {
-      await withTransaction(async (session) => {
-        // Generate unique company name
-        let companyName = `${typedUser.name}'s Company`;
-        let nameExists = await Company.findOne({ name: companyName }).session(session);
-        let attempt = 1;
-
-        while (nameExists && attempt <= 10) {
-          companyName = `${typedUser.name}'s Company ${attempt}`;
-          nameExists = await Company.findOne({ name: companyName }).session(session);
-          attempt++;
-        }
-
-        const newCompany = new Company({
-          name: companyName,
-          owner: typedUser._id,
-          status: 'profile_complete',
-          // SECURITY: Mark company profile as incomplete until onboarding is done
-          profileStatus: 'incomplete',
-          address: { country: 'India' },
-          settings: { currency: 'INR', timezone: 'Asia/Kolkata' },
-        });
-
-        await newCompany.save({ session });
-
-        // Update user
-        typedUser.companyId = newCompany._id;
-        typedUser.teamRole = 'owner';
-        typedUser.isActive = true;
-        typedUser.isEmailVerified = true;
-        typedUser.security.verificationToken = undefined;
-        typedUser.security.verificationTokenExpiry = undefined;
-
-        await typedUser.save({ session });
-
-        logger.info(`Auto-created company ${newCompany._id} for user ${typedUser._id} during verification`);
-      });
-    } else {
-      // ✅ FIX: Wrap in transaction for atomicity
-      await withTransaction(async (session) => {
-        typedUser.isActive = true;
-        typedUser.isEmailVerified = true;
-        typedUser.security.verificationToken = undefined;
-        typedUser.security.verificationTokenExpiry = undefined;
-        await typedUser.save({ session });
-      });
+    // ✅ IMPROVED: Check if already verified BEFORE checking expiry
+    if (typedUser.isEmailVerified && typedUser.isActive) {
+      sendSuccess(res, {
+        alreadyVerified: true,
+        message: 'Your email is already verified. You can log in directly.'
+      }, 'Email already verified');
+      return;
     }
+
+    // Now check if token is expired
+    if (typedUser.security.verificationTokenExpiry && typedUser.security.verificationTokenExpiry <= new Date()) {
+      throw new ValidationError('Verification token has expired. Please request a new verification email.');
+    }
+
+    // Update user verification status
+    typedUser.isEmailVerified = true;
+    typedUser.isActive = true;
+    typedUser.verificationLevel = Math.max(typedUser.verificationLevel || 0, 1) as 0 | 1 | 2 | 3;
+    typedUser.onboardingStep = 'business_profile';
+    typedUser.security.verificationToken = undefined;
+    typedUser.security.verificationTokenExpiry = undefined;
+    typedUser.security.failedLoginAttempts = 0;
+    typedUser.security.lockUntil = undefined;
 
     // ✅ AUTO-LOGIN: Generate tokens
     const accessToken = generateAccessToken(
@@ -796,26 +902,32 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
+    // ✅ FEATURE: Track onboarding progress when email is verified
+    try {
+      const onboardingService = new (OnboardingProgressService as any)();
+      await onboardingService.updateStep(
+        typedUser.companyId?.toString() || '',
+        'emailVerified',
+        typedUser._id.toString()
+      );
+    } catch (error: any) {
+      logger.warn('Failed to update onboarding progress:', error);
+      // Don't block the response for non-critical tracking
+    }
+
     // Audit log
     await createAuditLog(
       typedUser._id.toString(),
       typedUser.companyId,
-      'verify', // Changed from 'email_verified_auto_login' to valid action type
+      'verify',
       'user',
       typedUser._id.toString(),
-      { message: 'Email verified and auto-logged in' },
+      {
+        message: 'Email verified successfully',
+        success: true,
+      },
       req
     );
-
-    // ✅ ONBOARDING HOOK: Update progress
-    try {
-      if (typedUser.companyId) {
-        await OnboardingProgressService.updateStep(typedUser.companyId.toString(), 'emailVerified', typedUser._id.toString());
-      }
-    } catch (err) {
-      logger.error('Error updating onboarding progress for email verification:', err);
-      // Don't block login on onboarding error
-    }
 
     // ✅ Return user data for frontend to update auth state
     const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';
@@ -838,64 +950,6 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     );
   } catch (error: any) {
     logger.error('verifyEmail error:', error);
-    next(error);
-  }
-};
-
-
-/**
- * Logout user
- * @route POST /auth/logout
- */
-export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    // Cookie names with secure prefix in production
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
-
-    const refreshToken = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken;
-
-    // Clear both cookies (regular and secure-prefixed)
-    res.clearCookie(refreshCookieName);
-    res.clearCookie(accessCookieName);
-    res.clearCookie('refreshToken'); // Clear regular cookie for backwards compatibility
-    res.clearCookie('accessToken');
-
-    // Cast to AuthRequest to access user property
-    const authReq = req as Request;
-    if (authReq.user) {
-      // Revoke the current session if refresh token is available
-      if (refreshToken) {
-        // Revoke the refresh token in the blacklist
-        await revokeRefreshToken(refreshToken);
-
-        // Also mark the session as revoked in the database
-        const session = await Session.findOne({
-          refreshToken,
-          userId: authReq.user._id,
-          isRevoked: false
-        });
-
-        if (session) {
-          session.isRevoked = true;
-          await session.save();
-        }
-      }
-
-      await createAuditLog(
-        authReq.user._id,
-        authReq.user.companyId,
-        'logout',
-        'user',
-        authReq.user._id,
-        { message: 'User logged out' },
-        req
-      );
-    }
-
-    sendSuccess(res, null, 'Logged out successfully');
-  } catch (error: any) {
-    logger.error('logout error:', error);
     next(error);
   }
 };
@@ -999,17 +1053,26 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
     }
 
     // Exclude sensitive fields: password, security tokens, OAuth tokens, email pending changes
+    // ✅ FEATURE: Populate company details for dashboard context
     const user = await User.findById(authReq.user._id)
       .select('-password -security -oauth.google.accessToken -oauth.google.refreshToken -pendingEmailChange -oauthProvider')
+      .populate('companyId', 'name status kycStatus subscriptionPlan')
       .lean();
 
     if (!user) {
       throw new NotFoundError('User', ErrorCode.BIZ_NOT_FOUND);
     }
 
-    // ✅ FEATURE: Add last activity timestamp
+    // ✅ FEATURE: Add last activity timestamp and formatted company info
     const userResponse = {
       ...UserDTO.toResponse(user as IUser),
+      company: user.companyId ? {
+        id: (user.companyId as any)._id.toString(),
+        name: (user.companyId as any).name,
+        status: (user.companyId as any).status,
+        kycStatus: (user.companyId as any).kycStatus,
+        plan: (user.companyId as any).subscriptionPlan || 'free'
+      } : null,
       lastRequested: new Date().toISOString(),
     };
 
@@ -1226,12 +1289,18 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
         { message: 'Failed password change attempt - incorrect current password', success: false },
         req
       );
-      throw new AuthenticationError('Current password is incorrect', ErrorCode.AUTH_INVALID_CREDENTIALS);
+      throw new AuthenticationError(
+        'The current password you entered is incorrect. Please try again or use "Forgot Password" if you don\'t remember it.',
+        ErrorCode.AUTH_INVALID_CREDENTIALS
+      );
     }
 
     // Check new password is different
     if (currentPassword === newPassword) {
-      throw new ValidationError('New password must be different from current password');
+      throw new ValidationError(
+        'Your new password must be different from your current password. Please choose a different password.',
+        [{ field: 'newPassword', message: 'Must be different from current password' }]
+      );
     }
 
     // Update password and increment token version (invalidate all sessions)
@@ -1314,7 +1383,7 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
 
     const schema = z.object({
       newEmail: z.string().email('Invalid email format'),
-      password: z.string().min(1, 'Password is required for security'), // Require password for security
+      password: z.string().optional(), // Optional - will validate based on user type
     });
 
     const validation = schema.safeParse(req.body);
@@ -1335,8 +1404,16 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
 
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
-    // Verify password (if user has one)
+    // Verify password based on user type
     if (typedUser.password) {
+      // Standard user - password is REQUIRED
+      if (!password) {
+        throw new ValidationError(
+          'Please provide your current password to change your email address.',
+          [{ field: 'password', message: 'Password is required for email change' }]
+        );
+      }
+
       const isPasswordValid = await typedUser.comparePassword(password);
       if (!isPasswordValid) {
         await createAuditLog(
@@ -1348,12 +1425,17 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
           { message: 'Failed email change attempt - incorrect password', success: false, newEmail },
           req
         );
-        throw new AuthenticationError('Invalid password', ErrorCode.AUTH_INVALID_CREDENTIALS);
+        throw new AuthenticationError(
+          'Incorrect password. Please verify your current password to change your email address.',
+          ErrorCode.AUTH_INVALID_CREDENTIALS
+        );
       }
     } else {
-      // ✅ FIX: OAuth users must set password before changing email
-      // This prevents account takeover if OAuth provider email changes
-      throw new ValidationError('No password set. Please use set-password endpoint first.');
+      // OAuth user - must set password first
+      throw new ValidationError(
+        'You signed up using a social account. Please set a password first using the "Set Password" option before changing your email.',
+        [{ field: 'password', message: 'No password set for OAuth account' }]
+      );
     }
 
     // Check if new email is same as current
@@ -1361,7 +1443,10 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
     const normalizedCurrentEmail = typedUser.email.toLowerCase();
 
     if (normalizedCurrentEmail === normalizedNewEmail) {
-      throw new ValidationError('New email is the same as your current email');
+      throw new ValidationError(
+        'This is already your current email address. Please enter a different email address.',
+        [{ field: 'newEmail', message: 'Same as current email' }]
+      );
     }
 
     // Check if new email already exists
@@ -1399,7 +1484,11 @@ export const changeEmail = async (req: Request, res: Response, next: NextFunctio
       // Clear pending email change if email fails
       typedUser.pendingEmailChange = undefined;
       await typedUser.save();
-      throw new Error('Failed to send verification email. Please try again.');
+      throw new ExternalServiceError(
+        'Email Service',
+        'We couldn\'t send the verification email to your new address. Your email change is pending - please try again or contact support.',
+        ErrorCode.EXT_SERVICE_ERROR
+      );
     }
 
     await createAuditLog(
@@ -1570,14 +1659,28 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // Find magic link
+    // First find by token to give specific error about expiry vs invalidity
     const magicLink = await MagicLink.findOne({
       token: hashedToken,
-      expiresAt: { $gt: new Date() },
       usedAt: null, // Not yet used
     });
 
     if (!magicLink) {
-      throw new ValidationError('Invalid or expired magic link');
+      throw new ValidationError(
+        'This login link is invalid or has already been used. Please request a new one.',
+        [{ field: 'token', message: 'Invalid link' }]
+      );
+    }
+
+    // Check if link is expired
+    if (magicLink.expiresAt <= new Date()) {
+      // ✅ CLEANUP: Delete expired magic link
+      await MagicLink.deleteOne({ _id: magicLink._id });
+
+      throw new ValidationError(
+        'This login link has expired. Magic links are valid for 15 minutes. Please request a new one.',
+        [{ field: 'token', message: 'Link expired' }]
+      );
     }
 
     // ✅ CLEANUP: Delete magic link after successful verification
@@ -1595,7 +1698,10 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
     if (!typedUser.isActive) {
-      throw new AuthenticationError('Account is not active', ErrorCode.AUTH_ACCOUNT_DISABLED);
+      throw new AuthenticationError(
+        'Your account is not active. Please verify your email first or contact support.',
+        ErrorCode.AUTH_ACCOUNT_DISABLED
+      );
     }
 
     // Generate tokens (30-day session for magic link convenience)
@@ -1654,21 +1760,20 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     };
     await typedUser.save();
 
-    // Return user data
+    // Return user data matching login response structure
     const redirectUrl = typedUser.role === 'admin' ? '/admin' : '/seller/dashboard';
+
+    // Determine next step based on onboarding status
+    let nextStep = 'completed';
+    if (!typedUser.isEmailVerified) nextStep = 'email_verification';
+    else if (typedUser.onboardingStep) nextStep = typedUser.onboardingStep;
 
     sendSuccess(
       res,
       {
-        user: {
-          id: typedUser._id.toString(),
-          name: typedUser.name,
-          email: typedUser.email,
-          role: typedUser.role,
-          companyId: typedUser.companyId?.toString(),
-          teamRole: typedUser.teamRole,
-        },
+        user: UserDTO.toResponse(typedUser),
         redirectUrl,
+        nextStep,
         autoLogin: true,
       },
       'Magic link verified. Logging you in...'
@@ -1701,7 +1806,7 @@ export const getCSRFToken = async (
     // Get session ID from authenticated user or generate one
     // For authenticated users: use user ID
     // For unauthenticated users: use a temporary session identifier
-    let sessionId = (req as any).user?.id;
+    let sessionId = (req as any).user?._id;
 
     if (!sessionId) {
       // For unauthenticated users, create a temporary session ID

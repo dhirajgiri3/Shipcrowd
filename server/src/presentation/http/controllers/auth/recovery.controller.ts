@@ -307,7 +307,7 @@ export const requestAccountRecovery = async (
     // Audit log
     await createAuditLog(
       (user._id as mongoose.Types.ObjectId).toString(),
-      user.companyId ? (user.companyId as mongoose.Types.ObjectId).toString() : '',
+      user.companyId?.toString(),
       'security',
       'user',
       (user._id as mongoose.Types.ObjectId).toString(),
@@ -392,7 +392,7 @@ export const verifyRecoveryToken = async (
       // Audit log
       await createAuditLog(
         (user._id as mongoose.Types.ObjectId).toString(),
-        user.companyId ? (user.companyId as mongoose.Types.ObjectId).toString() : '',
+        user.companyId?.toString(),
         'account_unlock',
         'user',
         (user._id as mongoose.Types.ObjectId).toString(),

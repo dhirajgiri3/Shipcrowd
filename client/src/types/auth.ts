@@ -146,7 +146,7 @@ export interface ResetPasswordResponse {
 
 export interface ResetPasswordConfirmRequest {
   token: string;
-  password: string;
+  newPassword: string;
 }
 
 export interface ResetPasswordConfirmResponse {
@@ -227,7 +227,7 @@ export interface AuthContextType {
   resetPassword: (email: string) => Promise<{ success: boolean; error?: NormalizedError }>;
   resetPasswordConfirm: (
     token: string,
-    password: string
+    newPassword: string
   ) => Promise<{ success: boolean; error?: NormalizedError }>;
   changePassword: (
     currentPassword: string,
@@ -316,7 +316,7 @@ export interface SignupFormData {
 
 export interface ResetPasswordFormData {
   token: string;
-  password: string;
+  newPassword: string;
   confirmPassword: string;
 }
 

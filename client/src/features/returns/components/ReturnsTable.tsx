@@ -10,10 +10,11 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useReturns } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
+import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import type { ReturnStatus, ReturnFilters } from '@/src/types/api/returns.types';
 
 const STATUS_CONFIG: Record<ReturnStatus, { label: string; color: string }> = {
@@ -43,10 +44,21 @@ const STATUS_TABS = [
 export function ReturnsTable() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<ReturnStatus | 'all'>('all');
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [filters, setFilters] = useState<ReturnFilters>({
         page: 1,
         limit: 20,
     });
+
+    // Auto-update filters when debounced search changes
+    useEffect(() => {
+        setFilters(prev => ({
+            ...prev,
+            search: debouncedSearch || undefined,
+            page: 1,
+        }));
+    }, [debouncedSearch]);
 
     const { data, isLoading } = useReturns({
         ...filters,
@@ -67,8 +79,8 @@ export function ReturnsTable() {
                             key={tab.status}
                             onClick={() => setActiveTab(tab.status)}
                             className={`py-4 px-3 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.status
-                                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
                                 }`}
                         >
                             {tab.label}
@@ -81,9 +93,11 @@ export function ReturnsTable() {
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <input
                     type="text"
+                    value={search}
                     placeholder="Search by return ID or order number..."
+                    aria-label="Search returns"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                    onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
+                    onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
 

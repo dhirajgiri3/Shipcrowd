@@ -24,6 +24,11 @@ export class UserDTO {
             googleId: user.googleId,
             oauthProvider: user.oauthProvider,
             isEmailVerified: user.isEmailVerified || false, // Default to false if undefined
+
+            // ✅ Workflow-critical fields
+            onboardingStep: user.onboardingStep,
+            verificationLevel: user.verificationLevel || 0,
+
             avatar: user.profile?.avatar, // Use profile.avatar only
             profile: {
                 phone: user.profile?.phone,
@@ -83,6 +88,11 @@ export interface UserResponse {
     googleId?: string;
     oauthProvider?: 'email' | 'google';
     isEmailVerified: boolean;
+
+    // ✅ Workflow-critical fields
+    onboardingStep?: 'email_verification' | 'business_profile' | 'kyc_submission' | 'completed';
+    verificationLevel: 0 | 1 | 2 | 3;
+
     avatar?: string;
     profile?: {
         phone?: string;

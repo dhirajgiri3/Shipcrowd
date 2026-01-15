@@ -111,7 +111,7 @@ export const terminateAllSessions = async (req: Request, res: Response, next: Ne
 
     // ✅ FIX: Use bcrypt.compare via helper to find current session
     const sessions = await getUserSessions(req.user._id);
-    const currentSessionId = req.body.keepCurrent === true
+    const currentSessionId = req.body?.keepCurrent === true
       ? await findCurrentSessionId(sessions, req.cookies?.refreshToken)
       : undefined;
 

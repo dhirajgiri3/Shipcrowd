@@ -139,13 +139,13 @@ class AuthApiService {
    */
   async resetPasswordConfirm(
     token: string,
-    password: string
+    newPassword: string
   ): Promise<ResetPasswordConfirmResponse> {
     const response = await apiClient.post<ResetPasswordConfirmResponse>(
       '/auth/reset-password/confirm',
       {
         token,
-        password,
+        newPassword,
       }
     );
 

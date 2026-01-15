@@ -60,6 +60,28 @@ client/
 │       └── utils.ts         # Utility functions
 ```
 
+## ⚠️ CRITICAL: Use Existing Utilities & Components
+
+**DO NOT Re-implement Standard Functionality.** Always use these established utilities:
+
+### 1. Error Handling & Notifications
+Imports: `import { handleApiError, showSuccessToast } from '@/src/lib/error-handler';`
+- **API Errors**: `handleApiError(error, 'Fallback message')` - Handles Axios errors, validation messages, and unknown errors automatically.
+- **Success**: `showSuccessToast('Operation successful')`
+- **Loading**: `showLoadingToast('Processing...')`
+- **Status Colors**: Use `getStatusColor(status)` from utils or Badge variants.
+
+### 2. Common Utilities (`/src/lib/utils.ts`)
+- **Formatting**: `formatCurrency(amount)`, `formatDate(date)`, `formatFileSize(bytes)`
+- **Design Tokens**: Use CSS variables (e.g., `var(--primary-blue)`) or Tailwind classes.
+- **Class Merging**: Use `cn()` for conditional classes.
+
+### 3. UI Components (`/src/components/ui/*`)
+- Check `/src/components/ui/` before building basic elements (Buttons, Inputs, Cards).
+- Use `lucide-react` for icons.
+
+---
+
 ## Implementation Checklist
 
 ### Phase 1: Planning & API Analysis (15-20 minutes)

@@ -52,3 +52,6 @@ export {
     useCancelRemittance,
     useRequestPayout,
 } from './useCOD';
+
+export * from './useSettings';
+export * from './useFraud';

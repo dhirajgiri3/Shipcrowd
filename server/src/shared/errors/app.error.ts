@@ -229,6 +229,14 @@ export const normalizeError = (error: any): AppError => {
         return new AuthenticationError('Token expired', ErrorCode.AUTH_TOKEN_EXPIRED);
     }
 
+    // ✅ FIX: Handle JSON parsing errors (SyntaxError from express.json())
+    if (error instanceof SyntaxError && 'body' in error && error.message.includes('JSON')) {
+        return new ValidationError(
+            'Invalid JSON in request body. Please ensure your request body is valid JSON.',
+            process.env.NODE_ENV !== 'production' ? [{ field: 'body', message: error.message }] : undefined
+        );
+    }
+
     // Default to internal error
     return new AppError(
         error.message || 'An unexpected error occurred',

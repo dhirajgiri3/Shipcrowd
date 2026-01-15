@@ -87,6 +87,15 @@ export const validateCSRFToken = async (
  * Check if origin/referer is allowed
  */
 const isValidOrigin = (origin: string, referer: string): boolean => {
+    // ✅ DEVELOPMENT: Allow requests without origin/referer for API testing (Postman, etc.)
+    // This is safe because CSRF token validation still applies
+    if (process.env.NODE_ENV === 'development') {
+        // If both origin and referer are missing/empty, allow it (Postman scenario)
+        if (!origin && !referer) {
+            return true;
+        }
+    }
+
     const allowedOrigins = [
         process.env.CLIENT_URL || 'http://localhost:3000',
         process.env.CLIENT_URL_STAGING || '',
@@ -128,7 +137,17 @@ export const csrfProtection = async (
 
     try {
         const csrfToken = req.headers['x-csrf-token'] as string;
-        const sessionId = (req as any).session?.id || (req as any).user?.id;
+        const sessionId = (req as any).session?.id || (req as any).user?._id;
+
+        // 🔍 DEBUG: Let's see what's actually in req.user
+        logger.info('CSRF Debug:', {
+            hasSession: !!(req as any).session,
+            sessionId: (req as any).session?.id,
+            hasUser: !!(req as any).user,
+            userId: (req as any).user?._id,
+            userFull: JSON.stringify((req as any).user),
+            finalSessionId: sessionId,
+        });
 
         // Session is required for CSRF validation
         if (!sessionId) {

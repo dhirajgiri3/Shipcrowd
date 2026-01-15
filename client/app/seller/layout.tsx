@@ -1,4 +1,5 @@
 import { SellerLayoutClient } from './components/SellerLayoutClient';
+import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 
 /**
  * Seller Dashboard Layout (Server Component)
@@ -17,5 +18,9 @@ export default function SellerLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return <SellerLayoutClient>{children}</SellerLayoutClient>;
+    return (
+        <ErrorBoundary>
+            <SellerLayoutClient>{children}</SellerLayoutClient>
+        </ErrorBoundary>
+    );
 }

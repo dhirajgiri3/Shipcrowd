@@ -1,6 +1,7 @@
 import express from 'express';
 import profileController from '../../../controllers/identity/profile.controller';
-import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
+import { authenticate } from '../../../middleware/auth/auth';
+import { csrfProtection } from '../../../middleware/auth/csrf';
 
 const router = express.Router();
 

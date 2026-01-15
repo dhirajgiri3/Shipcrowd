@@ -390,8 +390,12 @@
                                 "exec": [
                                     "pm.test('Token refreshed', () => {",
                                     "    pm.response.to.have.status(200);",
-                                    "    pm.environment.set('ACCESS_TOKEN', pm.response.json().data.accessToken);",
+                                    "    const data = pm.response.json().data;",
+                                    "    // Update both access and refresh tokens (token rotation)",
+                                    "    pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+                                    "    pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
                                     "    pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
+                                    "    console.log('✅ Tokens refreshed (rotation applied)');",
                                     "});"
                                 ]
                             }
