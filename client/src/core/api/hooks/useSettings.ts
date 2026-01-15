@@ -234,7 +234,7 @@ export function useChangePlan() {
         onError: (error) => handleApiError(error, 'Failed to change plan'),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.settings.subscription() });
-      show SuccessToast('Plan updated successfully');
+            showSuccessToast('Plan updated successfully');
         },
     });
 }

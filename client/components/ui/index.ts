@@ -26,10 +26,19 @@ export type { InputProps } from './core/Input';
 export { Textarea } from './core/Textarea';
 export type { TextareaProps } from './core/Textarea';
 
+export { Label } from './core/Label';
+export type { LabelProps } from './core/Label';
+
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './core/Tabs';
+
+export { Avatar } from './core/Avatar';
+export type { AvatarProps } from './core/Avatar';
+
 // ============================================
 // FEEDBACK COMPONENTS (User notifications)
 // ============================================
 export { Alert } from './feedback/Alert';
+export { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './feedback/Dialog';
 export { Modal } from './feedback/Modal';
 export { useToast } from './feedback/Toast';
 export { Toaster } from './feedback/Toaster';

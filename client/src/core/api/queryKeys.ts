@@ -64,6 +64,15 @@ export const queryKeys = {
   },
 
   // ========================================================================
+  // ZONES DOMAIN
+  // ========================================================================
+  zones: {
+    all: ['zones'] as const,
+    list: (filters?: any) => [...queryKeys.zones.all, 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.zones.all, 'detail', id] as const,
+  },
+
+  // ========================================================================
   // ORDERS DOMAIN
   // ========================================================================
   orders: {

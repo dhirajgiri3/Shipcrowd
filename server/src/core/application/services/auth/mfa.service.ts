@@ -40,6 +40,7 @@ class MFAService {
             });
 
             // Generate QR code
+            logger.info(`Generated otpauth URL: ${secret.otpauth_url}`); // DEBUG: Check issuer
             const qrCodeDataURL = await QRCode.toDataURL(secret.otpauth_url!);
 
             // Save or update MFA settings (not enabled yet)

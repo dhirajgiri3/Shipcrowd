@@ -1,4 +1,5 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
+import crypto from 'crypto';
 
 /**
  * Recovery Token Model
@@ -72,4 +73,37 @@ RecoveryTokenSchema.index(
     { name: 'recovery_verification_idx' }
 );
 
-export default mongoose.model<IRecoveryToken>('RecoveryToken', RecoveryTokenSchema);
+// ============================================================================
+// TOKEN HASHING
+// ============================================================================
+// Security improvement: Hash tokens with SHA-256 before storing in database
+// This prevents token leakage if database is compromised
+// ============================================================================
+
+// Define model interface with static methods
+interface IRecoveryTokenModel extends Model<IRecoveryToken> {
+    hashToken(token: string): string;
+}
+
+/**
+ * Static method to hash tokens with SHA-256
+ * @param token - Plain text token to hash
+ * @returns 64-character hex string (SHA-256 hash)
+ */
+RecoveryTokenSchema.statics.hashToken = function (token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+/**
+ * Pre-save hook to automatically hash token
+ * Only hashes if token is new/modified and not already hashed (SHA-256 = 64 hex chars)
+ */
+RecoveryTokenSchema.pre('save', function (next) {
+    // Only hash if token is new/modified and not already a 64-char hex string
+    if (this.isModified('token') && this.token.length !== 64) {
+        this.token = crypto.createHash('sha256').update(this.token).digest('hex');
+    }
+    next();
+});
+
+export default mongoose.model<IRecoveryToken, IRecoveryTokenModel>('RecoveryToken', RecoveryTokenSchema);

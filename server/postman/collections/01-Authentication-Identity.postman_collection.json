@@ -1,8 +1,8 @@
 {
     "info": {
-        "_postman_id": "shipcrowd-auth-v1",
-        "name": "01 - Authentication & Identity",
-        "description": "## Authentication & Identity Collection\n\n**Domain:** User authentication, session management, profile operations, OAuth\n**Total Endpoints:** 34\n**Version:** 1.0.0\n\n### Complete Coverage\n✅ User Registration & Email Verification (4 endpoints)\n✅ Login Methods: Email/Password, Magic Link, OAuth (5 endpoints)\n✅ Token Management: Refresh, Revoke (2 endpoints)\n✅ Password Operations: Reset, Change, Set (3 endpoints)\n✅ Session Management: View, Revoke (3 endpoints)\n✅ Profile Management: 8 operations (8 endpoints)\n✅ Account Recovery (2 endpoints)\n✅ Email Management (2 endpoints)\n✅ Google OAuth Integration (2 endpoints)\n\n### Quick Start\n1. Health Check → Get CSRF Token\n2. Register → Verify Email → Login\n3. All endpoints auto-use stored tokens\n\n### Auto Features\n🔄 Token auto-refresh (no manual work!)\n✅ Global test assertions\n📊 Environment variable management\n📝 Comprehensive documentation",
+        "_postman_id": "shipcrowd-auth-v2",
+        "name": "01 - Authentication & Identity (UPDATED)",
+        "description": "## Authentication & Identity Collection - COMPLETE & UP-TO-DATE\n\n**Domain:** User authentication, session management, profile operations, MFA, OAuth\n**Total Endpoints:** 42\n**Version:** 2.0.0\n**Last Updated:** 2026-01-15\n\n### Complete Coverage\n✅ User Registration & Email Verification (4 endpoints)\n✅ Login Methods: Email/Password, Magic Link, OAuth (5 endpoints)\n✅ Token Management: Refresh, Revoke (2 endpoints)\n✅ Password Operations: Reset, Change, Set (4 endpoints)\n✅ Session Management: View, Revoke (3 endpoints)\n✅ Profile Management: 8 operations (8 endpoints)\n✅ Account Recovery (2 endpoints)\n✅ Email Management (2 endpoints)\n✅ Google OAuth Integration (2 endpoints)\n✅ MFA/2FA Complete Flow (7 endpoints)\n✅ CSRF Token Management (1 endpoint)\n\n### Quick Start\n1. Health Check → Get CSRF Token\n2. Register → Verify Email → Login\n3. All endpoints auto-use stored tokens\n\n### Auto Features\n🔄 Token auto-refresh (no manual work!)\n✅ Global test assertions\n📊 Environment variable management\n📝 Comprehensive documentation\n🔐 Automatic CSRF token handling\n\n### Important Notes\n- All state-changing operations require CSRF token (auto-handled)\n- Rate limiting enforced on sensitive endpoints\n- MFA flow: Login → Get temp token → Verify MFA → Get access token\n- Sessions support device tracking and concurrent session limits",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "auth": {
@@ -39,7 +39,9 @@
                     "            }",
                     "        }, function (err, res) {",
                     "            if (!err && res.code === 200) {",
-                    "                pm.environment.set('ACCESS_TOKEN', res.json().data.accessToken);",
+                    "                const data = res.json().data;",
+                    "                pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+                    "                pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
                     "                pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
                     "                console.log('✅ Token refreshed');",
                     "            }",
@@ -102,7 +104,10 @@
                                 "exec": [
                                     "pm.test('Server healthy', () => {",
                                     "    pm.response.to.have.status(200);",
-                                    "    console.log('✅ Server Status:', pm.response.json().data.status);",
+                                    "    const json = pm.response.json();",
+                                    "    pm.expect(json.status).to.equal('ok');",
+                                    "    console.log('✅ Server Status:', json.status);",
+                                    "    console.log('⏱️  Uptime:', Math.floor(json.uptime), 'seconds');",
                                     "});"
                                 ]
                             }
@@ -127,7 +132,7 @@
                                 "csrf-token"
                             ]
                         },
-                        "description": "Get CSRF token for state-changing operations"
+                        "description": "Get CSRF token for state-changing operations (Redis-based)"
                     },
                     "event": [
                         {
@@ -139,7 +144,7 @@
                                     "    const token = pm.response.json().data.csrfToken;",
                                     "    pm.expect(token).to.have.lengthOf(64);",
                                     "    pm.environment.set('CSRF_TOKEN', token);",
-                                    "    console.log('🔐 CSRF Token stored');",
+                                    "    console.log('🔐 CSRF Token stored (64 chars)');",
                                     "});"
                                 ]
                             }
@@ -166,7 +171,8 @@
                             },
                             {
                                 "key": "X-CSRF-Token",
-                                "value": "{{CSRF_TOKEN}}"
+                                "value": "{{CSRF_TOKEN}}",
+                                "description": "Required for registration"
                             }
                         ],
                         "body": {
@@ -182,7 +188,8 @@
                                 "auth",
                                 "register"
                             ]
-                        }
+                        },
+                        "description": "Register a new user. Verification email is sent automatically."
                     },
                     "event": [
                         {
@@ -191,10 +198,13 @@
                                 "exec": [
                                     "pm.test('User registered', () => {",
                                     "    pm.response.to.have.status(201);",
-                                    "    const user = pm.response.json().data.user;",
-                                    "    pm.environment.set('USER_ID', user.id);",
-                                    "    pm.environment.set('COMPANY_ID', user.companyId);",
-                                    "    console.log('👤 User ID:', user.id);",
+                                    "    const data = pm.response.json().data;",
+                                    "    pm.environment.set('USER_ID', data.userId);",
+                                    "    pm.environment.set('COMPANY_ID', data.companyId);",
+                                    "    pm.environment.set('REGISTERED_EMAIL', data.email);",
+                                    "    console.log('👤 User ID:', data.userId);",
+                                    "    console.log('🏢 Company ID:', data.companyId);",
+                                    "    console.log('📧 Check email for verification token');",
                                     "});"
                                 ]
                             }
@@ -216,7 +226,12 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"token\": \"<VERIFICATION_TOKEN_FROM_EMAIL>\"\n}"
+                            "raw": "{\n  \"token\": \"<RAW_VERIFICATION_TOKEN_FROM_EMAIL>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/auth/verify-email",
@@ -227,8 +242,23 @@
                                 "auth",
                                 "verify-email"
                             ]
+                        },
+                        "description": "Verify email with token received via email. Token is RAW (64 hex chars), not hashed."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Email verified', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Email verified successfully');",
+                                    "    console.log('🎉 You can now login');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Resend Verification Email",
@@ -260,8 +290,22 @@
                                 "auth",
                                 "resend-verification"
                             ]
+                        },
+                        "description": "Resend verification email if token expired or lost"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Verification email sent', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('📧 New verification email sent');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Check Password Strength",
@@ -274,15 +318,11 @@
                             {
                                 "key": "Content-Type",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-CSRF-Token",
-                                "value": "{{CSRF_TOKEN}}"
                             }
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"password\": \"TestPassword123!\"\n}"
+                            "raw": "{\n  \"password\": \"TestPassword123!\",\n  \"email\": \"{{TEST_EMAIL}}\",\n  \"name\": \"Test User\"\n}"
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/auth/check-password-strength",
@@ -293,8 +333,27 @@
                                 "auth",
                                 "check-password-strength"
                             ]
+                        },
+                        "description": "Check password strength before registration/change"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Password strength checked', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    console.log('💪 Strength Score:', data.score, '/4');",
+                                    "    console.log('✅ Is Strong:', data.isStrong);",
+                                    "    if (data.suggestions) {",
+                                    "        console.log('💡 Suggestions:', data.suggestions);",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 }
             ]
         },
@@ -332,7 +391,8 @@
                                 "auth",
                                 "login"
                             ]
-                        }
+                        },
+                        "description": "Login with email and password. If MFA enabled, returns temp token instead."
                     },
                     "event": [
                         {
@@ -342,13 +402,22 @@
                                     "pm.test('Login successful', () => {",
                                     "    pm.response.to.have.status(200);",
                                     "    const data = pm.response.json().data;",
-                                    "    pm.environment.set('ACCESS_TOKEN', data.accessToken);",
-                                    "    pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
-                                    "    pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
-                                    "    pm.environment.set('USER_ID', data.user.id);",
-                                    "    pm.environment.set('COMPANY_ID', data.user.companyId);",
-                                    "    pm.environment.set('USER_ROLE', data.user.role);",
-                                    "    console.log('✅ Logged in as:', data.user.email);",
+                                    "    ",
+                                    "    if (data.mfaRequired) {",
+                                    "        // MFA flow",
+                                    "        pm.environment.set('MFA_TEMP_TOKEN', data.tempToken);",
+                                    "        console.log('🔐 MFA Required - use temp token to verify');",
+                                    "    } else {",
+                                    "        // Normal flow",
+                                    "        pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+                                    "        pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
+                                    "        pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
+                                    "        pm.environment.set('USER_ID', data.user.id);",
+                                    "        pm.environment.set('COMPANY_ID', data.user.companyId);",
+                                    "        pm.environment.set('USER_ROLE', data.user.role);",
+                                    "        console.log('✅ Logged in as:', data.user.email);",
+                                    "        console.log('👤 Role:', data.user.role);",
+                                    "    }",
                                     "});"
                                 ]
                             }
@@ -381,7 +450,8 @@
                                 "auth",
                                 "refresh"
                             ]
-                        }
+                        },
+                        "description": "Refresh access token using refresh token. Both tokens are rotated."
                     },
                     "event": [
                         {
@@ -391,7 +461,7 @@
                                     "pm.test('Token refreshed', () => {",
                                     "    pm.response.to.have.status(200);",
                                     "    const data = pm.response.json().data;",
-                                    "    // Update both access and refresh tokens (token rotation)",
+                                    "    // Update both tokens (rotation)",
                                     "    pm.environment.set('ACCESS_TOKEN', data.accessToken);",
                                     "    pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
                                     "    pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
@@ -421,8 +491,67 @@
                                 "auth",
                                 "me"
                             ]
+                        },
+                        "description": "Get current authenticated user details"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('User details retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const user = pm.response.json().data;",
+                                    "    console.log('👤 Name:', user.name);",
+                                    "    console.log('📧 Email:', user.email);",
+                                    "    console.log('🏢 Company:', user.companyId);",
+                                    "    console.log('✅ Email Verified:', user.isEmailVerified);",
+                                    "    console.log('🔐 MFA Enabled:', user.security?.isMFAEnabled || false);",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/logout",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Logout and revoke current session"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Logged out', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    // Clear tokens",
+                                    "    pm.environment.unset('ACCESS_TOKEN');",
+                                    "    pm.environment.unset('REFRESH_TOKEN');",
+                                    "    pm.environment.unset('ACCESS_TOKEN_EXPIRY');",
+                                    "    console.log('✅ Logged out successfully');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -460,8 +589,22 @@
                                 "auth",
                                 "reset-password"
                             ]
+                        },
+                        "description": "Request password reset email"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Reset email sent', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('📧 Password reset email sent (if email exists)');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Reset Password with Token",
@@ -482,7 +625,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"token\": \"<RESET_TOKEN_FROM_EMAIL>\",\n  \"newPassword\": \"NewSecurePass123!@#\"\n}"
+                            "raw": "{\n  \"token\": \"<RESET_TOKEN_FROM_EMAIL>\",\n  \"password\": \"NewSecurePass123!@#\"\n}"
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/auth/reset-password/confirm",
@@ -494,11 +637,26 @@
                                 "reset-password",
                                 "confirm"
                             ]
+                        },
+                        "description": "Complete password reset with token from email"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Password reset', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Password reset successfully');",
+                                    "    console.log('🔑 Use new password to login');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
-                    "name": "Change Password",
+                    "name": "Change Password (Authenticated)",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -528,13 +686,77 @@
                                 "auth",
                                 "change-password"
                             ]
+                        },
+                        "description": "Change password for logged-in user (requires current password)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Password changed', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Password changed successfully');",
+                                    "    console.log('🔄 All other sessions revoked');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
+                },
+                {
+                    "name": "Set Password (OAuth Users)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-CSRF-Token",
+                                "value": "{{CSRF_TOKEN}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"password\": \"NewSecurePass123!@#\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/set-password",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "set-password"
+                            ]
+                        },
+                        "description": "Set password for OAuth users to enable email/password login"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Password set', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Password set successfully');",
+                                    "    console.log('🔑 Can now login with email/password');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         },
         {
-            "name": "5. Magic Link",
+            "name": "5. Magic Link (Passwordless)",
             "description": "Passwordless authentication",
             "item": [
                 {
@@ -567,8 +789,23 @@
                                 "auth",
                                 "magic-link"
                             ]
+                        },
+                        "description": "Request magic link for passwordless login"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Magic link sent', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('📧 Magic link sent to email');",
+                                    "    console.log('⏰ Link expires in 15 minutes');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Verify Magic Link",
@@ -596,8 +833,26 @@
                                 "auth",
                                 "verify-magic-link"
                             ]
+                        },
+                        "description": "Verify magic link and login"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Magic link verified', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+                                    "    pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
+                                    "    pm.environment.set('ACCESS_TOKEN_EXPIRY', Date.now() + 15*60*1000);",
+                                    "    console.log('✅ Logged in via magic link');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 }
             ]
         },
@@ -636,8 +891,22 @@
                                 "recovery",
                                 "request-unlock"
                             ]
+                        },
+                        "description": "Request account unlock email for locked accounts (5 failed login attempts)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Unlock email sent', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('📧 Account recovery email sent');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Verify Recovery Token",
@@ -670,93 +939,28 @@
                                 "recovery",
                                 "verify-unlock"
                             ]
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "7. User Operations",
-            "description": "User info and logout",
-            "item": [
-                {
-                    "name": "Get Current User",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{ACCESS_TOKEN}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{BASE_URL}}/auth/me",
-                            "host": [
-                                "{{BASE_URL}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "me"
-                            ]
-                        }
-                    }
-                },
-                {
-                    "name": "Set Password (OAuth Users)",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{ACCESS_TOKEN}}"
-                            },
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"password\": \"NewSecurePass123!@#\"\n}"
                         },
-                        "url": {
-                            "raw": "{{BASE_URL}}/auth/set-password",
-                            "host": [
-                                "{{BASE_URL}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "set-password"
-                            ]
-                        }
-                    }
-                },
-                {
-                    "name": "Logout",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{ACCESS_TOKEN}}"
+                        "description": "Verify recovery token and unlock account"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Account unlocked', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Account unlocked successfully');",
+                                    "    console.log('🔓 Failed login attempts reset');",
+                                    "});"
+                                ]
                             }
-                        ],
-                        "url": {
-                            "raw": "{{BASE_URL}}/auth/logout",
-                            "host": [
-                                "{{BASE_URL}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "logout"
-                            ]
                         }
-                    }
+                    ]
                 }
             ]
         },
         {
-            "name": "8. Email Management",
+            "name": "7. Email Management",
             "description": "Email change operations",
             "item": [
                 {
@@ -790,8 +994,22 @@
                                 "auth",
                                 "change-email"
                             ]
+                        },
+                        "description": "Request email change (sends verification to new email)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Email change initiated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('📧 Verification sent to new email');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Verify Email Change",
@@ -819,13 +1037,27 @@
                                 "auth",
                                 "verify-email-change"
                             ]
+                        },
+                        "description": "Verify and complete email change"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Email changed', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Email changed successfully');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 }
             ]
         },
         {
-            "name": "9. Session Management",
+            "name": "8. Session Management",
             "description": "Manage user sessions",
             "item": [
                 {
@@ -846,8 +1078,26 @@
                             "path": [
                                 "sessions"
                             ]
+                        },
+                        "description": "Get all active sessions for current user with device info"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Sessions retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const sessions = pm.response.json().data.sessions;",
+                                    "    console.log('📱 Active Sessions:', sessions.length);",
+                                    "    sessions.forEach((s, i) => {",
+                                    "        console.log(`Session ${i+1}:`, s.deviceInfo?.browser, s.deviceInfo?.os);",
+                                    "    });",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Revoke Specific Session",
@@ -874,8 +1124,22 @@
                                     "value": "SESSION_ID_HERE"
                                 }
                             ]
+                        },
+                        "description": "Revoke a specific session by ID"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Session revoked', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Session revoked successfully');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Revoke All Sessions",
@@ -895,13 +1159,28 @@
                             "path": [
                                 "sessions"
                             ]
+                        },
+                        "description": "Revoke all sessions except current one"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('All sessions revoked', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ All other sessions revoked');",
+                                    "    console.log('🔐 Current session still active');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 }
             ]
         },
         {
-            "name": "10. Profile Management",
+            "name": "9. Profile Management",
             "description": "User profile operations",
             "item": [
                 {
@@ -923,8 +1202,25 @@
                                 "profile",
                                 "completion"
                             ]
+                        },
+                        "description": "Get profile completion status and percentage"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Profile completion retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    console.log('📊 Completion:', data.percentage + '%');",
+                                    "    console.log('✅ Complete:', data.complete);",
+                                    "    console.log('📝 Missing:', data.missing || 'None');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Update Basic Profile",
@@ -957,8 +1253,22 @@
                                 "profile",
                                 "basic"
                             ]
+                        },
+                        "description": "Update basic profile information"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Profile updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Basic profile updated');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Update Address",
@@ -991,8 +1301,22 @@
                                 "profile",
                                 "address"
                             ]
+                        },
+                        "description": "Update address information"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Address updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Address updated');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Update Personal Info",
@@ -1025,8 +1349,22 @@
                                 "profile",
                                 "personal"
                             ]
+                        },
+                        "description": "Update personal information"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Personal info updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Personal info updated');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Update Social Links",
@@ -1059,8 +1397,22 @@
                                 "profile",
                                 "social"
                             ]
+                        },
+                        "description": "Update social links"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Social links updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Social links updated');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Update Preferences",
@@ -1093,8 +1445,22 @@
                                 "profile",
                                 "preferences"
                             ]
+                        },
+                        "description": "Update user preferences"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Preferences updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Preferences updated');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Get Profile Prompts",
@@ -1115,8 +1481,23 @@
                                 "profile",
                                 "prompts"
                             ]
+                        },
+                        "description": "Get profile completion prompts"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Prompts retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const prompts = pm.response.json().data.prompts;",
+                                    "    console.log('📋 Active Prompts:', prompts.length);",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
                 },
                 {
                     "name": "Dismiss Profile Prompt",
@@ -1149,8 +1530,341 @@
                                 "profile",
                                 "dismiss-prompt"
                             ]
+                        },
+                        "description": "Dismiss profile completion prompt"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Prompt dismissed', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ Prompt dismissed');",
+                                    "});"
+                                ]
+                            }
                         }
-                    }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "10. MFA / 2FA",
+            "description": "Multi-factor authentication",
+            "item": [
+                {
+                    "name": "Setup TOTP (Get QR Code)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/setup-totp",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "setup-totp"
+                            ]
+                        },
+                        "description": "Generate TOTP secret and QR code for authenticator app"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('TOTP setup initiated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    pm.environment.set('MFA_SECRET', data.secret);",
+                                    "    console.log('📱 Scan QR code:', data.qrCode);",
+                                    "    console.log('🔑 Secret:', data.secret);",
+                                    "    console.log('▶️  Next: Verify TOTP to enable MFA');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify TOTP & Enable MFA",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"token\": \"123456\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/verify-totp",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "verify-totp"
+                            ]
+                        },
+                        "description": "Verify TOTP code and enable MFA"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('MFA enabled', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    console.log('✅ MFA enabled successfully');",
+                                    "    console.log('🔐 Backup codes:', data.backupCodes);",
+                                    "    console.log('⚠️  Save backup codes securely!');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get MFA Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/status",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "status"
+                            ]
+                        },
+                        "description": "Get current MFA status"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('MFA status retrieved', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    console.log('🔐 MFA Enabled:', data.isMFAEnabled);",
+                                    "    console.log('📱 Method:', data.method || 'None');",
+                                    "    console.log('🔑 Backup Codes:', data.backupCodesRemaining || 0);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Backup Codes",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/backup-codes",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "backup-codes"
+                            ]
+                        },
+                        "description": "Get backup codes (regenerates new codes)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Backup codes generated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const codes = pm.response.json().data.backupCodes;",
+                                    "    console.log('🔑 New Backup Codes:', codes);",
+                                    "    console.log('⚠️  Old codes are invalidated');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Use Backup Code",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{MFA_TEMP_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"backupCode\": \"BACKUP-CODE-HERE\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/use-backup-code",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "use-backup-code"
+                            ]
+                        },
+                        "description": "Login using backup code (temp token from login)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Backup code verified', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    const data = pm.response.json().data;",
+                                    "    pm.environment.set('ACCESS_TOKEN', data.accessToken);",
+                                    "    pm.environment.set('REFRESH_TOKEN', data.refreshToken);",
+                                    "    console.log('✅ Logged in with backup code');",
+                                    "    console.log('⚠️  This code is now used');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Disable MFA",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"password\": \"{{TEST_PASSWORD}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/disable-totp",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "disable-totp"
+                            ]
+                        },
+                        "description": "Disable MFA (requires password)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('MFA disabled', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ MFA disabled successfully');",
+                                    "    console.log('⚠️  Account now uses single-factor auth');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Enforce MFA (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{ACCESS_TOKEN}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"companyId\": \"{{COMPANY_ID}}\",\n  \"enforce\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{BASE_URL}}/auth/mfa/enforce",
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "mfa",
+                                "enforce"
+                            ]
+                        },
+                        "description": "Enforce MFA for all company users (admin only)"
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('MFA enforcement updated', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    console.log('✅ MFA enforcement updated');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -1198,7 +1912,7 @@
                                 "callback"
                             ]
                         },
-                        "description": "OAuth callback endpoint - called by Google after authentication"
+                        "description": "OAuth callback endpoint - called by Google after authentication. Tokens set as httpOnly cookies."
                     }
                 }
             ]

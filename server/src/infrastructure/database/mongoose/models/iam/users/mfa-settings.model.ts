@@ -131,7 +131,7 @@ const fieldEncryption = require('mongoose-field-encryption').fieldEncryption;
 MFASettingsSchema.plugin(fieldEncryption, {
   fields: ['totpSecret'],
   secret: process.env.ENCRYPTION_KEY!,
-  saltGenerator: () => crypto.randomBytes(16).toString('hex'),
+  saltGenerator: () => crypto.randomBytes(8).toString('hex'), // 8 bytes = 16 hex chars
   encryptOnSave: true,
   decryptOnFind: true,
 });

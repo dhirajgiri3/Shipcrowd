@@ -117,6 +117,7 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+  compareSecurityAnswer(answerNum: 1 | 2 | 3, candidateAnswer: string): Promise<boolean>;
 }
 
 // Create the User schema
@@ -399,12 +400,75 @@ UserSchema.pre('save', async function (next) {
   }
 });
 
+// Hash security question answers before saving
+UserSchema.pre('save', async function (next) {
+  const user = this;
+
+  // Only process if security questions exist
+  if (!user.security?.recoveryOptions?.securityQuestions) {
+    return next();
+  }
+
+  const sq = user.security.recoveryOptions.securityQuestions;
+
+  try {
+    // Hash answer1 if modified and not already hashed (bcrypt hashes start with $2b$)
+    if (user.isModified('security.recoveryOptions.securityQuestions.answer1') &&
+      sq.answer1 && !sq.answer1.startsWith('$2b$')) {
+      const normalized = sq.answer1.toLowerCase().trim();
+      sq.answer1 = await bcrypt.hash(normalized, 12);
+    }
+
+    // Hash answer2 if modified
+    if (user.isModified('security.recoveryOptions.securityQuestions.answer2') &&
+      sq.answer2 && !sq.answer2.startsWith('$2b$')) {
+      const normalized = sq.answer2.toLowerCase().trim();
+      sq.answer2 = await bcrypt.hash(normalized, 12);
+    }
+
+    // Hash answer3 if modified
+    if (user.isModified('security.recoveryOptions.securityQuestions.answer3') &&
+      sq.answer3 && !sq.answer3.startsWith('$2b$')) {
+      const normalized = sq.answer3.toLowerCase().trim();
+      sq.answer3 = await bcrypt.hash(normalized, 12);
+    }
+
+    next();
+  } catch (error: any) {
+    next(error);
+  }
+});
+
+
 // Method to compare password
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
 };
+
+/**
+ * Compare security question answer
+ * @param answerNum - Which answer to compare (1, 2, or 3)
+ * @param candidateAnswer - User-provided answer to verify
+ * @returns Promise<boolean> - True if answer matches
+ */
+UserSchema.methods.compareSecurityAnswer = async function (
+  answerNum: 1 | 2 | 3,
+  candidateAnswer: string
+): Promise<boolean> {
+  const sq = this.security?.recoveryOptions?.securityQuestions;
+  if (!sq) return false;
+
+  const hashedAnswer = sq[`answer${answerNum}` as 'answer1' | 'answer2' | 'answer3'];
+  if (!hashedAnswer) return false;
+
+  // Normalize candidate answer (lowercase, trim) to match pre-save hook normalization
+  const normalized = candidateAnswer.toLowerCase().trim();
+
+  return bcrypt.compare(normalized, hashedAnswer);
+};
+
 
 // Create and export the User model
 const User = mongoose.model<IUser>('User', UserSchema);
