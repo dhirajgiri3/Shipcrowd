@@ -1,256 +1,150 @@
-/**
- * Settings API Hooks
- * 
- * React Query hooks for webhooks, team management, audit logs, and subscriptions.
- */
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import { queryKeys } from '../queryKeys';
-import { handleApiError, showSuccessToast } from '@/src/lib/error-handler';
 import type {
-    SettingsResponse,
-    PaginatedSettingsResponse,
-    Webhook,
-    CreateWebhookPayload,
-    WebhookLog,
-    TestWebhookPayload,
-    TeamMember,
-    InviteTeamMemberPayload,
-    UpdateMemberRolePayload,
-    TeamInvitation,
-    AuditLog,
-    AuditLogFilters,
-    SubscriptionPlan,
-    CurrentSubscription,
-    BillingHistory,
-    ChangePlanPayload,
+    PlatformSettings,
+    FeatureFlags,
+    UpdatePlatformSettingsRequest,
+    ToggleFeatureRequest,
+    TestIntegrationRequest,
+    TestIntegrationResponse,
+    PlatformSettingsResponse,
+    FeatureFlagsResponse,
 } from '@/src/types/api/settings.types';
+import { toast } from 'sonner';
 
-// ==================== Webhooks ====================
+// ==================== PLATFORM SETTINGS ====================
 
-export function useWebhooks() {
+/**
+ * Fetch platform settings
+ */
+export const usePlatformSettings = () => {
     return useQuery({
-        queryKey: queryKeys.settings.webhooks(),
+        queryKey: queryKeys.settings.platform(),
         queryFn: async () => {
-            const { data } = await apiClient.get<SettingsResponse<Webhook[]>>('/webhooks');
-            return data.data;
+            const response = await apiClient.get<PlatformSettingsResponse>('/admin/settings/platform');
+            return response.data.data;
         },
     });
-}
+};
 
-export function useCreateWebhook() {
+/**
+ * Update platform settings
+ */
+export const useUpdatePlatformSettings = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (payload: CreateWebhookPayload) => {
-            const { data } = await apiClient.post<SettingsResponse<Webhook>>('/webhooks', payload);
-            return data.data;
-        },
-        onError: (error) => handleApiError(error, 'Failed to create webhook'),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.webhooks() });
-            showSuccessToast('Webhook created successfully');
-        },
-    });
-}
-
-export function useTestWebhook() {
-    return useMutation({
-        mutationFn: async (payload: TestWebhookPayload) => {
-            const { data } = await apiClient.post(`/webhooks/${payload.webhookId}/test`, {
-                event: payload.event,
-            });
-            return data;
-        },
-        onError: (error) => handleApiError(error, 'Failed to test webhook'),
-        onSuccess: () => showSuccessToast('Test webhook triggered successfully'),
-    });
-}
-
-export function useWebhookLogs(webhookId: string) {
-    return useQuery({
-        queryKey: queryKeys.settings.webhookLogs(webhookId),
-        queryFn: async () => {
-            const { data } = await apiClient.get<SettingsResponse<WebhookLog[]>>(
-                `/webhooks/${webhookId}/logs`
+        mutationFn: async (data: UpdatePlatformSettingsRequest) => {
+            const response = await apiClient.put<PlatformSettingsResponse>(
+                '/admin/settings/platform',
+                data
             );
-            return data.data;
+            return response.data.data;
         },
-        enabled: !!webhookId,
-    });
-}
-
-export function useDeleteWebhook() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (webhookId: string) => {
-            await apiClient.delete(`/webhooks/${webhookId}`);
-        },
-        onError: (error) => handleApiError(error, 'Failed to delete webhook'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.webhooks() });
-            showSuccessToast('Webhook deleted');
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.platform() });
+            toast.success('Platform settings updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to update settings');
         },
     });
-}
+};
 
-// ==================== Team Management ====================
-
-export function useTeamMembers() {
-    return useQuery({
-        queryKey: queryKeys.settings.teamMembers(),
-        queryFn: async () => {
-            const { data } = await apiClient.get<SettingsResponse<TeamMember[]>>('/team/members');
-            return data.data;
-        },
-    });
-}
-
-export function useInviteTeamMember() {
-    const queryClient = useQueryClient();
-
+/**
+ * Test integration connection
+ */
+export const useTestIntegration = () => {
     return useMutation({
-        mutationFn: async (payload: InviteTeamMemberPayload) => {
-            const { data } = await apiClient.post<SettingsResponse<TeamInvitation>>('/team/invite', payload);
-            return data.data;
-        },
-        onError: (error) => handleApiError(error, 'Failed to send invitation'),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.teamMembers() });
-            showSuccessToast('Invitation sent successfully');
-        },
-    });
-}
-
-export function useUpdateMemberRole() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (payload: UpdateMemberRolePayload) => {
-            const { data } = await apiClient.put(`/team/members/${payload.userId}/role`, {
-                role: payload.role,
-            });
-            return data;
-        },
-        onError: (error) => handleApiError(error, 'Failed to update role'),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.teamMembers() });
-            showSuccessToast('Role updated successfully');
-        },
-    });
-}
-
-export function useRemoveTeamMember() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (userId: string) => {
-            await apiClient.delete(`/team/members/${userId}`);
-        },
-        onError: (error) => handleApiError(error, 'Failed to remove team member'),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.teamMembers() });
-            showSuccessToast('Team member removed');
-        },
-    });
-}
-
-// ==================== Audit Logs ====================
-
-export function useAuditLogs(filters?: AuditLogFilters) {
-    return useQuery({
-        queryKey: queryKeys.settings.auditLogs(filters),
-        queryFn: async () => {
-            const { data } = await apiClient.get<PaginatedSettingsResponse<AuditLog[]>>(
-                '/audit-logs',
-                { params: filters }
+        mutationFn: async (request: TestIntegrationRequest) => {
+            const response = await apiClient.post<TestIntegrationResponse>(
+                '/admin/settings/test-integration',
+                request
             );
-            return data;
+            return response.data;
         },
-    });
-}
-
-export function useExportAuditLogs() {
-    return useMutation({
-        mutationFn: async (filters?: AuditLogFilters) => {
-            const { data } = await apiClient.post<{ downloadUrl: string }>(
-                '/audit-logs/export',
-                filters
-            );
-            return data;
-        },
-        onError: (error) => handleApiError(error, 'Failed to export audit logs'),
         onSuccess: (data) => {
-            showSuccessToast('Export ready');
-            if (data.downloadUrl) {
-                window.open(data.downloadUrl, '_blank');
+            if (data.success) {
+                toast.success(data.message || 'Integration test successful');
+            } else {
+                toast.error(data.message || 'Integration test failed');
             }
         },
-    });
-}
-
-// ==================== Subscriptions ====================
-
-export function useSubscriptionPlans() {
-    return useQuery({
-        queryKey: queryKeys.settings.plans(),
-        queryFn: async () => {
-            const { data } = await apiClient.get<SettingsResponse<SubscriptionPlan[]>>('/subscription/plans');
-            return data.data;
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to test integration');
         },
     });
-}
+};
 
-export function useCurrentSubscription() {
+// ==================== FEATURE FLAGS ====================
+
+/**
+ * Fetch feature flags
+ */
+export const useFeatureFlags = () => {
     return useQuery({
-        queryKey: queryKeys.settings.subscription(),
+        queryKey: queryKeys.settings.featureFlags(),
         queryFn: async () => {
-            const { data } = await apiClient.get<SettingsResponse<CurrentSubscription>>('/subscription/current');
-            return data.data;
+            const response = await apiClient.get<FeatureFlagsResponse>('/admin/settings/features');
+            return response.data.data;
         },
     });
-}
+};
 
-export function useBillingHistory() {
-    return useQuery({
-        queryKey: queryKeys.settings.billing(),
-        queryFn: async () => {
-            const { data } = await apiClient.get<SettingsResponse<BillingHistory[]>>('/subscription/billing');
-            return data.data;
-        },
-    });
-}
-
-export function useChangePlan() {
+/**
+ * Toggle a feature flag
+ */
+export const useToggleFeature = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (payload: ChangePlanPayload) => {
-            const { data } = await apiClient.post('/subscription/change', payload);
-            return data;
+        mutationFn: async (request: ToggleFeatureRequest) => {
+            const response = await apiClient.post<FeatureFlagsResponse>(
+                '/admin/settings/features/toggle',
+                request
+            );
+            return response.data.data;
         },
-        onError: (error) => handleApiError(error, 'Failed to change plan'),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.subscription() });
-            showSuccessToast('Plan updated successfully');
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.featureFlags() });
+            toast.success(
+                `${variables.feature} ${variables.enabled ? 'enabled' : 'disabled'} successfully`
+            );
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to toggle feature');
         },
     });
-}
+};
 
-export function useCancelSubscription() {
+/**
+ * Bulk update feature flags
+ */
+export const useBulkUpdateFeatures = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async () => {
-            const { data } = await apiClient.post('/subscription/cancel');
-            return data;
+        mutationFn: async (features: Partial<FeatureFlags>) => {
+            const response = await apiClient.put<FeatureFlagsResponse>(
+                '/admin/settings/features',
+                features
+            );
+            return response.data.data;
         },
-        onError: (error) => handleApiError(error, 'Failed to cancel subscription'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.settings.subscription() });
-            showSuccessToast('Subscription cancelled');
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.featureFlags() });
+            toast.success('Feature flags updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to update feature flags');
         },
     });
-}
+};
+
+// ==================== RE-EXPORTS ====================
+// Export hooks from other files for backward compatibility
+
+export { useTeamMembers, useInviteTeamMember, useUpdateMemberRole, useRemoveTeamMember } from './useTeam';
+export { useWebhooks, useCreateWebhook, useTestWebhook, useDeleteWebhook } from './useWebhooks';
+export { useAuditLogs, useExportAuditLogs } from './useAuditLogs';

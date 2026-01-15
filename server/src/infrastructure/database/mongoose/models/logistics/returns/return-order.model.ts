@@ -173,6 +173,19 @@ export interface IReturnOrder extends Document {
     isDeleted: boolean;
     createdAt: Date;
     updatedAt: Date;
+
+    // ============================================================================
+    // METHODS
+    // ============================================================================
+    addTimelineEntry(
+        status: string,
+        actor: mongoose.Types.ObjectId | 'system' | 'customer',
+        action: string,
+        notes?: string,
+        metadata?: Record<string, any>
+    ): void;
+    isEligibleForRefund(): boolean;
+    calculateActualRefund(): number;
 }
 
 // Create the ReturnOrder schema
@@ -436,7 +449,7 @@ ReturnOrderSchema.pre('save', function (next) {
 
     // If this is a new return order, add initial timeline entry
     if (returnOrder.isNew && returnOrder.timeline.length === 0) {
-        const itemCount = returnOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+        const itemCount = returnOrder.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 
         returnOrder.timeline.push({
             status: returnOrder.status,
@@ -497,7 +510,7 @@ ReturnOrderSchema.methods.calculateActualRefund = function (): number {
         return this.refundAmount;
     } else if (this.qc.result === 'partial') {
         // Calculate proportional refund based on accepted items
-        const totalItems = this.items.reduce((sum, item) => sum + item.quantity, 0);
+        const totalItems = this.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
         return (this.refundAmount / totalItems) * this.qc.itemsAccepted;
     }
     return 0; // Rejected

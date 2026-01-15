@@ -8,9 +8,9 @@
 
 import { Router } from 'express';
 import ReturnController from '@/presentation/http/controllers/logistics/return.controller';
-import { authenticate } from '@/presentation/http/middlewares/auth.middleware';
-import { authorize } from '@/presentation/http/middlewares/authorization.middleware';
-import { rateLimiter } from '@/presentation/http/middlewares/rate-limiter.middleware';
+import { authenticate } from '../../../middleware/auth/auth';
+import { authorize } from '../../../middleware/auth/authorization.middleware';
+import { apiRateLimiter } from '../../../middleware/system/rate-limiter.middleware';
 
 const router = Router();
 
@@ -26,7 +26,7 @@ router.use(authenticate);
  */
 router.post(
     '/',
-    rateLimiter({ max: 5, windowMs: 60 * 1000 }),
+    apiRateLimiter,
     ReturnController.createReturnRequest
 );
 
@@ -44,7 +44,7 @@ router.post(
  */
 router.get(
     '/',
-    authorize(['seller', 'warehouse_staff', 'admin']),
+    authorize({ roles: ['seller', 'staff', 'admin'] }),
     ReturnController.listReturns
 );
 
@@ -60,7 +60,7 @@ router.get(
  */
 router.get(
     '/stats',
-    authorize(['seller', 'admin']),
+    authorize({ roles: ['seller', 'admin'] }),
     ReturnController.getReturnStats
 );
 
@@ -84,8 +84,8 @@ router.get(
  */
 router.post(
     '/:returnId/pickup',
-    authorize(['warehouse_staff', 'admin']),
-    rateLimiter({ max: 10, windowMs: 60 * 1000 }),
+    authorize({ roles: ['staff', 'admin'] }),
+    apiRateLimiter,
     ReturnController.schedulePickup
 );
 
@@ -98,8 +98,8 @@ router.post(
  */
 router.post(
     '/:returnId/qc',
-    authorize(['warehouse_staff', 'qc_staff', 'admin']),
-    rateLimiter({ max: 10, windowMs: 60 * 1000 }),
+    authorize({ roles: ['staff', 'admin'] }),
+    apiRateLimiter,
     ReturnController.recordQCResult
 );
 
@@ -112,8 +112,8 @@ router.post(
  */
 router.post(
     '/:returnId/refund',
-    authorize(['admin']),
-    rateLimiter({ max: 5, windowMs: 60 * 1000 }),
+    authorize({ roles: ['admin'] }),
+    apiRateLimiter,
     ReturnController.processRefund
 );
 
@@ -126,7 +126,7 @@ router.post(
  */
 router.post(
     '/:returnId/cancel',
-    rateLimiter({ max: 5, windowMs: 60 * 1000 }),
+    apiRateLimiter,
     ReturnController.cancelReturn
 );
 

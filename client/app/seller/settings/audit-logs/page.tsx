@@ -28,7 +28,7 @@ export default function AuditLogsPage() {
                         <p className="text-gray-600 dark:text-gray-400">Track all activities in your account</p>
                     </div>
                     <button
-                        onClick={() => exportLogs(filters)}
+                        onClick={() => exportLogs({ format: 'csv', filters })}
                         className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium"
                     >
                         <Download className="w-4 h-4" />
@@ -107,10 +107,10 @@ export default function AuditLogsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {logsData?.data.map((log, index) => (
+                                {logsData?.logs.map((log: any, index: number) => (
                                     <tr
-                                        key={log.id}
-                                        className={index !== (logsData.data.length - 1) ? 'border-b border-gray-100 dark:border-gray-700' : ''}
+                                        key={log._id}
+                                        className={index !== ((logsData?.logs.length || 0) - 1) ? 'border-b border-gray-100 dark:border-gray-700' : ''}
                                     >
                                         <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">
                                             {formatDateTime(log.timestamp)}
@@ -118,7 +118,7 @@ export default function AuditLogsPage() {
                                         <td className="py-4 px-4">
                                             <div>
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white">{log.userName}</p>
-                                                <p className="text-xs text-gray-600 dark:text-gray-400">{log.userEmail}</p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400">{log.userId}</p>
                                             </div>
                                         </td>
                                         <td className="py-4 px-4">
@@ -127,11 +127,11 @@ export default function AuditLogsPage() {
                                             </span>
                                         </td>
                                         <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">
-                                            {log.resource}
-                                            {log.resourceId && <span className="text-gray-500 dark:text-gray-400"> #{log.resourceId}</span>}
+                                            {log.entity}
+                                            {log.entityId && <span className="text-gray-500 dark:text-gray-400"> #{log.entityId}</span>}
                                         </td>
                                         <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
-                                            {log.ip}
+                                            {log.ipAddress || 'N/A'}
                                         </td>
                                     </tr>
                                 ))}
@@ -145,7 +145,7 @@ export default function AuditLogsPage() {
                         </div>
                     )}
 
-                    {!isLoading && logsData?.data.length === 0 && (
+                    {!isLoading && (!logsData?.logs || logsData.logs.length === 0) && (
                         <div className="py-12 text-center text-gray-500 dark:text-gray-400">
                             No audit logs found
                         </div>

@@ -256,6 +256,27 @@ export interface AuthContextType {
     error?: string
   }>;
 
+  // Company Management
+  createCompany: (data: {
+    name: string;
+    address: {
+      line1: string;
+      line2?: string;
+      city: string;
+      state: string;
+      country: string;
+      postalCode: string;
+    };
+    billingInfo?: {
+      gstin?: string;
+      pan?: string;
+    };
+  }) => Promise<{
+    success: boolean;
+    company?: any;
+    error?: NormalizedError;
+  }>;
+
   // Note: Password strength check moved to authApi.checkPasswordStrength()
   // Call directly from components instead of through context
 

@@ -11,9 +11,9 @@
  */
 
 import { CronJob } from 'cron';
-import QueueManager from '../queue-manager';
-import CODRemittanceJob from '../../jobs/finance/cod-remittance.job';
-import logger from '../../../shared/logger/winston.logger';
+import QueueManager from './queue-manager';
+import CODRemittanceJob from '../jobs/finance/cod-remittance.job';
+import logger from '../../shared/logger/winston.logger';
 
 let isInitialized = false;
 
@@ -32,7 +32,7 @@ export async function initializeCODRemittanceScheduler(): Promise<void> {
     // JOB 1: Daily Batch Creation - 11 PM IST
     // ========================================================================
     const dailyBatchJob = new CronJob(
-        '0 23 * * *', // 11 PM every day
+        '0 23 * * *', // 11 PM every day                                                            
         async () => {
             logger.info('[CRON] Triggering daily COD remittance batch creation');
             try {

@@ -67,10 +67,10 @@ export default function TeamManagementPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {members?.map((member, index) => (
+                            {members?.map((member: any, index: number) => (
                                 <tr
-                                    key={member.id}
-                                    className={index !== members.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}
+                                    key={member._id}
+                                    className={index !== (members?.length || 0) - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}
                                 >
                                     <td className="py-4 px-6">
                                         <div>
@@ -80,9 +80,9 @@ export default function TeamManagementPage() {
                                     </td>
                                     <td className="py-4 px-4">
                                         <select
-                                            value={member.role}
-                                            onChange={(e) => updateRole({ userId: member.userId, role: e.target.value as TeamRole })}
-                                            disabled={member.role === 'owner'}
+                                            value={member.teamRole}
+                                            onChange={(e) => updateRole({ memberId: member._id, teamRole: e.target.value as TeamRole })}
+                                            disabled={member.teamRole === 'owner'}
                                             className="px-3 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm disabled:opacity-50"
                                         >
                                             {TEAM_ROLES.map((role) => (
@@ -93,20 +93,20 @@ export default function TeamManagementPage() {
                                     <td className="py-4 px-4">
                                         <span className={cn(
                                             'px-2 py-1 rounded text-xs font-medium',
-                                            member.status === 'active' && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-                                            member.status === 'invited' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
-                                            member.status === 'suspended' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                            member.teamStatus === 'active' && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                                            member.teamStatus === 'invited' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+                                            member.teamStatus === 'suspended' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                                         )}>
-                                            {member.status}
+                                            {member.teamStatus}
                                         </span>
                                     </td>
                                     <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
                                         {formatDate(member.joinedAt)}
                                     </td>
                                     <td className="py-4 px-6 text-right">
-                                        {member.role !== 'owner' && (
+                                        {member.teamRole !== 'owner' && (
                                             <button
-                                                onClick={() => removeMember(member.userId)}
+                                                onClick={() => removeMember(member._id)}
                                                 className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -197,7 +197,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: {
                         Cancel
                     </button>
                     <button
-                        onClick={() => onInvite({ email, role, message: message || undefined })}
+                        onClick={() => onInvite({ email, name: email.split('@')[0], teamRole: role, message: message || undefined })}
                         disabled={!email || isInviting}
                         className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium disabled:opacity-50"
                     >

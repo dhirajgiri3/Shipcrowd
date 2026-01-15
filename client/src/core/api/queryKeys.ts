@@ -73,6 +73,17 @@ export const queryKeys = {
   },
 
   // ========================================================================
+  // COURIERS DOMAIN
+  // ========================================================================
+  couriers: {
+    all: () => ['couriers'] as const,
+    list: (filters?: any) => [...queryKeys.couriers.all(), 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.couriers.all(), 'detail', id] as const,
+    performance: (id: string, filters?: any) => [...queryKeys.couriers.detail(id), 'performance', filters] as const,
+    services: (id: string) => [...queryKeys.couriers.detail(id), 'services'] as const,
+  },
+
+  // ========================================================================
   // ORDERS DOMAIN
   // ========================================================================
   orders: {
@@ -410,8 +421,21 @@ export const queryKeys = {
     plans: () => ['settings', 'plans'],
     billing: () => ['settings', 'billing'],
     apiKeys: () => ['settings', 'api-keys'],
+    platform: () => ['settings', 'platform'] as const,
+    featureFlags: () => ['settings', 'features'] as const,
+  },
+
+  // ========================================================================
+  // TEAM DOMAIN
+  // ========================================================================
+  team: {
+    all: () => ['team'],
+    members: () => ['team', 'members'],
+    member: (memberId: string) => ['team', 'member', memberId],
+    invitations: () => ['team', 'invitations'],
   },
 };
+
 
 // ============================================================================
 // Cache Invalidation Helpers

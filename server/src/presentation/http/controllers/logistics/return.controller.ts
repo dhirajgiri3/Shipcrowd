@@ -19,7 +19,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import ReturnService from '@/core/application/services/logistics/return.service';
-import { ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
+import ReturnOrder, { ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
 import logger from '@/shared/logger/winston.logger';
 import { AppError } from '@/shared/errors/app.error';
 
@@ -165,8 +165,7 @@ export default class ReturnController {
             if (status) filter.status = status;
             if (returnReason) filter.returnReason = returnReason;
 
-            // Import model (not done at top to avoid circular dependency)
-            const ReturnOrder = (await import('@/infrastructure/database/mongoose/models/logistics/returns/return-order.model')).default;
+            // Use statically imported ReturnOrder model
 
             // Fetch returns with pagination
             const [returns, total] = await Promise.all([
@@ -182,7 +181,7 @@ export default class ReturnController {
 
             res.status(200).json({
                 success: true,
-                data: returns.map(ret => ({
+                data: returns.map((ret: any) => ({
                     returnId: ret.returnId,
                     orderId: ret.orderId,
                     status: ret.status,
@@ -240,7 +239,7 @@ export default class ReturnController {
         try {
             const { returnId } = req.params;
 
-            const ReturnOrder = (await import('@/infrastructure/database/mongoose/models/logistics/returns/return-order.model')).default;
+            // Use statically imported ReturnOrder model
             const returnOrder = await ReturnOrder.findOne({ returnId });
 
             if (!returnOrder) {
@@ -280,7 +279,7 @@ export default class ReturnController {
                     refund: returnOrder.refund,
                     inventory: returnOrder.inventory,
                     sla: returnOrder.sla,
-                    timeline: returnOrder.timeline.map(t => ({
+                    timeline: returnOrder.timeline.map((t: any) => ({
                         status: t.status,
                         timestamp: t.timestamp,
                         action: t.action,

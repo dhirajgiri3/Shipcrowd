@@ -17,12 +17,12 @@
  */
 
 import mongoose from 'mongoose';
-import ReturnOrder, { IReturnOrder, ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
-import { Shipment } from '@/infrastructure/database/mongoose/models';
+import ReturnOrder, { IReturnOrder, ReturnReason } from '../../../../infrastructure/database/mongoose/models/logistics/returns/return-order.model';
+import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import WalletService from '../wallet/wallet.service';
 import InventoryService from '../warehouse/inventory.service';
-import logger from '@/shared/logger/winston.logger';
-import { AppError } from '@/shared/errors/app.error';
+import logger from '../../../../shared/logger/winston.logger';
+import { AppError } from '../../../../shared/errors/app.error';
 
 /**
  * DTOs for type safety
@@ -103,7 +103,7 @@ export default class ReturnService {
             throw new AppError('Shipment not found', 'SHIPMENT_NOT_FOUND', 404);
         }
 
-        if (shipment.status !== 'delivered') {
+        if ((shipment as any).status !== 'delivered') {
             throw new AppError(
                 'Returns can only be initiated for delivered shipments',
                 'INVALID_SHIPMENT_STATUS',
@@ -112,7 +112,8 @@ export default class ReturnService {
         }
 
         // 2. Check return eligibility window (7 days from delivery)
-        const deliveryDate = shipment.timeline.find(t => t.status === 'delivered')?.timestamp;
+        const deliveryTimeline = (shipment as any).timeline as any[];  // Type assertion for timeline
+        const deliveryDate = deliveryTimeline.find((t: any) => t.status === 'delivered')?.timestamp;
         if (deliveryDate) {
             const daysSinceDelivery = Math.floor(
                 (Date.now() - new Date(deliveryDate).getTime()) / (1000 * 60 * 60 * 24)
@@ -386,19 +387,27 @@ export default class ReturnService {
 
             if (returnOrder.refundMethod === 'wallet') {
                 // Credit to seller wallet
-                const walletTransaction = await WalletService.creditWallet(
+                const walletTransaction = await WalletService.credit(
                     returnOrder.companyId.toString(),
+                    actualRefundAmount,
+                    'refund',  // Valid TransactionReason
+                    `Refund for return ${returnId}`,
                     {
-                        amount: actualRefundAmount,
-                        type: 'return_refund',
-                        description: `Refund for return ${returnId}`,
-                        referenceId: returnId,
-                        referenceType: 'return_order',
+                        type: 'manual',  // Use 'manual' as 'return_order' is not in enum
+                        id: returnId,
                     },
-                    { session }
+                    'system'
                 );
 
-                transactionId = walletTransaction._id.toString();
+                if (!walletTransaction.success || !walletTransaction.transactionId) {
+                    throw new AppError(
+                        walletTransaction.error || 'Wallet credit failed',
+                        'WALLET_CREDIT_FAILED',
+                        500
+                    );
+                }
+
+                transactionId = walletTransaction.transactionId;
             } else {
                 // TODO: Integrate with payment gateway for original payment refund
                 transactionId = `PG-REFUND-${Date.now()}`;

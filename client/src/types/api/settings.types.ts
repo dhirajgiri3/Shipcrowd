@@ -306,3 +306,136 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<TeamRole, string[]> = {
         'shipments_view', 'orders_view', 'finance_view', 'reports_view',
     ],
 };
+
+// ==================== Platform Settings ====================
+
+export interface PlatformSettings {
+    business: BusinessSettings;
+    financial: FinancialSettings;
+    integrations: IntegrationSettings;
+    notifications: NotificationSettings;
+    updatedAt?: string;
+    updatedBy?: string;
+}
+
+export interface BusinessSettings {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    logo?: string;
+    website?: string;
+}
+
+export interface FinancialSettings {
+    currency: string;
+    gstEnabled: boolean;
+    gstPercentage: number;
+    minWalletBalance: number;
+    codChargePercentage: number;
+    codChargeMin: number;
+    codChargeMax: number;
+}
+
+export interface IntegrationSettings {
+    email: EmailServiceConfig;
+    sms: SMSServiceConfig;
+    storage: StorageServiceConfig;
+    payment: PaymentGatewayConfig;
+}
+
+export interface EmailServiceConfig {
+    provider: 'SMTP' | 'SENDGRID' | 'AWS_SES' | 'MAILGUN';
+    apiKey?: string; // Masked
+    fromEmail: string;
+    fromName: string;
+    isEnabled: boolean;
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpUser?: string;
+    smtpPassword?: string; // Masked
+}
+
+export interface SMSServiceConfig {
+    provider: 'TWILIO' | 'AWS_SNS' | 'MSG91' | 'GUPSHUP';
+    apiKey?: string; // Masked
+    senderId: string;
+    isEnabled: boolean;
+}
+
+export interface StorageServiceConfig {
+    provider: 'AWS_S3' | 'CLOUDFLARE_R2' | 'LOCAL';
+    bucket: string;
+    region: string;
+    accessKeyId?: string; // Masked
+    secretAccessKey?: string; // Masked
+    endpoint?: string; // For R2
+    isEnabled: boolean;
+}
+
+export interface PaymentGatewayConfig {
+    provider: 'RAZORPAY' | 'STRIPE' | 'PAYTM' | 'CASHFREE';
+    keyId?: string; // Masked
+    keySecret?: string; // Masked
+    webhookSecret?: string; // Masked
+    isEnabled: boolean;
+    testMode: boolean;
+}
+
+export interface NotificationSettings {
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    webhookUrl?: string;
+    notifyOnOrderCreated: boolean;
+    notifyOnShipmentStatusChange: boolean;
+    notifyOnPaymentReceived: boolean;
+    notifyOnKYCStatusChange: boolean;
+}
+
+export interface FeatureFlags {
+    returnsEnabled: boolean;
+    codEnabled: boolean;
+    integrationsEnabled: boolean;
+    trackingEnabled: boolean;
+    fraudDetectionEnabled: boolean;
+    ndrEnabled: boolean;
+    rateCardManagement: boolean;
+    bulkOperations: boolean;
+    apiAccess: boolean;
+    maintenanceMode: boolean;
+    updatedAt?: string;
+    updatedBy?: string;
+}
+
+export interface UpdatePlatformSettingsRequest {
+    business?: Partial<BusinessSettings>;
+    financial?: Partial<FinancialSettings>;
+    integrations?: Partial<IntegrationSettings>;
+    notifications?: Partial<NotificationSettings>;
+}
+
+export interface ToggleFeatureRequest {
+    feature: keyof FeatureFlags;
+    enabled: boolean;
+}
+
+export interface TestIntegrationRequest {
+    type: 'email' | 'sms' | 'storage' | 'payment';
+    testData?: any;
+}
+
+export interface TestIntegrationResponse {
+    success: boolean;
+    message: string;
+    details?: any;
+}
+
+export interface PlatformSettingsResponse {
+    success: boolean;
+    data: PlatformSettings;
+}
+
+export interface FeatureFlagsResponse {
+    success: boolean;
+    data: FeatureFlags;
+}

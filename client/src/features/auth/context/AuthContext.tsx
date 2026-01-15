@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useEffect, useRef, useState } from '
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
 import { authApi } from '@/src/core/api/authApi';
 import { sessionApi, type Session } from '@/src/core/api/sessionApi';
+import { companyApi } from '@/src/core/api/companyApi';
 import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/client';
 import { normalizeError } from '@/src/core/api/client';
 import { toast } from 'sonner';
@@ -519,6 +520,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
+   * Create Company
+   * Creates a new company for the authenticated user and updates their profile
+   */
+  const createCompany = useCallback(async (data: {
+    name: string;
+    address: {
+      line1: string;
+      line2?: string;
+      city: string;
+      state: string;
+      country: string;
+      postalCode: string;
+    };
+    billingInfo?: {
+      gstin?: string;
+      pan?: string;
+    };
+  }) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Call company creation API
+      const response = await companyApi.createCompany(data);
+
+      // Fetch updated user data (backend sets new token with companyId)
+      const updatedUser = await authApi.getMe();
+
+      // Update state
+      setUser(updatedUser);
+
+      toast.success(response.message || 'Company created successfully!');
+
+      return { success: true, company: response.company };
+    } catch (err) {
+      const normalizedErr = normalizeError(err as any);
+      setError(normalizedErr);
+      toast.error(normalizedErr.message || 'Failed to create company');
+      return { success: false, error: normalizedErr };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
    * Load user sessions
    */
   const loadSessions = useCallback(async () => {
@@ -627,6 +673,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearError,
     // Settings page methods
     changeEmail,
+    createCompany,
     sessions,
     loadSessions,
     revokeSession,

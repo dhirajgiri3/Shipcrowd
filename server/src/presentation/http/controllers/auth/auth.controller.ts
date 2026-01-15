@@ -451,10 +451,28 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
+    // Determine next step for frontend routing
+    let nextStep: string;
+    let redirectUrl: string;
+
+    if (!typedUser.companyId) {
+      // User has no company - must create one first
+      nextStep = 'create_company';
+      redirectUrl = '/onboarding/setup-company';
+    } else if (typedUser.onboardingStep && typedUser.onboardingStep !== 'completed') {
+      // User has company but hasn't completed onboarding
+      nextStep = typedUser.onboardingStep;
+      redirectUrl = '/seller/onboarding';
+    } else {
+      // User is fully onboarded
+      nextStep = 'dashboard';
+      redirectUrl = typedUser.role === 'admin' ? '/admin/dashboard' : '/seller/dashboard';
+    }
+
     sendSuccess(res, {
       user: UserDTO.toResponse(typedUser),
-      redirectUrl: typedUser.role === 'admin' ? '/admin/dashboard' : '/seller/dashboard',
-      nextStep: typedUser.onboardingStep || 'completed',
+      redirectUrl,
+      nextStep,
     }, 'Login successful');
   } catch (error: any) {
     logger.error('login error:', error);
