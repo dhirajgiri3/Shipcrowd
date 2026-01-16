@@ -176,7 +176,14 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         email: warehouse.contactInfo.email || 'noreply@shipcrowd.com',
         phone: warehouse.contactInfo.phone,
         contactName: warehouse.contactInfo.name,
-        address: warehouse.address as any
+        address: {
+          addressLine1: warehouse.address.line1,
+          addressLine2: warehouse.address.line2,
+          city: warehouse.address.city,
+          state: warehouse.address.state,
+          pincode: warehouse.address.postalCode,
+          country: warehouse.address.country
+        }
       }
     );
 
@@ -573,12 +580,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         email: warehouse.contactInfo.email || 'noreply@shipcrowd.com',
         phone: warehouse.contactInfo.phone,
         name: warehouse.contactInfo.name,
-        address: warehouse.address.addressLine1,
-        address_2: warehouse.address.addressLine2,
+        address: warehouse.address.line1,
+        address_2: warehouse.address.line2,
         city: warehouse.address.city,
         state: warehouse.address.state,
         country: warehouse.address.country,
-        pin_code: warehouse.address.pincode,
+        pin_code: warehouse.address.postalCode,
         pickup_location: warehouse.name
       }
     };

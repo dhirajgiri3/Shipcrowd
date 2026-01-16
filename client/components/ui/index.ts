@@ -29,6 +29,8 @@ export type { TextareaProps } from './core/Textarea';
 export { Label } from './core/Label';
 export type { LabelProps } from './core/Label';
 
+export { Switch } from './core/Switch';
+
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './core/Tabs';
 
 export { Avatar } from './core/Avatar';
