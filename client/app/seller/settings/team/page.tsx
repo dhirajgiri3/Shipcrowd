@@ -67,7 +67,7 @@ export default function TeamManagementPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {members?.map((member: any, index: number) => (
+                            {members?.map((member: TeamMember, index: number) => (
                                 <tr
                                     key={member._id}
                                     className={index !== (members?.length || 0) - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}
@@ -141,7 +141,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: {
     isInviting: boolean;
 }) {
     const [email, setEmail] = useState('');
-    const [role, setRole] = useState<TeamRole>('member');
+    const [role, setRole] = useState<Exclude<TeamRole, 'owner'>>('member');
     const [message, setMessage] = useState('');
 
     return (
@@ -167,7 +167,7 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role *</label>
                         <select
                             value={role}
-                            onChange={(e) => setRole(e.target.value as TeamRole)}
+                            onChange={(e) => setRole(e.target.value as Exclude<TeamRole, 'owner'>)}
                             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
                             {TEAM_ROLES.filter(r => r.value !== 'owner').map((r) => (

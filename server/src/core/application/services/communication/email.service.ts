@@ -1112,6 +1112,91 @@ export const sendNewDeviceLoginEmail = async (
   }
 };
 
+/**
+ * Send fraud alert email to admin team
+ */
+export const sendFraudAlertEmail = async (
+  adminEmail: string,
+  alertDetails: {
+    alertId: string;
+    riskLevel: string;
+    fraudScore: number;
+    orderValue: number;
+    customerName: string;
+    customerPhone: string;
+    matchedRules: string[];
+    blacklistMatches: string[];
+    aiSummary?: string;
+  }
+): Promise<void> => {
+    const subject = `🚨 Fraud Alert: ${alertDetails.riskLevel.toUpperCase()} Risk Order Detected`;
+
+    const rulesHtml = alertDetails.matchedRules.length > 0
+      ? `<ul>${alertDetails.matchedRules.map(rule => `<li>${rule}</li>`).join('')}</ul>`
+      : '<p>No rules matched</p>';
+
+    const blacklistHtml = alertDetails.blacklistMatches.length > 0
+      ? `<ul>${alertDetails.blacklistMatches.map(match => `<li>${match}</li>`).join('')}</ul>`
+      : '<p>No blacklist matches</p>';
+
+    const riskColors: Record<string, string> = {
+      low: '#10b981',
+      medium: '#f59e0b',
+      high: '#ef4444',
+      critical: '#dc2626',
+    };
+    const riskColor = riskColors[alertDetails.riskLevel] || '#6b7280';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          .alert-box { background: white; border-left: 4px solid ${riskColor}; padding: 20px; margin: 20px 0; border-radius: 4px; }
+          .risk-badge { background: ${riskColor}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; }
+          .score { font-size: 48px; font-weight: bold; color: ${riskColor}; text-align: center; margin: 20px 0; }
+          .detail-row { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🚨 Fraud Alert</h1>
+          </div>
+          <div class="content">
+            <div class="alert-box">
+              <div style="text-align: center;"><span class="risk-badge">${alertDetails.riskLevel.toUpperCase()}</span></div>
+              <div class="score">${alertDetails.fraudScore}/100</div>
+              <div class="detail-row"><strong>Alert ID:</strong> ${alertDetails.alertId}</div>
+              <div class="detail-row"><strong>Customer:</strong> ${alertDetails.customerName}</div>
+              <div class="detail-row"><strong>Phone:</strong> ${alertDetails.customerPhone}</div>
+              <div class="detail-row"><strong>Order Value:</strong> ₹${alertDetails.orderValue.toLocaleString()}</div>
+            </div>
+            <h3>⚠️ Matched Rules</h3>
+            ${rulesHtml}
+            <h3>🚫 Blacklist Matches</h3>
+            ${blacklistHtml}
+            ${alertDetails.aiSummary ? `<h3>🤖 AI Analysis</h3><p>${alertDetails.aiSummary}</p>` : ''}
+            <p style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/fraud/alerts/${alertDetails.alertId}" 
+                 style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                Review Alert →
+              </a>
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await sendEmail(adminEmail, subject, html);
+    logger.info('Fraud alert email sent', { alertId: alertDetails.alertId, adminEmail });
+};
+
 export default {
   sendEmail,
   sendVerificationEmail,
@@ -1129,4 +1214,5 @@ export default {
   sendAccountRecoveryEmail,
   sendNewDeviceLoginEmail,
   sendReturnStatusEmail,
+  sendFraudAlertEmail,
 };

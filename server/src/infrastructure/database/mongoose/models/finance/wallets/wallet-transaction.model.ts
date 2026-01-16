@@ -37,8 +37,11 @@ export interface IWalletTransaction extends Document {
     status: 'pending' | 'completed' | 'failed' | 'reversed';
     reversedBy?: mongoose.Types.ObjectId;
     reversedAt?: Date;
-    createdAt: Date;
-    updatedAt: Date;
+    // Soft delete fields
+    isDeleted: boolean;
+    deletedAt?: Date;
+    deletedBy?: mongoose.Types.ObjectId;
+    schemaVersion: number;
 }
 
 interface IWalletTransactionModel extends Model<IWalletTransaction> {
@@ -131,6 +134,23 @@ const WalletTransactionSchema = new Schema<IWalletTransaction>(
             ref: 'User',
         },
         reversedAt: Date,
+
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        deletedAt: Date,
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        schemaVersion: {
+            type: Number,
+            default: 1,
+            index: true
+        }
     },
     {
         timestamps: true,
@@ -147,6 +167,14 @@ WalletTransactionSchema.index({ 'reference.type': 1, 'reference.id': 1 });
 WalletTransactionSchema.index({ company: 1, status: 1, 'reference.id': 1 });
 // Index for audit trail queries (reversed transactions)
 WalletTransactionSchema.index({ reversedAt: -1 });
+
+// Pre-find hook to exclude deleted documents by default (can be overridden)
+WalletTransactionSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
+    if ((this as any)._conditions.isDeleted === undefined) {
+        this.where({ isDeleted: false });
+    }
+    next();
+});
 
 // Static: Get transaction history with pagination
 WalletTransactionSchema.statics.getTransactionHistory = async function (

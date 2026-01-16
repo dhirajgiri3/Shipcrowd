@@ -72,6 +72,12 @@ export interface IKYC extends Document {
   submittedAt?: Date; // Track when KYC was submitted for admin review
   createdAt: Date;
   updatedAt: Date;
+
+  // Soft delete fields
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletedBy?: mongoose.Types.ObjectId;
+  schemaVersion: number;
 }
 
 // Create the KYC schema
@@ -190,11 +196,36 @@ const KYCSchema = new Schema<IKYC>(
     verificationNotes: String,
     rejectionReason: String,
     submittedAt: Date, // Track when KYC was submitted for admin review
+
+    // Soft delete fields
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    deletedAt: Date,
+    deletedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    schemaVersion: {
+      type: Number,
+      default: 1,
+      index: true
+    }
   },
   {
     timestamps: true,
   }
 );
+
+// Pre-find hook to exclude deleted documents by default
+KYCSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
+  if ((this as any)._conditions.isDeleted === undefined) {
+    this.where({ isDeleted: false });
+  }
+  next();
+});
 
 // Create indexes
 KYCSchema.index({ userId: 1 }, { unique: true }); // One KYC per user

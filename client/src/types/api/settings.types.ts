@@ -86,13 +86,13 @@ export interface RolePermissions {
 }
 
 export interface TeamMember {
-    id: string;
+    _id: string;
     userId: string;
     name: string;
     email: string;
-    role: TeamRole;
+    teamRole: TeamRole;
     avatar?: string;
-    status: 'active' | 'invited' | 'suspended';
+    teamStatus: 'active' | 'invited' | 'suspended';
     joinedAt: string;
     lastActive?: string;
     invitedBy?: string;
@@ -110,13 +110,14 @@ export interface TeamInvitation {
 
 export interface InviteTeamMemberPayload {
     email: string;
-    role: TeamRole;
+    name: string;
+    teamRole: Exclude<TeamRole, 'owner'>; // Cannot invite as owner
     message?: string;
 }
 
 export interface UpdateMemberRolePayload {
-    userId: string;
-    role: TeamRole;
+    memberId: string;
+    teamRole: TeamRole;
 }
 
 // ==================== Audit Logs ====================

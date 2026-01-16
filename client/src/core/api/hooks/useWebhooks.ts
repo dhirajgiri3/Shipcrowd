@@ -2,29 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import { queryKeys } from '../queryKeys';
 import { toast } from 'sonner';
-
-// Types
-interface Webhook {
-    _id: string;
-    url: string;
-    events: string[];
-    status: 'active' | 'inactive' | 'failed';
-    secret: string;
-    createdAt: string;
-    lastTriggered?: string;
-    failureCount?: number;
-}
-
-interface CreateWebhookRequest {
-    url: string;
-    events: string[];
-    secret?: string;
-}
-
-interface TestWebhookRequest {
-    webhookId: string;
-    event?: string;
-}
+import type { Webhook, CreateWebhookPayload, TestWebhookPayload } from '@/src/types/api/settings.types';
 
 /**
  * Fetch all webhooks
@@ -46,7 +24,7 @@ export const useCreateWebhook = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: CreateWebhookRequest) => {
+        mutationFn: async (data: CreateWebhookPayload) => {
             const response = await apiClient.post('/webhooks', data);
             return response.data;
         },
@@ -65,7 +43,7 @@ export const useCreateWebhook = () => {
  */
 export const useTestWebhook = () => {
     return useMutation({
-        mutationFn: async ({ webhookId, event }: TestWebhookRequest) => {
+        mutationFn: async ({ webhookId, event }: TestWebhookPayload) => {
             const response = await apiClient.post(`/webhooks/${webhookId}/test`, { event });
             return response.data;
         },

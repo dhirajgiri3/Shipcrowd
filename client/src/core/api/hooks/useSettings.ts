@@ -10,6 +10,7 @@ import type {
     TestIntegrationResponse,
     PlatformSettingsResponse,
     FeatureFlagsResponse,
+    Webhook,
 } from '@/src/types/api/settings.types';
 import { toast } from 'sonner';
 

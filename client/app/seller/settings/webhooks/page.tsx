@@ -61,7 +61,7 @@ export default function WebhooksPage() {
 
                 {/* Webhooks List */}
                 <div className="grid grid-cols-1 gap-4">
-                    {webhooks?.map((webhook) => (
+                    {webhooks?.map((webhook: Webhook) => (
                         <WebhookCard
                             key={webhook.id}
                             webhook={webhook}

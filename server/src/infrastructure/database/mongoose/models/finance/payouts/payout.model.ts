@@ -44,6 +44,12 @@ export interface IPayout extends Document {
     createdAt: Date;
     updatedAt: Date;
 
+    // Soft delete fields
+    isDeleted: boolean;
+    deletedAt?: Date;
+    deletedBy?: mongoose.Types.ObjectId;
+    schemaVersion: number;
+
     // Instance methods
     markCompleted(razorpayData: { payoutId: string; utr: string; status: string }): Promise<void>;
     markFailed(reason: string): Promise<void>;
@@ -164,6 +170,23 @@ const PayoutSchema = new Schema<IPayout, IPayoutModel>(
             min: 0,
         },
         metadata: Schema.Types.Mixed,
+
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        deletedAt: Date,
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        schemaVersion: {
+            type: Number,
+            default: 1,
+            index: true
+        }
     },
     {
         timestamps: true,
@@ -178,6 +201,14 @@ PayoutSchema.index({ company: 1, status: 1 });
 PayoutSchema.index({ salesRepresentative: 1, status: 1 });
 PayoutSchema.index({ payoutDate: -1 });
 PayoutSchema.index({ status: 1, payoutDate: -1 });
+
+// Pre-find hook to exclude deleted documents by default
+PayoutSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
+    if ((this as any)._conditions.isDeleted === undefined) {
+        this.where({ isDeleted: false });
+    }
+    next();
+});
 
 // ============================================================================
 // INSTANCE METHODS
