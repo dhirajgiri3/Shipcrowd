@@ -523,6 +523,84 @@ export const sendShipmentStatusEmail = async (
 };
 
 /**
+ * Send a return status update email
+ */
+export const sendReturnStatusEmail = async (
+  to: string,
+  customerName: string,
+  returnId: string,
+  status: string,
+  productNames: string[],
+  actionRequired: boolean = false,
+  details?: {
+    refundAmount?: number;
+    pickupDate?: Date;
+    rejectionReason?: string;
+    refundTransactionId?: string;
+  }
+): Promise<boolean> => {
+  // Check if we have a template ID for return status emails
+  const templateId = process.env.SENDGRID_RETURN_STATUS_TEMPLATE_ID;
+
+  const statusMessageMap: Record<string, string> = {
+    'requested': 'Your return request has been received',
+    'approved': 'Your return request has been approved',
+    'pickup_scheduled': 'Pickup has been scheduled for your return',
+    'picked_up': 'Your return package has been picked up',
+    'received_at_warehouse': 'Your return has reached our warehouse',
+    'qc_pending': 'Your return is undergoing quality check',
+    'qc_approved': 'Your return passed quality check',
+    'qc_rejected': 'Your return failed quality check',
+    'refund_processed': 'Your refund has been processed',
+    'cancelled': 'Your return request has been cancelled'
+  };
+
+  const friendlyStatus = statusMessageMap[status] || `Return status updated to ${status}`;
+  const productsList = productNames.join(', ');
+
+  if (templateId && EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    return sendEmail(
+      to,
+      `Return Update: ${friendlyStatus}`,
+      '',
+      '',
+      undefined,
+      templateId,
+      {
+        customer_name: customerName,
+        return_id: returnId,
+        status_message: friendlyStatus,
+        products: productsList,
+        action_required: actionRequired,
+        refund_amount: details?.refundAmount,
+        pickup_date: details?.pickupDate ? new Date(details.pickupDate).toLocaleDateString() : undefined,
+        rejection_reason: details?.rejectionReason,
+        refund_transaction_id: details?.refundTransactionId
+      }
+    );
+  } else {
+    // Fallback HTML
+    let detailsHtml = '';
+    if (details?.pickupDate) detailsHtml += `<p><strong>Pickup Date:</strong> ${new Date(details.pickupDate).toLocaleDateString()}</p>`;
+    if (details?.refundAmount) detailsHtml += `<p><strong>Refund Amount:</strong> ₹${details.refundAmount}</p>`;
+    if (details?.rejectionReason) detailsHtml += `<p><strong>Reason:</strong> ${details.rejectionReason}</p>`;
+    if (details?.refundTransactionId) detailsHtml += `<p><strong>Transaction ID:</strong> ${details.refundTransactionId}</p>`;
+
+    const html = `
+       <h1>Return Status Update</h1>
+       <p>Hello ${customerName},</p>
+       <p>${friendlyStatus} for Return ID: <strong>${returnId}</strong></p>
+       <p><strong>Items:</strong> ${productsList}</p>
+       ${detailsHtml}
+       <p>You can track your return status in your dashboard.</p>
+       <p>Thank you,<br>The Shipcrowd Team</p>
+     `;
+
+    return sendEmail(to, `Return Update: ${friendlyStatus}`, html);
+  }
+};
+
+/**
  * Send a batch email to multiple recipients
  * This is more efficient than sending individual emails when using SendGrid
  */
@@ -1050,4 +1128,5 @@ export default {
   sendOwnerInvitationEmail,
   sendAccountRecoveryEmail,
   sendNewDeviceLoginEmail,
+  sendReturnStatusEmail,
 };

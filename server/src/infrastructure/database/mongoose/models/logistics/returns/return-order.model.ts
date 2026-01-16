@@ -74,12 +74,15 @@ export interface IReturnOrder extends Document {
     pickup: {
         status: 'pending' | 'scheduled' | 'in_transit' | 'completed' | 'failed';
         scheduledDate?: Date;
-        courierId?: string;                 // e.g., 'velocity', 'delhivery'
-        awb?: string;                       // Reverse shipment AWB
+        courierId?: string;
+        awb?: string;                           // Airway bill number
         trackingUrl?: string;
+        currentLocation?: string;               // Current location from webhook
+        remarks?: string;                       // Remarks from courier
         pickedUpAt?: Date;
-        deliveredToWarehouseAt?: Date;
-        failureReason?: string;            // If pickup failed
+        deliveredAt?: Date;                     // Delivered to warehouse
+        deliveredToWarehouseAt?: Date;          // Legacy field
+        failureReason?: string;
     };
 
     // ============================================================================

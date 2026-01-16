@@ -147,9 +147,44 @@ export const sendShipmentStatusSMS = async (
   }
 };
 
+
+/**
+ * Send a return status notification via SMS
+ */
+export const sendReturnStatusSMS = async (
+  phoneNumber: string,
+  customerName: string,
+  returnId: string,
+  status: string
+): Promise<boolean> => {
+  try {
+    const statusMessageMap: Record<string, string> = {
+      'requested': 'received',
+      'approved': 'approved',
+      'pickup_scheduled': 'scheduled for pickup',
+      'picked_up': 'picked up',
+      'received_at_warehouse': 'received at warehouse',
+      'qc_pending': 'in QC',
+      'qc_approved': 'QC passed',
+      'qc_rejected': 'QC rejected',
+      'refund_processed': 'refunded',
+      'cancelled': 'cancelled'
+    };
+
+    const friendlyStatus = statusMessageMap[status] || status;
+    const message = `Hello ${customerName}, your return #${returnId} is ${friendlyStatus}. Check app for details. - Shipcrowd`;
+
+    return await sendSMS(phoneNumber, message);
+  } catch (error) {
+    logger.error('Error sending return status SMS:', error);
+    return false;
+  }
+};
+
 export default {
   sendSMS,
   sendVerificationCode,
   verifyPhoneNumber,
   sendShipmentStatusSMS,
+  sendReturnStatusSMS,
 };

@@ -291,11 +291,79 @@ export const sendShipmentStatusNotification = async (
   }
 };
 
+/**
+ * Send a return status notification
+ */
+export const sendReturnStatusNotification = async (
+  to: {
+    email?: string;
+    phone?: string;
+  },
+  customerName: string,
+  returnId: string,
+  status: string,
+  productNames: string[],
+  details?: {
+    refundAmount?: number;
+    pickupDate?: Date;
+    rejectionReason?: string;
+    refundTransactionId?: string;
+  },
+  type: NotificationType = NotificationType.BOTH
+): Promise<{
+  email: boolean;
+  sms: boolean;
+  whatsapp: boolean;
+}> => {
+  const results = {
+    email: false,
+    sms: false,
+    whatsapp: false,
+  };
+
+  try {
+    // Send return status email
+    if ((type === NotificationType.EMAIL || type === NotificationType.BOTH || type === NotificationType.ALL) && to.email) {
+      results.email = await emailService.sendReturnStatusEmail(
+        to.email,
+        customerName,
+        returnId,
+        status,
+        productNames,
+        false, // Action required
+        details
+      );
+    }
+
+    // Send return status SMS
+    if ((type === NotificationType.SMS || type === NotificationType.BOTH || type === NotificationType.ALL) && to.phone) {
+      results.sms = await smsService.sendReturnStatusSMS(
+        to.phone,
+        customerName,
+        returnId,
+        status
+      );
+    }
+
+    // Send return status WhatsApp (placeholder for now)
+    if ((type === NotificationType.WHATSAPP || type === NotificationType.ALL) && to.phone) {
+      // Future implementation
+      // results.whatsapp = await whatsappService.sendReturnStatusWhatsApp(...);
+    }
+
+    return results;
+  } catch (error) {
+    logger.error('Error sending return status notification:', error);
+    return results;
+  }
+};
+
 export default {
   sendNotification,
   sendVerificationNotification,
   sendPasswordResetNotification,
   sendWelcomeNotification,
   sendShipmentStatusNotification,
+  sendReturnStatusNotification,
   NotificationType,
 };

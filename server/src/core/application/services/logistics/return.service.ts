@@ -23,6 +23,7 @@ import WalletService from '../wallet/wallet.service';
 import InventoryService from '../warehouse/inventory.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
+import NotificationService from '../communication/notification.service';
 
 /**
  * DTOs for type safety
@@ -171,8 +172,22 @@ export default class ReturnService {
             itemCount: data.items.length,
         });
 
-        // TODO: Send notification to customer and warehouse
-        // await NotificationService.sendReturnRequestConfirmation(returnOrder);
+        // Send notification to customer
+        try {
+            await NotificationService.sendReturnStatusNotification(
+                {
+                    email: (shipment as any).customerDetails?.email,
+                    phone: (shipment as any).customerDetails?.phone
+                },
+                (shipment as any).customerDetails?.name || 'Customer',
+                returnOrder.returnId,
+                'requested',
+                returnOrder.items.map(i => i.productName)
+            );
+        } catch (notifError) {
+            logger.warn('Failed to send return notification:', notifError);
+            // Don't fail the request if notification fails
+        }
 
         return returnOrder;
     }
@@ -239,8 +254,27 @@ export default class ReturnService {
             awb: mockAwb,
         });
 
-        // TODO: Send tracking link to customer
-        // await NotificationService.sendPickupScheduled(returnOrder);
+        // Send tracking link to customer
+        try {
+            // Fetch shipment to get customer details
+            const shipment = await Shipment.findById(returnOrder.shipmentId);
+
+            await NotificationService.sendReturnStatusNotification(
+                {
+                    email: (shipment as any)?.customerDetails?.email,
+                    phone: (shipment as any)?.customerDetails?.phone
+                },
+                (shipment as any)?.customerDetails?.name || 'Customer',
+                returnOrder.returnId,
+                'pickup_scheduled',
+                returnOrder.items.map(i => i.productName),
+                {
+                    pickupDate: data.scheduledDate
+                }
+            );
+        } catch (notifError) {
+            logger.warn('Failed to send pickup notification:', notifError);
+        }
 
         return returnOrder;
     }
@@ -337,8 +371,27 @@ export default class ReturnService {
             });
         }
 
-        // TODO: Send notification to customer
-        // await NotificationService.sendQCResult(returnOrder);
+        // Send QC result notification to customer
+        try {
+            const shipment = await Shipment.findById(returnOrder.shipmentId);
+            const status = data.result === 'approved' ? 'qc_approved' : 'qc_rejected';
+
+            await NotificationService.sendReturnStatusNotification(
+                {
+                    email: (shipment as any)?.customerDetails?.email,
+                    phone: (shipment as any)?.customerDetails?.phone
+                },
+                (shipment as any)?.customerDetails?.name || 'Customer',
+                returnOrder.returnId,
+                status,
+                returnOrder.items.map(i => i.productName),
+                {
+                    rejectionReason: data.rejectionReason
+                }
+            );
+        } catch (notifError) {
+            logger.warn('Failed to send QC result notification:', notifError);
+        }
 
         return returnOrder;
     }
@@ -452,8 +505,27 @@ export default class ReturnService {
                 });
             });
 
-            // TODO: Send refund confirmation
-            // await NotificationService.sendRefundConfirmation(returnOrder);
+            // Send refund confirmation notification
+            try {
+                const shipment = await Shipment.findById(returnOrder.shipmentId);
+
+                await NotificationService.sendReturnStatusNotification(
+                    {
+                        email: (shipment as any)?.customerDetails?.email,
+                        phone: (shipment as any)?.customerDetails?.phone
+                    },
+                    (shipment as any)?.customerDetails?.name || 'Customer',
+                    returnOrder.returnId,
+                    'refund_processed',
+                    returnOrder.items.map(i => i.productName),
+                    {
+                        refundAmount: actualRefundAmount,
+                        refundTransactionId: transactionId
+                    }
+                );
+            } catch (notifError) {
+                logger.warn('Failed to send refund confirmation:', notifError);
+            }
 
             return returnOrder;
         } catch (error) {
@@ -734,6 +806,156 @@ export default class ReturnService {
         await returnOrder.save();
 
         logger.info('Return cancelled', { returnId, cancelledBy, reason });
+
+        // Send cancellation notification to customer
+        try {
+            const shipment = await Shipment.findById(returnOrder.shipmentId);
+
+            await NotificationService.sendReturnStatusNotification(
+                {
+                    email: (shipment as any)?.customerDetails?.email,
+                    phone: (shipment as any)?.customerDetails?.phone
+                },
+                (shipment as any)?.customerDetails?.name || 'Customer',
+                returnOrder.returnId,
+                'cancelled',
+                returnOrder.items.map(i => i.productName),
+                {
+                    rejectionReason: reason
+                }
+            );
+        } catch (notifError) {
+            logger.warn('Failed to send cancellation notification:', notifError);
+        }
+
+        return returnOrder;
+    }
+
+    /**
+     * Update pickup status from courier webhook
+     * Handles status transitions and triggers appropriate workflows
+     */
+    static async updatePickupStatus(
+        awb: string,
+        status: string,
+        location?: string,
+        remarks?: string
+    ): Promise<IReturnOrder> {
+        logger.info('Updating pickup status from webhook', {
+            awb,
+            status,
+            location,
+        });
+
+        // 1. Find return order by AWB
+        const returnOrder = await ReturnOrder.findOne({ 'pickup.awb': awb });
+        if (!returnOrder) {
+            throw new AppError(
+                `Return order not found for AWB: ${awb}`,
+                'RETURN_NOT_FOUND',
+                404
+            );
+        }
+
+        // 2. Map courier status to internal status
+        const statusMap: Record<string, string> = {
+            'PICKUP_SCHEDULED': 'pickup_scheduled',
+            'PICKED_UP': 'picked_up',
+            'IN_TRANSIT': 'in_transit',
+            'OUT_FOR_DELIVERY': 'in_transit',
+            'DELIVERED_TO_WAREHOUSE': 'received_at_warehouse',
+            'RECEIVED': 'received_at_warehouse',
+            'FAILED': 'pickup_failed',
+            'PICKUP_FAILED': 'pickup_failed',
+        };
+
+        const internalStatus = statusMap[status.toUpperCase()] || status.toLowerCase();
+
+        // 3. Validate status transition
+        const validTransitions: Record<string, string[]> = {
+            'pickup_scheduled': ['picked_up', 'pickup_failed'],
+            'picked_up': ['in_transit', 'pickup_failed'],
+            'in_transit': ['received_at_warehouse'],
+            'pickup_failed': ['pickup_scheduled'], // Allow reschedule
+        };
+
+        const currentStatus = returnOrder.status;
+        const allowedNextStatuses = validTransitions[currentStatus] || [];
+
+        if (!allowedNextStatuses.includes(internalStatus) && currentStatus !== internalStatus) {
+            logger.warn('Invalid status transition attempted', {
+                returnId: returnOrder.returnId,
+                currentStatus,
+                attemptedStatus: internalStatus,
+            });
+            // Don't throw error, just log and continue (idempotent)
+            return returnOrder;
+        }
+
+        // 4. Update pickup and return status
+        returnOrder.pickup.status = internalStatus as any;
+        if (location) returnOrder.pickup.currentLocation = location;
+        if (remarks) returnOrder.pickup.remarks = remarks;
+        returnOrder.status = internalStatus as any;
+
+        // 5. Handle specific status actions
+        if (internalStatus === 'picked_up') {
+            returnOrder.pickup.pickedUpAt = new Date();
+        } else if (internalStatus === 'received_at_warehouse') {
+            returnOrder.pickup.deliveredAt = new Date();
+            returnOrder.status = 'qc_pending';
+            returnOrder.qc.status = 'pending';
+
+            // Set QC deadline (24 hours)
+            returnOrder.sla.qcDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        } else if (internalStatus === 'pickup_failed') {
+            returnOrder.pickup.failureReason = remarks || 'Pickup failed';
+        }
+
+        // 6. Add timeline entry
+        returnOrder.addTimelineEntry(
+            internalStatus as any,
+            'system',
+            `Courier update: ${status}${location ? ` at ${location}` : ''}`,
+            remarks,
+            {
+                courierStatus: status,
+                location,
+            }
+        );
+
+        await returnOrder.save();
+
+        logger.info('Pickup status updated successfully', {
+            returnId: returnOrder.returnId,
+            awb,
+            newStatus: internalStatus,
+        });
+
+        // 7. Send notifications for key status changes
+        try {
+            const shouldNotify = ['picked_up', 'received_at_warehouse', 'pickup_failed'].includes(internalStatus);
+
+            if (shouldNotify) {
+                const shipment = await Shipment.findById(returnOrder.shipmentId);
+
+                await NotificationService.sendReturnStatusNotification(
+                    {
+                        email: (shipment as any)?.customerDetails?.email,
+                        phone: (shipment as any)?.customerDetails?.phone
+                    },
+                    (shipment as any)?.customerDetails?.name || 'Customer',
+                    returnOrder.returnId,
+                    internalStatus,
+                    returnOrder.items.map(i => i.productName),
+                    {
+                        rejectionReason: internalStatus === 'pickup_failed' ? remarks : undefined
+                    }
+                );
+            }
+        } catch (notifError) {
+            logger.warn('Failed to send pickup status notification:', notifError);
+        }
 
         return returnOrder;
     }

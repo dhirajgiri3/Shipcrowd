@@ -36,6 +36,9 @@ import ndrRoutes from './ndr/ndr.routes';
 import rtoRoutes from './rto/rto.routes';
 // Week 11: Weight Disputes & COD Remittance
 import weightDisputesRoutes from './disputes/weight-disputes.routes';
+// Returns Management
+import returnsRoutes from './logistics/returns.routes';
+import returnWebhooksRoutes from './logistics/return-webhooks.routes';
 
 const router = express.Router();
 
@@ -123,5 +126,9 @@ router.use('/ndr/communication', ndrCommunicationRoutes);
 // Week 10: Promo Codes
 import promoCodeRoutes from './marketing/promo-code.routes';
 router.use('/promos', promoCodeRoutes);
+
+// Returns Management
+router.use('/logistics/returns', returnsRoutes);
+router.use('/webhooks/returns', returnWebhooksRoutes);
 
 export default router;
