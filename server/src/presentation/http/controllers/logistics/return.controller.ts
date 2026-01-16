@@ -21,7 +21,8 @@ import { z } from 'zod';
 import ReturnService from '@/core/application/services/logistics/return.service';
 import ReturnOrder, { ReturnReason } from '@/infrastructure/database/mongoose/models/logistics/returns/return-order.model';
 import logger from '@/shared/logger/winston.logger';
-import { AppError } from '@/shared/errors/app.error';
+import { AppError, normalizeError } from '@/shared/errors/app.error';
+import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '@/shared/utils/responseHelper';
 
 /**
  * Zod validation schemas for type-safe request validation
@@ -88,61 +89,41 @@ export default class ReturnController {
                 userId: customerId,
             });
 
-            res.status(201).json({
-                success: true,
-                data: {
-                    returnId: returnOrder.returnId,
+            sendCreated(res, {
+                returnId: returnOrder.returnId,
+                status: returnOrder.status,
+                refundAmount: returnOrder.refundAmount,
+                sla: {
+                    pickupDeadline: returnOrder.sla.pickupDeadline,
+                },
+                tracking: {
                     status: returnOrder.status,
-                    refundAmount: returnOrder.refundAmount,
-                    sla: {
-                        pickupDeadline: returnOrder.sla.pickupDeadline,
-                    },
-                    tracking: {
-                        status: returnOrder.status,
-                        currentStep: 1,
-                        totalSteps: 5,
-                        steps: [
-                            { name: 'Request Created', completed: true },
-                            { name: 'Pickup Scheduled', completed: false },
-                            { name: 'In Transit', completed: false },
-                            { name: 'Quality Check', completed: false },
-                            { name: 'Refund Processed', completed: false },
-                        ],
-                    },
+                    currentStep: 1,
+                    totalSteps: 5,
+                    steps: [
+                        { name: 'Request Created', completed: true },
+                        { name: 'Pickup Scheduled', completed: false },
+                        { name: 'In Transit', completed: false },
+                        { name: 'Quality Check', completed: false },
+                        { name: 'Refund Processed', completed: false },
+                    ],
                 },
-                message: 'Return request created successfully. You will be notified when pickup is scheduled.',
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                },
-            });
+            }, 'Return request created successfully. You will be notified when pickup is scheduled.');
         } catch (error) {
             if (error instanceof z.ZodError) {
+                const appError = new AppError('Validation failed', 'VALIDATION_ERROR', 400);
                 res.status(400).json({
                     success: false,
-                    data: null,
                     message: 'Validation failed',
                     errors: error.errors.map(e => ({
                         field: e.path.join('.'),
-                        message: e.message,
-                    })),
+                        message: e.message
+                    }))
                 });
-            } else if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    data: null,
-                    message: error.message,
-                    code: error.code,
-                });
-            } else {
-                logger.error('Create return request failed', {
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                res.status(500).json({
-                    success: false,
-                    data: null,
-                    message: 'An error occurred while creating the return request',
-                });
+                return;
             }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -165,8 +146,6 @@ export default class ReturnController {
             if (status) filter.status = status;
             if (returnReason) filter.returnReason = returnReason;
 
-            // Use statically imported ReturnOrder model
-
             // Fetch returns with pagination
             const [returns, total] = await Promise.all([
                 ReturnOrder.find(filter)
@@ -177,55 +156,34 @@ export default class ReturnController {
                 ReturnOrder.countDocuments(filter),
             ]);
 
-            const pages = Math.ceil(total / limit);
+            const pagination = calculatePagination(page, limit, total);
 
-            res.status(200).json({
-                success: true,
-                data: returns.map((ret: any) => ({
-                    returnId: ret.returnId,
-                    orderId: ret.orderId,
-                    status: ret.status,
-                    returnReason: ret.returnReason,
-                    refundAmount: ret.refundAmount,
-                    createdAt: ret.createdAt,
-                    pickup: {
-                        status: ret.pickup.status,
-                        scheduledDate: ret.pickup.scheduledDate,
-                        awb: ret.pickup.awb,
-                    },
-                    qc: {
-                        status: ret.qc.status,
-                        result: ret.qc.result,
-                    },
-                    refund: {
-                        status: ret.refund.status,
-                    },
-                    sla: {
-                        isBreached: ret.sla.isBreached,
-                    },
-                })),
-                message: `Found ${total} return(s)`,
-                metadata: {
-                    pagination: {
-                        page,
-                        limit,
-                        total,
-                        pages,
-                        hasNext: page < pages,
-                        hasPrev: page > 1,
-                    },
-                    timestamp: new Date().toISOString(),
+            sendPaginated(res, returns.map((ret: any) => ({
+                returnId: ret.returnId,
+                orderId: ret.orderId,
+                status: ret.status,
+                returnReason: ret.returnReason,
+                refundAmount: ret.refundAmount,
+                createdAt: ret.createdAt,
+                pickup: {
+                    status: ret.pickup.status,
+                    scheduledDate: ret.pickup.scheduledDate,
+                    awb: ret.pickup.awb,
                 },
-            });
+                qc: {
+                    status: ret.qc.status,
+                    result: ret.qc.result,
+                },
+                refund: {
+                    status: ret.refund.status,
+                },
+                sla: {
+                    isBreached: ret.sla.isBreached,
+                },
+            })), pagination, `Found ${total} return(s)`);
         } catch (error) {
-            logger.error('List returns failed', {
-                error: error instanceof Error ? error.message : String(error),
-            });
-            res.status(500).json({
-                success: false,
-                data: null,
-                message: 'An error occurred while fetching returns',
-            });
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -239,70 +197,45 @@ export default class ReturnController {
         try {
             const { returnId } = req.params;
 
-            // Use statically imported ReturnOrder model
             const returnOrder = await ReturnOrder.findOne({ returnId });
 
             if (!returnOrder) {
-                res.status(404).json({
-                    success: false,
-                    data: null,
-                    message: 'Return not found',
-                });
-                return;
+                throw new AppError('Return not found', 'RETURN_NOT_FOUND', 404);
             }
 
             // Authorization check (customer can only see their own returns)
             if (req.user?.role === 'customer' && returnOrder.customerId?.toString() !== req.user._id) {
-                res.status(403).json({
-                    success: false,
-                    data: null,
-                    message: 'You do not have permission to view this return',
-                });
-                return;
+                throw new AppError('You do not have permission to view this return', 'FORBIDDEN', 403);
             }
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    returnId: returnOrder.returnId,
-                    orderId: returnOrder.orderId,
-                    shipmentId: returnOrder.shipmentId,
-                    status: returnOrder.status,
-                    returnReason: returnOrder.returnReason,
-                    returnReasonText: returnOrder.returnReasonText,
-                    customerComments: returnOrder.customerComments,
-                    items: returnOrder.items,
-                    refundAmount: returnOrder.refundAmount,
-                    refundMethod: returnOrder.refundMethod,
-                    pickup: returnOrder.pickup,
-                    qc: returnOrder.qc,
-                    refund: returnOrder.refund,
-                    inventory: returnOrder.inventory,
-                    sla: returnOrder.sla,
-                    timeline: returnOrder.timeline.map((t: any) => ({
-                        status: t.status,
-                        timestamp: t.timestamp,
-                        action: t.action,
-                        notes: t.notes,
-                    })),
-                    createdAt: returnOrder.createdAt,
-                    updatedAt: returnOrder.updatedAt,
-                },
-                message: 'Return details retrieved successfully',
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                },
-            });
+            sendSuccess(res, {
+                returnId: returnOrder.returnId,
+                orderId: returnOrder.orderId,
+                shipmentId: returnOrder.shipmentId,
+                status: returnOrder.status,
+                returnReason: returnOrder.returnReason,
+                returnReasonText: returnOrder.returnReasonText,
+                customerComments: returnOrder.customerComments,
+                items: returnOrder.items,
+                refundAmount: returnOrder.refundAmount,
+                refundMethod: returnOrder.refundMethod,
+                pickup: returnOrder.pickup,
+                qc: returnOrder.qc,
+                refund: returnOrder.refund,
+                inventory: returnOrder.inventory,
+                sla: returnOrder.sla,
+                timeline: returnOrder.timeline.map((t: any) => ({
+                    status: t.status,
+                    timestamp: t.timestamp,
+                    action: t.action,
+                    notes: t.notes,
+                })),
+                createdAt: returnOrder.createdAt,
+                updatedAt: returnOrder.updatedAt,
+            }, 'Return details retrieved successfully');
         } catch (error) {
-            logger.error('Get return details failed', {
-                returnId: req.params.returnId,
-                error: error instanceof Error ? error.message : String(error),
-            });
-            res.status(500).json({
-                success: false,
-                data: null,
-                message: 'An error occurred while fetching return details',
-            });
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -329,48 +262,27 @@ export default class ReturnController {
                 performedBy,
             });
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    returnId: returnOrder.returnId,
-                    status: returnOrder.status,
-                    pickup: {
-                        status: returnOrder.pickup.status,
-                        scheduledDate: returnOrder.pickup.scheduledDate,
-                        awb: returnOrder.pickup.awb,
-                        trackingUrl: returnOrder.pickup.trackingUrl,
-                    },
+            sendSuccess(res, {
+                returnId: returnOrder.returnId,
+                status: returnOrder.status,
+                pickup: {
+                    status: returnOrder.pickup.status,
+                    scheduledDate: returnOrder.pickup.scheduledDate,
+                    awb: returnOrder.pickup.awb,
+                    trackingUrl: returnOrder.pickup.trackingUrl,
                 },
-                message: 'Pickup scheduled successfully',
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                },
-            });
+            }, 'Pickup scheduled successfully');
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({
                     success: false,
-                    data: null,
                     message: 'Validation failed',
-                    errors: error.errors,
+                    errors: error.errors
                 });
-            } else if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    data: null,
-                    message: error.message,
-                });
-            } else {
-                logger.error('Schedule pickup failed', {
-                    returnId: req.params.returnId,
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                res.status(500).json({
-                    success: false,
-                    data: null,
-                    message: 'An error occurred while scheduling pickup',
-                });
+                return;
             }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -396,53 +308,32 @@ export default class ReturnController {
                 assignedTo,
             });
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    returnId: returnOrder.returnId,
-                    status: returnOrder.status,
-                    qc: {
-                        status: returnOrder.qc.status,
-                        result: returnOrder.qc.result,
-                        itemsAccepted: returnOrder.qc.itemsAccepted,
-                        itemsRejected: returnOrder.qc.itemsRejected,
-                        completedAt: returnOrder.qc.completedAt,
-                    },
-                    refund: {
-                        status: returnOrder.refund.status,
-                        estimatedAmount: returnOrder.calculateActualRefund(),
-                    },
+            sendSuccess(res, {
+                returnId: returnOrder.returnId,
+                status: returnOrder.status,
+                qc: {
+                    status: returnOrder.qc.status,
+                    result: returnOrder.qc.result,
+                    itemsAccepted: returnOrder.qc.itemsAccepted,
+                    itemsRejected: returnOrder.qc.itemsRejected,
+                    completedAt: returnOrder.qc.completedAt,
                 },
-                message: `QC ${validatedData.result}: ${validatedData.result === 'approved' ? 'Refund will be processed automatically' : 'Return rejected'}`,
-                metadata: {
-                    timestamp: new Date().toISOString(),
+                refund: {
+                    status: returnOrder.refund.status,
+                    estimatedAmount: returnOrder.calculateActualRefund(),
                 },
-            });
+            }, `QC ${validatedData.result}: ${validatedData.result === 'approved' ? 'Refund will be processed automatically' : 'Return rejected'}`);
         } catch (error) {
             if (error instanceof z.ZodError) {
                 res.status(400).json({
                     success: false,
-                    data: null,
                     message: 'Validation failed',
-                    errors: error.errors,
+                    errors: error.errors
                 });
-            } else if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    data: null,
-                    message: error.message,
-                });
-            } else {
-                logger.error('Record QC result failed', {
-                    returnId: req.params.returnId,
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                res.status(500).json({
-                    success: false,
-                    data: null,
-                    message: 'An error occurred while recording QC result',
-                });
+                return;
             }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -458,41 +349,19 @@ export default class ReturnController {
 
             const returnOrder = await ReturnService.processRefund(returnId);
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    returnId: returnOrder.returnId,
-                    status: returnOrder.status,
-                    refund: {
-                        status: returnOrder.refund.status,
-                        transactionId: returnOrder.refund.transactionId,
-                        amount: returnOrder.calculateActualRefund(),
-                        completedAt: returnOrder.refund.completedAt,
-                    },
+            sendSuccess(res, {
+                returnId: returnOrder.returnId,
+                status: returnOrder.status,
+                refund: {
+                    status: returnOrder.refund.status,
+                    transactionId: returnOrder.refund.transactionId,
+                    amount: returnOrder.calculateActualRefund(),
+                    completedAt: returnOrder.refund.completedAt,
                 },
-                message: 'Refund processed successfully',
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                },
-            });
+            }, 'Refund processed successfully');
         } catch (error) {
-            if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    data: null,
-                    message: error.message,
-                });
-            } else {
-                logger.error('Process refund failed', {
-                    returnId: req.params.returnId,
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                res.status(500).json({
-                    success: false,
-                    data: null,
-                    message: 'An error occurred while processing refund',
-                });
-            }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -518,36 +387,14 @@ export default class ReturnController {
 
             const returnOrder = await ReturnService.cancelReturn(returnId, cancelledBy, reason);
 
-            res.status(200).json({
-                success: true,
-                data: {
-                    returnId: returnOrder.returnId,
-                    status: returnOrder.status,
-                    cancelledAt: returnOrder.cancelledAt,
-                },
-                message: 'Return cancelled successfully',
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                },
-            });
+            sendSuccess(res, {
+                returnId: returnOrder.returnId,
+                status: returnOrder.status,
+                cancelledAt: returnOrder.cancelledAt,
+            }, 'Return cancelled successfully');
         } catch (error) {
-            if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    data: null,
-                    message: error.message,
-                });
-            } else {
-                logger.error('Cancel return failed', {
-                    returnId: req.params.returnId,
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                res.status(500).json({
-                    success: false,
-                    data: null,
-                    message: 'An error occurred while cancelling return',
-                });
-            }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -570,32 +417,10 @@ export default class ReturnController {
             const dateRange = startDate && endDate ? { start: startDate, end: endDate } : undefined;
             const stats = await ReturnService.getReturnStats(companyId, dateRange);
 
-            res.status(200).json({
-                success: true,
-                data: stats,
-                message: 'Return statistics retrieved successfully',
-                metadata: {
-                    dateRange,
-                    timestamp: new Date().toISOString(),
-                },
-            });
+            sendSuccess(res, stats, 'Return statistics retrieved successfully');
         } catch (error) {
-            if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    data: null,
-                    message: error.message,
-                });
-            } else {
-                logger.error('Get return stats failed', {
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                res.status(500).json({
-                    success: false,
-                    data: null,
-                    message: 'An error occurred while fetching return statistics',
-                });
-            }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 }

@@ -240,6 +240,74 @@ export interface VelocityConfig {
   timeout?: number;
 }
 
+// ==================== REVERSE PICKUP / RTO ====================
+
+export interface VelocityReverseShipmentRequest {
+  order_id: string;
+  original_awb: string;
+  pickup_customer_name: string;
+  pickup_last_name?: string;
+  pickup_address: string;
+  pickup_city: string;
+  pickup_pincode: string;
+  pickup_state: string;
+  pickup_country: string;
+  pickup_email?: string;
+  pickup_phone: string;
+  delivery_location: string;              // Warehouse name (return destination)
+  warehouse_id: string;                   // Return warehouse ID
+  length: number;                         // cm
+  breadth: number;                        // cm
+  height: number;                         // cm
+  weight: number;                         // kg
+  reason?: string;                        // RTO reason
+  vendor_details?: VelocityVendorDetails;
+}
+
+export interface VelocityReverseShipmentResponse {
+  shipment_id: string;
+  order_id: string;
+  reverse_awb: string;
+  original_awb: string;
+  courier_name: string;
+  courier_company_id: string;
+  label_url: string;
+  manifest_url?: string;
+  status: string;
+  pickup_scheduled_date?: string;
+}
+
+export interface VelocitySchedulePickupRequest {
+  awb: string;
+  pickup_date: string;                    // "YYYY-MM-DD"
+  pickup_time_slot: 'morning' | 'afternoon' | 'evening';
+  pickup_address?: string;                // Optional override
+  pickup_pincode?: string;
+  pickup_phone?: string;
+}
+
+export interface VelocitySchedulePickupResponse {
+  awb: string;
+  pickup_id: string;
+  scheduled_date: string;
+  time_slot: string;
+  status: 'scheduled' | 'confirmed' | 'failed';
+  message: string;
+}
+
+export interface VelocityCancelReverseShipmentRequest {
+  reverse_awb: string;
+  original_awb: string;
+  reason?: string;
+}
+
+export interface VelocityCancelReverseShipmentResponse {
+  message: string;
+  reverse_awb: string;
+  original_awb: string;
+  status: string;
+}
+
 // ==================== TOKEN STORAGE ====================
 
 export interface VelocityTokenData {

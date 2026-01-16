@@ -1,19 +1,7 @@
 /**
  * Return Service
  * 
- * Handles the complete returns management lifecycle:
- * 1. Create return request (customer-initiated)
- * 2. Schedule reverse pickup (warehouse staff)
- * 3. Record QC results (warehouse QC team)
- * 4. Process refund (automated after QC approval)
- * 5. Update inventory (stock reconciliation)
- * 6. Analytics and reporting
- * 
- * Business Impact:
- * - Streamlines return processing (40% faster than manual)
- * - Reduces refund fraud through mandatory QC workflow
- * - Automated inventory reconciliation (100% accuracy)
- * - Real-time return analytics for business insights
+ * Handles the complete returns management lifecycle.
  */
 
 import mongoose from 'mongoose';
@@ -22,7 +10,8 @@ import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import WalletService from '../wallet/wallet.service';
 import InventoryService from '../warehouse/inventory.service';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError, ValidationError, ConflictError } from '../../../../shared/errors/app.error';
+import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import NotificationService from '../communication/notification.service';
 
 /**
@@ -101,15 +90,11 @@ export default class ReturnService {
         // 1. Validate shipment exists and is delivered
         const shipment = await Shipment.findById(data.shipmentId);
         if (!shipment) {
-            throw new AppError('Shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         if ((shipment as any).status !== 'delivered') {
-            throw new AppError(
-                'Returns can only be initiated for delivered shipments',
-                'INVALID_SHIPMENT_STATUS',
-                400
-            );
+            throw new ValidationError('Returns can only be initiated for delivered shipments');
         }
 
         // 2. Check return eligibility window (7 days from delivery)
@@ -121,11 +106,7 @@ export default class ReturnService {
             );
 
             if (daysSinceDelivery > 7) {
-                throw new AppError(
-                    'Return window expired. Returns must be initiated within 7 days of delivery.',
-                    'RETURN_WINDOW_EXPIRED',
-                    400
-                );
+                throw new ValidationError('Return window expired. Returns must be initiated within 7 days of delivery.');
             }
         }
 
@@ -210,16 +191,12 @@ export default class ReturnService {
         // 1. Validate return exists
         const returnOrder = await ReturnOrder.findOne({ returnId: data.returnId });
         if (!returnOrder) {
-            throw new AppError('Return order not found', 'RETURN_NOT_FOUND', 404);
+            throw new NotFoundError('Return order', ErrorCode.BIZ_NOT_FOUND);
         }
 
         // 2. Validate state
         if (returnOrder.status !== 'requested') {
-            throw new AppError(
-                `Cannot schedule pickup. Current status: ${returnOrder.status}`,
-                'INVALID_RETURN_STATUS',
-                400
-            );
+            throw new ValidationError(`Cannot schedule pickup. Current status: ${returnOrder.status}`);
         }
 
         // 3. Call courier API to create reverse shipment
@@ -298,17 +275,13 @@ export default class ReturnService {
         // 1. Validate return exists
         const returnOrder = await ReturnOrder.findOne({ returnId: data.returnId });
         if (!returnOrder) {
-            throw new AppError('Return order not found', 'RETURN_NOT_FOUND', 404);
+            throw new NotFoundError('Return order', ErrorCode.BIZ_NOT_FOUND);
         }
 
         // 2. Validate QC can be performed
         const validStatuses = ['qc_pending', 'qc_in_progress', 'in_transit'];
         if (!validStatuses.includes(returnOrder.status)) {
-            throw new AppError(
-                `Cannot perform QC. Current status: ${returnOrder.status}`,
-                'INVALID_RETURN_STATUS',
-                400
-            );
+            throw new ValidationError(`Cannot perform QC. Current status: ${returnOrder.status}`);
         }
 
         // 3. Update QC details
@@ -416,23 +389,19 @@ export default class ReturnService {
             // 1. Fetch return order
             const returnOrder = await ReturnOrder.findOne({ returnId }).session(session);
             if (!returnOrder) {
-                throw new AppError('Return order not found', 'RETURN_NOT_FOUND', 404);
+                throw new NotFoundError('Return order', ErrorCode.BIZ_NOT_FOUND);
             }
 
             // 2. Validate eligibility
             if (!returnOrder.isEligibleForRefund()) {
-                throw new AppError(
-                    'Return is not eligible for refund',
-                    'REFUND_NOT_ELIGIBLE',
-                    400
-                );
+                throw new ValidationError('Return is not eligible for refund');
             }
 
             // 3. Calculate actual refund amount based on QC result
             const actualRefundAmount = returnOrder.calculateActualRefund();
 
             if (actualRefundAmount <= 0) {
-                throw new AppError('Refund amount must be greater than zero', 'INVALID_REFUND_AMOUNT', 400);
+                throw new ValidationError('Refund amount must be greater than zero');
             }
 
             // 4. Process refund based on method
@@ -554,7 +523,7 @@ export default class ReturnService {
         // 1. Fetch return order
         const returnOrder = await ReturnOrder.findOne({ returnId });
         if (!returnOrder) {
-            throw new AppError('Return order not found', 'RETURN_NOT_FOUND', 404);
+            throw new NotFoundError('Return order', ErrorCode.BIZ_NOT_FOUND);
         }
 
         // 2. Validate QC status
@@ -779,7 +748,7 @@ export default class ReturnService {
     ): Promise<IReturnOrder> {
         const returnOrder = await ReturnOrder.findOne({ returnId });
         if (!returnOrder) {
-            throw new AppError('Return order not found', 'RETURN_NOT_FOUND', 404);
+            throw new NotFoundError('Return order', ErrorCode.BIZ_NOT_FOUND);
         }
 
         // Only allow cancellation if not yet refunded

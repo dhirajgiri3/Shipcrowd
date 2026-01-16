@@ -35,6 +35,7 @@
  * - Expected execution time: <30 seconds
  */
 
+// @ts-ignore - node-cron doesn't have type declarations
 import cron from 'node-cron';
 import Dispute from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
 import logger from '@/shared/logger/winston.logger';
@@ -137,7 +138,7 @@ export class DisputeSLAJob {
                                     timestamp: now,
                                     notes: `Dispute breached SLA by ${Math.round(
                                         (now.getTime() - dispute.sla.deadline.getTime()) /
-                                            (60 * 60 * 1000)
+                                        (60 * 60 * 1000)
                                     )} hours`,
                                 },
                             },

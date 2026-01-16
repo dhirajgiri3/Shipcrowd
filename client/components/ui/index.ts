@@ -49,10 +49,15 @@ export type { PageErrorProps } from './feedback/PageError';
 export { Loader, TruckLoader, SpinnerLoader, DotsLoader, ProgressLoader } from './feedback/Loader';
 export type { LoaderProps, LoaderVariant, LoaderSize } from './feedback/Loader';
 
+export { EmptyState, NoSearchResults, NoDataAvailable } from './feedback/EmptyState';
+export type { EmptyStateProps, EmptyStateVariant, EmptyStateAction } from './feedback/EmptyState';
+
 // ============================================
 // DATA COMPONENTS (Display & loading)
 // ============================================
 export { DataTable } from './data/DataTable';
+export { StatusBadge, StatusBadges } from './data/StatusBadge';
+export type { StatusBadgeProps, StatusBadgesProps, StatusDomain } from './data/StatusBadge';
 export {
     Skeleton,
     CardSkeleton,
@@ -60,8 +65,10 @@ export {
     ChartSkeleton,
     NavSkeleton,
     PageHeaderSkeleton,
-    PageSkeleton
+    PageSkeleton,
+    StandardPageLoading,
 } from './data/Skeleton';
+export type { PageLoadingLayout } from './data/Skeleton';
 
 // ============================================
 // FORM COMPONENTS (User input)
@@ -76,6 +83,7 @@ export { PasswordStrengthIndicator } from './form/PasswordStrengthIndicator';
 // ============================================
 export { Navigation } from './layout/Navigation';
 export { Footer } from './layout/Footer';
+export { PageHeader } from './layout/PageHeader';
 
 // ============================================
 // UTILITY COMPONENTS (Misc helpers)

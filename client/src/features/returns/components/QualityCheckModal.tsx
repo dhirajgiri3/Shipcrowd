@@ -1,27 +1,29 @@
 /**
  * Quality Check Modal
- * 
+ *
  * Perform QC on returned items:
  * - Item-by-item inspection
  * - Condition assessment
  * - Image upload with preview
  * - Restocking decisions
+ *
+ * Refactored to use useModalState hook for centralized state management
  */
 
 'use client';
 
 import React, { useState } from 'react';
 import { usePerformQC } from '@/src/core/api/hooks';
+import { useModalState } from '@/src/hooks';
 import type { PerformQCPayload, ReturnItem } from '@/src/types/api/returns.types';
-import { toast } from 'sonner';
 import { handleApiError } from '@/src/lib/error-handler';
 import { uploadQCImages, UploadError } from '@/src/lib/upload';
 
 interface QCModalProps {
-    returnId: string;
-    items: ReturnItem[];
-    isOpen: boolean;
-    onClose: () => void;
+  returnId: string;
+  items: ReturnItem[];
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const CONDITION_OPTIONS = [
@@ -32,141 +34,181 @@ const CONDITION_OPTIONS = [
 ];
 
 export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalProps) {
-    const [qcItems, setQCItems] = useState(
-        items.map(item => ({
-            productId: item.productId,
-            productName: item.productName,
-            expectedQuantity: item.returnQuantity,
-            receivedQuantity: item.returnQuantity,
-            condition: 'new' as const,
-            notes: '',
-            images: [] as string[],
-            passed: true,
-        }))
-    );
-    // Track File objects separately from URLs
-    const [itemImages, setItemImages] = useState<Record<string, File[]>>({});
-    const [overallNotes, setOverallNotes] = useState('');
-    const [restockable, setRestockable] = useState(true);
-    const [isUploading, setIsUploading] = useState(false);
+  // Initialize modal state with centralized hook
+  const modal = useModalState({
+    initialOpen: isOpen,
+    onClose: () => {
+      onClose();
+      // Reset form on close
+      setOverallNotes('');
+      setRestockable(true);
+      setItemImages({});
+    },
+  });
 
-    const performQC = usePerformQC();
+  const [qcItems, setQCItems] = useState(
+    items.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      expectedQuantity: item.returnQuantity,
+      receivedQuantity: item.returnQuantity,
+      condition: 'new' as const,
+      notes: '',
+      images: [] as string[],
+      passed: true,
+    }))
+  );
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+  // Track File objects separately from URLs
+  const [itemImages, setItemImages] = useState<Record<string, File[]>>({});
+  const [overallNotes, setOverallNotes] = useState('');
+  const [restockable, setRestockable] = useState(true);
 
-        // Validation
-        if (!overallNotes.trim()) {
-            toast.error('Overall notes are required');
-            return;
-        }
+  const performQC = usePerformQC();
 
-        setIsUploading(true);
+  // Sync external isOpen prop with modal state
+  React.useEffect(() => {
+    modal.setIsOpen(isOpen);
+  }, [isOpen, modal]);
 
-        try {
-            // Upload all images for all items
-            const updatedQCItems = await Promise.all(
-                qcItems.map(async (item, index) => {
-                    const files = itemImages[item.productId] || [];
-                    if (files.length === 0) {
-                        return item;
-                    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-                    // Upload images for this item
-                    const uploadedUrls = await uploadQCImages(files, {
-                        onProgress: (fileName, progress) => {
-                            console.log(`Uploading ${fileName} for ${item.productName}: ${progress}%`);
-                        },
-                    });
+    // Validation
+    if (!overallNotes.trim()) {
+      modal.setError('Overall notes are required');
+      return;
+    }
 
-                    return {
-                        ...item,
-                        images: uploadedUrls,
-                    };
-                })
-            );
-
-            const payload: PerformQCPayload = {
-                items: updatedQCItems,
-                overallNotes,
-                restockable,
-            };
-
-            await performQC.mutateAsync({ returnId, payload });
-            toast.success('Quality check completed successfully!', {
-                description: 'All items inspected and documented',
-            });
-            onClose();
-            // Reset form
-            setOverallNotes('');
-            setRestockable(true);
-            setItemImages({});
-        } catch (error) {
-            if (error instanceof UploadError) {
-                toast.error(error.message, {
-                    description: 'Please check your files and try again',
-                });
-                return;
+    try {
+      // Use modal.submit for centralized loading and error handling
+      await modal.submit(async () => {
+        // Upload all images for all items
+        const updatedQCItems = await Promise.all(
+          qcItems.map(async (item) => {
+            const files = itemImages[item.productId] || [];
+            if (files.length === 0) {
+              return item;
             }
-            handleApiError(error, 'Failed to complete quality check');
-        } finally {
-            setIsUploading(false);
-        }
-    };
 
-    const updateItem = (index: number, updates: Partial<typeof qcItems[0]>) => {
-        setQCItems(prev => prev.map((item, i) => i === index ? { ...item, ...updates } : item));
-    };
-
-    const handleImageSelect = (productId: string, files: FileList | null) => {
-        if (!files || files.length === 0) return;
-
-        const newFiles = Array.from(files);
-        const MAX_FILES = 5;
-        const currentCount = (itemImages[productId] || []).length;
-
-        if (currentCount + newFiles.length > MAX_FILES) {
-            toast.error(`Maximum ${MAX_FILES} images per item`, {
-                description: `You can only upload ${MAX_FILES - currentCount} more image(s)`,
+            // Upload images for this item
+            const uploadedUrls = await uploadQCImages(files, {
+              onProgress: (fileName, progress) => {
+                console.log(
+                  `Uploading ${fileName} for ${item.productName}: ${progress}%`
+                );
+              },
             });
-            return;
-        }
 
-        setItemImages(prev => ({
-            ...prev,
-            [productId]: [...(prev[productId] || []), ...newFiles],
-        }));
-    };
+            return {
+              ...item,
+              images: uploadedUrls,
+            };
+          })
+        );
 
-    const removeImage = (productId: string, index: number) => {
-        setItemImages(prev => ({
-            ...prev,
-            [productId]: (prev[productId] || []).filter((_, i) => i !== index),
-        }));
-    };
+        const payload: PerformQCPayload = {
+          items: updatedQCItems,
+          overallNotes,
+          restockable,
+        };
 
-    if (!isOpen) return null;
+        await performQC.mutateAsync({ returnId, payload });
+      });
 
-    return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                {/* Header */}
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Quality Check
-                        </h2>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+      // Close modal on success (modal.submit calls onSuccess callback)
+      modal.close();
+    } catch (error) {
+      if (error instanceof UploadError) {
+        modal.setError(error.message);
+        return;
+      }
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : 'Failed to complete quality check';
+      modal.setError(errorMsg);
+      handleApiError(error, 'Failed to complete quality check');
+    }
+  };
 
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-6">
-                        {/* Items Inspection */}
+  const updateItem = (index: number, updates: Partial<(typeof qcItems)[0]>) => {
+    setQCItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, ...updates } : item))
+    );
+  };
+
+  const handleImageSelect = (productId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+    const MAX_FILES = 5;
+    const currentCount = (itemImages[productId] || []).length;
+
+    if (currentCount + newFiles.length > MAX_FILES) {
+      modal.setError(
+        `Maximum ${MAX_FILES} images per item. You can only upload ${MAX_FILES - currentCount} more image(s)`
+      );
+      return;
+    }
+
+    setItemImages((prev) => ({
+      ...prev,
+      [productId]: [...(prev[productId] || []), ...newFiles],
+    }));
+  };
+
+  const removeImage = (productId: string, index: number) => {
+    setItemImages((prev) => ({
+      ...prev,
+      [productId]: (prev[productId] || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  if (!modal.isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Quality Check
+            </h2>
+            <button
+              onClick={modal.close}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-6">
+            {/* Error Message */}
+            {modal.error && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                  {modal.error}
+                </p>
+              </div>
+            )}
+
+            {/* Items Inspection */}
                         {qcItems.map((item, index) => (
                             <div key={item.productId} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                 <div className="flex items-start justify-between mb-4">
@@ -260,7 +302,7 @@ export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalP
                                             onChange={(e) => handleImageSelect(item.productId, e.target.files)}
                                             className="hidden"
                                             id={`qc-image-${item.productId}`}
-                                            disabled={isUploading || performQC.isPending}
+                                            disabled={modal.isSubmitting || performQC.isPending}
                                         />
                                         <label htmlFor={`qc-image-${item.productId}`} className="cursor-pointer block text-center">
                                             <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +331,7 @@ export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalP
                                                         type="button"
                                                         onClick={() => removeImage(item.productId, imgIdx)}
                                                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        disabled={isUploading || performQC.isPending}
+                                                        disabled={modal.isSubmitting || performQC.isPending}
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -340,32 +382,33 @@ export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalP
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={performQC.isPending || isUploading}
-                            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {(performQC.isPending || isUploading) ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    {isUploading ? 'Uploading Images...' : 'Processing...'}
-                                </>
-                            ) : (
-                                'Complete QC'
-                            )}
-                        </button>
-                    </div>
-                </form>
-            </div>
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={modal.close}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            disabled={modal.isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={performQC.isPending || modal.isSubmitting}
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {modal.isSubmitting || performQC.isPending ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                {modal.isSubmitting ? 'Uploading Images...' : 'Processing...'}
+              </>
+            ) : (
+              'Complete QC'
+            )}
+          </button>
         </div>
-    );
+        </form>
+      </div>
+    </div>
+  );
 }

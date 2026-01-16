@@ -26,7 +26,8 @@ import { Request, Response } from 'express';
 import DisputeService from '@/core/application/services/logistics/dispute.service';
 import DisputeAnalyticsService from '@/core/application/services/logistics/dispute-analytics.service';
 import logger from '@/shared/logger/winston.logger';
-import { AppError } from '@/shared/errors/app.error';
+import { AppError, normalizeError } from '@/shared/errors/app.error';
+import { sendSuccess, sendCreated, sendPaginated, calculatePagination } from '@/shared/utils/responseHelper';
 
 // ============================================================================
 // CUSTOMER ENDPOINTS
@@ -70,10 +71,11 @@ export default class DisputeController {
                 companyId,
             });
 
-            res.status(201).json({ success: true, data: dispute, message: 'Dispute created successfully' });
+            sendCreated(res, dispute, 'Dispute created successfully');
         } catch (error) {
             logger.error('Error creating dispute:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -136,18 +138,12 @@ export default class DisputeController {
                 DisputeService.countDisputes(filter),
             ]);
 
-            successResponse(res, {
-                disputes,
-                pagination: {
-                    page: Number(page),
-                    limit: Number(limit),
-                    total,
-                    pages: Math.ceil(total / Number(limit)),
-                },
-            });
+            const pagination = calculatePagination(total, Number(page), Number(limit));
+            sendPaginated(res, disputes, pagination);
         } catch (error) {
             logger.error('Error fetching disputes:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -175,7 +171,11 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: dispute });
         } catch (error) {
             logger.error('Error fetching dispute:', error);
-            errorResponse(res, error);
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ success: false, message: error.message, code: error.code });
+            } else {
+                res.status(500).json({ success: false, message: 'Internal server error' });
+            }
         }
     }
 
@@ -212,7 +212,11 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: dispute, message: 'Evidence added successfully' });
         } catch (error) {
             logger.error('Error adding evidence:', error);
-            errorResponse(res, error);
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ success: false, message: error.message, code: error.code });
+            } else {
+                res.status(500).json({ success: false, message: 'Internal server error' });
+            }
         }
     }
 
@@ -240,7 +244,11 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: { timeline: dispute.timeline } });
         } catch (error) {
             logger.error('Error fetching timeline:', error);
-            errorResponse(res, error);
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ success: false, message: error.message, code: error.code });
+            } else {
+                res.status(500).json({ success: false, message: 'Internal server error' });
+            }
         }
     }
 
@@ -278,7 +286,11 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: dispute, message: 'Status updated successfully' });
         } catch (error) {
             logger.error('Error updating status:', error);
-            errorResponse(res, error);
+            if (error instanceof AppError) {
+                res.status(error.statusCode).json({ success: false, message: error.message, code: error.code });
+            } else {
+                res.status(500).json({ success: false, message: 'Internal server error' });
+            }
         }
     }
 
@@ -307,7 +319,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: dispute, message: 'Dispute escalated successfully' });
         } catch (error) {
             logger.error('Error escalating dispute:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -340,7 +353,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: dispute, message: 'Dispute resolved successfully' });
         } catch (error) {
             logger.error('Error resolving dispute:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -369,7 +383,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: dispute, message: 'Dispute assigned successfully' });
         } catch (error) {
             logger.error('Error assigning dispute:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -396,7 +411,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: null, message: 'Dispute deleted successfully' });
         } catch (error) {
             logger.error('Error deleting dispute:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -439,7 +455,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: stats });
         } catch (error) {
             logger.error('Error fetching dispute stats:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -471,7 +488,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: { trends } });
         } catch (error) {
             logger.error('Error fetching dispute trends:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -493,7 +511,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: { agents: performance } });
         } catch (error) {
             logger.error('Error fetching agent performance:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -525,7 +544,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: { reasons } });
         } catch (error) {
             logger.error('Error fetching top dispute reasons:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -547,7 +567,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: breaches });
         } catch (error) {
             logger.error('Error fetching SLA breaches:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -576,12 +597,13 @@ export default class DisputeController {
                 userId,
             });
 
-            successResponse(res, {
+            sendSuccess(res, {
                 message: 'Courier query initiated. You will be notified when response is received.',
             });
         } catch (error) {
             logger.error('Error querying courier:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 
@@ -605,7 +627,8 @@ export default class DisputeController {
             res.status(200).json({ success: true, data: { received: true } });
         } catch (error) {
             logger.error('Error processing courier webhook:', error);
-            errorResponse(res, error);
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 }

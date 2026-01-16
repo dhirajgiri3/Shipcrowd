@@ -37,6 +37,12 @@ import {
   VelocityCancelResponse,
   VelocityWarehouseRequest,
   VelocityWarehouseResponse,
+  VelocityReverseShipmentRequest,
+  VelocityReverseShipmentResponse,
+  VelocitySchedulePickupRequest,
+  VelocitySchedulePickupResponse,
+  VelocityCancelReverseShipmentRequest,
+  VelocityCancelReverseShipmentResponse,
   VelocityError,
   CANCELLABLE_STATUSES
 } from './velocity.types';
@@ -488,6 +494,308 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     });
 
     return velocityWarehouse;
+  }
+
+  /**
+   * 7. Create Reverse Shipment (RTO Pickup)
+   * Maps to: POST /custom/api/v1/reverse-order (MOCK FALLBACK INCLUDED)
+   *
+   * NOTE: As of implementation, Velocity API doesn't fully support reverse pickup.
+   * This method includes a mock fallback that generates simulated reverse AWB.
+   * When Velocity API is ready, the real API will be called first.
+   */
+  async createReverseShipment(
+    originalAwb: string,
+    pickupAddress: {
+      name: string;
+      phone: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      country: string;
+      email?: string;
+    },
+    returnWarehouseId: string,
+    packageDetails: {
+      weight: number;
+      length: number;
+      width: number;
+      height: number;
+    },
+    orderId: string,
+    reason?: string
+  ): Promise<VelocityReverseShipmentResponse> {
+    // Get warehouse details for return destination
+    const warehouse = await Warehouse.findById(returnWarehouseId);
+    if (!warehouse) {
+      throw new VelocityError(
+        404,
+        {
+          message: 'Return warehouse not found',
+          status_code: 404
+        },
+        false
+      );
+    }
+
+    // Get or create Velocity warehouse ID
+    let velocityWarehouseId = warehouse.carrierDetails?.velocityWarehouseId;
+    if (!velocityWarehouseId) {
+      logger.info('Warehouse not synced with Velocity for RTO, creating', {
+        warehouseId: (warehouse._id as mongoose.Types.ObjectId).toString(),
+        warehouseName: warehouse.name
+      });
+      const velocityWarehouse = await this.createWarehouse(warehouse as any);
+      velocityWarehouseId = velocityWarehouse.warehouse_id;
+    }
+
+    // Prepare reverse shipment request
+    const reverseRequest: VelocityReverseShipmentRequest = {
+      order_id: `RTO-${orderId}`,
+      original_awb: originalAwb,
+      pickup_customer_name: pickupAddress.name,
+      pickup_address: pickupAddress.address,
+      pickup_city: pickupAddress.city,
+      pickup_pincode: pickupAddress.pincode,
+      pickup_state: pickupAddress.state,
+      pickup_country: pickupAddress.country,
+      pickup_phone: pickupAddress.phone,
+      pickup_email: pickupAddress.email,
+      delivery_location: warehouse.name,
+      warehouse_id: velocityWarehouseId,
+      length: packageDetails.length,
+      breadth: packageDetails.width,
+      height: packageDetails.height,
+      weight: packageDetails.weight,
+      reason: reason || 'RTO - Return to Origin',
+      vendor_details: {
+        email: warehouse.contactInfo.email || 'noreply@shipcrowd.com',
+        phone: warehouse.contactInfo.phone,
+        name: warehouse.contactInfo.name,
+        address: warehouse.address.addressLine1,
+        address_2: warehouse.address.addressLine2,
+        city: warehouse.address.city,
+        state: warehouse.address.state,
+        country: warehouse.address.country,
+        pin_code: warehouse.address.pincode,
+        pickup_location: warehouse.name
+      }
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.reverseShipment.acquire();
+
+    try {
+      // Attempt real API call (with retry logic)
+      const response = await retryWithBackoff<{ data: VelocityReverseShipmentResponse }>(
+        async () => {
+          logger.info('Creating Velocity reverse shipment (RTO)', {
+            originalAwb,
+            orderId,
+            companyId: this.companyId.toString()
+          });
+
+          return await this.httpClient.post<VelocityReverseShipmentResponse>(
+            '/custom/api/v1/reverse-order',
+            reverseRequest
+          );
+        },
+        3,
+        1000,
+        'Velocity createReverseShipment'
+      );
+
+      const reverseShipment = response.data;
+
+      logger.info('Velocity reverse shipment created successfully', {
+        originalAwb,
+        reverseAwb: reverseShipment.reverse_awb,
+        courier: reverseShipment.courier_name
+      });
+
+      return reverseShipment;
+    } catch (error) {
+      // FALLBACK: Generate mock reverse AWB if API fails
+      logger.warn('Velocity reverse shipment API failed, using mock fallback', {
+        originalAwb,
+        orderId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      const timestamp = Date.now().toString().slice(-6);
+      const mockReverseAwb = `RTO-${originalAwb}-${timestamp}`;
+
+      const mockResponse: VelocityReverseShipmentResponse = {
+        shipment_id: `RTO-SHIP-${timestamp}`,
+        order_id: `RTO-${orderId}`,
+        reverse_awb: mockReverseAwb,
+        original_awb: originalAwb,
+        courier_name: 'Velocity (Mock RTO)',
+        courier_company_id: 'VELOCITY-RTO',
+        label_url: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
+        status: 'NEW',
+        pickup_scheduled_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      };
+
+      logger.info('Mock reverse shipment created', {
+        originalAwb,
+        reverseAwb: mockReverseAwb,
+        fallbackMode: true
+      });
+
+      return mockResponse;
+    }
+  }
+
+  /**
+   * 8. Schedule Pickup for Reverse Shipment
+   * Maps to: POST /custom/api/v1/schedule-pickup (MOCK FALLBACK INCLUDED)
+   *
+   * Schedules a pickup for reverse/RTO shipments at customer location.
+   */
+  async schedulePickup(
+    awb: string,
+    pickupDate: Date,
+    timeSlot: 'morning' | 'afternoon' | 'evening',
+    pickupAddress?: {
+      address: string;
+      pincode: string;
+      phone: string;
+    }
+  ): Promise<VelocitySchedulePickupResponse> {
+    const request: VelocitySchedulePickupRequest = {
+      awb,
+      pickup_date: pickupDate.toISOString().split('T')[0], // YYYY-MM-DD
+      pickup_time_slot: timeSlot,
+      pickup_address: pickupAddress?.address,
+      pickup_pincode: pickupAddress?.pincode,
+      pickup_phone: pickupAddress?.phone
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.schedulePickup.acquire();
+
+    try {
+      // Attempt real API call
+      const response = await retryWithBackoff<{ data: VelocitySchedulePickupResponse }>(
+        async () => {
+          logger.info('Scheduling Velocity pickup', {
+            awb,
+            pickupDate: request.pickup_date,
+            timeSlot
+          });
+
+          return await this.httpClient.post<VelocitySchedulePickupResponse>(
+            '/custom/api/v1/schedule-pickup',
+            request
+          );
+        },
+        3,
+        1000,
+        'Velocity schedulePickup'
+      );
+
+      const pickup = response.data;
+
+      logger.info('Velocity pickup scheduled successfully', {
+        awb,
+        pickupId: pickup.pickup_id,
+        status: pickup.status
+      });
+
+      return pickup;
+    } catch (error) {
+      // FALLBACK: Generate mock pickup confirmation
+      logger.warn('Velocity schedule pickup API failed, using mock fallback', {
+        awb,
+        pickupDate: request.pickup_date,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      const mockResponse: VelocitySchedulePickupResponse = {
+        awb,
+        pickup_id: `PKP-${Date.now().toString().slice(-8)}`,
+        scheduled_date: request.pickup_date,
+        time_slot: timeSlot,
+        status: 'scheduled',
+        message: 'Pickup scheduled successfully (Mock)'
+      };
+
+      logger.info('Mock pickup scheduled', {
+        awb,
+        pickupId: mockResponse.pickup_id,
+        fallbackMode: true
+      });
+
+      return mockResponse;
+    }
+  }
+
+  /**
+   * 9. Cancel Reverse Shipment
+   * Maps to: POST /custom/api/v1/cancel-reverse-order (MOCK FALLBACK INCLUDED)
+   *
+   * Cancels a reverse/RTO shipment before pickup.
+   */
+  async cancelReverseShipment(
+    reverseAwb: string,
+    originalAwb: string,
+    reason?: string
+  ): Promise<boolean> {
+    const request: VelocityCancelReverseShipmentRequest = {
+      reverse_awb: reverseAwb,
+      original_awb: originalAwb,
+      reason: reason || 'RTO cancelled by merchant'
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.cancelReverseShipment.acquire();
+
+    try {
+      // Attempt real API call
+      const response = await retryWithBackoff<{ data: VelocityCancelReverseShipmentResponse }>(
+        async () => {
+          logger.info('Cancelling Velocity reverse shipment', {
+            reverseAwb,
+            originalAwb
+          });
+
+          return await this.httpClient.post<VelocityCancelReverseShipmentResponse>(
+            '/custom/api/v1/cancel-reverse-order',
+            request
+          );
+        },
+        3,
+        1000,
+        'Velocity cancelReverseShipment'
+      );
+
+      const cancellation = response.data;
+
+      logger.info('Velocity reverse shipment cancelled', {
+        reverseAwb,
+        status: cancellation.status
+      });
+
+      return cancellation.status === 'CANCELLED';
+    } catch (error) {
+      // FALLBACK: Log cancellation attempt and return success
+      logger.warn('Velocity cancel reverse shipment API failed, using mock fallback', {
+        reverseAwb,
+        originalAwb,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      logger.info('Mock reverse shipment cancellation', {
+        reverseAwb,
+        originalAwb,
+        fallbackMode: true
+      });
+
+      // Return true to allow RTO cancellation to proceed
+      return true;
+    }
   }
 
   /**

@@ -462,6 +462,132 @@ export class VelocityWebhookService implements WebhookEventHandler {
   }
 
   /**
+   * Handle reverse/RTO shipment status update webhook
+   *
+   * This handler processes status updates for RTO (Return to Origin) shipments.
+   * It updates the RTOEvent model with the latest status and tracking information.
+   */
+  async handleReverseShipmentStatusUpdate(payload: VelocityWebhookPayload): Promise<WebhookProcessingResult> {
+    const startTime = Date.now();
+
+    try {
+      const { awb, order_id, status, status_code, current_location, description } = payload.shipment_data;
+
+      logger.info('Processing Velocity reverse/RTO shipment status update webhook', {
+        reverseAwb: awb,
+        orderId: order_id,
+        status,
+        statusCode: status_code
+      });
+
+      // Import RTOEvent model dynamically to avoid circular dependencies
+      const RTOEvent = (await import('../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model')).default;
+
+      // Find RTO event by reverse AWB
+      const rtoEvent = await RTOEvent.findOne({
+        reverseAwb: awb,
+        isDeleted: false
+      }).populate('shipment');
+
+      if (!rtoEvent) {
+        logger.warn('RTO event not found for reverse shipment webhook', { reverseAwb: awb, orderId: order_id });
+        return {
+          success: false,
+          awb,
+          orderId: order_id,
+          statusUpdated: false,
+          error: 'RTO event not found',
+          timestamp: new Date()
+        };
+      }
+
+      // Map Velocity status to RTO return status
+      const statusMapping: Record<string, string> = {
+        'NEW': 'initiated',
+        'PKP': 'in_transit',           // Picked up from customer
+        'IT': 'in_transit',             // In transit to warehouse
+        'OFD': 'in_transit',            // Out for delivery to warehouse
+        'DEL': 'delivered_to_warehouse', // Delivered to warehouse
+        'RTO': 'in_transit',            // RTO-in-RTO (rare edge case)
+        'LOST': 'lost',
+        'DAMAGED': 'damaged',
+        'CANCELLED': 'cancelled'
+      };
+
+      const newReturnStatus = statusMapping[status_code] || 'in_transit';
+      const isStatusChange = rtoEvent.returnStatus !== newReturnStatus;
+
+      // Update RTO event status
+      if (isStatusChange) {
+        rtoEvent.returnStatus = newReturnStatus;
+
+        // Update actualReturnDate if delivered to warehouse
+        if (newReturnStatus === 'delivered_to_warehouse') {
+          rtoEvent.actualReturnDate = new Date();
+          rtoEvent.warehouseNotified = true;
+
+          // Auto-transition to QC pending
+          rtoEvent.returnStatus = 'qc_pending';
+
+          logger.info('RTO shipment delivered to warehouse, transitioning to QC', {
+            reverseAwb: awb,
+            rtoEventId: rtoEvent._id
+          });
+        }
+
+        // Add metadata tracking
+        if (!rtoEvent.metadata) {
+          rtoEvent.metadata = {};
+        }
+        rtoEvent.metadata.lastWebhookUpdate = new Date().toISOString();
+        rtoEvent.metadata.lastVelocityStatus = status_code;
+        rtoEvent.metadata.lastLocation = current_location;
+        rtoEvent.metadata.lastDescription = description;
+
+        await rtoEvent.save();
+
+        logger.info('RTO event status updated successfully', {
+          reverseAwb: awb,
+          rtoEventId: rtoEvent._id,
+          newStatus: newReturnStatus,
+          orderId: order_id,
+          processingTimeMs: Date.now() - startTime
+        });
+      } else {
+        logger.info('Reverse shipment webhook received but RTO status unchanged', {
+          reverseAwb: awb,
+          currentStatus: rtoEvent.returnStatus,
+          webhookStatus: newReturnStatus
+        });
+      }
+
+      return {
+        success: true,
+        awb,
+        orderId: order_id,
+        statusUpdated: isStatusChange,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      logger.error('Error processing reverse shipment status update webhook', {
+        error,
+        payload,
+        processingTimeMs: processingTime
+      });
+
+      return {
+        success: false,
+        awb: payload.shipment_data.awb,
+        orderId: payload.shipment_data.order_id,
+        statusUpdated: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      };
+    }
+  }
+
+  /**
    * Route webhook to appropriate handler based on event type
    */
   async processWebhook(payload: VelocityWebhookPayload): Promise<WebhookProcessingResult> {
@@ -474,6 +600,8 @@ export class VelocityWebhookService implements WebhookEventHandler {
         return this.handleShipmentCancelled(payload);
       case 'SHIPMENT_WEIGHT_SCANNED':
         return this.handleWeightScanned(payload);
+      case 'REVERSE_SHIPMENT_STATUS_UPDATE':
+        return this.handleReverseShipmentStatusUpdate(payload);
       default:
         logger.warn('Unknown webhook event type', { eventType: payload.event_type });
         return {

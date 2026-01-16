@@ -13,7 +13,8 @@ import mongoose from 'mongoose';
 import Dispute, { IDispute } from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
 import { Shipment } from '@/infrastructure/database/mongoose/models';
 import logger from '@/shared/logger/winston.logger';
-import { AppError } from '@/shared/errors/app.error';
+import { AppError, NotFoundError, ValidationError, ConflictError } from '@/shared/errors/app.error';
+import { ErrorCode } from '@/shared/errors/errorCodes';
 
 // ============================================================================
 // INTERFACES
@@ -77,7 +78,7 @@ export default class DisputeService {
         // 1. Validate shipment exists
         const shipment = await Shipment.findById(data.shipmentId);
         if (!shipment) {
-            throw new AppError('Shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
         // 2. Check for existing open disputes
@@ -87,10 +88,9 @@ export default class DisputeService {
         });
 
         if (existingDispute) {
-            throw new AppError(
+            throw new ConflictError(
                 'An open dispute already exists for this shipment',
-                'DUPLICATE_DISPUTE',
-                400
+                ErrorCode.BIZ_ALREADY_EXISTS
             );
         }
 
@@ -152,14 +152,12 @@ export default class DisputeService {
         const dispute = await Dispute.findOne({ disputeId: data.disputeId });
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         if (dispute.status === 'closed' || dispute.status === 'resolved') {
-            throw new AppError(
-                'Cannot add evidence to closed dispute',
-                'DISPUTE_CLOSED',
-                400
+            throw new ValidationError(
+                'Cannot add evidence to closed dispute'
             );
         }
 
@@ -198,7 +196,7 @@ export default class DisputeService {
         const dispute = await Dispute.findOne({ disputeId: data.disputeId });
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         // Validate status transition
@@ -245,7 +243,7 @@ export default class DisputeService {
         const dispute = await Dispute.findOne({ disputeId });
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         if (dispute.status === 'resolved' || dispute.status === 'closed') {
@@ -287,7 +285,7 @@ export default class DisputeService {
         const dispute = await Dispute.findOne({ disputeId: data.disputeId });
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         if (dispute.status === 'resolved' || dispute.status === 'closed') {
@@ -362,7 +360,7 @@ export default class DisputeService {
             .populate('timeline.performedBy', 'firstName lastName');
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         return dispute;
@@ -387,7 +385,7 @@ export default class DisputeService {
         const dispute = await Dispute.findOne({ disputeId, isDeleted: false });
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         const oldAssignee = dispute.assignedTo;
@@ -419,7 +417,7 @@ export default class DisputeService {
         const dispute = await Dispute.findOne({ disputeId, isDeleted: false });
 
         if (!dispute) {
-            throw new AppError('Dispute not found', 'DISPUTE_NOT_FOUND', 404);
+            throw new NotFoundError('Dispute', ErrorCode.BIZ_NOT_FOUND);
         }
 
         dispute.isDeleted = true;

@@ -1,42 +1,19 @@
 /**
  * Dispute Routes
  *
- * Defines all HTTP routes for dispute resolution system:
- * - Customer routes: Create disputes, add evidence, view status
- * - Admin routes: Manage disputes, assign agents, resolve, analytics
- * - Webhook routes: Courier integrations
- *
- * SECURITY:
- * ========
- * - All customer routes require authentication
- * - Admin routes require admin/super_admin role
- * - Rate limiting applied to prevent abuse
- * - File upload size limits enforced
- *
- * RATE LIMITS:
- * ===========
- * - Create dispute: 10/hour per user
- * - Add evidence: 20/hour per user
- * - List disputes: 100/hour per user
- * - Analytics: 100/hour per user
+ * Endpoints for dispute management and analytics.
  */
 
 import { Router } from 'express';
 import DisputeController from '@/presentation/http/controllers/logistics/dispute.controller';
-import { authenticate } from '@/presentation/http/middleware/auth/authentication.middleware';
-import { authorize } from '@/presentation/http/middleware/auth/authorization.middleware';
+import { authenticate } from '@/presentation/http/middleware/auth/auth';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
 import { apiRateLimiter } from '@/presentation/http/middleware/system/rate-limiter.middleware';
-import { validateRequest } from '@/presentation/http/middleware/validation/validate-request.middleware';
-import {
-    createDisputeSchema,
-    addEvidenceSchema,
-    updateStatusSchema,
-    resolveDisputeSchema,
-    assignDisputeSchema,
-    queryParamsSchema,
-} from '@/shared/validation/dispute.schemas';
 
 const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
 
 // ============================================================================
 // CUSTOMER ROUTES
@@ -51,7 +28,6 @@ router.post(
     '/',
     authenticate,
     apiRateLimiter,
-    validateRequest(createDisputeSchema),
     DisputeController.createDispute
 );
 
@@ -64,7 +40,6 @@ router.get(
     '/',
     authenticate,
     apiRateLimiter,
-    validateRequest(queryParamsSchema, 'query'),
     DisputeController.getDisputes
 );
 
@@ -88,7 +63,6 @@ router.post(
     '/:id/evidence',
     authenticate,
     apiRateLimiter,
-    validateRequest(addEvidenceSchema),
     DisputeController.addEvidence
 );
 
@@ -154,9 +128,8 @@ router.get(
 router.put(
     '/admin/:id/status',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
-    validateRequest(updateStatusSchema),
     DisputeController.updateStatus
 );
 
@@ -168,7 +141,7 @@ router.put(
 router.post(
     '/admin/:id/escalate',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     DisputeController.escalateDispute
 );
@@ -181,9 +154,8 @@ router.post(
 router.put(
     '/admin/:id/resolve',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
-    validateRequest(resolveDisputeSchema),
     DisputeController.resolveDispute
 );
 
@@ -195,9 +167,8 @@ router.put(
 router.put(
     '/admin/:id/assign',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
-    validateRequest(assignDisputeSchema),
     DisputeController.assignDispute
 );
 
@@ -209,7 +180,7 @@ router.put(
 router.delete(
     '/admin/:id',
     authenticate,
-    authorize({ roles: ['super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     DisputeController.deleteDispute
 );
@@ -222,7 +193,7 @@ router.delete(
 router.get(
     '/admin/analytics/agent-performance',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     DisputeController.getAgentPerformance
 );
@@ -235,7 +206,7 @@ router.get(
 router.get(
     '/admin/analytics/sla-breaches',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     DisputeController.getSLABreaches
 );
@@ -248,7 +219,7 @@ router.get(
 router.post(
     '/admin/:id/courier-query',
     authenticate,
-    authorize({ roles: ['admin', 'super_admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     DisputeController.queryCourier
 );
