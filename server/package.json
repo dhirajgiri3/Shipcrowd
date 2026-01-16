@@ -18,8 +18,11 @@
     "test:webhook:local": "npx tsx src/scripts/testWebhookLocal.ts",
     "seed:velocity": "npx tsx src/scripts/seedVelocityIntegration.ts",
     "test:pdf": "npx ts-node-dev --transpile-only src/scripts/test-all-pdfs.ts",
-    "migrate:up": "npx ts-node src/infrastructure/database/migrations/runner.ts up",
-    "migrate:down": "npx ts-node src/infrastructure/database/migrations/runner.ts down"
+    "migrate:help": "npx tsx src/infrastructure/database/migrations/runner.ts",
+    "migrate:wallet-soft-delete": "npx tsx src/infrastructure/database/migrations/runner.ts wallet-soft-delete",
+    "migrate:validate": "npx tsx src/infrastructure/database/migrations/pre-flight-validator.ts",
+    "db:backup": "bash scripts/backup-database.sh",
+    "db:restore": "bash scripts/restore-database.sh"
   },
   "keywords": [],
   "author": "",
