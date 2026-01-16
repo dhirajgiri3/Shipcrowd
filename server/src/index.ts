@@ -11,6 +11,7 @@ import QueueManager from './infrastructure/utilities/queue-manager';
 import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-resolution.job';
 import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.job';
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
+import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
 
@@ -50,6 +51,10 @@ const startServer = async (): Promise<void> => {
         // Initialize COD Remittance Background Jobs
         await CODRemittanceJob.initialize();
         logger.info('COD remittance background jobs initialized');
+
+        // Initialize General Dispute SLA Management Job
+        DisputeSLAJob.initialize();
+        logger.info('Dispute SLA management job initialized');
 
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();

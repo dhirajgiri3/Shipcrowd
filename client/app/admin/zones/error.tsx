@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/core/Button';
+import { PageError } from '@/components/ui';
 
 export default function ZonesError({
     error,
@@ -10,15 +9,5 @@ export default function ZonesError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
-    useEffect(() => {
-        console.error(error);
-    }, [error]);
-
-    return (
-        <div className="flex h-[400px] w-full flex-col items-center justify-center gap-4">
-            <h2 className="text-xl font-semibold">Something went wrong!</h2>
-            <p className="text-muted-foreground">{error.message}</p>
-            <Button onClick={reset}>Try again</Button>
-        </div>
-    );
+    return <PageError error={error} reset={reset} homeUrl="/admin/zones" />;
 }

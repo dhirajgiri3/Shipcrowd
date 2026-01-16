@@ -10,6 +10,7 @@ import React from 'react';
 import { useReturnMetrics } from '@/src/core/api/hooks';
 import { ReturnsTable } from '@/src/features/returns/components/ReturnsTable';
 import { formatCurrency } from '@/src/lib/utils';
+import { Loader, CardSkeleton } from '@/components/ui';
 
 export default function ReturnsDashboardPage() {
     const { data: metrics, isLoading } = useReturnMetrics();
@@ -40,31 +41,31 @@ export default function ReturnsDashboardPage() {
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <p className="text-sm text-gray-500 dark:text-gray-400">Total Returns</p>
                         <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                            {isLoading ? '...' : metrics?.total || 0}
+                            {isLoading ? <Loader variant="dots" size="sm" /> : metrics?.total || 0}
                         </p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <p className="text-sm text-gray-500 dark:text-gray-400">Requested</p>
                         <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-2">
-                            {isLoading ? '...' : metrics?.requested || 0}
+                            {isLoading ? <Loader variant="dots" size="sm" /> : metrics?.requested || 0}
                         </p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <p className="text-sm text-gray-500 dark:text-gray-400">QC Pending</p>
                         <p className="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-2">
-                            {isLoading ? '...' : metrics?.qcPending || 0}
+                            {isLoading ? <Loader variant="dots" size="sm" /> : metrics?.qcPending || 0}
                         </p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <p className="text-sm text-gray-500 dark:text-gray-400">Return Rate</p>
                         <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">
-                            {isLoading ? '...' : `${((metrics?.returnRate || 0) * 100).toFixed(1)}%`}
+                            {isLoading ? <Loader variant="dots" size="sm" /> : `${((metrics?.returnRate || 0) * 100).toFixed(1)}%`}
                         </p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                         <p className="text-sm text-gray-500 dark:text-gray-400">Total Refunds</p>
                         <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-                            {isLoading ? '...' : formatCurrency(metrics?.totalRefundAmount || 0)}
+                            {isLoading ? <Loader variant="dots" size="sm" /> : formatCurrency(metrics?.totalRefundAmount || 0)}
                         </p>
                     </div>
                 </div>

@@ -30,10 +30,10 @@ import {
     Eye,
     X,
     Check,
-    Loader2,
     Copy,
     RefreshCw,
 } from 'lucide-react';
+import { Loader, CardSkeleton } from '@/components/ui';
 import { toast } from 'sonner';
 import type {
     CommunicationTemplate,
@@ -143,7 +143,7 @@ export default function TemplatesPage() {
                             onClick={() => refetch()}
                             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
-                            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                            {isLoading ? <Loader variant="spinner" size="sm" /> : <RefreshCw className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>
@@ -152,11 +152,7 @@ export default function TemplatesPage() {
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {Array.from({ length: 6 }).map((_, idx) => (
-                            <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4" />
-                                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2" />
-                                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6" />
-                            </div>
+                            <CardSkeleton key={idx} />
                         ))}
                     </div>
                 ) : (templates ?? []).length === 0 ? (
@@ -237,12 +233,12 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${template.type === 'EMAIL'
-                            ? 'bg-blue-100 dark:bg-blue-900/30'
-                            : 'bg-green-100 dark:bg-green-900/30'
+                        ? 'bg-blue-100 dark:bg-blue-900/30'
+                        : 'bg-green-100 dark:bg-green-900/30'
                         }`}>
                         <Icon className={`w-5 h-5 ${template.type === 'EMAIL'
-                                ? 'text-blue-600 dark:text-blue-400'
-                                : 'text-green-600 dark:text-green-400'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-green-600 dark:text-green-400'
                             }`} />
                     </div>
                     <div>
@@ -256,8 +252,8 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
                 </div>
                 <div className="flex items-center gap-1">
                     <span className={`text-xs px-2 py-1 rounded-full ${template.isActive
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                         }`}>
                         {template.isActive ? 'Active' : 'Inactive'}
                     </span>
@@ -287,7 +283,7 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
                     disabled={isTesting}
                     className="flex-1 px-3 py-2 text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
                 >
-                    {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {isTesting ? <Loader variant="dots" size="sm" /> : <Send className="w-4 h-4" />}
                     Test
                 </button>
                 <button
@@ -295,7 +291,7 @@ function TemplateCard({ template, onEdit }: TemplateCardProps) {
                     disabled={isDeleting}
                     className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                 >
-                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    {isDeleting ? <Loader variant="dots" size="sm" /> : <Trash2 className="w-4 h-4" />}
                 </button>
             </div>
         </div>
@@ -527,7 +523,7 @@ function TemplateEditorModal({ isOpen, template, onClose }: TemplateEditorModalP
                     >
                         {isSubmitting ? (
                             <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader variant="dots" size="sm" />
                                 {template ? 'Updating...' : 'Creating...'}
                             </>
                         ) : (

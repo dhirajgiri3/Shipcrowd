@@ -43,6 +43,8 @@ export { Modal } from './feedback/Modal';
 export { useToast } from './feedback/Toast';
 export { Toaster } from './feedback/Toaster';
 export { Tooltip } from './feedback/Tooltip';
+export { PageError } from './feedback/PageError';
+export type { PageErrorProps } from './feedback/PageError';
 
 export { Loader, TruckLoader, SpinnerLoader, DotsLoader, ProgressLoader } from './feedback/Loader';
 export type { LoaderProps, LoaderVariant, LoaderSize } from './feedback/Loader';

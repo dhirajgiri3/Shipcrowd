@@ -1197,6 +1197,265 @@ export const sendFraudAlertEmail = async (
     logger.info('Fraud alert email sent', { alertId: alertDetails.alertId, adminEmail });
 };
 
+/**
+ * Send dispute created notification
+ */
+export const sendDisputeCreatedEmail = async (
+  customerEmail: string,
+  disputeDetails: {
+    disputeId: string;
+    type: string;
+    category: string;
+    description: string;
+    shipmentTrackingNumber?: string;
+    priority: string;
+    slaDeadline: Date;
+  }
+): Promise<void> => {
+  const subject = `Dispute Created - ${disputeDetails.disputeId}`;
+
+  const priorityColors: Record<string, string> = {
+    low: '#10b981',
+    medium: '#f59e0b',
+    high: '#ef4444',
+    urgent: '#dc2626',
+  };
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+        .dispute-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin: 20px 0; }
+        .priority-badge { display: inline-block; padding: 5px 12px; border-radius: 12px; color: white; font-size: 12px; font-weight: bold; background: ${priorityColors[disputeDetails.priority]}; }
+        .detail-row { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .btn { background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📋 Dispute Created</h1>
+        </div>
+        <div class="content">
+          <p>Dear Customer,</p>
+          <p>Your dispute has been successfully created and our team will investigate it shortly.</p>
+
+          <div class="dispute-box">
+            <div style="margin-bottom: 15px;">
+              <strong>Dispute ID:</strong> ${disputeDetails.disputeId}
+              <span class="priority-badge">${disputeDetails.priority.toUpperCase()}</span>
+            </div>
+            <div class="detail-row"><strong>Type:</strong> ${disputeDetails.type}</div>
+            <div class="detail-row"><strong>Category:</strong> ${disputeDetails.category.replace(/_/g, ' ')}</div>
+            ${disputeDetails.shipmentTrackingNumber ? `<div class="detail-row"><strong>Tracking Number:</strong> ${disputeDetails.shipmentTrackingNumber}</div>` : ''}
+            <div class="detail-row"><strong>Description:</strong> ${disputeDetails.description}</div>
+            <div class="detail-row"><strong>SLA Deadline:</strong> ${new Date(disputeDetails.slaDeadline).toLocaleString()}</div>
+          </div>
+
+          <p><strong>What happens next?</strong></p>
+          <ul>
+            <li>Our team will review your dispute within the SLA timeline</li>
+            <li>You may be asked to provide additional evidence</li>
+            <li>You'll receive updates via email</li>
+            <li>Track progress in your dashboard</li>
+          </ul>
+
+          <p style="text-align: center;">
+            <a href="${process.env.DASHBOARD_URL || 'https://app.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+              View Dispute →
+            </a>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(customerEmail, subject, html);
+  logger.info('Dispute created email sent', { disputeId: disputeDetails.disputeId, customerEmail });
+};
+
+/**
+ * Send dispute escalated notification
+ */
+export const sendDisputeEscalatedEmail = async (
+  adminEmail: string,
+  disputeDetails: {
+    disputeId: string;
+    type: string;
+    reason: string;
+    customerName: string;
+    priority: string;
+  }
+): Promise<void> => {
+  const subject = `🚨 Dispute Escalated - ${disputeDetails.disputeId}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc2626; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #fef2f2; padding: 30px; border-radius: 0 0 8px 8px; }
+        .alert-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 20px 0; }
+        .detail-row { padding: 8px 0; border-bottom: 1px solid #fee2e2; }
+        .btn { background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🚨 URGENT: Dispute Escalated</h1>
+        </div>
+        <div class="content">
+          <p><strong>Action Required</strong></p>
+          <p>A dispute has been escalated and requires immediate attention.</p>
+
+          <div class="alert-box">
+            <div class="detail-row"><strong>Dispute ID:</strong> ${disputeDetails.disputeId}</div>
+            <div class="detail-row"><strong>Customer:</strong> ${disputeDetails.customerName}</div>
+            <div class="detail-row"><strong>Type:</strong> ${disputeDetails.type}</div>
+            <div class="detail-row"><strong>Priority:</strong> ${disputeDetails.priority.toUpperCase()}</div>
+            <div class="detail-row"><strong>Escalation Reason:</strong> ${disputeDetails.reason}</div>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+              Handle Escalation →
+            </a>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(adminEmail, subject, html);
+  logger.info('Dispute escalated email sent', { disputeId: disputeDetails.disputeId, adminEmail });
+};
+
+/**
+ * Send dispute resolved notification
+ */
+export const sendDisputeResolvedEmail = async (
+  customerEmail: string,
+  disputeDetails: {
+    disputeId: string;
+    resolutionType: string;
+    reason: string;
+    amount?: number;
+  }
+): Promise<void> => {
+  const subject = `Dispute Resolved - ${disputeDetails.disputeId}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #10b981; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f0fdf4; padding: 30px; border-radius: 0 0 8px 8px; }
+        .resolution-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0; }
+        .detail-row { padding: 8px 0; border-bottom: 1px solid #d1fae5; }
+        .amount { font-size: 24px; font-weight: bold; color: #10b981; text-align: center; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>✅ Dispute Resolved</h1>
+        </div>
+        <div class="content">
+          <p>Dear Customer,</p>
+          <p>Your dispute has been reviewed and resolved.</p>
+
+          <div class="resolution-box">
+            <div class="detail-row"><strong>Dispute ID:</strong> ${disputeDetails.disputeId}</div>
+            <div class="detail-row"><strong>Resolution:</strong> ${disputeDetails.resolutionType.replace(/_/g, ' ')}</div>
+            ${disputeDetails.amount ? `<div class="amount">₹${disputeDetails.amount.toLocaleString()}</div>` : ''}
+            <div class="detail-row"><strong>Details:</strong> ${disputeDetails.reason}</div>
+          </div>
+
+          ${disputeDetails.resolutionType === 'refund' ? '<p>The refund will be processed to your wallet within 1-2 business days.</p>' : ''}
+          ${disputeDetails.resolutionType === 'replacement' ? '<p>Your replacement shipment will be initiated shortly.</p>' : ''}
+
+          <p>If you have any questions, please contact our support team.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(customerEmail, subject, html);
+  logger.info('Dispute resolved email sent', { disputeId: disputeDetails.disputeId, customerEmail });
+};
+
+/**
+ * Send SLA warning notification
+ */
+export const sendSLAWarningEmail = async (
+  adminEmail: string,
+  disputeDetails: {
+    disputeId: string;
+    hoursRemaining: number;
+    deadline: Date;
+  }
+): Promise<void> => {
+  const subject = `⚠️ SLA Warning - ${disputeDetails.disputeId}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f59e0b; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #fffbeb; padding: 30px; border-radius: 0 0 8px 8px; }
+        .warning-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; text-align: center; }
+        .hours { font-size: 48px; font-weight: bold; color: #f59e0b; }
+        .btn { background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>⚠️ SLA Deadline Approaching</h1>
+        </div>
+        <div class="content">
+          <p><strong>Attention Required</strong></p>
+
+          <div class="warning-box">
+            <p>Dispute ID: ${disputeDetails.disputeId}</p>
+            <div class="hours">${disputeDetails.hoursRemaining}h</div>
+            <p>remaining until SLA deadline</p>
+            <p style="color: #78716c; font-size: 14px;">Deadline: ${new Date(disputeDetails.deadline).toLocaleString()}</p>
+          </div>
+
+          <p style="text-align: center;">
+            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+              Resolve Now →
+            </a>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(adminEmail, subject, html);
+  logger.info('SLA warning email sent', { disputeId: disputeDetails.disputeId, adminEmail });
+};
+
 export default {
   sendEmail,
   sendVerificationEmail,
@@ -1215,4 +1474,8 @@ export default {
   sendNewDeviceLoginEmail,
   sendReturnStatusEmail,
   sendFraudAlertEmail,
+  sendDisputeCreatedEmail,
+  sendDisputeEscalatedEmail,
+  sendDisputeResolvedEmail,
+  sendSLAWarningEmail,
 };

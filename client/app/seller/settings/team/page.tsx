@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useTeamMembers, useInviteTeamMember, useUpdateMemberRole, useRemoveTeamMember } from '@/src/core/api/hooks/useSettings';
 import { UserPlus, Mail, Trash2, Shield } from 'lucide-react';
 import { cn, formatDate } from '@/src/lib/utils';
+import { Loader } from '@/components/ui';
 import type { InviteTeamMemberPayload, TeamRole, TeamMember } from '@/src/types/api/settings.types';
 
 const TEAM_ROLES: { value: TeamRole; label: string; description: string }[] = [
@@ -29,11 +30,7 @@ export default function TeamManagementPage() {
     const { mutate: removeMember } = useRemoveTeamMember();
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
+        return <Loader variant="spinner" size="lg" message="Loading team members..." centered />;
     }
 
     return (
@@ -201,7 +198,14 @@ function InviteMemberModal({ onClose, onInvite, isInviting }: {
                         disabled={!email || isInviting}
                         className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium disabled:opacity-50"
                     >
-                        {isInviting ? 'Sending...' : 'Send Invitation'}
+                        {isInviting ? (
+                            <>
+                                <Loader variant="dots" size="sm" />
+                                Sending...
+                            </>
+                        ) : (
+                            'Send Invitation'
+                        )}
                     </button>
                 </div>
             </div>
