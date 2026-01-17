@@ -18,13 +18,13 @@ interface TeamMember {
 interface InviteTeamMemberRequest {
     email: string;
     name: string;
-    teamRole: 'admin' | 'manager' | 'member' | 'viewer';
+    teamRole: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
     message?: string;
 }
 
 interface UpdateMemberRoleRequest {
     memberId: string;
-    teamRole: 'admin' | 'manager' | 'member' | 'viewer';
+    teamRole: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
 }
 
 /**

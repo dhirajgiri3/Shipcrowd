@@ -22,7 +22,7 @@ export type WebhookEvent =
 export type WebhookStatus = 'active' | 'inactive' | 'error';
 
 export interface Webhook {
-    id: string;
+    _id: string;
     url: string;
     events: WebhookEvent[];
     status: WebhookStatus;
@@ -110,7 +110,8 @@ export interface TeamInvitation {
 
 export interface InviteTeamMemberPayload {
     email: string;
-    role: TeamRole;
+    name: string;
+    teamRole: TeamRole;
     message?: string;
 }
 

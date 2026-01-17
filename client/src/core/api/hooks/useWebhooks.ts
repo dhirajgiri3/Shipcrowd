@@ -2,25 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import { queryKeys } from '../queryKeys';
 import { toast } from 'sonner';
+import type { Webhook, CreateWebhookPayload, TestWebhookPayload } from '@/src/types/api/settings.types';
 
-// Types
-interface Webhook {
-    _id: string;
-    url: string;
-    events: string[];
-    status: 'active' | 'inactive' | 'failed';
-    secret: string;
-    createdAt: string;
-    lastTriggered?: string;
-    failureCount?: number;
-}
-
-interface CreateWebhookRequest {
-    url: string;
-    events: string[];
-    secret?: string;
-}
-
+// Local request types
 interface TestWebhookRequest {
     webhookId: string;
     event?: string;
@@ -46,7 +30,7 @@ export const useCreateWebhook = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: CreateWebhookRequest) => {
+        mutationFn: async (data: CreateWebhookPayload) => {
             const response = await apiClient.post('/webhooks', data);
             return response.data;
         },
