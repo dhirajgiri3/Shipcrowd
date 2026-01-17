@@ -4,8 +4,6 @@
  * Page for analyzing shipping costs.
  */
 
-'use client';
-
 import { PageHeader } from '@/components/ui';
 import { CostAnalysis } from '@/src/features/analytics/components/CostAnalysis';
 

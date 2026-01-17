@@ -4,8 +4,6 @@
  * Page for building custom analytics reports.
  */
 
-'use client';
-
 import { PageHeader } from '@/components/ui';
 import { ReportBuilder } from '@/src/features/analytics/components/ReportBuilder';
 

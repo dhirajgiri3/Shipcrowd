@@ -4,8 +4,6 @@
  * Page for comparing courier performance.
  */
 
-'use client';
-
 import { PageHeader } from '@/components/ui';
 import { CourierComparison } from '@/src/features/analytics/components/CourierComparison';
 
