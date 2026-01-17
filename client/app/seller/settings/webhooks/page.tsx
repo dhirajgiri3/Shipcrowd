@@ -63,10 +63,10 @@ export default function WebhooksPage() {
                 <div className="grid grid-cols-1 gap-4">
                     {webhooks?.map((webhook) => (
                         <WebhookCard
-                            key={webhook.id}
+                            key={webhook._id}
                             webhook={webhook}
-                            onTest={() => testWebhook({ webhookId: webhook.id, event: webhook.events[0] })}
-                            onDelete={() => deleteWebhook(webhook.id)}
+                            onTest={() => testWebhook({ webhookId: webhook._id, event: webhook.events[0] })}
+                            onDelete={() => deleteWebhook(webhook._id)}
                         />
                     ))}
                 </div>
