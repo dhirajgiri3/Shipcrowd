@@ -26,8 +26,8 @@ import {
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { OAUTH_CONFIG } from '@/src/config/oauth';
 import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { Loader2 } from 'lucide-react';
 
 export function LoginClient() {
     return (
@@ -260,18 +260,24 @@ function LoginForm() {
                             </Link>
                         </div>
 
-                        {/* Submit Button - Using LoadingButton */}
-                        <LoadingButton
+                        {/* Submit Button */}
+                        <button
                             type="submit"
-                            isLoading={isLoading}
-                            loadingText="Signing in..."
-                            className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90"
+                            disabled={isLoading}
+                            className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            <span className="flex items-center justify-center gap-2">
-                                Sign in
-                                <ArrowRight className="w-4 h-4" />
-                            </span>
-                        </LoadingButton>
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Signing in...
+                                </>
+                            ) : (
+                                <>
+                                    Sign in
+                                    <ArrowRight className="w-4 h-4" />
+                                </>
+                            )}
+                        </button>
                     </form>
 
                     {/* Footer */}

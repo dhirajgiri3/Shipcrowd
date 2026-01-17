@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Badge } from '@/components/ui/core/Badge';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Badge } from '@/src/components/ui/core/Badge';
 import type { Zone, ZoneType } from '@/src/types/api/zones.types';
 import { MapPin, Trash2, Eye } from 'lucide-react';
 

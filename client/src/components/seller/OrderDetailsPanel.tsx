@@ -2,8 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, Mail, MapPin, Package, CreditCard, Truck, Calendar, Printer, Share2 } from 'lucide-react';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { cn, formatCurrency } from '@/src/shared/utils';
 import { Order } from '@/src/types/order';
 

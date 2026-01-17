@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { ZoneCreateWizard } from '@/src/features/admin/zones';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 

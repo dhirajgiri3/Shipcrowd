@@ -10,7 +10,7 @@ import React from 'react';
 import { useReturnMetrics } from '@/src/core/api/hooks';
 import { ReturnsTable } from '@/src/features/returns/components/ReturnsTable';
 import { formatCurrency } from '@/src/lib/utils';
-import { Loader, CardSkeleton } from '@/components/ui';
+import { Loader, CardSkeleton } from '@/src/components/ui';
 
 export default function ReturnsDashboardPage() {
     const { data: metrics, isLoading } = useReturnMetrics();

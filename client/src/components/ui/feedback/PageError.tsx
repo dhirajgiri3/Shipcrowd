@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import { AlertCircle, RefreshCw, Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

@@ -6,7 +6,7 @@
 
 'use client';
 
-import { Button } from '@/components/ui';
+import { Button } from '@/src/components/ui';
 import { cn } from '@/src/lib/utils';
 import { ChartType } from '@/src/types/analytics.types';
 import { BarChart3, LineChart, PieChart, ScatterChart, TrendingUp } from 'lucide-react';

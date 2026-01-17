@@ -7,10 +7,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Building2, MapPin, FileText, ArrowRight, ArrowLeft, Check, Mail, CheckCircle2, AlertCircle, Save, PartyPopper } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/src/features/auth"
-import { Input, Textarea } from '@/components/ui';
-import { Loader, LoadingButton } from "@/components/ui";
+import { Input, Textarea } from '@/src/components/ui';
+import { Loader, LoadingButton } from '@/src/components/ui";
 // import { companyApi, CreateCompanyData } from "@/src/core/api"
-import { Alert, AlertDescription } from "@/components/ui/feedback/Alert"
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert"
 import { INDIAN_STATES, isValidGSTIN, isValidPAN, isValidPincode } from "@/src/shared"
 
 const TOTAL_STEPS = 5

@@ -14,8 +14,8 @@ import { JourneyMapLeaflet } from './components/JourneyMapLeaflet';
 import { ShipmentDetails } from './components/ShipmentDetails';
 import { DeliveryInfo } from './components/DeliveryInfo';
 import { EasterEggs } from './components/EasterEggs';
-import { Navigation, Footer, Loader } from '@/components/ui';
-import { useLoader } from '@/hooks';
+import { Navigation, Footer, Loader } from '@/src/components/ui';
+import { useLoader } from '@/src/hooks';
 
 // Lazy load heavy 3D component
 const Package3D = lazy(() =>

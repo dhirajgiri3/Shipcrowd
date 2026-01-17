@@ -13,7 +13,7 @@
  *
  * Usage:
  * ```typescript
- * import { StatusBadge } from '@/components/ui';
+ * import { StatusBadge } from '@/src/components/ui';
  *
  * // Simple usage
  * <StatusBadge domain="return" status="approved" />
@@ -33,8 +33,8 @@ import {
   getStatusLabel,
   type STATUS_CONFIGS,
 } from '@/src/shared/configs/statusConfigs';
-import { Badge } from '@/components/ui/core/Badge';
-import { Tooltip } from '@/components/ui/feedback/Tooltip';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 
 export type StatusDomain = keyof typeof STATUS_CONFIGS;
 

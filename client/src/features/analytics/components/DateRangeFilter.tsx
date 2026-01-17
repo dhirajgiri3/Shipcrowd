@@ -7,7 +7,7 @@
 
 'use client';
 
-import { Button } from '@/components/ui';
+import { Button } from '@/src/components/ui';
 import { cn } from '@/src/lib/utils';
 import { TimeRange } from '@/src/types/analytics.types';
 import { Calendar } from 'lucide-react';

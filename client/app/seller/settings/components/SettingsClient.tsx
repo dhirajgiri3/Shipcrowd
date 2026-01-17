@@ -1,16 +1,16 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { User, Bell, Lock, Globe, CreditCard, Building2, Key, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks';
-import { Loader } from '@/components/ui';
+import { Loader } from '@/src/components/ui';
 
 export function SettingsClient() {
     const router = useRouter();

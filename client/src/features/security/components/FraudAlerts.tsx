@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { useFraudAlerts, useResolveAlert } from '@/src/core/api/hooks/useSecurity';
 import { AlertTriangle, CheckCircle, XCircle, ShieldAlert, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn, formatDate } from '@/src/lib/utils';
-import { Button, Card, Badge, Loader } from '@/components/ui';
+import { Button, Card, Badge, Loader } from '@/src/components/ui';
 import type { FraudAlert, FraudSeverity } from '@/src/types/security.types';
 
 export function FraudAlerts() {

@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useOrdersList } from '@/src/core/api/hooks/useOrders';
-import { DataTable } from '@/components/ui/data/DataTable';
-import { Button } from '@/components/ui/core/Button';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Button } from '@/src/components/ui/core/Button';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/shared/utils';
-import { AnimatedNumber } from '@/hooks/useCountUp';
-import { OrderDetailsPanel } from '@/components/seller/OrderDetailsPanel';
+import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
+import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
 import {
     Search,
     Eye,

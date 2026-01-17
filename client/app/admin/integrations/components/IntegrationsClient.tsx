@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { Plug, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 const mockIntegrations = [

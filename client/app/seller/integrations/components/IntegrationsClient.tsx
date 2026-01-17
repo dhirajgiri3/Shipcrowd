@@ -1,9 +1,9 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { Card, CardContent } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Plug,
     CheckCircle2,
@@ -11,7 +11,7 @@ import {
     RefreshCcw,
     Settings
 } from 'lucide-react';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 
 const integrations = [
     {

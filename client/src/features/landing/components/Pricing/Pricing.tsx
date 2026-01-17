@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, X, ChevronDown, Zap } from "lucide-react"
-import { Button } from "@/components/ui/core/Button"
+import { Button } from '@/src/components/ui/core/Button"
 
 export default function Pricing() {
     const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly")

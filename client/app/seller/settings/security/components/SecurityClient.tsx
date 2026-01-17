@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/src/features/auth';
 import { authApi } from '@/src/core/api/authApi';
-import { Button, Input, Card } from '@/components/ui';
+import { Button, Input, Card } from '@/src/components/ui';
 import { toast } from 'sonner';
 import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 // import { formatDistanceToNow } from 'date-fns';

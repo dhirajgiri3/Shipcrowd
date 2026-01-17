@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
 import { authApi } from '@/src/core/api/authApi';
-import { Loader } from '@/components/ui';
+import { Loader } from '@/src/components/ui';
 
 function OAuthCallbackContent() {
     const router = useRouter();

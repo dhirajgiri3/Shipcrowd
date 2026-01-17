@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { authApi } from '@/src/core/api/authApi';
 import { useAuth } from '@/src/features/auth';
-import { Button, Card } from '@/components/ui';
+import { Button, Card } from '@/src/components/ui';
 import { toast } from 'sonner';
 import { AlertTriangle, Trash2, UserX, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';

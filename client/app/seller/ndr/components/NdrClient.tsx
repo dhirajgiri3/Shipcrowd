@@ -14,10 +14,10 @@ import {
     Search,
     Filter
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { cn } from '@/src/shared/utils';
 
 // Mock NDR data

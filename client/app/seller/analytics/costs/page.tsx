@@ -4,7 +4,7 @@
  * Page for analyzing shipping costs.
  */
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { CostAnalysis } from '@/src/features/analytics/components/CostAnalysis';
 
 export default function CostAnalysisPage() {

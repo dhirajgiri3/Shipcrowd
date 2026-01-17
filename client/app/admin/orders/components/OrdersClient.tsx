@@ -2,14 +2,14 @@
 export const dynamic = "force-dynamic";
 
 import React, { useMemo, useState } from 'react';
-import { DataTable } from '@/components/ui/data/DataTable';
-import { Card, CardContent } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
-import { Button } from '@/components/ui/core/Button';
-import { Modal } from '@/components/ui/feedback/Modal';
-import { Tooltip } from '@/components/ui/feedback/Tooltip';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Button } from '@/src/components/ui/core/Button';
+import { Modal } from '@/src/components/ui/feedback/Modal';
+import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

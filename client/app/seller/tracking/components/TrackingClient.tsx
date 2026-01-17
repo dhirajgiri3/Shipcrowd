@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import { cn } from '@/src/shared/utils';
 import {
     Search,

@@ -1,10 +1,10 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Select } from '@/components/ui/form/Select';
-import { Button } from '@/components/ui/core/Button';
-import { ChartCard } from '@/components/admin/ChartCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Select } from '@/src/components/ui/form/Select';
+import { Button } from '@/src/components/ui/core/Button';
+import { ChartCard } from '@/src/components/admin/ChartCard';
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,

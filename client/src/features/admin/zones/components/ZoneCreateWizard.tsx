@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Label } from '@/components/ui/core/Label';
-import { Textarea } from '@/components/ui/core/Textarea';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Label } from '@/src/components/ui/core/Label';
+import { Textarea } from '@/src/components/ui/core/Textarea';
 import { useCreateZone } from '@/src/core/api/hooks/useZones';
 import type { ZoneType, CreateZoneRequest } from '@/src/types/api/zones.types';
 import { ChevronRight, Check, Upload, ChevronLeft } from 'lucide-react';

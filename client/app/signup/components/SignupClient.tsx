@@ -28,8 +28,8 @@ import {
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/src/shared/utils/password';
 import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { consentApi } from '@/src/core/api/consentApi';
 
 export function SignupClient() {

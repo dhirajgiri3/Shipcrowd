@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { AnimatedNumber } from '@/hooks/useCountUp';
+import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import {
     Activity,
     ArrowUpRight,
@@ -32,11 +32,11 @@ import {
 import { useAuth } from '@/src/features/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/src/shared/utils';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
-import { ActionsRequired } from '@/components/seller/ActionsRequired';
-import { QuickCreate } from '@/components/seller/QuickCreate';
-import { SmartInsights } from '@/components/seller/SmartInsights';
+import { ActionsRequired } from '@/src/components/seller/ActionsRequired';
+import { QuickCreate } from '@/src/components/seller/QuickCreate';
+import { SmartInsights } from '@/src/components/seller/SmartInsights';
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { ResponsiveContainer } from 'recharts';
 import { cn } from '@/src/lib/utils';
 

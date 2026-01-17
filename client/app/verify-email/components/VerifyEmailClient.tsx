@@ -8,7 +8,7 @@ import { CheckCircle2, XCircle, Clock, Mail } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { authApi } from '@/src/core/api/authApi';
 import { toast } from 'sonner';
-import { Loader } from '@/components/ui';
+import { Loader } from '@/src/components/ui';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();

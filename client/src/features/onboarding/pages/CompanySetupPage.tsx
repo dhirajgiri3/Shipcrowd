@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 
 /**
  * Company Setup Page

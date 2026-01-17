@@ -1,9 +1,9 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { User, Bell, Lock, Globe, CreditCard } from 'lucide-react';
 import { useState } from 'react';
 

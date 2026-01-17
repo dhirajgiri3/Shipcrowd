@@ -29,7 +29,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
-import { Badge } from '@/components/ui/core/Badge';
+import { Badge } from '@/src/components/ui/core/Badge';
 
 // Define navigation structure with sections
 interface NavItem {

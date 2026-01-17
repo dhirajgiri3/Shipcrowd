@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Label } from '@/components/ui/core/Label';
-import { Textarea } from '@/components/ui/core/Textarea';
-import { Badge } from '@/components/ui/core/Badge';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Label } from '@/src/components/ui/core/Label';
+import { Textarea } from '@/src/components/ui/core/Textarea';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { useUpdateZone } from '@/src/core/api/hooks/useZones';
 import type { ZoneType, Zone } from '@/src/types/api/zones.types';
 import { Edit } from 'lucide-react';

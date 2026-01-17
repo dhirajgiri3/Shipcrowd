@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu } from 'lucide-react';
-import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
-import { ThemeToggle } from '@/components/shared/ThemeToggle';
-import { NotificationCenter } from '@/components/shared/NotificationCenter';
+import { ProfileDropdown } from '@/src/components/shared/ProfileDropdown';
+import { ThemeToggle } from '@/src/components/shared/ThemeToggle';
+import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 

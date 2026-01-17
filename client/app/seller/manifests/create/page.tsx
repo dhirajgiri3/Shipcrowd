@@ -15,7 +15,7 @@ import {
     useEligibleShipments,
     useCreateManifest,
 } from '@/src/core/api/hooks/useManifests';
-import { Loader } from '@/components/ui';
+import { Loader } from '@/src/components/ui';
 import { toast } from 'sonner';
 import {
     ArrowLeft,

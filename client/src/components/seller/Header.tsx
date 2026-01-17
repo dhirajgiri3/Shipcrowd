@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, Truck, Plus, Wallet } from 'lucide-react';
-import { ProfileDropdown } from '@/components/shared/ProfileDropdown';
-import { NotificationCenter } from '@/components/shared/NotificationCenter';
-import { ThemeToggle } from '@/components/shared/ThemeToggle';
-import { Tooltip } from '@/components/ui/feedback/Tooltip';
+import { ProfileDropdown } from '@/src/components/shared/ProfileDropdown';
+import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
+import { ThemeToggle } from '@/src/components/shared/ThemeToggle';
+import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
 

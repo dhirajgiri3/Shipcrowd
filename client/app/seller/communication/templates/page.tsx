@@ -33,7 +33,7 @@ import {
     Copy,
     RefreshCw,
 } from 'lucide-react';
-import { Loader, CardSkeleton } from '@/components/ui';
+import { Loader, CardSkeleton } from '@/src/components/ui';
 import { toast } from 'sonner';
 import type {
     CommunicationTemplate,

@@ -2,8 +2,8 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import {
     FileText,
     Download,
@@ -16,7 +16,7 @@ import {
     Package
 } from 'lucide-react';
 import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Mock shipment data for label

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent } from '@/components/ui/core/Card';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { cn } from '@/src/lib/utils';
 import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
 import type { ZoneType } from '@/src/types/api/zones.types';
 import { Search } from 'lucide-react';
 

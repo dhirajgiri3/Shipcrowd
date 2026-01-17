@@ -4,7 +4,7 @@
  * Comprehensive dashboard for managing fraud rules and monitoring security alerts.
  */
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { FraudRulesConfig } from '@/src/features/security/components/FraudRulesConfig';
 import { FraudAlerts } from '@/src/features/security/components/FraudAlerts';
 

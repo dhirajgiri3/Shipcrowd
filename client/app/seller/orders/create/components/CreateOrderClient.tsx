@@ -17,13 +17,13 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
 import { toast } from 'sonner';
 import { cn } from '@/src/shared/utils';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { Loader } from '@/components/ui';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { Loader } from '@/src/components/ui';
 import { useCreateOrder } from '@/src/core/api/hooks/useOrders';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import type { CreateOrderRequest, OrderFormData } from '@/src/types/order';

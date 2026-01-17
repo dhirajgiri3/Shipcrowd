@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Sidebar } from '@/components/seller/Sidebar';
-import { Header } from '@/components/seller/Header';
-import { ThemeProvider } from '@/components/shared/ThemeProvider';
-import { ToastProvider } from '@/components/ui/feedback/Toast';
+import { Sidebar } from '@/src/components/seller/Sidebar';
+import { Header } from '@/src/components/seller/Header';
+import { ThemeProvider } from '@/src/components/shared/ThemeProvider';
+import { ToastProvider } from '@/src/components/ui/feedback/Toast';
 import { OrderProvider } from '@/src/features/orders/context/OrderContext';
 import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
 import { useAuth } from '@/src/features/auth';

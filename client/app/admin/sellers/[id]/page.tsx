@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Badge } from '@/components/ui/core/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/core/Tabs';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/core/Tabs';
 import {
     ChevronLeft,
     Building2,

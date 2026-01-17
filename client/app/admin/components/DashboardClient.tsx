@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/core/Button';
-import { AnimatedNumber } from '@/hooks/useCountUp';
+import { Button } from '@/src/components/ui/core/Button';
+import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import {
     Activity,
     AlertTriangle,
@@ -37,8 +37,8 @@ import {
     X,
     Zap
 } from 'lucide-react';
-import { NotificationCenter } from '@/components/shared/NotificationCenter';
-import { SellerHealthDashboard } from '@/components/admin/SellerHealthDashboard';
+import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
+import { SellerHealthDashboard } from '@/src/components/admin/SellerHealthDashboard';
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
@@ -54,10 +54,10 @@ import {
     LazyCell as Cell
 } from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { TopSellers } from '@/components/admin/TopSellers';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { TopSellers } from '@/src/components/admin/TopSellers';
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {

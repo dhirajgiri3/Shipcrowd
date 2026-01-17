@@ -1,18 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Label } from '@/components/ui/core/Label';
-import { Badge } from '@/components/ui/core/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/core/Tabs';
+} from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Label } from '@/src/components/ui/core/Label';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/core/Tabs';
 import {
     Dialog,
     DialogContent,
@@ -20,7 +20,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '@/components/ui/feedback/Dialog';
+} from '@/src/components/ui/feedback/Dialog';
 import {
     usePlatformSettings,
     useUpdatePlatformSettings,

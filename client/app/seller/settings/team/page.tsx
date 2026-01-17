@@ -4,7 +4,7 @@
  * Manage team members, roles, and permissions.
  */
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { TeamManager } from '@/src/features/settings/components/TeamManager';
 
 export default function TeamManagementPage() {

@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { toast } from 'sonner';
 import {
     User,
@@ -27,9 +27,9 @@ import { cn } from '@/src/shared/utils';
 // import { kycApi, KYCData } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
-import { Loader } from '@/components/ui';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
+import { Loader } from '@/src/components/ui';
 
 // KYC Steps Configuration
 const kycSteps = [

@@ -9,7 +9,7 @@
 import { useFraudRules, useUpdateFraudRule } from '@/src/core/api/hooks/useSecurity';
 import { Settings, Shield, Info, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Card, Switch, Input, Label, Button, Badge, Loader } from '@/components/ui';
+import { Card, Switch, Input, Label, Button, Badge, Loader } from '@/src/components/ui';
 import type { FraudRule, UpdateFraudRulePayload } from '@/src/types/security.types';
 
 export function FraudRulesConfig() {

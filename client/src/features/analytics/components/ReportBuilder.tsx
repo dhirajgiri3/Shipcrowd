@@ -14,7 +14,7 @@ import {
     CardHeader,
     CardTitle,
     Loader
-} from '@/components/ui';
+} from '@/src/components/ui';
 import { ChartTypeSelector } from './ChartTypeSelector';
 import { DateRangeFilter } from './DateRangeFilter';
 import { MetricSelector, AVAILABLE_METRICS } from './MetricSelector';

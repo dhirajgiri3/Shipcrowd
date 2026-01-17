@@ -5,7 +5,7 @@
  * Enables tree-shaking and clean imports.
  * 
  * Usage:
- * import { Button, Card, Badge } from '@/components/ui';
+ * import { Button, Card, Badge } from '@/src/components/ui';
  */
 
 // ============================================

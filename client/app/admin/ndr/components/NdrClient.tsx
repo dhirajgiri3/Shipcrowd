@@ -15,11 +15,11 @@ import {
     LazyArea as Area,
     LazyCell as Cell
 } from '@/src/components/charts/LazyCharts';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import {
     PackageX,

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Textarea } from '@/components/ui/core/Textarea';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Textarea } from '@/src/components/ui/core/Textarea';
 import {
     Dialog,
     DialogContent,
@@ -12,7 +12,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '@/components/ui/feedback/Dialog';
+} from '@/src/components/ui/feedback/Dialog';
 import { useAddPincodesToZone, useRemovePincodesFromZone } from '@/src/core/api/hooks/useZones';
 import type { Zone } from '@/src/types/api/zones.types';
 import { Search, Plus, Trash2 } from 'lucide-react';

@@ -14,7 +14,7 @@ import {
     CardHeader,
     CardTitle,
     StatusBadge
-} from '@/components/ui';
+} from '@/src/components/ui';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAnalyticsParams, useSLAData } from '@/src/hooks';
 import { SLAMetric } from '@/src/types/analytics.types';

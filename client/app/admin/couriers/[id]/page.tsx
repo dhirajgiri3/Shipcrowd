@@ -2,18 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Label } from '@/components/ui/core/Label';
-import { Badge } from '@/components/ui/core/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/core/Tabs';
+} from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Label } from '@/src/components/ui/core/Label';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/core/Tabs';
 import {
     useCourier,
     useUpdateCourier,
@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Loader } from '@/components/ui';
+import { Loader } from '@/src/components/ui';
 
 export default function CourierDetailPage({ params }: { params: { id: string } }) {
     const router = useRouter();

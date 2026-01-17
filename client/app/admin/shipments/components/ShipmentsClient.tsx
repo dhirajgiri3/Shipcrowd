@@ -4,15 +4,15 @@ export const dynamic = "force-dynamic";
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHIPMENTS } from '@/src/lib/mockData';
-import { DataTable } from '@/components/ui/data/DataTable';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
-import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
-import { StatusBadge } from '@/components/admin/StatusBadge';
+import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
+import { StatusBadge } from '@/src/components/admin/StatusBadge';
 import { getCourierLogo } from '@/src/lib/constants';
 import {
     Search,

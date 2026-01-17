@@ -3,7 +3,7 @@
  * Uses centralized Skeleton components for consistent loading UX
  */
 
-import { Skeleton, PageHeaderSkeleton, CardSkeleton, TableSkeleton } from '@/components/ui';
+import { Skeleton, PageHeaderSkeleton, CardSkeleton, TableSkeleton } from '@/src/components/ui';
 
 export default function OrdersLoading() {
     return (

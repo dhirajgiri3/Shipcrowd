@@ -3,10 +3,10 @@ export const dynamic = "force-dynamic";
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/core/Button';
-import { DataTable } from '@/components/ui/data/DataTable';
-import { Modal } from '@/components/ui/feedback/Modal';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { Button } from '@/src/components/ui/core/Button';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Modal } from '@/src/components/ui/feedback/Modal';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/shared/utils';
 import {
     Search,

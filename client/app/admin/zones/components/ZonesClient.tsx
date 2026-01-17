@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import { useZones, useDeleteZone } from '@/src/core/api/hooks/useZones';
 import type { ZoneType } from '@/src/types/api/zones.types';
 import { ZoneStatsCards, ZoneFilters, ZoneListTable, ZonesSkeleton } from '@/src/features/admin/zones';

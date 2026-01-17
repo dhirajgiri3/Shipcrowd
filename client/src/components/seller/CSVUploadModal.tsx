@@ -14,9 +14,9 @@ import {
     Loader2,
     FileSpreadsheet
 } from "lucide-react";
-import { Button } from "@/components/ui/core/Button";
-import { Badge } from "@/components/ui/core/Badge";
-import { useToast } from "@/components/ui/feedback/Toast";
+import { Button } from '@/src/components/ui/core/Button";
+import { Badge } from '@/src/components/ui/core/Badge";
+import { useToast } from '@/src/components/ui/feedback/Toast";
 import { cn } from "@/src/shared/utils";
 
 interface CSVUploadModalProps {

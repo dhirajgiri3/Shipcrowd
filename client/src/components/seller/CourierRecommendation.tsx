@@ -12,7 +12,7 @@ import {
     CheckCircle2,
     Info
 } from "lucide-react";
-import { Badge } from "@/components/ui/core/Badge";
+import { Badge } from '@/src/components/ui/core/Badge";
 import { cn } from "@/src/shared/utils";
 
 interface CourierOption {

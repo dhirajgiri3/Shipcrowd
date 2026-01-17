@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from '@/components/ui/core/Badge';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { getStatusColor } from '@/src/lib/utils';
 import { cn } from '@/src/lib/utils';
 

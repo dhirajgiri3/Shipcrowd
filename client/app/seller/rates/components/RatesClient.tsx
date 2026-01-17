@@ -2,11 +2,11 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Select } from '@/components/ui/form/Select';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Select } from '@/src/components/ui/form/Select';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Calculator,
     MapPin,
@@ -20,7 +20,7 @@ import {
     ArrowRight,
     RefreshCw
 } from 'lucide-react';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/shared/utils';
 import { getCourierLogo } from '@/src/lib/constants';
 

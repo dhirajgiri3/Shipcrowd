@@ -26,7 +26,7 @@ import {
     Zap
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import { useAuth } from '@/src/features/auth';
 
 const navItems = [

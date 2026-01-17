@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { useWebhooks, useCreateWebhook, useTestWebhook, useDeleteWebhook } from '@/src/core/api/hooks/useSettings';
 import { Plus, Play, Trash2, Eye, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Button, Card, Input, Label, Badge } from '@/components/ui';
+import { Button, Card, Input, Label, Badge } from '@/src/components/ui';
 import type { CreateWebhookPayload, WebhookEvent, Webhook } from '@/src/types/api/settings.types';
 
 const WEBHOOK_EVENTS: { value: WebhookEvent; label: string; description: string }[] = [

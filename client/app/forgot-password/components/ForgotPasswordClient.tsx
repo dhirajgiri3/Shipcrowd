@@ -15,8 +15,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Mail, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export function ForgotPasswordClient() {

@@ -13,7 +13,7 @@ import {
     CardHeader,
     CardTitle,
     StatusBadge
-} from '@/components/ui';
+} from '@/src/components/ui';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAnalyticsParams, useCourierComparison } from '@/src/hooks';
 import {
