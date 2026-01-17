@@ -3,7 +3,7 @@
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { StatusBadge } from '@/src/components/admin/StatusBadge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import {
     Package, MapPin, User, Phone, Mail, Truck, Calendar,
     IndianRupee, Copy, ExternalLink, Clock, FileText

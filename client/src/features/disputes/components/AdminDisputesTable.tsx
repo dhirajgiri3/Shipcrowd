@@ -15,7 +15,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
 
 const STATUS_TABS = [
@@ -98,8 +98,8 @@ export function AdminDisputesTable() {
                             key={tab.value}
                             onClick={() => setFilters({ ...filters, status: tab.value === 'all' ? undefined : tab.value as DisputeStatus, page: 1 })}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${(filters.status === tab.value || (!filters.status && tab.value === 'all'))
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {tab.label}

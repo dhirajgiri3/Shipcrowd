@@ -17,7 +17,7 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCODRemittance } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { ShipmentsTable } from '@/src/features/cod';
 
 export default function RemittanceDetailPage() {

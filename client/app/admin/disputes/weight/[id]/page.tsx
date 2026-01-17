@@ -17,7 +17,7 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWeightDispute, useResolveDispute } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DisputeTimeline } from '@/src/features/disputes';
 import type { ResolutionOutcome } from '@/src/types/api/returns';
 
@@ -335,8 +335,8 @@ export default function AdminDisputeReviewPage() {
                                                     key={outcome.value}
                                                     onClick={() => setSelectedOutcome(outcome.value)}
                                                     className={`p-3 rounded-lg border-2 text-left transition-all ${selectedOutcome === outcome.value
-                                                            ? `${outcome.color} border-current`
-                                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                                        ? `${outcome.color} border-current`
+                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-2">

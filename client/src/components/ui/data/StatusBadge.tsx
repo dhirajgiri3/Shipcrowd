@@ -59,8 +59,9 @@ export type StatusValue =
 export interface StatusBadgeProps {
   /**
    * The domain/category of the status
+   * If not provided, will attempt to infer from status value or use generic styling
    */
-  domain: StatusDomain;
+  domain?: StatusDomain;
 
   /**
    * The status value to display
@@ -121,66 +122,91 @@ export const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
     },
     ref
   ) => {
-    const config = getStatusConfig(domain, String(status));
+    // If domain is provided, use config system
+    if (domain) {
+      const config = getStatusConfig(domain, String(status));
 
-    // Fallback if status not found in config
-    if (!config) {
-      return (
-        <Badge className={className}>
-          {String(status)}
-        </Badge>
-      );
-    }
+      // Fallback if status not found in config
+      if (!config) {
+        return (
+          <Badge className={className}>
+            {String(status)}
+          </Badge>
+        );
+      }
 
-    const colorClass = STATUS_COLORS[config.color];
-    const label = config.label;
+      const colorClass = STATUS_COLORS[config.color];
+      const label = config.label;
 
-    const sizeClasses = {
-      sm: 'px-2 py-1 text-xs',
-      md: 'px-3 py-1.5 text-sm',
-      lg: 'px-4 py-2 text-base',
-    };
+      const sizeClasses = {
+        sm: 'px-2 py-1 text-xs',
+        md: 'px-3 py-1.5 text-sm',
+        lg: 'px-4 py-2 text-base',
+      };
 
-    const badgeContent = (
-      <div
-        className={cn(
-          'inline-flex items-center gap-2 rounded-full font-medium transition-colors',
-          colorClass,
-          sizeClasses[size],
-          interactive && 'cursor-pointer hover:opacity-80',
-          className
-        )}
-        onClick={onClick}
-        ref={ref}
-        role={interactive ? 'button' : undefined}
-        tabIndex={interactive ? 0 : undefined}
-        onKeyDown={
-          interactive
-            ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                onClick?.();
+      const badgeContent = (
+        <div
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full font-medium transition-colors',
+            colorClass,
+            sizeClasses[size],
+            interactive && 'cursor-pointer hover:opacity-80',
+            className
+          )}
+          onClick={onClick}
+          ref={ref}
+          role={interactive ? 'button' : undefined}
+          tabIndex={interactive ? 0 : undefined}
+          onKeyDown={
+            interactive
+              ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onClick?.();
+                }
               }
-            }
-            : undefined
-        }
-      >
-        {showIcon && config.icon && <span className="text-lg">{config.icon}</span>}
-        <span>{label}</span>
-      </div>
-    );
-
-    // Wrap with tooltip if description exists and tooltip is enabled
-    if (showTooltip && config.description) {
-      return (
-        <Tooltip content={config.description} side="top">
-          {badgeContent}
-        </Tooltip>
+              : undefined
+          }
+        >
+          {showIcon && config.icon && <span className="text-lg">{config.icon}</span>}
+          <span>{label}</span>
+        </div>
       );
+
+      // Wrap with tooltip if description exists and tooltip is enabled
+      if (showTooltip && config.description) {
+        return (
+          <Tooltip content={config.description} side="top">
+            {badgeContent}
+          </Tooltip>
+        );
+      }
+
+      return badgeContent;
     }
 
-    return badgeContent;
+    // Fallback: No domain provided - use simple Badge with basic styling
+    // Try to infer color from common status patterns
+    const statusStr = String(status).toLowerCase();
+    let variant: 'default' | 'success' | 'warning' | 'error' | 'info' = 'default';
+
+    if (statusStr.includes('delivered') || statusStr.includes('approved') || statusStr.includes('completed') || statusStr.includes('success')) {
+      variant = 'success';
+    } else if (statusStr.includes('pending') || statusStr.includes('processing') || statusStr.includes('in_progress') || statusStr.includes('in-transit')) {
+      variant = 'warning';
+    } else if (statusStr.includes('failed') || statusStr.includes('rejected') || statusStr.includes('cancelled') || statusStr.includes('rto')) {
+      variant = 'error';
+    } else if (statusStr.includes('open') || statusStr.includes('new')) {
+      variant = 'info';
+    }
+
+    return (
+      <Badge variant={variant} className={className}>
+        {String(status).replace(/_/g, ' ').replace(/-/g, ' ')}
+      </Badge>
+    );
   }
 );
+
 
 StatusBadge.displayName = 'StatusBadge';
 

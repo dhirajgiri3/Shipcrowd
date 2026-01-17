@@ -12,8 +12,8 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
-import { StatusBadge } from '@/src/components/admin/StatusBadge';
-import { getCourierLogo } from '@/src/lib/constants';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { getCourierLogo } from '@/src/constants';
 import {
     Search,
     Eye,
