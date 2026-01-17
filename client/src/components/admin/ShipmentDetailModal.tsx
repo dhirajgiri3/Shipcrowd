@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { Shipment } from '@/src/types/admin';
+import { Shipment } from '@/src/types/domain/admin';
 
 interface ShipmentDetailModalProps {
     isOpen: boolean;

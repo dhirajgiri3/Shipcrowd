@@ -31,7 +31,7 @@ import {
 } from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
 import { ActionsRequired } from '@/src/components/seller/ActionsRequired';

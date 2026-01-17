@@ -148,15 +148,15 @@ export type AuditResource =
     | 'settings';
 
 export interface AuditLog {
-    id: string;
+    _id: string;
     userId: string;
     userName: string;
     userEmail: string;
     action: AuditAction;
-    resource: AuditResource;
-    resourceId?: string;
+    entity: AuditResource;
+    entityId: string;
     details?: Record<string, any>;
-    ip: string;
+    ipAddress: string;
     userAgent: string;
     timestamp: string;
 }
@@ -313,7 +313,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<TeamRole, string[]> = {
 export interface PlatformSettings {
     business: BusinessSettings;
     financial: FinancialSettings;
-    integrations: IntegrationSettings;
+    integrations: SystemIntegrationSettings;
     notifications: NotificationSettings;
     updatedAt?: string;
     updatedBy?: string;
@@ -338,7 +338,7 @@ export interface FinancialSettings {
     codChargeMax: number;
 }
 
-export interface IntegrationSettings {
+export interface SystemIntegrationSettings {
     email: EmailServiceConfig;
     sms: SMSServiceConfig;
     storage: StorageServiceConfig;
@@ -411,7 +411,7 @@ export interface FeatureFlags {
 export interface UpdatePlatformSettingsRequest {
     business?: Partial<BusinessSettings>;
     financial?: Partial<FinancialSettings>;
-    integrations?: Partial<IntegrationSettings>;
+    integrations?: Partial<SystemIntegrationSettings>;
     notifications?: Partial<NotificationSettings>;
 }
 

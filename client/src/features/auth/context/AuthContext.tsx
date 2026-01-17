@@ -2,13 +2,12 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
-import { authApi } from '@/src/core/api/authApi';
-import { sessionApi, type Session } from '@/src/core/api/sessionApi';
-import { companyApi } from '@/src/core/api/companyApi';
-import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/client';
-import { normalizeError } from '@/src/core/api/client';
+import { authApi } from '@/src/core/api/clients/authApi';
+import { sessionApi, type Session } from '@/src/core/api/clients/sessionApi';
+import { companyApi } from '@/src/core/api/clients/companyApi';
+import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/config/client';
+import { normalizeError } from '@/src/core/api/config/client';
 import { toast } from 'sonner';
-import axios from 'axios';
 
 /**
  * Auth Context

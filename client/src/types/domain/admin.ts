@@ -1,14 +1,14 @@
 export type Status = 'delivered' | 'in-transit' | 'pending' | 'ndr' | 'rto' | 'cancelled';
 export type PaymentMode = 'cod' | 'prepaid';
-export type CourierName = 'Delhivery' | 'Xpressbees' | 'DTDC' | 'Bluedart' | 'EcomExpress';
+export type AdminCourierName = 'Delhivery' | 'Xpressbees' | 'DTDC' | 'Bluedart' | 'EcomExpress';
 
-export interface Customer {
+export interface AdminCustomer {
     name: string;
     phone: string;
     email: string;
 }
 
-export interface Address {
+export interface AdminAddress {
     line1: string;
     city: string;
     state: string;
@@ -19,11 +19,11 @@ export interface Shipment {
     id: string;
     awb: string;
     orderNumber: string;
-    customer: Customer;
-    courier: CourierName;
+    customer: AdminCustomer;
+    courier: AdminCourierName;
     status: Status;
-    origin: Address;
-    destination: Address;
+    origin: AdminAddress;
+    destination: AdminAddress;
     weight: number;
     codAmount: number;
     paymentMode: PaymentMode;
@@ -32,9 +32,9 @@ export interface Shipment {
     deliveredAt?: string;
 }
 
-export interface Order {
+export interface AdminOrder {
     id: string;
-    customer: Customer;
+    adminCustomer: AdminCustomer;
     productName: string;
     quantity: number;
     amount: number;
@@ -61,7 +61,7 @@ export interface MetricCardData {
     icon: any; // Lucide icon component type
 }
 
-export interface User {
+export interface AdminUser {
     id: string;
     name: string;
     email: string;

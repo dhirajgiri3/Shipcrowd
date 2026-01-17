@@ -135,12 +135,15 @@ export function NDRAnalytics() {
                                 cx="50%"
                                 cy="50%"
                                 labelLine={false}
-                                label={(entry: any) => `${(entry.reason as string).replace(/_/g, ' ')}: ${entry.percentage ? entry.percentage.toFixed(0) : 0}%`}
+                                label={(entry: any) => {
+                                    const data = entry as { reason: string; percentage: number };
+                                    return `${data.reason.replace(/_/g, ' ')}: ${data.percentage ? data.percentage.toFixed(0) : 0}%`;
+                                }}
                                 outerRadius={100}
                                 dataKey="count"
                             >
                                 {analytics.reasonBreakdown.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    <Cell key={entry.reason || index} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
                             <Tooltip />

@@ -5,18 +5,18 @@ import {
     UseQueryOptions,
     UseMutationOptions
 } from '@tanstack/react-query';
-import { orderApi } from '../orderApi';
-import { queryKeys } from '../queryKeys';
-import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../cacheConfig';
+import { orderApi } from '../clients/orderApi';
+import { queryKeys } from '../config/queryKeys';
+import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../config/cacheConfig';
 import { handleApiError, showSuccessToast } from '@/src/lib/error-handler';
-import { ApiError } from '../client';
+import { ApiError } from '../config/client';
 import type {
     Order,
     CreateOrderRequest,
     OrderListParams,
     GetOrdersResponse,
     GetOrderResponse
-} from '@/src/types/order';
+} from '@/src/types/domain/order';
 
 /**
  * React Query hook for fetching orders list with pagination

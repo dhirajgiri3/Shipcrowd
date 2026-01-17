@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
@@ -28,7 +28,9 @@ interface DataTableProps<T> {
     onRowClick?: (row: T) => void;
 }
 
-export function DataTable<T extends { id?: string | number; _id?: string }>({
+export const DataTable = React.memo(DataTableComponent) as typeof DataTableComponent;
+
+function DataTableComponent<T extends { id?: string | number; _id?: string }>({
     columns,
     data,
     searchKey,
@@ -47,10 +49,8 @@ export function DataTable<T extends { id?: string | number; _id?: string }>({
 
     const sortedData = [...data].sort((a, b) => {
         if (!sortConfig) return 0;
-        //@ts-ignore
-        const aValue = a[sortConfig.key];
-        //@ts-ignore
-        const bValue = b[sortConfig.key];
+        const aValue = a[sortConfig.key as keyof T];
+        const bValue = b[sortConfig.key as keyof T];
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;

@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '../client';
+import { apiClient, ApiError } from '../config/client';
 import { handleApiError } from '@/src/lib/error-handler';
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { Company } from './useProfile';

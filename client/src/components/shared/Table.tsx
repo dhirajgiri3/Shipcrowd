@@ -7,7 +7,7 @@
 'use client';
 
 import React from 'react';
-import { cn } from '@/src/shared';
+import { cn } from '@/src/lib/utils';
 
 // ==================== TYPES ====================
 

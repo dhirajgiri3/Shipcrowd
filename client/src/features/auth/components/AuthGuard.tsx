@@ -40,19 +40,7 @@ export function AuthGuard({
   useEffect(() => {
     if (!isInitialized) return;
 
-    // ✅ Dev mode bypass with explicit environment variable (CRITICAL SECURITY)
-    // Only bypass auth if BOTH conditions are true:
-    // 1. NODE_ENV === 'development'
-    // 2. NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true' (explicit opt-in)
-    const isDevBypass =
-      process.env.NODE_ENV === 'development' &&
-      process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true';
-
-    if (isDevBypass) {
-      console.warn('[AuthGuard] DEV MODE: Auth bypass enabled for', pathname);
-      setShouldRender(true);
-      return;
-    }
+    // ✅ ALWAYS check authentication (Bypass removed for security)
 
     // ✅ ALWAYS check authentication in production and when bypass is disabled
     if (!isAuthenticated) {

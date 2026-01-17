@@ -22,7 +22,7 @@ import {
     Globe,
     Zap
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
 // Mock couriers data

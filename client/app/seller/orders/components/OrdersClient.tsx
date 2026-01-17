@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useOrdersList } from '@/src/core/api/hooks/useOrders';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
+import { useDebounce } from '@/src/hooks/utility/useDebounce';
 import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
 import {
     Search,
@@ -23,7 +23,7 @@ import {
     ChevronDown,
     MoreHorizontal
 } from 'lucide-react';
-import { Order } from '@/src/types/order';
+import { Order } from '@/src/types/domain/order';
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
@@ -31,6 +31,7 @@ import {
     LazyBar as Bar,
     LazyResponsiveContainer as ResponsiveContainer
 } from '@/src/components/charts/LazyCharts';
+import { generateMockOrders } from '@/src/lib/mockData/orders';
 
 // --- VISUALIZATION DATA ---
 const trendData = [
@@ -45,7 +46,7 @@ const trendData = [
 
 export function OrdersClient() {
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 300);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [activeTab, setActiveTab] = useState('all');
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
@@ -53,14 +54,10 @@ export function OrdersClient() {
     const [page, setPage] = useState(1);
     const limit = 20;
 
-    // Debounce search input (300ms delay)
+    // Reset page on search change
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-            setPage(1); // Reset to first page on search
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [search]);
+        setPage(1);
+    }, [debouncedSearch]);
 
     // Reset page when tab changes
     useEffect(() => {
@@ -69,52 +66,7 @@ export function OrdersClient() {
 
     // --- MOCK DATA GENERATOR ---
     const MOCK_ORDERS_DATA = useMemo(() => {
-        const statuses = ['delivered', 'in_transit', 'shipped', 'pending', 'cancelled', 'rto'];
-        const paymentStatuses = ['paid', 'pending', 'failed'];
-        const productsList = [
-            'Wireless Noise Cancelling Headphones', 'Smart Fitness Watch Gen 4', 'Ergonomic Office Chair',
-            'Mechanical Gaming Keyboard', 'USB-C Docking Station', 'Ultra-Wide Monitor 34"',
-            'Bluetooth Portable Speaker', 'Laptop Stand Adjustable', 'Vegan Leather Backpack', 'Smart Home Hub'
-        ];
-        const customers = [
-            'Aarav Patel', 'Vihaan Sharma', 'Aditya Verma', 'Sai Kumar', 'Ananya Singh', 'Diya Rao',
-            'Isha Mehta', 'Arjun Nair', 'Meera Reddy', 'Kabir Das', 'Rohan Gupta', 'Sanya Malhotra'
-        ];
-
-        return Array.from({ length: 45 }).map((_, i) => {
-            const status = statuses[Math.floor(Math.random() * statuses.length)];
-            const paymentStatus = paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)];
-            const product = productsList[Math.floor(Math.random() * productsList.length)];
-            const customer = customers[Math.floor(Math.random() * customers.length)];
-            const amount = Math.floor(Math.random() * 15000) + 999;
-
-            return {
-                _id: `ORD-${2024000 + i}`,
-                orderNumber: `ORD-${2024000 + i}`,
-                customerInfo: {
-                    name: customer,
-                    phone: `+91 ${9000000000 + Math.floor(Math.random() * 999999999)}`,
-                    email: `${customer.toLowerCase().replace(' ', '.')}@example.com`
-                },
-                products: [
-                    {
-                        name: product,
-                        quantity: Math.floor(Math.random() * 3) + 1,
-                        price: amount
-                    }
-                ],
-                currentStatus: status,
-                paymentStatus: paymentStatus as 'paid' | 'pending' | 'failed',
-                paymentMethod: i % 3 === 0 ? 'cod' : 'prepaid',
-                totals: {
-                    subtotal: amount,
-                    tax: amount * 0.18,
-                    shipping: 100,
-                    total: amount + (amount * 0.18) + 100
-                },
-                createdAt: new Date(Date.now() - Math.floor(Math.random() * 1000000000)).toISOString()
-            } as Order;
-        }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return generateMockOrders();
     }, []);
 
     // Simulate Loading
@@ -124,7 +76,7 @@ export function OrdersClient() {
         return () => clearTimeout(timer);
     }, []);
 
-    const error: any = null;
+    const error = null as Error | null;
     const refetch = async () => { setIsLoading(true); setTimeout(() => setIsLoading(false), 500); };
 
     // Filter Mock Data
@@ -456,7 +408,7 @@ export function OrdersClient() {
                                 {['all', 'paid', 'pending', 'failed'].map(opt => (
                                     <button
                                         key={opt}
-                                        onClick={() => setPaymentFilter(opt as any)}
+                                        onClick={() => setPaymentFilter(opt as 'all' | 'paid' | 'pending' | 'failed')}
                                         className={cn(
                                             "w-full text-left px-3 py-2 text-sm rounded-lg capitalize transition-colors flex items-center justify-between",
                                             paymentFilter === opt ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"

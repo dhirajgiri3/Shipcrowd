@@ -16,7 +16,7 @@ export type CourierName =
     | 'shadowfax'
     | 'ecom_express';
 
-export type ZoneType = 'A' | 'B' | 'C' | 'D' | 'E' | 'LOCAL' | 'METRO' | 'REST_OF_INDIA';
+export type CourierZoneType = 'A' | 'B' | 'C' | 'D' | 'E' | 'LOCAL' | 'METRO' | 'REST_OF_INDIA';
 
 export interface CourierCoverage {
     courier: CourierName;
@@ -27,7 +27,7 @@ export interface CourierCoverage {
     estimatedDays: number;
     estimatedDaysMin?: number;
     estimatedDaysMax?: number;
-    zone: ZoneType;
+    zone: CourierZoneType;
     surfaceAvailable: boolean;
     expressAvailable: boolean;
     pickupAvailable: boolean;

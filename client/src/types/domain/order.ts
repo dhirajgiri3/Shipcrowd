@@ -205,24 +205,7 @@ export interface OrderListParams {
   search?: string; // Search by order number or customer name/phone
 }
 
-/**
- * Order Context Type
- */
-export interface OrderContextType {
-  // State
-  orders: Order[];
-  currentOrder: Order | null;
-  isLoading: boolean;
-  error: string | null;
 
-  // Actions
-  createOrder: (data: CreateOrderRequest) => Promise<{ success: boolean; order?: Order; error?: string }>;
-  getOrders: (params?: OrderListParams) => Promise<void>;
-  getOrder: (orderId: string) => Promise<void>;
-  updateOrder: (orderId: string, data: Partial<CreateOrderRequest>) => Promise<{ success: boolean; order?: Order; error?: string }>;
-  deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
-  clearError: () => void;
-}
 
 /**
  * Form data type for order creation (frontend form state)

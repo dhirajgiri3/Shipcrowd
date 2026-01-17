@@ -15,8 +15,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import type {
     WeightDispute,
     DisputeFilters,

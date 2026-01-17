@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { getPasswordStrength, PasswordStrength } from "@/src/shared/utils/password"
+import { getPasswordStrength, PasswordStrength } from "@/src/lib/utils/password"
 
 interface PasswordStrengthIndicatorProps {
     password: string;

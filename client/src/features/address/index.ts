@@ -15,7 +15,7 @@ export type {
     PincodeServiceability,
     CourierCoverage,
     CourierName,
-    ZoneType,
+    CourierZoneType,
     ServiceabilityCheckRequest,
     ServiceabilityCheckResponse,
     ServiceabilityFilters,

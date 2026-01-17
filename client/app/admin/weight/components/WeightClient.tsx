@@ -21,9 +21,9 @@ import {
     Download,
     RefreshCw
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 // Mock weight discrepancy data for admin
 const mockDiscrepancies = [

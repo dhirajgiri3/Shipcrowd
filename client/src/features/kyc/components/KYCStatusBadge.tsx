@@ -2,7 +2,7 @@
 
 import { Badge } from '@/src/components/ui/core/Badge'
 import { ShieldCheck, Clock, AlertCircle, XCircle } from "lucide-react"
-import { cn } from "@/src/shared/utils"
+import { cn } from "@/src/lib/utils"
 
 export type KYCStatus = "pending" | "verified" | "rejected" | "not_started"
 

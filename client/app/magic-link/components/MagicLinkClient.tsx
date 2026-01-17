@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from 'react';
-import { authApi } from '@/src/core/api/authApi';
+import { authApi } from '@/src/core/api/clients/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
 import { toast } from 'sonner';
 import { Mail, ArrowLeft } from 'lucide-react';

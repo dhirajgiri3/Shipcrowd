@@ -21,7 +21,7 @@ import {
     TrendingUp,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/config/client';
 import { toast } from 'sonner';
 
 interface SellerDetail {

@@ -1,18 +1,21 @@
 "use client";
 
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, Mail, MapPin, Package, CreditCard, Truck, Calendar, Printer, Share2 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { cn, formatCurrency } from '@/src/shared/utils';
-import { Order } from '@/src/types/order';
+import { cn, formatCurrency } from '@/src/lib/utils';
+import { Order } from '@/src/types/domain/order';
 
 interface OrderDetailsPanelProps {
     order: Order | null;
     onClose: () => void;
 }
 
-export function OrderDetailsPanel({ order, onClose }: OrderDetailsPanelProps) {
+export const OrderDetailsPanel = React.memo(OrderDetailsPanelComponent);
+
+function OrderDetailsPanelComponent({ order, onClose }: OrderDetailsPanelProps) {
     if (!order) return null;
 
     return (

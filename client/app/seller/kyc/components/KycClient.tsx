@@ -23,10 +23,10 @@ import {
     Briefcase,
     ChevronRight
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 // import { kycApi, KYCData } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
-import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
+import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/lib/utils';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { Loader } from '@/src/components/ui';

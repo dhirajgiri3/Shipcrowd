@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```typescript
- * import { STATUS_CONFIGS, getStatusConfig } from '@/src/shared/configs/statusConfigs';
+ * import { STATUS_CONFIGS, getStatusConfig } from '@/src/lib/configs/statusConfigs';
  *
  * // Get full config
  * const config = getStatusConfig('return', 'approved');

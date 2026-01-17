@@ -24,7 +24,7 @@ import {
     Paperclip
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 
 // Mock tickets
 const mockTickets = [

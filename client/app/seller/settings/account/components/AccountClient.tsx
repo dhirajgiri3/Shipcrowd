@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { authApi } from '@/src/core/api/authApi';
+import { authApi } from '@/src/core/api/clients/authApi';
 import { useAuth } from '@/src/features/auth';
 import { Button, Card } from '@/src/components/ui';
 import { toast } from 'sonner';

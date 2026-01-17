@@ -5,7 +5,7 @@
  */
 
 // Re-export core utilities from src/lib/utils (consolidated location)
-export { cn, formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
+export * from './common';
 
 // Validation utilities
 export * from './validators';

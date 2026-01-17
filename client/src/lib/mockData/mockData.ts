@@ -1,4 +1,4 @@
-import { Shipment, Order, Company, Status } from '@/src/types/admin';
+import { Shipment, AdminOrder as Order, Company, Status } from '@/src/types/domain/admin';
 
 // --- SHIPMENT MOCK DATA ---
 export const MOCK_SHIPMENTS: Shipment[] = [
@@ -152,7 +152,7 @@ export const MOCK_SHIPMENTS: Shipment[] = [
 export const MOCK_ORDERS: Order[] = [
     {
         id: 'ORD-1001',
-        customer: { name: 'Aarav Patel', phone: '+91 98765 43210', email: 'aarav@example.com' },
+        adminCustomer: { name: 'Aarav Patel', phone: '+91 98765 43210', email: 'aarav@example.com' },
         productName: 'Wireless Keyboard',
         quantity: 1,
         amount: 3499,
@@ -162,7 +162,7 @@ export const MOCK_ORDERS: Order[] = [
     },
     {
         id: 'ORD-1002',
-        customer: { name: 'Vihaan Sharma', phone: '+91 98765 43211', email: 'vihaan@example.com' },
+        adminCustomer: { name: 'Vihaan Sharma', phone: '+91 98765 43211', email: 'vihaan@example.com' },
         productName: 'Gaming Mouse',
         quantity: 2,
         amount: 2599,
@@ -172,7 +172,7 @@ export const MOCK_ORDERS: Order[] = [
     },
     {
         id: 'ORD-1003',
-        customer: { name: 'Aditya Verma', phone: '+91 98765 43212', email: 'aditya@example.com' },
+        adminCustomer: { name: 'Aditya Verma', phone: '+91 98765 43212', email: 'aditya@example.com' },
         productName: 'Monitor Stand',
         quantity: 1,
         amount: 1299,
@@ -182,7 +182,7 @@ export const MOCK_ORDERS: Order[] = [
     },
     {
         id: 'ORD-1004',
-        customer: { name: 'Sai Kumar', phone: '+91 98765 43213', email: 'sai@example.com' },
+        adminCustomer: { name: 'Sai Kumar', phone: '+91 98765 43213', email: 'sai@example.com' },
         productName: 'USB-C Hub',
         quantity: 3,
         amount: 4500,

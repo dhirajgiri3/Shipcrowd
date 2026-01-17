@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import { toast } from 'sonner';
+import { handleApiError } from '@/src/lib/error-handler';
 import type { TeamMember, InviteTeamMemberPayload, UpdateMemberRolePayload } from '@/src/types/api/settings.types';
 
 /**
@@ -33,7 +34,7 @@ export const useInviteTeamMember = () => {
             toast.success('Team member invited successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to invite team member');
+            handleApiError(error, 'Failed to invite team member');
         },
     });
 };
@@ -54,7 +55,7 @@ export const useUpdateMemberRole = () => {
             toast.success('Member role updated successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to update member role');
+            handleApiError(error, 'Failed to update member role');
         },
     });
 };
@@ -75,7 +76,7 @@ export const useRemoveTeamMember = () => {
             toast.success('Team member removed successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to remove team member');
+            handleApiError(error, 'Failed to remove team member');
         },
     });
 };

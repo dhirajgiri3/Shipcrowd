@@ -14,7 +14,7 @@ import {
     DialogTitle,
 } from '@/src/components/ui/feedback/Dialog';
 import { useAddPincodesToZone, useRemovePincodesFromZone } from '@/src/core/api/hooks/useZones';
-import type { Zone } from '@/src/types/api/zones.types';
+import type { ShippingZone as Zone } from '@/src/types/api/zones.types';
 import { Search, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 

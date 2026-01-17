@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import {
     Search,
     Building2,

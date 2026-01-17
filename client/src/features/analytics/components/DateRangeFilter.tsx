@@ -9,7 +9,7 @@
 
 import { Button } from '@/src/components/ui';
 import { cn } from '@/src/lib/utils';
-import { TimeRange } from '@/src/types/analytics.types';
+import { ClientTimeRange as TimeRange } from '@/src/types/analytics/client-analytics.types';
 import { Calendar } from 'lucide-react';
 
 interface DateRangeFilterProps {

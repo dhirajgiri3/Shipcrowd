@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/co
 import { MetricCard } from '@/src/components/admin/MetricCard';
 import { Button } from '@/src/components/ui/core/Button';
 import { IndianRupee, ArrowUpRight, ArrowDownRight, CreditCard, Wallet } from 'lucide-react';
-import { formatCurrency, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import { Badge } from '@/src/components/ui/core/Badge';
 
 const transactions = [

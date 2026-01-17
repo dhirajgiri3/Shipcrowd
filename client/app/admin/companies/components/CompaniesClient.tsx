@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { companyApi, Company, CompanyStats } from '@/src/core/api/companyApi';
+import { companyApi, Company, CompanyStats } from '@/src/core/api/clients/companyApi';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 

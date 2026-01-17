@@ -8,7 +8,7 @@ import { Label } from '@/src/components/ui/core/Label';
 import { Textarea } from '@/src/components/ui/core/Textarea';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { useUpdateZone } from '@/src/core/api/hooks/useZones';
-import type { ZoneType, Zone } from '@/src/types/api/zones.types';
+import type { ZoneType, ShippingZone as Zone } from '@/src/types/api/zones.types';
 import { Edit } from 'lucide-react';
 
 interface ZoneDetailCardProps {

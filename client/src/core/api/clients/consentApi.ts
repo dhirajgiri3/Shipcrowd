@@ -4,7 +4,7 @@
  * Handles GDPR consent management API calls
  */
 
-import { apiClient } from './client';
+import { apiClient } from '../config/client';
 
 export type ConsentType = 'terms' | 'privacy' | 'marketing' | 'cookies' | 'data_processing';
 

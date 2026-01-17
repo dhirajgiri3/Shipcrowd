@@ -7,7 +7,7 @@ import { Card } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { useRecentCustomers, RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
 import Link from "next/link";
-import { cn } from "@/src/shared/utils";
+import { cn } from "@/src/lib/utils";
 
 // Lazy load modals
 const QuickOrderModal = lazy(() => import("./QuickOrderModal"));

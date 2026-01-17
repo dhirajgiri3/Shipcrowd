@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { useDebounce } from '@/src/hooks/utility/useDebounce';
 import { motion } from 'framer-motion';
-import { MOCK_SHIPMENTS } from '@/src/lib/mockData';
+import { MOCK_SHIPMENTS } from '@/src/lib/mockData/mockData';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { formatCurrency, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/src/components/admin/StatusBadge';
 import { getCourierLogo } from '@/src/lib/constants';
@@ -24,10 +25,11 @@ import {
     Download,
     BarChart3
 } from 'lucide-react';
-import { Shipment } from '@/src/types/admin';
+import { Shipment } from '@/src/types/domain/admin';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 300);
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
     const [statusFilter, setStatusFilter] = useState('all');
 
@@ -35,14 +37,14 @@ export function ShipmentsClient() {
     const filteredData = useMemo(() => {
         return MOCK_SHIPMENTS.filter(item => {
             const matchesSearch =
-                item.awb.toLowerCase().includes(search.toLowerCase()) ||
-                item.customer.name.toLowerCase().includes(search.toLowerCase()) ||
-                item.orderNumber.toLowerCase().includes(search.toLowerCase());
+                item.awb.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                item.customer.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                item.orderNumber.toLowerCase().includes(debouncedSearch.toLowerCase());
 
             const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
             return matchesSearch && matchesStatus;
         });
-    }, [search, statusFilter]);
+    }, [debouncedSearch, statusFilter]);
 
     // Status Cards Data
     const statusGrid = [

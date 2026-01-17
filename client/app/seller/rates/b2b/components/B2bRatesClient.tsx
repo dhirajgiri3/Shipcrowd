@@ -20,9 +20,9 @@ import {
     Zap,
     CheckCircle
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { formatCurrency } from '@/src/lib/utils';
 
 // Mock B2B rate results
 const mockB2BRates = [

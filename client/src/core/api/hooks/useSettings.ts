@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import type {
     PlatformSettings,
     FeatureFlags,
@@ -13,6 +13,7 @@ import type {
     Webhook,
 } from '@/src/types/api/settings.types';
 import { toast } from 'sonner';
+import { handleApiError } from '@/src/lib/error-handler';
 
 // ==================== PLATFORM SETTINGS ====================
 
@@ -48,14 +49,11 @@ export const useUpdatePlatformSettings = () => {
             toast.success('Platform settings updated successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to update settings');
+            handleApiError(error, 'Failed to update settings');
         },
     });
 };
 
-/**
- * Test integration connection
- */
 export const useTestIntegration = () => {
     return useMutation({
         mutationFn: async (request: TestIntegrationRequest) => {
@@ -73,7 +71,7 @@ export const useTestIntegration = () => {
             }
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to test integration');
+            handleApiError(error, 'Failed to test integration');
         },
     });
 };
@@ -114,14 +112,11 @@ export const useToggleFeature = () => {
             );
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to toggle feature');
+            handleApiError(error, 'Failed to toggle feature');
         },
     });
 };
 
-/**
- * Bulk update feature flags
- */
 export const useBulkUpdateFeatures = () => {
     const queryClient = useQueryClient();
 
@@ -138,7 +133,7 @@ export const useBulkUpdateFeatures = () => {
             toast.success('Feature flags updated successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to update feature flags');
+            handleApiError(error, 'Failed to update feature flags');
         },
     });
 };

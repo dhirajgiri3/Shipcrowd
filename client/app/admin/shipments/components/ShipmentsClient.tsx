@@ -3,14 +3,14 @@ export const dynamic = "force-dynamic";
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MOCK_SHIPMENTS } from '@/src/lib/mockData';
+import { MOCK_SHIPMENTS } from '@/src/lib/mockData/mockData';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/src/components/admin/StatusBadge';
 import { getCourierLogo } from '@/src/lib/constants';
@@ -30,7 +30,7 @@ import {
     MapPin,
     Calendar
 } from 'lucide-react';
-import { Shipment } from '@/src/types/admin';
+import { Shipment } from '@/src/types/domain/admin';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');

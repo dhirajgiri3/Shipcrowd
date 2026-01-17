@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import type {
     Courier,
     CourierPerformance,
@@ -10,6 +10,7 @@ import type {
     CourierPerformanceResponse,
 } from '@/src/types/api/couriers.types';
 import { toast } from 'sonner';
+import { handleApiError } from '@/src/lib/error-handler';
 
 // ==================== QUERIES ====================
 
@@ -68,7 +69,7 @@ export const useUpdateCourier = () => {
             toast.success('Courier updated successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to update courier');
+            handleApiError(error, 'Failed to update courier');
         },
     });
 };
@@ -92,7 +93,7 @@ export const useToggleCourierStatus = () => {
             toast.success(`Courier ${data.isActive ? 'activated' : 'deactivated'} successfully`);
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to toggle courier status');
+            handleApiError(error, 'Failed to toggle courier status');
         },
     });
 };
@@ -116,7 +117,7 @@ export const useTestCourierIntegration = () => {
             }
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to test integration');
+            handleApiError(error, 'Failed to test integration');
         },
     });
 };

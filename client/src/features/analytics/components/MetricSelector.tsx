@@ -9,7 +9,7 @@
 
 import { Badge, Button, Input } from '@/src/components/ui';
 import { cn } from '@/src/lib/utils';
-import { MetricCategory, MetricConfig } from '@/src/types/analytics.types';
+import { ClientMetricCategory as MetricCategory, MetricConfig } from '@/src/types/analytics/client-analytics.types';
 import { Check, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 

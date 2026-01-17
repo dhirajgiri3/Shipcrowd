@@ -11,7 +11,8 @@ import { Input, Textarea } from '@/src/components/ui';
 import { Loader, LoadingButton } from '@/src/components/ui';
 // import { companyApi, CreateCompanyData } from "@/src/core/api"
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
-import { INDIAN_STATES, isValidGSTIN, isValidPAN, isValidPincode } from "@/src/shared"
+import { INDIAN_STATES } from "@/src/lib/constants";
+import { isValidGSTIN, isValidPAN, isValidPincode } from "@/src/lib/utils";
 
 const TOTAL_STEPS = 5
 

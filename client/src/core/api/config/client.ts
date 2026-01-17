@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { requestDeduplicator, deduplicationMetrics } from './requestDeduplication';
+import { requestDeduplicator, deduplicationMetrics } from '../lib/requestDeduplication';
 
 /**
  * Normalized API error format
@@ -87,13 +87,30 @@ let failedQueue: Array<{
     reject: (reason?: any) => void;
 }> = [];
 
-// ✅ Circuit Breaker State (Fix #2)
-// Prevents infinite retry loops after refresh failure
-let refreshFailedPermanently = false;
+// ✅ Circuit Breaker State (Persisted)
+// Prevents infinite retry loops after refresh failure across reloads
+const CB_KEY = 'auth_cb_state';
+
+const getCBState = () => {
+    if (typeof window === 'undefined') return { blocked: false, time: 0 };
+    try {
+        const stored = sessionStorage.getItem(CB_KEY);
+        return stored ? JSON.parse(stored) : { blocked: false, time: 0 };
+    } catch {
+        return { blocked: false, time: 0 };
+    }
+};
+
+const setCBState = (blocked: boolean, time: number) => {
+    if (typeof window === 'undefined') return;
+    try {
+        sessionStorage.setItem(CB_KEY, JSON.stringify({ blocked, time }));
+    } catch { }
+};
+
 let refreshAttemptCount = 0;
 const MAX_REFRESH_ATTEMPTS = 3;
 const COOLDOWN_MS = 5000; // 5 seconds
-let lastFailureTime = 0;
 
 const processQueue = (error: any, token: string | null = null) => {
     failedQueue.forEach((prom) => {
@@ -111,9 +128,8 @@ const processQueue = (error: any, token: string | null = null) => {
  * Call on login/logout to ensure clean slate
  */
 export const resetAuthState = () => {
-    refreshFailedPermanently = false;
+    setCBState(false, 0);
     refreshAttemptCount = 0;
-    lastFailureTime = 0;
     isRefreshing = false;
     failedQueue = [];
     if (process.env.NODE_ENV === 'development') {
@@ -125,12 +141,13 @@ export const resetAuthState = () => {
  * Check if circuit breaker is currently blocking refresh attempts
  */
 export const isRefreshBlocked = (): boolean => {
-    if (!refreshFailedPermanently) return false;
+    const { blocked, time } = getCBState();
+    if (!blocked) return false;
 
-    const timeSinceFailure = Date.now() - lastFailureTime;
+    const timeSinceFailure = Date.now() - time;
     if (timeSinceFailure >= COOLDOWN_MS) {
         // Cooldown expired, allow retry
-        refreshFailedPermanently = false;
+        setCBState(false, 0);
         refreshAttemptCount = 0;
         return false;
     }
@@ -218,7 +235,7 @@ const createApiClient = (): AxiosInstance => {
                     (config as any).deduplicated = true;
                 }
             }
-            
+
             // Add CSRF token for state-changing requests
             if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
                 // Check if CSRF token is already set (from function call)
@@ -301,8 +318,9 @@ const createApiClient = (): AxiosInstance => {
                 }
 
                 // ✅ Fix #2: Check circuit breaker before attempting refresh
-                if (refreshFailedPermanently) {
-                    const timeSinceFailure = Date.now() - lastFailureTime;
+                const { blocked: isBlocked, time: failTime } = getCBState();
+                if (isBlocked) {
+                    const timeSinceFailure = Date.now() - failTime;
 
                     if (timeSinceFailure < COOLDOWN_MS) {
                         if (process.env.NODE_ENV === 'development') {
@@ -311,7 +329,7 @@ const createApiClient = (): AxiosInstance => {
                         return Promise.reject(normalizeError(error));
                     } else {
                         // Cooldown expired, reset
-                        refreshFailedPermanently = false;
+                        setCBState(false, 0);
                         refreshAttemptCount = 0;
                     }
                 }
@@ -321,8 +339,7 @@ const createApiClient = (): AxiosInstance => {
                     if (process.env.NODE_ENV === 'development') {
                         console.error('[Auth] 🚨 Max refresh attempts reached, circuit breaker TRIPPED');
                     }
-                    refreshFailedPermanently = true;
-                    lastFailureTime = Date.now();
+                    setCBState(true, Date.now());
 
                     if (typeof window !== 'undefined') {
                         const currentPath = window.location.pathname;
@@ -368,8 +385,7 @@ const createApiClient = (): AxiosInstance => {
 
                     // ✅ Reset on success
                     refreshAttemptCount = 0;
-                    refreshFailedPermanently = false;
-                    lastFailureTime = 0;
+                    setCBState(false, 0);
 
                     // ✅ Process queue on success
                     processQueue(null);
@@ -382,8 +398,7 @@ const createApiClient = (): AxiosInstance => {
                     }
 
                     // ✅ Set circuit breaker on failure
-                    refreshFailedPermanently = true;
-                    lastFailureTime = Date.now();
+                    setCBState(true, Date.now());
 
                     // ✅ Process queue on failure
                     processQueue(refreshError, null);
@@ -468,11 +483,15 @@ const createApiClient = (): AxiosInstance => {
                 } as ApiError);
             }
 
-            // Handle 5xx with retry
-            if (error.response?.status && error.response.status >= 500) {
+            // Handle 5xx and Network Errors with retry
+            const isNetworkError = error.code === 'ERR_NETWORK' || !error.response;
+            const isServerError = error.response?.status && error.response.status >= 500;
+
+            if (isNetworkError || isServerError) {
                 const retryCount = (originalRequest as any).__retryCount || 0;
                 if (retryCount < 2) {
                     (originalRequest as any).__retryCount = retryCount + 1;
+                    // Exponential backoff: 1s, 2s
                     await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
                     return client(originalRequest);
                 }

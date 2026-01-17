@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -51,7 +52,9 @@ const navItems = [
     { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
-export function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
+export const Sidebar = React.memo(SidebarComponent);
+
+function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();

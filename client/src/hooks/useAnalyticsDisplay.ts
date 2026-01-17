@@ -10,13 +10,13 @@ import { addDays, format, subDays } from 'date-fns';
 import { useState } from 'react';
 import {
     CostAnalysisData,
-    CourierPerformance,
+    ClientCourierPerformance as CourierPerformance,
     DateRange,
     ReportConfig,
-    ReportDataPoint,
+    ClientReportDataPoint as ReportDataPoint,
     SLASummary,
-    TimeRange
-} from '@/src/types/analytics.types';
+    ClientTimeRange as TimeRange
+} from '@/src/types/analytics/client-analytics.types';
 
 // ==========================================
 // MOCK DATA GENERATORS
@@ -164,7 +164,7 @@ const mockCostData: CostAnalysisData = {
 // HOOKS
 // ==========================================
 
-export function useAnalyticsParams() {
+export function useAnalyticsDisplay() {
     const [timeRange, setTimeRange] = useState<TimeRange>('30d');
     const [dateRange, setDateRange] = useState<DateRange>({
         from: subDays(new Date(), 30),

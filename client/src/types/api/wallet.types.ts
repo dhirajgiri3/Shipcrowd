@@ -60,7 +60,7 @@ export interface TransactionFilters {
     limit?: number;
 }
 
-export interface PaginationMeta {
+export interface WalletPaginationMeta {
     page: number;
     limit: number;
     total: number;
@@ -71,7 +71,7 @@ export interface PaginationMeta {
 
 export interface WalletTransactionResponse {
     transactions: WalletTransaction[];
-    pagination: PaginationMeta;
+    pagination: WalletPaginationMeta;
 }
 
 // ==================== Wallet Statistics ====================

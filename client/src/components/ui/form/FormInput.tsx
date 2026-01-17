@@ -3,7 +3,7 @@
 import { forwardRef, InputHTMLAttributes } from "react"
 import { LucideIcon } from "lucide-react"
 import React from 'react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;

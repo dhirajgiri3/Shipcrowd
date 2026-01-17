@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useDebounce } from '@/src/hooks/utility/useDebounce';
 import { motion } from 'framer-motion';
 import {
     AlertTriangle,
@@ -18,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/co
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 
 // Mock NDR data
 const mockNDRs = [
@@ -72,12 +73,13 @@ const statusStyles = {
 
 export function NdrClient() {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebounce(searchQuery, 300);
     const [filter, setFilter] = useState<'all' | 'pending' | 'rto_initiated'>('all');
 
     const filteredNDRs = mockNDRs.filter(ndr => {
-        const matchesSearch = ndr.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ndr.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ndr.trackingNumber.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = ndr.orderId.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            ndr.customerName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            ndr.trackingNumber.toLowerCase().includes(debouncedSearch.toLowerCase());
         const matchesFilter = filter === 'all' || ndr.status === filter;
         return matchesSearch && matchesFilter;
     });

@@ -18,7 +18,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Button } from '@/src/components/ui/core/Button';
-import { cn } from "@/src/shared/utils";
+import { cn } from "@/src/lib/utils";
 import Link from "next/link";
 
 interface SellerHealth {

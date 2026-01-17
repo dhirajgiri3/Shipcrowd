@@ -3,16 +3,16 @@
  */
 
 export type FraudSeverity = 'high' | 'medium' | 'low';
-export type FraudAlertStatus = 'active' | 'resolved' | 'dismissed';
+export type SecurityFraudAlertStatus = 'active' | 'resolved' | 'dismissed';
 export type FraudRuleType = 'rto_probability' | 'order_amount' | 'velocity' | 'address' | 'ip_reputation';
 
-export interface FraudAlert {
+export interface SecurityFraudAlert {
     id: string;
     orderId: string;
     severity: FraudSeverity;
     reason: string;
     score: number; // 0-100
-    status: FraudAlertStatus;
+    status: SecurityFraudAlertStatus;
     detectedAt: string;
     resolvedAt?: string;
     resolvedBy?: string;
@@ -22,7 +22,7 @@ export interface FraudAlert {
     details?: Record<string, any>;
 }
 
-export interface FraudRule {
+export interface SecurityFraudRule {
     id: string;
     type: FraudRuleType;
     name: string;

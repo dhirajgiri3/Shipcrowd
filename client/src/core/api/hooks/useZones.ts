@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import type {
-    Zone,
+    ShippingZone as Zone,
     CreateZoneRequest,
     UpdateZoneRequest,
     AddPincodesToZoneRequest,
@@ -13,6 +13,7 @@ import type {
     PincodeValidationResult,
 } from '@/src/types/api/zones.types';
 import { toast } from 'sonner';
+import { handleApiError } from '@/src/lib/error-handler';
 
 // ==================== QUERIES ====================
 
@@ -70,7 +71,7 @@ export const useCreateZone = () => {
             toast.success('Zone created successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to create zone');
+            handleApiError(error, 'Failed to create zone');
         },
     });
 };
@@ -92,7 +93,7 @@ export const useUpdateZone = () => {
             toast.success('Zone updated successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to update zone');
+            handleApiError(error, 'Failed to update zone');
         },
     });
 };
@@ -112,7 +113,7 @@ export const useDeleteZone = () => {
             toast.success('Zone deleted successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to delete zone');
+            handleApiError(error, 'Failed to delete zone');
         },
     });
 };
@@ -136,7 +137,7 @@ export const useAddPincodesToZone = () => {
             toast.success('Pincodes added successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to add pincodes');
+            handleApiError(error, 'Failed to add pincodes');
         },
     });
 };
@@ -160,7 +161,7 @@ export const useRemovePincodesFromZone = () => {
             toast.success('Pincodes removed successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to remove pincodes');
+            handleApiError(error, 'Failed to remove pincodes');
         },
     });
 };
@@ -178,7 +179,7 @@ export const useValidatePincodes = () => {
             return response.data.data;
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to validate pincodes');
+            handleApiError(error, 'Failed to validate pincodes');
         },
     });
 };

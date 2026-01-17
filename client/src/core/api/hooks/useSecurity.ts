@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { FraudAlert, FraudRule, UpdateFraudRulePayload, ResolveAlertPayload } from '@/src/types/security.types';
+import type { SecurityFraudAlert as FraudAlert, SecurityFraudRule as FraudRule, UpdateFraudRulePayload, ResolveAlertPayload } from '@/src/types/security';
 
 // Mock Data
 const MOCK_ALERTS: FraudAlert[] = [

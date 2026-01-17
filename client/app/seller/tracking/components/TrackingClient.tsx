@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
 import { Button } from '@/src/components/ui/core/Button';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import {
     Search,
     Truck,

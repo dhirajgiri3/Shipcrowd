@@ -3,7 +3,7 @@
  * All order endpoints with proper type safety
  */
 
-import { apiClient } from './client';
+import { apiClient } from '../config/client';
 import type {
   Order,
   CreateOrderRequest,
@@ -13,7 +13,7 @@ import type {
   UpdateOrderResponse,
   DeleteOrderResponse,
   OrderListParams,
-} from '@/src/types/order';
+} from '@/src/types/domain/order';
 
 /**
  * Order API Service

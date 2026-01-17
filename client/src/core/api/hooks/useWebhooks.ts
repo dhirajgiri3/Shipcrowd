@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import { toast } from 'sonner';
+import { handleApiError } from '@/src/lib/error-handler';
 import type { Webhook, CreateWebhookPayload, TestWebhookPayload } from '@/src/types/api/settings.types';
 
 /**
@@ -33,7 +34,7 @@ export const useCreateWebhook = () => {
             toast.success('Webhook created successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to create webhook');
+            handleApiError(error, 'Failed to create webhook');
         },
     });
 };
@@ -51,7 +52,7 @@ export const useTestWebhook = () => {
             toast.success('Webhook test sent successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to test webhook');
+            handleApiError(error, 'Failed to test webhook');
         },
     });
 };
@@ -72,7 +73,7 @@ export const useDeleteWebhook = () => {
             toast.success('Webhook deleted successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to delete webhook');
+            handleApiError(error, 'Failed to delete webhook');
         },
     });
 };

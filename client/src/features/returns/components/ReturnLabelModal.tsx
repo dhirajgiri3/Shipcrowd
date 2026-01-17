@@ -14,7 +14,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/config/client';
 import type { ReturnRequest } from '@/src/types/api/returns.types';
 
 interface ReturnLabelModalProps {

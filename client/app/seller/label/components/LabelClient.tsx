@@ -15,7 +15,7 @@ import {
     Truck,
     Package
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 

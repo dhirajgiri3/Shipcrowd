@@ -22,7 +22,7 @@ import {
     isValidPhone,
     isValidIFSC,
     isValidBankAccount,
-} from '@/src/shared/utils/validators';
+} from '@/src/lib/utils/validators';
 
 // ============================================
 // TYPES

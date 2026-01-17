@@ -13,20 +13,20 @@
 // SHARED TYPES
 // ==========================================
 
-export type TimeRange = '7d' | '30d' | '90d' | 'mtd' | 'ytd' | 'custom';
+export type ClientTimeRange = '7d' | '30d' | '90d' | 'mtd' | 'ytd' | 'custom';
 
 export interface DateRange {
     from: Date;
     to: Date;
 }
 
-export type MetricCategory = 'volume' | 'performance' | 'financial' | 'time';
+export type ClientMetricCategory = 'volume' | 'performance' | 'financial' | 'time';
 
 export interface MetricConfig {
     id: string;
     label: string;
     description: string;
-    category: MetricCategory;
+    category: ClientMetricCategory;
     format: 'number' | 'currency' | 'percent' | 'time';
 }
 
@@ -34,17 +34,17 @@ export interface MetricConfig {
 // REPORT BUILDER
 // ==========================================
 
-export type ChartType = 'line' | 'bar' | 'pie' | 'area' | 'scatter';
+export type ClientChartType = 'line' | 'bar' | 'pie' | 'area' | 'scatter';
 
 export interface ReportConfig {
     metrics: string[];
     dimensions: string[];
     filters: Record<string, any>;
-    chartType: ChartType;
+    chartType: ClientChartType;
     dateRange: DateRange;
 }
 
-export interface ReportDataPoint {
+export interface ClientReportDataPoint {
     date: string;
     [key: string]: string | number;
 }
@@ -53,7 +53,7 @@ export interface ReportDataPoint {
 // SLA DASHBOARD
 // ==========================================
 
-export interface SLAMetric {
+export interface ClientSLAMetric {
     type: 'pickup' | 'delivery' | 'ndr' | 'cod';
     label: string;
     target: number; // e.g., 24 (hours) or 98 (percent)
@@ -65,17 +65,17 @@ export interface SLAMetric {
 }
 
 export interface SLASummary {
-    pickupCompliance: SLAMetric;
-    deliveryCompliance: SLAMetric;
-    ndrResponseTime: SLAMetric;
-    codSettlementTime: SLAMetric;
+    pickupCompliance: ClientSLAMetric;
+    deliveryCompliance: ClientSLAMetric;
+    ndrResponseTime: ClientSLAMetric;
+    codSettlementTime: ClientSLAMetric;
 }
 
 // ==========================================
 // COURIER COMPARISON
 // ==========================================
 
-export interface CourierPerformance {
+export interface ClientCourierPerformance {
     courierId: string;
     courierName: string;
     color: string;
@@ -94,7 +94,7 @@ export interface CourierPerformance {
 // COST ANALYSIS
 // ==========================================
 
-export interface CostBreakdown {
+export interface ClientCostBreakdown {
     category: string;
     amount: number;
     percentage: number;
@@ -111,8 +111,8 @@ export interface CostTrend {
 export interface CostAnalysisData {
     totalSpend: number;
     avgCostPerOrder: number;
-    costPerZone: CostBreakdown[];
-    costPerCourier: CostBreakdown[];
+    costPerZone: ClientCostBreakdown[];
+    costPerCourier: ClientCostBreakdown[];
     paymentModeSplit: {
         prepaid: number;
         cod: number;

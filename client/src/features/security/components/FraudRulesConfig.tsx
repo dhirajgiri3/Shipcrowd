@@ -10,7 +10,7 @@ import { useFraudRules, useUpdateFraudRule } from '@/src/core/api/hooks/useSecur
 import { Settings, Shield, Info, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Card, Switch, Input, Label, Button, Badge, Loader } from '@/src/components/ui';
-import type { FraudRule, UpdateFraudRulePayload } from '@/src/types/security.types';
+import type { SecurityFraudRule as FraudRule, UpdateFraudRulePayload } from '@/src/types/security';
 
 export function FraudRulesConfig() {
     // FETCH DATA

@@ -20,9 +20,9 @@ import {
     Clock,
     Shield
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { formatCurrency } from '@/src/lib/utils';
 import Link from 'next/link';
 
 const quickAmounts = [1000, 2000, 5000, 10000, 25000, 50000];

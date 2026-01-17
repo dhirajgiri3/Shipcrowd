@@ -1,9 +1,3 @@
-/**
- * Mock Data Index
- *
- * Central export point for all mock data modules
- * TODO: Add mock data files as needed
- */
+import * as MOCK_DATA from './mockData';
 
-// No mock data files currently exist
-
+export default MOCK_DATA;

@@ -9,7 +9,7 @@ import { useWarehouses } from "@/src/core/api/hooks/useWarehouses";
 import { useCreateOrder } from "@/src/core/api/hooks/useOrders";
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
-import { cn, formatCurrency } from "@/src/shared/utils";
+import { cn, formatCurrency } from "@/src/lib/utils";
 
 interface QuickOrderModalProps {
     customer: RecentCustomer | null;

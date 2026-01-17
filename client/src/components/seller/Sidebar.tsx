@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -91,7 +91,9 @@ const supportItems = [
     { label: 'Help & Support', href: '/seller/support', icon: HelpCircle },
 ];
 
-export function Sidebar() {
+export const Sidebar = React.memo(SidebarComponent);
+
+function SidebarComponent() {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout } = useAuth();

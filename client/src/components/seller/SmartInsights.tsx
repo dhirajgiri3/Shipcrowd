@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { cn } from "@/src/shared/utils";
+import { cn } from "@/src/lib/utils";
 import Link from "next/link";
 
 interface Insight {

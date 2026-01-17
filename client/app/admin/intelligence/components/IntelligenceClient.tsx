@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 // Removed duplicate import
-import { MOCK_PREDICTIONS, MOCK_ANOMALIES, MOCK_AI_INSIGHTS } from '@/src/lib/mockData';
+import { MOCK_PREDICTIONS, MOCK_ANOMALIES, MOCK_AI_INSIGHTS } from '@/src/lib/mockData/mockData';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     ComposedChart, Line, ResponsiveContainer
@@ -15,7 +15,7 @@ import {
     MessageSquare, ArrowRight, Target, Sparkles,
     Activity, ArrowUpRight
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 
 export function IntelligenceClient() {
     // Animation variants

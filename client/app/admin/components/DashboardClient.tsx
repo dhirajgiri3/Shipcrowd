@@ -55,7 +55,7 @@ import {
 } from '@/src/components/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/shared/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { TopSellers } from '@/src/components/admin/TopSellers';
 

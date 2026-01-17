@@ -8,7 +8,7 @@ import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatDate, cn } from '@/src/shared/utils';
+import { formatDate, cn } from '@/src/lib/utils';
 import {
     Shield,
     Search,

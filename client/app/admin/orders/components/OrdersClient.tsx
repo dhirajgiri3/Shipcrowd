@@ -10,7 +10,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, formatDate, cn } from '@/src/shared/utils';
+import { formatCurrency, formatDate, cn } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,

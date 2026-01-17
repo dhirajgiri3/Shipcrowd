@@ -47,8 +47,8 @@ export const QUERY_CONFIG = {
      * Retry configuration
      */
     retry: {
-        /** Queries: retry once on failure */
-        queries: 1,
+        /** Queries: retry twice on failure for better reliability */
+        queries: 2,
 
         /** Mutations: don't retry (user-initiated actions) */
         mutations: 0,

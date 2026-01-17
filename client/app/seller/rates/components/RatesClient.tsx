@@ -21,7 +21,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { formatCurrency } from '@/src/lib/utils';
 import { getCourierLogo } from '@/src/lib/constants';
 
 // Note: The backend `/ratecards/calculate` endpoint requires full implementation

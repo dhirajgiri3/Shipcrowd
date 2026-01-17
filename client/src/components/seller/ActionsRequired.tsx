@@ -45,7 +45,7 @@ import {
     Truck,
     Scale
 } from "lucide-react";
-import { cn } from "@/src/shared/utils";
+import { cn } from "@/src/lib/utils";
 import Link from "next/link";
 
 export interface SellerAction {

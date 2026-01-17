@@ -1,7 +1,7 @@
 // Zone Management Types
 export type ZoneType = 'LOCAL' | 'REGIONAL' | 'NATIONAL';
 
-export interface Zone {
+export interface ShippingZone {
     _id: string;
     name: string;
     type: ZoneType;
@@ -48,7 +48,7 @@ export interface ZoneListFilters {
 
 export interface ZoneListResponse {
     success: boolean;
-    data: Zone[];
+    data: ShippingZone[];
     pagination: {
         total: number;
         page: number;
@@ -59,7 +59,7 @@ export interface ZoneListResponse {
 
 export interface ZoneDetailResponse {
     success: boolean;
-    data: Zone;
+    data: ShippingZone;
 }
 
 export interface PincodeValidationResult {

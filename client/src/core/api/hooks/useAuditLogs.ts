@@ -1,20 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { queryKeys } from '../queryKeys';
+import { apiClient } from '../config/client';
+import { queryKeys } from '../config/queryKeys';
 import { toast } from 'sonner';
-
-// Types
-interface AuditLog {
-    _id: string;
-    action: string;
-    entity: string;
-    entityId: string;
-    userId: string;
-    userName: string;
-    timestamp: string;
-    metadata?: Record<string, any>;
-    ipAddress?: string;
-}
+import { handleApiError } from '@/src/lib/error-handler';
+import type { AuditLog } from '@/src/types/api/settings.types';
 
 interface AuditLogsQuery {
     page?: number;
@@ -72,7 +61,7 @@ export const useExportAuditLogs = () => {
             toast.success('Audit logs exported successfully');
         },
         onError: (error: any) => {
-            toast.error(error.response?.data?.message || 'Failed to export audit logs');
+            handleApiError(error, 'Failed to export audit logs');
         },
     });
 };

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/co
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Input } from '@/src/components/ui/core/Input';
-import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/src/lib/mockData';
+import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/src/lib/mockData/mockData';
 import {
     Warehouse,
     MapPin,
@@ -22,7 +22,7 @@ import {
     MoreHorizontal,
     Globe
 } from 'lucide-react';
-import { cn, formatCurrency } from '@/src/shared/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
 export function WarehousesClient() {

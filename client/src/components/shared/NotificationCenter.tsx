@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Button } from '@/src/components/ui/core/Button';
-import { cn } from "@/src/shared/utils";
+import { cn } from "@/src/lib/utils";
 
 interface Notification {
     id: string;
