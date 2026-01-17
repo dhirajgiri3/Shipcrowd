@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/src/features/auth';
 import { authApi } from '@/src/core/api/clients/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Shield, Lock, Smartphone, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 // import { formatDistanceToNow } from 'date-fns';
 
@@ -53,8 +53,7 @@ export function SecurityClient() {
         try {
             await loadSessions();
         } catch (error) {
-            toast.error('Failed to load sessions');
-        } finally {
+                    } finally {
             setIsLoadingSessions(false);
         }
     };
@@ -64,18 +63,15 @@ export function SecurityClient() {
 
         // Validation
         if (newPassword !== confirmPassword) {
-            toast.error('New passwords do not match');
-            return;
+                        return;
         }
 
         if (newPassword.length < 8) {
-            toast.error('Password must be at least 8 characters');
-            return;
+                        return;
         }
 
         if (passwordStrength && passwordStrength.score < 2) {
-            toast.error('Password is too weak. Please choose a stronger password.');
-            return;
+                        return;
         }
 
         setIsChangingPassword(true);
@@ -83,7 +79,7 @@ export function SecurityClient() {
             const result = await changePassword(currentPassword, newPassword);
 
             if (result.success) {
-                toast.success(result.message || 'Password changed successfully');
+                showSuccessToast(result.message || 'Password changed successfully');
                 // Clear form
                 setCurrentPassword('');
                 setNewPassword('');
@@ -91,11 +87,9 @@ export function SecurityClient() {
                 setPasswordStrength(null);
             } else {
                 const errorMsg = result.error?.message || result.error || 'Failed to change password';
-                toast.error(typeof errorMsg === 'string' ? errorMsg : 'Failed to change password');
-            }
+                            }
         } catch (error: any) {
-            toast.error(error.message || 'Failed to change password');
-        } finally {
+                    } finally {
             setIsChangingPassword(false);
         }
     };
@@ -109,13 +103,11 @@ export function SecurityClient() {
         try {
             const result = await revokeSession(sessionId);
             if (result.success) {
-                toast.success(result.message || 'Session revoked successfully');
+                showSuccessToast(result.message || 'Session revoked successfully');
             } else {
-                toast.error(result.error || 'Failed to revoke session');
-            }
+                            }
         } catch (error) {
-            toast.error('Failed to revoke session');
-        } finally {
+                    } finally {
             setRevokingSessionId(null);
         }
     };
@@ -129,13 +121,11 @@ export function SecurityClient() {
         try {
             const result = await revokeAllSessions();
             if (result.success) {
-                toast.success(result.message || `Revoked ${result.revokedCount} sessions`);
+                showSuccessToast(result.message || `Revoked ${result.revokedCount} sessions`);
             } else {
-                toast.error(result.error || 'Failed to revoke sessions');
-            }
+                            }
         } catch (error) {
-            toast.error('Failed to revoke sessions');
-        } finally {
+                    } finally {
             setIsRevokingAll(false);
         }
     };

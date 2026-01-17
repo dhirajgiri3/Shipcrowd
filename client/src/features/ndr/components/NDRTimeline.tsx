@@ -11,7 +11,7 @@
 'use client';
 
 import React from 'react';
-import type { NDRAttempt, AutomatedAction } from '@/src/types/api/ndr.types';
+import type { NDRAttempt, AutomatedAction } from '@/src/types/api/orders';
 import { formatDate } from '@/src/lib/utils';
 
 interface NDRTimelineProps {

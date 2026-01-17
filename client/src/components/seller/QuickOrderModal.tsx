@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Package, Truck, MapPin, CreditCard, Loader2, CheckCircle2, ChevronRight, Weight } from "lucide-react";
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
-import { useWarehouses } from "@/src/core/api/hooks/useWarehouses";
-import { useCreateOrder } from "@/src/core/api/hooks/useOrders";
+import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { useCreateOrder } from '@/src/core/api/hooks/orders/useOrders';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
+import { RecentCustomer } from '@/src/core/api/hooks/orders/useRecentCustomers';
 import { cn, formatCurrency } from "@/src/lib/utils";
 
 interface QuickOrderModalProps {

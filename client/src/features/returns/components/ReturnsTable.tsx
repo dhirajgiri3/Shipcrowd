@@ -14,8 +14,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useReturns } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
-import type { ReturnStatus, ReturnFilters } from '@/src/types/api/returns.types';
+import { useDebouncedValue } from '@/src/hooks/data';
+import type { ReturnStatus, ReturnFilters } from '@/src/types/api/returns';
 
 const STATUS_CONFIG: Record<ReturnStatus, { label: string; color: string }> = {
     requested: { label: 'Requested', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' },

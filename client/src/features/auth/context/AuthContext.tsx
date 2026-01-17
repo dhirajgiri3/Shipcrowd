@@ -7,7 +7,7 @@ import { sessionApi, type Session } from '@/src/core/api/clients/sessionApi';
 import { companyApi } from '@/src/core/api/clients/companyApi';
 import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/config/client';
 import { normalizeError } from '@/src/core/api/config/client';
-import { toast } from 'sonner';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 /**
  * Auth Context
@@ -506,12 +506,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const response = await authApi.changeEmail(data.newEmail, data.password);
 
-      toast.success('Verification email sent to new address. Please check your inbox.');
+      showSuccessToast('Verification email sent to new address. Please check your inbox.');
       return { success: true };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error(normalizedErr.message || 'Failed to change email');
+      handleApiError(err, 'Failed to change email');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);
@@ -550,13 +550,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Update state
       setUser(updatedUser);
 
-      toast.success(response.message || 'Company created successfully!');
+      showSuccessToast(response.message || 'Company created successfully!');
 
       return { success: true, company: response.company };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error(normalizedErr.message || 'Failed to create company');
+      handleApiError(err, 'Failed to create company');
       return { success: false, error: normalizedErr };
     } finally {
       setIsLoading(false);
@@ -577,7 +577,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
       setSessions([]);
-      toast.error('Failed to load sessions. Please try again.');
+      handleApiError(err, 'Failed to load sessions. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -596,12 +596,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Refresh sessions list
       await loadSessions();
 
-      toast.success('Session revoked successfully');
+      showSuccessToast('Session revoked successfully');
       return { success: true };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error('Failed to revoke session. Please try again.');
+      handleApiError(err, 'Failed to revoke session. Please try again.');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);
@@ -621,12 +621,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Refresh sessions list
       await loadSessions();
 
-      toast.success(`${result.revoked} session(s) revoked successfully`);
+      showSuccessToast(`${result.revoked} session(s) revoked successfully`);
       return { success: true, revokedCount: result.revoked };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error('Failed to revoke sessions. Please try again.');
+      handleApiError(err, 'Failed to revoke sessions. Please try again.');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);

@@ -12,7 +12,7 @@
 
 import React from 'react';
 import { formatDateTime } from '@/src/lib/utils';
-import type { TimelineEntry } from '@/src/types/api/dispute.types';
+import type { TimelineEntry } from '@/src/types/api/returns';
 
 interface DisputeTimelineProps {
     timeline: TimelineEntry[];

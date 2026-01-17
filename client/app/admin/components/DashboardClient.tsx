@@ -52,7 +52,7 @@ import {
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer,
     LazyCell as Cell
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency, cn } from '@/src/lib/utils';

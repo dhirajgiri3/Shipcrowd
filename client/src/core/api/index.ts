@@ -42,7 +42,7 @@ export { optimisticListUpdate } from './queries/optimisticUpdates';
 export { requestDeduplicator } from './lib/requestDeduplication';
 
 // Error Handling (Legacy - should move to lib/utils/error-handler)
-// export { handleApiError, showSuccessToast, showInfoToast } from '@/src/lib/error-handler';
+// export { handleApiError, showSuccessToast, showInfoToast } from '@/src/lib/error';
 
 // React Query Hooks (Already in separate folder)
 export * from './hooks';

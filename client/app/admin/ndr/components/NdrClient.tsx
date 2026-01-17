@@ -14,7 +14,7 @@ import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
     LazyCell as Cell
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';

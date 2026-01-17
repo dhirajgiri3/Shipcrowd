@@ -7,11 +7,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useWebhooks, useCreateWebhook, useTestWebhook, useDeleteWebhook } from '@/src/core/api/hooks/useSettings';
+import { useWebhooks, useCreateWebhook, useTestWebhook, useDeleteWebhook } from '@/src/core/api/hooks/integrations/useWebhooks';
 import { Plus, Play, Trash2, Eye, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button, Card, Input, Label, Badge } from '@/src/components/ui';
-import type { CreateWebhookPayload, WebhookEvent, Webhook } from '@/src/types/api/settings.types';
+import type { CreateWebhookPayload, WebhookEvent, Webhook } from '@/src/types/api/settings';
 
 const WEBHOOK_EVENTS: { value: WebhookEvent; label: string; description: string }[] = [
     { value: 'shipment.created', label: 'Shipment Created', description: 'When a new shipment is created' },

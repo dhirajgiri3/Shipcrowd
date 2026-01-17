@@ -22,8 +22,8 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/src/core/api/config/client';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { toast } from 'sonner';
-
 interface SellerDetail {
     _id: string;
     companyName: string;
@@ -67,10 +67,10 @@ export default function SellerDetailPage({ params }: { params: { id: string } })
     const handleToggleStatus = async () => {
         try {
             await apiClient.post(`/admin/sellers/${params.id}/toggle-status`);
-            toast.success(`Seller ${seller?.isActive ? 'deactivated' : 'activated'} successfully`);
+            showSuccessToast(`Seller ${seller?.isActive ? 'deactivated' : 'activated'} successfully`);
             // Refetch data
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to toggle status');
+            handleApiError(error, 'Failed to toggle status');
         }
     };
 

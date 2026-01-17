@@ -8,10 +8,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useCostAnalysis } from '@/src/core/api/hooks/useAnalytics';
+import { useCostAnalysis } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { DollarSign, TrendingDown, TrendingUp, Lightbulb, Calendar } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
-import type { AnalyticsFilters, TimeRange, CostSavingsOpportunity } from '@/src/types/api/analytics.types';
+import type { AnalyticsFilters, TimeRange, CostSavingsOpportunity } from '@/src/types/api/analytics';
 
 const timeRangeOptions: { value: TimeRange; label: string }[] = [
     { value: '7days', label: 'Last 7 Days' },

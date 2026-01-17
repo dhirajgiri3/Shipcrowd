@@ -15,7 +15,7 @@ import {
     useManifests,
     useManifestStats,
     useDownloadManifestPdf,
-} from '@/src/core/api/hooks/useManifests';
+} from '@/src/core/api/hooks/orders/useManifests';
 import { ManifestTable } from '@/src/features/manifests/components/ManifestTable';
 import {
     Plus,
@@ -30,7 +30,7 @@ import {
     Loader2,
     RefreshCw,
 } from 'lucide-react';
-import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest } from '@/src/types/api/manifest.types';
+import type { ManifestStatus, CourierPartner, ManifestListFilters, Manifest } from '@/src/types/api/orders';
 
 // ==================== Status Options ====================
 

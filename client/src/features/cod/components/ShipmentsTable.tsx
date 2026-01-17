@@ -14,7 +14,7 @@
 import React, { useState } from 'react';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
-import type { ShipmentInRemittance } from '@/src/types/api/cod.types';
+import type { ShipmentInRemittance } from '@/src/types/api/finance';
 
 interface ShipmentsTableProps {
     shipments: ShipmentInRemittance[];

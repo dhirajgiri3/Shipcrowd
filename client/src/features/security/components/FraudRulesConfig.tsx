@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useFraudRules, useUpdateFraudRule } from '@/src/core/api/hooks/useSecurity';
+import { useFraudRules, useUpdateFraudRule } from '@/src/core/api/hooks/security/useSecurity';
 import { Settings, Shield, Info, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Card, Switch, Input, Label, Button, Badge, Loader } from '@/src/components/ui';

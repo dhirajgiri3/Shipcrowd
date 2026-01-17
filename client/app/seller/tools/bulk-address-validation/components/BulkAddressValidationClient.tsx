@@ -12,8 +12,8 @@
 
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useBulkValidateAddresses } from '@/src/core/api/hooks/useAddress';
-import { toast } from 'sonner';
+import { useBulkValidateAddresses } from '@/src/core/api/hooks/logistics/useAddress';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import {
     Upload,
     FileSpreadsheet,
@@ -23,7 +23,7 @@ import {
     Loader2,
     X,
 } from 'lucide-react';
-import type { Address, BulkAddressValidationResult } from '@/src/types/api/address.types';
+import type { Address, BulkAddressValidationResult } from '@/src/types/api/logistics';
 
 type ValidationStatus = 'idle' | 'parsing' | 'validating' | 'complete' | 'error';
 
@@ -102,12 +102,11 @@ export function BulkAddressValidationClient() {
                 const addresses = parseCSV(text);
                 setParsedAddresses(addresses);
                 setStatus('idle');
-                toast.success(`Parsed ${addresses.length} addresses from CSV`);
+                showSuccessToast(`Parsed ${addresses.length} addresses from CSV`);
             } catch (err) {
                 setParseError((err as Error).message);
                 setStatus('error');
-                toast.error('Failed to parse CSV');
-            }
+                            }
         };
         reader.onerror = () => {
             setParseError('Failed to read file');

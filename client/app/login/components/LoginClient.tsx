@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { OAUTH_CONFIG } from '@/src/config/oauth';
-import { toast } from 'sonner';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { Loader2 } from 'lucide-react';
 
@@ -85,21 +85,19 @@ function LoginForm() {
         if (!email || !password) {
             const message = 'Please fill in all fields';
             setLocalError(message);
-            toast.error(message);
             return;
         }
 
         if (!email.includes('@')) {
             const message = 'Please enter a valid email address';
             setLocalError(message);
-            toast.error(message);
             return;
         }
 
         const result = await login({ email, password, rememberMe });
 
         if (result.success) {
-            toast.success('Welcome back!');
+            showSuccessToast('Welcome back!');
 
             // Redirect to original destination if present, otherwise role-based default
             if (redirectPath && redirectPath !== '/') {
@@ -111,7 +109,6 @@ function LoginForm() {
         } else {
             const errorMessage = result.error?.message || 'Login failed. Please try again.';
             setLocalError(errorMessage);
-            toast.error(errorMessage);
         }
     };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardHeader, CardDescription, CardTitle } from '@/src/components/ui/core/Card';
-import type { ShippingZone as Zone } from '@/src/types/api/zones.types';
+import type { ShippingZone as Zone } from '@/src/types/api/logistics';
 
 interface ZoneStatsCardsProps {
     data?: {

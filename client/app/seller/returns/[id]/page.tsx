@@ -19,8 +19,8 @@ import { useReturn, useApproveReturn, useProcessRefund } from '@/src/core/api/ho
 import { QualityCheckModal, ReturnLabelModal, RefundModal } from '@/src/features/returns/components';
 import { ConfirmationModal } from '@/src/components/ui/ConfirmationModal';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { toast } from 'sonner';
-import { handleApiError } from '@/src/lib/error-handler';
+import { showSuccessToast } from '@/src/lib/error';
+import { handleApiError } from '@/src/lib/error';
 
 const STATUS_COLORS = {
     requested: 'bg-yellow-100 text-yellow-700',
@@ -59,7 +59,7 @@ export default function ReturnDetailPage() {
                 returnId,
                 payload: { approved: true },
             });
-            toast.success('Return request approved successfully!');
+            showSuccessToast('Return request approved successfully!');
             setShowApproveModal(false);
         } catch (error) {
             handleApiError(error, 'Failed to approve return');
@@ -74,7 +74,7 @@ export default function ReturnDetailPage() {
                 returnId,
                 payload: { approved: false, rejectionReason: reason },
             });
-            toast.success('Return request rejected');
+            showSuccessToast('Return request rejected');
             setShowRejectModal(false);
         } catch (error) {
             handleApiError(error, 'Failed to reject return');
@@ -92,7 +92,7 @@ export default function ReturnDetailPage() {
                     refundMethod: refundMethod,
                 },
             });
-            toast.success('Refund processed successfully!');
+            showSuccessToast('Refund processed successfully!');
             setShowRefundModal(false);
         } catch (error) {
             handleApiError(error, 'Failed to process refund');

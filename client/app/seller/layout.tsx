@@ -1,5 +1,5 @@
 import { SellerLayoutClient } from './components/SellerLayoutClient';
-import { ErrorBoundary } from '@/src/components/ErrorBoundary';
+import { ErrorBoundary } from '@/src/components/shared/ErrorBoundary';
 
 /**
  * Seller Dashboard Layout (Server Component)

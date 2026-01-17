@@ -13,11 +13,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/src/components/ui/feedback/Dialog';
-import { useAddPincodesToZone, useRemovePincodesFromZone } from '@/src/core/api/hooks/useZones';
-import type { ShippingZone as Zone } from '@/src/types/api/zones.types';
+import { useAddPincodesToZone, useRemovePincodesFromZone } from '@/src/core/api/hooks/logistics/useZones';
+import type { ShippingZone as Zone } from '@/src/types/api/logistics';
 import { Search, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 interface PincodeManagerProps {
     zoneId: string;
     pincodes: string[];
@@ -39,8 +38,7 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
             .filter((p) => /^\d{6}$/.test(p));
 
         if (pincodesArray.length === 0) {
-            toast.error('Please enter valid 6-digit pincodes');
-            return;
+                        return;
         }
 
         addPincodes(
@@ -49,7 +47,7 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
                 onSuccess: () => {
                     setShowAddPincodesDialog(false);
                     setNewPincodes('');
-                    toast.success(`Added ${pincodesArray.length} pincodes`);
+                    showSuccessToast(`Added ${pincodesArray.length} pincodes`);
                 },
             }
         );
@@ -57,8 +55,7 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
 
     const handleRemovePincodes = () => {
         if (selectedPincodes.length === 0) {
-            toast.error('Please select pincodes to remove');
-            return;
+                        return;
         }
 
         if (confirm(`Remove ${selectedPincodes.length} selected pincodes?`)) {
@@ -67,7 +64,7 @@ export function PincodeManager({ zoneId, pincodes }: PincodeManagerProps) {
                 {
                     onSuccess: () => {
                         setSelectedPincodes([]);
-                        toast.success('Pincodes removed successfully');
+                        showSuccessToast('Pincodes removed successfully');
                     },
                 }
             );

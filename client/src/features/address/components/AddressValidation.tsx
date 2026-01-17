@@ -13,9 +13,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useCityStateFromPincode, usePincodeServiceability } from '@/src/core/api/hooks/useAddress';
+import { useCityStateFromPincode, usePincodeServiceability } from '@/src/core/api/hooks/logistics/useAddress';
 import { MapPin, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import type { Address, AddressValidationError, PincodeServiceability } from '@/src/types/api/address.types';
+import type { Address, AddressValidationError, PincodeServiceability } from '@/src/types/api/logistics';
 
 interface AddressValidationProps {
     initialAddress?: Partial<Address>;

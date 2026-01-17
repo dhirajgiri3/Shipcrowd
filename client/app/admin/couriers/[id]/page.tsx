@@ -19,8 +19,8 @@ import {
     useUpdateCourier,
     useToggleCourierStatus,
     useTestCourierIntegration,
-} from '@/src/core/api/hooks/useCouriers';
-import type { UpdateCourierRequest } from '@/src/types/api/couriers.types';
+} from '@/src/core/api/hooks/logistics/useCouriers';
+import type { UpdateCourierRequest } from '@/src/types/api/logistics';
 import {
     ChevronLeft,
     Edit,
@@ -33,7 +33,6 @@ import {
     AlertCircle,
     TestTube,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import Link from 'next/link';
 import { Loader } from '@/src/components/ui';
 

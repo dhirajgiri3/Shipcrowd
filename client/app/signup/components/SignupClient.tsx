@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/src/lib/utils/password';
-import { toast } from 'sonner';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { consentApi } from '@/src/core/api/clients/consentApi';
@@ -81,21 +81,18 @@ export function SignupClient() {
     if (!name || !email || !password) {
       const message = 'Please fill in all fields';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
     if (!email.includes('@')) {
       const message = 'Please enter a valid email address';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
     if (!agreedToTerms) {
       const message = 'Please agree to the Terms of Service and Privacy Policy';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
@@ -103,7 +100,6 @@ export function SignupClient() {
     if (!passwordValidation?.isValid) {
       const message = 'Password does not meet requirements';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
@@ -112,7 +108,7 @@ export function SignupClient() {
     if (result.success) {
       const message = 'Registration successful! Please check your email to verify your account.';
       setSuccessMessage(message);
-      toast.success(message);
+      showSuccessToast(message);
 
       // Redirect to verify-email page after 2 seconds
       setTimeout(() => {
@@ -121,7 +117,6 @@ export function SignupClient() {
     } else {
       const errorMessage = result.error?.message || 'Registration failed. Please try again.';
       setLocalError(errorMessage);
-      toast.error(errorMessage);
     }
   };
 

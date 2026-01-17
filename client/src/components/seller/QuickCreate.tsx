@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Package, Upload, Zap, User, ArrowRight, Plus, Search, Command } from "lucide-react";
 import { Card } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
-import { useRecentCustomers, RecentCustomer } from "@/src/core/api/hooks/useRecentCustomers";
+import { useRecentCustomers, RecentCustomer } from '@/src/core/api/hooks/orders/useRecentCustomers';
 import Link from "next/link";
 import { cn } from "@/src/lib/utils";
 

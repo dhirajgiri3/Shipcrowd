@@ -16,12 +16,12 @@
  * ```
  */
 
-import type { ReturnStatus } from '@/src/types/api/returns.types';
-import type { NDRStatus } from '@/src/types/api/ndr.types';
-import type { ManifestStatus } from '@/src/types/api/manifest.types';
-import type { DisputeStatus } from '@/src/types/api/dispute.types';
-import type { RemittanceStatus, PayoutStatus } from '@/src/types/api/cod.types';
-import type { WebhookStatus } from '@/src/types/api/settings.types';
+import type { ReturnStatus } from '@/src/types/api/returns';
+import type { NDRStatus } from '@/src/types/api/orders';
+import type { ManifestStatus } from '@/src/types/api/orders';
+import type { DisputeStatus } from '@/src/types/api/returns';
+import type { RemittanceStatus, PayoutStatus } from '@/src/types/api/finance';
+import type { WebhookStatus } from '@/src/types/api/settings';
 
 
 /**

@@ -15,7 +15,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
@@ -42,7 +42,6 @@ function ResetPasswordForm() {
     useEffect(() => {
         if (!token) {
             setError('Invalid or missing reset token');
-            toast.error('Invalid or missing reset token');
         }
     }, [token]);
 
@@ -54,28 +53,24 @@ function ResetPasswordForm() {
         if (!password || !confirmPassword) {
             const message = 'Please fill in all fields';
             setError(message);
-            toast.error(message);
             return;
         }
 
         if (!passwordValidation?.isValid) {
             const message = 'Password does not meet requirements';
             setError(message);
-            toast.error(message);
             return;
         }
 
         if (password !== confirmPassword) {
             const message = 'Passwords do not match';
             setError(message);
-            toast.error(message);
             return;
         }
 
         if (!token) {
             const message = 'Invalid or missing reset token';
             setError(message);
-            toast.error(message);
             return;
         }
 
@@ -85,7 +80,7 @@ function ResetPasswordForm() {
             const result = await resetPasswordConfirm(token, password);
             if (result.success) {
                 setSuccess(true);
-                toast.success('Password reset successful! Redirecting to login...');
+                showSuccessToast('Password reset successful! Redirecting to login...');
 
                 // Redirect after 2 seconds
                 setTimeout(() => {
@@ -94,12 +89,10 @@ function ResetPasswordForm() {
             } else {
                 const errorMessage = result.error?.message || 'Password reset failed';
                 setError(errorMessage);
-                toast.error(errorMessage);
             }
         } catch (err: any) {
             const errorMessage = err.message || 'Password reset failed';
             setError(errorMessage);
-            toast.error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -229,9 +222,9 @@ function ResetPasswordForm() {
                                                 </p>
                                                 <span
                                                     className={`text-xs font-semibold ${getPasswordStrengthColor(passwordValidation.strength) === 'red' ? 'text-red-500' :
-                                                            getPasswordStrengthColor(passwordValidation.strength) === 'amber' ? 'text-amber-500' :
-                                                                getPasswordStrengthColor(passwordValidation.strength) === 'blue' ? 'text-blue-500' :
-                                                                    'text-emerald-500'
+                                                        getPasswordStrengthColor(passwordValidation.strength) === 'amber' ? 'text-amber-500' :
+                                                            getPasswordStrengthColor(passwordValidation.strength) === 'blue' ? 'text-blue-500' :
+                                                                'text-emerald-500'
                                                         }`}
                                                 >
                                                     {getPasswordStrengthLabel(passwordValidation.strength)}

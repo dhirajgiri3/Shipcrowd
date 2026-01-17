@@ -13,9 +13,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePincodeLookup } from '@/src/core/api/hooks/useAddress';
+import { usePincodeLookup } from '@/src/core/api/hooks/logistics/useAddress';
 import { MapPin, Truck, Clock, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
-import type { CourierCoverage } from '@/src/types/api/address.types';
+import type { CourierCoverage } from '@/src/types/api/logistics';
 
 interface PincodeCheckerProps {
     onServiceabilityResult?: (result: {

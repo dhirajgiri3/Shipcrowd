@@ -1,57 +1,43 @@
 /**
- * Central export point for all API hooks
+ * API Hooks - Main Barrel Export
+ * 
+ * All hooks are organized into domain-based folders for better maintainability.
+ * This barrel export maintains backward compatibility with existing imports.
  * 
  * Usage:
- * ```ts
- * import { useOrders, useShipments } from '@/src/core/api/hooks';
- * ```
+ *   import { useOrders, useWallet, useCouriers } from '@/src/core/api/hooks';
+ * 
+ * Or import from specific domains:
+ *   import { useOrders } from '@/src/core/api/hooks/orders';
+ *   import { useWallet } from '@/src/core/api/hooks/finance';
  */
 
-export * from './useOrders';
-export * from './useShipments';
-export * from './useWallet';
-export * from './useCOD';
-export * from './useDisputes';
-export * from './useNDR';
-export * from './useReturns';
-export * from './useAnalytics';
-export * from './useWarehouses';
-export * from './useRateCards';
-export * from './useProfile';
-export * from './useCompanies';
-export * from './useIntegrations';
-export * from './useSettlements';
-export * from './useSellerActions';
-export * from './useRecentCustomers';
-export * from './useAddress';
-export * from './useManifests';
-export * from './useCommunication';
-// because 'export * from './useWallet';' and 'export * from './useCOD';'
-// are now present above, as per the provided Code Edit.
-// However, to faithfully apply the *exact* snippet provided, I will keep the
-// named exports as they are still present in the snippet's context,
-// even if they create redundancy.
+// Orders & Shipment Management
+export * from './orders';
 
-export {
-    useWalletBalance,
-    useWalletTransactions,
-    useWalletStats,
-    useRechargeWallet,
-    useWithdrawWallet,
-} from './useWallet';
+// Logistics & Delivery
+export * from './logistics';
 
-// COD Remittance hooks
-export {
-    useCODRemittances,
-    useCODRemittance,
-    useCODStats,
-    useEligibleShipments,
-    useCreateRemittanceBatch,
-    useApproveRemittance,
-    useInitiatePayout,
-    useCancelRemittance,
-    useRequestPayout,
-} from './useCOD';
+// Returns & Disputes
+export * from './returns';
 
-export * from './useSettings';
-export * from './useFraud';
+// Financial Operations
+export * from './finance';
+
+// External Integrations
+export * from './integrations';
+
+// Communication & Notifications
+export * from './communication';
+
+// Security & Compliance
+export * from './security';
+
+// Settings & Configuration
+export * from './settings';
+
+// Analytics & Reporting
+export * from './analytics';
+
+// Seller-specific Actions
+export * from './seller';

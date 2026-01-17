@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Clock, Mail } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { authApi } from '@/src/core/api/clients/authApi';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Loader } from '@/src/components/ui';
 
 function VerifyEmailContent() {
@@ -97,17 +97,15 @@ function VerifyEmailContent() {
     try {
       const result = await resendVerification(email);
       if (result.success) {
-        toast.success('Verification email resent! Please check your inbox.');
+        showSuccessToast('Verification email resent! Please check your inbox.');
         setCanResend(false);
 
         // Re-enable resend after 60 seconds
         setTimeout(() => setCanResend(true), 60000);
       } else {
-        toast.error(result.error?.message || 'Failed to resend verification email');
-      }
+              }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to resend verification email');
-    } finally {
+          } finally {
       setIsResending(false);
     }
   };

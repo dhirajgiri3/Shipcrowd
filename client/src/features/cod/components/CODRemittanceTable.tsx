@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useCODRemittances } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
-import type { RemittanceStatus, RemittanceFilters } from '@/src/types/api/cod.types';
+import type { RemittanceStatus, RemittanceFilters } from '@/src/types/api/finance';
 
 export function CODRemittanceTable() {
     const router = useRouter();

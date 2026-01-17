@@ -13,10 +13,9 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { useSubmitEvidence } from '@/src/core/api/hooks';
-import { uploadEvidenceFiles, UploadError } from '@/src/lib/upload';
-import { handleApiError } from '@/src/lib/error-handler';
+import { uploadEvidenceFiles, UploadError } from '@/src/lib/data';
 
 interface SubmitEvidenceModalProps {
     isOpen: boolean;
@@ -63,9 +62,6 @@ export function SubmitEvidenceModal({ isOpen, onClose, disputeId }: SubmitEviden
     const handleSubmit = async () => {
         // Validation with toast
         if (photos.length === 0 && documents.length === 0 && !notes.trim()) {
-            toast.error('Please provide at least one form of evidence', {
-                description: 'Upload photos, documents, or add a written explanation',
-            });
             return;
         }
 
@@ -97,9 +93,7 @@ export function SubmitEvidenceModal({ isOpen, onClose, disputeId }: SubmitEviden
             });
 
             // Success notification
-            toast.success('Evidence submitted successfully!', {
-                description: 'Your dispute evidence is now under review',
-            });
+            showSuccessToast('Evidence submitted successfully! Your dispute evidence is now under review');
 
             // Reset and close
             setPhotos([]);
@@ -111,13 +105,6 @@ export function SubmitEvidenceModal({ isOpen, onClose, disputeId }: SubmitEviden
 
             // Handle upload-specific errors
             if (error instanceof UploadError) {
-                toast.error(error.message, {
-                    description: error.code === 'FILE_TOO_LARGE'
-                        ? 'Please reduce file size and try again'
-                        : error.code === 'INVALID_TYPE'
-                            ? 'Please upload a supported file format'
-                            : 'Please check your connection and try again',
-                });
                 return;
             }
 

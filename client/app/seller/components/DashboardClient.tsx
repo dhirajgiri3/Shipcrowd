@@ -28,12 +28,12 @@ import {
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer,
     LazyCell as Cell
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/src/lib/utils';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
-import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
+import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
 import { ActionsRequired } from '@/src/components/seller/ActionsRequired';
 import { QuickCreate } from '@/src/components/seller/QuickCreate';
 import { SmartInsights } from '@/src/components/seller/SmartInsights';

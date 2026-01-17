@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Input } from '@/src/components/ui/core/Input';
-import type { ZoneType } from '@/src/types/api/zones.types';
+import type { ZoneType } from '@/src/types/api/logistics';
 import { Search } from 'lucide-react';
 
 interface ZoneFiltersProps {

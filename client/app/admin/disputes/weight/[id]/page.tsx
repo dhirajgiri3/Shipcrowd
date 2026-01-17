@@ -19,7 +19,7 @@ import { useWeightDispute, useResolveDispute } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
 import { DisputeTimeline } from '@/src/features/disputes';
-import type { ResolutionOutcome } from '@/src/types/api/dispute.types';
+import type { ResolutionOutcome } from '@/src/types/api/returns';
 
 const RESOLUTION_OUTCOMES = [
     {

@@ -25,8 +25,8 @@ import {
     usePlatformSettings,
     useUpdatePlatformSettings,
     useTestIntegration,
-} from '@/src/core/api/hooks/useSettings';
-import type { UpdatePlatformSettingsRequest } from '@/src/types/api/settings.types';
+} from '@/src/core/api/hooks/settings/useSettings';
+import type { UpdatePlatformSettingsRequest } from '@/src/types/api/settings';
 import {
     Save,
     Building,
@@ -38,8 +38,6 @@ import {
     EyeOff,
     CheckCircle2,
 } from 'lucide-react';
-import { toast } from 'sonner';
-
 export default function PlatformSettingsPage() {
     const { data: settings, isLoading } = usePlatformSettings();
     const updateSettings = useUpdatePlatformSettings();

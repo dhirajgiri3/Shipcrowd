@@ -14,8 +14,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNDRCases } from '@/src/core/api/hooks';
-import type { NDRStatus, NDRFilters } from '@/src/types/api/ndr.types';
-import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
+import type { NDRStatus, NDRFilters } from '@/src/types/api/orders';
+import { useDebouncedValue } from '@/src/hooks/data';
 
 const STATUS_CONFIG: Record<NDRStatus, { label: string; color: string }> = {
     open: { label: 'Open', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },

@@ -20,11 +20,11 @@ import {
 import { Button } from '@/src/components/ui/core/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Input } from '@/src/components/ui/core/Input';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { cn } from '@/src/lib/utils';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { Loader } from '@/src/components/ui';
-import { useCreateOrder } from '@/src/core/api/hooks/useOrders';
+import { useCreateOrder } from '@/src/core/api/hooks/orders/useOrders';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import type { CreateOrderRequest, OrderFormData } from '@/src/types/domain/order';
 
@@ -51,11 +51,11 @@ export function CreateOrderClient() {
   const { isInitialized, isAuthenticated } = useAuth();
   const createOrderMutation = useCreateOrder({
     onSuccess: (order) => {
-      toast.success(`Order ${order.orderNumber} created successfully!`);
+      showSuccessToast(`Order ${order.orderNumber} created successfully!`);
       router.push('/seller/orders');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create order');
+      handleApiError(error, 'Failed to create order');
     }
   });
   const [currentStep, setCurrentStep] = useState(0);
@@ -161,7 +161,7 @@ export function CreateOrderClient() {
         products: prev.products.filter((p) => p.id !== productId),
       }));
     } else {
-      toast.error('At least one product is required');
+      handleApiError(new Error('At least one product is required'), 'At least one product is required');
     }
   };
 

@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/features/auth';
-import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
+import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
 import { Badge } from '@/src/components/ui/core/Badge';
 
 // Define navigation structure with sections

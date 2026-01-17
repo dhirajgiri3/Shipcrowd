@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { toast } from 'sonner';
+import { showSuccessToast } from '@/src/lib/error';
 import {
     User,
     Building2,
@@ -146,7 +146,7 @@ export function KycClient() {
             loading: false,
             data: { name: 'Demo User' }
         });
-        toast.success('PAN verified successfully! (Demo mode)');
+        showSuccessToast('PAN verified successfully! (Demo mode)');
     }, [formData.pan]);
 
     // IFSC Lookup - Disabled for demo
@@ -211,7 +211,7 @@ export function KycClient() {
             loading: false,
             data: { businessName: 'Demo Business Pvt Ltd' }
         });
-        toast.success('GSTIN verified! (Demo mode)');
+        showSuccessToast('GSTIN verified! (Demo mode)');
     }, [formData.gstin]);
 
     // Step validation
@@ -282,7 +282,7 @@ export function KycClient() {
         // Simulate submission delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        toast.success('KYC submitted successfully! (Demo mode)');
+        showSuccessToast('KYC submitted successfully! (Demo mode)');
         router.push('/seller');
         setIsSubmitting(false);
     };

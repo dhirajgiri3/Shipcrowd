@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { authApi } from '@/src/core/api/clients/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Unlock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -19,9 +19,9 @@ export function AccountRecoveryClient() {
         try {
             await authApi.requestAccountRecovery(email);
             setSent(true);
-            toast.success('Recovery email sent!');
+            showSuccessToast('Recovery email sent!');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to send recovery email');
+            handleApiError(error, 'Failed to send recovery email');
         } finally {
             setIsLoading(false);
         }

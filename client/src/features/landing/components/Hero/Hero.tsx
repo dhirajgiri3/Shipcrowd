@@ -15,7 +15,7 @@ import {
     LazyCartesianGrid as CartesianGrid,
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import CountUp from 'react-countup'
 import { useInView } from 'react-intersection-observer'
 import { useState, useEffect } from 'react'

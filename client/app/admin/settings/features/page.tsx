@@ -22,8 +22,8 @@ import {
     useFeatureFlags,
     useToggleFeature,
     useBulkUpdateFeatures,
-} from '@/src/core/api/hooks/useSettings';
-import type { FeatureFlags } from '@/src/types/api/settings.types';
+} from '@/src/core/api/hooks/settings/useSettings';
+import type { FeatureFlags } from '@/src/types/api/settings';
 import {
     Save,
     Shield,

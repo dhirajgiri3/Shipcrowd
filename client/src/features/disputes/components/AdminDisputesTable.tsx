@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
 import { StatusBadge } from '@/src/components/shared/StatusBadge';
-import type { DisputeStatus, DisputeFilters } from '@/src/types/api/dispute.types';
+import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
 
 const STATUS_TABS = [
     { value: 'all', label: 'All' },

@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 import { Shield, Download, Bell, FileText, Clock, Check, X } from 'lucide-react';
 import { Loader } from '@/src/components/ui';
 import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/clients/consentApi';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import Link from 'next/link';
 
 export function PrivacyClient() {
@@ -40,7 +40,7 @@ export function PrivacyClient() {
             setConsents(consentData);
             setHistory(historyData);
         } catch (error: any) {
-            toast.error('Failed to load consent preferences');
+            handleApiError(new Error('Failed to load consent preferences'), 'Failed to load consent preferences');
             console.error('Consent load error:', error);
         } finally {
             setIsLoading(false);
@@ -52,14 +52,14 @@ export function PrivacyClient() {
         try {
             if (currentValue) {
                 await consentApi.withdrawConsent(type);
-                toast.success(`${type.replace('_', ' ')} consent withdrawn`);
+                showSuccessToast(`${type.replace('_', ' ')} consent withdrawn`);
             } else {
                 await consentApi.acceptConsent(type);
-                toast.success(`${type.replace('_', ' ')} consent accepted`);
+                showSuccessToast(`${type.replace('_', ' ')} consent accepted`);
             }
             await loadConsents();
         } catch (error: any) {
-            toast.error(error?.message || 'Failed to update consent');
+            handleApiError(error, 'Failed to update consent');
         } finally {
             setSavingType(null);
         }
@@ -69,9 +69,9 @@ export function PrivacyClient() {
         setIsExporting(true);
         try {
             await consentApi.downloadUserData();
-            toast.success('Data export downloaded successfully');
+            showSuccessToast('Data export downloaded successfully');
         } catch (error: any) {
-            toast.error(error?.message || 'Failed to export data');
+            handleApiError(error, 'Failed to export data');
         } finally {
             setIsExporting(false);
         }

@@ -2,6 +2,7 @@
 
 import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/features/auth';
 import { authApi } from '@/src/core/api/clients/authApi';
@@ -42,7 +43,7 @@ function OAuthCallbackContent() {
                 const userData = await authApi.getMe();
                 setAuthChecked(true);
 
-                toast.success('Successfully signed in with Google!');
+                showSuccessToast('Successfully signed in with Google!');
 
                 // Small delay for toast visibility, then redirect
                 setTimeout(() => {

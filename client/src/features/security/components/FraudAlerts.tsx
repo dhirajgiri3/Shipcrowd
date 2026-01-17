@@ -7,7 +7,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFraudAlerts, useResolveAlert } from '@/src/core/api/hooks/useSecurity';
+import { useFraudAlerts, useResolveAlert } from '@/src/core/api/hooks/security/useSecurity';
 import { AlertTriangle, CheckCircle, XCircle, ShieldAlert, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn, formatDate } from '@/src/lib/utils';
 import { Button, Card, Badge, Loader } from '@/src/components/ui';

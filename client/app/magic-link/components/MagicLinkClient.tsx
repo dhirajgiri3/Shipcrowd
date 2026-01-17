@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { authApi } from '@/src/core/api/clients/authApi';
 import { Button, Input, Card } from '@/src/components/ui';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Mail, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -19,9 +19,9 @@ export function MagicLinkClient() {
         try {
             await authApi.requestMagicLink(email);
             setSent(true);
-            toast.success('Magic link sent! Check your email.');
+            showSuccessToast('Magic link sent! Check your email.');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to send magic link');
+            handleApiError(error, 'Failed to send magic link');
         } finally {
             setIsLoading(false);
         }

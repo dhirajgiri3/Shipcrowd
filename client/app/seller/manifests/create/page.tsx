@@ -14,8 +14,9 @@ import { useRouter } from 'next/navigation';
 import {
     useEligibleShipments,
     useCreateManifest,
-} from '@/src/core/api/hooks/useManifests';
+} from '@/src/core/api/hooks/orders/useManifests';
 import { Loader } from '@/src/components/ui';
+import { handleApiError } from '@/src/lib/error';
 import { toast } from 'sonner';
 import {
     ArrowLeft,
@@ -36,7 +37,7 @@ import type {
     CourierPartner,
     ManifestShipment,
     CreateManifestPayload,
-} from '@/src/types/api/manifest.types';
+} from '@/src/types/api/orders';
 
 // ==================== Courier Options ====================
 

@@ -17,7 +17,7 @@ import { WizardLayout, type WizardStep } from '@/src/features/shared/components/
 import {
     useTestConnection,
     useCreateIntegration,
-} from '@/src/core/api/hooks/useEcommerceIntegrations';
+} from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
 import {
     Store,
     Check,
@@ -33,7 +33,7 @@ import type {
     FieldMapping,
     AmazonCredentials,
     SyncFrequency,
-} from '@/src/types/api/integrations.types';
+} from '@/src/types/api/integrations';
 
 const wizardSteps: WizardStep[] = [
     { id: 1, title: 'Seller ID', description: 'Enter your Amazon Seller ID' },

@@ -18,8 +18,7 @@ import {
     useInitiateOAuth,
     useTestConnection,
     useCreateIntegration,
-} from '@/src/core/api/hooks/useEcommerceIntegrations';
-import { toast } from 'sonner';
+} from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
 import {
     Store,
     Check,
@@ -34,7 +33,7 @@ import type {
     FieldMapping,
     ShopifyCredentials,
     SyncFrequency,
-} from '@/src/types/api/integrations.types';
+} from '@/src/types/api/integrations';
 
 const wizardSteps: WizardStep[] = [
     { id: 1, title: 'Store Details', description: 'Enter your Shopify store' },

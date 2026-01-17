@@ -30,7 +30,7 @@ import {
     LazyBarChart as BarChart,
     LazyBar as Bar,
     LazyResponsiveContainer as ResponsiveContainer
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import { generateMockOrders } from '@/src/lib/mockData/orders';
 
 // --- VISUALIZATION DATA ---

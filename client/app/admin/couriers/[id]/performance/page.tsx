@@ -11,8 +11,8 @@ import {
     CardTitle,
 } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { useCourier, useCourierPerformance } from '@/src/core/api/hooks/useCouriers';
-import type { PerformanceFilters } from '@/src/types/api/couriers.types';
+import { useCourier, useCourierPerformance } from '@/src/core/api/hooks/logistics/useCouriers';
+import type { PerformanceFilters } from '@/src/types/api/logistics';
 import {
     ChevronLeft,
     TrendingUp,

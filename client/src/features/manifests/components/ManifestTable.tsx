@@ -23,7 +23,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import type { Manifest, ManifestStatus, CourierPartner } from '@/src/types/api/manifest.types';
+import type { Manifest, ManifestStatus, CourierPartner } from '@/src/types/api/orders';
 
 // ==================== Status Badge Config ====================
 

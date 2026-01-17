@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/src/components/ui/core/Button';
-import { useZone, useDeleteZone } from '@/src/core/api/hooks/useZones';
+import { useZone, useDeleteZone } from '@/src/core/api/hooks/logistics/useZones';
 import { ZoneDetailCard, PincodeManager } from '@/src/features/admin/zones';
 import { ChevronLeft, Trash2 } from 'lucide-react';
 

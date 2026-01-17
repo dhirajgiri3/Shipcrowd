@@ -19,4 +19,4 @@ export type {
     ServiceabilityCheckRequest,
     ServiceabilityCheckResponse,
     ServiceabilityFilters,
-} from '@/src/types/api/address.types';
+} from '@/src/types/api/logistics';

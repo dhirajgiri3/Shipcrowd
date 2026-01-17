@@ -7,11 +7,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuditLogs, useExportAuditLogs } from '@/src/core/api/hooks/useSettings';
+import { useAuditLogs, useExportAuditLogs } from '@/src/core/api/hooks/security/useAuditLogs';
 import { Download, Calendar, Filter, Loader2, Search } from 'lucide-react';
 import { formatDate, formatDateTime } from '@/src/lib/utils';
 import { Button, Card, Input, Label, Select, Badge } from '@/src/components/ui';
-import type { AuditLogFilters, AuditAction, AuditResource, AuditLog } from '@/src/types/api/settings.types';
+import type { AuditLogFilters, AuditAction, AuditResource, AuditLog } from '@/src/types/api/settings';
 
 export function AuditLogsViewer() {
     const [filters, setFilters] = useState<AuditLogFilters>({});

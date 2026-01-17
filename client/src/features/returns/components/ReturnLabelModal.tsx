@@ -12,10 +12,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { toast } from 'sonner';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/src/core/api/config/client';
-import type { ReturnRequest } from '@/src/types/api/returns.types';
+import type { ReturnRequest } from '@/src/types/api/returns';
 
 interface ReturnLabelModalProps {
     isOpen: boolean;
@@ -82,22 +82,18 @@ export function ReturnLabelModal({ isOpen, onClose, returnRequest }: ReturnLabel
             // Open label in new tab for download
             window.open(data.labelUrl, '_blank');
 
-            toast.success('Return label generated successfully!', {
-                description: emailToCustomer
+            showSuccessToast(
+                emailToCustomer
                     ? `Label sent to customer. Tracking: ${data.trackingNumber}`
-                    : `Tracking number: ${data.trackingNumber}`,
-            });
+                    : `Tracking number: ${data.trackingNumber}`
+            );
 
             // Invalidate return query to refresh status
             queryClient.invalidateQueries({ queryKey: ['returns', returnRequest._id] });
 
-            onClose();
         },
         onError: (error: unknown) => {
-            console.error('Failed to generate label:', error);
-            toast.error('Failed to generate return label', {
-                description: 'Please try again or contact support',
-            });
+            handleApiError(error, 'Failed to generate return label. Please try again or contact support');
         },
     });
 

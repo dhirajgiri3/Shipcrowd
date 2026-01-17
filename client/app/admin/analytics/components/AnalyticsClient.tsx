@@ -19,7 +19,7 @@ import {
     LazyPieChart as PieChart,
     LazyPie as Pie,
     LazyCell as Cell
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import { Download, Calendar } from 'lucide-react';
 
 const deliveryPerformanceData = [

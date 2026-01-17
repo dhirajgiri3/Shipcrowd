@@ -14,7 +14,7 @@ import {
     useUpdateRule,
     useToggleRule,
     useDeleteRule,
-} from '@/src/core/api/hooks/useCommunication';
+} from '@/src/core/api/hooks/communication/useCommunication';
 import {
     Plus,
     Zap,
@@ -30,7 +30,7 @@ import {
     BarChart3,
 } from 'lucide-react';
 import { Loader, CardSkeleton } from '@/src/components/ui';
-import { toast } from 'sonner';
+import { handleApiError } from '@/src/lib/error';
 import type {
     NotificationRule,
     RuleTrigger,
@@ -39,7 +39,7 @@ import type {
     RuleAction,
     RuleActionType,
     CreateRulePayload,
-} from '@/src/types/api/communication.types';
+} from '@/src/types/api/communication';
 
 // ==================== Configuration ====================
 
@@ -370,7 +370,7 @@ function RuleBuilderModal({ isOpen, rule, onClose }: RuleBuilderModalProps) {
         e.preventDefault();
 
         if (formData.actions.length === 0) {
-            toast.error('Please add at least one action');
+            handleApiError(new Error('Please add at least one action'), 'Please add at least one action');
             return;
         }
 
