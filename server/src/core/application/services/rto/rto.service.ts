@@ -407,7 +407,7 @@ export default class RTOService {
             }
 
             // Check if shipment uses Velocity courier
-            const courierProvider = fullShipment.carrierDetails?.carrierName?.toLowerCase();
+            const courierProvider = fullShipment.carrier?.toLowerCase();
             const isVelocity = courierProvider?.includes('velocity');
 
             if (!isVelocity) {
@@ -422,7 +422,7 @@ export default class RTOService {
 
             // Import Velocity provider
             const { VelocityShipfastProvider } = await import(
-                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider'
+                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
             );
 
             // Initialize Velocity adapter
@@ -432,22 +432,22 @@ export default class RTOService {
 
             // Prepare pickup address (customer location)
             const pickupAddress = {
-                name: shipment.customer?.name || fullShipment.recipientName || 'Customer',
-                phone: shipment.customer?.phone || fullShipment.recipientPhone || '',
-                address: fullShipment.shippingAddress?.addressLine1 || fullShipment.destination?.address || '',
-                city: fullShipment.shippingAddress?.city || fullShipment.destination?.city || '',
-                state: fullShipment.shippingAddress?.state || fullShipment.destination?.state || '',
-                pincode: fullShipment.shippingAddress?.pincode || fullShipment.destination?.pincode || '',
-                country: fullShipment.shippingAddress?.country || fullShipment.destination?.country || 'India',
-                email: fullShipment.recipientEmail
+                name: shipment.customer?.name || fullShipment.deliveryDetails?.recipientName || 'Customer',
+                phone: shipment.customer?.phone || fullShipment.deliveryDetails?.recipientPhone || '',
+                address: fullShipment.deliveryDetails?.address?.line1 || '',
+                city: fullShipment.deliveryDetails?.address?.city || '',
+                state: fullShipment.deliveryDetails?.address?.state || '',
+                pincode: fullShipment.deliveryDetails?.address?.postalCode || '',
+                country: fullShipment.deliveryDetails?.address?.country || 'India',
+                email: fullShipment.deliveryDetails?.recipientEmail
             };
 
             // Prepare package details
             const packageDetails = {
                 weight: fullShipment.packageDetails?.weight || 0.5, // Default 0.5kg if not specified
-                length: fullShipment.packageDetails?.length || 10,
-                width: fullShipment.packageDetails?.width || 10,
-                height: fullShipment.packageDetails?.height || 10
+                length: fullShipment.packageDetails?.dimensions?.length || 10,
+                width: fullShipment.packageDetails?.dimensions?.width || 10,
+                height: fullShipment.packageDetails?.dimensions?.height || 10
             };
 
             // Call Velocity API to create reverse shipment
@@ -516,13 +516,13 @@ export default class RTOService {
             // Prepare input for rate calculation
             const rateInput = {
                 companyId: shipment.companyId,
-                carrier: fullShipment.carrierDetails?.carrierName || 'velocity',
-                serviceType: fullShipment.carrierDetails?.serviceType || 'express',
+                carrier: fullShipment.carrier || 'velocity',
+                serviceType: fullShipment.serviceType || 'express',
                 weight: fullShipment.packageDetails?.weight || 0.5,
-                originPincode: fullShipment.destination?.pincode, // RTO reverses origin/dest
-                destinationPincode: fullShipment.origin?.pincode,
-                zoneId: fullShipment.zoneId?.toString(),
-                customerId: fullShipment.sellerId?.toString()
+                originPincode: fullShipment.deliveryDetails?.address?.postalCode, // RTO reverses origin/dest
+                destinationPincode: fullShipment.pickupDetails?.warehouseId ? undefined : fullShipment.deliveryDetails?.address?.postalCode,
+                zoneId: undefined, // Zone calculation not implemented in current model
+                customerId: fullShipment.companyId?.toString()
             };
 
             // Calculate charges using RateCardService

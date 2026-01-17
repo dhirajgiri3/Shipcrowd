@@ -9,19 +9,19 @@ import SocialProof from "@/src/features/landing/components/SocialProof";
 import Pricing from "@/src/features/landing/components/Pricing";
 
 
-export function LandingClient() {
-  return (
-    <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
-      <Navigation />
-      <Hero />
-      <TrustBar />
-      <ProblemSection />
-      <AIShowcase />
-      <FeatureEcosystem />
-      <HowItWorks />
-      <SocialProof />
-      <Pricing />
-      <Footer />
-    </main>
-  );
+export default function Page() {
+    return (
+        <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
+            <Navigation />
+            <Hero />
+            <TrustBar />
+            <ProblemSection />
+            <AIShowcase />
+            <FeatureEcosystem />
+            <HowItWorks />
+            <SocialProof />
+            <Pricing />
+            <Footer />
+        </main>
+    );
 }

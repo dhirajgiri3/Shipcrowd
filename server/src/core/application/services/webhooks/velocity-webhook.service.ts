@@ -17,6 +17,7 @@
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model.js';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,
@@ -480,9 +481,6 @@ export class VelocityWebhookService implements WebhookEventHandler {
         statusCode: status_code
       });
 
-      // Import RTOEvent model dynamically to avoid circular dependencies
-      const RTOEvent = (await import('../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model')).default;
-
       // Find RTO event by reverse AWB
       const rtoEvent = await RTOEvent.findOne({
         reverseAwb: awb,
@@ -519,7 +517,7 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       // Update RTO event status
       if (isStatusChange) {
-        rtoEvent.returnStatus = newReturnStatus;
+        rtoEvent.returnStatus = newReturnStatus as any;
 
         // Update actualReturnDate if delivered to warehouse
         if (newReturnStatus === 'delivered_to_warehouse') {
