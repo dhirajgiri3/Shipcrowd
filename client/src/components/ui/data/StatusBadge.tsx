@@ -32,7 +32,7 @@ import {
   getStatusConfig,
   getStatusLabel,
   type STATUS_CONFIGS,
-} from '@/src/lib/configs/statusConfigs';
+} from '@/src/config/status.config';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Tooltip } from '@/src/components/ui/feedback/Tooltip';
 

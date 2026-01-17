@@ -68,43 +68,4 @@ export const QUERY_CONFIG = {
     networkMode: 'online' as const,
 } as const;
 
-/**
- * Query key factories for consistent cache management
- */
-export const queryKeys = {
-    orders: {
-        all: ['orders'] as const,
-        lists: () => [...queryKeys.orders.all, 'list'] as const,
-        list: (filters: Record<string, any>) => [...queryKeys.orders.lists(), filters] as const,
-        details: () => [...queryKeys.orders.all, 'detail'] as const,
-        detail: (id: string) => [...queryKeys.orders.details(), id] as const,
-    },
 
-    shipments: {
-        all: ['shipments'] as const,
-        lists: () => [...queryKeys.shipments.all, 'list'] as const,
-        list: (filters: Record<string, any>) => [...queryKeys.shipments.lists(), filters] as const,
-        details: () => [...queryKeys.shipments.all, 'detail'] as const,
-        detail: (id: string) => [...queryKeys.shipments.details(), id] as const,
-        tracking: (trackingNumber: string) => [...queryKeys.shipments.all, 'tracking', trackingNumber] as const,
-    },
-
-    analytics: {
-        all: ['analytics'] as const,
-        seller: () => [...queryKeys.analytics.all, 'seller-dashboard'] as const,
-        admin: () => [...queryKeys.analytics.all, 'admin-dashboard'] as const,
-    },
-
-    warehouses: {
-        all: ['warehouses'] as const,
-        lists: () => [...queryKeys.warehouses.all, 'list'] as const,
-        detail: (id: string) => [...queryKeys.warehouses.all, 'detail', id] as const,
-    },
-
-    ratecards: {
-        all: ['ratecards'] as const,
-        lists: () => [...queryKeys.ratecards.all, 'list'] as const,
-        detail: (id: string) => [...queryKeys.ratecards.all, 'detail', id] as const,
-        calculate: (payload: Record<string, any>) => [...queryKeys.ratecards.all, 'calculate', payload] as const,
-    },
-} as const;

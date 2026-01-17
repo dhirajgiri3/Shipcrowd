@@ -12,9 +12,6 @@ export * from './error';
 // Performance utilities
 export * from './performance';
 
-// Configuration
-export * from './configs';
-
 // Constants
 export * from './constants';
 
