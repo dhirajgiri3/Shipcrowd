@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/core/Input';
 import { toast } from 'sonner';
 import { cn } from '@/src/shared/utils';
 import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
+import { Loader } from '@/components/ui';
 import { useCreateOrder } from '@/src/core/api/hooks/useOrders';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import type { CreateOrderRequest, OrderFormData } from '@/src/types/order';
@@ -710,7 +711,14 @@ export function CreateOrderClient() {
                   disabled={createOrderMutation.isPending}
                   className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20 w-40"
                 >
-                  {createOrderMutation.isPending ? 'Creating...' : 'Create Order'}
+                  {createOrderMutation.isPending ? (
+                    <>
+                      <Loader variant="dots" size="sm" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Order'
+                  )}
                 </Button>
               ) : (
                 <Button

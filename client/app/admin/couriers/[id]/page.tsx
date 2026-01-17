@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { Loader } from '@/components/ui';
 
 export default function CourierDetailPage({ params }: { params: { id: string } }) {
     const router = useRouter();
@@ -83,11 +84,7 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <p className="text-muted-foreground">Loading courier details...</p>
-            </div>
-        );
+        return <Loader variant="spinner" size="lg" message="Loading courier details..." centered />;
     }
 
     if (!courier) {

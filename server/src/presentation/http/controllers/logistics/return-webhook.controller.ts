@@ -9,7 +9,8 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import ReturnService from '@/core/application/services/logistics/return.service';
 import logger from '@/shared/logger/winston.logger';
-import { AppError } from '@/shared/errors/app.error';
+import { AppError, normalizeError } from '@/shared/errors/app.error';
+import { sendSuccess } from '@/shared/utils/responseHelper';
 
 /**
  * Webhook payload interface
@@ -83,14 +84,10 @@ export default class ReturnWebhookController {
             });
 
             // 4. Return success response
-            res.status(200).json({
-                success: true,
-                message: 'Webhook processed successfully',
-                data: {
-                    returnId: returnOrder.returnId,
-                    status: returnOrder.status,
-                },
-            });
+            sendSuccess(res, {
+                returnId: returnOrder.returnId,
+                status: returnOrder.status,
+            }, 'Webhook processed successfully');
         } catch (error) {
             logger.error('Webhook processing failed', {
                 error: error instanceof Error ? error.message : String(error),
@@ -98,19 +95,8 @@ export default class ReturnWebhookController {
                 payload: req.body,
             });
 
-            if (error instanceof AppError) {
-                res.status(error.statusCode).json({
-                    success: false,
-                    error: error.message,
-                    code: error.code,
-                });
-            } else {
-                res.status(500).json({
-                    success: false,
-                    error: 'Internal server error',
-                    code: 'WEBHOOK_PROCESSING_FAILED',
-                });
-            }
+            const appError = normalizeError(error);
+            res.status(appError.statusCode).json(appError.toJSON());
         }
     }
 

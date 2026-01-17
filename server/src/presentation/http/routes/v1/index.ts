@@ -39,6 +39,10 @@ import weightDisputesRoutes from './disputes/weight-disputes.routes';
 // Returns Management
 import returnsRoutes from './logistics/returns.routes';
 import returnWebhooksRoutes from './logistics/return-webhooks.routes';
+// Fraud Detection
+import fraudRoutes from './fraud/fraud.routes';
+// General Dispute Resolution
+import disputeRoutes from './logistics/dispute.routes';
 
 const router = express.Router();
 
@@ -130,5 +134,11 @@ router.use('/promos', promoCodeRoutes);
 // Returns Management
 router.use('/logistics/returns', returnsRoutes);
 router.use('/webhooks/returns', returnWebhooksRoutes);
+
+// Fraud Detection
+router.use('/fraud', fraudRoutes);
+
+// Phase 4: General Dispute Resolution System
+router.use('/disputes', disputeRoutes);
 
 export default router;

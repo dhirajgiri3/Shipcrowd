@@ -39,6 +39,12 @@ export interface ICommissionTransaction extends Document {
     };
     createdAt: Date;
     updatedAt: Date;
+
+    // Soft delete fields
+    isDeleted: boolean;
+    deletedAt?: Date;
+    deletedBy?: mongoose.Types.ObjectId;
+    schemaVersion: number;
 }
 
 // Static methods interface
@@ -136,12 +142,37 @@ const CommissionTransactionSchema = new Schema<ICommissionTransaction, ICommissi
         metadata: {
             type: Schema.Types.Mixed,
         },
+
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        deletedAt: Date,
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        schemaVersion: {
+            type: Number,
+            default: 1,
+            index: true
+        }
     },
     {
         timestamps: true,
         optimisticConcurrency: true, // Enables __v versioning
     }
 );
+
+// Pre-find hook to exclude deleted documents by default
+CommissionTransactionSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
+    if ((this as any)._conditions.isDeleted === undefined) {
+        this.where({ isDeleted: false });
+    }
+    next();
+});
 
 // ============================================================================
 // INDEXES

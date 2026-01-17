@@ -22,6 +22,7 @@ import { Order } from '../../../../infrastructure/database/mongoose/models';
 import WhatsAppService from '../../../../infrastructure/external/communication/whatsapp/whatsapp.service';
 import WarehouseNotificationService from '../warehouse/warehouse-notification.service';
 import WalletService from '../wallet/wallet.service';
+import RateCardService from './rate-card.service';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/app.error';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
@@ -390,30 +391,161 @@ export default class RTOService {
 
     /**
      * Create reverse shipment via courier API
+     *
+     * Phase 5 Implementation: Integrates with Velocity courier adapter for RTO/reverse pickup.
+     * Includes mock fallback for when real API is unavailable.
      */
     private static async createReverseShipment(shipment: ShipmentInfo): Promise<string> {
-        // TODO: Integrate with Courier Adapter when reverse pickup API is supported
-        // Current adapters (Velocity, etc.) in CourierFactory do not yet expose createReverseShipment
-        // For now, generate a unique internal reverse AWB
-        const timestamp = Date.now().toString().slice(-6);
-        const reverseAwb = `RTO-${shipment.awb}-${timestamp}`;
+        try {
+            // Get full shipment details for package information
+            const fullShipment = await Shipment.findById(shipment._id)
+                .populate('consignee')
+                .populate('warehouseId');
 
-        logger.info('Reverse shipment created (Mock)', {
-            originalAwb: shipment.awb,
-            reverseAwb,
-        });
+            if (!fullShipment) {
+                throw new Error('Shipment not found for reverse shipment creation');
+            }
 
-        return reverseAwb;
+            // Check if shipment uses Velocity courier
+            const courierProvider = fullShipment.carrier?.toLowerCase();
+            const isVelocity = courierProvider?.includes('velocity');
+
+            if (!isVelocity) {
+                // Fallback for non-Velocity couriers
+                logger.info('Non-Velocity courier detected, using mock reverse AWB', {
+                    courier: courierProvider,
+                    originalAwb: shipment.awb
+                });
+                const timestamp = Date.now().toString().slice(-6);
+                return `RTO-${shipment.awb}-${timestamp}`;
+            }
+
+            // Import Velocity provider
+            const { VelocityShipfastProvider } = await import(
+                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+            );
+
+            // Initialize Velocity adapter
+            const velocityAdapter = new VelocityShipfastProvider(
+                new mongoose.Types.ObjectId(shipment.companyId)
+            );
+
+            // Prepare pickup address (customer location)
+            const pickupAddress = {
+                name: shipment.customer?.name || fullShipment.deliveryDetails?.recipientName || 'Customer',
+                phone: shipment.customer?.phone || fullShipment.deliveryDetails?.recipientPhone || '',
+                address: fullShipment.deliveryDetails?.address?.line1 || '',
+                city: fullShipment.deliveryDetails?.address?.city || '',
+                state: fullShipment.deliveryDetails?.address?.state || '',
+                pincode: fullShipment.deliveryDetails?.address?.postalCode || '',
+                country: fullShipment.deliveryDetails?.address?.country || 'India',
+                email: fullShipment.deliveryDetails?.recipientEmail
+            };
+
+            // Prepare package details
+            const packageDetails = {
+                weight: fullShipment.packageDetails?.weight || 0.5, // Default 0.5kg if not specified
+                length: fullShipment.packageDetails?.dimensions?.length || 10,
+                width: fullShipment.packageDetails?.dimensions?.width || 10,
+                height: fullShipment.packageDetails?.dimensions?.height || 10
+            };
+
+            // Call Velocity API to create reverse shipment
+            logger.info('Creating Velocity reverse shipment', {
+                originalAwb: shipment.awb,
+                orderId: shipment.orderId,
+                warehouseId: shipment.warehouseId
+            });
+
+            const reverseShipmentResponse = await velocityAdapter.createReverseShipment(
+                shipment.awb,
+                pickupAddress,
+                shipment.warehouseId,
+                packageDetails,
+                shipment.orderId,
+                'RTO - Return to Origin'
+            );
+
+            logger.info('Velocity reverse shipment created successfully', {
+                originalAwb: shipment.awb,
+                reverseAwb: reverseShipmentResponse.reverse_awb,
+                labelUrl: reverseShipmentResponse.label_url,
+                isFallback: reverseShipmentResponse.courier_name?.includes('Mock')
+            });
+
+            return reverseShipmentResponse.reverse_awb;
+
+        } catch (error) {
+            // Final fallback: Generate mock reverse AWB on any error
+            logger.error('Error creating reverse shipment, using mock fallback', {
+                originalAwb: shipment.awb,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+
+            const timestamp = Date.now().toString().slice(-6);
+            const reverseAwb = `RTO-${shipment.awb}-${timestamp}`;
+
+            logger.info('Mock reverse AWB generated', {
+                originalAwb: shipment.awb,
+                reverseAwb,
+                fallbackReason: 'API error or courier not supported'
+            });
+
+            return reverseAwb;
+        }
     }
 
     /**
      * Calculate RTO charges
+     *
+     * Phase 5 Implementation: Dynamic calculation based on RateCard configuration.
+     * Falls back to flat rate if no rate card configured.
      */
     private static async calculateRTOCharges(shipment: ShipmentInfo): Promise<number> {
-        // TODO: In future, integrate with a RateCardService for dynamic calculation based on zone/weight
-        // Current implementation uses a configurable flat rate
-        const flatRate = Number(process.env.RTO_FLAT_CHARGE) || 50;
-        return flatRate;
+        try {
+            // Get full shipment for package and carrier details
+            const fullShipment = await Shipment.findById(shipment._id);
+
+            if (!fullShipment) {
+                logger.warn('Shipment not found for charge calculation, using flat rate', {
+                    shipmentId: shipment._id
+                });
+                return Number(process.env.RTO_FLAT_CHARGE) || 50;
+            }
+
+            // Prepare input for rate calculation
+            const rateInput = {
+                companyId: shipment.companyId,
+                carrier: fullShipment.carrier || 'velocity',
+                serviceType: fullShipment.serviceType || 'express',
+                weight: fullShipment.packageDetails?.weight || 0.5,
+                originPincode: fullShipment.deliveryDetails?.address?.postalCode, // RTO reverses origin/dest
+                destinationPincode: fullShipment.pickupDetails?.warehouseId ? undefined : fullShipment.deliveryDetails?.address?.postalCode,
+                zoneId: undefined, // Zone calculation not implemented in current model
+                customerId: fullShipment.companyId?.toString()
+            };
+
+            // Calculate charges using RateCardService
+            const calculation = await RateCardService.calculateRTOCharges(rateInput);
+
+            logger.info('RTO charges calculated', {
+                shipmentId: shipment._id,
+                finalPrice: calculation.finalPrice,
+                rateCardUsed: calculation.rateCardUsed || 'flat_rate',
+                breakdown: calculation.breakdown
+            });
+
+            return calculation.finalPrice;
+
+        } catch (error) {
+            logger.error('Error calculating RTO charges, using flat rate fallback', {
+                shipmentId: shipment._id,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+
+            // Fallback to flat rate
+            return Number(process.env.RTO_FLAT_CHARGE) || 50;
+        }
     }
 
     /**
@@ -574,6 +706,265 @@ export default class RTOService {
         } catch (error) {
             logger.error('Error fetching shipment', { shipmentId, error });
             return null;
+        }
+    }
+
+    /**
+     * Track reverse shipment by reverse AWB
+     *
+     * Phase 5: Provides real-time tracking for RTO shipments
+     */
+    static async trackReverseShipment(reverseAwb: string): Promise<any> {
+        try {
+            logger.info('Tracking reverse shipment', { reverseAwb });
+
+            // Find RTO event by reverse AWB
+            const rtoEvent = await RTOEvent.findOne({
+                reverseAwb,
+                isDeleted: false
+            }).populate('shipment');
+
+            if (!rtoEvent) {
+                throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
+            }
+
+            // Get shipment details
+            const shipment = await Shipment.findById(rtoEvent.shipment);
+            if (!shipment) {
+                throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            }
+
+            // Check if Velocity courier
+            const courierProvider = shipment.carrier?.toLowerCase();
+            const isVelocity = courierProvider?.includes('velocity');
+
+            if (!isVelocity) {
+                // Return basic tracking info for non-Velocity
+                return {
+                    reverseAwb,
+                    originalAwb: shipment.trackingNumber,
+                    status: rtoEvent.returnStatus,
+                    trackingHistory: [],
+                    currentLocation: 'In Transit',
+                    message: 'Detailed tracking not available for this courier'
+                };
+            }
+
+            // Import and use Velocity adapter for tracking
+            const { VelocityShipfastProvider } = await import(
+                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+            );
+
+            const velocityAdapter = new VelocityShipfastProvider(
+                shipment.companyId as mongoose.Types.ObjectId
+            );
+
+            const tracking = await velocityAdapter.trackShipment(reverseAwb);
+
+            logger.info('Reverse shipment tracked successfully', {
+                reverseAwb,
+                status: tracking.status,
+                currentLocation: tracking.currentLocation
+            });
+
+            return {
+                reverseAwb,
+                originalAwb: shipment.trackingNumber,
+                status: tracking.status,
+                currentLocation: tracking.currentLocation,
+                trackingHistory: tracking.timeline,
+                estimatedDelivery: tracking.estimatedDelivery
+            };
+
+        } catch (error) {
+            logger.error('Error tracking reverse shipment', {
+                reverseAwb,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Schedule pickup for reverse shipment
+     *
+     * Phase 5: Schedules courier pickup at customer location for RTO
+     */
+    static async scheduleReversePickup(
+        rtoEventId: string,
+        pickupDate: Date,
+        timeSlot: 'morning' | 'afternoon' | 'evening',
+        pickupAddress?: {
+            address: string;
+            pincode: string;
+            phone: string;
+        }
+    ): Promise<{ success: boolean; pickupId?: string; message: string }> {
+        try {
+            logger.info('Scheduling reverse shipment pickup', {
+                rtoEventId,
+                pickupDate,
+                timeSlot
+            });
+
+            // Find RTO event
+            const rtoEvent = await RTOEvent.findById(rtoEventId).populate('shipment');
+            if (!rtoEvent) {
+                throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
+            }
+
+            // Get shipment details
+            const shipment = await Shipment.findById(rtoEvent.shipment);
+            if (!shipment) {
+                throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            }
+
+            // Check if Velocity courier
+            const courierProvider = shipment.carrier?.toLowerCase();
+            const isVelocity = courierProvider?.includes('velocity');
+
+            if (!isVelocity) {
+                logger.info('Non-Velocity courier, pickup scheduling not supported', {
+                    courier: courierProvider
+                });
+                return {
+                    success: false,
+                    message: 'Pickup scheduling not supported for this courier'
+                };
+            }
+
+            // Import and use Velocity adapter
+            const { VelocityShipfastProvider } = await import(
+                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+            );
+
+            const velocityAdapter = new VelocityShipfastProvider(
+                shipment.companyId as mongoose.Types.ObjectId
+            );
+
+            const pickupResponse = await velocityAdapter.schedulePickup(
+                rtoEvent.reverseAwb || '',
+                pickupDate,
+                timeSlot,
+                pickupAddress
+            );
+
+            // Update RTO event metadata
+            if (!rtoEvent.metadata) {
+                rtoEvent.metadata = {};
+            }
+            rtoEvent.metadata.pickupScheduled = true;
+            rtoEvent.metadata.pickupId = pickupResponse.pickup_id;
+            rtoEvent.metadata.pickupDate = pickupResponse.scheduled_date;
+            rtoEvent.metadata.pickupTimeSlot = pickupResponse.time_slot;
+            await rtoEvent.save();
+
+            logger.info('Reverse pickup scheduled successfully', {
+                rtoEventId,
+                pickupId: pickupResponse.pickup_id,
+                pickupDate: pickupResponse.scheduled_date
+            });
+
+            return {
+                success: true,
+                pickupId: pickupResponse.pickup_id,
+                message: pickupResponse.message
+            };
+
+        } catch (error) {
+            logger.error('Error scheduling reverse pickup', {
+                rtoEventId,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to schedule pickup'
+            };
+        }
+    }
+
+    /**
+     * Cancel reverse shipment
+     *
+     * Phase 5: Cancels RTO shipment before pickup
+     */
+    static async cancelReverseShipment(
+        rtoEventId: string,
+        reason?: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            logger.info('Cancelling reverse shipment', { rtoEventId, reason });
+
+            // Find RTO event
+            const rtoEvent = await RTOEvent.findById(rtoEventId).populate('shipment');
+            if (!rtoEvent) {
+                throw new AppError('RTO event not found', 'RTO_NOT_FOUND', 404);
+            }
+
+            // Check if RTO can be cancelled
+            const cancellableStatuses = ['initiated', 'qc_pending'];
+            if (!cancellableStatuses.includes(rtoEvent.returnStatus)) {
+                return {
+                    success: false,
+                    message: `Cannot cancel RTO in status: ${rtoEvent.returnStatus}`
+                };
+            }
+
+            // Get shipment details
+            const shipment = await Shipment.findById(rtoEvent.shipment);
+            if (!shipment) {
+                throw new AppError('Associated shipment not found', 'SHIPMENT_NOT_FOUND', 404);
+            }
+
+            // Check if Velocity courier
+            const courierProvider = shipment.carrier?.toLowerCase();
+            const isVelocity = courierProvider?.includes('velocity');
+
+            if (isVelocity) {
+                // Import and use Velocity adapter
+                const { VelocityShipfastProvider } = await import(
+                    '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+                );
+
+                const velocityAdapter = new VelocityShipfastProvider(
+                    shipment.companyId as mongoose.Types.ObjectId
+                );
+
+                await velocityAdapter.cancelReverseShipment(
+                    rtoEvent.reverseAwb || '',
+                    shipment.trackingNumber,
+                    reason
+                );
+            }
+
+            // Mark RTO as cancelled
+            rtoEvent.returnStatus = 'cancelled' as any;
+            if (!rtoEvent.metadata) {
+                rtoEvent.metadata = {};
+            }
+            rtoEvent.metadata.cancellationReason = reason;
+            rtoEvent.metadata.cancelledAt = new Date().toISOString();
+            await rtoEvent.save();
+
+            logger.info('Reverse shipment cancelled successfully', {
+                rtoEventId,
+                reverseAwb: rtoEvent.reverseAwb
+            });
+
+            return {
+                success: true,
+                message: 'Reverse shipment cancelled successfully'
+            };
+
+        } catch (error) {
+            logger.error('Error cancelling reverse shipment', {
+                rtoEventId,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to cancel reverse shipment'
+            };
         }
     }
 

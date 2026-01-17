@@ -15,6 +15,7 @@ import {
     useEligibleShipments,
     useCreateManifest,
 } from '@/src/core/api/hooks/useManifests';
+import { Loader } from '@/components/ui';
 import { toast } from 'sonner';
 import {
     ArrowLeft,
@@ -24,7 +25,6 @@ import {
     Check,
     CheckCircle2,
     Circle,
-    Loader2,
     FileText,
     Calendar,
     Clock,
@@ -191,10 +191,10 @@ export default function CreateManifestPage() {
                                 <div className="flex flex-col items-center">
                                     <div
                                         className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-colors ${currentStep > step.id
-                                                ? 'bg-green-500 text-white'
-                                                : currentStep === step.id
-                                                    ? 'bg-primary-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                                            ? 'bg-green-500 text-white'
+                                            : currentStep === step.id
+                                                ? 'bg-primary-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
                                             }`}
                                     >
                                         {currentStep > step.id ? (
@@ -205,8 +205,8 @@ export default function CreateManifestPage() {
                                     </div>
                                     <div className="mt-2 text-center">
                                         <p className={`text-sm font-medium ${currentStep >= step.id
-                                                ? 'text-gray-900 dark:text-white'
-                                                : 'text-gray-400'
+                                            ? 'text-gray-900 dark:text-white'
+                                            : 'text-gray-400'
                                             }`}>
                                             {step.title}
                                         </p>
@@ -244,22 +244,22 @@ export default function CreateManifestPage() {
                                         key={courier.value}
                                         onClick={() => setSelectedCourier(courier.value)}
                                         className={`p-4 rounded-xl border-2 transition-all ${selectedCourier === courier.value
-                                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between mb-3">
                                             <Truck className={`w-6 h-6 ${selectedCourier === courier.value
-                                                    ? 'text-primary-600 dark:text-primary-400'
-                                                    : 'text-gray-400'
+                                                ? 'text-primary-600 dark:text-primary-400'
+                                                : 'text-gray-400'
                                                 }`} />
                                             {selectedCourier === courier.value && (
                                                 <CheckCircle2 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                                             )}
                                         </div>
                                         <p className={`font-medium ${selectedCourier === courier.value
-                                                ? 'text-primary-700 dark:text-primary-300'
-                                                : 'text-gray-900 dark:text-white'
+                                            ? 'text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-900 dark:text-white'
                                             }`}>
                                             {courier.label}
                                         </p>
@@ -302,10 +302,7 @@ export default function CreateManifestPage() {
 
                             {/* Shipments List */}
                             {isLoadingShipments ? (
-                                <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
-                                    <span className="ml-3 text-gray-600 dark:text-gray-400">Loading shipments...</span>
-                                </div>
+                                <Loader variant="spinner" size="lg" message="Loading shipments..." centered />
                             ) : filteredShipments.length === 0 ? (
                                 <div className="text-center py-12">
                                     <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
@@ -334,8 +331,8 @@ export default function CreateManifestPage() {
                                             <label
                                                 key={shipment.shipmentId}
                                                 className={`flex items-center gap-4 p-4 cursor-pointer transition-colors ${selectedShipments.includes(shipment.shipmentId)
-                                                        ? 'bg-primary-50 dark:bg-primary-900/10'
-                                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                                    ? 'bg-primary-50 dark:bg-primary-900/10'
+                                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                                                     }`}
                                             >
                                                 <input
@@ -357,8 +354,8 @@ export default function CreateManifestPage() {
                                                         {shipment.weight} kg
                                                     </p>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${shipment.paymentMode === 'COD'
-                                                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                                         }`}>
                                                         {shipment.paymentMode}
                                                     </span>
@@ -438,13 +435,13 @@ export default function CreateManifestPage() {
                                                     key={slot.label}
                                                     onClick={() => setPickupSlot({ start: slot.start, end: slot.end })}
                                                     className={`w-full p-3 rounded-lg border text-left transition-all flex items-center gap-3 ${pickupSlot?.start === slot.start
-                                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                                                         }`}
                                                 >
                                                     <Clock className={`w-4 h-4 ${pickupSlot?.start === slot.start
-                                                            ? 'text-primary-600'
-                                                            : 'text-gray-400'
+                                                        ? 'text-primary-600'
+                                                        : 'text-gray-400'
                                                         }`} />
                                                     <span className={
                                                         pickupSlot?.start === slot.start
@@ -554,7 +551,7 @@ export default function CreateManifestPage() {
                                 >
                                     {isCreating ? (
                                         <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <Loader variant="dots" size="sm" />
                                             Creating...
                                         </>
                                     ) : (

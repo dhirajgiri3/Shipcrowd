@@ -23,13 +23,13 @@ import {
     Trash2,
     Power,
     PowerOff,
-    Loader2,
     X,
     Check,
     ChevronDown,
     RefreshCw,
     BarChart3,
 } from 'lucide-react';
+import { Loader, CardSkeleton } from '@/components/ui';
 import { toast } from 'sonner';
 import type {
     NotificationRule,
@@ -134,7 +134,7 @@ export default function NotificationRulesPage() {
                             onClick={() => refetch()}
                             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
-                            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                            {isLoading ? <Loader variant="spinner" size="sm" /> : <RefreshCw className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>
@@ -143,11 +143,7 @@ export default function NotificationRulesPage() {
                 {isLoading ? (
                     <div className="space-y-4">
                         {Array.from({ length: 3 }).map((_, idx) => (
-                            <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
-                                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4" />
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2" />
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-                            </div>
+                            <CardSkeleton key={idx} />
                         ))}
                     </div>
                 ) : (rules ?? []).length === 0 ? (
@@ -228,8 +224,8 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                             {rule.name}
                         </h3>
                         <span className={`text-xs px-2 py-1 rounded-full ${rule.isActive
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                             }`}>
                             {rule.isActive ? 'Active' : 'Inactive'}
                         </span>
@@ -246,13 +242,13 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                         onClick={handleToggle}
                         disabled={isToggling}
                         className={`p-2 rounded-lg transition-colors ${rule.isActive
-                                ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                                : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                            : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}
                         title={rule.isActive ? 'Disable' : 'Enable'}
                     >
                         {isToggling ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader variant="spinner" size="sm" />
                         ) : rule.isActive ? (
                             <Power className="w-5 h-5" />
                         ) : (
@@ -270,7 +266,7 @@ function RuleCard({ rule, onEdit }: RuleCardProps) {
                         disabled={isDeleting}
                         className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                     >
-                        {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                        {isDeleting ? <Loader variant="spinner" size="sm" /> : <Trash2 className="w-5 h-5" />}
                     </button>
                 </div>
             </div>
@@ -692,7 +688,7 @@ function RuleBuilderModal({ isOpen, rule, onClose }: RuleBuilderModalProps) {
                     >
                         {isSubmitting ? (
                             <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader variant="dots" size="sm" />
                                 {rule ? 'Updating...' : 'Creating...'}
                             </>
                         ) : (

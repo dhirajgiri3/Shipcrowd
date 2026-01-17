@@ -5,8 +5,8 @@
  */
 
 import { Router } from 'express';
-import RTOController from '../../../controllers/rto/rto.controller';
-import { authenticate } from '../../../middleware/auth/auth';
+import RTOController from '@/presentation/http/controllers/rto/rto.controller';
+import { authenticate } from '@/presentation/http/middleware/auth/auth';
 
 const router = Router();
 

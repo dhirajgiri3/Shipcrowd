@@ -8,7 +8,7 @@
 // ==================== WEBHOOK PAYLOAD ====================
 
 export interface VelocityWebhookPayload {
-  event_type: 'SHIPMENT_STATUS_UPDATE' | 'SHIPMENT_CREATED' | 'SHIPMENT_CANCELLED' | 'SHIPMENT_WEIGHT_SCANNED';
+  event_type: 'SHIPMENT_STATUS_UPDATE' | 'SHIPMENT_CREATED' | 'SHIPMENT_CANCELLED' | 'SHIPMENT_WEIGHT_SCANNED' | 'REVERSE_SHIPMENT_STATUS_UPDATE';
   timestamp: string;                    // ISO 8601
   shipment_data: {
     awb: string;

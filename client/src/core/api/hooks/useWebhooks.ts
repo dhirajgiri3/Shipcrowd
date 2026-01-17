@@ -4,11 +4,6 @@ import { queryKeys } from '../queryKeys';
 import { toast } from 'sonner';
 import type { Webhook, CreateWebhookPayload, TestWebhookPayload } from '@/src/types/api/settings.types';
 
-// Local request types
-interface TestWebhookRequest {
-    webhookId: string;
-    event?: string;
-}
 
 /**
  * Fetch all webhooks
@@ -49,7 +44,7 @@ export const useCreateWebhook = () => {
  */
 export const useTestWebhook = () => {
     return useMutation({
-        mutationFn: async ({ webhookId, event }: TestWebhookRequest) => {
+        mutationFn: async ({ webhookId, event }: TestWebhookPayload) => {
             const response = await apiClient.post(`/webhooks/${webhookId}/test`, { event });
             return response.data;
         },

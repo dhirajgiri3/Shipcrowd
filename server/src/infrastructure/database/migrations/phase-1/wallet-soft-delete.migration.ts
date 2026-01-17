@@ -17,18 +17,16 @@ export class WalletSoftDeleteMigration extends BaseMigration {
         });
     }
 
-    protected async executeMigration(): Promise<void> {
-        const progress = await this.getProgress();
-        let lastId = progress?.lastProcessedId;
-        let processedCount = progress?.processedDocuments || 0;
+    async execute(): Promise<void> {
+        let lastId: any = null;
+        let processedCount = 0;
 
-        console.log('📊 Counting total documents...');
+        this.log('📊 Counting total documents...');
         const totalCount = await WalletTransaction.countDocuments({
             isDeleted: { $exists: false }
         });
 
-        await this.updateProgress({ totalDocuments: totalCount });
-        console.log(`   Total documents to migrate: ${totalCount}`);
+        this.log(`   Total documents to migrate: ${totalCount}`);
 
         while (true) {
             // Build query
@@ -44,11 +42,11 @@ export class WalletSoftDeleteMigration extends BaseMigration {
                 .lean();
 
             if (batch.length === 0) {
-                console.log('✅ No more documents to process');
+                this.log('✅ No more documents to process');
                 break;
             }
 
-            console.log(`\n📦 Processing batch: ${processedCount + 1} - ${processedCount + batch.length}`);
+            this.log(`\n📦 Processing batch: ${processedCount + 1} - ${processedCount + batch.length}`);
 
             if (!this.dryRun) {
                 // Perform actual update
@@ -63,26 +61,37 @@ export class WalletSoftDeleteMigration extends BaseMigration {
                     }
                 );
             } else {
-                console.log(`   [DRY RUN] Would update ${batch.length} documents`);
+                this.log(`   [DRY RUN] Would update ${batch.length} documents`);
             }
 
             // Update progress
             lastId = batch[batch.length - 1]._id;
             processedCount += batch.length;
 
-            await this.updateProgress({
-                lastProcessedId: lastId,
-                processedDocuments: processedCount
-            });
-
             const percentage = Math.round((processedCount / totalCount) * 100);
-            console.log(`   Progress: ${processedCount}/${totalCount} (${percentage}%)`);
+            this.log(`   Progress: ${processedCount}/${totalCount} (${percentage}%)`);
 
             // Small delay to avoid overwhelming the database
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        console.log(`\n✅ Migration completed: ${processedCount} documents processed`);
+        this.log(`\n✅ Migration completed: ${processedCount} documents processed`);
+    }
+
+    async rollback(): Promise<void> {
+        this.log('Rolling back WalletTransaction soft-delete fields...');
+
+        await WalletTransaction.updateMany(
+            { schemaVersion: 2 },
+            {
+                $unset: {
+                    isDeleted: "",
+                    schemaVersion: ""
+                }
+            }
+        );
+
+        this.log('Rollback complete.');
     }
 }
 

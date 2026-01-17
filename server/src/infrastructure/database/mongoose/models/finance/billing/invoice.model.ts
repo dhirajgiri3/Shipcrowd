@@ -72,6 +72,12 @@ export interface IInvoice extends Document {
     createdBy: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
+
+    // Soft delete fields
+    isDeleted: boolean;
+    deletedAt?: Date;
+    deletedBy?: mongoose.Types.ObjectId;
+    schemaVersion: number;
 }
 
 const LineItemSchema = new Schema<ILineItem>(
@@ -255,6 +261,22 @@ const InvoiceSchema = new Schema<IInvoice>(
             ref: 'User',
             required: true,
         },
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        deletedAt: Date,
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        schemaVersion: {
+            type: Number,
+            default: 1,
+            index: true
+        }
     },
     {
         timestamps: true,
@@ -265,6 +287,14 @@ const InvoiceSchema = new Schema<IInvoice>(
 InvoiceSchema.index({ companyId: 1, createdAt: -1 });
 InvoiceSchema.index({ status: 1 });
 InvoiceSchema.index({ 'billingPeriod.startDate': 1, 'billingPeriod.endDate': 1 });
+
+// Pre-find hook to exclude deleted documents by default
+InvoiceSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
+    if ((this as any)._conditions.isDeleted === undefined) {
+        this.where({ isDeleted: false });
+    }
+    next();
+});
 
 const Invoice = mongoose.model<IInvoice>('Invoice', InvoiceSchema);
 export default Invoice;

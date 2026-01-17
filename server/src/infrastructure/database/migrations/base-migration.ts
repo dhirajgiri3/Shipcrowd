@@ -155,15 +155,64 @@ export abstract class BaseMigration {
     /**
      * Get current progress
      */
-    protected async getProgress(): Promise<any> {
-        return MigrationProgress.findOne({ migrationName: this.migrationName });
+    /**
+     * Log message with timestamp
+     */
+    protected log(message: string): void {
+        console.log(`[${new Date().toISOString()}] ${message}`);
+    }
+
+    /**
+     * Process documents in batches
+     */
+    protected async processInBatches(
+        model: mongoose.Model<any>,
+        query: any,
+        processor: (batch: any[]) => Promise<void>
+    ): Promise<void> {
+        const total = await model.countDocuments(query);
+        let processed = 0;
+        let skip = 0;
+
+        while (processed < total) {
+            const batch = await model.find(query)
+                .skip(skip)
+                .limit(this.batchSize)
+                .lean(); // Use lean for performance unless save() is needed
+
+            if (batch.length === 0) break;
+
+            if (this.dryRun) {
+                this.log(`[DRY RUN] Would process batch of ${batch.length} documents (Skip: ${skip})`);
+            } else {
+                await processor(batch);
+
+                // Update progress
+                await this.updateProgress({
+                    processedDocuments: processed + batch.length
+                });
+            }
+
+            processed += batch.length;
+            skip += this.batchSize;
+
+            // Log progress
+            const percent = Math.round((processed / total) * 100);
+            this.log(`Progress: ${percent}% (${processed}/${total})`);
+        }
     }
 
     /**
      * Abstract method: Execute migration logic
      * Must be implemented by subclasses
      */
-    protected abstract executeMigration(): Promise<void>;
+    abstract execute(): Promise<void>;
+
+    /**
+     * Abstract method: Rollback migration logic
+     * Must be implemented by subclasses
+     */
+    abstract rollback(): Promise<void>;
 
     /**
      * Run migration with safety checks
@@ -185,7 +234,7 @@ export abstract class BaseMigration {
             await this.initializeProgress();
 
             // Execute migration
-            await this.executeMigration();
+            await this.execute();
 
             // Mark as completed
             await this.markCompleted();

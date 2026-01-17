@@ -170,8 +170,9 @@ export class WalletStatementPDFTemplate {
 
         const rows = data.transactions.map((txn) => {
             const isCredit = txn.type === 'credit';
+            const createdAt = (txn as any).createdAt || new Date();
             return {
-                date: formatInvoiceDate(txn.createdAt),
+                date: formatInvoiceDate(createdAt),
                 type: this.formatTransactionType(txn.type),
                 description: this.buildDescription(txn),
                 debit: isCredit ? 0 : txn.amount,

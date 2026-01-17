@@ -1,20 +1,18 @@
 /**
  * Return Routes
  * 
- * RESTful API routes for returns management
- * 
- * Base URL: /api/v1/returns
+ * Endpoints for returns management.
  */
 
 import { Router } from 'express';
 import ReturnController from '@/presentation/http/controllers/logistics/return.controller';
-import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/authorization.middleware';
-import { apiRateLimiter } from '../../../middleware/system/rate-limiter.middleware';
+import { authenticate } from '@/presentation/http/middleware/auth/auth';
+import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
+import { apiRateLimiter } from '@/presentation/http/middleware/system/rate-limiter.middleware';
 
 const router = Router();
 
-// Apply authentication to all routes
+// All routes require authentication
 router.use(authenticate);
 
 /**
@@ -44,7 +42,7 @@ router.post(
  */
 router.get(
     '/',
-    authorize({ roles: ['seller', 'staff', 'admin'] }),
+    requireAccess({ roles: ['seller', 'staff', 'admin'] }),
     ReturnController.listReturns
 );
 
@@ -60,7 +58,7 @@ router.get(
  */
 router.get(
     '/stats',
-    authorize({ roles: ['seller', 'admin'] }),
+    requireAccess({ roles: ['seller', 'admin'] }),
     ReturnController.getReturnStats
 );
 
@@ -84,7 +82,7 @@ router.get(
  */
 router.post(
     '/:returnId/pickup',
-    authorize({ roles: ['staff', 'admin'] }),
+    requireAccess({ roles: ['staff', 'admin'] }),
     apiRateLimiter,
     ReturnController.schedulePickup
 );
@@ -98,7 +96,7 @@ router.post(
  */
 router.post(
     '/:returnId/qc',
-    authorize({ roles: ['staff', 'admin'] }),
+    requireAccess({ roles: ['staff', 'admin'] }),
     apiRateLimiter,
     ReturnController.recordQCResult
 );
@@ -112,7 +110,7 @@ router.post(
  */
 router.post(
     '/:returnId/refund',
-    authorize({ roles: ['admin'] }),
+    requireAccess({ roles: ['admin'] }),
     apiRateLimiter,
     ReturnController.processRefund
 );

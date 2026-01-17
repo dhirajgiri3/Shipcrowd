@@ -12,7 +12,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Download, Bell, FileText, Clock, Check, X, Loader2 } from 'lucide-react';
+import { Shield, Download, Bell, FileText, Clock, Check, X } from 'lucide-react';
+import { Loader } from '@/components/ui';
 import { consentApi, type ConsentMap, type ConsentHistoryItem } from '@/src/core/api/consentApi';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -87,14 +88,7 @@ export function PrivacyClient() {
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-primaryBlue mx-auto mb-2" />
-                    <p className="text-gray-500">Loading privacy settings...</p>
-                </div>
-            </div>
-        );
+        return <Loader variant="spinner" size="lg" message="Loading privacy settings..." centered />;
     }
 
     return (
@@ -180,13 +174,13 @@ export function PrivacyClient() {
                             onClick={() => handleToggleConsent('marketing', consents.marketing?.accepted || false)}
                             disabled={savingType === 'marketing'}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${consents.marketing?.accepted
-                                    ? 'bg-primaryBlue'
-                                    : 'bg-gray-200 dark:bg-gray-600'
+                                ? 'bg-primaryBlue'
+                                : 'bg-gray-200 dark:bg-gray-600'
                                 }`}
                         >
                             {savingType === 'marketing' ? (
                                 <span className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                    <Loader variant="spinner" size="sm" />
                                 </span>
                             ) : (
                                 <span
@@ -207,13 +201,13 @@ export function PrivacyClient() {
                             onClick={() => handleToggleConsent('cookies', consents.cookies?.accepted || false)}
                             disabled={savingType === 'cookies'}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${consents.cookies?.accepted
-                                    ? 'bg-primaryBlue'
-                                    : 'bg-gray-200 dark:bg-gray-600'
+                                ? 'bg-primaryBlue'
+                                : 'bg-gray-200 dark:bg-gray-600'
                                 }`}
                         >
                             {savingType === 'cookies' ? (
                                 <span className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                    <Loader variant="spinner" size="sm" />
                                 </span>
                             ) : (
                                 <span
@@ -255,7 +249,7 @@ export function PrivacyClient() {
                 >
                     {isExporting ? (
                         <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader variant="dots" size="sm" />
                             Exporting...
                         </>
                     ) : (
@@ -289,7 +283,7 @@ export function PrivacyClient() {
                         {history.slice(0, 5).map((item, index) => (
                             <div key={index} className="flex items-center gap-3 text-sm">
                                 <div className={`w-2 h-2 rounded-full ${item.action === 'accepted' ? 'bg-green-500' :
-                                        item.action === 'withdrawn' ? 'bg-red-500' : 'bg-blue-500'
+                                    item.action === 'withdrawn' ? 'bg-red-500' : 'bg-blue-500'
                                     }`} />
                                 <span className="text-gray-600 dark:text-gray-400">
                                     {item.action === 'accepted' && 'Accepted'}
