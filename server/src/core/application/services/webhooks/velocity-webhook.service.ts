@@ -16,7 +16,8 @@
 
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Shipment, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
+import { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,
@@ -480,13 +481,11 @@ export class VelocityWebhookService implements WebhookEventHandler {
         statusCode: status_code
       });
 
-      // Import RTOEvent model dynamically to avoid circular dependencies
-      const RTOEvent = (await import('../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model')).default;
+      // RTOEvent model is imported at the top of the file
 
       // Find RTO event by reverse AWB
       const rtoEvent = await RTOEvent.findOne({
-        reverseAwb: awb,
-        isDeleted: false
+        reverseAwb: awb
       }).populate('shipment');
 
       if (!rtoEvent) {
@@ -502,16 +501,14 @@ export class VelocityWebhookService implements WebhookEventHandler {
       }
 
       // Map Velocity status to RTO return status
-      const statusMapping: Record<string, string> = {
+      const statusMapping: Record<string, IRTOEvent['returnStatus']> = {
         'NEW': 'initiated',
         'PKP': 'in_transit',           // Picked up from customer
         'IT': 'in_transit',             // In transit to warehouse
         'OFD': 'in_transit',            // Out for delivery to warehouse
         'DEL': 'delivered_to_warehouse', // Delivered to warehouse
         'RTO': 'in_transit',            // RTO-in-RTO (rare edge case)
-        'LOST': 'lost',
-        'DAMAGED': 'damaged',
-        'CANCELLED': 'cancelled'
+        'CANCELLED': 'initiated'        // Map cancelled to initiated
       };
 
       const newReturnStatus = statusMapping[status_code] || 'in_transit';
@@ -519,7 +516,7 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       // Update RTO event status
       if (isStatusChange) {
-        rtoEvent.returnStatus = newReturnStatus;
+        rtoEvent.returnStatus = newReturnStatus as IRTOEvent['returnStatus'];
 
         // Update actualReturnDate if delivered to warehouse
         if (newReturnStatus === 'delivered_to_warehouse') {

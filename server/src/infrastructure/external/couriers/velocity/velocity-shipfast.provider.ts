@@ -177,11 +177,11 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         phone: warehouse.contactInfo.phone,
         contactName: warehouse.contactInfo.name,
         address: {
-          addressLine1: warehouse.address.line1,
-          addressLine2: warehouse.address.line2,
+          line1: warehouse.address.line1,
+          line2: warehouse.address.line2,
           city: warehouse.address.city,
           state: warehouse.address.state,
-          pincode: warehouse.address.postalCode,
+          postalCode: warehouse.address.postalCode,
           country: warehouse.address.country
         }
       }

@@ -6,9 +6,9 @@
 
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import pickingController from '@/presentation/http/controllers/warehouse/picking.controller';
-import { authenticate } from '@/presentation/http/middleware';
-import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
+import pickingController from '../../../controllers/warehouse/picking.controller';
+import { authenticate } from '../../../middleware';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 const router = Router();
 
