@@ -10,18 +10,20 @@ import { Navigation, Footer } from "@/src/components/ui";
 
 
 export function LandingClient() {
-  return (
-    <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
-      <Navigation />
-      <Hero />
-      <TrustBar />
-      <ProblemSection />
-      <AIShowcase />
-      <FeatureEcosystem />
-      <HowItWorks />
-      <SocialProof />
-      <Pricing />
-      <Footer />
-    </main>
-  );
+    return (
+        <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
+            <Navigation />
+            <Hero />
+            <TrustBar />
+            <ProblemSection />
+            <AIShowcase />
+            <FeatureEcosystem />
+            <HowItWorks />
+            <SocialProof />
+            <Pricing />
+            <Footer />
+        </main>
+    );
 }
+
+export default LandingClient;

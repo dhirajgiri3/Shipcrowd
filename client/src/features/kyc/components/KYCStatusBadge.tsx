@@ -1,6 +1,6 @@
 "use client"
 
-import { Badge } from '@/src/components/ui/core/Badge"
+import { Badge } from '@/src/components/ui/core/Badge'
 import { ShieldCheck, Clock, AlertCircle, XCircle } from "lucide-react"
 import { cn } from "@/src/shared/utils"
 

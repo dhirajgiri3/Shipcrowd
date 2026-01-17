@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion"
 import { ArrowRight, TrendingUp, ShieldCheck, Truck, Home, Settings, CreditCard, LayoutGrid, ChevronDown, Plus, MoreHorizontal, Search, Bell, Package, Users, BarChart3, Activity } from "lucide-react"
-import { Button } from '@/src/components/ui/core/Button"
+import { Button } from '@/src/components/ui/core/Button'
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
