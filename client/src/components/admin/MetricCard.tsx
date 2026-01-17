@@ -10,7 +10,7 @@ interface MetricCardProps {
     value: string;
     change?: number;
     trend?: 'up' | 'down' | 'neutral';
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     trendLabel?: string;
     className?: string;
 }

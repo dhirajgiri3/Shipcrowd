@@ -35,7 +35,7 @@ import { Badge } from '@/src/components/ui/core/Badge';
 interface NavItem {
     label: string;
     href: string;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     badgeKey?: 'orders_ready' | 'ndr_pending';
 }
 

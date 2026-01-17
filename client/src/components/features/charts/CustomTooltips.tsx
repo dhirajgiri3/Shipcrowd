@@ -1,7 +1,18 @@
 /**
  * Custom tooltip for Recharts with rich data display
  */
-export function CustomChartTooltip({ active, payload, label }: any) {
+interface ChartTooltipProps {
+    active?: boolean;
+    payload?: Array<{
+        name: string;
+        value: number;
+        color: string;
+        [key: string]: unknown;
+    }>;
+    label?: string;
+}
+
+export function CustomChartTooltip({ active, payload, label }: ChartTooltipProps) {
     if (!active || !payload || !payload.length) return null;
 
     return (
@@ -9,7 +20,7 @@ export function CustomChartTooltip({ active, payload, label }: any) {
             <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">
                 {label || 'Value'}
             </p>
-            {payload.map((entry: any, index: number) => (
+            {payload.map((entry, index: number) => (
                 <div key={index} className="flex items-center justify-between gap-4 mb-1">
                     <div className="flex items-center gap-2">
                         <div
@@ -34,7 +45,7 @@ export function CustomChartTooltip({ active, payload, label }: any) {
  */
 interface PerformanceTooltipProps {
     active?: boolean;
-    payload?: any[];
+    payload?: Array<{ value: number;[key: string]: unknown }>;
     label?: string;
     showComparison?: boolean;
     previousValue?: number;
