@@ -71,26 +71,30 @@ export function BottomSheet({
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl ${className}`}
-                        style={{ maxHeight }}
+                        className={`fixed bottom-0 left-0 right-0 z-50 rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] ${className}`}
+                        style={{
+                            maxHeight,
+                            backgroundColor: 'var(--bg-primary)',
+                            borderTop: '1px solid var(--border-subtle)'
+                        }}
                     >
                         {/* Handle bar for visual affordance */}
                         <div className="flex justify-center pt-3 pb-2">
-                            <div className="w-12 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
+                            <div className="w-12 h-1 rounded-full bg-[var(--border-strong)]" />
                         </div>
 
                         {/* Header */}
                         {title && (
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
+                                <h2 className="text-lg font-bold text-[var(--text-primary)]">
                                     {title}
                                 </h2>
                                 <button
                                     onClick={onClose}
-                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                                    className="p-2 hover:bg-[var(--bg-hover)] rounded-full transition-colors"
                                     aria-label="Close"
                                 >
-                                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                                    <X className="w-5 h-5 text-[var(--text-secondary)]" />
                                 </button>
                             </div>
                         )}

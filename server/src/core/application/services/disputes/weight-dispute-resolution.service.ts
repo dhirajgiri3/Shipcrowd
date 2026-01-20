@@ -282,12 +282,18 @@ class WeightDisputeResolutionService {
 
             return dispute;
         } catch (error) {
+            // Abort transaction on error
+            await session.abortTransaction();
+
             logger.error('Error resolving dispute', {
                 disputeId,
                 adminId,
                 error: error instanceof Error ? error.message : error,
             });
             throw error;
+        } finally {
+            // Always end the session to prevent memory leaks
+            await session.endSession();
         }
     }
 
@@ -300,10 +306,15 @@ class WeightDisputeResolutionService {
     async autoResolveExpiredDisputes(): Promise<number> {
         try {
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+            // Find disputes between 7-30 days old to avoid processing ancient seed data
             const expiredDisputes = await WeightDispute.find({
                 status: { $in: ['pending', 'under_review'] },
-                createdAt: { $lt: sevenDaysAgo },
+                createdAt: {
+                    $lt: sevenDaysAgo,
+                    $gt: thirtyDaysAgo  // Don't process disputes older than 30 days (likely seed data)
+                },
                 isDeleted: false,
             });
 

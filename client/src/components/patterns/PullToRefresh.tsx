@@ -73,10 +73,13 @@ export function PullToRefresh({
                 className="absolute top-0 left-0 right-0 flex justify-center items-center pointer-events-none z-10"
             >
                 <motion.div
-                    style={{ rotate }}
-                    className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg"
+                    style={{
+                        rotate,
+                        backgroundColor: 'var(--bg-elevated)'
+                    }}
+                    className="mt-4 p-3 rounded-full shadow-[var(--shadow-lg)] border border-[var(--border-subtle)]"
                 >
-                    <RefreshCw className={`w-6 h-6 text-blue-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-6 h-6 text-[var(--primary-blue)] ${isRefreshing ? 'animate-spin' : ''}`} />
                 </motion.div>
             </motion.div>
 

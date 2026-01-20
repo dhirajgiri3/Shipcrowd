@@ -125,9 +125,12 @@ export function SwipeableCard({
                 style={{ x }}
                 animate={isRemoving ? { opacity: 0, scale: 0.9 } : { opacity: 1, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="relative bg-white dark:bg-gray-800 cursor-grab active:cursor-grabbing"
+                className="relative cursor-grab active:cursor-grabbing"
             >
-                {children}
+                {/* Content wrapper with theme background */}
+                <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)]">
+                    {children}
+                </div>
             </motion.div>
         </div>
     );
