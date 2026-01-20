@@ -5,7 +5,7 @@
  * backup email, and recovery keys.
  */
 
-import { apiClient } from '../config/client';
+import { apiClient } from '../client';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

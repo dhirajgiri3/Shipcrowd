@@ -53,6 +53,7 @@ export enum ErrorCode {
     BIZ_ORDER_NUMBER_GENERATION_FAILED = 'BIZ_ORDER_NUMBER_GENERATION_FAILED',
     BIZ_CONCURRENT_MODIFICATION = 'BIZ_CONCURRENT_MODIFICATION',
     BIZ_SETUP_FAILED = 'BIZ_SETUP_FAILED',
+    BIZ_SETUP_REQUIRED = 'BIZ_SETUP_REQUIRED', // Onboarding incomplete - company setup needed
 
     // Financial errors (BIZ_)
     BIZ_INSUFFICIENT_BALANCE = 'BIZ_INSUFFICIENT_BALANCE',
@@ -162,6 +163,7 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.BIZ_ORDER_NUMBER_GENERATION_FAILED]: 500,
     [ErrorCode.BIZ_CONCURRENT_MODIFICATION]: 409,
     [ErrorCode.BIZ_SETUP_FAILED]: 500,
+    [ErrorCode.BIZ_SETUP_REQUIRED]: 403, // Setup incomplete - forbidden until onboarding complete
     [ErrorCode.BIZ_INSUFFICIENT_BALANCE]: 400,
     [ErrorCode.BIZ_WALLET_TRANSACTION_FAILED]: 500,
     [ErrorCode.BIZ_COD_REMITTANCE_FAILED]: 500,
@@ -193,7 +195,7 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.RES_KYC_SETUP_FAILED]: 500,
     [ErrorCode.RES_KYC_VERSION_CONFLICT]: 409,
     [ErrorCode.RES_KYC_OPTIMISTIC_LOCK_FAILURE]: 409,
-    
+
     // External service errors (502/503)
     [ErrorCode.EXT_SERVICE_UNAVAILABLE]: 503,
     [ErrorCode.EXT_SERVICE_ERROR]: 502,

@@ -1,3 +1,4 @@
-export * from './client';
-export * from './queryKeys';
-export * from './cacheConfig';
+export * from './query-client';
+export * from './query-keys';
+export * from './cache.config';
+

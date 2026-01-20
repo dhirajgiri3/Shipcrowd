@@ -3,7 +3,7 @@
  * Handles user session operations: list, revoke, and revoke all
  */
 
-import { apiClient } from '../config/client';
+import { apiClient } from '../client';
 
 /**
  * User session information

@@ -6,10 +6,10 @@ import {
     UseMutationOptions
 } from '@tanstack/react-query';
 import { orderApi } from '../../clients/orderApi';
-import { queryKeys } from '../../config/queryKeys';
-import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../../config/cacheConfig';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
-import { ApiError } from '../../config/client';
+import { ApiError } from '../../client';
 import type {
     Order,
     CreateOrderRequest,

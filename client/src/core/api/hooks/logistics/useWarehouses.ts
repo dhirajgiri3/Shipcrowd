@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '../../config/client';
+import { apiClient, ApiError } from '../../client';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import {
     useQuery,

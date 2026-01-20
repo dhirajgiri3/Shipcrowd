@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '../../config/client';
+import { apiClient, ApiError } from '../../client';
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 
 export interface Settlement {

@@ -4,7 +4,7 @@
  * Based on verified backend API contracts
  */
 
-import { apiClient, ApiError } from '../config/client';
+import { apiClient, ApiError } from '../client';
 import type {
   User,
   RegisterRequest,

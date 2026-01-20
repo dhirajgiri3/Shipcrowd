@@ -5,7 +5,7 @@
  * invalidation patterns and cache update strategies.
  */
 
-import { queryKeys } from './queryKeys';
+import { queryKeys } from './query-keys';
 
 /**
  * Cache timing configuration

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import passport from 'passport';
-import { User, IUser, MagicLink, TeamInvitation, Session, ISession } from '../../../../infrastructure/database/mongoose/models';
+import { User, IUser, MagicLink, TeamInvitation, Session } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import jwt from 'jsonwebtoken';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
@@ -440,7 +440,6 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/',
       maxAge: cookieMaxAge,
     });
 
@@ -449,7 +448,6 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
@@ -488,12 +486,12 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
  */
 export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Cookie names with secure prefix in production (must match login)
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
-    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+    // Cookie names with secure prefix in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
 
-    // Validate that we have a refresh token from cookies (try both secure and non-secure names)
-    const token = req.cookies?.[refreshCookieName] || req.cookies?.[AUTH_COOKIES.REFRESH_TOKEN] || req.body?.refreshToken;
+    // Validate that we have a refresh token from either cookies or body
+    const token = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken || req.body?.refreshToken;
     if (!token) {
       throw new AuthenticationError(
         'Your session has expired. Please log in again to continue.',
@@ -501,128 +499,124 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       );
     }
 
-    const payload = await verifyRefreshToken(token);
-    const user = await User.findById(payload.userId);
-    if (!user) {
-      throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
-    }
-    // Assert type after null check
-    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
-
-    if (typedUser.security.tokenVersion !== payload.tokenVersion) {
-      throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
-    }
-
-    // Check for inactivity timeout
-    const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(SESSION_CONSTANTS.DEFAULT_TIMEOUT_MS));
-
-    // Find session by comparing hashed refresh token (tokens are hashed in DB)
-    // Cannot use findOneAndUpdate because we need to compare bcrypt hash
-    const activeSessions = await Session.find({
-      userId: typedUser._id,
-      isRevoked: false,
-      expiresAt: { $gt: new Date() }
-    });
-
-    let updatedSession: ISession | null = null;
-    for (const session of activeSessions) {
-      const isMatch = await session.compareRefreshToken(token);
-      if (isMatch) {
-        updatedSession = session;
-        break;
+    try {
+      const payload = await verifyRefreshToken(token);
+      const user = await User.findById(payload.userId);
+      if (!user) {
+        throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
       }
-    }
+      // Assert type after null check
+      const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
 
-    if (!updatedSession) {
-      throw new AuthenticationError(
-        'Your session has expired. Please log in again to access your account.',
-        ErrorCode.AUTH_TOKEN_EXPIRED
+      if (typedUser.security.tokenVersion !== payload.tokenVersion) {
+        throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+      }
+
+      // Check for inactivity timeout (Issue #27: Use env variable)
+      const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(SESSION_CONSTANTS.DEFAULT_TIMEOUT_MS));
+
+      // ✅ FIX: Atomic session retrieval and activity update
+      // This eliminates the race condition between finding and updating session
+      // Searches for session by userId and current refreshToken
+      const updatedSession = await Session.findOneAndUpdate(
+        {
+          userId: typedUser._id,
+          refreshToken: token,
+          isRevoked: false,
+          expiresAt: { $gt: new Date() }
+        },
+        { $set: { lastActive: new Date() } },
+        { new: true }
       );
-    }
 
-    const lastActiveTime = updatedSession.lastActive?.getTime() || updatedSession.createdAt.getTime();
-    const timeSinceActive = Date.now() - lastActiveTime;
+      if (!updatedSession) {
+        throw new AuthenticationError(
+          'Your session has expired. Please log in again to access your account.',
+          ErrorCode.AUTH_TOKEN_EXPIRED
+        );
+      }
 
-    if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
-      updatedSession.isRevoked = true;
+      const lastActiveTime = updatedSession.lastActive?.getTime() || updatedSession.createdAt.getTime();
+      const timeSinceActive = Date.now() - lastActiveTime;
+
+      if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
+        updatedSession.isRevoked = true;
+        await updatedSession.save();
+
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+        throw new AuthenticationError(
+          'Your session expired due to inactivity. For security, please log in again.',
+          ErrorCode.AUTH_TOKEN_EXPIRED
+        );
+      }
+
+      const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
+
+      // TOKEN ROTATION: Generate a new refresh token for better security
+      const newRefreshToken = generateRefreshToken(
+        typedUser._id.toString(),
+        typedUser.security.tokenVersion || 0,
+        '7d'
+      );
+
+      // Update session with new refresh token FIRST (before revoking old one)
+      // This prevents race conditions where old token is blacklisted before client receives new one
+      updatedSession.refreshToken = newRefreshToken;
+      updatedSession.lastActive = new Date();
       await updatedSession.save();
 
-      res.clearCookie('accessToken');
-      res.clearCookie('refreshToken');
-      throw new AuthenticationError(
-        'Your session expired due to inactivity. For security, please log in again.',
-        ErrorCode.AUTH_TOKEN_EXPIRED
+      res.cookie(refreshCookieName, newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      // Set new access token as httpOnly cookie
+      res.cookie(accessCookieName, accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+
+      await createAuditLog(
+        typedUser._id.toString(),
+        typedUser.companyId,
+        'other',
+        'user',
+        typedUser._id.toString(),
+        { message: 'Token refreshed' },
+        req
       );
+
+      sendSuccess(res, {
+        user: UserDTO.toResponse(typedUser),
+      }, 'Token refreshed');
+
+      // ✅ CRITICAL FIX: Revoke old token AFTER sending response
+      // This prevents race conditions and gives client time to receive new token
+      // Use setImmediate to defer until after response is sent
+      setImmediate(async () => {
+        try {
+          await revokeRefreshToken(token);
+          logger.debug(`Old refresh token revoked after successful rotation for user ${typedUser._id}`);
+        } catch (err) {
+          logger.error('Error revoking old refresh token (non-critical):', err);
+        }
+      });
+    } catch (tokenError) {
+      logger.error('Token verification error:', tokenError);
+      // ✅ CRITICAL FIX: Pass error to Express error handler instead of throwing
+      next(new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID));
+      return;
     }
-
-    const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
-
-    // Calculate remaining session time to maintain original expiry (7d or 30d from login)
-    const now = Date.now();
-    const sessionExpiresAt = updatedSession.expiresAt.getTime();
-    const remainingTimeMs = sessionExpiresAt - now;
-    const remainingTimeDays = Math.ceil(remainingTimeMs / (24 * 60 * 60 * 1000));
-
-    // Generate new refresh token with remaining time (maintains remember me setting)
-    const tokenExpiry = `${remainingTimeDays}d`;
-    const newRefreshToken = generateRefreshToken(
-      typedUser._id.toString(),
-      typedUser.security.tokenVersion || 0,
-      tokenExpiry
-    );
-
-    // Update session with new token
-    updatedSession.refreshToken = newRefreshToken;
-    updatedSession.lastActive = new Date();
-    await updatedSession.save();
-
-    res.cookie(refreshCookieName, newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: remainingTimeMs, // Maintain original expiry
-    });
-
-    // Set new access token as httpOnly cookie
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
-    await createAuditLog(
-      typedUser._id.toString(),
-      typedUser.companyId,
-      'other',
-      'user',
-      typedUser._id.toString(),
-      { message: 'Token refreshed' },
-      req
-    );
-
-    logger.info(`✅ Token refresh SUCCESS for user ${typedUser._id}`);
-
-    sendSuccess(res, {
-      user: UserDTO.toResponse(typedUser),
-    }, 'Token refreshed');
-
-    // ✅ CRITICAL FIX: Revoke old token AFTER sending response
-    // This prevents race conditions and gives client time to receive new token
-    // Use setImmediate to defer until after response is sent
-    setImmediate(async () => {
-      try {
-        await revokeRefreshToken(token);
-        logger.debug(`Old refresh token revoked after successful rotation for user ${typedUser._id}`);
-      } catch (err) {
-        logger.error('Error revoking old refresh token (non-critical):', err);
-      }
-    });
   } catch (error) {
     logger.error('Token refresh error:', error);
-    next(error); // Let Express error handler deal with it
+    // ✅ CRITICAL FIX: Pass error to Express error handler instead of throwing
+    next(new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID));
+    return;
   }
 };
 
@@ -758,8 +752,8 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Cookie names with secure prefix in production
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
 
     const refreshToken = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken;
 
@@ -896,8 +890,8 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
 
     // ✅ Set httpOnly cookies
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
 
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
@@ -1154,8 +1148,8 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     );
 
     // Set httpOnly cookies (same as regular login)
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
 
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
@@ -1734,8 +1728,8 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
 
     // Set httpOnly cookies
-    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
-    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
 
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,

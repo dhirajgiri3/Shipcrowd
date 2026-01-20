@@ -6,46 +6,25 @@
  */
 
 // API Client
-export { apiClient, normalizeError, isApiEnabled } from './config/client';
-export type { ApiError } from './config/client';
+export * from './client';
 
-// Auth API
+// API Clients (endpoints)
 export { authApi } from './clients/authApi';
-// export type {
-//     AuthUser,
-//     LoginCredentials,
-//     LoginResponse,
-//     RegisterData,
-//     RegisterResponse,
-//     ChangePasswordData,
-//     ChangeEmailData,
-//     PasswordStrengthResponse,
-// } from './authApi';
-
-// Company API
 export { companyApi } from './clients/companyApi';
-// export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './clients/companyApi';
-
-// KYC API
+export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './clients/companyApi';
 export { kycApi } from './clients/kycApi';
-// export type { KYCData, KYCDocument, SubmitKYCRequest, VerifyPANRequest, VerifyBankAccountRequest, VerifyGSTINRequest } from './clients/kycApi';
-
-// Other APIs
 export { consentApi } from './clients/consentApi';
 export { orderApi } from './clients/orderApi';
 export { recoveryApi } from './clients/recoveryApi';
 export { sessionApi } from './clients/sessionApi';
 export { trackingApi } from './clients/trackingApi';
 
-// Queries & Utils
-export { optimisticListUpdate } from './queries/optimisticUpdates';
-export { requestDeduplicator } from './lib/requestDeduplication';
+// React Query Configuration
+export * from './config';
 
-// Error Handling (Legacy - should move to lib/utils/error-handler)
-// export { handleApiError, showSuccessToast, showInfoToast } from '@/src/lib/error';
+// Utilities
+export * from './lib';
 
-// React Query Hooks (Already in separate folder)
+// React Query Hooks
 export * from './hooks';
 
-// OpenAPI Types
-// export type { components, paths } from './types/api';

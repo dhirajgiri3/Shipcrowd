@@ -32,18 +32,15 @@ export function SellerLayoutClient({
     const { user, isInitialized } = useAuth();
 
     // Check if user has completed onboarding (has a company)
-    useEffect(() => {
-        if (!isInitialized) return;
-
-        // Skip check if already on onboarding page
-        if (pathname?.startsWith('/onboarding')) return;
-
-        // If authenticated user has no company, redirect to onboarding
-        if (user && !user.companyId) {
-            console.log('[SellerLayout] User has no company - redirecting to onboarding');
-            router.push('/onboarding');
-        }
-    }, [user, isInitialized, pathname, router]);
+    // REMOVED: Hard redirect trap - users can now access dashboard in limited mode
+    // useEffect(() => {
+    //     if (!isInitialized) return;
+    //     if (pathname?.startsWith('/onboarding')) return;
+    //     if (user && !user.companyId) {
+    //         console.log('[SellerLayout] User has no company - redirecting to onboarding');
+    //         router.push('/onboarding');
+    //     }
+    // }, [user, isInitialized, pathname, router]);
 
     return (
         <AuthGuard requiredRole="seller" redirectTo="/login">

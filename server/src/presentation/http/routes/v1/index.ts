@@ -103,6 +103,8 @@ router.use('/onboarding', onboardingRoutes);
 // Phase 2: Address Validation
 import addressRoutes from './logistics/address.routes';
 router.use('/logistics/address', addressRoutes);
+router.use('/serviceability/address', addressRoutes); // Alias for backward compatibility
+router.use('/serviceability', addressRoutes); // Direct mount for /serviceability/pincode/:pincode/info
 
 // Pincode routes
 import pincodeRoutes from './logistics/pincode.routes';

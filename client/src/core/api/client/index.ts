@@ -1,5 +1,16 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { requestDeduplicator, deduplicationMetrics } from '../lib/requestDeduplication';
+import {
+    csrfManager,
+    resetAuthState,
+    isRefreshBlocked,
+    setCircuitBreaker,
+    getRefreshState,
+    setRefreshState,
+    incrementRefreshAttempt,
+    resetRefreshAttempt,
+    addToFailedQueue,
+    processQueue,
+} from './auth';
 
 /**
  * Normalized API error format
@@ -10,151 +21,6 @@ export interface ApiError {
     field?: string;
     details?: any;
 }
-
-/**
- * CSRF Token Manager
- * Handles fetching and caching CSRF tokens
- */
-class CSRFTokenManager {
-    private token: string | null = null;
-    private isFetching: boolean = false;
-    private fetchPromise: Promise<string> | null = null;
-
-    async getToken(): Promise<string> {
-        // Return cached token if available
-        if (this.token) {
-            return this.token;
-        }
-
-        // If already fetching, wait for that request
-        if (this.isFetching && this.fetchPromise) {
-            return this.fetchPromise;
-        }
-
-        // Fetch new token
-        this.isFetching = true;
-        this.fetchPromise = this.fetchNewToken();
-
-        try {
-            this.token = await this.fetchPromise;
-            return this.token;
-        } finally {
-            this.isFetching = false;
-            this.fetchPromise = null;
-        }
-    }
-
-    private async fetchNewToken(): Promise<string> {
-        try {
-            // Use a separate axios instance to avoid circular dependency
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1'}/auth/csrf-token`,
-                { withCredentials: true }
-            );
-
-            // Backend returns: { success: true, data: { csrfToken: string } }
-            const token = response.data.data?.csrfToken;
-
-            // ✅ Validate token format (64-character hex string from crypto.randomBytes(32))
-            if (!token || token.length !== 64 || !/^[a-f0-9]{64}$/.test(token)) {
-                throw new Error('Invalid CSRF token format received from server');
-            }
-
-            return token;
-        } catch (error: any) {
-            // ❌ DO NOT fallback to static string - this breaks production security
-            console.error('[CSRF] Failed to fetch CSRF token:', error.message || error);
-
-            // Throw error - let the mutation fail with proper error message
-            throw new Error(
-                'Failed to fetch CSRF token. Please refresh the page and try again.'
-            );
-        }
-    }
-
-    clearToken() {
-        this.token = null;
-    }
-}
-
-const csrfManager = new CSRFTokenManager();
-
-// ✅ Token Refresh Mutex & Queue
-// Prevents multiple simultaneous refresh requests
-let isRefreshing = false;
-let failedQueue: Array<{
-    resolve: (value?: unknown) => void;
-    reject: (reason?: any) => void;
-}> = [];
-
-// ✅ Circuit Breaker State (Persisted)
-// Prevents infinite retry loops after refresh failure across reloads
-const CB_KEY = 'auth_cb_state';
-
-const getCBState = () => {
-    if (typeof window === 'undefined') return { blocked: false, time: 0 };
-    try {
-        const stored = sessionStorage.getItem(CB_KEY);
-        return stored ? JSON.parse(stored) : { blocked: false, time: 0 };
-    } catch {
-        return { blocked: false, time: 0 };
-    }
-};
-
-const setCBState = (blocked: boolean, time: number) => {
-    if (typeof window === 'undefined') return;
-    try {
-        sessionStorage.setItem(CB_KEY, JSON.stringify({ blocked, time }));
-    } catch { }
-};
-
-let refreshAttemptCount = 0;
-const MAX_REFRESH_ATTEMPTS = 3;
-const COOLDOWN_MS = 5000; // 5 seconds
-
-const processQueue = (error: any, token: string | null = null) => {
-    failedQueue.forEach((prom) => {
-        if (error) {
-            prom.reject(error);
-        } else {
-            prom.resolve(token);
-        }
-    });
-    failedQueue = [];
-};
-
-/**
- * Reset all auth state (circuit breaker, refresh flags)
- * Call on login/logout to ensure clean slate
- */
-export const resetAuthState = () => {
-    setCBState(false, 0);
-    refreshAttemptCount = 0;
-    isRefreshing = false;
-    failedQueue = [];
-    if (process.env.NODE_ENV === 'development') {
-        console.log('[Auth] ✅ Circuit breaker RESET');
-    }
-};
-
-/**
- * Check if circuit breaker is currently blocking refresh attempts
- */
-export const isRefreshBlocked = (): boolean => {
-    const { blocked, time } = getCBState();
-    if (!blocked) return false;
-
-    const timeSinceFailure = Date.now() - time;
-    if (timeSinceFailure >= COOLDOWN_MS) {
-        // Cooldown expired, allow retry
-        setCBState(false, 0);
-        refreshAttemptCount = 0;
-        return false;
-    }
-
-    return true;
-};
-
 
 /**
  * Get and validate base API URL
@@ -206,11 +72,6 @@ const getBaseURL = (): string => {
     return apiUrl || 'http://localhost:5005/api/v1';
 };
 
-/**
- * Pre-fetch CSRF token to ensure it's available before first mutation
- */
-export const prefetchCSRFToken = () => csrfManager.getToken();
-
 const createApiClient = (): AxiosInstance => {
     const baseURL = getBaseURL();
 
@@ -228,14 +89,6 @@ const createApiClient = (): AxiosInstance => {
      */
     client.interceptors.request.use(
         async (config: InternalAxiosRequestConfig) => {
-            // Deduplication check for GET requests
-            if (config.method?.toUpperCase() === 'GET') {
-                if (requestDeduplicator.isRequestPending(config)) {
-                    // Mark as deduplicated for analytics
-                    (config as any).deduplicated = true;
-                }
-            }
-
             // Add CSRF token for state-changing requests
             if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
                 // Check if CSRF token is already set (from function call)
@@ -317,29 +170,16 @@ const createApiClient = (): AxiosInstance => {
                     return Promise.reject(normalizeError(error));
                 }
 
-                // ✅ Fix #2: Check circuit breaker before attempting refresh
-                const { blocked: isBlocked, time: failTime } = getCBState();
-                if (isBlocked) {
-                    const timeSinceFailure = Date.now() - failTime;
+                const refreshState = getRefreshState();
 
-                    if (timeSinceFailure < COOLDOWN_MS) {
-                        if (process.env.NODE_ENV === 'development') {
-                            console.warn('[Auth] 🚨 Circuit breaker ACTIVE - blocking refresh attempt');
-                        }
-                        return Promise.reject(normalizeError(error));
-                    } else {
-                        // Cooldown expired, reset
-                        setCBState(false, 0);
-                        refreshAttemptCount = 0;
-                    }
+                // Check circuit breaker
+                if (isRefreshBlocked()) {
+                    return Promise.reject(normalizeError(error));
                 }
 
-                // ✅ Check max attempts
-                if (refreshAttemptCount >= MAX_REFRESH_ATTEMPTS) {
-                    if (process.env.NODE_ENV === 'development') {
-                        console.error('[Auth] 🚨 Max refresh attempts reached, circuit breaker TRIPPED');
-                    }
-                    setCBState(true, Date.now());
+                // Check max attempts
+                if (refreshState.refreshAttemptCount >= refreshState.MAX_REFRESH_ATTEMPTS) {
+                    setCircuitBreaker(true);
 
                     if (typeof window !== 'undefined') {
                         const currentPath = window.location.pathname;
@@ -352,72 +192,44 @@ const createApiClient = (): AxiosInstance => {
                     return Promise.reject(normalizeError(error));
                 }
 
-                // ✅ If already refreshing, queue this request
-                if (isRefreshing) {
+                // If already refreshing, queue this request
+                if (refreshState.isRefreshing) {
                     return new Promise((resolve, reject) => {
-                        failedQueue.push({ resolve, reject });
-                    })
-                        .then(() => {
-                            // ✅ Fix #4: Mark queued request as retried before processing
-                            originalRequest._retry = true;
-                            return client(originalRequest);
-                        })
-                        .catch((err) => {
-                            return Promise.reject(err);
-                        });
+                        addToFailedQueue(resolve, reject);
+                    }).then(() => {
+                        originalRequest._retry = true;
+                        return client(originalRequest);
+                    });
                 }
 
                 originalRequest._retry = true;
-                isRefreshing = true;
-                refreshAttemptCount++;
-
-                if (process.env.NODE_ENV === 'development') {
-                    console.log(`[Auth] Refresh attempt ${refreshAttemptCount}/${MAX_REFRESH_ATTEMPTS}`);
-                }
+                setRefreshState(true);
+                incrementRefreshAttempt();
 
                 try {
-                    // Token refresh will set new cookies automatically
                     await client.post('/auth/refresh');
 
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log('[Auth] ✅ Token refresh SUCCESS');
-                    }
-
-                    // ✅ Reset on success
-                    refreshAttemptCount = 0;
-                    setCBState(false, 0);
-
-                    // ✅ Process queue on success
+                    resetRefreshAttempt();
+                    setCircuitBreaker(false);
                     processQueue(null);
 
-                    // Retry the original request
                     return client(originalRequest);
-                } catch (refreshError) {
-                    if (process.env.NODE_ENV === 'development') {
-                        console.error('[Auth] ❌ Token refresh FAILED');
-                    }
-
-                    // ✅ Set circuit breaker on failure
-                    setCBState(true, Date.now());
-
-                    // ✅ Process queue on failure
+                } catch (refreshError: any) {
+                    setCircuitBreaker(true);
                     processQueue(refreshError, null);
+                    resetAuthState();
 
-                    // Refresh failed - redirect to login ONLY if not already on auth pages
                     if (typeof window !== 'undefined') {
                         const currentPath = window.location.pathname;
-
-                        // Import check function - uses centralized routes config
                         const { shouldNotRedirectOnAuthFailure } = await import('@/src/config/routes');
 
-                        // Only redirect if not on a public page
                         if (!shouldNotRedirectOnAuthFailure(currentPath)) {
-                            window.location.href = '/login?auth_error=session_expired';
+                            window.location.href = '/login?session_expired=true';
                         }
                     }
                     return Promise.reject(normalizeError(error));
                 } finally {
-                    isRefreshing = false;
+                    setRefreshState(false);
                 }
             }
 
@@ -618,9 +430,5 @@ export const isApiEnabled = (): boolean => {
     return process.env.NEXT_PUBLIC_API_ENABLED !== 'false';
 };
 
-/**
- * Clear CSRF token (call on logout)
- */
-export const clearCSRFToken = () => {
-    csrfManager.clearToken();
-};
+// Re-export auth utilities
+export { resetAuthState, isRefreshBlocked, prefetchCSRFToken, clearCSRFToken } from './auth';

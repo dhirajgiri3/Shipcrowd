@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../../config/client';
-import { queryKeys } from '../../config/queryKeys';
+import { apiClient } from '../../client';
+import { queryKeys } from '../../config/query-keys';
 
 export interface RecentCustomer {
     id: string;
@@ -33,10 +33,17 @@ export const useRecentCustomers = (options: UseRecentCustomersOptions = {}) => {
     return useQuery<RecentCustomer[]>({
         queryKey: queryKeys.analytics.recentCustomers(limit),
         queryFn: async () => {
-            const response = await apiClient.get('/analytics/recent-customers', {
-                params: { limit },
-            });
-            return response.data.customers as RecentCustomer[];
+            try {
+                const response = await apiClient.get('/analytics/recent-customers', {
+                    params: { limit },
+                });
+                // Backend returns { success: true, data: [...customers...] }
+                return (response.data || []) as RecentCustomer[];
+            } catch (error) {
+                // Return empty array on error to prevent undefined
+                console.error('[Recent Customers] Failed to fetch:', error);
+                return [];
+            }
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: 2,

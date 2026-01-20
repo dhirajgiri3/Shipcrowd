@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '../config/client';
+import { apiClient, ApiError } from '../client';
 
 export interface TrackingTimelineEvent {
     status: string;

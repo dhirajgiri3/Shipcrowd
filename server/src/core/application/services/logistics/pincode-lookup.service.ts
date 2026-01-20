@@ -251,6 +251,74 @@ class PincodeLookupService {
         };
     }
 
+
+    /**
+     * Search for address suggestions (city/state) based on query string
+     * Used for autocomplete in address fields
+     * 
+     * Returns both pincode-based and text-matched results
+     */
+    public searchAddressSuggestions(query: string): PincodeDetails[] {
+        if (!query || query.length < 1) {
+            return [];
+        }
+
+        const q = query.trim().toUpperCase();
+        const results: Map<string, PincodeDetails> = new Map(); // Use map to avoid duplicates
+        const seenCities: Set<string> = new Set();
+
+        // Search through all pincodes
+        for (const [pincode, details] of this.pincodeCache) {
+            const { city, state } = details;
+            
+            // Match by pincode
+            if (pincode.includes(q)) {
+                const key = `${city}|${state}|${pincode}`;
+                if (!results.has(key)) {
+                    results.set(key, details);
+                }
+                seenCities.add(city);
+            }
+            
+            // Match by city name
+            if (city.includes(q)) {
+                const key = `${city}|${state}|${pincode}`;
+                if (!results.has(key)) {
+                    results.set(key, details);
+                }
+                seenCities.add(city);
+            }
+            
+            // Match by state name
+            if (state.includes(q)) {
+                const key = `${city}|${state}|${pincode}`;
+                if (!results.has(key)) {
+                    results.set(key, details);
+                }
+                seenCities.add(city);
+            }
+
+            // Limit results to prevent large responses
+            if (results.size >= 50) {
+                break;
+            }
+        }
+
+        // Convert map to array and sort
+        const suggestions = Array.from(results.values());
+        
+        // Sort by relevance: exact match first, then by city name
+        suggestions.sort((a, b) => {
+            // If query matches city exactly, prioritize it
+            if (a.city.startsWith(q) && !b.city.startsWith(q)) return -1;
+            if (!a.city.startsWith(q) && b.city.startsWith(q)) return 1;
+            
+            // Otherwise sort alphabetically by city
+            return a.city.localeCompare(b.city);
+        });
+
+        return suggestions.slice(0, 50); // Return top 50 results
+    }
     /**
      * Clear cache (for testing purposes)
      */

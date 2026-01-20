@@ -5,8 +5,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../config/client';
-import { queryKeys } from '../../config/queryKeys';
+import { apiClient } from '../../client';
+import { queryKeys } from '../../config/query-keys';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import type {
     FraudResponse,

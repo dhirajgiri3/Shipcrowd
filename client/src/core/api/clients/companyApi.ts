@@ -3,7 +3,7 @@
  * Handles company creation and management
  */
 
-import { apiClient } from '../config/client';
+import { apiClient } from '../client';
 
 // Types
 export interface CompanyAddress {

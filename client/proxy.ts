@@ -3,9 +3,10 @@ import type { NextRequest } from 'next/server';
 import { isPublicRoute, isAdminRoute, isSellerRoute, isGuestOnlyRoute } from '@/src/config/routes';
 
 /**
- * Next.js Middleware for Authentication and Route Protection
+ * Next.js Proxy for Authentication and Route Protection
+ * (Next.js 16+ uses proxy instead of middleware)
  *
- * This middleware runs before every request and checks authentication status.
+ * This proxy runs before every request and checks authentication status.
  * It protects private routes and redirects unauthenticated users to login.
  */
 

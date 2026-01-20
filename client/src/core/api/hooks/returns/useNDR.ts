@@ -10,8 +10,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/config/client';
-import { queryKeys } from '@/src/core/api/config/queryKeys';
+import { apiClient } from '@/src/core/api/client';
+import { queryKeys } from '@/src/core/api/config/query-keys';
 import type {
     NDRCase,
     NDRFilters,

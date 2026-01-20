@@ -352,6 +352,9 @@ class WeightDisputeResolutionService {
      * - shipcrowd_favor: Deduct from seller wallet
      * - split: Partial refund/deduction
      * - waived: No financial impact
+     * 
+     * NOTE: Does NOT throw errors. Financial failures are logged but don't abort dispute resolution.
+     * This prevents infinite retry loops when wallet operations fail.
      */
     private async processFinancialSettlement(dispute: any): Promise<void> {
         try {
@@ -359,45 +362,12 @@ class WeightDisputeResolutionService {
 
             // Seller favor: Refund to wallet
             if (outcome === 'seller_favor' && refundAmount && refundAmount > 0) {
-                const result = await WalletService.credit(
-                    dispute.companyId.toString(),
-                    refundAmount,
-                    'other', // TransactionReason
-                    `Weight dispute refund for shipment ${dispute.shipmentId}`,
-                    {
-                        type: 'shipment',
-                        id: dispute.shipmentId.toString(),
-                        externalId: dispute.disputeId,
-                    },
-                    'system'
-                );
-
-                if (result.success && result.transactionId) {
-                    dispute.walletTransactionId = new mongoose.Types.ObjectId(result.transactionId);
-                }
-
-                logger.info('Wallet credited for dispute resolution', {
-                    disputeId: dispute.disputeId,
-                    amount: refundAmount,
-                    transactionId: result.transactionId,
-                });
-            }
-
-            // ShipCrowd favor or split: Deduct from wallet
-            if (
-                (outcome === 'shipcrowd_favor' || outcome === 'split') &&
-                deductionAmount &&
-                deductionAmount > 0
-            ) {
-                // Check wallet balance first
-                const balanceInfo = await WalletService.getBalance(dispute.companyId.toString());
-
-                if (balanceInfo.balance >= deductionAmount) {
-                    const result = await WalletService.debit(
+                try {
+                    const result = await WalletService.credit(
                         dispute.companyId.toString(),
-                        deductionAmount,
+                        refundAmount,
                         'other', // TransactionReason
-                        `Weight dispute deduction for shipment ${dispute.shipmentId}`,
+                        `Weight dispute refund for shipment ${dispute.shipmentId}`,
                         {
                             type: 'shipment',
                             id: dispute.shipmentId.toString(),
@@ -410,28 +380,96 @@ class WeightDisputeResolutionService {
                         dispute.walletTransactionId = new mongoose.Types.ObjectId(result.transactionId);
                     }
 
-                    logger.info('Wallet debited for dispute resolution', {
+                    logger.info('Wallet credited for dispute resolution', {
                         disputeId: dispute.disputeId,
-                        amount: deductionAmount,
+                        amount: refundAmount,
                         transactionId: result.transactionId,
                     });
-                } else {
-                    // Insufficient balance - mark shipment for payment pending
-                    await Shipment.findByIdAndUpdate(dispute.shipmentId, {
-                        $set: {
-                            'paymentPending.amount': deductionAmount,
-                            'paymentPending.reason': 'weight_dispute',
-                            'paymentPending.disputeId': dispute.disputeId,
-                        },
-                    });
-
-                    logger.warn('Insufficient wallet balance for dispute deduction', {
+                } catch (walletError) {
+                    logger.error('Failed to credit wallet for dispute refund', {
                         disputeId: dispute.disputeId,
-                        required: deductionAmount,
-                        available: balanceInfo.balance,
+                        amount: refundAmount,
+                        error: walletError instanceof Error ? walletError.message : walletError,
                     });
+                    // Do NOT rethrow - allow dispute to be marked as resolved despite wallet failure
+                    // This will be retried later or handled by finance team
+                }
+            }
 
-                    // TODO: Notify finance team (Phase 5)
+            // ShipCrowd favor or split: Deduct from wallet
+            if (
+                (outcome === 'shipcrowd_favor' || outcome === 'split') &&
+                deductionAmount &&
+                deductionAmount > 0
+            ) {
+                try {
+                    // Check wallet balance first
+                    const balanceInfo = await WalletService.getBalance(dispute.companyId.toString());
+
+                    if (balanceInfo.balance >= deductionAmount) {
+                        const result = await WalletService.debit(
+                            dispute.companyId.toString(),
+                            deductionAmount,
+                            'other', // TransactionReason
+                            `Weight dispute deduction for shipment ${dispute.shipmentId}`,
+                            {
+                                type: 'shipment',
+                                id: dispute.shipmentId.toString(),
+                                externalId: dispute.disputeId,
+                            },
+                            'system'
+                        );
+
+                        if (result.success && result.transactionId) {
+                            dispute.walletTransactionId = new mongoose.Types.ObjectId(result.transactionId);
+                        }
+
+                        logger.info('Wallet debited for dispute resolution', {
+                            disputeId: dispute.disputeId,
+                            amount: deductionAmount,
+                            transactionId: result.transactionId,
+                        });
+                    } else {
+                        // Insufficient balance - mark shipment for payment pending
+                        await Shipment.findByIdAndUpdate(dispute.shipmentId, {
+                            $set: {
+                                'paymentPending.amount': deductionAmount,
+                                'paymentPending.reason': 'weight_dispute',
+                                'paymentPending.disputeId': dispute.disputeId,
+                            },
+                        });
+
+                        logger.warn('Insufficient wallet balance for dispute deduction', {
+                            disputeId: dispute.disputeId,
+                            required: deductionAmount,
+                            available: balanceInfo.balance,
+                        });
+
+                        // TODO: Notify finance team (Phase 5)
+                    }
+                } catch (walletError) {
+                    logger.error('Failed to debit wallet for dispute deduction', {
+                        disputeId: dispute.disputeId,
+                        amount: deductionAmount,
+                        error: walletError instanceof Error ? walletError.message : walletError,
+                    });
+                    // Do NOT rethrow - allow dispute to be marked as resolved despite wallet failure
+                    // Shipment will be marked as paymentPending to be reconciled later
+                    try {
+                        await Shipment.findByIdAndUpdate(dispute.shipmentId, {
+                            $set: {
+                                'paymentPending.amount': deductionAmount,
+                                'paymentPending.reason': 'weight_dispute_wallet_error',
+                                'paymentPending.disputeId': dispute.disputeId,
+                                'paymentPending.errorNote': walletError instanceof Error ? walletError.message : String(walletError),
+                            },
+                        });
+                    } catch (shipmentError) {
+                        logger.error('Failed to mark shipment as paymentPending', {
+                            shipmentId: dispute.shipmentId,
+                            error: shipmentError instanceof Error ? shipmentError.message : shipmentError,
+                        });
+                    }
                 }
             }
 
@@ -442,11 +480,11 @@ class WeightDisputeResolutionService {
                 });
             }
         } catch (error) {
-            logger.error('Error processing financial settlement', {
+            logger.error('Unexpected error in financial settlement processing', {
                 disputeId: dispute.disputeId,
                 error: error instanceof Error ? error.message : error,
             });
-            throw error;
+            // Do NOT rethrow - this is a non-blocking operation
         }
     }
 

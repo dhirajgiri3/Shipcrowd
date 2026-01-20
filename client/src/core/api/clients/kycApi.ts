@@ -3,7 +3,7 @@
  * Handles KYC verification and document submission
  */
 
-import { apiClient } from '../config/client';
+import { apiClient } from '../client';
 
 // Types
 export interface KYCDocument {

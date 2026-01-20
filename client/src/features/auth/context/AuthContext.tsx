@@ -5,8 +5,7 @@ import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedEr
 import { authApi } from '@/src/core/api/clients/authApi';
 import { sessionApi, type Session } from '@/src/core/api/clients/sessionApi';
 import { companyApi } from '@/src/core/api/clients/companyApi';
-import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/config/client';
-import { normalizeError } from '@/src/core/api/config/client';
+import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked, normalizeError } from '@/src/core/api/client';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 /**
@@ -121,66 +120,77 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearInterval(refreshIntervalRef.current);
     }
 
-    // Reset refresh timestamp
-    lastRefreshRef.current = Date.now();
+    // CONFIG: Refresh every 10 mins (access token expires at 15 mins)
+    // This gives 5 minutes buffer and handles page reloads gracefully
+    const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
-    // Check every minute
-    refreshIntervalRef.current = setInterval(async () => {
+    // Perform refresh immediately on first call (if needed)
+    const performRefresh = async () => {
       const now = Date.now();
-      const timeSinceRefresh = now - lastRefreshRef.current;
       const timeSinceActivity = now - lastActivityRef.current;
+      const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
 
-      // CONFIG: Refresh after 14 mins
-      const REFRESH_THRESHOLD = 14 * 60 * 1000;
-      // CONFIG: Stop refreshing if inactive for 20 mins
-      const INACTIVITY_TIMEOUT = 20 * 60 * 1000;
+      // Only refresh if user has been active recently
+      if (timeSinceActivity >= INACTIVITY_TIMEOUT) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] Skipping refresh - User inactive');
+        }
+        return;
+      }
 
-      // Only attempt refresh if time threshold met
-      if (timeSinceRefresh >= REFRESH_THRESHOLD) {
-        // ✅ Only refresh if user has been active recently
-        if (timeSinceActivity < INACTIVITY_TIMEOUT) {
-          // ✅ Check circuit breaker before attempting refresh
-          if (isRefreshBlocked()) {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('[Auth] Skipping refresh - circuit breaker active');
-            }
-            // Clear interval to stop further attempts
-            if (refreshIntervalRef.current) {
-              clearInterval(refreshIntervalRef.current);
-              refreshIntervalRef.current = null;
-            }
-            return;
-          }
+      // Check circuit breaker before attempting refresh
+      if (isRefreshBlocked()) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Auth] Skipping refresh - circuit breaker active');
+        }
+        // Clear interval to stop further attempts
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+        return;
+      }
 
-          try {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[Auth] Refreshing token (Active Session)');
-            }
-            // ✅ Fix #1: Use user data from refresh response
-            const response = await authApi.refreshToken();
-            if (response?.data?.user) {
-              setUser(response.data.user);
-            }
-            // Update last refresh time on success
-            lastRefreshRef.current = Date.now();
-          } catch (err) {
-            // Token refresh failed - session expired
-            console.error('[Auth] Refresh failed', err);
-            setUser(null);
-            if (refreshIntervalRef.current) {
-              clearInterval(refreshIntervalRef.current);
-              refreshIntervalRef.current = null;
-            }
-          }
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] Skipping refresh - User inactive');
-          }
-          // Do nothing, let token expire naturally. 
-          // Next user action will trigger 401 -> retry -> refresh (if refresh token valid)
+      try {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] Refreshing token (Active Session)', {
+            timeSinceActivity: Math.floor(timeSinceActivity / 1000),
+            timestamp: new Date().toLocaleTimeString(),
+          });
+        }
+
+        const response = await authApi.refreshToken();
+        if (response?.data?.user) {
+          setUser(response.data.user);
+        }
+
+        // Update last refresh time on success
+        lastRefreshRef.current = Date.now();
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] ✅ Token refresh successful');
+        }
+      } catch (err) {
+        // Token refresh failed - session expired
+        console.error('[Auth] Refresh failed', err);
+        setUser(null);
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
         }
       }
-    }, 60 * 1000); // Check every minute
+    };
+
+    // Reset timestamps
+    lastRefreshRef.current = Date.now();
+    lastActivityRef.current = Date.now();
+
+    // Set up interval to refresh every 10 minutes
+    refreshIntervalRef.current = setInterval(performRefresh, REFRESH_INTERVAL);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Auth] Token refresh timer started (every 10 minutes)');
+    }
   }, []);
 
   /**
@@ -202,6 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const userData = await authApi.getMe(true);
       setUser(userData);
+      // ✅ Start auto-refresh timer for existing sessions
       setupTokenRefresh();
     } catch (err) {
       // User not authenticated - expected for public pages
@@ -275,6 +286,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         prefetchCSRFToken().catch(console.warn);
 
         setUser(userData);
+        // ✅ Update activity timestamp on login
+        lastActivityRef.current = Date.now();
         setupTokenRefresh(); // Start refresh timer on successful login
 
         // ✅ Broadcast LOGIN event to other tabs (ONLY on success)
@@ -289,6 +302,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
 
+        showSuccessToast('Welcome back!');
         return { success: true, user: userData };
       } catch (err) {
         const normalizedErr = normalizeError(err as any);

@@ -41,7 +41,7 @@ function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectPath = searchParams.get('redirect');
-    const { login, isLoading, isInitialized, isAuthenticated } = useAuth();
+    const { login, isLoading, isInitialized, isAuthenticated, user } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
@@ -51,14 +51,18 @@ function LoginForm() {
 
     // Redirect if already authenticated
     useEffect(() => {
-        if (isInitialized && isAuthenticated) {
-            if (redirectPath && redirectPath !== '/') {
+        if (isInitialized && isAuthenticated && user) {
+            // Prioritize explicit redirect path from URL
+            if (redirectPath && redirectPath !== '/' && redirectPath !== '/login') {
                 router.push(redirectPath);
-            } else {
-                router.push('/seller');
+                return;
             }
+
+            // Role-based redirection
+            const destination = user.role === 'admin' ? '/admin' : '/seller';
+            router.push(destination);
         }
-    }, [isInitialized, isAuthenticated, router, redirectPath]);
+    }, [isInitialized, isAuthenticated, user, router, redirectPath]);
 
     // Don't render until auth is initialized
     if (!isInitialized) {
@@ -96,17 +100,7 @@ function LoginForm() {
 
         const result = await login({ email, password, rememberMe });
 
-        if (result.success) {
-            showSuccessToast('Welcome back!');
-
-            // Redirect to original destination if present, otherwise role-based default
-            if (redirectPath && redirectPath !== '/') {
-                router.push(redirectPath);
-            } else {
-                const destination = result.user?.role === 'admin' ? '/admin' : '/seller';
-                router.push(destination);
-            }
-        } else {
+        if (!result.success) {
             const errorMessage = result.error?.message || 'Login failed. Please try again.';
             setLocalError(errorMessage);
         }

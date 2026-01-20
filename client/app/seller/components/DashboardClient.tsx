@@ -37,6 +37,7 @@ import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
 import { ActionsRequired } from '@/src/components/seller/ActionsRequired';
 import { QuickCreate } from '@/src/components/seller/QuickCreate';
 import { SmartInsights } from '@/src/components/seller/SmartInsights';
+import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBanner';
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -137,7 +138,7 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
 
             {/* Micro-Chart: Minimalist */}
             <div className="h-10 mt-4 -mx-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={40}>
                     <AreaChart data={data || revenueDataDaily}>
                         <defs>
                             <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
@@ -277,6 +278,9 @@ export function DashboardClient() {
                 </div>
             </header>
 
+            {/* Setup Banner - Show if user hasn't completed onboarding */}
+            <DashboardSetupBanner />
+
             {/* 🎯 ACTIONS REQUIRED */}
             {totalActions > 0 && (
                 <ActionsRequired
@@ -345,6 +349,9 @@ export function DashboardClient() {
                 />
             </motion.section>
 
+            {/* 💡 OPTIMIZATION TIPS - Full Width Section */}
+            <SmartInsights />
+
             {/* 3. Main Dashboard Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -386,7 +393,7 @@ export function DashboardClient() {
                             </div>
                         </div>
                         <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={350}>
                                 <AreaChart data={chartData}>
                                     <defs>
                                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -517,15 +524,15 @@ export function DashboardClient() {
                                 </button>
                             </Link>
                         </div>
-                        <div className="h-[250px] relative">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="h-[250px] w-full relative">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={250} minWidth={200}>
                                 <RechartsPieChart>
                                     <Pie
                                         data={orderStatusData}
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
+                                        innerRadius="40%"
+                                        outerRadius="65%"
                                         paddingAngle={5}
                                         dataKey="value"
                                     >
@@ -617,11 +624,6 @@ export function DashboardClient() {
                         </div>
                     </motion.div>
 
-
-                    {/* Smart Insights */}
-                    <div className="mt-8">
-                        <SmartInsights />
-                    </div>
 
                 </div>
             </div>
