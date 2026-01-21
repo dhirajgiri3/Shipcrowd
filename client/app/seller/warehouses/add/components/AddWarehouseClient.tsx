@@ -47,14 +47,24 @@ export function AddWarehouseClient() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     const createWarehouseMutation = useCreateWarehouse({
         onSuccess: (warehouse) => {
             showSuccessToast(`Warehouse "${warehouse.name}" created successfully!`);
             router.push('/seller/warehouses');
         },
-        onError: (error) => {
-            handleApiError(error, 'Failed to create warehouse');
+        onError: (error: any) => {
+            // Check if it's a field-specific validation error
+            if (error?.field) {
+                // Set inline error for the specific field
+                setFieldErrors({ [error.field]: error.message });
+                handleApiError(error, 'Validation failed');
+            } else {
+                // General error
+                setFieldErrors({});
+                handleApiError(error, 'Failed to create warehouse');
+            }
         },
     });
 
@@ -103,8 +113,17 @@ export function AddWarehouseClient() {
     }
 
     const handleInputChange = (field: keyof FormState, value: any) => {
+        console.log(`🔄 Field "${field}" changed to:`, value);
         setFormData((prev) => ({ ...prev, [field]: value }));
         if (error) setError(null);
+        // Clear field-specific error when user starts typing
+        if (fieldErrors[field as string]) {
+            setFieldErrors(prev => {
+                const updated = { ...prev };
+                delete updated[field as string];
+                return updated;
+            });
+        }
     };
 
     const handleAddressChange = (field: string, value: string) => {
@@ -168,9 +187,11 @@ export function AddWarehouseClient() {
     };
 
     const nextStep = () => {
-        // TODO: Re-enable validation before production
-        // Temporarily disabled for development to allow navigation between steps
-        // Development mode: Validation bypassed
+        // Validate current step before proceeding
+        if (!validateCurrentStep()) {
+            return;
+        }
+
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
         }
@@ -186,8 +207,8 @@ export function AddWarehouseClient() {
     const handleSubmit = async () => {
         if (!validateCurrentStep()) return;
 
-        // Transform UI operating hours to backend format
-        const { uiOperatingHours, whatsappEnabled, type, ...payload } = formData;
+        // Keep isDefault as it's needed by the backend!
+        const { uiOperatingHours, whatsappEnabled, ...payload } = formData;
 
         const operatingHours = uiOperatingHours ? {
             monday: uiOperatingHours.weekdays ? { open: uiOperatingHours.weekdays.start, close: uiOperatingHours.weekdays.end } : { open: null, close: null },
@@ -202,10 +223,9 @@ export function AddWarehouseClient() {
         const finalPayload: CreateWarehousePayload = {
             ...payload as CreateWarehousePayload,
             operatingHours,
-            // Add other mock fields if needed or handle extendable metadata
         };
 
-        console.log('Submitting warehouse:', finalPayload, { whatsappEnabled, type });
+        console.log('✅ Submitting warehouse with isDefault:', finalPayload.isDefault, finalPayload);
         createWarehouseMutation.mutate(finalPayload);
     };
 
@@ -221,6 +241,7 @@ export function AddWarehouseClient() {
                             value={formData.name || ''}
                             onChange={(e) => handleInputChange('name', e.target.value)}
                             hint="A descriptive name to help identify this location"
+                            error={fieldErrors.name}
                             required
                         />
 

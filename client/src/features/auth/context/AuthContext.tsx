@@ -119,12 +119,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const performRefresh = async () => {
       const now = Date.now();
       const timeSinceActivity = now - lastActivityRef.current;
-      const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
 
-      // Only refresh if user has been active recently
+      // ✅ FIX: Only skip refresh if user has been completely inactive for >30 mins
+      // This prevents token expiry during normal idle periods (15-20 mins)
+      const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
       if (timeSinceActivity >= INACTIVITY_TIMEOUT) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Auth] Skipping refresh - User inactive');
+          console.log('[Auth] Skipping refresh - User inactive for 30+ minutes');
         }
         return;
       }

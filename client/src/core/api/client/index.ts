@@ -309,8 +309,8 @@ const createApiClient = (): AxiosInstance => {
                 }
             }
 
-            // Only log unexpected errors (not 401s which are expected for unauthenticated users)
-            if (process.env.NODE_ENV === 'development' && error.response?.status !== 401) {
+            // Only log unexpected errors (skip 401 auth and 404 not-found which are expected)
+            if (process.env.NODE_ENV === 'development' && error.response?.status !== 401 && error.response?.status !== 404) {
                 // Extract error details with fallbacks
                 const errorDetails: any = {
                     url: error.config?.url || 'unknown',
@@ -392,16 +392,23 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
         };
 
         // Extract message from various common API error formats
-        // Priority: data.message > data.error.message > data.error (string) > status fallback
+        // ✅ PRIORITY: error.message > message > error (string) > status fallback
+        // Backend sends: { error: { code, message } } so we check error.message FIRST
         const message =
-            data?.message ||
-            data?.error?.message ||
+            data?.error?.message ||  // ✅ Check nested error.message FIRST (backend pattern)
+            data?.message ||         // Fallback to top-level message
             (typeof data?.error === 'string' ? data.error : null) ||
             statusMessages[status || 500] ||
             'An unexpected error occurred.';
 
+        // Extract error code with same priority
+        const code =
+            data?.error?.code ||     // ✅ Backend error code
+            data?.code ||            // Fallback to top-level code
+            `HTTP_${status}`;
+
         return {
-            code: data?.code || `HTTP_${status}`,
+            code,
             message,
             field: data?.field || data?.error?.field,
             details: data?.details // Capture validation details if present

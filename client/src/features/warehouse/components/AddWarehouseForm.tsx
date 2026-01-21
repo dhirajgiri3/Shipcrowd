@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, MapPin, Phone, Mail, User, X, Loader2 } from 'lucide-react';
+import { Building2, MapPin, User, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
-import { FormInput } from '@/src/components/ui/form/FormInput';
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { FormField } from '@/src/components/ui/form/FormField';
+import { Switch } from '@/src/components/ui/core/Switch';
+import { Label } from '@/src/components/ui/core/Label';
 import { CreateWarehousePayload } from '@/src/core/api/hooks/logistics/useWarehouses';
 
 interface AddWarehouseFormProps {
@@ -171,188 +172,198 @@ export function AddWarehouseForm({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-4xl mx-auto"
+            className="w-full"
         >
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Basic Information */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5 text-[var(--primary-blue)]" />
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-1">
+                        <Building2 className="w-4 h-4 text-[var(--primary-blue)]" />
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                             Basic Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormInput
-                            label="Warehouse Name"
-                            required
-                            value={formData.name}
-                            onChange={(e) => updateField('name', e.target.value)}
-                            placeholder="e.g., Mumbai Central Hub"
-                            error={errors.name}
-                            disabled={isLoading}
-                        />
-                    </CardContent>
-                </Card>
+                        </h3>
+                    </div>
+
+                    <FormField
+                        label="Warehouse Name"
+                        required
+                        value={formData.name}
+                        onChange={(e) => updateField('name', e.target.value)}
+                        placeholder="e.g., Mumbai Fulfillment Center"
+                        error={errors.name}
+                        disabled={isLoading}
+                        hint="A descriptive name for this warehouse location"
+                    />
+                </div>
+
+                <div className="h-px bg-[var(--border-subtle)]" />
 
                 {/* Address Information */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-[var(--primary-blue)]" />
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-1">
+                        <MapPin className="w-4 h-4 text-[var(--primary-blue)]" />
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                             Address Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormInput
-                            label="Address Line 1"
+                        </h3>
+                    </div>
+
+                    <FormField
+                        label="Address Line 1"
+                        required
+                        value={formData.address.line1}
+                        onChange={(e) => updateField('address.line1', e.target.value)}
+                        placeholder="Building number, street name"
+                        error={errors['address.line1']}
+                        disabled={isLoading}
+                    />
+
+                    <FormField
+                        label="Address Line 2"
+                        optional
+                        value={formData.address.line2}
+                        onChange={(e) => updateField('address.line2', e.target.value)}
+                        placeholder="Landmark, area"
+                        disabled={isLoading}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            label="City"
                             required
-                            value={formData.address.line1}
-                            onChange={(e) => updateField('address.line1', e.target.value)}
-                            placeholder="Building number, street name"
-                            error={errors['address.line1']}
+                            value={formData.address.city}
+                            onChange={(e) => updateField('address.city', e.target.value)}
+                            placeholder="e.g., Mumbai"
+                            error={errors['address.city']}
                             disabled={isLoading}
                         />
 
-                        <FormInput
-                            label="Address Line 2"
-                            value={formData.address.line2}
-                            onChange={(e) => updateField('address.line2', e.target.value)}
-                            placeholder="Landmark, area (optional)"
+                        <FormField
+                            label="State"
+                            required
+                            value={formData.address.state}
+                            onChange={(e) => updateField('address.state', e.target.value)}
+                            placeholder="e.g., Maharashtra"
+                            error={errors['address.state']}
                             disabled={isLoading}
                         />
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormInput
-                                label="City"
-                                required
-                                value={formData.address.city}
-                                onChange={(e) => updateField('address.city', e.target.value)}
-                                placeholder="e.g., Mumbai"
-                                error={errors['address.city']}
-                                disabled={isLoading}
-                            />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            label="Postal Code"
+                            required
+                            value={formData.address.postalCode}
+                            onChange={(e) => updateField('address.postalCode', e.target.value)}
+                            placeholder="6-digit pincode"
+                            maxLength={6}
+                            error={errors['address.postalCode']}
+                            disabled={isLoading}
+                            className="font-mono tracking-wider"
+                        />
 
-                            <FormInput
-                                label="State"
-                                required
-                                value={formData.address.state}
-                                onChange={(e) => updateField('address.state', e.target.value)}
-                                placeholder="e.g., Maharashtra"
-                                error={errors['address.state']}
-                                disabled={isLoading}
-                            />
-                        </div>
+                        <FormField
+                            label="Country"
+                            required
+                            value={formData.address.country}
+                            onChange={(e) => updateField('address.country', e.target.value)}
+                            placeholder="India"
+                            disabled={isLoading}
+                        />
+                    </div>
+                </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormInput
-                                label="Postal Code"
-                                required
-                                value={formData.address.postalCode}
-                                onChange={(e) => updateField('address.postalCode', e.target.value)}
-                                placeholder="e.g., 400001"
-                                maxLength={6}
-                                error={errors['address.postalCode']}
-                                disabled={isLoading}
-                            />
-
-                            <FormInput
-                                label="Country"
-                                required
-                                value={formData.address.country}
-                                onChange={(e) => updateField('address.country', e.target.value)}
-                                placeholder="India"
-                                disabled={isLoading}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="h-px bg-[var(--border-subtle)]" />
 
                 {/* Contact Information */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <User className="h-5 w-5 text-[var(--primary-blue)]" />
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-1">
+                        <User className="w-4 h-4 text-[var(--primary-blue)]" />
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                             Contact Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormInput
-                            label="Contact Person Name"
+                        </h3>
+                    </div>
+
+                    <FormField
+                        label="Contact Person Name"
+                        required
+                        value={formData.contactInfo.name}
+                        onChange={(e) => updateField('contactInfo.name', e.target.value)}
+                        placeholder="e.g., Rajesh Kumar"
+                        error={errors['contactInfo.name']}
+                        disabled={isLoading}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            label="Phone Number"
                             required
-                            value={formData.contactInfo.name}
-                            onChange={(e) => updateField('contactInfo.name', e.target.value)}
-                            placeholder="e.g., Rajesh Kumar"
-                            error={errors['contactInfo.name']}
+                            value={formData.contactInfo.phone}
+                            onChange={(e) => updateField('contactInfo.phone', e.target.value)}
+                            placeholder="10-digit mobile"
+                            maxLength={10}
+                            error={errors['contactInfo.phone']}
                             disabled={isLoading}
+                            className="font-mono tracking-wide"
                         />
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormInput
-                                label="Phone Number"
-                                required
-                                value={formData.contactInfo.phone}
-                                onChange={(e) => updateField('contactInfo.phone', e.target.value)}
-                                placeholder="10-digit mobile number"
-                                maxLength={10}
-                                error={errors['contactInfo.phone']}
-                                disabled={isLoading}
-                            />
-
-                            <FormInput
-                                label="Alternate Phone"
-                                value={formData.contactInfo.alternatePhone}
-                                onChange={(e) => updateField('contactInfo.alternatePhone', e.target.value)}
-                                placeholder="Optional"
-                                maxLength={10}
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <FormInput
-                            label="Email"
-                            type="email"
-                            value={formData.contactInfo.email}
-                            onChange={(e) => updateField('contactInfo.email', e.target.value)}
-                            placeholder="contact@example.com (optional)"
-                            error={errors['contactInfo.email']}
+                        <FormField
+                            label="Alternate Phone"
+                            optional
+                            value={formData.contactInfo.alternatePhone}
+                            onChange={(e) => updateField('contactInfo.alternatePhone', e.target.value)}
+                            placeholder="Backup number"
+                            maxLength={10}
                             disabled={isLoading}
+                            className="font-mono tracking-wide"
                         />
-                    </CardContent>
-                </Card>
+                    </div>
+
+                    <FormField
+                        label="Email Address"
+                        optional
+                        type="email"
+                        value={formData.contactInfo.email}
+                        onChange={(e) => updateField('contactInfo.email', e.target.value)}
+                        placeholder="contact@example.com"
+                        error={errors['contactInfo.email']}
+                        disabled={isLoading}
+                    />
+                </div>
+
+                <div className="h-px bg-[var(--border-subtle)]" />
 
                 {/* Settings */}
-                <Card>
-                    <CardContent className="pt-6">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={formData.isDefault}
-                                onChange={(e) => updateField('isDefault', e.target.checked)}
-                                className="w-5 h-5 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-2 focus:ring-[var(--primary-blue)] focus:ring-offset-2"
-                                disabled={isLoading}
-                            />
-                            <div>
-                                <p className="font-medium text-[var(--text-primary)]">
-                                    Set as default warehouse
-                                </p>
-                                <p className="text-sm text-[var(--text-muted)]">
-                                    Use this warehouse as the default for new shipments
-                                </p>
-                            </div>
-                        </label>
-                    </CardContent>
-                </Card>
+                <div className="flex items-start justify-between p-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)]/30">
+                    <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                            <Label className="text-sm font-semibold text-[var(--text-primary)] mb-0">
+                                Default Warehouse
+                            </Label>
+                            {formData.isDefault && (
+                                <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
+                            )}
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                            Use this warehouse as the default for new shipments
+                        </p>
+                    </div>
+                    <Switch
+                        checked={formData.isDefault}
+                        onCheckedChange={(checked: boolean) => updateField('isDefault', checked)}
+                        disabled={isLoading}
+                    />
+                </div>
 
                 {/* Form Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4">
+                <div className="flex items-center justify-end gap-3 pt-2">
                     <Button
                         type="button"
                         variant="outline"
                         onClick={onCancel}
                         disabled={isLoading}
+                        className="min-w-[100px]"
                     >
                         Cancel
                     </Button>
@@ -360,18 +371,10 @@ export function AddWarehouseForm({
                         type="submit"
                         variant="primary"
                         disabled={isLoading}
+                        isLoading={isLoading}
                         className="min-w-[140px]"
                     >
-                        {isLoading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                {mode === 'create' ? 'Creating...' : 'Updating...'}
-                            </>
-                        ) : (
-                            <>
-                                {mode === 'create' ? 'Create Warehouse' : 'Update Warehouse'}
-                            </>
-                        )}
+                        {mode === 'create' ? 'Create Warehouse' : 'Update Warehouse'}
                     </Button>
                 </div>
             </form>

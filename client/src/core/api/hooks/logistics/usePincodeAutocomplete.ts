@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import { apiClient } from '../../client';
 
 interface PincodeData {
     pincode: string;
@@ -43,45 +44,83 @@ export function usePincodeAutocomplete(pincode: string) {
                 return { success: false, error: 'Invalid pincode length' };
             }
 
+            // Mock data as fallback
+            const mockData: Record<string, Omit<PincodeData, 'pincode'>> = {
+                '400001': { city: 'Mumbai', state: 'Maharashtra', district: 'Mumbai City' },
+                '110001': { city: 'New Delhi', state: 'Delhi', district: 'Central Delhi' },
+                '560001': { city: 'Bangalore', state: 'Karnataka', district: 'Bangalore Urban' },
+                '700001': { city: 'Kolkata', state: 'West Bengal', district: 'Kolkata' },
+                '600001': { city: 'Chennai', state: 'Tamil Nadu', district: 'Chennai' },
+                '500001': { city: 'Hyderabad', state: 'Telangana', district: 'Hyderabad' },
+            };
+
             try {
-                // TODO: Replace with actual API endpoint when backend is ready
-                // const response = await fetch(`/api/v1/pincodes/${debouncedPincode}`);
-                // if (!response.ok) throw new Error('Failed to fetch pincode data');
-                // return await response.json();
+                // Try real API first (using same endpoint as onboarding)
+                const response = await apiClient.get(`/serviceability/pincode/${debouncedPincode}/info`);
 
-                // Mock implementation for now
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Backend response structure: { success, data: { data: { pincode, city, state } } }
+                // Axios wraps it: response.data = backend response
+                // So actual data is at: response.data.data.data
+                const info = response.data?.data?.data;
 
-                // Mock data based on common Indian pincodes
-                const mockData: Record<string, Omit<PincodeData, 'pincode'>> = {
-                    '400001': { city: 'Mumbai', state: 'Maharashtra', district: 'Mumbai City' },
-                    '110001': { city: 'New Delhi', state: 'Delhi', district: 'Central Delhi' },
-                    '560001': { city: 'Bangalore', state: 'Karnataka', district: 'Bangalore Urban' },
-                    '700001': { city: 'Kolkata', state: 'West Bengal', district: 'Kolkata' },
-                    '600001': { city: 'Chennai', state: 'Tamil Nadu', district: 'Chennai' },
-                    '500001': { city: 'Hyderabad', state: 'Telangana', district: 'Hyderabad' },
-                };
-
-                const result = mockData[debouncedPincode];
-
-                if (result) {
+                // Check if API returned valid data
+                if (info && info.city && info.state) {
                     return {
                         success: true,
                         data: {
                             pincode: debouncedPincode,
-                            ...result,
+                            city: info.city,
+                            state: info.state,
+                            district: info.district || info.city,
                         },
                     };
                 }
 
+                // API returned no data - fall back to mock data
+                const mockResult = mockData[debouncedPincode];
+                if (mockResult) {
+                    console.warn(`Pincode API returned no data for ${debouncedPincode}, using mock data`);
+                    return {
+                        success: true,
+                        data: {
+                            pincode: debouncedPincode,
+                            ...mockResult,
+                        },
+                    };
+                }
+
+                // Neither API nor mock data has this pincode
                 return {
                     success: false,
                     error: 'Pincode not found',
                 };
-            } catch (err) {
+            } catch (err: any) {
+                // Check if this is a 404 "Pincode not found" - this is an expected response
+                if (err?.code === 'PINCODE_NOT_FOUND' || err?.message === 'Pincode not found') {
+                    return {
+                        success: false,
+                        error: 'Pincode not found',
+                    };
+                }
+
+                // For other errors (network, server, etc.), try mock data as fallback
+                const mockResult = mockData[debouncedPincode];
+                if (mockResult) {
+                    console.warn(`Pincode API error for ${debouncedPincode}, using mock data:`, err);
+                    return {
+                        success: true,
+                        data: {
+                            pincode: debouncedPincode,
+                            ...mockResult,
+                        },
+                    };
+                }
+
+                // Extract specific error message from backend if available
+                const errorMessage = err?.message || 'Failed to fetch pincode data';
                 return {
                     success: false,
-                    error: err instanceof Error ? err.message : 'Failed to fetch pincode data',
+                    error: errorMessage,
                 };
             }
         },

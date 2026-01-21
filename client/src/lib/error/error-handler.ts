@@ -7,17 +7,38 @@
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 
+// Import the normalized ApiError type from our API client
+export interface ApiError {
+    code: string;
+    message: string;
+    field?: string;
+    details?: any;
+}
+
 interface ApiErrorResponse {
     message?: string;
-    error?: string;
+    error?: string | { code?: string; message?: string };
     errors?: Record<string, string[]>;
 }
 
 /**
  * Handle API errors with user-friendly toast notifications
+ * Now displays error codes for better debugging
  */
-export function handleApiError(error: unknown, fallbackMessage = 'An error occurred') {
+export function handleApiError(error: unknown | ApiError, fallbackMessage = 'An error occurred') {
     console.error('API Error:', error);
+
+    // Handle normalized ApiError from our API client
+    if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
+        const apiError = error as ApiError;
+
+        // Show error message with code in a smaller subtitle
+        toast.error(apiError.message, {
+            description: apiError.code ? `Error Code: ${apiError.code}` : undefined,
+            duration: 5000,
+        });
+        return;
+    }
 
     if (error instanceof AxiosError) {
         const errorData = error.response?.data as ApiErrorResponse;
@@ -31,7 +52,7 @@ export function handleApiError(error: unknown, fallbackMessage = 'An error occur
 
         // Handle standard error messages
         const message = errorData?.message || errorData?.error || error.message || fallbackMessage;
-        toast.error(message);
+        toast.error(typeof message === 'string' ? message : fallbackMessage);
         return;
     }
 

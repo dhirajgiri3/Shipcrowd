@@ -272,7 +272,10 @@ export const useCreateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
     return useMutation<Warehouse, ApiError, CreateWarehousePayload>({
         mutationFn: async (payload) => {
             const response = await apiClient.post('/warehouses', payload);
-            return response.data.warehouse;
+            // Backend returns: { success, data: { warehouse }, message, timestamp }
+            // Axios wraps it: response.data = backend response
+            // So the warehouse is at: response.data.data.warehouse
+            return response.data.data.warehouse;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['warehouses'] });
@@ -294,7 +297,7 @@ export const useUpdateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
     return useMutation<Warehouse, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>({
         mutationFn: async ({ warehouseId, data }) => {
             const response = await apiClient.patch(`/warehouses/${warehouseId}`, data);
-            return response.data.warehouse;
+            return response.data.data.warehouse;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['warehouses'] });

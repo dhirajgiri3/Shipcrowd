@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/co
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Input } from '@/src/components/ui/core/Input';
-import { MOCK_WAREHOUSES, MOCK_INVENTORY } from '@/src/lib/mockData/mockData';
+import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { MOCK_INVENTORY } from '@/src/lib/mockData/mockData';
 import {
     Warehouse,
     MapPin,
@@ -29,15 +30,57 @@ export function WarehousesClient() {
     const [search, setSearch] = useState('');
     const { addToast } = useToast();
 
-    // Stats
+    // Fetch warehouses from API (with mock fallback)
+    const { data: warehouses = [], isLoading, error } = useWarehouses();
+
+    // Stats - Using real data
     const stats = {
-        total: MOCK_WAREHOUSES.length,
-        capacity: MOCK_WAREHOUSES.reduce((acc, w) => acc + w.capacity, 0),
-        utilized: MOCK_WAREHOUSES.reduce((acc, w) => acc + w.utilized, 0),
-        active: MOCK_WAREHOUSES.filter(w => w.status === 'Active').length
+        total: warehouses.length,
+        // Note: Backend warehouse schema doesn't have capacity/utilized fields yet
+        // For now, we'll use placeholder values, but these should be added to backend
+        capacity: warehouses.length * 10000, // Placeholder: 10k units per warehouse
+        utilized: warehouses.length * 7500, // Placeholder: 75% utilization
+        active: warehouses.filter(w => !w.isDeleted).length
     };
 
-    const overallUtilization = Math.round((stats.utilized / stats.capacity) * 100);
+    const overallUtilization = stats.capacity > 0 ? Math.round((stats.utilized / stats.capacity) * 100) : 0;
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center mx-auto animate-pulse">
+                        <Warehouse className="h-8 w-8 text-[var(--primary-blue)]" />
+                    </div>
+                    <p className="text-[var(--text-muted)] font-medium">Loading warehouses...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-4 max-w-md">
+                    <div className="w-16 h-16 rounded-xl bg-[var(--error-bg)] flex items-center justify-center mx-auto">
+                        <AlertCircle className="h-8 w-8 text-[var(--error)]" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to Load Warehouses</h3>
+                        <p className="text-[var(--text-muted)]">{error.message || 'An error occurred while fetching warehouse data.'}</p>
+                    </div>
+                    <Button
+                        onClick={() => window.location.reload()}
+                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
+                    >
+                        Retry
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -127,69 +170,85 @@ export function WarehousesClient() {
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                    {MOCK_WAREHOUSES.map((wh, i) => (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            key={wh.id}
-                            className="group relative p-6 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-lg transition-all"
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 rounded-xl bg-[var(--bg-secondary)] group-hover:bg-[var(--bg-tertiary)] transition-colors">
-                                    <Warehouse className="h-6 w-6 text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)] transition-colors" />
-                                </div>
-                                <span className={cn(
-                                    "px-2.5 py-1 rounded-full text-xs font-bold",
-                                    wh.status === 'Active' ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-gray-500/10 text-gray-500"
-                                )}>
-                                    {wh.status}
-                                </span>
+                    {warehouses.length === 0 ? (
+                        <div className="col-span-full text-center py-12">
+                            <div className="w-16 h-16 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center mx-auto mb-4">
+                                <Warehouse className="h-8 w-8 text-[var(--text-muted)]" />
                             </div>
+                            <p className="text-[var(--text-muted)]">No warehouses found</p>
+                        </div>
+                    ) : (
+                        warehouses.map((wh, i) => {
+                            // Calculate placeholder capacity metrics (since backend doesn't have these yet)
+                            const placeholderCapacity = 10000;
+                            const placeholderUtilized = 7500;
+                            const utilizationPercent = Math.round((placeholderUtilized / placeholderCapacity) * 100);
 
-                            <h3 className="font-bold text-[var(--text-primary)] text-lg mb-1">{wh.name}</h3>
-                            <div className="flex items-center text-xs text-[var(--text-muted)] mb-4">
-                                <MapPin className="h-3.5 w-3.5 mr-1" />
-                                {wh.location}
-                            </div>
-
-                            <div className="space-y-3 p-4 rounded-xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1.5">
-                                        <span className="text-[var(--text-muted)] font-medium">Capacity Used</span>
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    key={wh._id}
+                                    className="group relative p-6 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-lg transition-all"
+                                >
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-3 rounded-xl bg-[var(--bg-secondary)] group-hover:bg-[var(--bg-tertiary)] transition-colors">
+                                            <Warehouse className="h-6 w-6 text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)] transition-colors" />
+                                        </div>
                                         <span className={cn(
-                                            "font-bold",
-                                            (wh.utilized / wh.capacity) > 0.9 ? "text-[var(--error)]" :
-                                                (wh.utilized / wh.capacity) > 0.7 ? "text-[var(--warning)]" : "text-[var(--success)]"
-                                        )}>{Math.round((wh.utilized / wh.capacity) * 100)}%</span>
+                                            "px-2.5 py-1 rounded-full text-xs font-bold",
+                                            !wh.isDeleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-gray-500/10 text-gray-500"
+                                        )}>
+                                            {!wh.isDeleted ? 'Active' : 'Inactive'}
+                                        </span>
                                     </div>
-                                    <div className="h-1.5 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-                                        <div
-                                            className={cn(
-                                                "h-full rounded-full transition-all duration-500",
-                                                (wh.utilized / wh.capacity) > 0.9 ? "bg-[var(--error)]" :
-                                                    (wh.utilized / wh.capacity) > 0.7 ? "bg-[var(--warning)]" : "bg-[var(--success)]"
-                                            )}
-                                            style={{ width: `${(wh.utilized / wh.capacity) * 100}%` }}
-                                        />
-                                    </div>
-                                    <div className="flex justify-between text-[10px] mt-1.5 text-[var(--text-muted)]">
-                                        <span>{wh.utilized.toLocaleString()} units</span>
-                                        <span>{wh.capacity.toLocaleString()} max</span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[var(--border-subtle)]">
-                                <Button variant="outline" size="sm" className="flex-1 h-8 text-xs bg-transparent border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]">
-                                    Manage
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <Settings className="w-4 h-4 text-[var(--text-muted)]" />
-                                </Button>
-                            </div>
-                        </motion.div>
-                    ))}
+                                    <h3 className="font-bold text-[var(--text-primary)] text-lg mb-1">{wh.name}</h3>
+                                    <div className="flex items-center text-xs text-[var(--text-muted)] mb-4">
+                                        <MapPin className="h-3.5 w-3.5 mr-1" />
+                                        {wh.address.city}, {wh.address.state}
+                                    </div>
+
+                                    <div className="space-y-3 p-4 rounded-xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
+                                        <div>
+                                            <div className="flex justify-between text-xs mb-1.5">
+                                                <span className="text-[var(--text-muted)] font-medium">Capacity Used</span>
+                                                <span className={cn(
+                                                    "font-bold",
+                                                    utilizationPercent > 90 ? "text-[var(--error)]" :
+                                                        utilizationPercent > 70 ? "text-[var(--warning)]" : "text-[var(--success)]"
+                                                )}>{utilizationPercent}%</span>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                                                <div
+                                                    className={cn(
+                                                        "h-full rounded-full transition-all duration-500",
+                                                        utilizationPercent > 90 ? "bg-[var(--error)]" :
+                                                            utilizationPercent > 70 ? "bg-[var(--warning)]" : "bg-[var(--success)]"
+                                                    )}
+                                                    style={{ width: `${utilizationPercent}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between text-[10px] mt-1.5 text-[var(--text-muted)]">
+                                                <span>{placeholderUtilized.toLocaleString()} units</span>
+                                                <span>{placeholderCapacity.toLocaleString()} max</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[var(--border-subtle)]">
+                                        <Button variant="outline" size="sm" className="flex-1 h-8 text-xs bg-transparent border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]">
+                                            Manage
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                            <Settings className="w-4 h-4 text-[var(--text-muted)]" />
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            );
+                        })
+                    )}
                 </div>
             </div>
 

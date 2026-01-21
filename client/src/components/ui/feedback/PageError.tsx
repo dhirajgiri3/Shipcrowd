@@ -29,6 +29,8 @@ export interface PageErrorProps {
     title?: string;
     /** Custom message (overrides error.message) */
     message?: string;
+    /** Optional error code for debugging */
+    errorCode?: string;
     /** Show "Go Home" button (default: true) */
     showHomeButton?: boolean;
     /** Home URL for "Go Home" button (default: "/") */
@@ -40,6 +42,7 @@ export function PageError({
     reset,
     title = 'Something went wrong',
     message,
+    errorCode,
     showHomeButton = true,
     homeUrl = '/',
 }: PageErrorProps) {
@@ -62,10 +65,19 @@ export function PageError({
                 </p>
             </div>
 
-            {error.digest && (
-                <p className="text-xs text-muted-foreground font-mono">
-                    Error ID: {error.digest}
-                </p>
+            {(errorCode || error.digest) && (
+                <div className="flex flex-col items-center gap-1">
+                    {errorCode && (
+                        <p className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
+                            Error Code: {errorCode}
+                        </p>
+                    )}
+                    {error.digest && (
+                        <p className="text-xs text-muted-foreground font-mono">
+                            Error ID: {error.digest}
+                        </p>
+                    )}
+                </div>
             )}
 
             <div className="flex items-center gap-3">

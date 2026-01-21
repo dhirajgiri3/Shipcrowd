@@ -8,7 +8,6 @@ import { DotsLoader } from '@/src/components/ui/feedback/Loader';
  * Features:
  * - Smooth animations and micro-interactions
  * - Integrated centralized loader (DotsLoader)
- * - Ripple effect on click
  * - Accessibility-first design
  * - Design system tokens from globals.css
  * - 100% backward compatible - same API as before
@@ -122,14 +121,6 @@ const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
 
                 {/* Button content */}
                 {!isLoading && children}
-
-                {/* Ripple effect on click */}
-                <span className="absolute inset-0 rounded-[var(--radius-lg)] overflow-hidden pointer-events-none">
-                    <span
-                        className="absolute inset-0 scale-0 rounded-full bg-white/30 group-active:scale-100 transition-transform duration-500 ease-out origin-center"
-                        aria-hidden="true"
-                    />
-                </span>
             </button>
         );
     }
