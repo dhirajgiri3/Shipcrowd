@@ -8,7 +8,7 @@ import { BasePDFService } from '../base-pdf.service';
 import { PDFPartyDetails, PDFTableColumn } from '../pdf.types';
 import { IInvoice } from '../../../../../infrastructure/database/mongoose/models/finance/billing/invoice.model';
 import { ICompany } from '../../../../../infrastructure/database/mongoose/models/organization/core/company.model';
-import { Helix, INVOICE_TERMS } from '../../../../../shared/constants/Helix.constants';
+import { Helix, INVOICE_TERMS } from '../../../../../shared/constants/shipcrowd.constants';
 import { convertToIndianWords, formatIndianNumber } from '../../../../../shared/utils/number-to-words.util';
 import { formatINR } from '../../../../../shared/utils/indian-currency.util';
 import { formatInvoiceDate, formatInvoiceDateTime } from '../../../../../shared/utils/date-format.util';

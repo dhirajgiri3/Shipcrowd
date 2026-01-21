@@ -709,7 +709,7 @@ export function CreateOrderClient() {
                 <Button
                   onClick={handleSubmit}
                   disabled={createOrderMutation.isPending}
-                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20 w-40"
+                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20 w-40"
                 >
                   {createOrderMutation.isPending ? (
                     <>
@@ -723,7 +723,7 @@ export function CreateOrderClient() {
               ) : (
                 <Button
                   onClick={nextStep}
-                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20"
+                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                 >
                   Next Step <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>

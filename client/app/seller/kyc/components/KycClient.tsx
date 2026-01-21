@@ -343,7 +343,7 @@ export function KycClient() {
                         <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
                             Your account is fully verified. You can now access all features and start shipping.
                         </p>
-                        <Button onClick={() => router.push('/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20">
+                        <Button onClick={() => router.push('/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
                             Go to Dashboard
                         </Button>
                     </CardContent>
@@ -517,7 +517,7 @@ export function KycClient() {
                                                             size="sm"
                                                             onClick={verifyPAN}
                                                             disabled={formData.pan.length !== 10 || panVerification.loading}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white"
+                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                         >
                                                             {panVerification.loading ? "Verifying..." : "Verify Now"}
                                                         </Button>
@@ -624,7 +624,7 @@ export function KycClient() {
                                                     <Button
                                                         onClick={verifyBank}
                                                         disabled={!formData.accountNumber || !formData.ifscCode || bankVerification.loading}
-                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white px-6"
+                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white px-6"
                                                     >
                                                         {bankVerification.loading ? 'Verifying...' : 'Verify Account'}
                                                     </Button>
@@ -689,7 +689,7 @@ export function KycClient() {
                                                             size="sm"
                                                             onClick={verifyGSTIN}
                                                             disabled={formData.gstin.length !== 15 || gstinVerification.loading}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white"
+                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                         >
                                                             {gstinVerification.loading ? "Verifying..." : "Verify Now"}
                                                         </Button>
@@ -777,7 +777,7 @@ export function KycClient() {
                                     {currentStep < 4 ? (
                                         <Button
                                             onClick={nextStep}
-                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20"
+                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                                         >
                                             {currentStep === 3 && !formData.gstin ? 'Skip & Continue' : 'Next Step'}
                                             <ChevronRight className="h-4 w-4" />
@@ -788,7 +788,7 @@ export function KycClient() {
                                             isLoading={isSubmitting}
                                             loadingText="Submitting..."
                                             disabled={!formData.agreementAccepted || !formData.confirmationAccepted}
-                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20 w-40"
+                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20 w-40"
                                         >
                                             <CheckCircle2 className="h-4 w-4" />
                                             Submit KYC

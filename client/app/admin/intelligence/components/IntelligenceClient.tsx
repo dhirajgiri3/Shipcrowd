@@ -64,7 +64,7 @@ export function IntelligenceClient() {
                         <Activity className="h-4 w-4 mr-2" />
                         Live Monitor
                     </Button>
-                    <Button className="bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
+                    <Button className="bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
                         <Zap className="h-4 w-4 mr-2" />
                         Run Deep Analysis
                     </Button>

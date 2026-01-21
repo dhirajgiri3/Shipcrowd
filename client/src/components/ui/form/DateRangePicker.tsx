@@ -159,7 +159,7 @@ export const DateRangePicker = memo(function DateRangePicker({ className, onRang
                                 "w-full h-9 rounded-[var(--radius-lg)] text-sm font-medium",
                                 "transition-all duration-[var(--duration-fast)]",
                                 customFrom && customTo
-                                    ? "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] shadow-[var(--shadow-brand-sm)]"
+                                    ? "bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-[var(--shadow-brand-sm)]"
                                     : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
                             )}
                         >

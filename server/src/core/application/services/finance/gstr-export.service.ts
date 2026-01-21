@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Invoice from '../../../../infrastructure/database/mongoose/models/finance/billing/invoice.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { ValidationError } from '../../../../shared/errors/app.error';
-import { Helix } from '../../../../shared/constants/Helix.constants';
+import { Helix } from '../../../../shared/constants/shipcrowd.constants';
 
 /**
  * GSTR-1 Export Service

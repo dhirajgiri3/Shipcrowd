@@ -78,6 +78,7 @@ export type { PageLoadingLayout } from './data/Skeleton';
 export { Select } from './form/Select';
 export { DateRangePicker } from './form/DateRangePicker';
 export { FormInput } from './form/FormInput';
+export { FormField } from './form/FormField';
 export { PasswordStrengthIndicator } from './form/PasswordStrengthIndicator';
 
 // ============================================

@@ -124,11 +124,15 @@ SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index f
 // Reference: docs/Backend-Fixes-Suggestions.md, Section 4 - Security: Session Tokens
 // ============================================================================
 
-// Hash refresh token before saving
+// Hash refresh token before saving (only hash if it's a raw JWT, not already hashed)
 SessionSchema.pre('save', async function (next) {
-  if (this.isModified('refreshToken')) {
+  // Only hash refreshToken if it's not already a bcrypt hash (bcrypt hashes are 60 chars and start with $2)
+  if (this.isModified('refreshToken') && !this.refreshToken.startsWith('$2')) {
     this.refreshToken = await bcrypt.hash(this.refreshToken, 12);
   }
+
+  // previousToken should NOT be hashed here - it's already a hash copied from refreshToken
+  // The rotation flow copies the already-hashed refreshToken to previousToken
   next();
 });
 

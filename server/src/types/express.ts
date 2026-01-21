@@ -32,6 +32,14 @@ declare global {
       companyId?: string;
       teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
       teamStatus?: 'active' | 'invited' | 'suspended';
+      // Access tier detection fields
+      isEmailVerified?: boolean;
+      kycStatus?: {
+        isComplete?: boolean;
+        state?: string;
+        status?: string;
+        lastUpdated?: Date;
+      };
     }
 
     /**

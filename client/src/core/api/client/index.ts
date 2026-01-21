@@ -346,6 +346,11 @@ const createApiClient = (): AxiosInstance => {
  * Normalize error to consistent format
  */
 export const normalizeError = (error: AxiosError | any): ApiError => {
+    // ✅ Idempotency: Input is already a normalized ApiError
+    if (error && typeof error === 'object' && 'code' in error && 'message' in error && !axios.isAxiosError(error) && !(error instanceof Error)) {
+        return error as ApiError;
+    }
+
     // Handle Axios Errors
     if (axios.isAxiosError(error)) {
         // Timeout

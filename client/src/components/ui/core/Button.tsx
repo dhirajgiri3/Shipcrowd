@@ -1,12 +1,22 @@
 import { ButtonHTMLAttributes, forwardRef, memo } from 'react';
 import { cn } from '@/src/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { DotsLoader } from '@/src/components/ui/feedback/Loader';
 
 /**
- * Button Component
- * 
- * Primary interactive element using design system tokens.
- * All colors reference CSS custom properties from globals.css
+ * Enhanced Button Component - Premium UI/UX for Shipping Aggregator
+ *
+ * Features:
+ * - Smooth animations and micro-interactions
+ * - Integrated centralized loader (DotsLoader)
+ * - Ripple effect on click
+ * - Accessibility-first design
+ * - Design system tokens from globals.css
+ * - 100% backward compatible - same API as before
+ *
+ * @example
+ * <Button variant="primary" size="md" isLoading={submitting}>
+ *   Create Shipment
+ * </Button>
  */
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,52 +26,110 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = memo(forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant = 'primary', size = 'md', isLoading, children, disabled, ...props }, ref) => {
+    ({
+        className,
+        variant = 'primary',
+        size = 'md',
+        isLoading,
+        children,
+        disabled,
+        ...props
+    }, ref) => {
         return (
             <button
                 ref={ref}
                 disabled={disabled || isLoading}
                 className={cn(
-                    // Base styles using design tokens
-                    'inline-flex items-center justify-center font-medium',
+                    // Base styles - Enhanced for premium feel
+                    'group relative inline-flex items-center justify-center',
+                    'font-medium tracking-wide',
                     'rounded-[var(--radius-lg)]',
-                    'transition-all duration-[var(--duration-fast)]',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-blue)] focus-visible:ring-offset-2',
-                    'disabled:pointer-events-none disabled:opacity-50',
-                    // Variant styles using design tokens
-                    {
-                        // Primary - Brand blue
-                        'bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] active:bg-[var(--primary-blue-active)] shadow-sm hover:shadow-md':
-                            variant === 'primary',
-                        // Secondary - Subtle gray
-                        'bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-active)] border border-[var(--border-subtle)]':
-                            variant === 'secondary',
-                        // Outline - Border only
-                        'border border-[var(--border-default)] text-[var(--text-secondary)] bg-[var(--bg-primary)] hover:text-[var(--primary-blue)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]':
-                            variant === 'outline',
-                        // Ghost - No background
-                        'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]':
-                            variant === 'ghost',
-                        // Danger - Red
-                        'bg-[var(--error)] text-white hover:bg-[var(--error-light)] active:scale-[0.98] shadow-sm':
-                            variant === 'danger',
-                        // Link - Text only with underline on hover
-                        'text-[var(--primary-blue)] underline-offset-4 hover:underline bg-transparent px-0 shadow-none':
-                            variant === 'link',
-                    },
-                    // Size styles
-                    {
-                        'h-8 px-3 text-xs gap-1.5': size === 'sm',
-                        'h-10 px-4 text-sm gap-2': size === 'md',
-                        'h-12 px-6 text-base gap-2': size === 'lg',
-                        'h-10 w-10 p-0': size === 'icon',
-                    },
+                    'transition-all duration-200 ease-out',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                    'disabled:pointer-events-none',
+                    'overflow-hidden',
+
+                    // Disabled state - Subtle and consistent
+                    'disabled:opacity-60 disabled:saturate-50',
+
+                    // Interactive states - Smooth transitions
+                    'active:scale-[0.98]',
+                    'transform-gpu', // Hardware acceleration
+
+                    // Variant styles - Premium design system
+                    variant === 'primary' && [
+                        'bg-gradient-to-b from-[var(--primary-blue)] to-[var(--primary-blue-deep)]',
+                        'text-white',
+                        !isLoading && !disabled && 'hover:brightness-110',
+                        'focus-visible:ring-[var(--primary-blue)]',
+                    ],
+
+                    variant === 'secondary' && [
+                        'bg-[var(--bg-tertiary)] text-[var(--text-primary)]',
+                        'border border-[var(--border-subtle)]',
+                        !isLoading && !disabled && 'hover:bg-[var(--bg-active)] hover:border-[var(--border-default)]',
+                        'focus-visible:ring-[var(--text-secondary)]',
+                    ],
+
+                    variant === 'outline' && [
+                        'border border-[var(--border-default)]',
+                        'text-[var(--text-secondary)] bg-[var(--bg-primary)]',
+                        !isLoading && !disabled && 'hover:text-[var(--primary-blue)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]',
+                        'focus-visible:ring-[var(--primary-blue)]',
+                    ],
+
+                    variant === 'ghost' && [
+                        'text-[var(--text-secondary)] bg-transparent',
+                        !isLoading && !disabled && 'hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
+                        'focus-visible:ring-[var(--text-muted)]',
+                    ],
+
+                    variant === 'danger' && [
+                        'bg-[var(--error)] text-white',
+                        !isLoading && !disabled && 'hover:bg-[var(--error-light)]',
+                        'focus-visible:ring-[var(--error)]',
+                    ],
+
+                    variant === 'link' && [
+                        'text-[var(--primary-blue)] bg-transparent px-0 shadow-none',
+                        'underline-offset-4',
+                        !isLoading && !disabled && 'hover:underline hover:brightness-90',
+                        'focus-visible:ring-[var(--primary-blue)]',
+                    ],
+
+                    // Size styles - Comfortable touch targets
+                    size === 'sm' && 'h-8 px-3 text-xs gap-1.5',
+                    size === 'md' && 'h-10 px-4 text-sm gap-2',
+                    size === 'lg' && 'h-12 px-6 text-base gap-2',
+                    size === 'icon' && 'h-10 w-10 p-0',
+
                     className
                 )}
                 {...props}
             >
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {children}
+                {/* Shimmer effect on hover - Premium touch */}
+                {!disabled && !isLoading && variant !== 'link' && variant !== 'ghost' && (
+                    <span
+                        className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        aria-hidden="true"
+                    />
+                )}
+
+                {/* Loading state with centralized DotsLoader */}
+                {isLoading && (
+                    <DotsLoader size={size === 'lg' ? 'md' : 'sm'} />
+                )}
+
+                {/* Button content */}
+                {!isLoading && children}
+
+                {/* Ripple effect on click */}
+                <span className="absolute inset-0 rounded-[var(--radius-lg)] overflow-hidden pointer-events-none">
+                    <span
+                        className="absolute inset-0 scale-0 rounded-full bg-white/30 group-active:scale-100 transition-transform duration-500 ease-out origin-center"
+                        aria-hidden="true"
+                    />
+                </span>
             </button>
         );
     }

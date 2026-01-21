@@ -285,7 +285,7 @@ export function OrdersClient() {
                                         e.stopPropagation();
                                         handleShipNow(row);
                                     }}
-                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white h-8 px-3 text-xs shadow-custom"
+                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white h-8 px-3 text-xs shadow-custom"
                                 >
                                     <Truck className="h-3 w-3 mr-1.5" />
                                     Ship
@@ -439,7 +439,7 @@ export function OrdersClient() {
                                 <Button
                                     size="sm"
                                     onClick={handleBulkShip}
-                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20"
+                                    className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                                 >
                                     <Truck className="h-4 w-4 mr-2" />
                                     Ship Selected
@@ -589,7 +589,7 @@ export function OrdersClient() {
                                 disabled={!selectedCourier}
                                 className={cn(
                                     "transition-all duration-300",
-                                    selectedCourier ? "bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/25" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
+                                    selectedCourier ? "bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/25" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
                                 )}
                             >
                                 Create Shipment

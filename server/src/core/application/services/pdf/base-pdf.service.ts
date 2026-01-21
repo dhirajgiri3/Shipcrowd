@@ -8,7 +8,7 @@ import PDFDocument from 'pdfkit';
 import * as fs from 'fs';
 import * as path from 'path';
 import QRCode from 'qrcode';
-import { PDF_BRAND_COLORS } from '../../../../shared/constants/Helix.constants';
+import { PDF_BRAND_COLORS } from '../../../../shared/constants/shipcrowd.constants';
 import { formatINR } from '../../../../shared/utils/indian-currency.util';
 import {
     PDFBrandConfig,

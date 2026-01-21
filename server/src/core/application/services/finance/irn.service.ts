@@ -9,7 +9,7 @@ import Invoice, { IInvoice } from '../../../../infrastructure/database/mongoose/
 import InvoiceIRNLog from '../../../../infrastructure/database/mongoose/models/finance/billing/invoice-irn-log.model';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { ExternalServiceError, ValidationError } from '../../../../shared/errors/app.error';
-import { Helix, IRN_CONFIG } from '../../../../shared/constants/Helix.constants';
+import { Helix, IRN_CONFIG } from '../../../../shared/constants/shipcrowd.constants';
 import { formatGSTNDate } from '../../../../shared/utils/date-format.util';
 import logger from '../../../../shared/logger/winston.logger';
 import {

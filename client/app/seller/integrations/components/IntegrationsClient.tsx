@@ -19,7 +19,7 @@ const integrations = [
         description: 'Sync orders and inventory automatically from your Shopify store',
         status: 'connected',
         lastSync: '2 min ago',
-        icon: 'https://upload.wikimedia.org/wikipedia/commons/e/ea/Shopify_logo_2018.svg',
+        icon: '/logos/shopify.svg',
         orders: 1245,
         color: '95BF47'
     },
@@ -27,21 +27,21 @@ const integrations = [
         name: 'WooCommerce',
         description: 'WordPress e-commerce integration for seamless order management',
         status: 'disconnected',
-        icon: 'https://upload.wikimedia.org/wikipedia/commons/2/2a/WooCommerce_logo.svg',
+        icon: '/logos/woocommerce.svg',
         color: '96588A'
     },
     {
         name: 'Amazon',
         description: 'Sync orders and inventory from Amazon Seller Central',
         status: 'disconnected',
-        icon: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg',
+        icon: '/logos/amazon.svg',
         color: 'FF9900'
     },
     {
         name: 'Flipkart',
         description: 'Connect your Flipkart Seller account to manage orders',
         status: 'disconnected',
-        icon: 'https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/flipkart-icon.png',
+        icon: '/logos/flipkart.png',
         color: '2874F0'
     },
 ];

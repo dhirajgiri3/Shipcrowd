@@ -7,7 +7,7 @@ import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import jwt from 'jsonwebtoken';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
-import { createSession, updateSessionActivity } from '../../../../core/application/services/auth/session.service';
+import { createSession } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
@@ -21,6 +21,20 @@ import { UserDTO } from '../../dtos/user.dto';
 import { AuthenticationError, ValidationError, NotFoundError, ExternalServiceError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import MFAService from '../../../../core/application/services/auth/mfa.service';
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// Helper function to get cookie options for auth tokens
+const getAuthCookieOptions = (maxAge: number) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
+  path: '/',
+  domain: process.env.NODE_ENV === 'development' ? 'localhost' : undefined,
+  maxAge,
+});
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -436,22 +450,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
     const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      path: '/',
-      maxAge: cookieMaxAge,
-    });
-
-    // Set access token as httpOnly cookie
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      path: '/',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(cookieMaxAge));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     // Determine next step for frontend routing
     let nextStep: string;
@@ -571,27 +571,16 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       tokenExpiry
     );
 
-    // Update session with new token
+    // Update session with new token using proper rotation (tracks previousToken for reuse detection)
+    updatedSession.previousToken = updatedSession.refreshToken;
     updatedSession.refreshToken = newRefreshToken;
+    updatedSession.rotationCount = (updatedSession.rotationCount || 0) + 1;
+    updatedSession.lastRotatedAt = new Date();
     updatedSession.lastActive = new Date();
     await updatedSession.save();
 
-    res.cookie(refreshCookieName, newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      path: '/',
-      maxAge: remainingTimeMs, // Maintain original expiry
-    });
-
-    // Set new access token as httpOnly cookie
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      path: '/',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, newRefreshToken, getAuthCookieOptions(remainingTimeMs));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -768,12 +757,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
 
     // ✅ CRITICAL FIX: Clear cookies with EXACT same options used when setting them
     // Cookies must be cleared with the same path, domain, secure, and sameSite settings
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' as const : 'lax' as const,
-      path: '/',
-    };
+    const cookieOptions = getAuthCookieOptions(0); // maxAge 0 to expire immediately
 
     // Clear both tokens with proper options
     res.clearCookie(refreshCookieName, cookieOptions);
@@ -806,16 +790,20 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
         // Revoke the refresh token in the blacklist
         await revokeRefreshToken(refreshToken);
 
-        // Also mark the session as revoked in the database
-        const session = await Session.findOne({
-          refreshToken,
+        // Find session by comparing hashed token (cannot query directly - token is bcrypt hashed)
+        const activeSessions = await Session.find({
           userId: authReq.user._id,
-          isRevoked: false
+          isRevoked: false,
+          expiresAt: { $gt: new Date() }
         });
 
-        if (session) {
-          session.isRevoked = true;
-          await session.save();
+        for (const session of activeSessions) {
+          const isMatch = await session.compareRefreshToken(refreshToken);
+          if (isMatch) {
+            session.isRevoked = true;
+            await session.save();
+            break;
+          }
         }
       }
 
@@ -908,19 +896,8 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
     const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     // ✅ FEATURE: Track onboarding progress when email is verified
     try {
@@ -1166,19 +1143,8 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
     const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
 
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for OAuth
-    });
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
 
     // Redirect to frontend without tokens in URL
     const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/seller/dashboard`;
@@ -1350,19 +1316,8 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
     const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -1746,19 +1701,8 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
     const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
-
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     // Audit log
     await createAuditLog(
