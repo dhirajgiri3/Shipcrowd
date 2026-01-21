@@ -13,31 +13,43 @@ import {
 import type { PaymentMethod } from '@/src/components/seller/wallet';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
+import { mockTransactions } from '@/src/lib/mockData/enhanced';
 
-const CATEGORY_ICONS = {
-    'Shipping Costs': Truck,
-    'Packaging': Package,
-    'Transaction Fees': CreditCard,
-    'Other': CreditCard
-} as const;
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 
-const CATEGORY_COLORS = {
-    'Shipping Costs': 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
-    'Packaging': 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400',
-    'Transaction Fees': 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400',
-    'Other': 'bg-gray-100 dark:bg-gray-950/30 text-gray-700 dark:text-gray-400'
-} as const;
+// Mock insights data
+const MOCK_INSIGHTS = {
+    thisWeekSpend: 8450,
+    lastWeekSpend: 7200,
+    categories: [
+        { name: 'Shipping Costs', amount: 6200, percentage: 73, icon: Truck, color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' },
+        { name: 'Packaging', amount: 1450, percentage: 17, icon: Package, color: 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400' },
+        { name: 'Transaction Fees', amount: 800, percentage: 10, icon: CreditCard, color: 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400' }
+    ],
+    avgOrderCost: 385,
+    recommendations: [
+        'Switch to Blue Dart for Mumbai deliveries to save ₹45/order',
+        'Bulk order packaging materials to save 15% on material costs',
+        'Enable auto-recharge at ₹10,000 to avoid payment failures'
+    ]
+};
 
 export function FinancialsClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
     const { addToast } = useToast();
 
-    const { data: balanceData, isLoading: balanceLoading } = useWalletBalance();
-    const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
+    const { data: balanceData, isLoading: balanceLoading } = useWalletBalance({ enabled: !USE_MOCK });
+    const { data: transactionsData } = useWalletTransactions({ limit: 20 }, { enabled: !USE_MOCK });
     const rechargeWallet = useRechargeWallet();
 
     const handleRechargeSubmit = async (amount: number, _method: PaymentMethod) => {
         try {
+            if (USE_MOCK) {
+                addToast(`Mock: Added ₹${amount.toLocaleString('en-IN')} to wallet`, 'success');
+                setIsAddMoneyOpen(false);
+                return;
+            }
+
             const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
             await rechargeWallet.mutateAsync({ amount, paymentId });
             setIsAddMoneyOpen(false);
@@ -46,60 +58,7 @@ export function FinancialsClient() {
         }
     };
 
-    // Calculate insights from transactions
-    const calculateInsights = () => {
-        if (!transactionsData?.transactions) return null;
-
-        const now = new Date();
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-        const thisWeekTxns = transactionsData.transactions.filter(
-            t => new Date(t.createdAt) >= weekAgo && t.type === 'debit'
-        );
-        const lastWeekTxns = transactionsData.transactions.filter(
-            t => new Date(t.createdAt) >= twoWeeksAgo && new Date(t.createdAt) < weekAgo && t.type === 'debit'
-        );
-
-        const thisWeekTotal = thisWeekTxns.reduce((sum, t) => sum + t.amount, 0);
-        const lastWeekTotal = lastWeekTxns.reduce((sum, t) => sum + t.amount, 0);
-
-        const categorize = (txns: typeof thisWeekTxns) => {
-            const categories: Record<string, number> = {};
-            txns.forEach(t => {
-                const cat = t.reason.includes('ship') ? 'Shipping Costs' :
-                            t.reason.includes('pack') ? 'Packaging' :
-                            t.reason.includes('fee') ? 'Transaction Fees' : 'Other';
-                categories[cat] = (categories[cat] || 0) + t.amount;
-            });
-            return Object.entries(categories).map(([name, amount]) => ({
-                name,
-                amount,
-                percentage: thisWeekTotal > 0 ? Math.round((amount / thisWeekTotal) * 100) : 0,
-                icon: CATEGORY_ICONS[name as keyof typeof CATEGORY_ICONS] || CreditCard,
-                color: CATEGORY_COLORS[name as keyof typeof CATEGORY_COLORS] || CATEGORY_COLORS.Other
-            }));
-        };
-
-        return {
-            thisWeekSpend: thisWeekTotal,
-            lastWeekSpend: lastWeekTotal,
-            categories: categorize(thisWeekTxns),
-            avgOrderCost: thisWeekTxns.length > 0 ? Math.round(thisWeekTotal / thisWeekTxns.length) : 0,
-            recommendations: [
-                balanceData && balanceData.balance < 10000 ? 'Low balance - consider recharging' : null,
-                'Review shipping costs for optimization opportunities',
-                'Check for bulk packaging material discounts'
-            ].filter(Boolean) as string[]
-        };
-    };
-
-    const insights = calculateInsights();
-    const weeklyChange = insights && insights.lastWeekSpend > 0
-        ? Math.round(((insights.thisWeekSpend - insights.lastWeekSpend) / insights.lastWeekSpend) * 100)
-        : 0;
-
-    if (balanceLoading) {
+    if (!USE_MOCK && balanceLoading) {
         return (
             <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
                 <p className="text-[var(--text-secondary)]">Loading...</p>
@@ -107,12 +66,17 @@ export function FinancialsClient() {
         );
     }
 
+    const balance = USE_MOCK ? 45820 : (balanceData?.balance || 0);
+    const transactions = USE_MOCK ? mockTransactions.slice(0, 20) : (transactionsData?.transactions || []);
+    const insights = USE_MOCK ? MOCK_INSIGHTS : null;
+    const weeklyChange = USE_MOCK ? -12 : 0;
+
     return (
         <div className="min-h-screen bg-[var(--bg-primary)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <WalletHero
-                        balance={balanceData?.balance || 0}
+                        balance={balance}
                         weeklyChange={weeklyChange}
                         lowBalanceThreshold={10000}
                         averageWeeklySpend={insights?.thisWeekSpend || 0}
@@ -132,9 +96,9 @@ export function FinancialsClient() {
                     </motion.div>
                 )}
 
-                {!transactionsLoading && transactionsData?.transactions && (
+                {transactions.length > 0 && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                        <TransactionList transactions={transactionsData.transactions as any} />
+                        <TransactionList transactions={transactions as any} />
                     </motion.div>
                 )}
 
