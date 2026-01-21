@@ -1,5 +1,5 @@
 /**
- * Jest Configuration for Shipcrowd Backend
+ * Jest Configuration for Helix Backend
  * Configured for TypeScript with MongoDB Memory Server
  */
 module.exports = {

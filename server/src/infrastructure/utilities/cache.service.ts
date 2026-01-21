@@ -50,7 +50,7 @@ export class CacheService {
      * Get cached value
      */
     static async get<T>(key: string): Promise<T | null> {
-        const fullKey = `shipcrowd:cache:${key}`;
+        const fullKey = `Helix:cache:${key}`;
 
         try {
             if (this.redis && this.isRedisAvailable) {
@@ -80,7 +80,7 @@ export class CacheService {
      * Set cached value with TTL
      */
     static async set<T>(key: string, value: T, ttlSeconds: number = 3600): Promise<void> {
-        const fullKey = `shipcrowd:cache:${key}`;
+        const fullKey = `Helix:cache:${key}`;
 
         try {
             if (this.redis && this.isRedisAvailable) {
@@ -110,7 +110,7 @@ export class CacheService {
      * Delete cached value
      */
     static async delete(key: string): Promise<void> {
-        const fullKey = `shipcrowd:cache:${key}`;
+        const fullKey = `Helix:cache:${key}`;
 
         try {
             if (this.redis && this.isRedisAvailable) {
@@ -126,7 +126,7 @@ export class CacheService {
      * Clear all cache with pattern
      */
     static async clearPattern(pattern: string): Promise<void> {
-        const fullPattern = `shipcrowd:cache:${pattern}`;
+        const fullPattern = `Helix:cache:${pattern}`;
 
         try {
             if (this.redis && this.isRedisAvailable) {

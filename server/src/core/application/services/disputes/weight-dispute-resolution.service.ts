@@ -4,7 +4,7 @@
  * Handles weight dispute resolution workflow:
  * 1. Seller submits evidence (photos, documents)
  * 2. Admin reviews and resolves disputes
- * 3. Auto-resolves disputes after 7 days of inactivity (favors ShipCrowd)
+ * 3. Auto-resolves disputes after 7 days of inactivity (favors Helix)
  * 4. Processes financial settlement via wallet
  * 
  * BUSINESS RULES:
@@ -16,12 +16,12 @@
  * 
  * 2. Auto-Resolution (7-Day Rule)
  *    - Condition: Dispute >7 days old with no seller response
- *    - Action: Resolve in favor of ShipCrowd, deduct from wallet
+ *    - Action: Resolve in favor of Helix, deduct from wallet
  *    - Reason: Prevent indefinite pending disputes
  * 
  * 3. Resolution Outcomes
  *    - seller_favor: Refund to wallet (credit)
- *    - shipcrowd_favor: Deduct from wallet (debit)
+ *    - Helix_favor: Deduct from wallet (debit)
  *    - split: Partial refund/deduction
  *    - waived: No financial impact
  * 
@@ -73,7 +73,7 @@
  * - Evidence submission (unauthorized)
  * - Evidence submission (invalid state)
  * - Resolution: seller_favor with refund
- * - Resolution: shipcrowd_favor with deduction
+ * - Resolution: Helix_favor with deduction
  * - Resolution: insufficient balance handling
  * - Auto-resolution of expired disputes
  * 
@@ -99,7 +99,7 @@ interface SellerEvidenceDTO {
 }
 
 interface DisputeResolutionDTO {
-    outcome: 'seller_favor' | 'shipcrowd_favor' | 'split' | 'waived';
+    outcome: 'seller_favor' | 'Helix_favor' | 'split' | 'waived';
     adjustedWeight?: {
         value: number;
         unit: 'kg' | 'g';
@@ -226,7 +226,7 @@ class WeightDisputeResolutionService {
             }
 
             // Validate resolution outcome
-            const validOutcomes = ['seller_favor', 'shipcrowd_favor', 'split', 'waived'];
+            const validOutcomes = ['seller_favor', 'Helix_favor', 'split', 'waived'];
             if (!validOutcomes.includes(resolution.outcome)) {
                 throw new ValidationError(`Invalid resolution outcome: ${resolution.outcome}`);
             }
@@ -298,7 +298,7 @@ class WeightDisputeResolutionService {
     }
 
     /**
-     * Auto-resolve disputes after 7 days of inactivity (favor ShipCrowd)
+     * Auto-resolve disputes after 7 days of inactivity (favor Helix)
      * Called by background job daily
      * 
      * @returns Number of disputes resolved
@@ -327,7 +327,7 @@ class WeightDisputeResolutionService {
             for (const dispute of expiredDisputes) {
                 try {
                     await this.resolveDispute(String(dispute._id), 'system', {
-                        outcome: 'shipcrowd_favor',
+                        outcome: 'Helix_favor',
                         deductionAmount: dispute.financialImpact.difference,
                         reasonCode: 'AUTO_RESOLVED_NO_RESPONSE',
                         notes: `Automatically resolved after 7 days of no seller response. Original discrepancy: ${dispute.discrepancy.percentage.toFixed(1)}%`,
@@ -360,7 +360,7 @@ class WeightDisputeResolutionService {
     /**
      * Process financial settlement based on resolution
      * - seller_favor: Refund to seller wallet
-     * - shipcrowd_favor: Deduct from seller wallet
+     * - Helix_favor: Deduct from seller wallet
      * - split: Partial refund/deduction
      * - waived: No financial impact
      * 
@@ -407,9 +407,9 @@ class WeightDisputeResolutionService {
                 }
             }
 
-            // ShipCrowd favor or split: Deduct from wallet
+            // Helix favor or split: Deduct from wallet
             if (
-                (outcome === 'shipcrowd_favor' || outcome === 'split') &&
+                (outcome === 'Helix_favor' || outcome === 'split') &&
                 deductionAmount &&
                 deductionAmount > 0
             ) {

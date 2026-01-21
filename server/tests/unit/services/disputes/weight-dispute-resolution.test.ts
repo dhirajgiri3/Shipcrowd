@@ -243,8 +243,8 @@ describe('WeightDisputeResolutionService', () => {
             });
         });
 
-        describe('shipcrowd_favor outcome', () => {
-            it('should process deduction for shipcrowd_favor outcome with sufficient balance', async () => {
+        describe('Helix_favor outcome', () => {
+            it('should process deduction for Helix_favor outcome with sufficient balance', async () => {
                 (WalletService.getBalance as jest.MockedFunction<any>).mockResolvedValue({ balance: 1000 });
                 (WalletService.debit as jest.MockedFunction<any>).mockResolvedValue({
                     success: true,
@@ -252,7 +252,7 @@ describe('WeightDisputeResolutionService', () => {
                 });
 
                 const resolution = {
-                    outcome: 'shipcrowd_favor' as const,
+                    outcome: 'Helix_favor' as const,
                     deductionAmount: 50,
                     reasonCode: 'VALID_WEIGHT',
                     notes: 'Carrier weight is correct. Deducting from seller.'
@@ -265,7 +265,7 @@ describe('WeightDisputeResolutionService', () => {
                 );
 
                 expect(result.status).toBe('manual_resolved');
-                expect(result.resolution.outcome).toBe('shipcrowd_favor');
+                expect(result.resolution.outcome).toBe('Helix_favor');
                 expect(WalletService.getBalance).toHaveBeenCalledWith(mockCompanyId);
                 expect(WalletService.debit).toHaveBeenCalledWith(
                     mockCompanyId,
@@ -285,7 +285,7 @@ describe('WeightDisputeResolutionService', () => {
                 (WalletService.getBalance as jest.MockedFunction<any>).mockResolvedValue({ balance: 10 });
 
                 const resolution = {
-                    outcome: 'shipcrowd_favor' as const,
+                    outcome: 'Helix_favor' as const,
                     deductionAmount: 50,
                     reasonCode: 'VALID_WEIGHT',
                     notes: 'Deduction approved but insufficient balance'
@@ -319,7 +319,7 @@ describe('WeightDisputeResolutionService', () => {
                 });
 
                 const resolution = {
-                    outcome: 'shipcrowd_favor' as const,
+                    outcome: 'Helix_favor' as const,
                     deductionAmount: 50,
                     reasonCode: 'VALID_WEIGHT',
                     notes: 'Exact balance match'
@@ -336,10 +336,10 @@ describe('WeightDisputeResolutionService', () => {
 
             it('should not deduct if deductionAmount is 0', async () => {
                 const resolution = {
-                    outcome: 'shipcrowd_favor' as const,
+                    outcome: 'Helix_favor' as const,
                     deductionAmount: 0,
                     reasonCode: 'VALID_WEIGHT',
-                    notes: 'Resolved in ShipCrowd favor but no deduction'
+                    notes: 'Resolved in Helix favor but no deduction'
                 };
 
                 await WeightDisputeResolutionService.resolveDispute(
@@ -454,7 +454,7 @@ describe('WeightDisputeResolutionService', () => {
                 });
 
                 const resolution = {
-                    outcome: 'shipcrowd_favor' as const,
+                    outcome: 'Helix_favor' as const,
                     deductionAmount: 100,
                     reasonCode: 'AUTO_RESOLVED_NO_RESPONSE',
                     notes: 'Auto-resolved after 7 days'

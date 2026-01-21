@@ -1,6 +1,6 @@
 # Velocity Shipfast Courier Integration
 
-Complete implementation of Velocity Shipfast API integration for Shipcrowd.
+Complete implementation of Velocity Shipfast API integration for Helix.
 
 ## 📁 File Structure
 
@@ -113,7 +113,7 @@ VelocityShipfastProvider (extends BaseCourierAdapter)
 │   └── refreshToken() - Force refresh
 ├── VelocityMapper (data transformation)
 │   ├── mapToForwardOrder() - Order → Velocity format
-│   ├── mapStatus() - Velocity status → Shipcrowd status
+│   ├── mapStatus() - Velocity status → Helix status
 │   └── validateForwardOrderData() - Input validation
 └── VelocityErrorHandler (error handling)
     ├── handleVelocityError() - Error classification
@@ -296,7 +296,7 @@ Use existing mock in `tests/mocks/velocityShipfast.mock.ts` for testing without 
 ## 📊 Status Mapping
 
 ```typescript
-Velocity Status → Shipcrowd Status
+Velocity Status → Helix Status
 NEW            → created
 PKP            → picked_up
 IT             → in_transit

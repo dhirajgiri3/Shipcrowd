@@ -23,7 +23,7 @@ export interface UploadResult {
 }
 
 export default class CloudinaryStorageService {
-    private static folder = process.env.CLOUDINARY_FOLDER_EXPORTS || 'shipcrowd/exports';
+    private static folder = process.env.CLOUDINARY_FOLDER_EXPORTS || 'Helix/exports';
 
     /**
      * Upload buffer to Cloudinary

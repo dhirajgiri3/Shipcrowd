@@ -55,7 +55,7 @@
 
 ### 1.1 Purpose
 
-Velocity Shipfast is the **primary courier aggregator** for Shipcrowd, providing access to multiple Indian courier partners (Delhivery, DTDC, Xpressbees, etc.) through a single API.
+Velocity Shipfast is the **primary courier aggregator** for Helix, providing access to multiple Indian courier partners (Delhivery, DTDC, Xpressbees, etc.) through a single API.
 
 ### 1.2 Why Velocity Shipfast?
 
@@ -930,7 +930,7 @@ function mapOrderToVelocity(order: IOrder, warehouse: IWarehouse): VelocityForwa
     pickup_location: warehouse.name,
     warehouse_id: warehouse.carrierDetails?.velocityWarehouseId || 'WHYYB5',
     vendor_details: {
-      email: warehouse.contactInfo.email || 'noreply@shipcrowd.com',
+      email: warehouse.contactInfo.email || 'noreply@Helix.com',
       phone: warehouse.contactInfo.phone,
       name: warehouse.contactInfo.name,
       address: warehouse.address.line1,
@@ -1172,7 +1172,7 @@ VELOCITY_BASE_URL="https://shazam.velocity.in"
 
 # AWS Secrets Manager (Production)
 aws secretsmanager create-secret \
-  --name shipcrowd/velocity/credentials \
+  --name Helix/velocity/credentials \
   --secret-string '{"username":"+918860606061","password":"Velocity@123"}'
 ```
 
@@ -1182,7 +1182,7 @@ async function getVelocityCredentials(): Promise<{ username: string; password: s
   if (process.env.NODE_ENV === 'production') {
     const secretsManager = new AWS.SecretsManager();
     const secret = await secretsManager.getSecretValue({
-      SecretId: 'shipcrowd/velocity/credentials'
+      SecretId: 'Helix/velocity/credentials'
     }).promise();
 
     return JSON.parse(secret.SecretString);
@@ -1437,7 +1437,7 @@ describe('Velocity Shipfast Integration', () => {
 - [ ] Implement order → Velocity data mapper
 - [ ] Implement label download & storage (S3/local)
 - [ ] Implement `trackShipments()` method
-- [ ] Implement status mapping (Velocity → Shipcrowd)
+- [ ] Implement status mapping (Velocity → Helix)
 - [ ] Write forward order tests
 - [ ] Write tracking tests
 

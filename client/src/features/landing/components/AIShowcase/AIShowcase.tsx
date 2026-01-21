@@ -54,7 +54,7 @@ export default function AIShowcase() {
                         transition={{ delay: 1, duration: 0.6 }}
                         className="text-lg md:text-xl text-gray-600 max-w-[800px] mx-auto leading-relaxed"
                     >
-                        ShipCrowd doesn't just manage your shipments—it thinks for you. Our neural engine analyzes millions of data points to make the perfect decision, every single time.
+                        Helix doesn't just manage your shipments—it thinks for you. Our neural engine analyzes millions of data points to make the perfect decision, every single time.
                     </motion.p>
                 </div>
 

@@ -4,7 +4,7 @@ import { twMerge } from 'tailwind-merge';
 /**
  * Utility Functions
  * 
- * Core utilities for the Shipcrowd application.
+ * Core utilities for the Helix application.
  * Uses design tokens from design-tokens.ts for consistency.
  */
 

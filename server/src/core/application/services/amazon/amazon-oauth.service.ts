@@ -86,7 +86,7 @@ export default class AmazonOAuthService {
     }
 
     /**
-     * Connect a new Amazon store to Shipcrowd
+     * Connect a new Amazon store to Helix
      */
     static async connectStore(params: ConnectStoreParams): Promise<IAmazonStore> {
         logger.info('Connecting Amazon store', {

@@ -87,7 +87,7 @@ export default class AmazonInventorySyncService {
         // Find product mapping
         const mapping = await AmazonProductMapping.findOne({
             amazonStoreId: storeId,
-            shipcrowdSKU: sku.toUpperCase(),
+            HelixSKU: sku.toUpperCase(),
             isActive: true,
             syncInventory: true,
         });
@@ -175,7 +175,7 @@ export default class AmazonInventorySyncService {
             sku: string;
             quantity: number;
             mappingId: string;
-            shipcrowdSKU: string;
+            HelixSKU: string;
         }> = [];
 
         // Process each update and find mappings
@@ -185,7 +185,7 @@ export default class AmazonInventorySyncService {
             try {
                 const mapping = await AmazonProductMapping.findOne({
                     amazonStoreId: storeId,
-                    shipcrowdSKU: update.sku.toUpperCase(),
+                    HelixSKU: update.sku.toUpperCase(),
                     isActive: true,
                     syncInventory: true,
                 });
@@ -204,7 +204,7 @@ export default class AmazonInventorySyncService {
                     sku: mapping.amazonSKU,
                     quantity: update.quantity,
                     mappingId: String(mapping._id),
-                    shipcrowdSKU: update.sku,
+                    HelixSKU: update.sku,
                 });
             } catch (error: any) {
                 result.itemsFailed++;
@@ -252,14 +252,14 @@ export default class AmazonInventorySyncService {
                         result.itemsSynced++;
 
                         logger.debug('Synced inventory for SKU', {
-                            sku: msg.shipcrowdSKU,
+                            sku: msg.HelixSKU,
                             sellerSKU: msg.sku,
                             quantity: msg.quantity,
                         });
                     } catch (error: any) {
                         result.itemsFailed++;
                         result.syncErrors.push({
-                            itemId: msg.shipcrowdSKU,
+                            itemId: msg.HelixSKU,
                             error: error.message,
                             timestamp: new Date(),
                         });
@@ -270,7 +270,7 @@ export default class AmazonInventorySyncService {
                 for (const msg of inventoryMessages) {
                     result.itemsFailed++;
                     result.syncErrors.push({
-                        itemId: msg.shipcrowdSKU,
+                        itemId: msg.HelixSKU,
                         error: `Feed processing failed: ${feedResult.processingStatus}`,
                         timestamp: new Date(),
                     });
@@ -286,7 +286,7 @@ export default class AmazonInventorySyncService {
             for (const msg of inventoryMessages) {
                 result.itemsFailed++;
                 result.syncErrors.push({
-                    itemId: msg.shipcrowdSKU,
+                    itemId: msg.HelixSKU,
                     error: error.message,
                     timestamp: new Date(),
                 });
@@ -339,7 +339,7 @@ export default class AmazonInventorySyncService {
 
         await this.pushInventoryToAmazon(
             mapping.amazonStoreId.toString(),
-            mapping.shipcrowdSKU,
+            mapping.HelixSKU,
             quantity
         );
     }

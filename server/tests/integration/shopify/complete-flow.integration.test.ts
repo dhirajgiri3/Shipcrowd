@@ -50,8 +50,8 @@ describe('Shopify Integration - Complete Flow', () => {
     process.env.SHOPIFY_API_KEY = 'test_api_key';
     process.env.SHOPIFY_API_SECRET = 'test_api_secret';
     process.env.SHOPIFY_WEBHOOK_SECRET = 'test_webhook_secret';
-    process.env.APP_URL = 'https://test.shipcrowd.com';
-    process.env.FRONTEND_URL = 'https://app.test.shipcrowd.com';
+    process.env.APP_URL = 'https://test.Helix.com';
+    process.env.FRONTEND_URL = 'https://app.test.Helix.com';
     process.env.ENCRYPTION_KEY = '0'.repeat(64); // 32 bytes hex
   });
 
@@ -115,8 +115,8 @@ describe('Shopify Integration - Complete Flow', () => {
         shopifyVariantId: '41234567890',
         shopifySKU: 'TSHIRT-BLK-M',
         shopifyTitle: 'Black T-Shirt - Medium',
-        shipcrowdSKU: 'TSHIRT-BLK-M',
-        shipcrowdProductName: 'Black T-Shirt Medium',
+        HelixSKU: 'TSHIRT-BLK-M',
+        HelixProductName: 'Black T-Shirt Medium',
         mappingType: 'AUTO',
         syncInventory: true,
         syncOnFulfillment: true,
@@ -130,8 +130,8 @@ describe('Shopify Integration - Complete Flow', () => {
         shopifyVariantId: '41234567891',
         shopifySKU: 'TSHIRT-WHT-L',
         shopifyTitle: 'White T-Shirt - Large',
-        shipcrowdSKU: 'TSHIRT-WHT-L',
-        shipcrowdProductName: 'White T-Shirt Large',
+        HelixSKU: 'TSHIRT-WHT-L',
+        HelixProductName: 'White T-Shirt Large',
         mappingType: 'AUTO',
         syncInventory: true,
         syncOnFulfillment: true,
@@ -341,7 +341,7 @@ describe('Shopify Integration - Complete Flow', () => {
     test('should have active product mapping for inventory sync', async () => {
       const mapping = await ProductMapping.findOne({
         shopifyStoreId: storeId,
-        shipcrowdSKU: 'TSHIRT-BLK-M',
+        HelixSKU: 'TSHIRT-BLK-M',
         syncInventory: true,
         isActive: true,
       });
@@ -354,7 +354,7 @@ describe('Shopify Integration - Complete Flow', () => {
     test('should record successful inventory sync', async () => {
       const mapping = await ProductMapping.findOne({
         shopifyStoreId: storeId,
-        shipcrowdSKU: 'TSHIRT-BLK-M',
+        HelixSKU: 'TSHIRT-BLK-M',
       });
 
       // Simulate successful inventory sync
@@ -369,7 +369,7 @@ describe('Shopify Integration - Complete Flow', () => {
     test('should record sync error and auto-disable after 10 errors', async () => {
       const mapping = await ProductMapping.findOne({
         shopifyStoreId: storeId,
-        shipcrowdSKU: 'TSHIRT-WHT-L',
+        HelixSKU: 'TSHIRT-WHT-L',
       });
 
       // Simulate 10 sync errors

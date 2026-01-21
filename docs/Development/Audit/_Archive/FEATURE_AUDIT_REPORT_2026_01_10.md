@@ -1,4 +1,4 @@
-# Shipcrowd Feature Implementation Audit Report
+# Helix Feature Implementation Audit Report
 **Date:** January 10, 2026
 **Scope:** Comprehensive analysis of implemented, partially implemented, and planned features
 **Accuracy:** 100% code-verified (not aspirational)
@@ -8,7 +8,7 @@
 
 ## EXECUTIVE SUMMARY
 
-Shipcrowd is a **production-ready shipping aggregation platform** with:
+Helix is a **production-ready shipping aggregation platform** with:
 - ✅ **4/4 marketplace integrations fully complete** (Shopify, WooCommerce, Amazon, Flipkart)
 - ✅ **1/3 courier integrations complete** (Velocity Express - production grade)
 - ✅ **7/17 intelligent features complete** (mostly core operations)
@@ -660,7 +660,7 @@ export services: pdf-export.service.ts, excel-export.service.ts, csv-export.serv
 
 **Features Implemented:**
 - ✅ Real-time stock updates across all platforms (Shopify, WooCommerce, Amazon, Flipkart)
-- ✅ Bidirectional sync (Shipcrowd ↔ Marketplace)
+- ✅ Bidirectional sync (Helix ↔ Marketplace)
 - ✅ Stock level synchronization
 - ✅ Movement tracking for audit trail
 - ✅ Deduction on order creation
@@ -685,7 +685,7 @@ All 7 core fulfillment features fully implemented. **100% core feature parity ac
 
 ---
 
-## COMPARISON TABLE: SHIPCROWD vs MYROCKETXPRESS SPEC
+## COMPARISON TABLE: Helix vs MYROCKETXPRESS SPEC
 
 | Feature Category | Feature | Status | Code Ready | Notes |
 |---|---|---|---|---|
@@ -833,7 +833,7 @@ TOTAL IMPLEMENTED:          ~7,500 LOC
 
 ## HONEST ASSESSMENT
 
-### What Shipcrowd Does EXCEPTIONALLY Well ✅
+### What Helix Does EXCEPTIONALLY Well ✅
 
 1. **E-commerce Integration Excellence**
    - All 4 major platforms fully integrated
@@ -863,7 +863,7 @@ TOTAL IMPLEMENTED:          ~7,500 LOC
    - Business intelligence ready
    - **Status:** Provides visibility into operations
 
-### What Shipcrowd is MISSING ❌
+### What Helix is MISSING ❌
 
 1. **Multi-Courier Real Competition**
    - Only 1 courier working (Velocity)
@@ -891,13 +891,13 @@ TOTAL IMPLEMENTED:          ~7,500 LOC
 
 ### The Reality
 
-**Shipcrowd TODAY is:**
+**Helix TODAY is:**
 - ✅ A fully functional, production-ready shipping aggregation platform
 - ✅ Complete for Indian e-commerce sellers (Shopify, WooCommerce, Amazon, Flipkart)
 - ✅ Enterprise-grade for core operations (order, warehouse, tracking, finance)
 - ⚠️ Limited to single courier (Velocity) for real shipping
 
-**Shipcrowd is NOT YET:**
+**Helix is NOT YET:**
 - ❌ A complete "Myrocketxpress" clone (missing 7 features)
 - ❌ A multi-courier comparison engine (only 1 courier working)
 - ❌ An AI-powered platform (no ML features implemented)
@@ -973,7 +973,7 @@ TOTAL IMPLEMENTED:          ~7,500 LOC
 
 ## CONCLUSION
 
-Shipcrowd is a **strong, production-ready shipping platform** with excellent marketplace integration and core operations. It successfully handles:
+Helix is a **strong, production-ready shipping platform** with excellent marketplace integration and core operations. It successfully handles:
 
 - ✅ 4 major e-commerce platforms (Shopify, WooCommerce, Amazon, Flipkart)
 - ✅ 1 courier (Velocity) with production-grade reliability

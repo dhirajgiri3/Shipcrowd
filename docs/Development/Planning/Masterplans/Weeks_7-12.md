@@ -1,4 +1,4 @@
-# Shipcrowd Backend Master Development Plan - Part 2
+# Helix Backend Master Development Plan - Part 2
 ## CANON Methodology - Weeks 7-16 Detailed Implementation
 
 **Created:** December 26, 2025
@@ -13,7 +13,7 @@
 
 ### Implementation Scope: Weeks 7-16
 
-This document provides **extremely detailed, day-by-day execution plans** for Weeks 7-16 of Shipcrowd backend development following CANON AI-native methodology.
+This document provides **extremely detailed, day-by-day execution plans** for Weeks 7-16 of Helix backend development following CANON AI-native methodology.
 
 **Weeks 7-9:** WooCommerce Integration + Advanced NDR/RTO Automation
 **Weeks 10-12:** Analytics, Sales/Commission, OpenAI Features
@@ -158,21 +158,21 @@ Add proper authorization (admin or company owner only), input validation using J
 
 **Task 2.1: WooCommerce Order Sync Service**
 
-Create service pulling orders from WooCommerce and syncing to Shipcrowd.
+Create service pulling orders from WooCommerce and syncing to Helix.
 
 **File:** `/server/src/core/application/services/integrations/WooCommerceOrderSyncService.ts`
 
 **Methods to Implement:**
 - `syncOrders(storeId, options?)`: Main sync method, fetches orders since lastSyncAt
 - `fetchOrdersFromWooCommerce(client, lastSyncDate)`: Calls WooCommerce API with pagination (GET /orders?after=lastSyncDate&per_page=100)
-- `mapWooCommerceOrderToShipcrowd(wooOrder)`: Transforms WooCommerce order to Shipcrowd Order format
+- `mapWooCommerceOrderToHelix(wooOrder)`: Transforms WooCommerce order to Helix Order format
 - `createOrUpdateOrder(mappedOrder, wooOrderId, storeId)`: Creates new order or updates existing (check by woocommerceOrderId)
 - `syncRecentOrders(storeId, hours=24)`: Syncs orders from last N hours
 - `syncOrderById(storeId, wooOrderId)`: Syncs single order by ID
 
 **Task 2.2: Order Data Mapping**
 
-Implement comprehensive mapping from WooCommerce to Shipcrowd order format.
+Implement comprehensive mapping from WooCommerce to Helix order format.
 
 **Mapping Logic:**
 - wooOrder.id → order.woocommerceOrderId (store for deduplication)
@@ -269,7 +269,7 @@ Add manual trigger endpoint for immediate sync.
 
 **Task 3.1: WooCommerce Inventory Sync Service**
 
-Create service pushing Shipcrowd inventory to WooCommerce product stock levels.
+Create service pushing Helix inventory to WooCommerce product stock levels.
 
 **File:** `/server/src/core/application/services/integrations/WooCommerceInventorySyncService.ts`
 
@@ -305,7 +305,7 @@ Hook inventory sync into InventoryService stock deduction events.
 **Updates:**
 - After successful `deductStock()`: Trigger WooCommerceInventorySyncService.pushInventoryToWooCommerce() for connected stores
 - Use event emitter pattern or direct call based on product mappings
-- Only sync if ProductMapping exists linking Shipcrowd SKU to WooCommerce store+product
+- Only sync if ProductMapping exists linking Helix SKU to WooCommerce store+product
 
 #### Afternoon Session (4 hours): Webhook Handlers
 
@@ -331,7 +331,7 @@ Create handlers for WooCommerce webhook events.
 **Webhook Topics to Handle:**
 - `order.created`: Trigger immediate order sync for new order
 - `order.updated`: Sync order status changes (cancelled, refunded, completed)
-- `order.deleted`: Mark order as deleted in Shipcrowd
+- `order.deleted`: Mark order as deleted in Helix
 - `product.updated`: Refresh product mappings if SKU changed
 - `product.deleted`: Unmap product
 
@@ -386,18 +386,18 @@ Create webhook receiver endpoints.
 
 **Task 4.1: Product Mapping Service**
 
-Create service managing SKU mappings between Shipcrowd and WooCommerce.
+Create service managing SKU mappings between Helix and WooCommerce.
 
 **File:** `/server/src/core/application/services/integrations/ProductMappingService.ts`
 
 **Methods to Implement:**
-- `autoMapProducts(storeId)`: Automatically matches Shipcrowd SKUs to WooCommerce products using exact SKU match or fuzzy name matching (Levenshtein distance < 3)
-- `createManualMapping(shipcrowdSku, woocommerceProductId, storeId, companyId)`: Manually map SKU to product
+- `autoMapProducts(storeId)`: Automatically matches Helix SKUs to WooCommerce products using exact SKU match or fuzzy name matching (Levenshtein distance < 3)
+- `createManualMapping(HelixSku, woocommerceProductId, storeId, companyId)`: Manually map SKU to product
 - `updateMapping(mappingId, updates)`: Update existing mapping
 - `deleteMapping(mappingId)`: Remove mapping
 - `getMappingsForStore(storeId)`: Get all mappings for store
-- `getMappingBySku(sku, storeId)`: Find mapping by Shipcrowd SKU
-- `bulkImportMappings(csvFile, storeId)`: Import mappings from CSV (columns: shipcrowdSku, woocommerceProductId, woocommerceSku)
+- `getMappingBySku(sku, storeId)`: Find mapping by Helix SKU
+- `bulkImportMappings(csvFile, storeId)`: Import mappings from CSV (columns: HelixSku, woocommerceProductId, woocommerceSku)
 - `exportMappings(storeId)`: Export mappings to CSV
 
 Use existing ProductMapping model or create WooCommerceProductMapping model extending it
@@ -408,7 +408,7 @@ Implement fuzzy string matching for auto-mapping.
 
 **Implementation:**
 - Use Levenshtein distance algorithm (install 'fastest-levenshtein' package)
-- Match Shipcrowd product name/SKU against WooCommerce product name/SKU
+- Match Helix product name/SKU against WooCommerce product name/SKU
 - Threshold: Distance < 3 for exact match, 3-5 for suggested match
 - Return confidence score: 100% for exact SKU, 80-99% for fuzzy name match
 - Allow user to approve suggested matches
@@ -449,8 +449,8 @@ Create unit tests for all WooCommerce services.
 
 **Test Cases:**
 - `fetchOrdersFromWooCommerce()`: Should fetch orders with pagination
-- `mapWooCommerceOrderToShipcrowd()`: Should correctly map all fields
-- `mapWooCommerceOrderToShipcrowd()`: Should handle missing optional fields
+- `mapWooCommerceOrderToHelix()`: Should correctly map all fields
+- `mapWooCommerceOrderToHelix()`: Should handle missing optional fields
 - `createOrUpdateOrder()`: Should prevent duplicate orders using woocommerceOrderId
 - `syncRecentOrders()`: Should sync only orders after lastSyncAt
 
@@ -478,9 +478,9 @@ Create end-to-end integration tests.
 
 **Test Scenarios:**
 - Complete flow: Connect store → Auto-map products → Sync orders → Create shipments → Push inventory back
-- Webhook flow: Receive order.created webhook → Sync order → Create in Shipcrowd
+- Webhook flow: Receive order.created webhook → Sync order → Create in Helix
 - Duplicate prevention: Webhook + sync job both processing same order → Only one order created
-- Inventory sync: Deduct stock in Shipcrowd → WooCommerce product stock updated
+- Inventory sync: Deduct stock in Helix → WooCommerce product stock updated
 
 Mock WooCommerce API responses using nock library
 
@@ -529,8 +529,8 @@ Create comprehensive setup guide for WooCommerce integration.
 4. **Connection Setup**: POST /integrations/woocommerce/connect with store URL and credentials
 5. **Product Mapping**: Auto-map or manual mapping process
 6. **Order Sync Configuration**: Set sync interval, enable/disable order types
-7. **Webhook Setup**: Configure WooCommerce webhooks pointing to Shipcrowd endpoints
-8. **Inventory Sync**: How inventory updates flow WooCommerce ↔ Shipcrowd
+7. **Webhook Setup**: Configure WooCommerce webhooks pointing to Helix endpoints
+8. **Inventory Sync**: How inventory updates flow WooCommerce ↔ Helix
 9. **Troubleshooting**: Common errors and solutions
 
 Include screenshots and step-by-step instructions
@@ -561,7 +561,7 @@ Create guide for setting up WooCommerce webhooks.
 **Content:**
 - Where to configure webhooks in WooCommerce (Settings → Advanced → Webhooks)
 - Required webhook topics: order.created, order.updated, product.updated
-- Delivery URL format: https://api.shipcrowd.com/webhooks/woocommerce/{storeId}/{topic}
+- Delivery URL format: https://api.Helix.com/webhooks/woocommerce/{storeId}/{topic}
 - Secret generation and configuration
 - Testing webhooks
 - Webhook retry behavior
@@ -683,13 +683,13 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ✅ **Order Sync Complete (100%)**
 - Pull orders from WooCommerce with pagination
-- Order mapping to Shipcrowd format (similar to Shopify)
+- Order mapping to Helix format (similar to Shopify)
 - Automatic order creation with duplicate prevention
 - Background sync job every 15 minutes
 - Manual sync trigger endpoint
 
 ✅ **Inventory Sync Complete (100%)**
-- Push stock levels from Shipcrowd to WooCommerce
+- Push stock levels from Helix to WooCommerce
 - Product variant inventory support
 - Batch updates (50 products per batch)
 - Rate limiting (100ms delay between batches)
@@ -1079,7 +1079,7 @@ Create IVR flow script for automated NDR resolution calls.
 **IVR Flow (TwiML-like):**
 ```xml
 <Response>
-  <Say>Hello {customerName}, this is Shipcrowd regarding your order {orderId}.</Say>
+  <Say>Hello {customerName}, this is Helix regarding your order {orderId}.</Say>
   <Say>Our delivery attempt failed due to {ndrReason}.</Say>
   <Gather numDigits="1" action="/ivr/ndr-resolution">
     <Say>Press 1 to schedule redelivery.</Say>
@@ -1090,7 +1090,7 @@ Create IVR flow script for automated NDR resolution calls.
 </Response>
 ```
 
-Host IVR flow on Shipcrowd server, Exotel calls webhook for each step
+Host IVR flow on Helix server, Exotel calls webhook for each step
 
 **Task 2.6: Call Status Tracking**
 
@@ -1217,7 +1217,7 @@ Reply with:
 
 Need help? Call us: {{support_number}}
 
--Shipcrowd
+-Helix
 ```
 
 **Template: RTO Notification**
@@ -1233,7 +1233,7 @@ Your order #{{order_id}} is being returned due to {{rto_reason}}.
 
 For assistance, contact: {{support_number}}
 
--Shipcrowd
+-Helix
 ```
 
 **Task 3.4: Interactive Address Update**
@@ -1553,7 +1553,7 @@ Create week 8 summary documenting achievements.
 - NDR/RTO analytics dashboard
 - 70%+ test coverage achieved
 - 25+ new files created
-- First AI-powered feature in Shipcrowd
+- First AI-powered feature in Helix
 
 **Task 5.7: Prepare Week 9 Planning**
 
@@ -2292,7 +2292,7 @@ npm install @aws-sdk/client-s3
 
 **Environment Variables:**
 ```bash
-AWS_S3_BUCKET_EXPORTS=shipcrowd-exports
+AWS_S3_BUCKET_EXPORTS=Helix-exports
 AWS_S3_REGION=ap-south-1
 ```
 

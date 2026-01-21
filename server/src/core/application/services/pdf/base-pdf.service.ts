@@ -8,7 +8,7 @@ import PDFDocument from 'pdfkit';
 import * as fs from 'fs';
 import * as path from 'path';
 import QRCode from 'qrcode';
-import { PDF_BRAND_COLORS } from '../../../../shared/constants/shipcrowd.constants';
+import { PDF_BRAND_COLORS } from '../../../../shared/constants/Helix.constants';
 import { formatINR } from '../../../../shared/utils/indian-currency.util';
 import {
     PDFBrandConfig,
@@ -49,13 +49,13 @@ export class BasePDFService {
             primaryColor: PDF_BRAND_COLORS.PRIMARY_BLUE,
             secondaryColor: PDF_BRAND_COLORS.TEXT_PRIMARY,
             borderColor: PDF_BRAND_COLORS.BORDER_DEFAULT,
-            logoPath: path.join(__dirname, '../../../../../assets/shipcrowd-logo.png'),
-            companyName: 'ShipCrowd',
+            logoPath: path.join(__dirname, '../../../../../assets/Helix-logo.png'),
+            companyName: 'Helix',
         };
     }
 
     /**
-     * Add ShipCrowd branded header with logo and document title
+     * Add Helix branded header with logo and document title
      */
     addHeader(title: string, subtitle?: string, copyType?: 'ORIGINAL' | 'DUPLICATE' | 'TRIPLICATE'): this {
         const y = this.margins.top;
@@ -72,7 +72,7 @@ export class BasePDFService {
                 .fontSize(16)
                 .fillColor(this.brandConfig.primaryColor)
                 .font('Helvetica-Bold')
-                .text('ShipCrowd', this.margins.left, y);
+                .text('Helix', this.margins.left, y);
         }
 
         // Document title (center)

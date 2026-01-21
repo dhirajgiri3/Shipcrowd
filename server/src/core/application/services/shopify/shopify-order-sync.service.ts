@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 /**
  * ShopifyOrderSyncService
  *
- * Handles synchronization of orders from Shopify to Shipcrowd.
+ * Handles synchronization of orders from Shopify to Helix.
  *
  * Features:
  * - Cursor-based pagination for efficient large-scale sync
@@ -220,7 +220,7 @@ export class ShopifyOrderSyncService {
 
 
   /**
-   * Sync a single order from Shopify to Shipcrowd
+   * Sync a single order from Shopify to Helix
    *
    * @param shopifyOrder - Shopify order object
    * @param store - ShopifyStore document
@@ -238,7 +238,7 @@ export class ShopifyOrderSyncService {
     });
 
     if (existingOrder) {
-      // Skip if order already fulfilled in Shipcrowd
+      // Skip if order already fulfilled in Helix
       if (existingOrder.currentStatus === 'DELIVERED' || existingOrder.currentStatus === 'COMPLETED') {
         logger.debug('Skipping fulfilled order', {
           orderId: shopifyOrder.id,
@@ -249,9 +249,9 @@ export class ShopifyOrderSyncService {
 
       // Update if Shopify order is newer
       const shopifyUpdated = new Date(shopifyOrder.updated_at);
-      const shipcrowdUpdated = new Date(existingOrder.updatedAt);
+      const HelixUpdated = new Date(existingOrder.updatedAt);
 
-      if (shopifyUpdated <= shipcrowdUpdated) {
+      if (shopifyUpdated <= HelixUpdated) {
         logger.debug('Skipping unchanged order', {
           orderId: shopifyOrder.id,
         });
@@ -267,16 +267,16 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Create new order in Shipcrowd from Shopify order
+   * Create new order in Helix from Shopify order
    */
   private static async createNewOrder(shopifyOrder: ShopifyOrder, store: any): Promise<any> {
-    const mapped = this.mapShopifyOrderToShipcrowd(shopifyOrder, store);
+    const mapped = this.mapShopifyOrderToHelix(shopifyOrder, store);
 
     const order = await Order.create(mapped);
 
     logger.info('Created order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
-      shipcrowdOrderId: order._id,
+      HelixOrderId: order._id,
       orderNumber: order.orderNumber,
     });
 
@@ -284,7 +284,7 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Update existing Shipcrowd order with Shopify data
+   * Update existing Helix order with Shopify data
    */
   private static async updateExistingOrder(existingOrder: any, shopifyOrder: ShopifyOrder): Promise<any> {
     // Update payment status
@@ -308,7 +308,7 @@ export class ShopifyOrderSyncService {
 
     logger.info('Updated order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
-      shipcrowdOrderId: existingOrder._id,
+      HelixOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
     });
 
@@ -316,9 +316,9 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Map Shopify order to Shipcrowd order schema
+   * Map Shopify order to Helix order schema
    */
-  private static mapShopifyOrderToShipcrowd(shopifyOrder: ShopifyOrder, store: any): any {
+  private static mapShopifyOrderToHelix(shopifyOrder: ShopifyOrder, store: any): any {
     return {
       orderNumber: this.generateOrderNumber(shopifyOrder),
       companyId: store.companyId,
@@ -379,7 +379,7 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Generate Shipcrowd order number from Shopify order
+   * Generate Helix order number from Shopify order
    */
   private static generateOrderNumber(shopifyOrder: ShopifyOrder): string {
     // Use Shopify's order name (e.g., "#1001") with shopify prefix
@@ -387,7 +387,7 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Map Shopify financial status to Shipcrowd payment status
+   * Map Shopify financial status to Helix payment status
    */
   private static mapPaymentStatus(financialStatus: string): 'pending' | 'paid' | 'failed' | 'refunded' {
     const statusMap: Record<string, 'pending' | 'paid' | 'failed' | 'refunded'> = {
@@ -405,7 +405,7 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Map Shopify fulfillment status to Shipcrowd order status
+   * Map Shopify fulfillment status to Helix order status
    */
   private static mapFulfillmentStatus(fulfillmentStatus: string | null): string {
     if (!fulfillmentStatus) return 'PENDING';

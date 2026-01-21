@@ -165,7 +165,7 @@ class NDRCommunicationService {
         <body>
           <div class="container">
             <div class="header">
-              <h1>ShipCrowd - Delivery Update</h1>
+              <h1>Helix - Delivery Update</h1>
             </div>
             <div class="content">
               <p>Dear ${recipientName},</p>
@@ -206,7 +206,7 @@ class NDRCommunicationService {
             </div>
             <div class="footer">
               <p>Track your shipment: <a href="${process.env.FRONTEND_URL}/track/${awb}">${awb}</a></p>
-              <p>© ${new Date().getFullYear()} ShipCrowd. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} Helix. All rights reserved.</p>
             </div>
           </div>
         </body>

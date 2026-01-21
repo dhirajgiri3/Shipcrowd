@@ -1,6 +1,6 @@
 # DeepVue API Development Mode
 
-This document explains how to use the development mode for DeepVue API integration in the Shipcrowd application.
+This document explains how to use the development mode for DeepVue API integration in the Helix application.
 
 ## Overview
 

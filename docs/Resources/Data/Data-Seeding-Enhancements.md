@@ -1,4 +1,4 @@
-# ShipCrowd Database Seeding Enhancement Plan
+# Helix Database Seeding Enhancement Plan
 
 ## Executive Summary
 

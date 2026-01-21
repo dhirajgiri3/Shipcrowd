@@ -146,7 +146,7 @@ export function Footer() {
                                 <div className="relative w-32 h-12">
                                     <Image
                                         src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                                        alt="ShipCrowd Logo"
+                                        alt="Helix Logo"
                                         fill
                                         className="object-contain rounded-full"
                                     />

@@ -9,7 +9,7 @@ import Invoice, { IInvoice } from '../../../../infrastructure/database/mongoose/
 import InvoiceIRNLog from '../../../../infrastructure/database/mongoose/models/finance/billing/invoice-irn-log.model';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { ExternalServiceError, ValidationError } from '../../../../shared/errors/app.error';
-import { SHIPCROWD, IRN_CONFIG } from '../../../../shared/constants/shipcrowd.constants';
+import { Helix, IRN_CONFIG } from '../../../../shared/constants/Helix.constants';
 import { formatGSTNDate } from '../../../../shared/utils/date-format.util';
 import logger from '../../../../shared/logger/winston.logger';
 import {
@@ -241,14 +241,14 @@ class IRNService {
                 Dt: formatGSTNDate(invoice.createdAt),
             },
             SellerDtls: {
-                Gstin: SHIPCROWD.GSTIN,
-                LglNm: SHIPCROWD.LEGAL_NAME,
-                Addr1: SHIPCROWD.ADDRESS.line1,
-                Addr2: SHIPCROWD.ADDRESS.line2 || undefined,
-                Loc: SHIPCROWD.ADDRESS.city,
-                Pin: parseInt(SHIPCROWD.ADDRESS.pincode),
-                Stcd: SHIPCROWD.ADDRESS.stateCode,
-                Em: SHIPCROWD.CONTACT.email,
+                Gstin: Helix.GSTIN,
+                LglNm: Helix.LEGAL_NAME,
+                Addr1: Helix.ADDRESS.line1,
+                Addr2: Helix.ADDRESS.line2 || undefined,
+                Loc: Helix.ADDRESS.city,
+                Pin: parseInt(Helix.ADDRESS.pincode),
+                Stcd: Helix.ADDRESS.stateCode,
+                Em: Helix.CONTACT.email,
             },
             BuyerDtls: {
                 Gstin: invoice.gstDetails.buyerGSTIN,
@@ -269,7 +269,7 @@ class IRNService {
                 UnitPrice: item.unitPrice,
                 TotAmt: item.taxableAmount,
                 AssAmt: item.taxableAmount,
-                GstRt: SHIPCROWD.GST_RATE * 100, // 18
+                GstRt: Helix.GST_RATE * 100, // 18
                 IgstAmt: item.igst || undefined,
                 CgstAmt: item.cgst || undefined,
                 SgstAmt: item.sgst || undefined,
@@ -299,7 +299,7 @@ class IRNService {
             irn: mockIRN,
             invoice: invoice.invoiceNumber,
             date: formatGSTNDate(invoice.createdAt),
-            seller: SHIPCROWD.GSTIN,
+            seller: Helix.GSTIN,
             buyer: invoice.gstDetails.buyerGSTIN,
             total: invoice.financialSummary.grandTotal,
         });

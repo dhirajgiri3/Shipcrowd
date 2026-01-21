@@ -484,7 +484,7 @@ export function generateBarcode(code: string = '012345678905'): HTMLCanvasElemen
 // ============================================================================
 
 /**
- * Generates complete shipping label with ShipCrowd branding and barcode
+ * Generates complete shipping label with Helix branding and barcode
  */
 export function generateShippingLabel(trackingNumber: string = 'SC-2025-00001'): THREE.CanvasTexture {
   const { width, height } = TEXTURE_RESOLUTIONS.label;
@@ -502,7 +502,7 @@ export function generateShippingLabel(trackingNumber: string = 'SC-2025-00001'):
   ctx.lineWidth = 4;
   ctx.strokeRect(10, 10, width - 20, height - 20);
 
-  // ShipCrowd Logo (top third)
+  // Helix Logo (top third)
   const logoY = 50;
   const logoHeight = 100;
 
@@ -512,7 +512,7 @@ export function generateShippingLabel(trackingNumber: string = 'SC-2025-00001'):
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 64px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('SHIPCROWD', width / 2, logoY + 70);
+  ctx.fillText('Helix', width / 2, logoY + 70);
 
   // Logo accent squares
   ctx.fillRect(width / 2 - 400, logoY + 25, 60, 60);
@@ -538,7 +538,7 @@ export function generateShippingLabel(trackingNumber: string = 'SC-2025-00001'):
 
   // FROM section
   ctx.font = 'bold 24px Arial';
-  ctx.fillText('FROM: ShipCrowd Logistics', width - 500, addressY + 50);
+  ctx.fillText('FROM: Helix Logistics', width - 500, addressY + 50);
   ctx.font = '20px Arial';
   ctx.fillText('Mumbai Distribution Center', width - 500, addressY + 80);
 

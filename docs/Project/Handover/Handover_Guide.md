@@ -1,6 +1,6 @@
 # Velocity Shipfast Integration - Project Handover Document
 
-**Project**: Shipcrowd Logistics Platform - Velocity Shipfast Courier Integration
+**Project**: Helix Logistics Platform - Velocity Shipfast Courier Integration
 **Completion Date**: December 27, 2025
 **Status**: ✅ PRODUCTION READY
 **Handover To**: Development Team / DevOps Team
@@ -9,7 +9,7 @@
 
 ## 🎯 Project Overview
 
-Complete integration of Velocity Shipfast courier service into the Shipcrowd platform, enabling real-time shipment management, multi-carrier rate comparison, and automated status tracking via webhooks.
+Complete integration of Velocity Shipfast courier service into the Helix platform, enabling real-time shipment management, multi-carrier rate comparison, and automated status tracking via webhooks.
 
 ---
 
@@ -169,19 +169,19 @@ npm run test:webhook:local
 npm run build
 
 # 4. Deploy with PM2
-pm2 start dist/index.js --name shipcrowd-api
+pm2 start dist/index.js --name Helix-api
 pm2 save
 
 # 5. Verify
-curl https://api.shipcrowd.com/health
-curl https://api.shipcrowd.com/api/v1/webhooks/velocity/health
+curl https://api.Helix.com/health
+curl https://api.Helix.com/api/v1/webhooks/velocity/health
 ```
 
 ### Post-Deployment Steps
 
 1. **Configure Velocity Webhook**
    - Contact: support@velocity.in
-   - Provide URL: `https://api.shipcrowd.com/api/v1/webhooks/velocity`
+   - Provide URL: `https://api.Helix.com/api/v1/webhooks/velocity`
    - Request IP whitelist
 
 2. **Enable Monitoring**
@@ -322,7 +322,7 @@ const TIMESTAMP_TOLERANCE = 5 * 60 * 1000;
 ```bash
 # Webhook metrics (requires auth)
 curl -H "Authorization: Bearer <token>" \
-  https://api.shipcrowd.com/api/v1/webhooks/velocity/metrics
+  https://api.Helix.com/api/v1/webhooks/velocity/metrics
 ```
 
 ### Alert Thresholds
@@ -405,13 +405,13 @@ npm run test:coverage
 
 ### Internal Team
 
-- **Backend Lead**: backend@shipcrowd.com
-- **DevOps**: devops@shipcrowd.com
-- **On-Call**: oncall@shipcrowd.com
+- **Backend Lead**: backend@Helix.com
+- **DevOps**: devops@Helix.com
+- **On-Call**: oncall@Helix.com
 
 ### Escalation Path
 
-1. Check logs: `pm2 logs shipcrowd-api`
+1. Check logs: `pm2 logs Helix-api`
 2. Review dead letter queue
 3. Check Velocity API status
 4. Contact Velocity support if API issue
@@ -455,16 +455,16 @@ npm run test:coverage
 
 ```bash
 # 1. Stop current version
-pm2 stop shipcrowd-api
+pm2 stop Helix-api
 
 # 2. Revert to previous version
 pm2 start <previous-version>
 
 # 3. Verify health
-curl https://api.shipcrowd.com/health
+curl https://api.Helix.com/health
 
 # 4. Check logs
-pm2 logs shipcrowd-api --lines 100
+pm2 logs Helix-api --lines 100
 
 # 5. Investigate and fix
 # 6. Redeploy when ready

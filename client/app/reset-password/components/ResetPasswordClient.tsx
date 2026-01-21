@@ -112,7 +112,7 @@ function ResetPasswordForm() {
                     <Link href="/" className="inline-block mb-12">
                         <img
                             src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="ShipCrowd"
+                            alt="Helix"
                             className="h-8 w-auto rounded-full"
                         />
                     </Link>

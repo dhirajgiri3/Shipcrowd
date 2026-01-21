@@ -15,7 +15,7 @@ export type DisputeStatus =
 
 export type ResolutionOutcome =
     | 'seller_favor'     // Refund to seller
-    | 'shipcrowd_favor'  // Deduct from seller
+    | 'Helix_favor'  // Deduct from seller
     | 'split'            // Partial adjustment
     | 'waived';          // No financial impact
 
@@ -175,7 +175,7 @@ export interface DisputeAnalytics {
         autoResolveRate: number;
         resolutionOutcomes: {
             seller_favor: number;
-            shipcrowd_favor: number;
+            Helix_favor: number;
             split: number;
             waived: number;
         };

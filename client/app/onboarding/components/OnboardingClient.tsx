@@ -328,7 +328,7 @@ export function OnboardingClient() {
                     <Link href="/" className="inline-block">
                         <img
                             src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="ShipCrowd"
+                            alt="Helix"
                             className="h-8 rounded-full"
                         />
                     </Link>
@@ -392,14 +392,14 @@ export function OnboardingClient() {
                                         )}
                                     </div>
                                     <div>
-                                        <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome to ShipCrowd</h1>
+                                        <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome to Helix</h1>
                                         <p className="text-slate-600">Let's get your account set up in just a few steps</p>
                                     </div>
 
                                     {/* Email Status */}
                                     <div className={`p-4 rounded-lg border ${user?.isEmailVerified
-                                            ? "bg-[var(--success-bg)] border-[var(--success)]/30"
-                                            : "bg-yellow-50 border-yellow-200"
+                                        ? "bg-[var(--success-bg)] border-[var(--success)]/30"
+                                        : "bg-yellow-50 border-yellow-200"
                                         }`}>
                                         <div className="flex items-center justify-center gap-2 mb-2">
                                             {user?.isEmailVerified ? (

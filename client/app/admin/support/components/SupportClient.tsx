@@ -370,7 +370,7 @@ export function SupportClient() {
                                             SC
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium">ShipCrowd Support</p>
+                                            <p className="text-sm font-medium">Helix Support</p>
                                             <p className="text-xs text-[var(--text-muted)]">2 hours ago</p>
                                         </div>
                                     </div>

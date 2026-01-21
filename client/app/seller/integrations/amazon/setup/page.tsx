@@ -260,7 +260,7 @@ export default function AmazonIntegrationPage() {
                         <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                             <li>1. Go to Settings → User Permissions in Seller Central</li>
                             <li>2. Visit Apps & Services</li>
-                            <li>3. Authorize ShipCrowd to access your account</li>
+                            <li>3. Authorize Helix to access your account</li>
                             <li>4. Copy the MWS Auth Token provided</li>
                         </ol>
                     </div>
@@ -332,8 +332,8 @@ export default function AmazonIntegrationPage() {
 
                     {testResult && (
                         <div className={`rounded-lg p-6 border ${testResult.success
-                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200'
-                                : 'bg-red-50 dark:bg-red-900/20 border-red-200'
+                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200'
+                            : 'bg-red-50 dark:bg-red-900/20 border-red-200'
                             }`}>
                             {testResult.success ? (
                                 <>

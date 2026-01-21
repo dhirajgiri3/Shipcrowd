@@ -18,7 +18,7 @@ interface CreateInvoiceDto {
         startDate: Date;
         endDate: Date;
     };
-    sellerGSTIN: string; // ShipCrowd's GSTIN
+    sellerGSTIN: string; // Helix's GSTIN
     buyerGSTIN: string; // Company's GSTIN
     createdBy: string;
 }

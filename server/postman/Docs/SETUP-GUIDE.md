@@ -1,6 +1,6 @@
-# ShipCrowd Postman Setup Guide
+# Helix Postman Setup Guide
 
-Complete guide for setting up and using the ShipCrowd API testing infrastructure.
+Complete guide for setting up and using the Helix API testing infrastructure.
 
 ---
 
@@ -10,7 +10,7 @@ Complete guide for setting up and using the ShipCrowd API testing infrastructure
    - Download: https://www.postman.com/downloads/
    - Version: 10.x or later
    
-2. **ShipCrowd Backend Server**
+2. **Helix Backend Server**
    - Running locally on `http://localhost:5005`
    - Or access to staging/production environment
 
@@ -28,7 +28,7 @@ Complete guide for setting up and using the ShipCrowd API testing infrastructure
 2. Click **Environments** (left sidebar)
 3. Click **Import** button
 4. Navigate to: `server/postman/environments/`
-5. Select `shipcrowd.postman_environment.json`
+5. Select `Helix.postman_environment.json`
 6. Click **Import**
 7. **Activate** the environment (checkmark icon)
 
@@ -63,8 +63,8 @@ Complete guide for setting up and using the ShipCrowd API testing infrastructure
 ```javascript
 BASE_URL: http://localhost:5005/api/v1
 // Change to staging/production URL as needed
-// Staging: https://api-staging.shipcrowd.com/api/v1
-// Production: https://api.shipcrowd.com/api/v1
+// Staging: https://api-staging.Helix.com/api/v1
+// Production: https://api.Helix.com/api/v1
 
 NODE_ENV: development
 // Options: development | staging | production
@@ -238,7 +238,7 @@ To invalidate your current session:
 
 3. **Test Order Sync** (Collections 06 & 10)
    - Simulate webhook: order created
-   - Verify order created in ShipCrowd
+   - Verify order created in Helix
    - Update fulfillment status
 
 ### Workflow 3: Team Management
@@ -502,18 +502,18 @@ npm install -g newman
 
 # Run single collection
 newman run postman/collections/01-Authentication-Identity.postman_collection.json \
-  --environment postman/environments/shipcrowd.postman_environment.json
+  --environment postman/environments/Helix.postman_environment.json
 
 # Run with reporters
 newman run postman/collections/01-Authentication-Identity.postman_collection.json \
-  --environment postman/environments/shipcrowd.postman_environment.json \
+  --environment postman/environments/Helix.postman_environment.json \
   --reporters cli,json,html \
   --reporter-html-export newman-report.html
 
 # Run all collections
 for file in postman/collections/*.json; do
   newman run "$file" \
-    --environment postman/environments/shipcrowd.postman_environment.json
+    --environment postman/environments/Helix.postman_environment.json
 done
 ```
 
@@ -540,7 +540,7 @@ jobs:
       - name: Run API Tests
         run: |
           newman run server/postman/collections/01-Authentication-Identity.postman_collection.json \
-            --environment server/postman/environments/shipcrowd.postman_environment.json
+            --environment server/postman/environments/Helix.postman_environment.json
 ```
 
 ---
@@ -573,7 +573,7 @@ Add custom logic before requests:
 
 ```javascript
 // Generate random email for testing
-const randomEmail = `test.${Date.now()}@shipcrowd.com`;
+const randomEmail = `test.${Date.now()}@Helix.com`;
 pm.environment.set('RANDOM_EMAIL', randomEmail);
 
 // Calculate dynamic dates

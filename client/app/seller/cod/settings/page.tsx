@@ -95,7 +95,7 @@ export default function CODSettingsPage() {
 
     // Mock bank account data - in production, fetch from API
     const bankAccount = {
-        accountHolderName: 'Shipcrowd Seller',
+        accountHolderName: 'Helix Seller',
         bankName: 'HDFC Bank',
         accountNumber: '****1234',
         ifsc: 'HDFC0001234',
@@ -216,19 +216,19 @@ export default function CODSettingsPage() {
                                         key={option.value}
                                         onClick={() => setSchedule(s => ({ ...s, frequency: option.value }))}
                                         className={`p-4 rounded-lg border-2 text-left transition-all ${schedule.frequency === option.value
-                                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                             }`}
                                     >
                                         <div className={`mb-2 ${schedule.frequency === option.value
-                                                ? 'text-primary-600 dark:text-primary-400'
-                                                : 'text-gray-400 dark:text-gray-500'
+                                            ? 'text-primary-600 dark:text-primary-400'
+                                            : 'text-gray-400 dark:text-gray-500'
                                             }`}>
                                             {option.icon}
                                         </div>
                                         <p className={`font-semibold ${schedule.frequency === option.value
-                                                ? 'text-primary-700 dark:text-primary-300'
-                                                : 'text-gray-900 dark:text-white'
+                                            ? 'text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-900 dark:text-white'
                                             }`}>
                                             {option.label}
                                         </p>
@@ -252,8 +252,8 @@ export default function CODSettingsPage() {
                                             key={day.value}
                                             onClick={() => setSchedule(s => ({ ...s, dayOfWeek: day.value }))}
                                             className={`p-3 rounded-lg text-center text-sm font-medium transition-all ${schedule.dayOfWeek === day.value
-                                                    ? 'bg-primary-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                ? 'bg-primary-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                                 }`}
                                         >
                                             {day.label.slice(0, 3)}
@@ -275,8 +275,8 @@ export default function CODSettingsPage() {
                                             key={day}
                                             onClick={() => setSchedule(s => ({ ...s, dayOfMonth: day }))}
                                             className={`p-2 rounded-lg text-center text-sm font-medium transition-all ${schedule.dayOfMonth === day
-                                                    ? 'bg-primary-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                ? 'bg-primary-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                                 }`}
                                         >
                                             {day}
@@ -316,8 +316,8 @@ export default function CODSettingsPage() {
                                         key={amount}
                                         onClick={() => setSchedule(s => ({ ...s, minimumAmount: amount }))}
                                         className={`px-3 py-1 text-sm rounded-lg transition-colors ${schedule.minimumAmount === amount
-                                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                                             }`}
                                     >
                                         {formatCurrency(amount)}

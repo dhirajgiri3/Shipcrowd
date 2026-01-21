@@ -257,7 +257,7 @@ Reply with:
 
 Need help? Contact our support team.
 
--Shipcrowd`;
+-Helix`;
 
         return this.sendMessage(toNumber, message);
     }
@@ -280,7 +280,7 @@ ${reverseAwb ? `*Return AWB:* ${reverseAwb}` : ''}
 
 For assistance, please contact our support team.
 
--Shipcrowd`;
+-Helix`;
 
         return this.sendMessage(toNumber, message);
     }

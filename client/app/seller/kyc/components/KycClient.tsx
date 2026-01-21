@@ -359,7 +359,7 @@ export function KycClient() {
                 <div>
                     <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Seller Onboarding</h1>
                     <p className="text-[var(--text-secondary)] mt-1 text-lg">
-                        Complete your verification to unlock ShipCrowd
+                        Complete your verification to unlock Helix
                     </p>
                 </div>
                 <div className="px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-md">
@@ -717,18 +717,18 @@ export function KycClient() {
                                     {currentStep === 4 && (
                                         <div className="space-y-6">
                                             <div className="bg-[var(--bg-secondary)] rounded-xl p-6 h-64 overflow-y-auto text-sm text-[var(--text-secondary)] border border-[var(--border-subtle)] custom-scrollbar">
-                                                <h4 className="font-bold text-[var(--text-primary)] mb-4 text-base">ShipCrowd Seller Agreement</h4>
+                                                <h4 className="font-bold text-[var(--text-primary)] mb-4 text-base">Helix Seller Agreement</h4>
                                                 <div className="space-y-4 leading-relaxed">
-                                                    <p>This Seller Agreement ("Agreement") is entered into between ShipCrowd Technologies Pvt. Ltd. ("ShipCrowd") and the Seller ("You") upon acceptance of these terms.</p>
+                                                    <p>This Seller Agreement ("Agreement") is entered into between Helix Technologies Pvt. Ltd. ("Helix") and the Seller ("You") upon acceptance of these terms.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">1. Services</h5>
-                                                    <p>ShipCrowd provides a logistics aggregation platform that enables sellers to ship products through various courier partners.</p>
+                                                    <p>Helix provides a logistics aggregation platform that enables sellers to ship products through various courier partners.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">2. Payment Terms</h5>
                                                     <p>COD remittance will be processed within 2-3 business days after delivery confirmation, subject to bank holidays.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">3. Liability</h5>
-                                                    <p>ShipCrowd's liability for lost or damaged shipments is limited to the declared value or the courier partner's standard liability, whichever is lower. Insurance is optional and recommended.</p>
+                                                    <p>Helix's liability for lost or damaged shipments is limited to the declared value or the courier partner's standard liability, whichever is lower. Insurance is optional and recommended.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">4. Prohibited Items</h5>
                                                     <p>Seller agrees not to ship any items prohibited by law or by the courier partners (e.g., flammables, narcotics, currency).</p>
@@ -744,7 +744,7 @@ export function KycClient() {
                                                         onChange={(e) => handleInputChange('agreementAccepted', e.target.checked)}
                                                     />
                                                     <span className="text-sm text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
-                                                        I have read and agree to the <strong>ShipCrowd Seller Agreement</strong>, <strong>Terms of Service</strong>, and <strong>Privacy Policy</strong>.
+                                                        I have read and agree to the <strong>Helix Seller Agreement</strong>, <strong>Terms of Service</strong>, and <strong>Privacy Policy</strong>.
                                                     </span>
                                                 </label>
                                                 <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">

@@ -1,6 +1,6 @@
-📋 ShipCrowd Complete PDF Standards & Implementation Analysis
+📋 Helix Complete PDF Standards & Implementation Analysis
 Executive Summary
-Based on my comprehensive research across Indian logistics standards, GST compliance requirements, carrier specifications, and BlueShip production patterns, I have identified 7 critical PDF document types needed for ShipCrowd to achieve 95%+ production readiness. The provided design proposals are 90% accurate with 10% gaps that need specific corrections.
+Based on my comprehensive research across Indian logistics standards, GST compliance requirements, carrier specifications, and BlueShip production patterns, I have identified 7 critical PDF document types needed for Helix to achieve 95%+ production readiness. The provided design proposals are 90% accurate with 10% gaps that need specific corrections.
 
 Part 1: Current State Analysis - Accuracy Assessment
 Your Existing Proposal: 90% Accurate ✅ (With 10% Compliance Gaps)
@@ -92,13 +92,13 @@ TERMS & CONDITIONS:
 ├─ "Computer-generated invoice - signature not required"
 ├─ "Payment due within 7 days"
 ├─ "For disputes: Gurugram jurisdiction under GST Act"
-└─ "Contact: invoices@shipcrowd.com"
+└─ "Contact: invoices@Helix.com"
 PDF Layout (A4 Portrait - 210mm × 297mm):
 
 
 [Page 1 - Top 80mm]
 ┌────────────────────────────────────────────────────────┐
-│ [ShipCrowd Logo] TAX INVOICE [ORIGINAL/DUPLICATE]     │
+│ [Helix Logo] TAX INVOICE [ORIGINAL/DUPLICATE]     │
 │ GSTIN: 06FKCPS6109D3Z7     Serial: INV-202601-0001    │
 │ Date: 13 Jan 2026                                       │
 └────────────────────────────────────────────────────────┘
@@ -108,7 +108,7 @@ PDF Layout (A4 Portrait - 210mm × 297mm):
 │ BILLED     │ BILLED TO            │
 │ FROM       │                      │
 ├────────────┼──────────────────────┤
-│ ShipCrowd  │ Company Name         │
+│ Helix  │ Company Name         │
 │ Pvt Ltd    │ Address              │
 │ ...        │ ...                  │
 └────────────┴──────────────────────┘
@@ -171,7 +171,7 @@ async function generateIRN(invoiceData: IInvoice): Promise<{irn: string; qrCode:
     InvNo: invoiceData.invoiceNumber,
     InvDt: invoiceData.date, // DD/MM/YYYY format
     TxpPrd: "01", // Tax period
-    GstIn: "06FKCPS6109D3Z7", // ShipCrowd GSTIN
+    GstIn: "06FKCPS6109D3Z7", // Helix GSTIN
     Ctin: invoiceData.company.gstin, // Recipient GSTIN
     SupTyp: supplyType === "Interstate" ? "INTER" : "INTRA",
     IgstOnIntra: 0,
@@ -268,7 +268,7 @@ ZPL Format (Thermal Printer - 203 DPI Standard):
 ^JMA
 
 REM --- Logo area ---
-^FO50,50^GFA,4500,4500,100,,^FDShipCrowd^FS
+^FO50,50^GFA,4500,4500,100,,^FDHelix^FS
 
 REM --- Routing Code (Large) ---
 ^FO50,150^A0N,90,90^FDDEL/NCR^FS
@@ -361,7 +361,7 @@ PDF Format (A4 Portrait - 210mm × 297mm):
 
 HEADER SECTION (Top 50mm):
 ┌──────────────────────────────────────────────────────┐
-│ [ShipCrowd Logo]    PICKUP MANIFEST                 │
+│ [Helix Logo]    PICKUP MANIFEST                 │
 │ Manifest ID: MAN-202601-001                          │
 │ Date: 13 Jan 2026          Time: 10:00 AM            │
 └──────────────────────────────────────────────────────┘
@@ -477,7 +477,7 @@ PDF Layout (A4 Portrait):
 
 HEADER:
 ┌──────────────────────────────────────────────────────┐
-│ [ShipCrowd Logo]    CREDIT NOTE                      │
+│ [Helix Logo]    CREDIT NOTE                      │
 │ CN Number: CN-202601-0001                            │
 │ CN Date: 13 Jan 2026                                 │
 └──────────────────────────────────────────────────────┘
@@ -613,7 +613,7 @@ PDF Layout (A4 Landscape, 297mm × 210mm):
 
 HEADER:
 ┌─────────────────────────────────────────────────────────────┐
-│ [ShipCrowd Logo]  COD REMITTANCE STATEMENT                  │
+│ [Helix Logo]  COD REMITTANCE STATEMENT                  │
 │ Remittance ID: REM-202601-001       Period: 01-07 Jan 2026  │
 │ Remittance Date: 10 Jan 2026                                │
 └─────────────────────────────────────────────────────────────┘
@@ -658,7 +658,7 @@ NOTES:
 ├─ COD charges: 3-4% of collection amount (industry standard)
 ├─ Settlement cycle: Every 7 days after collection
 ├─ Disputes must be raised within 30 days
-└─ For queries: support@shipcrowd.com
+└─ For queries: support@Helix.com
 Data Validation:
 
 
@@ -775,7 +775,7 @@ PDF Layout (A4 Portrait):
 
 HEADER:
 ┌──────────────────────────────────────────────────────┐
-│ [ShipCrowd Logo]    WALLET STATEMENT                 │
+│ [Helix Logo]    WALLET STATEMENT                 │
 │ Period: 01 Jan 2026 - 31 Jan 2026                    │
 │ Generated: 1 Feb 2026                                │
 └──────────────────────────────────────────────────────┘
@@ -815,7 +815,7 @@ NOTES:
 ├─ Minimum balance maintained: ₹500 (auto-debit protection)
 ├─ Interest on balance: Not applicable
 ├─ No monthly subscription fees
-└─ For detailed transaction queries: support@shipcrowd.com
+└─ For detailed transaction queries: support@Helix.com
 7. INVOICE SUMMARY REPORT (Priority: LOW)
 Purpose: Monthly/quarterly aggregated invoice data for analysis
 
@@ -1159,7 +1159,7 @@ GSTR-1 JSON Schema (Official GSTN Format):
 // services/tax/gstr-export.service.ts
 
 export interface GSTR1Export {
-  gstin: string; // ShipCrowd GSTIN
+  gstin: string; // Helix GSTIN
   fp: string; // Financial Period (MMYYYY)
   gt: number; // Grand Total
   cur_gt: number; // Corrected Grand Total (usually same as gt)
@@ -1310,7 +1310,7 @@ export class GSTR1ExportService {
 
     // Build GSTR-1 export
     const gstr1: GSTR1Export = {
-      gstin: "06FKCPS6109D3Z7", // ShipCrowd GSTIN
+      gstin: "06FKCPS6109D3Z7", // Helix GSTIN
       fp: `${String(month).padStart(2, "0")}${year}`, // e.g., "012026"
       gt: totalAmount,
       cur_gt: totalAmount,

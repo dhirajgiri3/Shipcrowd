@@ -1,113 +1,332 @@
 /**
- * NDR Dashboard Page
- * 
- * Seller's NDR management dashboard with:
- * - Key metrics
- * - NDR cases table
- * - Quick actions
- * 
- * Route: /seller/ndr
+ * NDR Dashboard Page - Redesigned
+ * Modern, intuitive interface for NDR management
  */
 
 'use client';
 
-import React from 'react';
-import { useNDRMetrics } from '@/src/core/api/hooks';
-import { NDRCasesTable } from '@/src/features/ndr/components/NDRCasesTable';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+    AlertTriangle,
+    Clock,
+    CheckCircle2,
+    TrendingUp,
+    Phone,
+    Mail,
+    MessageSquare,
+    AlertCircle,
+    MapPin,
+    Package,
+    Search,
+    MoreVertical
+} from 'lucide-react';
+import { mockNDRCases, mockNDRMetrics } from '@/src/lib/mockData/enhanced';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 
 export default function NDRDashboardPage() {
-    const { data: metrics, isLoading: metricsLoading } = useNDRMetrics();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [riskFilter, setRiskFilter] = useState<string>('all');
+
+    const metrics = USE_MOCK ? mockNDRMetrics : null;
+    const cases = USE_MOCK ? mockNDRCases : [];
+
+    // Filter cases
+    const filteredCases = cases.filter(c => {
+        const matchesSearch = c.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.awb.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.orderId.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+        const matchesRisk = riskFilter === 'all' || c.rtoRisk === riskFilter;
+        return matchesSearch && matchesStatus && matchesRisk;
+    });
+
+    const statusTabs = [
+        { id: 'all', label: 'All Cases', count: cases.length },
+        { id: 'open', label: 'Open', count: cases.filter(c => c.status === 'open').length },
+        { id: 'in_progress', label: 'In Progress', count: cases.filter(c => c.status === 'in_progress').length },
+        { id: 'customer_action', label: 'Awaiting Customer', count: cases.filter(c => c.status === 'customer_action').length },
+        { id: 'escalated', label: 'Escalated', count: cases.filter(c => c.status === 'escalated').length }
+    ];
+
+    const getStatusColor = (status: string) => {
+        const colors: Record<string, string> = {
+            open: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400',
+            in_progress: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400',
+            customer_action: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400',
+            reattempt_scheduled: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400',
+            resolved: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400',
+            escalated: 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+            converted_to_rto: 'bg-gray-100 text-gray-700 dark:bg-gray-950/30 dark:text-gray-400'
+        };
+        return colors[status] || colors.open;
+    };
+
+    const getRiskBadge = (risk: string) => {
+        const badges = {
+            low: { color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400', label: 'Low Risk' },
+            medium: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400', label: 'Medium Risk' },
+            high: { color: 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400', label: 'High Risk' }
+        };
+        return badges[risk as keyof typeof badges] || badges.low;
+    };
+
+    const getReasonLabel = (reason: string) => {
+        const labels: Record<string, string> = {
+            address_incomplete: 'Incomplete Address',
+            address_incorrect: 'Incorrect Address',
+            consignee_unavailable: 'Customer Unavailable',
+            refused_to_accept: 'Delivery Refused',
+            customer_requested_reschedule: 'Reschedule Request',
+            payment_issue: 'Payment Issue',
+            consignee_shifted: 'Customer Relocated',
+            out_of_delivery_area: 'Out of Area',
+            other: 'Other'
+        };
+        return labels[reason] || reason;
+    };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
+        <div className="min-h-screen bg-[var(--bg-primary)]">
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)]">
                             NDR Management
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">
-                            Manage failed delivery attempts and customer communications
+                        <p className="text-[var(--text-secondary)] mt-1">
+                            Manage non-delivery reports and customer communications
                         </p>
                     </div>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                        </svg>
-                        Settings
-                    </button>
                 </div>
 
-                {/* Metrics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Open Cases</p>
-                                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                                    {metricsLoading ? '...' : metrics?.open || 0}
-                                </p>
+                {/* Key Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)]"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950/30 flex items-center justify-center">
+                                <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                </svg>
+                            <TrendingUp className="w-5 h-5 text-[var(--text-tertiary)]" />
+                        </div>
+                        <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">Open Cases</p>
+                        <p className="text-3xl font-bold text-[var(--text-primary)]">{metrics?.open || 0}</p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)]"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-yellow-100 dark:bg-yellow-950/30 flex items-center justify-center">
+                                <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
                             </div>
                         </div>
+                        <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">In Progress</p>
+                        <p className="text-3xl font-bold text-[var(--text-primary)]">{metrics?.inProgress || 0}</p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)]"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950/30 flex items-center justify-center">
+                                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                            </div>
+                        </div>
+                        <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">SLA Breach</p>
+                        <p className="text-3xl font-bold text-red-600 dark:text-red-400">{metrics?.slaBreach || 0}</p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="bg-[var(--bg-secondary)] rounded-2xl p-6 border border-[var(--border-primary)]"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-950/30 flex items-center justify-center">
+                                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                            </div>
+                        </div>
+                        <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">Resolution Rate</p>
+                        <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                            {((metrics?.resolutionRate || 0) * 100).toFixed(0)}%
+                        </p>
+                    </motion.div>
+                </div>
+
+                {/* Filters & Search */}
+                <div className="bg-[var(--bg-secondary)] rounded-2xl p-4 border border-[var(--border-primary)]">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        {/* Search */}
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by AWB, Order ID, or Customer Name..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Risk Filter */}
+                        <select
+                            value={riskFilter}
+                            onChange={(e) => setRiskFilter(e.target.value)}
+                            className="px-4 py-2.5 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)]"
+                        >
+                            <option value="all">All Risk Levels</option>
+                            <option value="high">High Risk</option>
+                            <option value="medium">Medium Risk</option>
+                            <option value="low">Low Risk</option>
+                        </select>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">In Progress</p>
-                                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                                    {metricsLoading ? '...' : metrics?.inProgress || 0}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">SLA Breach</p>
-                                <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">
-                                    {metricsLoading ? '...' : metrics?.slaBreach || 0}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Resolution Rate</p>
-                                <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-                                    {metricsLoading ? '...' : `${((metrics?.resolutionRate || 0) * 100).toFixed(1)}%`}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                        </div>
+                    {/* Status Tabs */}
+                    <div className="flex flex-wrap gap-2 mt-4 border-t border-[var(--border-primary)] pt-4">
+                        {statusTabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setStatusFilter(tab.id)}
+                                className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                                    statusFilter === tab.id
+                                        ? 'bg-[var(--primary-blue)] text-white'
+                                        : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                }`}
+                            >
+                                {tab.label} <span className="ml-1.5 opacity-75">({tab.count})</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* NDR Cases Table */}
-                <NDRCasesTable />
+                {/* Cases Table */}
+                <div className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-primary)] overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)]">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        NDR Details
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        Customer
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        Reason
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        Risk
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border-primary)]">
+                                {filteredCases.map((ndrCase, index) => (
+                                    <motion.tr
+                                        key={ndrCase.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                        className="hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-[var(--text-primary)]">{ndrCase.id}</span>
+                                                    {ndrCase.slaBreached && (
+                                                        <span className="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 rounded">
+                                                            SLA Breach
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-[var(--text-secondary)]">
+                                                    AWB: {ndrCase.awb}
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="w-3 h-3" />
+                                                        {ndrCase.daysSinceNDR}d ago
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Package className="w-3 h-3" />
+                                                        {ndrCase.attempts} attempts
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="space-y-1">
+                                                <p className="font-medium text-[var(--text-primary)]">{ndrCase.customerName}</p>
+                                                <p className="text-sm text-[var(--text-secondary)]">{ndrCase.customerPhone}</p>
+                                                <div className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
+                                                    <MapPin className="w-3 h-3" />
+                                                    {ndrCase.address.city}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="text-sm text-[var(--text-primary)] font-medium">
+                                                {getReasonLabel(ndrCase.reason)}
+                                            </p>
+                                            {ndrCase.lastCommunicationChannel && (
+                                                <div className="flex items-center gap-1 mt-1 text-xs text-[var(--text-secondary)]">
+                                                    {ndrCase.lastCommunicationChannel === 'whatsapp' && <MessageSquare className="w-3 h-3" />}
+                                                    {ndrCase.lastCommunicationChannel === 'call' && <Phone className="w-3 h-3" />}
+                                                    {ndrCase.lastCommunicationChannel === 'email' && <Mail className="w-3 h-3" />}
+                                                    {ndrCase.customerCommunications} communications
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatusColor(ndrCase.status)}`}>
+                                                {ndrCase.status.replace(/_/g, ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getRiskBadge(ndrCase.rtoRisk).color}`}>
+                                                {getRiskBadge(ndrCase.rtoRisk).label}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                                                <MoreVertical className="w-5 h-5 text-[var(--text-tertiary)]" />
+                                            </button>
+                                        </td>
+                                    </motion.tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {filteredCases.length === 0 && (
+                        <div className="text-center py-12">
+                            <Package className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-4" />
+                            <p className="text-[var(--text-secondary)]">No NDR cases found</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

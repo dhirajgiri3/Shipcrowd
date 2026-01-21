@@ -1,4 +1,4 @@
-# ShipCrowd Implementation: Quick Reference Guide
+# Helix Implementation: Quick Reference Guide
 
 **Use this document:** Daily during implementation
 **Last Updated:** 2026-01-07
@@ -39,14 +39,14 @@
                ↓
 ┌─────────────────────────────────────────┐
 │ Admin Reviews & Resolves                │
-│ - Outcome: seller_favor/shipcrowd_favor │
+│ - Outcome: seller_favor/Helix_favor │
 │ - Update wallet (debit/credit)          │
 └──────────────┬──────────────────────────┘
                │
                ↓
 ┌─────────────────────────────────────────┐
 │ OR Auto-Resolve after 7 days            │
-│ (favor shipcrowd if no response)        │
+│ (favor Helix if no response)        │
 └─────────────────────────────────────────┘
 
 KEY FILES:
@@ -509,7 +509,7 @@ Week 13:
 
 ```env
 # Database
-MONGODB_URI=mongodb://mongo:27017/shipcrowd
+MONGODB_URI=mongodb://mongo:27017/Helix
 REDIS_URL=redis://redis:6379
 
 # Payment
@@ -548,7 +548,7 @@ ENCRYPTION_KEY=long-random-key
 
 ### Remittance Scheduled Email
 ```
-Subject: Your ShipCrowd COD Remittance #REM-20260115-ABC123
+Subject: Your Helix COD Remittance #REM-20260115-ABC123
 
 Hi [Seller Name],
 
@@ -565,10 +565,10 @@ Details:
 [View Details] [Download Report]
 
 Expected payout: January 15, 2026
-Questions? Contact support@shipcrowd.com
+Questions? Contact support@Helix.com
 
 Thanks,
-ShipCrowd Team
+Helix Team
 ```
 
 ### Weight Dispute Alert SMS
@@ -576,7 +576,7 @@ ShipCrowd Team
 Weight discrepancy on Order #ORD-12345:
 Declared 1kg, Actual 1.5kg.
 Impact: ₹55.
-Respond by Jan 14: shipcrowd.com/disputes/WD-123
+Respond by Jan 14: Helix.com/disputes/WD-123
 ```
 
 ### Fraud Alert (Internal)

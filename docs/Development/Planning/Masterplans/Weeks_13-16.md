@@ -1,4 +1,4 @@
-# SHIPCROWD BACKEND MASTERPLAN - WEEK 13-14
+# Helix BACKEND MASTERPLAN - WEEK 13-14
 # PRODUCTION READINESS & ADVANCED FEATURES
 
 **Document Version:** 1.0
@@ -135,8 +135,8 @@ CMD ["node", "dist/server.js"]
 - Optimized layer caching
 
 **Instructions:**
-- Build: `docker build -f Dockerfile.prod -t shipcrowd-api:latest .`
-- Test locally: `docker run -p 5000:5000 --env-file .env.production shipcrowd-api:latest`
+- Build: `docker build -f Dockerfile.prod -t Helix-api:latest .`
+- Test locally: `docker run -p 5000:5000 --env-file .env.production Helix-api:latest`
 
 **Deliverable:** Production-optimized Docker image (< 200MB)
 
@@ -153,25 +153,25 @@ services:
   # MongoDB
   mongodb:
     image: mongo:6.0
-    container_name: shipcrowd-mongodb
+    container_name: Helix-mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: shipcrowd
+      MONGO_INITDB_DATABASE: Helix
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     ports:
       - "27017:27017"
     networks:
-      - shipcrowd-network
+      - Helix-network
     command: mongod --auth
 
   # Redis
   redis:
     image: redis:7-alpine
-    container_name: shipcrowd-redis
+    container_name: Helix-redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
@@ -179,19 +179,19 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - shipcrowd-network
+      - Helix-network
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
 
-  # Shipcrowd API (3 instances for load balancing)
+  # Helix API (3 instances for load balancing)
   api-1:
     build:
       context: ./server
       dockerfile: Dockerfile.prod
-    container_name: shipcrowd-api-1
+    container_name: Helix-api-1
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -204,7 +204,7 @@ services:
       - mongodb
       - redis
     networks:
-      - shipcrowd-network
+      - Helix-network
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health')"]
       interval: 30s
@@ -216,7 +216,7 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile.prod
-    container_name: shipcrowd-api-2
+    container_name: Helix-api-2
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -229,13 +229,13 @@ services:
       - mongodb
       - redis
     networks:
-      - shipcrowd-network
+      - Helix-network
 
   api-3:
     build:
       context: ./server
       dockerfile: Dockerfile.prod
-    container_name: shipcrowd-api-3
+    container_name: Helix-api-3
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -248,12 +248,12 @@ services:
       - mongodb
       - redis
     networks:
-      - shipcrowd-network
+      - Helix-network
 
   # Nginx Load Balancer
   nginx:
     image: nginx:alpine
-    container_name: shipcrowd-nginx
+    container_name: Helix-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -267,7 +267,7 @@ services:
       - api-2
       - api-3
     networks:
-      - shipcrowd-network
+      - Helix-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 10s
@@ -283,7 +283,7 @@ volumes:
     driver: local
 
 networks:
-  shipcrowd-network:
+  Helix-network:
     driver: bridge
 ```
 
@@ -357,7 +357,7 @@ http {
     limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
 
     # Upstream API servers
-    upstream shipcrowd_api {
+    upstream Helix_api {
         least_conn;  # Load balancing method
 
         server api-1:5000 max_fails=3 fail_timeout=30s;
@@ -374,7 +374,7 @@ http {
     # HTTP server (redirect to HTTPS)
     server {
         listen 80;
-        server_name api.shipcrowd.com;
+        server_name api.Helix.com;
 
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
@@ -388,7 +388,7 @@ http {
     # HTTPS server
     server {
         listen 443 ssl http2;
-        server_name api.shipcrowd.com;
+        server_name api.Helix.com;
 
         # SSL configuration
         ssl_certificate /etc/nginx/ssl/fullchain.pem;
@@ -409,7 +409,7 @@ http {
         # Health check endpoint (no rate limiting)
         location /health {
             access_log off;
-            proxy_pass http://shipcrowd_api;
+            proxy_pass http://Helix_api;
             proxy_http_version 1.1;
             proxy_set_header Connection "";
         }
@@ -419,7 +419,7 @@ http {
             limit_req zone=api_limit burst=20 nodelay;
             limit_conn conn_limit 10;
 
-            proxy_pass http://shipcrowd_api;
+            proxy_pass http://Helix_api;
             proxy_http_version 1.1;
 
             # Headers
@@ -446,7 +446,7 @@ http {
             limit_req zone=auth_limit burst=5 nodelay;
             limit_conn conn_limit 5;
 
-            proxy_pass http://shipcrowd_api;
+            proxy_pass http://Helix_api;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -458,7 +458,7 @@ http {
         location /api/v1/webhooks/ {
             limit_req zone=webhook_limit burst=10 nodelay;
 
-            proxy_pass http://shipcrowd_api;
+            proxy_pass http://Helix_api;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -471,7 +471,7 @@ http {
 
         # Static file caching
         location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
-            proxy_pass http://shipcrowd_api;
+            proxy_pass http://Helix_api;
             proxy_cache api_cache;
             proxy_cache_valid 200 1d;
             proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
@@ -502,7 +502,7 @@ http {
 ```javascript
 module.exports = {
   apps: [{
-    name: 'shipcrowd-api',
+    name: 'Helix-api',
     script: './dist/server.js',
     instances: 'max',  // Use all CPU cores
     exec_mode: 'cluster',
@@ -554,8 +554,8 @@ module.exports = {
       user: 'deploy',
       host: ['production-server-1.com', 'production-server-2.com'],
       ref: 'origin/main',
-      repo: 'git@github.com:shipcrowd/backend.git',
-      path: '/var/www/shipcrowd-api',
+      repo: 'git@github.com:Helix/backend.git',
+      path: '/var/www/Helix-api',
       'pre-deploy-local': '',
       'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',
       'pre-setup': '',
@@ -574,7 +574,7 @@ pm2 start ecosystem.config.js --env production
 pm2 monit
 
 # Logs
-pm2 logs shipcrowd-api --lines 100
+pm2 logs Helix-api --lines 100
 
 # Reload (zero-downtime)
 pm2 reload ecosystem.config.js
@@ -646,118 +646,118 @@ export class MetricsService {
 
   private constructor() {
     // Collect default metrics (CPU, memory, etc.)
-    collectDefaultMetrics({ prefix: 'shipcrowd_' });
+    collectDefaultMetrics({ prefix: 'Helix_' });
 
     // HTTP Metrics
     this.httpRequestDuration = new Histogram({
-      name: 'shipcrowd_http_request_duration_seconds',
+      name: 'Helix_http_request_duration_seconds',
       help: 'Duration of HTTP requests in seconds',
       labelNames: ['method', 'route', 'status_code'],
       buckets: [0.001, 0.01, 0.1, 0.5, 1, 2, 5]
     });
 
     this.httpRequestTotal = new Counter({
-      name: 'shipcrowd_http_requests_total',
+      name: 'Helix_http_requests_total',
       help: 'Total number of HTTP requests',
       labelNames: ['method', 'route', 'status_code']
     });
 
     this.httpRequestErrors = new Counter({
-      name: 'shipcrowd_http_request_errors_total',
+      name: 'Helix_http_request_errors_total',
       help: 'Total number of HTTP request errors',
       labelNames: ['method', 'route', 'error_type']
     });
 
     // Business Metrics
     this.ordersCreated = new Counter({
-      name: 'shipcrowd_orders_created_total',
+      name: 'Helix_orders_created_total',
       help: 'Total number of orders created',
       labelNames: ['company_id', 'payment_method']
     });
 
     this.shipmentsCreated = new Counter({
-      name: 'shipcrowd_shipments_created_total',
+      name: 'Helix_shipments_created_total',
       help: 'Total number of shipments created',
       labelNames: ['company_id', 'carrier']
     });
 
     this.paymentsProcessed = new Counter({
-      name: 'shipcrowd_payments_processed_total',
+      name: 'Helix_payments_processed_total',
       help: 'Total number of payments processed',
       labelNames: ['payment_gateway', 'status']
     });
 
     this.walletTransactions = new Counter({
-      name: 'shipcrowd_wallet_transactions_total',
+      name: 'Helix_wallet_transactions_total',
       help: 'Total number of wallet transactions',
       labelNames: ['company_id', 'transaction_type']
     });
 
     this.ndrRaised = new Counter({
-      name: 'shipcrowd_ndr_raised_total',
+      name: 'Helix_ndr_raised_total',
       help: 'Total number of NDRs raised',
       labelNames: ['company_id', 'ndr_reason']
     });
 
     this.rtoInitiated = new Counter({
-      name: 'shipcrowd_rto_initiated_total',
+      name: 'Helix_rto_initiated_total',
       help: 'Total number of RTOs initiated',
       labelNames: ['company_id', 'rto_reason']
     });
 
     // Database Metrics
     this.mongoConnections = new Gauge({
-      name: 'shipcrowd_mongo_connections',
+      name: 'Helix_mongo_connections',
       help: 'Number of active MongoDB connections'
     });
 
     this.mongoQueryDuration = new Histogram({
-      name: 'shipcrowd_mongo_query_duration_seconds',
+      name: 'Helix_mongo_query_duration_seconds',
       help: 'Duration of MongoDB queries',
       labelNames: ['collection', 'operation'],
       buckets: [0.001, 0.01, 0.05, 0.1, 0.5, 1, 2]
     });
 
     this.mongoErrors = new Counter({
-      name: 'shipcrowd_mongo_errors_total',
+      name: 'Helix_mongo_errors_total',
       help: 'Total number of MongoDB errors',
       labelNames: ['collection', 'error_type']
     });
 
     // External API Metrics
     this.velocityApiCalls = new Counter({
-      name: 'shipcrowd_velocity_api_calls_total',
+      name: 'Helix_velocity_api_calls_total',
       help: 'Total number of Velocity API calls',
       labelNames: ['endpoint', 'status']
     });
 
     this.velocityApiDuration = new Histogram({
-      name: 'shipcrowd_velocity_api_duration_seconds',
+      name: 'Helix_velocity_api_duration_seconds',
       help: 'Duration of Velocity API calls',
       labelNames: ['endpoint'],
       buckets: [0.1, 0.5, 1, 2, 5, 10]
     });
 
     this.razorpayApiCalls = new Counter({
-      name: 'shipcrowd_razorpay_api_calls_total',
+      name: 'Helix_razorpay_api_calls_total',
       help: 'Total number of Razorpay API calls',
       labelNames: ['endpoint', 'status']
     });
 
     this.shopifyWebhooks = new Counter({
-      name: 'shipcrowd_shopify_webhooks_total',
+      name: 'Helix_shopify_webhooks_total',
       help: 'Total number of Shopify webhooks received',
       labelNames: ['topic', 'status']
     });
 
     // System Metrics
     this.activeUsers = new Gauge({
-      name: 'shipcrowd_active_users',
+      name: 'Helix_active_users',
       help: 'Number of active users'
     });
 
     this.queueSize = new Gauge({
-      name: 'shipcrowd_queue_size',
+      name: 'Helix_queue_size',
       help: 'Number of jobs in queue',
       labelNames: ['queue_name']
     });
@@ -876,7 +876,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'shipcrowd-production'
+    cluster: 'Helix-production'
     replica: '1'
 
 # Alertmanager configuration
@@ -897,8 +897,8 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Shipcrowd API instances
-  - job_name: 'shipcrowd-api'
+  # Helix API instances
+  - job_name: 'Helix-api'
     static_configs:
       - targets:
           - 'api-1:5000'
@@ -932,12 +932,12 @@ scrape_configs:
 
 ```yaml
 groups:
-  - name: shipcrowd_api_alerts
+  - name: Helix_api_alerts
     interval: 30s
     rules:
       # High error rate
       - alert: HighErrorRate
-        expr: rate(shipcrowd_http_request_errors_total[5m]) > 0.05
+        expr: rate(Helix_http_request_errors_total[5m]) > 0.05
         for: 5m
         labels:
           severity: warning
@@ -947,7 +947,7 @@ groups:
 
       # API response time
       - alert: SlowAPIResponse
-        expr: histogram_quantile(0.95, shipcrowd_http_request_duration_seconds_bucket) > 1
+        expr: histogram_quantile(0.95, Helix_http_request_duration_seconds_bucket) > 1
         for: 5m
         labels:
           severity: warning
@@ -977,7 +977,7 @@ groups:
 
       # High NDR rate
       - alert: HighNDRRate
-        expr: rate(shipcrowd_ndr_raised_total[1h]) > 100
+        expr: rate(Helix_ndr_raised_total[1h]) > 100
         for: 30m
         labels:
           severity: warning
@@ -994,7 +994,7 @@ groups:
 
 Create comprehensive dashboard in Grafana UI, then export to:
 
-**File:** `/monitoring/grafana/dashboards/shipcrowd-main.json`
+**File:** `/monitoring/grafana/dashboards/Helix-main.json`
 
 **Dashboard Panels:**
 1. **Overview**
@@ -1052,7 +1052,7 @@ export const initSentry = (app: Express) => {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV,
-    release: `shipcrowd-api@${process.env.npm_package_version}`,
+    release: `Helix-api@${process.env.npm_package_version}`,
 
     // Performance monitoring
     tracesSampleRate: 0.1, // 10% of transactions
@@ -1183,7 +1183,7 @@ async function analyzeQueries() {
   // Analyze system.profile
   const profileData = await mongoose.connection.db
     .collection('system.profile')
-    .find({ ns: { $regex: /^shipcrowd\./ } })
+    .find({ ns: { $regex: /^Helix\./ } })
     .sort({ ts: -1 })
     .limit(100)
     .toArray();
@@ -1414,7 +1414,7 @@ const INDEXES: IndexDefinition[] = [
   },
   {
     collection: 'productmappings',
-    index: { companyId: 1, shipcrowdSKU: 1 },
+    index: { companyId: 1, HelixSKU: 1 },
     options: { background: true },
     reason: 'Internal SKU lookup'
   },
@@ -2244,7 +2244,7 @@ k6 run tests/load/stress-test.js
 k6 run tests/load/spike-test.js
 
 # With custom BASE_URL and AUTH_TOKEN
-k6 run -e BASE_URL=https://api.shipcrowd.com -e AUTH_TOKEN=your_token tests/load/basic-load-test.js
+k6 run -e BASE_URL=https://api.Helix.com -e AUTH_TOKEN=your_token tests/load/basic-load-test.js
 
 # With HTML report
 k6 run --out json=test-results.json tests/load/basic-load-test.js
@@ -2555,7 +2555,7 @@ jobs:
       - name: Run unit tests
         working-directory: ./server
         env:
-          MONGODB_URI: mongodb://test:test123@localhost:27017/shipcrowd_test?authSource=admin
+          MONGODB_URI: mongodb://test:test123@localhost:27017/Helix_test?authSource=admin
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
@@ -2564,7 +2564,7 @@ jobs:
       - name: Run integration tests
         working-directory: ./server
         env:
-          MONGODB_URI: mongodb://test:test123@localhost:27017/shipcrowd_test?authSource=admin
+          MONGODB_URI: mongodb://test:test123@localhost:27017/Helix_test?authSource=admin
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
@@ -2632,7 +2632,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: shipcrowd/api
+          images: Helix/api
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -2646,8 +2646,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=shipcrowd/api:buildcache
-          cache-to: type=registry,ref=shipcrowd/api:buildcache,mode=max
+          cache-from: type=registry,ref=Helix/api:buildcache
+          cache-to: type=registry,ref=Helix/api:buildcache,mode=max
 ```
 
 **Deliverable:** Automated CI pipeline with testing and Docker build
@@ -2673,7 +2673,7 @@ on:
 env:
   NODE_VERSION: '18.x'
   DEPLOY_USER: deploy
-  DEPLOY_HOST: production.shipcrowd.com
+  DEPLOY_HOST: production.Helix.com
 
 jobs:
   deploy:
@@ -2697,7 +2697,7 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'ENDSSH'
-            cd /var/www/shipcrowd-api
+            cd /var/www/Helix-api
             
             # Pull latest code
             git fetch origin
@@ -2734,7 +2734,7 @@ jobs:
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: shipcrowd
+          SENTRY_ORG: Helix
           SENTRY_PROJECT: api
         with:
           environment: production
@@ -2907,7 +2907,7 @@ router.get('/health/alive', healthController.alive);
 4. `/server/ecosystem.config.js`
 5. `/monitoring/prometheus.yml`
 6. `/monitoring/alerts/api-alerts.yml`
-7. `/monitoring/grafana/dashboards/shipcrowd-main.json`
+7. `/monitoring/grafana/dashboards/Helix-main.json`
 
 **Services & Middleware (6 files):**
 8. `/server/src/core/application/services/monitoring/MetricsService.ts`
@@ -3367,7 +3367,7 @@ export class SecretsManager {
 
   private constructor() {
     this.client = new SecretManagerServiceClient();
-    this.projectId = process.env.GCP_PROJECT_ID || 'shipcrowd-production';
+    this.projectId = process.env.GCP_PROJECT_ID || 'Helix-production';
     this.cachedSecrets = new Map();
   }
 
@@ -4459,10 +4459,10 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Shipcrowd API Documentation',
+      title: 'Helix API Documentation',
       version: '1.0.0',
       description: `
-        Complete API documentation for Shipcrowd - Multi-carrier shipping aggregator platform.
+        Complete API documentation for Helix - Multi-carrier shipping aggregator platform.
         
         ## Authentication
         
@@ -4499,13 +4499,13 @@ const options: swaggerJsdoc.Options = {
         \`\`\`
       `,
       contact: {
-        name: 'Shipcrowd Support',
-        email: 'support@shipcrowd.com',
-        url: 'https://shipcrowd.com'
+        name: 'Helix Support',
+        email: 'support@Helix.com',
+        url: 'https://Helix.com'
       },
       license: {
         name: 'Proprietary',
-        url: 'https://shipcrowd.com/license'
+        url: 'https://Helix.com/license'
       }
     },
     servers: [
@@ -4514,11 +4514,11 @@ const options: swaggerJsdoc.Options = {
         description: 'Development server'
       },
       {
-        url: 'https://api-staging.shipcrowd.com',
+        url: 'https://api-staging.Helix.com',
         description: 'Staging server'
       },
       {
-        url: 'https://api.shipcrowd.com',
+        url: 'https://api.Helix.com',
         description: 'Production server'
       }
     ],
@@ -4587,7 +4587,7 @@ export const setupSwagger = (app: Express) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Shipcrowd API Docs',
+    customSiteTitle: 'Helix API Docs',
     customfavIcon: '/favicon.ico'
   }));
 
@@ -5132,13 +5132,13 @@ If deployment fails:
 **File:** `/docs/operations/RUNBOOK.md`
 
 ```markdown
-# Shipcrowd API Operations Runbook
+# Helix API Operations Runbook
 
 ## System Overview
 
-**Production URL:** https://api.shipcrowd.com
-**Monitoring Dashboard:** https://grafana.shipcrowd.com
-**Documentation:** https://api.shipcrowd.com/api-docs
+**Production URL:** https://api.Helix.com
+**Monitoring Dashboard:** https://grafana.Helix.com
+**Documentation:** https://api.Helix.com/api-docs
 
 ## Architecture
 
@@ -5158,16 +5158,16 @@ MongoDB + Redis
 
 ```bash
 # Health check
-curl https://api.shipcrowd.com/health
+curl https://api.Helix.com/health
 
 # Detailed readiness check
-curl https://api.shipcrowd.com/health/ready
+curl https://api.Helix.com/health/ready
 
 # PM2 status
 pm2 status
 
 # View logs
-pm2 logs shipcrowd-api --lines 100
+pm2 logs Helix-api --lines 100
 ```
 
 ### Restart Application
@@ -5177,30 +5177,30 @@ pm2 logs shipcrowd-api --lines 100
 pm2 reload ecosystem.config.js
 
 # Full restart (with downtime)
-pm2 restart shipcrowd-api
+pm2 restart Helix-api
 
 # Restart specific instance
-pm2 restart shipcrowd-api-0
+pm2 restart Helix-api-0
 ```
 
 ### Scale Application
 
 ```bash
 # Scale to 5 instances
-pm2 scale shipcrowd-api 5
+pm2 scale Helix-api 5
 
 # Scale up by 2
-pm2 scale shipcrowd-api +2
+pm2 scale Helix-api +2
 
 # Scale down to 3
-pm2 scale shipcrowd-api 3
+pm2 scale Helix-api 3
 ```
 
 ### Database Operations
 
 ```bash
 # Check MongoDB connection
-mongosh "mongodb://user:pass@prod-mongodb:27017/shipcrowd"
+mongosh "mongodb://user:pass@prod-mongodb:27017/Helix"
 
 # Create backup
 mongodump --uri="mongodb://..." --out=/backups/$(date +%Y%m%d)
@@ -5249,7 +5249,7 @@ FLUSHALL
 
 1. Check PM2 memory usage: `pm2 monit`
 2. Review heap dumps if available
-3. Restart instances: `pm2 reload shipcrowd-api`
+3. Restart instances: `pm2 reload Helix-api`
 4. Investigate memory leaks
 
 ### Database Connection Issues
@@ -5299,9 +5299,9 @@ FLUSHALL
 
 ## Contacts
 
-**On-call Engineer:** oncall@shipcrowd.com
-**Technical Lead:** tech-lead@shipcrowd.com
-**DevOps:** devops@shipcrowd.com
+**On-call Engineer:** oncall@Helix.com
+**Technical Lead:** tech-lead@Helix.com
+**DevOps:** devops@Helix.com
 
 ## External Dependencies
 
@@ -5539,7 +5539,7 @@ FLUSHALL
 
 **Backend Development Status:** ✅ 100% COMPLETE
 
-The Shipcrowd backend is **production-ready** with:
+The Helix backend is **production-ready** with:
 - Complete feature set
 - Robust architecture
 - Comprehensive testing
@@ -5554,7 +5554,7 @@ The Shipcrowd backend is **production-ready** with:
 - Scale to 10,000+ daily orders
 - 24/7 operations
 
-**Congratulations on completing the Shipcrowd backend! 🎉**
+**Congratulations on completing the Helix backend! 🎉**
 
 ---
 
@@ -6193,8 +6193,8 @@ fi
 echo "🚢 Deploying to production..."
 
 # SSH to production server and deploy
-ssh deploy@production.shipcrowd.com << 'ENDSSH'
-  cd /var/www/shipcrowd-api
+ssh deploy@production.Helix.com << 'ENDSSH'
+  cd /var/www/Helix-api
   
   # Pull latest code
   git pull origin main
@@ -6855,7 +6855,7 @@ export class MultiChannelNotificationService {
         to: payload.recipient.email!,
         from: {
           email: process.env.SENDGRID_FROM_EMAIL!,
-          name: 'Shipcrowd'
+          name: 'Helix'
         },
         subject: emailContent.subject,
         html: emailContent.html,
@@ -6951,7 +6951,7 @@ export class MultiChannelNotificationService {
             <li>Delivery Address: ${data.address}</li>
           </ul>
           <p>You can track your order at: <a href="${data.trackingUrl}">${data.trackingUrl}</a></p>
-          <p>Thanks for choosing Shipcrowd!</p>
+          <p>Thanks for choosing Helix!</p>
         `,
         text: `Order Confirmed! Your order ${data.orderNumber} has been confirmed. Total: ₹${data.total}. Track: ${data.trackingUrl}`
       }),
@@ -7026,7 +7026,7 @@ export class MultiChannelNotificationService {
         `Delivery failed: ${data.ndrReason}. Take action: ${data.reattemptUrl}`,
 
       'delivered': (data) =>
-        `Order ${data.orderNumber} delivered! Thank you for using Shipcrowd.`
+        `Order ${data.orderNumber} delivered! Thank you for using Helix.`
     };
 
     const templateFunc = templates[template];
@@ -7053,7 +7053,7 @@ export class MultiChannelNotificationService {
         `⚠️ *Delivery Issue*\n\nReason: ${data.ndrReason}\n\n*Take Action:*\n• Reattempt: ${data.reattemptUrl}\n• Update Address: ${data.updateAddressUrl}\n\nPlease respond within 48 hours.`,
 
       'delivered': (data) =>
-        `✅ *Delivered!*\n\nYour order ${data.orderNumber} has been delivered.\n\nThank you for choosing Shipcrowd! 🙏`
+        `✅ *Delivered!*\n\nYour order ${data.orderNumber} has been delivered.\n\nThank you for choosing Helix! 🙏`
     };
 
     const templateFunc = templates[template];
@@ -7671,8 +7671,8 @@ export class WebhookRetryService {
       try {
         const response = await axios.post(webhook.url, payload, {
           headers: {
-            'X-Shipcrowd-Signature': this.generateSignature(payload),
-            'X-Shipcrowd-Event': webhook.event,
+            'X-Helix-Signature': this.generateSignature(payload),
+            'X-Helix-Event': webhook.event,
             'Content-Type': 'application/json'
           },
           timeout: 10000
@@ -7961,7 +7961,7 @@ cron.schedule('0 2 * * *', async () => {
 
 **🎉 BACKEND DEVELOPMENT COMPLETE! 🎉**
 
-The Shipcrowd backend platform is now:
+The Helix backend platform is now:
 - ✅ **Production-Ready** - 99.97% uptime achieved
 - ✅ **Fully Featured** - All 78 endpoints implemented
 - ✅ **Highly Performant** - 320ms p95 response time

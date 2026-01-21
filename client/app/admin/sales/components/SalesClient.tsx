@@ -35,7 +35,7 @@ const mockSalespeople = [
     {
         id: 'SP-001',
         name: 'Rahul Verma',
-        email: 'rahul.verma@shipcrowd.com',
+        email: 'rahul.verma@Helix.com',
         phone: '+91 98765 43210',
         status: 'active',
         sellersOnboarded: 24,
@@ -49,7 +49,7 @@ const mockSalespeople = [
     {
         id: 'SP-002',
         name: 'Priya Sharma',
-        email: 'priya.sharma@shipcrowd.com',
+        email: 'priya.sharma@Helix.com',
         phone: '+91 87654 32109',
         status: 'active',
         sellersOnboarded: 18,
@@ -63,7 +63,7 @@ const mockSalespeople = [
     {
         id: 'SP-003',
         name: 'Amit Kumar',
-        email: 'amit.kumar@shipcrowd.com',
+        email: 'amit.kumar@Helix.com',
         phone: '+91 76543 21098',
         status: 'active',
         sellersOnboarded: 15,
@@ -77,7 +77,7 @@ const mockSalespeople = [
     {
         id: 'SP-004',
         name: 'Sneha Patel',
-        email: 'sneha.patel@shipcrowd.com',
+        email: 'sneha.patel@Helix.com',
         phone: '+91 65432 10987',
         status: 'inactive',
         sellersOnboarded: 8,
@@ -218,7 +218,7 @@ export function SalesClient() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-secondary)]">Email *</label>
-                                <Input type="email" placeholder="email@shipcrowd.com" />
+                                <Input type="email" placeholder="email@Helix.com" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-secondary)]">Phone *</label>

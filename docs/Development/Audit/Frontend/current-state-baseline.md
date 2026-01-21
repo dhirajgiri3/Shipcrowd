@@ -1,4 +1,4 @@
-# ShipCrowd Frontend - Current State Baseline Audit
+# Helix Frontend - Current State Baseline Audit
 
 **Date:** January 21, 2026
 **Audited By:** UX Transformation Phase 0
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-ShipCrowd currently has a functional dashboard system with good technical foundation (TypeScript, React, shadcn/ui, Tailwind) and an established design system in `globals.css`. However, significant UX improvements are needed to transform from a generic platform to **the best shipping management platform in India**.
+Helix currently has a functional dashboard system with good technical foundation (TypeScript, React, shadcn/ui, Tailwind) and an established design system in `globals.css`. However, significant UX improvements are needed to transform from a generic platform to **the best shipping management platform in India**.
 
 ### Current Strengths ✅
 - **Solid technical foundation:** TypeScript, Next.js App Router, React Query

@@ -30,8 +30,8 @@ const RESOLUTION_OUTCOMES = [
         icon: '✓'
     },
     {
-        value: 'shipcrowd_favor' as ResolutionOutcome,
-        label: 'ShipCrowd Favor',
+        value: 'Helix_favor' as ResolutionOutcome,
+        label: 'Helix Favor',
         description: 'Carrier weight is accurate, deduct from seller wallet',
         color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700',
         icon: '×'
@@ -172,13 +172,13 @@ export default function AdminDisputeReviewPage() {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        setSelectedOutcome('shipcrowd_favor');
+                                        setSelectedOutcome('Helix_favor');
                                         setReasonCode('INSUFFICIENT_EVIDENCE');
                                         setDeductionAmount(dispute.financialImpact.difference.toString());
                                     }}
                                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                                 >
-                                    Quick: ShipCrowd Favor
+                                    Quick: Helix Favor
                                 </button>
                             </div>
                         )}
@@ -367,7 +367,7 @@ export default function AdminDisputeReviewPage() {
                                                     </div>
                                                 </div>
                                             )}
-                                            {(selectedOutcome === 'shipcrowd_favor' || selectedOutcome === 'split') && (
+                                            {(selectedOutcome === 'Helix_favor' || selectedOutcome === 'split') && (
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Deduction Amount</label>
                                                     <div className="relative">

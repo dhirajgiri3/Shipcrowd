@@ -1,4 +1,4 @@
-# Shipcrowd Backend - Parallel Implementation Strategy
+# Helix Backend - Parallel Implementation Strategy
 ## 16-Week Master Plan: Optimized for Concurrent Execution
 
 **Created:** December 27, 2025

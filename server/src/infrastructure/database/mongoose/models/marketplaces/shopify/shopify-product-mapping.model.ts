@@ -3,13 +3,13 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 /**
  * ProductMapping Model
  *
- * Maps Shopify product variants to Shipcrowd SKUs for inventory synchronization.
+ * Maps Shopify product variants to Helix SKUs for inventory synchronization.
  * Supports both automatic (by SKU matching) and manual mapping creation.
  */
 
 // Static methods interface
 interface IProductMappingModel extends Model<IProductMapping> {
-  findByShipcrowdSKU(storeId: string, sku: string): Promise<IProductMapping | null>;
+  findByHelixSKU(storeId: string, sku: string): Promise<IProductMapping | null>;
   findByShopifyVariant(storeId: string, variantId: string): Promise<IProductMapping | null>;
   getUnmappedVariants(storeId: string, shopifyVariantIds: string[]): Promise<string[]>;
   getMappingStats(storeId: string): Promise<{
@@ -35,9 +35,9 @@ export interface IProductMapping extends Document {
   shopifyBarcode?: string;
   shopifyInventoryItemId?: string; // For inventory API
 
-  // Shipcrowd product details
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  // Helix product details
+  HelixSKU: string;
+  HelixProductName: string;
 
   // Mapping metadata
   mappingType: 'AUTO' | 'MANUAL';
@@ -109,14 +109,14 @@ const ProductMappingSchema = new Schema<IProductMapping>(
       trim: true,
     },
 
-    // Shipcrowd product details
-    shipcrowdSKU: {
+    // Helix product details
+    HelixSKU: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
     },
-    shipcrowdProductName: {
+    HelixProductName: {
       type: String,
       required: true,
       trim: true,
@@ -182,7 +182,7 @@ ProductMappingSchema.index(
   { companyId: 1, shopifyStoreId: 1, shopifyVariantId: 1 },
   { unique: true }
 );
-ProductMappingSchema.index({ companyId: 1, shipcrowdSKU: 1 });
+ProductMappingSchema.index({ companyId: 1, HelixSKU: 1 });
 ProductMappingSchema.index({ shopifyStoreId: 1, shopifySKU: 1 });
 ProductMappingSchema.index({ companyId: 1, isActive: 1, syncInventory: 1 });
 
@@ -200,14 +200,14 @@ ProductMappingSchema.virtual('daysSinceSync').get(function () {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 });
 
-// Static method: Find mapping by Shipcrowd SKU
-ProductMappingSchema.statics.findByShipcrowdSKU = function (
+// Static method: Find mapping by Helix SKU
+ProductMappingSchema.statics.findByHelixSKU = function (
   storeId: string,
   sku: string
 ) {
   return this.findOne({
     shopifyStoreId: storeId,
-    shipcrowdSKU: sku.toUpperCase(),
+    HelixSKU: sku.toUpperCase(),
     isActive: true,
   });
 };

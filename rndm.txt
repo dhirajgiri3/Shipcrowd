@@ -1,8 +1,8 @@
-# ShipCrowd: Complete UX Transformation & Product Excellence Initiative
+# Helix: Complete UX Transformation & Product Excellence Initiative
 
 ## Mission Statement
 
-Transform ShipCrowd from a generic shipping aggregator into THE BEST shipping management platform in the Indian market - surpassing ShipRocket, DTDC, Delhivery, BlueDart, Shiprocket, and all competitors through superior user experience, intelligent information architecture, and genuine business impact.
+Transform Helix from a generic shipping aggregator into THE BEST shipping management platform in the Indian market - surpassing ShipRocket, DTDC, Delhivery, BlueDart, Shiprocket, and all competitors through superior user experience, intelligent information architecture, and genuine business impact.
 
 **This is not a minor refactoring. This is a complete UX reimagination.**
 
@@ -10,7 +10,7 @@ Transform ShipCrowd from a generic shipping aggregator into THE BEST shipping ma
 
 ## Critical Context & Codebase Access
 
-You have the complete ShipCrowd codebase including:
+You have the complete Helix codebase including:
 - **Seller Dashboard** (`/client/src/pages/seller/`) - All pages, subpages, components
 - **Admin Dashboard** (`/client/src/pages/admin/`) - All pages, subpages, components  
 - **Shared Components** (`/client/components/`) - UI library and reusable components
@@ -976,9 +976,9 @@ const isMobile = useMediaQuery('(max-width: 768px)');
 
 **Our Differentiation:**
 ```markdown
-### ShipCrowd vs ShipRocket
+### Helix vs ShipRocket
 
-| Aspect | ShipRocket | ShipCrowd (Our Goal) |
+| Aspect | ShipRocket | Helix (Our Goal) |
 |--------|-----------|----------------------|
 | Pricing | Complex tiers, hidden fees | Transparent, no surprises |
 | Insights | Basic analytics | AI-powered recommendations |
@@ -1077,7 +1077,7 @@ For each page/component, create:
 
 **Task 1.3: Create Master Redesign Roadmap**
 ```markdown
-# ShipCrowd UX Transformation Roadmap
+# Helix UX Transformation Roadmap
 
 ## Phase 1: Critical User Flows (Week 2-3)
 - [ ] Dashboard home (seller)
@@ -1645,11 +1645,11 @@ Create THE BEST shipping aggregator platform in India - one that sellers get ADD
 
 **This is a transformational project. Make it extraordinary.** 🚀
 
-# ShipCrowd: Complete UX Transformation - Implementation Plan
+# Helix: Complete UX Transformation - Implementation Plan
 
 ## Executive Summary
 
-This is a systematic, phased implementation plan to transform ShipCrowd from a generic shipping platform into **the best shipping management platform in India** through psychology-driven UX, mobile-first design, and intelligent business impact features.
+This is a systematic, phased implementation plan to transform Helix from a generic shipping platform into **the best shipping management platform in India** through psychology-driven UX, mobile-first design, and intelligent business impact features.
 
 **Scope:** Complete redesign of 57 seller pages + 30+ admin pages
 **Approach:** Incremental, non-breaking, systematic transformation

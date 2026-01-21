@@ -162,7 +162,7 @@ export default function SocialProof() {
                         <Quote className="text-primaryBlue/20 w-12 h-12 mb-4" />
 
                         <h3 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-6 tracking-tight">
-                            "ShipCrowd cut our shipping costs by 23% and saved our operations team 15 hours every week..."
+                            "Helix cut our shipping costs by 23% and saved our operations team 15 hours every week..."
                         </h3>
 
                         <p className="text-gray-600 mb-6 leading-relaxed">

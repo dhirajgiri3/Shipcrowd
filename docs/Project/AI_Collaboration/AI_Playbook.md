@@ -1,4 +1,4 @@
-# 🚀 **AI Collaboration Playbook: Shipcrowd Sprint**
+# 🚀 **AI Collaboration Playbook: Helix Sprint**
 
 **Goal:** Complete 60 days of work in 40 days by leveraging AI-assisted development.
 
@@ -189,7 +189,7 @@ Pre-generate:
 
 ---
 
-## **PART 6: SHIPCROWD-SPECIFIC ACCELERATIONS**
+## **PART 6: Helix-SPECIFIC ACCELERATIONS**
 
 ### 📦 **Backend (I Generate)**
 - [ ] Product model + controller + routes

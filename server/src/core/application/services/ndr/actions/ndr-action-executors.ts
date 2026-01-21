@@ -234,7 +234,7 @@ export class NDRActionExecutors {
                 <p>Order ID: <strong>${context.orderId}</strong></p>
                 <p>If you have any questions, please reply to this email.</p>
                 <p>Thank you for your patience.</p>
-                <p>- The Shipcrowd Team</p>
+                <p>- The Helix Team</p>
             `;
 
             const sent = await EmailService.sendEmail(
@@ -293,7 +293,7 @@ export class NDRActionExecutors {
             const shipmentId = String(ndrEvent.shipment);
             const ndrEventId = String(ndrEvent._id);
             const token = TokenService.generateAddressUpdateToken(shipmentId, companyId, ndrEventId);
-            const updateUrl = `${process.env.BASE_URL || 'https://shipcrowd.com'}/public/update-address/${token}`;
+            const updateUrl = `${process.env.BASE_URL || 'https://Helix.com'}/public/update-address/${token}`;
 
             // Send via WhatsApp with update link
             const message = `Hi ${customer.name},
@@ -308,7 +308,7 @@ ${updateUrl}
 
 Need help? Reply to this message.
 
--Shipcrowd`;
+-Helix`;
 
             const result = await this.whatsapp.sendMessage(customer.phone, message);
 

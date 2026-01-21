@@ -1,6 +1,6 @@
 # SendGrid Email Integration Guide
 
-This guide explains how to set up and use SendGrid for sending emails in the Shipcrowd application.
+This guide explains how to set up and use SendGrid for sending emails in the Helix application.
 
 ## Setup Instructions
 
@@ -13,7 +13,7 @@ This guide explains how to set up and use SendGrid for sending emails in the Shi
 
 1. In your SendGrid dashboard, navigate to **Settings** > **API Keys**
 2. Click **Create API Key**
-3. Name your key (e.g., "Shipcrowd API Key")
+3. Name your key (e.g., "Helix API Key")
 4. Select "Full Access" or customize permissions (at minimum, you need "Mail Send" permissions)
 5. Click **Create & View**
 6. Copy your API key (you won't be able to see it again)
@@ -31,7 +31,7 @@ Add the following variables to your `.env` file:
 ```
 EMAIL_SERVICE=sendgrid
 EMAIL_FROM=your_verified_email@example.com
-EMAIL_FROM_NAME=Shipcrowd
+EMAIL_FROM_NAME=Helix
 SENDGRID_API_KEY=your_api_key_here
 EMAIL_MAX_RETRY=3
 EMAIL_RETRY_DELAY_MS=1000
@@ -66,7 +66,7 @@ import emailService from '../services/email.service';
 // Send a simple email
 await emailService.sendEmail(
   'recipient@example.com',
-  'Hello from Shipcrowd',
+  'Hello from Helix',
   '<h1>Welcome!</h1><p>This is an HTML email.</p>'
 );
 ```
@@ -102,7 +102,7 @@ import emailService from '../services/email.service';
 // Send email using a template
 await emailService.sendEmail(
   'recipient@example.com',
-  'Welcome to Shipcrowd',
+  'Welcome to Helix',
   '', // HTML is not needed when using a template
   '', // Text is not needed when using a template
   undefined, // No attachments

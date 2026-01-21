@@ -42,7 +42,7 @@ export class FlipkartWebhookService {
    * Process order/create webhook
    *
    * Triggered when a new order is placed on Flipkart.
-   * Creates the order in Shipcrowd system.
+   * Creates the order in Helix system.
    */
   static async processOrderCreate(payload: any, storeId: string): Promise<void> {
     logger.info('Processing order/create webhook', {
@@ -494,7 +494,7 @@ export class FlipkartWebhookService {
    * Process inventory/update webhook
    *
    * Triggered when inventory is updated in Flipkart.
-   * Optional: Two-way sync (Flipkart → Shipcrowd).
+   * Optional: Two-way sync (Flipkart → Helix).
    */
   static async processInventoryUpdate(payload: any, storeId: string): Promise<void> {
     logger.info('Processing inventory/update webhook', {
@@ -517,7 +517,7 @@ export class FlipkartWebhookService {
         return;
       }
 
-      // TODO: Update Shipcrowd inventory
+      // TODO: Update Helix inventory
       // This would integrate with InventoryService to update stock levels
 
       logger.info('Inventory updated (two-way sync)', {
@@ -536,7 +536,7 @@ export class FlipkartWebhookService {
   }
 
   /**
-   * Map Flipkart payment status to Shipcrowd status
+   * Map Flipkart payment status to Helix status
    */
   private static mapPaymentStatus(paymentStatus: string): 'pending' | 'paid' | 'failed' | 'refunded' {
     const statusMap: Record<string, 'pending' | 'paid' | 'failed' | 'refunded'> = {

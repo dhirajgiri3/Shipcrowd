@@ -1,4 +1,4 @@
-# SHIPCROWD: COMPREHENSIVE REMEDIATION ROADMAP
+# Helix: COMPREHENSIVE REMEDIATION ROADMAP
 **Date:** January 10, 2026
 **Purpose:** Step-by-step action plan to achieve production readiness
 **Status:** READY FOR EXECUTION
@@ -325,8 +325,8 @@ Each service should wrap multi-step operations in transactions.
 ```
 1. Orders delivered → COD collected by courier (e.g., ₹10,000)
 2. Courier deposits to Velocity (₹9,800 after fee)
-3. Velocity deposits to Shipcrowd (₹9,750 after fee)
-4. Shipcrowd calculates seller payout:
+3. Velocity deposits to Helix (₹9,750 after fee)
+4. Helix calculates seller payout:
    - COD: ₹10,000
    - Shipping deduction: -₹500
    - Dispute deduction: -₹200

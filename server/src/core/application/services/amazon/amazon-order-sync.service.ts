@@ -34,8 +34,8 @@ type AmazonOrderStatus =
     | 'InvoiceUnconfirmed'
     | 'PendingAvailability';
 
-// Shipcrowd order statuses for mapping
-type ShipcrowdOrderStatus =
+// Helix order statuses for mapping
+type HelixOrderStatus =
     | 'pending'
     | 'confirmed'
     | 'processing'
@@ -465,10 +465,10 @@ export default class AmazonOrderSyncService {
     }
 
     /**
-     * Map Amazon order status to Shipcrowd status
+     * Map Amazon order status to Helix status
      */
-    private static mapAmazonStatus(amazonStatus: AmazonOrderStatus): ShipcrowdOrderStatus {
-        const statusMap: Record<AmazonOrderStatus, ShipcrowdOrderStatus> = {
+    private static mapAmazonStatus(amazonStatus: AmazonOrderStatus): HelixOrderStatus {
+        const statusMap: Record<AmazonOrderStatus, HelixOrderStatus> = {
             Pending: 'pending',
             PendingAvailability: 'pending',
             InvoiceUnconfirmed: 'pending',

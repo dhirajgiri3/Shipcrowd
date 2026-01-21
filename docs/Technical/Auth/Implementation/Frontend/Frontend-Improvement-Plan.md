@@ -23,9 +23,9 @@ Risk mitigation strategies
 Success criteria
 The plan is production-ready and immediately actionable.
 Claude’s Plan
-Shipcrowd Full-Stack Optimization & Security Hardening Plan
+Helix Full-Stack Optimization & Security Hardening Plan
 Executive Summary
-Comprehensive analysis of Shipcrowd codebase (backend + frontend) revealed:
+Comprehensive analysis of Helix codebase (backend + frontend) revealed:
 Backend Issues (27 critical inconsistencies):
 Security vulnerabilities (sensitive token exposure in GET /auth/me)
 Runtime errors (type mismatches, field name conflicts)

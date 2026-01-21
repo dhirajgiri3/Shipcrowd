@@ -1,4 +1,4 @@
-# ShipCrowd Master Plan v2.0 - Complete Documentation
+# Helix Master Plan v2.0 - Complete Documentation
 
 **Status:** ✅ Ready for Implementation
 **Version:** 2.0 (Enhanced & Production-Ready)
@@ -9,7 +9,7 @@
 
 ## 📚 DOCUMENTATION STRUCTURE
 
-This folder contains the complete, enhanced master plan for ShipCrowd shipping aggregator platform. Four comprehensive documents guide implementation:
+This folder contains the complete, enhanced master plan for Helix shipping aggregator platform. Four comprehensive documents guide implementation:
 
 ### 1. **MASTERPLAN-ENHANCED-v2.md** (Primary Document)
 **Length:** 150+ pages

@@ -1,8 +1,8 @@
-# Shipcrowd Team Management System Documentation
+# Helix Team Management System Documentation
 
 ## Overview
 
-The Team Management System in Shipcrowd allows companies to manage their team members, assign roles and permissions, and track team activity. The system enables efficient team collaboration, proper access control, and comprehensive activity tracking.
+The Team Management System in Helix allows companies to manage their team members, assign roles and permissions, and track team activity. The system enables efficient team collaboration, proper access control, and comprehensive activity tracking.
 
 ## Key Features
 

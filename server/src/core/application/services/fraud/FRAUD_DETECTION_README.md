@@ -4,7 +4,7 @@
 
 ## Overview
 
-Complete fraud detection system for Shipcrowd that provides real-time risk assessment for orders using:
+Complete fraud detection system for Helix that provides real-time risk assessment for orders using:
 
 - **Pattern Matching**: Rule-based fraud detection with configurable thresholds
 - **Blacklist Verification**: Check against phone, email, address, and IP blacklists

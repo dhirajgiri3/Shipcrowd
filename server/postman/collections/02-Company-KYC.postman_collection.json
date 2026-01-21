@@ -1,6 +1,6 @@
 {
     "info": {
-        "_postman_id": "shipcrowd-company-kyc-v1",
+        "_postman_id": "Helix-company-kyc-v1",
         "name": "02 - Company & KYC",
         "description": "## Company & KYC Management Collection\n\n**Domain:** Company profile management, KYC verification, team setup\n**Total Endpoints:** 24\n**Version:** 1.0.0\n\n### Complete Coverage\n✅ Company Profile Management (6 endpoints)\n✅ KYC Document Submission & Verification (12 endpoints)\n✅ Company Status Management (2 endpoints)\n✅ Company Settings (4 endpoints)\n\n### Critical Business Rules\n- **KYC Required:** Company must complete KYC before shipping\n- **Multi-Tenancy:** Users can only access their own company data\n- **Company Isolation:** Strict data isolation between companies\n- **Status Transitions:** pending_verification → kyc_submitted → approved/rejected\n\n### Quick Start\n1. Prerequisites: Completed authentication (Collection 01)\n2. Get Company Profile → Update Company Info\n3. Submit KYC Documents → Wait for Approval\n4. Verify Company Status = 'approved'\n\n### Auto Features\n🔄 Auto token refresh\n✅ Global test assertions\n📊 Environment variable management\n🔐 Company ID auto-captured",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -87,8 +87,13 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}"
+                            ]
                         },
                         "description": "Retrieve complete company profile including KYC status, tier, settings"
                     },
@@ -136,8 +141,13 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}"
+                            ]
                         },
                         "description": "Update company profile information"
                     },
@@ -179,8 +189,14 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/logo",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "logo"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "logo"
+                            ]
                         },
                         "description": "Upload company logo (max 5MB, PNG/JPG)"
                     },
@@ -212,8 +228,14 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/settings",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "settings"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "settings"
+                            ]
                         },
                         "description": "Retrieve company settings (timezone, currency, notifications)"
                     }
@@ -242,8 +264,14 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/settings",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "settings"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "settings"
+                            ]
                         },
                         "description": "Update company settings"
                     }
@@ -260,8 +288,14 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/stats",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "stats"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "stats"
+                            ]
                         },
                         "description": "Get company statistics (orders, revenue, performance)"
                     },
@@ -300,8 +334,14 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc"
+                            ]
                         },
                         "description": "Get current KYC status and submitted documents"
                     },
@@ -350,8 +390,15 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "documents"
+                            ]
                         },
                         "description": "Submit PAN card for KYC verification"
                     },
@@ -396,8 +443,15 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "documents"
+                            ]
                         },
                         "description": "Submit Aadhaar card for address verification"
                     }
@@ -426,8 +480,15 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "documents"
+                            ]
                         },
                         "description": "Submit GST certificate (optional, for registered businesses)"
                     }
@@ -456,8 +517,15 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "documents"
+                            ]
                         },
                         "description": "Submit bank account details for COD remittance"
                     }
@@ -478,8 +546,15 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/submit",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "submit"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "submit"
+                            ]
                         },
                         "description": "Submit all documents for KYC verification (triggers DeepVue API call)"
                     },
@@ -512,8 +587,15 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "documents"
+                            ]
                         },
                         "description": "List all submitted KYC documents"
                     }
@@ -530,8 +612,16 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/documents/:documentId",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "documents", ":documentId"],
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "documents",
+                                ":documentId"
+                            ],
                             "variable": [
                                 {
                                     "key": "documentId",
@@ -554,8 +644,15 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/history",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "history"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "history"
+                            ]
                         },
                         "description": "Get KYC verification history and audit trail"
                     }
@@ -584,8 +681,15 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/companies/{{COMPANY_ID}}/kyc/request-manual-review",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["companies", "{{COMPANY_ID}}", "kyc", "request-manual-review"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "request-manual-review"
+                            ]
                         },
                         "description": "Request manual KYC review (if automated verification fails)"
                     }
@@ -620,8 +724,16 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/admin/companies/{{COMPANY_ID}}/kyc/approve",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["admin", "companies", "{{COMPANY_ID}}", "kyc", "approve"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "kyc",
+                                "approve"
+                            ]
                         },
                         "description": "[ADMIN ONLY] Manually approve company KYC"
                     }
@@ -650,8 +762,15 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/admin/companies/{{COMPANY_ID}}/suspend",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["admin", "companies", "{{COMPANY_ID}}", "suspend"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "companies",
+                                "{{COMPANY_ID}}",
+                                "suspend"
+                            ]
                         },
                         "description": "[ADMIN ONLY] Suspend company account"
                     }
@@ -668,8 +787,13 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/admin/companies?page=1&limit=50&kycStatus=pending",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["admin", "companies"],
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "companies"
+                            ],
                             "query": [
                                 {
                                     "key": "page",

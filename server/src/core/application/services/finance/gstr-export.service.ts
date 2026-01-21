@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Invoice from '../../../../infrastructure/database/mongoose/models/finance/billing/invoice.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { ValidationError } from '../../../../shared/errors/app.error';
-import { SHIPCROWD } from '../../../../shared/constants/shipcrowd.constants';
+import { Helix } from '../../../../shared/constants/Helix.constants';
 
 /**
  * GSTR-1 Export Service
@@ -108,7 +108,7 @@ class GSTRExportService {
         );
 
         const gstr1Export: GSTR1Export = {
-            gstin: SHIPCROWD.GSTIN,
+            gstin: Helix.GSTIN,
             fp: `${month.toString().padStart(2, '0')}${year}`,
             gt: Math.round(grandTotal * 100) / 100,
             cur_gt: Math.round(grandTotal * 100) / 100,

@@ -204,7 +204,7 @@ export const sendWelcomeNotification = async (
 
     // Send welcome SMS
     if ((type === NotificationType.SMS || type === NotificationType.BOTH || type === NotificationType.ALL) && to.phone) {
-      const message = `Welcome to Shipcrowd, ${name}! We're excited to have you on board. If you have any questions, please don't hesitate to contact our support team.`;
+      const message = `Welcome to Helix, ${name}! We're excited to have you on board. If you have any questions, please don't hesitate to contact our support team.`;
       results.sms = await smsService.sendSMS(to.phone, message);
     }
 

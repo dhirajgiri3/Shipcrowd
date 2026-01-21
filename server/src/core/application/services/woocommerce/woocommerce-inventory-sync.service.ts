@@ -43,7 +43,7 @@ export default class WooCommerceInventorySyncService {
    */
   static async pushInventoryToWooCommerce(
     storeId: string,
-    shipcrowdSKU: string,
+    HelixSKU: string,
     quantity: number
   ): Promise<void> {
     try {
@@ -57,11 +57,11 @@ export default class WooCommerceInventorySyncService {
       }
 
       // 2. Get product mapping
-      const mapping = await WooCommerceProductMapping.findByShipcrowdSKU(storeId, shipcrowdSKU);
+      const mapping = await WooCommerceProductMapping.findByHelixSKU(storeId, HelixSKU);
 
       if (!mapping) {
         throw new AppError(
-          `No product mapping found for SKU: ${shipcrowdSKU}`,
+          `No product mapping found for SKU: ${HelixSKU}`,
           'PRODUCT_MAPPING_NOT_FOUND',
           404
         );
@@ -70,7 +70,7 @@ export default class WooCommerceInventorySyncService {
       if (!mapping.syncInventory) {
         logger.info('Inventory sync disabled for mapping', {
           mappingId: mapping._id,
-          sku: shipcrowdSKU,
+          sku: HelixSKU,
         });
         return;
       }
@@ -107,7 +107,7 @@ export default class WooCommerceInventorySyncService {
 
       logger.info('WooCommerce inventory synced successfully', {
         storeId,
-        sku: shipcrowdSKU,
+        sku: HelixSKU,
         quantity,
         productId: mapping.woocommerceProductId,
         variationId: mapping.woocommerceVariationId,
@@ -115,13 +115,13 @@ export default class WooCommerceInventorySyncService {
     } catch (error: any) {
       logger.error('Failed to push inventory to WooCommerce', {
         storeId,
-        sku: shipcrowdSKU,
+        sku: HelixSKU,
         quantity,
         error: error.message,
       });
 
       // Record sync error
-      const mapping = await WooCommerceProductMapping.findByShipcrowdSKU(storeId, shipcrowdSKU);
+      const mapping = await WooCommerceProductMapping.findByHelixSKU(storeId, HelixSKU);
       if (mapping) {
         await mapping.recordSyncError(error.message);
       }
@@ -190,7 +190,7 @@ export default class WooCommerceInventorySyncService {
 
           try {
             // Get mapping
-            const mapping = await WooCommerceProductMapping.findByShipcrowdSKU(
+            const mapping = await WooCommerceProductMapping.findByHelixSKU(
               storeId,
               update.sku
             );
@@ -317,7 +317,7 @@ export default class WooCommerceInventorySyncService {
 
       await this.pushInventoryToWooCommerce(
         mapping.woocommerceStoreId.toString(),
-        mapping.shipcrowdSKU,
+        mapping.HelixSKU,
         quantity
       );
     } catch (error: any) {
@@ -358,7 +358,7 @@ export default class WooCommerceInventorySyncService {
       }
 
       // Get SKUs to query inventory
-      const skus = mappings.map(m => m.shipcrowdSKU);
+      const skus = mappings.map(m => m.HelixSKU);
 
       // Fetch inventory for these SKUs across all warehouses for this company
       const inventoryItems = await Inventory.find({
@@ -376,8 +376,8 @@ export default class WooCommerceInventorySyncService {
       });
 
       const updates: InventoryUpdate[] = mappings.map((mapping) => ({
-        sku: mapping.shipcrowdSKU,
-        quantity: skuQuantityMap.get(mapping.shipcrowdSKU) || 0,
+        sku: mapping.HelixSKU,
+        quantity: skuQuantityMap.get(mapping.HelixSKU) || 0,
         productId: mapping.woocommerceProductId,
         variationId: mapping.woocommerceVariationId || undefined,
       }));

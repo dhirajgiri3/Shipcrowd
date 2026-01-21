@@ -52,14 +52,14 @@ function generateCredentials(provider: string): any {
             };
         case 'paytm':
             return {
-                merchantId: `SHIPCROWD${randomInt(10000, 99999)}`,
+                merchantId: `Helix${randomInt(10000, 99999)}`,
                 merchantKey: generateHexString(16),
                 websiteName: 'WEBSTAGING',
             };
         case 'delhivery':
             return {
                 apiKey: generateHexString(32),
-                clientName: `SHIPCROWD${randomInt(1000, 9999)}`,
+                clientName: `Helix${randomInt(1000, 9999)}`,
                 warehouseCode: `WH${randomInt(100, 999)}`,
             };
         case 'bluedart':
@@ -91,7 +91,7 @@ function generateCredentials(provider: string): any {
         case 'sendgrid':
             return {
                 apiKey: `SG.${generateAlphanumeric(22)}.${generateAlphanumeric(43)}`,
-                fromEmail: 'notifications@shipcrowd.com',
+                fromEmail: 'notifications@Helix.com',
             };
         default:
             return baseCredentials;
@@ -108,8 +108,8 @@ function generateSettings(type: string, provider: string): any {
     return {
         isActive,
         isPrimary,
-        webhookUrl: `https://api.shipcrowd.com/webhooks/${provider}/${generateHexString(16)}`,
-        callbackUrl: `https://api.shipcrowd.com/callbacks/${provider}/${generateHexString(16)}`,
+        webhookUrl: `https://api.Helix.com/webhooks/${provider}/${generateHexString(16)}`,
+        callbackUrl: `https://api.Helix.com/callbacks/${provider}/${generateHexString(16)}`,
     };
 }
 

@@ -71,7 +71,7 @@ export function SettingsClient() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">Email Address</label>
-                                    <Input defaultValue="dhiraj.giri@shipcrowd.in" />
+                                    <Input defaultValue="dhiraj.giri@Helix.in" />
                                 </div>
                                 <div className="pt-4 flex justify-end">
                                     <Button>Save Changes</Button>

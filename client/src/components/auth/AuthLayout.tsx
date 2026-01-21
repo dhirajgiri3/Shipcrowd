@@ -41,7 +41,7 @@ export const AuthLayout = memo(function AuthLayout({
                     <Link href="/" className="inline-block">
                         <Image
                             src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="ShipCrowd"
+                            alt="Helix"
                             width={120}
                             height={32}
                             className="h-8 w-auto object-contain rounded-full"

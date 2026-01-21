@@ -35,7 +35,7 @@
 - RTO reduction with NDR management: 15-20% improvement
 - Cost impact: RTO can increase shipping costs by 40-60%
 
-### Shipcrowd's NDR/RTO Strategy
+### Helix's NDR/RTO Strategy
 
 1. **Real-time NDR Detection**: Webhook-based instant notification
 2. **Automated Customer Communication**: SMS/WhatsApp/Email alerts
@@ -846,7 +846,7 @@ export class NDRService {
    - Webhook: ndr_raised
    - Payload: AWB, Reason, Timestamp
           ↓
-3. SHIPCROWD RECEIVES WEBHOOK
+3. Helix RECEIVES WEBHOOK
    - Verify signature
    - Update shipment.ndrDetails
    - Create NDRLog entry
@@ -1128,7 +1128,7 @@ graph TB
         WhatsApp[WhatsApp Business API]
     end
 
-    subgraph "Shipcrowd Backend"
+    subgraph "Helix Backend"
         API[REST API Controllers]
         NDRDetection[NDR Detection Service]
         NDRClassification[NDR Classification Service]
@@ -1667,7 +1667,7 @@ graph TB
   shipmentId: string,
   ndrEventId?: string,
   purpose: 'address_update',
-  iss: 'shipcrowd',
+  iss: 'Helix',
   sub: 'address-update',
   exp: 48 hours
 }

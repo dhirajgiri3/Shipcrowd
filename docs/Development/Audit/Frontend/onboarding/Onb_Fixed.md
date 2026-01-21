@@ -400,7 +400,7 @@ useEffect(() => {
 ```tsx
 <div className="flex items-center justify-between mb-6">
   <div>
-    <h1 className="text-2xl font-bold">Welcome to ShipCrowd</h1>
+    <h1 className="text-2xl font-bold">Welcome to Helix</h1>
     <p className="text-slate-600">Complete your profile to get started</p>
   </div>
   <Button>Save Draft</Button>
@@ -414,7 +414,7 @@ useEffect(() => {
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div className="flex-1">
       <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-primary)]">
-        Welcome to ShipCrowd
+        Welcome to Helix
       </h1>
       <p className="text-sm sm:text-base text-[var(--text-secondary)] mt-1">
         Complete your profile to get started
@@ -568,7 +568,7 @@ useEffect(() => {
       <li>Verify your email address</li>
       <li>Complete your company profile</li>
       <li>Add your business address</li>
-      <li>Start shipping with ShipCrowd</li>
+      <li>Start shipping with Helix</li>
     </ol>
   </div>
 

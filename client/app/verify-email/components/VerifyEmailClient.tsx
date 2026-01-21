@@ -103,9 +103,9 @@ function VerifyEmailContent() {
         // Re-enable resend after 60 seconds
         setTimeout(() => setCanResend(true), 60000);
       } else {
-              }
+      }
     } catch (err: any) {
-          } finally {
+    } finally {
       setIsResending(false);
     }
   };
@@ -117,7 +117,7 @@ function VerifyEmailContent() {
       animate={{ opacity: 1, y: 0 }}
     >
       <Link href="/" className="inline-block mb-8">
-        <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png" alt="ShipCrowd" className="h-8 w-auto mx-auto rounded-full" />
+        <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png" alt="Helix" className="h-8 w-auto mx-auto rounded-full" />
       </Link>
 
       {status === "loading" && (

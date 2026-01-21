@@ -1,6 +1,6 @@
 module.exports = {
     apps: [{
-        name: 'shipcrowd-api',
+        name: 'Helix-api',
         script: 'dist/index.js',
         instances: 'max',
         exec_mode: 'cluster',

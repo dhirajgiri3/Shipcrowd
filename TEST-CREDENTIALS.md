@@ -2,7 +2,7 @@
 
 ## Login Credentials
 
-**Email:** demo@shipcrowd.test
+**Email:** demo@Helix.test
 **Password:** Demo@123456
 
 ---

@@ -1,8 +1,8 @@
-# ShipCrowd API Testing Report
+# Helix API Testing Report
 ## Backend APIs - 100% Working ✅
 
 **Date:** January 21, 2026
-**Test User:** test@shipcrowd.demo
+**Test User:** test@Helix.demo
 **Password:** Test@123456
 **Company:** Elite Shop India Pvt Ltd (Sandbox Tier)
 
@@ -247,7 +247,7 @@ if (USE_MOCK_DATA) {
 ## 📝 Test User Credentials
 
 **For Demo/Testing:**
-- Email: `test@shipcrowd.demo`
+- Email: `test@Helix.demo`
 - Password: `Test@123456`
 - Company: Elite Shop India Pvt Ltd
 - Tier: Sandbox (Full Access)

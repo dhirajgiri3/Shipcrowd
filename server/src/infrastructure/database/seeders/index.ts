@@ -95,7 +95,7 @@ function parseArgs(): { clean: boolean; help: boolean } {
  */
 function printHelp(): void {
     console.log(`
-ShipCrowd Database Seeder
+Helix Database Seeder
 
 Usage:
   npx tsx src/infrastructure/database/seeders/index.ts [options]
@@ -109,7 +109,7 @@ NPM Scripts:
   npm run seed:clean   Clear all data and reseed
 
 Environment Variables:
-  MONGODB_URI    MongoDB connection string (default: mongodb://localhost:27017/shipcrowd)
+  MONGODB_URI    MongoDB connection string (default: mongodb://localhost:27017/Helix)
   DEBUG          Set to 'true' for verbose logging
   `);
 }
@@ -118,7 +118,7 @@ Environment Variables:
  * Connect to MongoDB
  */
 async function connectDatabase(): Promise<void> {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Helix';
 
     logger.info(`Connecting to MongoDB: ${mongoUri.split('@').pop() || mongoUri.split('/').pop()}`);
 
@@ -275,7 +275,7 @@ async function main(): Promise<void> {
 
     const globalTimer = createTimer();
 
-    logger.header('🌱 ShipCrowd Database Seeder');
+    logger.header('🌱 Helix Database Seeder');
 
     logger.info(`Mode: ${args.clean ? 'Clean + Seed' : 'Seed Only'}`);
     logger.info(`Started at: ${new Date().toLocaleString()}`);

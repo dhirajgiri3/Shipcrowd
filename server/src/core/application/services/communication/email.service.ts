@@ -25,7 +25,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Email service configuration
-const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@Shipcrowd.com';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@Helix.com';
 const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'sendgrid'; // 'sendgrid', 'smtp', or 'zeptomail'
 const MAX_RETRY_ATTEMPTS = parseInt(process.env.EMAIL_MAX_RETRY || '3');
 const RETRY_DELAY_MS = parseInt(process.env.EMAIL_RETRY_DELAY_MS || '1000');
@@ -239,7 +239,7 @@ export const sendEmail = async (
       const payload = {
         from: {
           address: EMAIL_FROM,
-          name: process.env.EMAIL_FROM_NAME || 'Shipcrowd'
+          name: process.env.EMAIL_FROM_NAME || 'Helix'
         },
         to: zeptoRecipients,
         subject,
@@ -269,7 +269,7 @@ export const sendEmail = async (
         to: recipients,
         from: {
           email: EMAIL_FROM,
-          name: process.env.EMAIL_FROM_NAME || 'Shipcrowd',
+          name: process.env.EMAIL_FROM_NAME || 'Helix',
         },
         subject,
         html,
@@ -384,7 +384,7 @@ export const sendVerificationEmail = async (
       <p>Please verify your email address by clicking the link below:</p>
       <p><a href="${verificationUrl}">Verify Email</a></p>
       <p>If you did not create an account, please ignore this email.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, 'Verify Your Email Address', html);
@@ -426,7 +426,7 @@ export const sendPasswordResetEmail = async (
       <p>You requested a password reset. Please click the link below to reset your password:</p>
       <p><a href="${resetUrl}">Reset Password</a></p>
       <p>If you did not request a password reset, please ignore this email.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, 'Reset Your Password', html);
@@ -447,7 +447,7 @@ export const sendWelcomeEmail = async (
     // Use SendGrid template with dynamic data
     return sendEmail(
       to,
-      'Welcome to Shipcrowd',
+      'Welcome to Helix',
       '', // HTML is not needed when using a template
       '', // Text is not needed when using a template
       undefined, // No attachments
@@ -459,14 +459,14 @@ export const sendWelcomeEmail = async (
   } else {
     // Fallback to custom HTML
     const html = `
-      <h1>Welcome to Shipcrowd!</h1>
+      <h1>Welcome to Helix!</h1>
       <p>Hello ${name},</p>
-      <p>Thank you for joining Shipcrowd. We're excited to have you on board!</p>
+      <p>Thank you for joining Helix. We're excited to have you on board!</p>
       <p>If you have any questions, please don't hesitate to contact our support team.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
-    return sendEmail(to, 'Welcome to Shipcrowd', html);
+    return sendEmail(to, 'Welcome to Helix', html);
   }
 };
 
@@ -514,8 +514,8 @@ export const sendShipmentStatusEmail = async (
       <p>Tracking Number: ${awbId}</p>
       ${courierName ? `<p>Courier: ${courierName}</p>` : ''}
       <p>You can track your shipment using the tracking number above.</p>
-      <p>Thank you for choosing Shipcrowd!</p>
-      <p>Best regards,<br>The Shipcrowd Team</p>
+      <p>Thank you for choosing Helix!</p>
+      <p>Best regards,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, `Order #${orderId} ${status}`, html);
@@ -593,7 +593,7 @@ export const sendReturnStatusEmail = async (
        <p><strong>Items:</strong> ${productsList}</p>
        ${detailsHtml}
        <p>You can track your return status in your dashboard.</p>
-       <p>Thank you,<br>The Shipcrowd Team</p>
+       <p>Thank you,<br>The Helix Team</p>
      `;
 
     return sendEmail(to, `Return Update: ${friendlyStatus}`, html);
@@ -627,7 +627,7 @@ export const sendBatchEmail = async (
     const msg = {
       from: {
         email: EMAIL_FROM,
-        name: process.env.EMAIL_FROM_NAME || 'Shipcrowd',
+        name: process.env.EMAIL_FROM_NAME || 'Helix',
       },
       subject,
       templateId,
@@ -709,7 +709,7 @@ export const sendTeamInvitationEmail = async (
     // Use SendGrid template with dynamic data
     return sendEmail(
       to,
-      `Invitation to join ${companyName} on Shipcrowd`,
+      `Invitation to join ${companyName} on Helix`,
       '', // HTML is not needed when using a template
       '', // Text is not needed when using a template
       undefined, // No attachments
@@ -732,10 +732,10 @@ export const sendTeamInvitationEmail = async (
       <p><a href="${inviteUrl}">Accept Invitation</a></p>
       <p>This invitation will expire in 7 days.</p>
       <p>If you did not expect this invitation, please ignore this email.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
-    return sendEmail(to, `Invitation to join ${companyName} on Shipcrowd`, html);
+    return sendEmail(to, `Invitation to join ${companyName} on Helix`, html);
   }
 };
 
@@ -774,7 +774,7 @@ export const sendEmailChangeVerification = async (
       <p>Please verify your new email address by clicking the link below:</p>
       <p><a href="${verificationUrl}">Verify New Email</a></p>
       <p>If you did not request this change, please ignore this email or contact support immediately.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, 'Verify Your New Email Address', html);
@@ -811,10 +811,10 @@ export const sendEmailChangeNotification = async (
     const html = `
       <h1>Email Change Notification</h1>
       <p>Hello ${name},</p>
-      <p>We're writing to inform you that a request has been made to change the email address associated with your Shipcrowd account.</p>
+      <p>We're writing to inform you that a request has been made to change the email address associated with your Helix account.</p>
       <p>Your email is being changed to: <strong>${newEmail}</strong></p>
       <p>If you did not request this change, please contact our support team immediately.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, 'Your Email Address Is Being Changed', html);
@@ -873,7 +873,7 @@ export const sendRecoveryEmail = async (
       </ul>
       <p>To start the recovery process, please visit <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/account-recovery">our account recovery page</a>.</p>
       <p>If you did not request this information, please ignore this email or contact support immediately.</p>
-      <p>Thank you,<br>The Shipcrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, 'Account Recovery Options', html);
@@ -910,10 +910,10 @@ export const sendMagicLinkEmail = async (
     const html = `
       <h1>🔐 Your Magic Link</h1>
       <p>Hello ${name},</p>
-      <p>You requested a magic link to sign in to your ShipCrowd account. Click the button below to log in instantly:</p>
+      <p>You requested a magic link to sign in to your Helix account. Click the button below to log in instantly:</p>
       <p style="text-align: center; margin: 30px 0;">
         <a href="${magicUrl}" style="background-color: #2525FF; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
-          🚀 Sign In to ShipCrowd
+          🚀 Sign In to Helix
         </a>
       </p>
       <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
@@ -926,7 +926,7 @@ export const sendMagicLinkEmail = async (
       <p style="color: #999; font-size: 13px;">
         If you didn't request this magic link, you can safely ignore this email.
       </p>
-      <p>Thank you,<br>The ShipCrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
     return sendEmail(to, '🔐 Your Magic Link to Login', html);
@@ -951,7 +951,7 @@ export const sendOwnerInvitationEmail = async (
     // Use SendGrid template with dynamic data
     return sendEmail(
       to,
-      `You've been invited to manage ${companyName} on ShipCrowd`,
+      `You've been invited to manage ${companyName} on Helix`,
       '', // HTML is not needed when using a template
       '', // Text is not needed when using a template
       undefined, // No attachments
@@ -967,7 +967,7 @@ export const sendOwnerInvitationEmail = async (
     const html = `
       <h1>Company Owner Invitation</h1>
       <p>Hello ${name},</p>
-      <p>You have been selected to be the owner of <strong>${companyName}</strong> on ShipCrowd!</p>
+      <p>You have been selected to be the owner of <strong>${companyName}</strong> on Helix!</p>
       <p>As the company owner, you'll have full access to:</p>
       <ul>
         <li>Manage orders and shipments</li>
@@ -980,10 +980,10 @@ export const sendOwnerInvitationEmail = async (
       <p><a href="${inviteUrl}" style="background-color: #2525FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation & Create Account</a></p>
       <p>This invitation will expire in 7 days.</p>
       <p>If you did not expect this invitation, please contact our support team.</p>
-      <p>Thank you,<br>The ShipCrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
 
-    return sendEmail(to, `You've been invited to manage ${companyName} on ShipCrowd`, html);
+    return sendEmail(to, `You've been invited to manage ${companyName} on Helix`, html);
   }
 };
 
@@ -1018,7 +1018,7 @@ export const sendAccountRecoveryEmail = async (
           </div>
           <div class="content">
             <p>Hello ${name},</p>
-            <p>We received a request to recover your ShipCrowd account. If you were locked out or need to regain access, you can reset your account using the link below.</p>
+            <p>We received a request to recover your Helix account. If you were locked out or need to regain access, you can reset your account using the link below.</p>
             
             <div class="alert">
               <strong>⏰ This recovery link expires in 4 hours</strong>
@@ -1032,16 +1032,16 @@ export const sendAccountRecoveryEmail = async (
             <ul>
               <li>Unlock your account if it was locked</li>
               <li>Reset your password</li>
-              <li>Regain full access to your ShipCrowd account</li>
+              <li>Regain full access to your Helix account</li>
             </ul>
   `;
 
   const text = `
-Account Recovery - ShipCrowd
+Account Recovery - Helix
 
 Hello ${name},
 
-We received a request to recover your ShipCrowd account.
+We received a request to recover your Helix account.
 
 Recovery Link: ${recoveryUrl}
 
@@ -1050,10 +1050,10 @@ This link expires in 4 hours.
 If you didn't request this, please ignore this email and ensure your account credentials are secure.
 
 Thank you,
-The ShipCrowd Security Team
+The Helix Security Team
   `;
 
-  return sendEmail(to, '🔓 Account Recovery - ShipCrowd', html, text);
+  return sendEmail(to, '🔓 Account Recovery - Helix', html, text);
 };
 
 
@@ -1097,7 +1097,7 @@ export const sendNewDeviceLoginEmail = async (
     const html = `
       <h1>New Sign-in Detected</h1>
       <p>Hello ${name},</p>
-      <p>We detected a new sign-in to your ShipCrowd account from a new device.</p>
+      <p>We detected a new sign-in to your Helix account from a new device.</p>
       <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <p><strong>Device:</strong> ${deviceInfo.deviceType} (${deviceInfo.os})</p>
         <p><strong>Browser:</strong> ${deviceInfo.browser}</p>
@@ -1106,7 +1106,7 @@ export const sendNewDeviceLoginEmail = async (
       </div>
       <p>If this was you, you can safely ignore this email.</p>
       <p><strong>If this wasn't you, please reset your password immediately.</strong></p>
-      <p>Thank you,<br>The ShipCrowd Team</p>
+      <p>Thank you,<br>The Helix Team</p>
     `;
     return sendEmail(to, 'New Sign-in to Your Account', html);
   }
@@ -1129,25 +1129,25 @@ export const sendFraudAlertEmail = async (
     aiSummary?: string;
   }
 ): Promise<void> => {
-    const subject = `🚨 Fraud Alert: ${alertDetails.riskLevel.toUpperCase()} Risk Order Detected`;
+  const subject = `🚨 Fraud Alert: ${alertDetails.riskLevel.toUpperCase()} Risk Order Detected`;
 
-    const rulesHtml = alertDetails.matchedRules.length > 0
-      ? `<ul>${alertDetails.matchedRules.map(rule => `<li>${rule}</li>`).join('')}</ul>`
-      : '<p>No rules matched</p>';
+  const rulesHtml = alertDetails.matchedRules.length > 0
+    ? `<ul>${alertDetails.matchedRules.map(rule => `<li>${rule}</li>`).join('')}</ul>`
+    : '<p>No rules matched</p>';
 
-    const blacklistHtml = alertDetails.blacklistMatches.length > 0
-      ? `<ul>${alertDetails.blacklistMatches.map(match => `<li>${match}</li>`).join('')}</ul>`
-      : '<p>No blacklist matches</p>';
+  const blacklistHtml = alertDetails.blacklistMatches.length > 0
+    ? `<ul>${alertDetails.blacklistMatches.map(match => `<li>${match}</li>`).join('')}</ul>`
+    : '<p>No blacklist matches</p>';
 
-    const riskColors: Record<string, string> = {
-      low: '#10b981',
-      medium: '#f59e0b',
-      high: '#ef4444',
-      critical: '#dc2626',
-    };
-    const riskColor = riskColors[alertDetails.riskLevel] || '#6b7280';
+  const riskColors: Record<string, string> = {
+    low: '#10b981',
+    medium: '#f59e0b',
+    high: '#ef4444',
+    critical: '#dc2626',
+  };
+  const riskColor = riskColors[alertDetails.riskLevel] || '#6b7280';
 
-    const html = `
+  const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -1182,7 +1182,7 @@ export const sendFraudAlertEmail = async (
             ${blacklistHtml}
             ${alertDetails.aiSummary ? `<h3>🤖 AI Analysis</h3><p>${alertDetails.aiSummary}</p>` : ''}
             <p style="text-align: center; margin-top: 30px;">
-              <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/fraud/alerts/${alertDetails.alertId}" 
+              <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.Helix.com'}/fraud/alerts/${alertDetails.alertId}" 
                  style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
                 Review Alert →
               </a>
@@ -1193,8 +1193,8 @@ export const sendFraudAlertEmail = async (
       </html>
     `;
 
-    await sendEmail(adminEmail, subject, html);
-    logger.info('Fraud alert email sent', { alertId: alertDetails.alertId, adminEmail });
+  await sendEmail(adminEmail, subject, html);
+  logger.info('Fraud alert email sent', { alertId: alertDetails.alertId, adminEmail });
 };
 
 /**
@@ -1266,7 +1266,7 @@ export const sendDisputeCreatedEmail = async (
           </ul>
 
           <p style="text-align: center;">
-            <a href="${process.env.DASHBOARD_URL || 'https://app.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+            <a href="${process.env.DASHBOARD_URL || 'https://app.Helix.com'}/disputes/${disputeDetails.disputeId}" class="btn">
               View Dispute →
             </a>
           </p>
@@ -1327,7 +1327,7 @@ export const sendDisputeEscalatedEmail = async (
           </div>
 
           <p style="text-align: center;">
-            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.Helix.com'}/disputes/${disputeDetails.disputeId}" class="btn">
               Handle Escalation →
             </a>
           </p>
@@ -1442,7 +1442,7 @@ export const sendSLAWarningEmail = async (
           </div>
 
           <p style="text-align: center;">
-            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.Helix.com'}/disputes/${disputeDetails.disputeId}" class="btn">
               Resolve Now →
             </a>
           </p>

@@ -279,9 +279,9 @@ interface WalletTransaction {
 ❌ No week-over-week comparison
 ❌ No category breakdown
 
-### Shiprocket vs ShipCrowd (Our Advantage)
+### Shiprocket vs Helix (Our Advantage)
 
-| Feature | ShipRocket | **ShipCrowd (Ours)** |
+| Feature | ShipRocket | **Helix (Ours)** |
 |---------|------------|---------------------|
 | Wallet Balance | Basic number | ✅ **Hero display + contextual info** |
 | Low Balance Alert | Email only | ✅ **Real-time prominent alert** |
@@ -476,7 +476,7 @@ Our financial UX is **2-3 years ahead** of competitors. This alone can be a sell
 5. **Intelligent:** AI-powered insights (future)
    - Competitors: Manual analysis
 
-**This is a HUGE selling point.** Marketing can position ShipCrowd as "the intelligent shipping partner" not just "another aggregator".
+**This is a HUGE selling point.** Marketing can position Helix as "the intelligent shipping partner" not just "another aggregator".
 
 ---
 

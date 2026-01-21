@@ -42,8 +42,8 @@ export function Navigation() {
                     <Link href="/" className="flex items-center gap-2 group relative z-50">
                         <div className="relative w-36 h-10 transition-transform duration-300 group-hover:scale-105">
                             <Image
-                                src="/logos/Shipcrowd-logo.png"
-                                alt="ShipCrowd Logo"
+                                src="/logos/Helix-logo.png"
+                                alt="Helix Logo"
                                 fill
                                 className="object-contain object-left"
                                 priority

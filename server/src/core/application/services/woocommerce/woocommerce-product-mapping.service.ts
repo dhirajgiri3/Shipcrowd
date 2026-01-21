@@ -37,8 +37,8 @@ interface CreateMappingData {
   woocommerceVariationId?: number;
   woocommerceSKU: string;
   woocommerceTitle: string;
-  shipcrowdSKU: string;
-  shipcrowdProductName?: string;
+  HelixSKU: string;
+  HelixProductName?: string;
   syncInventory?: boolean;
   syncPrice?: boolean;
   syncOnFulfillment?: boolean;
@@ -176,9 +176,9 @@ export default class WooCommerceProductMappingService {
         return;
       }
 
-      // TODO: Check if SKU exists in Shipcrowd inventory
+      // TODO: Check if SKU exists in Helix inventory
       // For now, assuming exact SKU match
-      const shipcrowdSKU = wooSKU;
+      const HelixSKU = wooSKU;
 
       // Create mapping
       await WooCommerceProductMapping.create({
@@ -188,8 +188,8 @@ export default class WooCommerceProductMappingService {
         woocommerceVariationId: variationId,
         woocommerceSKU: wooSKU,
         woocommerceTitle: title,
-        shipcrowdSKU: shipcrowdSKU,
-        shipcrowdProductName: title,
+        HelixSKU: HelixSKU,
+        HelixProductName: title,
         mappingType: 'AUTO',
         syncInventory: true,
         syncPrice: false,
@@ -250,8 +250,8 @@ export default class WooCommerceProductMappingService {
         woocommerceVariationId: data.woocommerceVariationId,
         woocommerceSKU: data.woocommerceSKU,
         woocommerceTitle: data.woocommerceTitle,
-        shipcrowdSKU: data.shipcrowdSKU,
-        shipcrowdProductName: data.shipcrowdProductName,
+        HelixSKU: data.HelixSKU,
+        HelixProductName: data.HelixProductName,
         mappingType: 'MANUAL',
         syncInventory: data.syncInventory !== false,
         syncPrice: data.syncPrice || false,
@@ -263,7 +263,7 @@ export default class WooCommerceProductMappingService {
         mappingId: mapping._id,
         storeId,
         wooSKU: data.woocommerceSKU,
-        shipcrowdSKU: data.shipcrowdSKU,
+        HelixSKU: data.HelixSKU,
       });
 
       return mapping;
@@ -378,7 +378,7 @@ export default class WooCommerceProductMappingService {
       if (filters.search) {
         query.$or = [
           { woocommerceSKU: { $regex: filters.search, $options: 'i' } },
-          { shipcrowdSKU: { $regex: filters.search, $options: 'i' } },
+          { HelixSKU: { $regex: filters.search, $options: 'i' } },
           { woocommerceTitle: { $regex: filters.search, $options: 'i' } },
         ];
       }
@@ -433,7 +433,7 @@ export default class WooCommerceProductMappingService {
       const requiredHeaders = [
         'woocommerceProductId',
         'woocommerceSKU',
-        'shipcrowdSKU',
+        'HelixSKU',
       ];
       for (const header of requiredHeaders) {
         if (!headers.includes(header)) {
@@ -462,8 +462,8 @@ export default class WooCommerceProductMappingService {
               : undefined,
             woocommerceSKU: row.woocommerceSKU,
             woocommerceTitle: row.woocommerceTitle || row.woocommerceSKU,
-            shipcrowdSKU: row.shipcrowdSKU,
-            shipcrowdProductName: row.shipcrowdProductName,
+            HelixSKU: row.HelixSKU,
+            HelixProductName: row.HelixProductName,
             syncInventory: row.syncInventory !== 'false',
           });
 
@@ -505,8 +505,8 @@ export default class WooCommerceProductMappingService {
         'woocommerceVariationId',
         'woocommerceSKU',
         'woocommerceTitle',
-        'shipcrowdSKU',
-        'shipcrowdProductName',
+        'HelixSKU',
+        'HelixProductName',
         'mappingType',
         'syncInventory',
         'syncPrice',

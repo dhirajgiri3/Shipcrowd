@@ -44,7 +44,7 @@ export interface IInvoice extends Document {
     };
 
     gstDetails: {
-        sellerGSTIN: string; // ShipCrowd's GSTIN
+        sellerGSTIN: string; // Helix's GSTIN
         buyerGSTIN: string; // Company's GSTIN
         placeOfSupply: string; // State code (e.g., "06")
         placeOfSupplyState: string; // State name (e.g., "Haryana")

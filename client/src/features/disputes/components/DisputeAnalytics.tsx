@@ -87,7 +87,7 @@ export function DisputeAnalytics() {
     // Prepare outcome distribution data for pie chart
     const outcomeDistribution = [
         { name: 'Seller Favor', count: analytics.stats.resolutionOutcomes.seller_favor },
-        { name: 'ShipCrowd Favor', count: analytics.stats.resolutionOutcomes.shipcrowd_favor },
+        { name: 'Helix Favor', count: analytics.stats.resolutionOutcomes.Helix_favor },
         { name: 'Split', count: analytics.stats.resolutionOutcomes.split },
         { name: 'Waived', count: analytics.stats.resolutionOutcomes.waived },
     ].filter(item => item.count > 0);

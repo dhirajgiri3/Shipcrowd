@@ -44,7 +44,7 @@ export class ShopifyWebhookService {
    * Handle orders/create webhook
    *
    * Triggered when a new order is placed in Shopify.
-   * Immediately syncs the order to Shipcrowd.
+   * Immediately syncs the order to Helix.
    */
   static async handleOrderCreate(storeId: string, payload: any): Promise<void> {
     logger.info('Processing orders/create webhook', {
@@ -89,7 +89,7 @@ export class ShopifyWebhookService {
    * Handle orders/updated webhook
    *
    * Triggered when an order is modified (status change, items added, etc.)
-   * Updates the corresponding Shipcrowd order.
+   * Updates the corresponding Helix order.
    */
   static async handleOrderUpdated(storeId: string, payload: any): Promise<void> {
     logger.info('Processing orders/updated webhook', {
@@ -99,7 +99,7 @@ export class ShopifyWebhookService {
     });
 
     try {
-      // Find existing order in Shipcrowd
+      // Find existing order in Helix
       const store = await ShopifyStore.findById(storeId);
       if (!store) {
         throw new AppError('Store not found', 'STORE_NOT_FOUND', 404);
@@ -351,7 +351,7 @@ export class ShopifyWebhookService {
    * Handle inventory_levels/update webhook
    *
    * Triggered when inventory is updated in Shopify.
-   * Optional: Two-way sync (Shopify → Shipcrowd).
+   * Optional: Two-way sync (Shopify → Helix).
    */
   static async handleInventoryUpdate(storeId: string, payload: any): Promise<void> {
     logger.info('Processing inventory_levels/update webhook', {
@@ -388,12 +388,12 @@ export class ShopifyWebhookService {
         return;
       }
 
-      // TODO: Update Shipcrowd inventory
+      // TODO: Update Helix inventory
       // This would integrate with InventoryService to update stock levels
 
       logger.info('Inventory updated (two-way sync)', {
         storeId,
-        sku: mapping.shipcrowdSKU,
+        sku: mapping.HelixSKU,
         available: payload.available,
       });
     } catch (error: any) {

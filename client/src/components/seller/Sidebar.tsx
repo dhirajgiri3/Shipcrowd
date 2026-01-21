@@ -200,7 +200,7 @@ function SidebarComponent() {
             <div className="flex h-16 items-center px-6">
                 <img
                     src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                    alt="ShipCrowd Logo"
+                    alt="Helix Logo"
                     className="h-8 w-auto transition-opacity duration-200 hover:opacity-80 rounded-full"
                 />
             </div>
@@ -294,7 +294,7 @@ function SidebarComponent() {
 
                         <div className="relative flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <p className="text-xs font-bold text-[var(--text-primary)] tracking-wide">ShipCrowd Pro</p>
+                                <p className="text-xs font-bold text-[var(--text-primary)] tracking-wide">Helix Pro</p>
                                 <p className="text-[10px] font-medium text-[var(--text-muted)]">Premium Active</p>
                             </div>
                             <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] px-1.5 py-0">

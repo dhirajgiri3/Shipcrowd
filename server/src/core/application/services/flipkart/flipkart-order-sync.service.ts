@@ -24,12 +24,12 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * FlipkartOrderSyncService
  *
- * Handles synchronization of orders from Flipkart to Shipcrowd.
+ * Handles synchronization of orders from Flipkart to Helix.
  *
  * Features:
  * - Pagination-based sync (max 20 items per page)
  * - Duplicate prevention using Flipkart orderItemId
- * - Status mapping (Flipkart status → Shipcrowd status)
+ * - Status mapping (Flipkart status → Helix status)
  * - Payment method detection (COD vs Prepaid)
  * - Incremental sync (since last sync date)
  * - Comprehensive error logging
@@ -289,7 +289,7 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Sync a single order from Flipkart to Shipcrowd
+   * Sync a single order from Flipkart to Helix
    *
    * @param shipment - Flipkart shipment object
    * @param store - FlipkartStore document
@@ -306,7 +306,7 @@ export class FlipkartOrderSyncService {
     });
 
     if (existingOrder) {
-      // Skip if order already fulfilled in Shipcrowd
+      // Skip if order already fulfilled in Helix
       if (existingOrder.currentStatus === 'DELIVERED' || existingOrder.currentStatus === 'COMPLETED') {
         logger.debug('Skipping fulfilled order', {
           orderItemId: shipment.orderItemId,
@@ -317,9 +317,9 @@ export class FlipkartOrderSyncService {
 
       // Update if Flipkart order is newer
       const flipkartUpdated = new Date(shipment.modifiedAt);
-      const shipcrowdUpdated = new Date(existingOrder.updatedAt);
+      const HelixUpdated = new Date(existingOrder.updatedAt);
 
-      if (flipkartUpdated <= shipcrowdUpdated) {
+      if (flipkartUpdated <= HelixUpdated) {
         logger.debug('Skipping unchanged order', {
           orderItemId: shipment.orderItemId,
         });
@@ -335,16 +335,16 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Create new order in Shipcrowd from Flipkart shipment
+   * Create new order in Helix from Flipkart shipment
    */
   private static async createNewOrder(shipment: FlipkartShipment, store: any): Promise<any> {
-    const mapped = this.mapFlipkartOrderToShipcrowd(shipment, store);
+    const mapped = this.mapFlipkartOrderToHelix(shipment, store);
 
     const order = await Order.create(mapped);
 
     logger.info('Created order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
-      shipcrowdOrderId: order._id,
+      HelixOrderId: order._id,
       orderNumber: order.orderNumber,
     });
 
@@ -352,7 +352,7 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Update existing Shipcrowd order with Flipkart data
+   * Update existing Helix order with Flipkart data
    */
   private static async updateExistingOrder(existingOrder: any, shipment: FlipkartShipment): Promise<any> {
     // Update payment status
@@ -382,7 +382,7 @@ export class FlipkartOrderSyncService {
 
     logger.info('Updated order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
-      shipcrowdOrderId: existingOrder._id,
+      HelixOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
     });
 
@@ -390,9 +390,9 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Map Flipkart shipment to Shipcrowd order schema
+   * Map Flipkart shipment to Helix order schema
    */
-  private static mapFlipkartOrderToShipcrowd(shipment: FlipkartShipment, store: any): any {
+  private static mapFlipkartOrderToHelix(shipment: FlipkartShipment, store: any): any {
     const { buyerDetails, lineItems, priceComponents } = shipment;
 
     return {
@@ -461,7 +461,7 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Generate Shipcrowd order number from Flipkart shipment
+   * Generate Helix order number from Flipkart shipment
    */
   private static generateOrderNumber(shipment: FlipkartShipment): string {
     // Use Flipkart's orderId with FLIPKART prefix
@@ -469,7 +469,7 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Map Flipkart payment type and status to Shipcrowd payment status
+   * Map Flipkart payment type and status to Helix payment status
    */
   private static mapPaymentStatus(
     paymentType: 'COD' | 'PREPAID',
@@ -496,7 +496,7 @@ export class FlipkartOrderSyncService {
   }
 
   /**
-   * Map Flipkart order status to Shipcrowd order status
+   * Map Flipkart order status to Helix order status
    */
   private static mapFulfillmentStatus(flipkartStatus: string): string {
     const statusMap: Record<string, string> = {

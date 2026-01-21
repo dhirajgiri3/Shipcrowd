@@ -82,17 +82,17 @@ export const sendWhatsAppMessage = async (
     // For other templates, use the standard approach with body text
     switch (templateName) {
       case 'SHIPMENT_STATUS':
-        body = `Hello ${variables['1']}, your order #${variables['2']} with tracking number ${variables['3']} has been ${variables['4']}. Thank you for choosing Shipcrowd.`;
+        body = `Hello ${variables['1']}, your order #${variables['2']} with tracking number ${variables['3']} has been ${variables['4']}. Thank you for choosing Helix.`;
         break;
       case 'WELCOME':
-        body = `Welcome to Shipcrowd, ${variables['1']}! We're excited to have you on board. If you have any questions, please don't hesitate to contact our support team.`;
+        body = `Welcome to Helix, ${variables['1']}! We're excited to have you on board. If you have any questions, please don't hesitate to contact our support team.`;
         break;
       case 'DELIVERY_CONFIRMATION':
-        body = `Hello ${variables['1']}, your order #${variables['2']} has been delivered on ${variables['3']}. Thank you for choosing Shipcrowd.`;
+        body = `Hello ${variables['1']}, your order #${variables['2']} has been delivered on ${variables['3']}. Thank you for choosing Helix.`;
         break;
       default:
         // For custom messages
-        body = `Message from Shipcrowd: ${Object.values(variables).join(' ')}`;
+        body = `Message from Helix: ${Object.values(variables).join(' ')}`;
     }
 
     // Send the WhatsApp message with body text

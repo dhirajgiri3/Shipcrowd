@@ -46,7 +46,7 @@ async function generateAdminUser(index: number, hashedPassword: string) {
     const city = selectRandom(INDIAN_CITIES.metro);
 
     return {
-        email: `admin${index + 1}@shipcrowd.com`,
+        email: `admin${index + 1}@Helix.com`,
         password: hashedPassword,
         name,
         role: 'admin',
@@ -61,7 +61,7 @@ async function generateAdminUser(index: number, hashedPassword: string) {
             gender,
             timezone: 'Asia/Kolkata',
             preferredCurrency: 'INR',
-            bio: 'ShipCrowd Admin',
+            bio: 'Helix Admin',
         },
         profileCompletion: {
             status: 100,

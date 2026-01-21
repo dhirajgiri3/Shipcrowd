@@ -1,5 +1,5 @@
 # 🔐 Ultimate Authentication & Authorization Implementation Plan
-## Shipcrowd Shipping Aggregator - Production-Grade Security & UX
+## Helix Shipping Aggregator - Production-Grade Security & UX
 
 ---
 
@@ -817,7 +817,7 @@ export const inviteTeamMember = async (
     await sendInvitationEmail(
       email,
       rawToken,
-      company?.name || 'Shipcrowd Team',
+      company?.name || 'Helix Team',
       teamRole
     );
 

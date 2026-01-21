@@ -1,4 +1,4 @@
-# Shipcrowd Frontend Implementation Plan
+# Helix Frontend Implementation Plan
 ## Complete Roadmap to 100% Feature Completion
 
 **Created**: 2026-01-13 | **Updated**: 2026-01-14
@@ -1372,7 +1372,7 @@ Each sprint combines:
      - **Step 1**: Connect to Shopify (enter store URL)
      - **Step 2**: OAuth authorization (mock)
      - **Step 3**: Settings (auto-fulfill, sync frequency)
-     - **Step 4**: Field mapping (Shopify fields → Shipcrowd)
+     - **Step 4**: Field mapping (Shopify fields → Helix)
      - **Step 5**: Test connection & Complete
    - Components:
      - `ShopifyWizardClient.tsx`
@@ -1392,7 +1392,7 @@ Each sprint combines:
    - File: `/app/seller/integrations/woocommerce/setup/page.tsx`
    - Similar wizard:
      - Enter WordPress site URL
-     - Install Shipcrowd plugin (instructions)
+     - Install Helix plugin (instructions)
      - API key generation
      - Settings & mapping
      - Test & complete

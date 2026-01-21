@@ -297,7 +297,7 @@ export function LabelClient() {
 
                                     {/* Footer */}
                                     <div className="bg-slate-900 text-white p-3 text-center text-[10px] font-bold uppercase tracking-[0.3em]">
-                                        Powered by Shipcrowd Logistics
+                                        Powered by Helix Logistics
                                     </div>
                                 </div>
                             </div>

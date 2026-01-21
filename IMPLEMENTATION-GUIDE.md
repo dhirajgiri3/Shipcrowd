@@ -922,7 +922,7 @@ npm start
 **Verify:**
 - [ ] Console shows "🚀 LIVE API MODE"
 - [ ] Console logs "🚀 Fetching from API: ..."
-- [ ] Login works (credentials: demo@shipcrowd.test / Demo@123456)
+- [ ] Login works (credentials: demo@Helix.test / Demo@123456)
 - [ ] Real data loads from backend
 - [ ] Cookies are sent automatically
 - [ ] All features work end-to-end
@@ -1108,7 +1108,7 @@ REACT_APP_USE_MOCK_DATA=true npm run build
 
 **Issue: "Invalid or expired token"**
 - Solution: Clear browser cookies and login again
-- Check: Make sure credentials are correct (demo@shipcrowd.test / Demo@123456)
+- Check: Make sure credentials are correct (demo@Helix.test / Demo@123456)
 
 **Issue: CORS errors**
 - Solution: Backend CORS is configured for localhost:3000

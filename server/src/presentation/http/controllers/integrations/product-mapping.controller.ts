@@ -9,7 +9,7 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * ProductMappingController
  *
- * Handles product mapping management between Shopify and Shipcrowd.
+ * Handles product mapping management between Shopify and Helix.
  *
  * Endpoints:
  * - POST /stores/:id/mappings/auto - Auto-map products by SKU

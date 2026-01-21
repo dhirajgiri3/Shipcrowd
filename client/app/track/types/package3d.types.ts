@@ -541,7 +541,7 @@ export type StatusColorMap = Record<string, string>;
 
 export const STATUS_COLORS: StatusColorMap = {
   DELIVERED: '#FFD700',           // Gold
-  OUT_FOR_DELIVERY: '#2525FF',    // ShipCrowd Blue
+  OUT_FOR_DELIVERY: '#2525FF',    // Helix Blue
   IN_TRANSIT: '#60A5FA',          // Light Blue
   ARRIVED_AT_DESTINATION: '#60A5FA',
   PICKED_UP: '#3B82F6',           // Blue

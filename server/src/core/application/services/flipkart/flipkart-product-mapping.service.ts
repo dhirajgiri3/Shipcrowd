@@ -24,7 +24,7 @@ import { Parser } from 'json2csv';
 /**
  * FlipkartProductMappingService
  *
- * Handles product mapping between Flipkart listings and Shipcrowd SKUs.
+ * Handles product mapping between Flipkart listings and Helix SKUs.
  *
  * Features:
  * - Auto-mapping by SKU match
@@ -64,8 +64,8 @@ interface CreateMappingData {
   flipkartListingId?: string;
   flipkartTitle: string;
   flipkartCategory?: string;
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  HelixSKU: string;
+  HelixProductName: string;
   mappedBy?: string;
   syncInventory?: boolean;
   syncPrice?: boolean;
@@ -129,11 +129,11 @@ export class FlipkartProductMappingService {
           continue;
         }
 
-        // TODO: Check if SKU exists in Shipcrowd inventory
+        // TODO: Check if SKU exists in Helix inventory
         // For now, we'll create the mapping and mark it as AUTO type
         // In production, you'd integrate with InventoryService to verify SKU
 
-        // Create auto mapping - match Flipkart SKU to Shipcrowd SKU (case-insensitive)
+        // Create auto mapping - match Flipkart SKU to Helix SKU (case-insensitive)
         await FlipkartProductMapping.create({
           companyId: store.companyId,
           flipkartStoreId: storeId,
@@ -142,8 +142,8 @@ export class FlipkartProductMappingService {
           flipkartListingId: listing.listingId,
           flipkartTitle: listing.title,
           flipkartCategory: listing.category,
-          shipcrowdSKU: listing.sku.toUpperCase(),
-          shipcrowdProductName: listing.title,
+          HelixSKU: listing.sku.toUpperCase(),
+          HelixProductName: listing.title,
           mappingType: 'AUTO',
           mappedAt: new Date(),
           syncInventory: true,
@@ -258,7 +258,7 @@ export class FlipkartProductMappingService {
       throw new AppError('Mapping already exists for this FSN', 'MAPPING_EXISTS', 409);
     }
 
-    // TODO: Verify Shipcrowd SKU exists
+    // TODO: Verify Helix SKU exists
     // In production, integrate with InventoryService
 
     const mapping = await FlipkartProductMapping.create({
@@ -272,7 +272,7 @@ export class FlipkartProductMappingService {
     logger.info('Created manual mapping', {
       mappingId: mapping._id,
       fsn: data.flipkartFSN,
-      sku: data.shipcrowdSKU,
+      sku: data.HelixSKU,
     });
 
     return mapping;
@@ -294,7 +294,7 @@ export class FlipkartProductMappingService {
     logger.info('Deleted mapping', {
       mappingId,
       fsn: mapping.flipkartFSN,
-      sku: mapping.shipcrowdSKU,
+      sku: mapping.HelixSKU,
     });
   }
 
@@ -335,9 +335,9 @@ export class FlipkartProductMappingService {
       query.$or = [
         { flipkartSKU: { $regex: filters.search, $options: 'i' } },
         { flipkartFSN: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdSKU: { $regex: filters.search, $options: 'i' } },
+        { HelixSKU: { $regex: filters.search, $options: 'i' } },
         { flipkartTitle: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdProductName: { $regex: filters.search, $options: 'i' } },
+        { HelixProductName: { $regex: filters.search, $options: 'i' } },
       ];
     }
 
@@ -380,7 +380,7 @@ export class FlipkartProductMappingService {
   /**
    * Import mappings from CSV
    *
-   * CSV Format: shipcrowdSKU,flipkartFSN,flipkartSKU,syncInventory
+   * CSV Format: HelixSKU,flipkartFSN,flipkartSKU,syncInventory
    *
    * @param storeId - FlipkartStore ID
    * @param csvData - CSV file content
@@ -406,7 +406,7 @@ export class FlipkartProductMappingService {
     const headers = lines[0].split(',').map((h) => h.trim());
 
     // Validate headers
-    const requiredHeaders = ['shipcrowdSKU', 'flipkartFSN', 'flipkartSKU'];
+    const requiredHeaders = ['HelixSKU', 'flipkartFSN', 'flipkartSKU'];
     const hasAllHeaders = requiredHeaders.every((h) => headers.includes(h));
 
     if (!hasAllHeaders) {
@@ -427,7 +427,7 @@ export class FlipkartProductMappingService {
 
       try {
         // Validate required fields
-        if (!row.shipcrowdSKU || !row.flipkartFSN || !row.flipkartSKU) {
+        if (!row.HelixSKU || !row.flipkartFSN || !row.flipkartSKU) {
           result.errors.push(`Row ${i + 1}: Missing required fields`);
           result.failed++;
           continue;
@@ -454,8 +454,8 @@ export class FlipkartProductMappingService {
           flipkartListingId: row.flipkartListingId || undefined,
           flipkartTitle: row.flipkartTitle || 'Imported from CSV',
           flipkartCategory: row.flipkartCategory || undefined,
-          shipcrowdSKU: row.shipcrowdSKU.toUpperCase(),
-          shipcrowdProductName: row.shipcrowdProductName || row.flipkartTitle || 'Imported',
+          HelixSKU: row.HelixSKU.toUpperCase(),
+          HelixProductName: row.HelixProductName || row.flipkartTitle || 'Imported',
           mappingType: 'CSV_IMPORT',
           mappedAt: new Date(),
           syncInventory: row.syncInventory === 'true' || row.syncInventory === '1',
@@ -489,13 +489,13 @@ export class FlipkartProductMappingService {
     const mappings = await FlipkartProductMapping.find({ flipkartStoreId: storeId });
 
     const data = mappings.map((m) => ({
-      shipcrowdSKU: m.shipcrowdSKU,
+      HelixSKU: m.HelixSKU,
       flipkartFSN: m.flipkartFSN,
       flipkartSKU: m.flipkartSKU,
       flipkartListingId: m.flipkartListingId || '',
       flipkartTitle: m.flipkartTitle,
       flipkartCategory: m.flipkartCategory || '',
-      shipcrowdProductName: m.shipcrowdProductName,
+      HelixProductName: m.HelixProductName,
       mappingType: m.mappingType,
       syncInventory: m.syncInventory,
       syncPrice: m.syncPrice,

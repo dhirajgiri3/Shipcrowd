@@ -7,7 +7,7 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * ShopifyOrderSyncJob
  *
- * Background job processor for syncing orders from Shopify to Shipcrowd.
+ * Background job processor for syncing orders from Shopify to Helix.
  *
  * Features:
  * - Scheduled sync every 15 minutes per store

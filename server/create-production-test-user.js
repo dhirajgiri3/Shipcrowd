@@ -16,7 +16,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { ObjectId } = require('mongodb');
 
-const MONGODB_URI = 'mongodb://localhost:27017/shipcrowd';
+const MONGODB_URI = 'mongodb://localhost:27017/Helix';
 
 // Helper functions
 function randomInt(min, max) {
@@ -55,7 +55,7 @@ async function createProductionTestUser() {
     // CLEANUP: Remove existing test user
     // ========================================
     console.log('🗑️  Cleaning up existing test data...');
-    const existingUser = await db.collection('users').findOne({ email: 'demo@shipcrowd.test' });
+    const existingUser = await db.collection('users').findOne({ email: 'demo@Helix.test' });
     if (existingUser && existingUser.companyId) {
       await db.collection('orders').deleteMany({ companyId: existingUser.companyId });
       await db.collection('shipments').deleteMany({ companyId: existingUser.companyId });
@@ -66,7 +66,7 @@ async function createProductionTestUser() {
       await db.collection('companies').deleteOne({ _id: existingUser.companyId });
       console.log('  ✓ Deleted old test data');
     }
-    await db.collection('users').deleteOne({ email: 'demo@shipcrowd.test' });
+    await db.collection('users').deleteOne({ email: 'demo@Helix.test' });
     console.log('');
 
     // ========================================
@@ -80,7 +80,7 @@ async function createProductionTestUser() {
 
     const testUser = {
       _id: userId,
-      email: 'demo@shipcrowd.test',
+      email: 'demo@Helix.test',
       password: hashedPassword,
       name: 'Demo Seller User',
       role: 'seller',
@@ -165,7 +165,7 @@ async function createProductionTestUser() {
         postalCode: '400069',
       },
       contact: {
-        email: 'demo@shipcrowd.test',
+        email: 'demo@Helix.test',
         phone: '+91-98765-00001',
         website: 'https://demoshop.test.com',
         supportEmail: 'support@demoshop.test.com',
@@ -578,7 +578,7 @@ async function createProductionTestUser() {
     console.log('================================================\n');
 
     console.log('🔐 Login Credentials:');
-    console.log('   Email:    demo@shipcrowd.test');
+    console.log('   Email:    demo@Helix.test');
     console.log('   Password: Demo@123456\n');
 
     console.log('✅ Middleware Requirements Satisfied:');

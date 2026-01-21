@@ -172,7 +172,7 @@ export class ScheduledReportJob {
 
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
                         <p style="color: #999; font-size: 11px;">
-                            This is an automated email from Shipcrowd Analytics. Please do not reply to this message.
+                            This is an automated email from Helix Analytics. Please do not reply to this message.
                         </p>
                     </div>
                 `;

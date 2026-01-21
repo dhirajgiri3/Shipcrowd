@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document details comprehensive security enhancements made to the Shipcrowd authentication system, transitioning from a mixed authentication architecture to a **strict HTTP-Only Cookie-based architecture** while maintaining backward compatibility with Bearer token authentication.
+This document details comprehensive security enhancements made to the Helix authentication system, transitioning from a mixed authentication architecture to a **strict HTTP-Only Cookie-based architecture** while maintaining backward compatibility with Bearer token authentication.
 
 ### Key Improvements
 - ✅ Secure cookie-only token storage (XSS protection)

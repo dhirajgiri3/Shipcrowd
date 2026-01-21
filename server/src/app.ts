@@ -107,7 +107,7 @@ app.get('/health', (req: Request, res: Response) => {
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {
     res.json({
-        message: 'Welcome to Shipcrowd API',
+        message: 'Welcome to Helix API',
         version: '1.0.0',
         documentation: '/api/v1/docs',
     });

@@ -275,7 +275,7 @@ We tried to deliver your order #${orderId} but couldn't locate the address.
 
 Please update your address or provide landmarks to help our delivery partner. Reply to this message with the correct address.
 
-- Shipcrowd Team`,
+- Helix Team`,
 
             customer_unavailable: `Hi ${customerName},
 
@@ -286,7 +286,7 @@ Reply with:
 2 - Different time preference
 3 - Cancel order
 
-- Shipcrowd Team`,
+- Helix Team`,
 
             refused: `Hi ${customerName},
 
@@ -294,7 +294,7 @@ Our records show order #${orderId} was refused during delivery.
 
 If this was a mistake, please let us know and we'll arrange redelivery.
 
-- Shipcrowd Team`,
+- Helix Team`,
 
             payment_issue: `Hi ${customerName},
 
@@ -302,7 +302,7 @@ There was a payment issue with your COD order #${orderId}.
 
 Please confirm if you'd like us to attempt delivery again with the exact amount ready.
 
-- Shipcrowd Team`,
+- Helix Team`,
 
             other: `Hi ${customerName},
 
@@ -310,7 +310,7 @@ We encountered an issue delivering order #${orderId}.
 
 Please contact us or reply to this message so we can resolve it quickly.
 
-- Shipcrowd Team`,
+- Helix Team`,
         };
 
         return templates[ndrType] || templates.other;

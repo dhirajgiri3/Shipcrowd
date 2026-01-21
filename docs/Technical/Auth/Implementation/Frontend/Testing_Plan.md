@@ -481,7 +481,7 @@ console.log('Tokens are different:', tokenBefore !== tokenAfter); // Should be t
    ```
    ❌ NEXT_PUBLIC_API_URL is required in production.
    Please configure it in your environment variables.
-   Example: NEXT_PUBLIC_API_URL=https://api.shipcrowd.com/v1
+   Example: NEXT_PUBLIC_API_URL=https://api.Helix.com/v1
    ```
 
 **Pass Criteria**: ✅ Build fails fast, clear error
@@ -503,7 +503,7 @@ console.log('Tokens are different:', tokenBefore !== tokenAfter); // Should be t
    ```
    ❌ Invalid NEXT_PUBLIC_API_URL: "invalid-url"
    Must start with http:// or https://
-   Example: https://api.shipcrowd.com/v1
+   Example: https://api.Helix.com/v1
    ```
 
 **Pass Criteria**: ✅ Validation catches malformed URLs
@@ -516,7 +516,7 @@ console.log('Tokens are different:', tokenBefore !== tokenAfter); // Should be t
 **Steps**:
 1. Set `.env.production`:
    ```env
-   NEXT_PUBLIC_API_URL=http://api.shipcrowd.com/v1
+   NEXT_PUBLIC_API_URL=http://api.Helix.com/v1
    ```
 2. Build production
 
@@ -1294,7 +1294,7 @@ console.log('Tokens are different:', tokenBefore !== tokenAfter); // Should be t
 **Production `.env`**:
 ```env
 # ✅ Required
-NEXT_PUBLIC_API_URL=https://api.shipcrowd.com/v1
+NEXT_PUBLIC_API_URL=https://api.Helix.com/v1
 
 # ❌ MUST NOT be set
 # NEXT_PUBLIC_DEV_BYPASS_AUTH=true

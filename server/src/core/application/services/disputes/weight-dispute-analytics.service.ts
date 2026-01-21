@@ -12,7 +12,7 @@
  * 1. High-Risk Seller Scoring
  *    - Base: dispute_count × 10
  *    - Penalty: avg_discrepancy × 5
- *    - Penalty: shipcrowd_favor_rate × 20
+ *    - Penalty: Helix_favor_rate × 20
  *    - Threshold: Score >100 = High Risk
  *    - Reason: Multi-factor risk assessment
  * 
@@ -146,7 +146,7 @@ class WeightDisputeAnalyticsService {
                         averageDiscrepancy: { $avg: '$discrepancy.percentage' },
                         shipcroudFavorCount: {
                             $sum: {
-                                $cond: [{ $eq: ['$resolution.outcome', 'shipcrowd_favor'] }, 1, 0],
+                                $cond: [{ $eq: ['$resolution.outcome', 'Helix_favor'] }, 1, 0],
                             },
                         },
                     },
@@ -154,7 +154,7 @@ class WeightDisputeAnalyticsService {
                 {
                     $addFields: {
                         // Risk score formula:
-                        // (disputes * 10) + (avg_discrepancy * 5) + (shipcrowd_favor% * 20)
+                        // (disputes * 10) + (avg_discrepancy * 5) + (Helix_favor% * 20)
                         riskScore: {
                             $add: [
                                 { $multiply: ['$disputeCount', 10] },

@@ -1,4 +1,4 @@
-# ShipCrowd Dashboard: Decision Map
+# Helix Dashboard: Decision Map
 
 **Purpose:** Canonical visual hierarchy rules that ALL dashboard PRs must reference and follow.
 
@@ -13,7 +13,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Header: ShipCrowd | Dashboard | Last synced: 10:00 AM              │
+│ Header: Helix | Dashboard | Last synced: 10:00 AM              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │ ⚠️ TIER 1: URGENT ACTIONS (if exist)                                │
@@ -80,7 +80,7 @@
 
 ```
 ┌──────────────────────┐
-│ ShipCrowd            │
+│ Helix            │
 │ Last synced: 10:00   │
 ├──────────────────────┤
 │                      │

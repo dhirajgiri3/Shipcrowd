@@ -28,7 +28,7 @@
 
 ### 1.1 Purpose
 
-The Auth & User module handles all aspects of user authentication, authorization, session management, and user profile operations. It serves as the foundation security layer for the entire Shipcrowd platform.
+The Auth & User module handles all aspects of user authentication, authorization, session management, and user profile operations. It serves as the foundation security layer for the entire Helix platform.
 
 ### 1.2 Core Responsibilities
 
@@ -50,7 +50,7 @@ type TeamRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
 ```
 
 **Role Hierarchy:**
-- **Admin**: Platform-level administrators (Shipcrowd staff)
+- **Admin**: Platform-level administrators (Helix staff)
 - **Seller**: Business owners/primary accounts
 - **Staff**: Team members with assigned roles
 
@@ -1386,9 +1386,9 @@ emailVerificationRateLimiter = rateLimit({
 **Environment Variables:**
 ```
 SENDGRID_API_KEY=SG.xxx
-FROM_EMAIL=noreply@shipcrowd.com
-VERIFICATION_URL=https://app.shipcrowd.com/verify-email?token=
-PASSWORD_RESET_URL=https://app.shipcrowd.com/reset-password?token=
+FROM_EMAIL=noreply@Helix.com
+VERIFICATION_URL=https://app.Helix.com/verify-email?token=
+PASSWORD_RESET_URL=https://app.Helix.com/reset-password?token=
 ```
 
 **Email Templates (SendGrid):**
@@ -1504,7 +1504,7 @@ User.companyId → Company._id
 
 **6. Email Templates Not Branded** (Week 4)
 - **Issue:** Default SendGrid templates
-- **Fix:** Create custom HTML email templates with Shipcrowd branding
+- **Fix:** Create custom HTML email templates with Helix branding
 - **ETA:** Week 4
 
 **7. No Account Recovery Without Email Access** (Week 11)
@@ -1734,9 +1734,9 @@ ENCRYPTION_KEY=<32-byte-hex-string>
 
 # Email
 SENDGRID_API_KEY=SG.xxx
-FROM_EMAIL=noreply@shipcrowd.com
-VERIFICATION_URL=https://app.shipcrowd.com/verify-email?token=
-PASSWORD_RESET_URL=https://app.shipcrowd.com/reset-password?token=
+FROM_EMAIL=noreply@Helix.com
+VERIFICATION_URL=https://app.Helix.com/verify-email?token=
+PASSWORD_RESET_URL=https://app.Helix.com/reset-password?token=
 
 # OAuth
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com

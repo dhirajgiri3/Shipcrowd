@@ -86,8 +86,8 @@ RESULT: 🚀 Production ready in 10 weeks!
 **Developer 1:**
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourorg/shipcrowd-backend.git
-cd shipcrowd-backend/server
+git clone https://github.com/yourorg/Helix-backend.git
+cd Helix-backend/server
 
 # 2. Install dependencies
 npm install

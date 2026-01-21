@@ -7,7 +7,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 export default async function globalSetup(): Promise<void> {
     const mongod = await MongoMemoryServer.create({
         instance: {
-            dbName: 'shipcrowd_test'
+            dbName: 'Helix_test'
         }
     });
 

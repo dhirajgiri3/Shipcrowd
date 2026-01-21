@@ -2,7 +2,7 @@
  * WooCommerce Fulfillment Service
  *
  * Purpose: Push order status and tracking information back to WooCommerce
- * when orders are shipped/delivered in Shipcrowd.
+ * when orders are shipped/delivered in Helix.
  *
  * FEATURES:
  * - Update order status (processing → completed)
@@ -69,9 +69,9 @@ interface OrderNotePayload {
 }
 
 /**
- * Status mapping from Shipcrowd to WooCommerce
+ * Status mapping from Helix to WooCommerce
  */
-const SHIPCROWD_TO_WOOCOMMERCE_STATUS: Record<string, WooCommerceOrderStatus> = {
+const Helix_TO_WOOCOMMERCE_STATUS: Record<string, WooCommerceOrderStatus> = {
     PENDING: 'pending',
     PROCESSING: 'processing',
     BOOKED: 'processing',
@@ -98,7 +98,7 @@ export class WooCommerceFulfillmentService {
     /**
      * Update order status in WooCommerce
      *
-     * @param orderId - Shipcrowd order ID
+     * @param orderId - Helix order ID
      * @param status - New WooCommerce status
      * @param trackingInfo - Optional tracking information
      * @returns Updated WooCommerce order
@@ -170,7 +170,7 @@ export class WooCommerceFulfillmentService {
                             trackingInfo.courierName
                         ),
                     },
-                    { key: '_shipcrowd_order_id', value: String(order._id) },
+                    { key: '_Helix_order_id', value: String(order._id) },
                 ];
             }
 
@@ -190,7 +190,7 @@ export class WooCommerceFulfillmentService {
             }
 
             // 7. Update local order record
-            order.currentStatus = this.mapWooCommerceToShipcrowd(status);
+            order.currentStatus = this.mapWooCommerceToHelix(status);
             order.statusHistory.push({
                 status: order.currentStatus,
                 timestamp: new Date(),
@@ -227,7 +227,7 @@ export class WooCommerceFulfillmentService {
     /**
      * Add tracking note to WooCommerce order
      *
-     * @param orderId - Shipcrowd order ID
+     * @param orderId - Helix order ID
      * @param trackingInfo - Tracking information
      * @param customerNote - Whether to send as customer-visible note
      * @returns Created note
@@ -307,7 +307,7 @@ Thank you for your order!`;
      * Mark order as shipped with tracking info
      * Convenience method combining status update and tracking note
      *
-     * @param orderId - Shipcrowd order ID
+     * @param orderId - Helix order ID
      * @param trackingInfo - Tracking information
      * @returns Updated WooCommerce order
      */
@@ -321,7 +321,7 @@ Thank you for your order!`;
     /**
      * Mark order as delivered/completed
      *
-     * @param orderId - Shipcrowd order ID
+     * @param orderId - Helix order ID
      * @returns Updated WooCommerce order
      */
     static async markAsDelivered(orderId: string): Promise<any> {
@@ -363,7 +363,7 @@ Thank you for your order!`;
     /**
      * Cancel order in WooCommerce
      *
-     * @param orderId - Shipcrowd order ID
+     * @param orderId - Helix order ID
      * @param reason - Cancellation reason
      * @returns Updated WooCommerce order
      */
@@ -406,9 +406,9 @@ Thank you for your order!`;
     /**
      * Handle shipment status change and sync to WooCommerce
      *
-     * Called automatically when shipment status changes in Shipcrowd.
+     * Called automatically when shipment status changes in Helix.
      *
-     * @param shipmentId - Shipcrowd shipment ID
+     * @param shipmentId - Helix shipment ID
      * @param newStatus - New shipment status
      */
     static async handleShipmentStatusChange(
@@ -504,7 +504,7 @@ Thank you for your order!`;
     /**
      * Add status update note to order
      *
-     * @param orderId - Shipcrowd order ID
+     * @param orderId - Helix order ID
      * @param status - Status name
      * @param message - Optional status message
      */
@@ -594,17 +594,17 @@ Thank you for your order!`;
             }
         }
 
-        // Default fallback - Shipcrowd tracking page
-        return `${process.env.FRONTEND_URL || 'https://shipcrowd.com'}/track/${awbNumber}`;
+        // Default fallback - Helix tracking page
+        return `${process.env.FRONTEND_URL || 'https://Helix.com'}/track/${awbNumber}`;
     }
 
     /**
-     * Map WooCommerce status to Shipcrowd status
+     * Map WooCommerce status to Helix status
      *
      * @param wooStatus - WooCommerce status
-     * @returns Shipcrowd status
+     * @returns Helix status
      */
-    private static mapWooCommerceToShipcrowd(wooStatus: WooCommerceOrderStatus): string {
+    private static mapWooCommerceToHelix(wooStatus: WooCommerceOrderStatus): string {
         const statusMap: Record<WooCommerceOrderStatus, string> = {
             pending: 'PENDING',
             processing: 'PROCESSING',

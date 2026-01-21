@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 
 /**
- * Loader Component - Unified loading system for ShipCrowd
+ * Loader Component - Unified loading system for Helix
  * 
  * Provides multiple loader variants based on the 3-tier loading strategy:
  * - Truck: Branded animation for high-value moments (tracking, shipment creation)
@@ -173,7 +173,7 @@ function TruckLoader({ size }: { size: LoaderSize }) {
               x="6.5"
               className="dark:fill-[var(--gray-800)] dark:stroke-[var(--gray-400)]"
             />
-            {/* ShipCrowd Branding Text on Cargo */}
+            {/* Helix Branding Text on Cargo */}
             <text
               x="67"
               y="50"
@@ -188,7 +188,7 @@ function TruckLoader({ size }: { size: LoaderSize }) {
                 textTransform: 'uppercase'
               }}
             >
-              ShipCrowd
+              Helix
             </text>
             {/* Bumper - Matches cargo */}
             <rect

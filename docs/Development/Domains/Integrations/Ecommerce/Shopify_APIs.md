@@ -1,4 +1,4 @@
-# Shopify Admin API Integration Guide for ShipCrowd
+# Shopify Admin API Integration Guide for Helix
 
 **API Version**: `2025-04`  
 **Last Updated**: January 7, 2026  
@@ -30,9 +30,9 @@
 
 ## Overview
 
-This document provides comprehensive validation and implementation guidelines for integrating ShipCrowd with Shopify stores using the Admin API version `2025-04`. The integration enables bidirectional synchronization of:
+This document provides comprehensive validation and implementation guidelines for integrating Helix with Shopify stores using the Admin API version `2025-04`. The integration enables bidirectional synchronization of:
 
-- **Orders**: Shopify → ShipCrowd (webhook-driven) and ShipCrowd → Shopify (API-driven)
+- **Orders**: Shopify → Helix (webhook-driven) and Helix → Shopify (API-driven)
 - **Fulfillments**: Tracking information, shipment status, carrier details
 - **Inventory**: Stock levels across multiple warehouses/locations
 - **Live Shipping Rates**: Real-time rate calculation at checkout
@@ -42,7 +42,7 @@ This document provides comprehensive validation and implementation guidelines fo
 
 ```mermaid
 graph LR
-    A[Shopify Store] -->|OAuth| B[ShipCrowd App]
+    A[Shopify Store] -->|OAuth| B[Helix App]
     A -->|Webhooks| B
     B -->|REST/GraphQL API| A
     B -->|Store Data| C[MongoDB]
@@ -117,22 +117,22 @@ const shop = await Shop.findOne({ domain: decoded.dest });
 
 **Configuration** (`shopify.app.config.toml`):
 ```toml
-name = "shipcrowd"
+name = "Helix"
 client_id = "your_client_id"
 scopes = "read_orders,write_orders,read_products,write_fulfillments,read_inventory,write_inventory"
 
 [auth]
 redirect_urls = [ 
-  "https://shipcrowd.com/auth/callback" 
+  "https://Helix.com/auth/callback" 
 ]
 
 [webhooks.privacy_compliance]
-customer_data_request_url = "https://shipcrowd.com/webhooks/customers/data_request"
-customer_redaction_url = "https://shipcrowd.com/webhooks/customers/redact"
-shop_redaction_url = "https://shipcrowd.com/webhooks/shop/redact"
+customer_data_request_url = "https://Helix.com/webhooks/customers/data_request"
+customer_redaction_url = "https://Helix.com/webhooks/customers/redact"
+shop_redaction_url = "https://Helix.com/webhooks/shop/redact"
 ```
 
-### 1.3 Required Scopes for ShipCrowd
+### 1.3 Required Scopes for Helix
 
 | Scope | Purpose | Critical |
 |:------|:--------|:---------|
@@ -140,7 +140,7 @@ shop_redaction_url = "https://shipcrowd.com/webhooks/shop/redact"
 | `write_orders` | Update order status, tags | ✅ Yes |
 | `read_fulfillments` | Fetch fulfillment data | ✅ Yes |
 | `write_fulfillments` | Create fulfillments, add tracking | ✅ Yes |
-| `read_products` | Map SKUs to ShipCrowd inventory | ✅ Yes |
+| `read_products` | Map SKUs to Helix inventory | ✅ Yes |
 | `read_inventory` | Sync stock levels | ✅ Yes |
 | `write_inventory` | Update stock after fulfillment | ✅ Yes |
 | `read_locations` | Map warehouses | ✅ Yes |
@@ -231,7 +231,7 @@ curl -X GET \
 - **Pagination**: Use `since_id` for cursor-based pagination (more efficient than `page` parameter)
 - **Rate Limiting**: Maximum 250 orders per request. For bulk sync, use GraphQL Bulk Operations
 
-**ShipCrowd Implementation**:
+**Helix Implementation**:
 ```javascript
 async function syncOrdersFromShopify(shop, since_id = null) {
   const params = {
@@ -243,7 +243,7 @@ async function syncOrdersFromShopify(shop, since_id = null) {
   const response = await shopifyAPI.get(`/orders.json`, { params });
   
   for (const order of response.orders) {
-    await ShipCrowdOrder.create({
+    await HelixOrder.create({
       shopifyOrderId: order.id,
       shopDomain: shop,
       orderNumber: order.name,
@@ -313,8 +313,8 @@ POST /admin/api/2025-04/orders.json
     "financial_status": "paid",
     "send_receipt": false,
     "send_fulfillment_receipt": false,
-    "tags": "shipcrowd,imported",
-    "note": "Order created via ShipCrowd"
+    "tags": "Helix,imported",
+    "note": "Order created via Helix"
   }
 }
 ```
@@ -331,8 +331,8 @@ POST /admin/api/2025-04/orders.json
 }
 ```
 
-**Use Case in ShipCrowd**:
-- Sync orders created in ShipCrowd platform to Shopify
+**Use Case in Helix**:
+- Sync orders created in Helix platform to Shopify
 - Create draft orders for quote-to-order conversion
 - Import bulk orders from CSV uploads
 
@@ -372,7 +372,7 @@ PUT /admin/api/2025-04/orders/{order_id}.json
 {
   "order": {
     "id": 5891234567890,
-    "tags": "shipcrowd,shipped,delivered"
+    "tags": "Helix,shipped,delivered"
   }
 }
 ```
@@ -414,12 +414,12 @@ POST /admin/api/2025-04/orders/{order_id}/cancel.json
 - `declined`: Payment declined
 - `other`: Other reasons
 
-**ShipCrowd Workflow**:
-1. Customer cancels order in ShipCrowd
-2. ShipCrowd calls Shopify Cancel API
+**Helix Workflow**:
+1. Customer cancels order in Helix
+2. Helix calls Shopify Cancel API
 3. Shopify processes cancellation (refunds, restocks)
 4. Webhook `orders/cancelled` triggers
-5. ShipCrowd updates order status
+5. Helix updates order status
 
 ---
 
@@ -566,14 +566,14 @@ POST /admin/api/2025-04/fulfillments.json
 }
 ```
 
-**ShipCrowd Implementation**:
+**Helix Implementation**:
 ```javascript
 async function createShopifyFulfillment(order, shipment) {
   const fulfillment = {
     location_id: order.shopifyLocationId,
     tracking_number: shipment.awbNumber,
     tracking_company: shipment.courierName,
-    tracking_url: `https://shipcrowd.com/track/${shipment.trackingId}`,
+    tracking_url: `https://Helix.com/track/${shipment.trackingId}`,
     notify_customer: true,
     line_items_by_fulfillment_order: [
       { fulfillment_order_id: order.fulfillmentOrderId }
@@ -582,7 +582,7 @@ async function createShopifyFulfillment(order, shipment) {
   
   const response = await shopifyAPI.post('/fulfillments.json', { fulfillment });
   
-  await ShipCrowdOrder.updateOne(
+  await HelixOrder.updateOne(
     { _id: order._id },
     { 
       shopifyFulfillmentId: response.fulfillment.id,
@@ -726,7 +726,7 @@ curl -X GET \
 }
 ```
 
-**ShipCrowd Sync Logic**:
+**Helix Sync Logic**:
 ```javascript
 async function syncInventoryFromShopify(shop, locationId) {
   const response = await shopifyAPI.get('/inventory_levels.json', {
@@ -734,7 +734,7 @@ async function syncInventoryFromShopify(shop, locationId) {
   });
   
   for (const level of response.inventory_levels) {
-    await ShipCrowdInventory.updateOne(
+    await HelixInventory.updateOne(
       { 
         shopDomain: shop,
         shopifyInventoryItemId: level.inventory_item_id,
@@ -770,7 +770,7 @@ POST /admin/api/2025-04/inventory_levels/adjust.json
 }
 ```
 
-**Use Case**: Decrement stock after order creation in ShipCrowd
+**Use Case**: Decrement stock after order creation in Helix
 
 **Response**:
 ```json
@@ -809,7 +809,7 @@ POST /admin/api/2025-04/inventory_levels/set.json
 }
 ```
 
-**Use Case**: Overwrite Shopify stock with ShipCrowd master inventory
+**Use Case**: Overwrite Shopify stock with Helix master inventory
 
 **Difference from Adjust**:
 - `adjust`: Relative change (+/-)
@@ -885,13 +885,13 @@ GET /admin/api/2025-04/locations.json
 }
 ```
 
-**ShipCrowd Mapping**:
+**Helix Mapping**:
 ```javascript
 async function mapLocationsToWarehouses(shop) {
   const response = await shopifyAPI.get('/locations.json');
   
   for (const location of response.locations) {
-    await ShipCrowdWarehouse.updateOne(
+    await HelixWarehouse.updateOne(
       { shopDomain: shop, shopifyLocationId: location.id },
       {
         name: location.name,
@@ -928,7 +928,7 @@ POST /admin/api/2025-04/webhooks.json
 {
   "webhook": {
     "topic": "orders/create",
-    "address": "https://shipcrowd.com/api/v1/webhooks/shopify/orders/create",
+    "address": "https://Helix.com/api/v1/webhooks/shopify/orders/create",
     "format": "json"
   }
 }
@@ -939,7 +939,7 @@ POST /admin/api/2025-04/webhooks.json
 {
   "webhook": {
     "id": 1234567890,
-    "address": "https://shipcrowd.com/api/v1/webhooks/shopify/orders/create",
+    "address": "https://Helix.com/api/v1/webhooks/shopify/orders/create",
     "topic": "orders/create",
     "created_at": "2026-01-07T10:00:00Z",
     "updated_at": "2026-01-07T10:00:00Z",
@@ -950,7 +950,7 @@ POST /admin/api/2025-04/webhooks.json
 }
 ```
 
-**Supported Topics for ShipCrowd**:
+**Supported Topics for Helix**:
 
 | Topic | Purpose | Priority |
 |:------|:--------|:---------|
@@ -1025,7 +1025,7 @@ app.post('/webhooks/shopify/:topic',
 - Exponential backoff: 1min → 5min → 15min → ... → 6 hours
 - After 19 failures, webhook is disabled
 
-**ShipCrowd Best Practices**:
+**Helix Best Practices**:
 1. **Respond Quickly**: Return `200 OK` within 5 seconds
 2. **Async Processing**: Queue webhook in RabbitMQ, process later
 3. **Idempotency**: Use `X-Shopify-Webhook-Id` to detect duplicates
@@ -1061,9 +1061,9 @@ These are configured in `shopify.app.config.toml`, **not via REST API**:
 **Configuration**:
 ```toml
 [webhooks.privacy_compliance]
-customer_data_request_url = "https://shipcrowd.com/webhooks/customers/data_request"
-customer_redaction_url = "https://shipcrowd.com/webhooks/customers/redact"
-shop_redaction_url = "https://shipcrowd.com/webhooks/shop/redact"
+customer_data_request_url = "https://Helix.com/webhooks/customers/data_request"
+customer_redaction_url = "https://Helix.com/webhooks/customers/redact"
+shop_redaction_url = "https://Helix.com/webhooks/shop/redact"
 ```
 
 **Processing Requirements**:
@@ -1071,13 +1071,13 @@ shop_redaction_url = "https://shipcrowd.com/webhooks/shop/redact"
 - **customer_redaction**: Delete customer data within 10 days
 - **shop_redaction**: Delete shop data within 10 days
 
-**ShipCrowd Implementation**:
+**Helix Implementation**:
 ```javascript
 app.post('/webhooks/customers/redact', async (req, res) => {
   const { shop_domain, customer } = req.body;
   
   // Delete customer data
-  await ShipCrowdOrder.deleteMany({ 
+  await HelixOrder.deleteMany({ 
     shopDomain: shop_domain,
     customerId: customer.id 
   });
@@ -1106,14 +1106,14 @@ app.post('/webhooks/customers/redact', async (req, res) => {
 **Configuration** (`shopify.app.config.toml`):
 ```toml
 [app_proxy]
-url = "https://shipcrowd.com"
+url = "https://Helix.com"
 subpath = "rates"
 prefix = "apps"
 ```
 
 **Result**: Checkout requests route to:
 ```
-https://shipcrowd.com/apps/rates
+https://Helix.com/apps/rates
 ```
 
 ### 6.2 Rate Calculation Request
@@ -1147,7 +1147,7 @@ https://shipcrowd.com/apps/rates
         "quantity": 2,
         "grams": 400,
         "price": 8950,
-        "vendor": "ShipCrowd Apparel",
+        "vendor": "Helix Apparel",
         "requires_shipping": true,
         "taxable": true,
         "fulfillment_service": "manual"
@@ -1159,7 +1159,7 @@ https://shipcrowd.com/apps/rates
 }
 ```
 
-**ShipCrowd Response**:
+**Helix Response**:
 ```json
 {
   "rates": [
@@ -1256,7 +1256,7 @@ GET /admin/api/2025-04/products.json
     {
       "id": 9876543210,
       "title": "Classic T-Shirt",
-      "vendor": "ShipCrowd Apparel",
+      "vendor": "Helix Apparel",
       "product_type": "Clothing",
       "created_at": "2025-12-01T10:00:00Z",
       "handle": "classic-t-shirt",
@@ -1278,7 +1278,7 @@ GET /admin/api/2025-04/products.json
 }
 ```
 
-**Use Case**: Map Shopify SKUs to ShipCrowd inventory system
+**Use Case**: Map Shopify SKUs to Helix inventory system
 
 ---
 
@@ -1314,10 +1314,10 @@ GET /admin/api/2025-04/shop.json
 
 **Use Case**: 
 - Store shop metadata during installation
-- Display  store info in ShipCrowd dashboard
+- Display  store info in Helix dashboard
 - Use timezone for local time calculations
 
-**ShipCrowd Storage**:
+**Helix Storage**:
 ```javascript
 async function storeShopMetadata(accessToken, shop) {
   const response = await shopifyAPI.get('/shop.json');
@@ -1355,9 +1355,9 @@ POST /admin/api/2025-04/application_charges.json
 ```json
 {
   "application_charge": {
-    "name": "ShipCrowd Setup Fee",
+    "name": "Helix Setup Fee",
     "price": 99.00,
-    "return_url": "https://shipcrowd.com/billing/callback",
+    "return_url": "https://Helix.com/billing/callback",
     "test": true
   }
 }
@@ -1368,7 +1368,7 @@ POST /admin/api/2025-04/application_charges.json
 {
   "application_charge": {
     "id": 1234567890,
-    "name": "ShipCrowd Setup Fee",
+    "name": "Helix Setup Fee",
     "price": "99.00",
     "status": "pending",
     "confirmation_url": "https://example-store.myshopify.com/admin/charges/1234567890/confirm"
@@ -1398,9 +1398,9 @@ POST /admin/api/2025-04/recurring_application_charges.json
 ```json
 {
   "recurring_application_charge": {
-    "name": "ShipCrowd Pro Plan",
+    "name": "Helix Pro Plan",
     "price": 29.99,
-    "return_url": "https://shipcrowd.com/billing/callback",
+    "return_url": "https://Helix.com/billing/callback",
     "trial_days": 14,
     "test": true,
     "capped_amount": 100.00,
@@ -1606,7 +1606,7 @@ async function retryRequest(fn, maxRetries = 3) {
        │ Webhook (HTTPS)
        ▼
 ┌──────────────┐
-│ ShipCrowd    │
+│ Helix    │
 │ API Server   │
 └──────┬───────┘
        │ 200 OK (< 5sec)
@@ -1638,13 +1638,13 @@ async function retryRequest(fn, maxRetries = 3) {
 
 ## Workflow Summary
 
-### Order Sync (Shopify → ShipCrowd)
+### Order Sync (Shopify → Helix)
 
 ```mermaid
 sequenceDiagram
     participant S as Shopify
     participant W as Webhook
-    participant SC as ShipCrowd
+    participant SC as Helix
     
     S->>W: orders/create webhook
     W->>SC: Verify HMAC
@@ -1656,12 +1656,12 @@ sequenceDiagram
     SC->>SC: Notify seller
 ```
 
-### Fulfillment Sync (ShipCrowd → Shopify)
+### Fulfillment Sync (Helix → Shopify)
 
 ```mermaid
 sequenceDiagram
     participant V as Velocity
-    participant SC as ShipCrowd
+    participant SC as Helix
     participant S as Shopify
     
     V->>SC: AWB generated webhook
@@ -1809,7 +1809,7 @@ query {
 - **App Store Requirements**: https://shopify.dev/docs/apps/launch
 - **Developer Blog**: https://www.shopify.com/partners/blog
 
-### ShipCrowd-Specific Contacts
+### Helix-Specific Contacts
 
 - **Shopify Partner Support**: partners@shopify.com
 - **API Issues**: https://community.shopify.com
@@ -1820,4 +1820,4 @@ query {
 **Document Version**: 3.0 (Comprehensive)  
 **Last Reviewed**: January 7, 2026  
 **Next Review**: April 1, 2026 (API version update)  
-**Maintained By**: ShipCrowd Technical Team
+**Maintained By**: Helix Technical Team

@@ -24,7 +24,7 @@ import { Parser } from 'json2csv';
 /**
  * ProductMappingService
  *
- * Handles product mapping between Shopify variants and Shipcrowd SKUs.
+ * Handles product mapping between Shopify variants and Helix SKUs.
  *
  * Features:
  * - Auto-mapping by SKU match
@@ -62,8 +62,8 @@ interface CreateMappingData {
   shopifyTitle: string;
   shopifyBarcode?: string;
   shopifyInventoryItemId?: string;
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  HelixSKU: string;
+  HelixProductName: string;
   mappedBy?: string;
   syncInventory?: boolean;
   syncPrice?: boolean;
@@ -128,7 +128,7 @@ export class ProductMappingService {
             continue;
           }
 
-          // TODO: Check if SKU exists in Shipcrowd inventory
+          // TODO: Check if SKU exists in Helix inventory
           // For now, we'll create the mapping and mark it as AUTO type
           // In production, you'd integrate with InventoryService to verify SKU
 
@@ -142,8 +142,8 @@ export class ProductMappingService {
             shopifyTitle: `${product.title} - ${variant.title}`,
             shopifyBarcode: variant.barcode || undefined,
             shopifyInventoryItemId: variant.inventory_item_id?.toString(),
-            shipcrowdSKU: variant.sku.toUpperCase(),
-            shipcrowdProductName: product.title,
+            HelixSKU: variant.sku.toUpperCase(),
+            HelixProductName: product.title,
             mappingType: 'AUTO',
             mappedAt: new Date(),
             syncInventory: true,
@@ -241,7 +241,7 @@ export class ProductMappingService {
       throw new AppError('Mapping already exists for this variant', 'MAPPING_EXISTS', 409);
     }
 
-    // TODO: Verify Shipcrowd SKU exists
+    // TODO: Verify Helix SKU exists
     // In production, integrate with InventoryService
 
     const mapping = await ProductMapping.create({
@@ -255,7 +255,7 @@ export class ProductMappingService {
     logger.info('Created manual mapping', {
       mappingId: mapping._id,
       variantId: data.shopifyVariantId,
-      sku: data.shipcrowdSKU,
+      sku: data.HelixSKU,
     });
 
     return mapping;
@@ -277,7 +277,7 @@ export class ProductMappingService {
     logger.info('Deleted mapping', {
       mappingId,
       variantId: mapping.shopifyVariantId,
-      sku: mapping.shipcrowdSKU,
+      sku: mapping.HelixSKU,
     });
   }
 
@@ -317,9 +317,9 @@ export class ProductMappingService {
     if (filters.search) {
       query.$or = [
         { shopifySKU: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdSKU: { $regex: filters.search, $options: 'i' } },
+        { HelixSKU: { $regex: filters.search, $options: 'i' } },
         { shopifyTitle: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdProductName: { $regex: filters.search, $options: 'i' } },
+        { HelixProductName: { $regex: filters.search, $options: 'i' } },
       ];
     }
 
@@ -341,7 +341,7 @@ export class ProductMappingService {
   /**
    * Import mappings from CSV
    *
-   * CSV Format: shopifyProductId,shopifyVariantId,shopifySKU,shipcrowdSKU,syncInventory
+   * CSV Format: shopifyProductId,shopifyVariantId,shopifySKU,HelixSKU,syncInventory
    *
    * @param storeId - ShopifyStore ID
    * @param csvData - CSV file content
@@ -367,7 +367,7 @@ export class ProductMappingService {
     const headers = lines[0].split(',').map((h) => h.trim());
 
     // Validate headers
-    const requiredHeaders = ['shopifyProductId', 'shopifyVariantId', 'shopifySKU', 'shipcrowdSKU'];
+    const requiredHeaders = ['shopifyProductId', 'shopifyVariantId', 'shopifySKU', 'HelixSKU'];
     const hasAllHeaders = requiredHeaders.every((h) => headers.includes(h));
 
     if (!hasAllHeaders) {
@@ -403,8 +403,8 @@ export class ProductMappingService {
           shopifyVariantId: row.shopifyVariantId,
           shopifySKU: row.shopifySKU,
           shopifyTitle: row.shopifyTitle || 'Imported from CSV',
-          shipcrowdSKU: row.shipcrowdSKU.toUpperCase(),
-          shipcrowdProductName: row.shipcrowdProductName || row.shopifyTitle || 'Imported',
+          HelixSKU: row.HelixSKU.toUpperCase(),
+          HelixProductName: row.HelixProductName || row.shopifyTitle || 'Imported',
           mappingType: 'MANUAL',
           mappedAt: new Date(),
           syncInventory: row.syncInventory === 'true' || row.syncInventory === '1',
@@ -442,8 +442,8 @@ export class ProductMappingService {
       shopifySKU: m.shopifySKU,
       shopifyTitle: m.shopifyTitle,
       shopifyBarcode: m.shopifyBarcode || '',
-      shipcrowdSKU: m.shipcrowdSKU,
-      shipcrowdProductName: m.shipcrowdProductName,
+      HelixSKU: m.HelixSKU,
+      HelixProductName: m.HelixProductName,
       mappingType: m.mappingType,
       syncInventory: m.syncInventory,
       syncPrice: m.syncPrice,

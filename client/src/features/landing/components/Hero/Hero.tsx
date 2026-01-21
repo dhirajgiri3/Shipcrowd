@@ -229,7 +229,7 @@ export default function Hero() {
                                     <div className="flex items-center gap-3 text-slate-900 font-bold text-base px-3 mb-6">
                                         <img
                                             src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                                            alt="ShipCrowd"
+                                            alt="Helix"
                                             className="h-6 w-auto object-contain rounded-full"
                                         />
                                     </div>

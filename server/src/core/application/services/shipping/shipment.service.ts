@@ -412,7 +412,7 @@ export class ShipmentService {
                     const velocityShipmentData = {
                         // Origin (warehouse/pickup location)
                         origin: {
-                            name: warehouse?.name || 'Shipcrowd Warehouse',
+                            name: warehouse?.name || 'Helix Warehouse',
                             phone: warehouse?.contactInfo?.phone || '',
                             address: warehouse?.address?.line1 || '',
                             city: warehouse?.address?.city || '',

@@ -224,7 +224,7 @@ const WooCommerceStoreSchema = new Schema<IWooCommerceStore>(
         syncDirection: {
           type: String,
           enum: ['ONE_WAY', 'TWO_WAY'],
-          default: 'ONE_WAY', // Shipcrowd → WooCommerce
+          default: 'ONE_WAY', // Helix → WooCommerce
         },
         lastSyncAt: { type: Date },
         errorCount: { type: Number, default: 0 },

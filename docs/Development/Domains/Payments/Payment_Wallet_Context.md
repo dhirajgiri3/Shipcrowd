@@ -29,7 +29,7 @@
 
 ### Purpose
 
-The Payment & Wallet System provides a unified financial management layer for Shipcrowd, handling:
+The Payment & Wallet System provides a unified financial management layer for Helix, handling:
 
 1. **Payment Collection** - Accept prepaid payments via Razorpay
 2. **Wallet Management** - Track company balances for shipping costs

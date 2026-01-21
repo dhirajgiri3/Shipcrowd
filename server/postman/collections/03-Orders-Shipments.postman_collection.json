@@ -1,6 +1,6 @@
 {
     "info": {
-        "_postman_id": "shipcrowd-orders-shipments-v1",
+        "_postman_id": "Helix-orders-shipments-v1",
         "name": "03 - Orders & Shipments",
         "description": "## Orders & Shipments Collection\n\n**Domain:** Order creation, shipment management, tracking\n**Total Endpoints:** 13 (6 orders + 7 shipments)\n**Version:** 1.0.0\n\n### Order Endpoints (6)\n✅ POST /orders - Create single order\n✅ POST /orders/bulk - Bulk import orders (CSV)\n✅ GET /orders - List all orders (paginated)\n✅ GET /orders/:orderId - Get order details\n✅ PATCH /orders/:orderId - Update order\n✅ DELETE /orders/:orderId - Cancel order\n\n### Shipment Endpoints (7)\n✅ POST /shipments - Create shipment from order\n✅ GET /shipments - List all shipments\n✅ GET /shipments/:shipmentId - Get shipment details\n✅ GET /shipments/tracking/:awb - Track by AWB (private)\n✅ GET /shipments/public/track/:awb - Track by AWB (public)\n✅ PATCH /shipments/:shipmentId/status - Update status\n✅ DELETE /shipments/:shipmentId - Cancel shipment\n\n### Prerequisites\n- ✅ Authenticated user (Collection 01)\n- ✅ Company KYC approved (Collection 02)\n- ✅ Warehouse created (Collection 04)\n- ✅ Ratecard configured (Collection 04)\n\n### Critical Business Rules\n- **KYC Required:** Must have approved KYC before creating orders\n- **Wallet Balance:** Sufficient balance required for order creation\n- **Zone Pricing:** Rates calculated based on origin-destination zones\n- **Status Flow:** created → processed → shipped → in_transit → delivered\n\n### Quick Start\n1. Create Order → Auto-deducts from wallet\n2. Create Shipment → Generates AWB and label\n3. Track Shipment → Real-time status updates",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -97,8 +97,12 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/orders",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["orders"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "orders"
+                            ]
                         },
                         "description": "**Create Single Order**\n\n**Method:** POST\n**Endpoint:** `/api/v1/orders`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved, Seller role\n\n**Business Logic:**\n1. Validates warehouse exists and belongs to company\n2. Calculates shipping rate based on zone pricing\n3. Checks wallet balance (rate + COD charges if applicable)\n4. Deducts amount from wallet\n5. Creates order with status 'created'\n6. Returns order details with calculated shipping cost\n\n**Request Body:**\n- `warehouseId` (required): Origin warehouse\n- `customer` (required): Delivery details (name, phone, address)\n- `items` (required): Product details (sku, name, qty, price, weight)\n- `payment` (required): Payment mode (COD/Prepaid) + COD amount\n- `shipping` (required): Weight, dimensions, declared value\n- `courier` (optional): Preferred courier and service type\n\n**Validation:**\n- Pincode must be serviceable\n- Weight > 0, max 30kg for courier\n- COD amount ≤ ₹50,000\n- Wallet balance sufficient\n\n**Response:**\n- Order ID\n- Calculated shipping cost\n- Estimated delivery date\n- Available couriers with rates"
                     },
@@ -150,8 +154,13 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/orders/bulk",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["orders", "bulk"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "orders",
+                                "bulk"
+                            ]
                         },
                         "description": "**Bulk Import Orders from CSV**\n\n**Method:** POST\n**Endpoint:** `/api/v1/orders/bulk`\n**Auth:** Bearer token + CSRF\n**Content-Type:** multipart/form-data\n\n**CSV Format:**\n```csv\ncustomerName,customerPhone,customerEmail,addressLine1,addressLine2,city,state,pincode,itemSku,itemName,itemQty,itemPrice,itemWeight,paymentMode,codAmount,shippingWeight,length,width,height,declaredValue\nRahul Sharma,9876543210,rahul@example.com,123 MG Road,Near Metro,Mumbai,Maharashtra,400001,NECK-001,Gold Necklace,1,25000,0.05,COD,25000,0.5,10,10,5,25000\n```\n\n**Business Logic:**\n1. Validates CSV format and headers\n2. Validates each row (max 1000 rows per file)\n3. Calculates shipping costs for all orders\n4. Checks total wallet balance required\n5. Creates all orders in batch\n6. Returns summary: success count, failed count, errors\n\n**Validation Per Row:**\n- Valid phone number (10 digits)\n- Valid pincode (6 digits, serviceable)\n- Valid email format\n- Weight and dimensions within limits\n- COD amount ≤ ₹50,000\n\n**Response:**\n- Total rows processed\n- Success count\n- Failed count\n- Error details (row number, error message)\n- Created order IDs"
                     },
@@ -191,8 +200,12 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/orders?page=1&limit=20&status=created&sortBy=createdAt&order=desc",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["orders"],
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "orders"
+                            ],
                             "query": [
                                 {
                                     "key": "page",
@@ -276,8 +289,13 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/orders/{{TEST_ORDER_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["orders", "{{TEST_ORDER_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "orders",
+                                "{{TEST_ORDER_ID}}"
+                            ]
                         },
                         "description": "**Get Single Order Details**\n\n**Method:** GET\n**Endpoint:** `/api/v1/orders/:orderId`\n**Auth:** Bearer token\n**Access:** Sandbox+ tier\n\n**URL Parameters:**\n- `orderId` (required): Order ID or Order Number\n\n**Returns:**\n- Complete order details\n- Customer information\n- Item list with pricing\n- Shipping details and cost\n- Payment details\n- Status and timeline\n- Associated shipment (if created)\n- Tracking information (if shipped)"
                     },
@@ -326,8 +344,13 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/orders/{{TEST_ORDER_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["orders", "{{TEST_ORDER_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "orders",
+                                "{{TEST_ORDER_ID}}"
+                            ]
                         },
                         "description": "**Update Order Details**\n\n**Method:** PATCH\n**Endpoint:** `/api/v1/orders/:orderId`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Editable Fields:**\n- Customer phone, email\n- Delivery address (before shipment created)\n- Shipping weight and dimensions\n- Item quantity (before shipment)\n\n**Restrictions:**\n- Cannot edit after shipment created\n- Cannot change payment mode\n- Cannot change warehouse\n\n**Business Logic:**\n1. Validates order belongs to company\n2. Checks order status (only 'created' orders can be fully edited)\n3. Recalculates shipping cost if weight/dimensions changed\n4. Updates wallet balance if cost increased/decreased\n5. Returns updated order details"
                     },
@@ -362,8 +385,13 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/orders/{{TEST_ORDER_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["orders", "{{TEST_ORDER_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "orders",
+                                "{{TEST_ORDER_ID}}"
+                            ]
                         },
                         "description": "**Cancel Order (Soft Delete)**\n\n**Method:** DELETE\n**Endpoint:** `/api/v1/orders/:orderId`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Business Logic:**\n1. Validates order belongs to company\n2. Checks order can be cancelled (status = 'created' or 'processed')\n3. Cannot cancel if shipment already created\n4. Refunds shipping cost to wallet\n5. Marks order as 'cancelled'\n6. Soft deletes (data retained for records)\n\n**Status Restrictions:**\n- ✅ Can cancel: created, processed\n- ❌ Cannot cancel: shipped, in_transit, delivered\n\n**Refund Policy:**\n- Full refund if cancelled before shipment\n- No refund if shipment created"
                     },
@@ -415,8 +443,12 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/shipments",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments"
+                            ]
                         },
                         "description": "**Create Shipment from Order**\n\n**Method:** POST\n**Endpoint:** `/api/v1/shipments`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Business Logic:**\n1. Validates order exists and belongs to company\n2. Checks order status (must be 'created' or 'processed')\n3. Calls Velocity API to create shipment\n4. Generates AWB (Air Waybill) number\n5. Creates shipping label (PDF)\n6. Updates order status to 'shipped'\n7. Creates shipment record\n8. Returns AWB and label URL\n\n**Request Body:**\n- `orderId` (required): Order ID to create shipment from\n- `courier` (optional): Courier selection (auto-selected if not provided)\n  - `code`: Courier code (DELHIVERY, BLUEDART, XPRESSBEES)\n  - `serviceType`: surface/air/express\n- `pickup` (optional): Pickup scheduling\n  - `date`: Pickup date (YYYY-MM-DD)\n  - `timeSlot`: Time slot (HH:MM-HH:MM)\n\n**Response:**\n- Shipment ID\n- AWB number (tracking number)\n- Label URL (PDF download link)\n- Estimated delivery date\n- Pickup confirmation"
                     },
@@ -455,8 +487,12 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/shipments?page=1&limit=20&status=in_transit",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments"],
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments"
+                            ],
                             "query": [
                                 {
                                     "key": "page",
@@ -498,8 +534,13 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/shipments/{{TEST_SHIPMENT_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments", "{{TEST_SHIPMENT_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments",
+                                "{{TEST_SHIPMENT_ID}}"
+                            ]
                         },
                         "description": "**Get Shipment Details**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments/:shipmentId`\n**Auth:** Bearer token\n\n**Returns:**\n- Complete shipment details\n- Associated order information\n- Current status and location\n- Tracking timeline\n- Courier details\n- Label URL"
                     }
@@ -516,8 +557,14 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/shipments/tracking/{{TEST_AWB_NUMBER}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments", "tracking", "{{TEST_AWB_NUMBER}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments",
+                                "tracking",
+                                "{{TEST_AWB_NUMBER}}"
+                            ]
                         },
                         "description": "**Track Shipment by AWB (Private)**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments/tracking/:trackingNumber`\n**Auth:** Bearer token required\n**Access:** Sandbox+ tier\n\n**Returns:**\n- Current status\n- Location history\n- Estimated delivery\n- Full tracking timeline\n- Customer & order details\n\n**Use Case:** For sellers to track their shipments"
                     }
@@ -532,8 +579,15 @@
                         "header": [],
                         "url": {
                             "raw": "{{BASE_URL}}/shipments/public/track/{{TEST_AWB_NUMBER}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments", "public", "track", "{{TEST_AWB_NUMBER}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments",
+                                "public",
+                                "track",
+                                "{{TEST_AWB_NUMBER}}"
+                            ]
                         },
                         "description": "**Track Shipment by AWB (Public)**\n\n**Method:** GET\n**Endpoint:** `/api/v1/shipments/public/track/:trackingNumber`\n**Auth:** No authentication required\n**Access:** Public\n\n**Returns:**\n- Current status\n- Location (city level only)\n- Estimated delivery\n- Basic tracking timeline\n- Limited details (no customer PII)\n\n**Use Case:** For customers to track their orders via public tracking page"
                     }
@@ -562,8 +616,14 @@
                         },
                         "url": {
                             "raw": "{{BASE_URL}}/shipments/{{TEST_SHIPMENT_ID}}/status",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments", "{{TEST_SHIPMENT_ID}}", "status"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments",
+                                "{{TEST_SHIPMENT_ID}}",
+                                "status"
+                            ]
                         },
                         "description": "**Update Shipment Status**\n\n**Method:** PATCH\n**Endpoint:** `/api/v1/shipments/:shipmentId/status`\n**Auth:** Bearer token + CSRF\n**Access:** Production tier, KYC approved\n\n**Status Flow:**\n1. `pending` → Initial state\n2. `picked_up` → Courier picked up\n3. `in_transit` → In transit to destination\n4. `out_for_delivery` → Out for delivery\n5. `delivered` → Successfully delivered\n6. `failed` → Delivery failed (NDR)\n7. `rto_initiated` → Return to origin started\n8. `rto_delivered` → Returned to seller\n\n**Request Body:**\n- `status` (required): New status\n- `location` (optional): Current location\n- `remarks` (optional): Status update notes\n\n**Business Logic:**\n1. Validates status transition is valid\n2. Updates shipment status\n3. Creates tracking event\n4. Triggers notifications (email, WhatsApp)\n5. Updates order status if needed"
                     }
@@ -584,8 +644,13 @@
                         ],
                         "url": {
                             "raw": "{{BASE_URL}}/shipments/{{TEST_SHIPMENT_ID}}",
-                            "host": ["{{BASE_URL}}"],
-                            "path": ["shipments", "{{TEST_SHIPMENT_ID}}"]
+                            "host": [
+                                "{{BASE_URL}}"
+                            ],
+                            "path": [
+                                "shipments",
+                                "{{TEST_SHIPMENT_ID}}"
+                            ]
                         },
                         "description": "**Cancel Shipment**\n\n**Method:** DELETE\n**Endpoint:** `/api/v1/shipments/:shipmentId`\n**Auth:** Bearer token + CSRF\n\n**Business Logic:**\n1. Can only cancel if status = 'pending'\n2. Cannot cancel after pickup\n3. Calls Velocity API to cancel\n4. Refunds shipping cost to wallet\n5. Updates order status to 'processed'"
                     }

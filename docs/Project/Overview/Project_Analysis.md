@@ -1,4 +1,4 @@
-# Shipcrowd India - Project Analysis Report
+# Helix India - Project Analysis Report
 **Date:** October 3, 2025  
 **Analysis By:** GitHub Copilot
 
@@ -8,8 +8,8 @@
 
 This project consists of three main components:
 1. **Blueship** - Legacy Firebase-based Next.js application (reference system)
-2. **Client** - New Next.js 15 TypeScript frontend (Shipcrowd system)
-3. **Server** - New Node.js/Express TypeScript backend (Shipcrowd system)
+2. **Client** - New Next.js 15 TypeScript frontend (Helix system)
+3. **Server** - New Node.js/Express TypeScript backend (Helix system)
 
 **Overall Progress:** ~35-40% Complete based on the 45-day development plan
 
@@ -98,7 +98,7 @@ This project consists of three main components:
 
 ---
 
-## 2. SERVER (New Shipcrowd Backend)
+## 2. SERVER (New Helix Backend)
 
 ### Status: 🟨 ~40% COMPLETE
 
@@ -123,7 +123,7 @@ This project consists of three main components:
 - Separate API endpoints for B2B operations
 - B2B serviceability checking
 
-This needs to be planned and implemented in the new Shipcrowd system.
+This needs to be planned and implemented in the new Helix system.
 
 #### Authentication & Security (Days 1-3) ✅
 - [x] User registration with email verification
@@ -388,7 +388,7 @@ This needs to be planned and implemented in the new Shipcrowd system.
 
 ---
 
-## 3. CLIENT (New Shipcrowd Frontend)
+## 3. CLIENT (New Helix Frontend)
 
 ### Status: 🟥 ~10-15% COMPLETE
 
@@ -672,9 +672,9 @@ This needs to be planned and implemented in the new Shipcrowd system.
 
 ---
 
-## 5. COMPARISON: BLUESHIP vs Shipcrowd
+## 5. COMPARISON: BLUESHIP vs Helix
 
-| Feature | Blueship (Legacy) | Shipcrowd (New) | Status |
+| Feature | Blueship (Legacy) | Helix (New) | Status |
 |---------|-------------------|-------------|--------|
 | **Technology Stack** | Firebase + Next.js (JS) | MERN + TypeScript | 🟨 In Progress |
 | **Authentication** | ✅ Firebase Auth | ✅ JWT + Google OAuth | ✅ Complete |
@@ -776,7 +776,7 @@ This needs to be planned and implemented in the new Shipcrowd system.
    - **Mitigation:** Create migration scripts, parallel run period
 
 4. **Feature Parity Gap**
-   - 60-65% of features missing in Shipcrowd
+   - 60-65% of features missing in Helix
    - **Mitigation:** Prioritize core features, phased rollout
 
 ### Medium-Risk Areas
@@ -803,7 +803,7 @@ This needs to be planned and implemented in the new Shipcrowd system.
 - **No Automated Testing** - Risk of regressions
 - **Mixed Code Style** - Inconsistent patterns
 
-### Shipcrowd (New):
+### Helix (New):
 - **Incomplete Type Definitions** - Some `any` types exist
 - **Missing Test Coverage** - Tests not yet written
 - **No CI/CD Pipeline** - Manual deployment process
@@ -827,7 +827,7 @@ This needs to be planned and implemented in the new Shipcrowd system.
 1. **Timeline Extension** - Consider extending beyond 45 days given current progress
 2. **Team Expansion** - Assess if additional developers are needed
 3. **Feature Scope** - Decide which Blueship features are must-haves for v1
-4. **Migration Strategy** - Plan how to migrate users from Blueship to Shipcrowd
+4. **Migration Strategy** - Plan how to migrate users from Blueship to Helix
 5. **Parallel Operation** - Determine how long both systems will run concurrently
 
 ### Quality Assurance:
@@ -843,7 +843,7 @@ This needs to be planned and implemented in the new Shipcrowd system.
 ## 10. CONCLUSION
 
 **Current State:**
-- Shipcrowd is approximately **35-40% complete** based on the 45-day plan
+- Helix is approximately **35-40% complete** based on the 45-day plan
 - Backend is more advanced (~40%) than frontend (~10-15%)
 - Core business logic (Orders, Shipments, Couriers) is **MISSING**
 - Foundation systems (Auth, Users, Companies, Warehouses) are **SOLID**
@@ -856,7 +856,7 @@ Blueship supports **BOTH B2C (Business-to-Consumer) and B2B (Business-to-Busines
 - B2C: Standard e-commerce parcels, small packages
 - B2B: Freight, heavy shipments, pallet shipping, enterprise logistics
 
-This dual-mode operation adds approximately **20-30% more complexity** to the new Shipcrowd system.
+This dual-mode operation adds approximately **20-30% more complexity** to the new Helix system.
 
 **Path Forward:**
 1. **Immediate Focus:** Build Order & Shipment management systems

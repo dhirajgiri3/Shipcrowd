@@ -1,4 +1,4 @@
-# ShipCrowd Implementation Guide: Quick Start for Developers
+# Helix Implementation Guide: Quick Start for Developers
 
 **Purpose:** Fast-track implementation of critical features
 **Target:** Weeks 11-13 (8-10 weeks development)
@@ -325,7 +325,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://mongo:27017/shipcrowd
+      - MONGODB_URI=mongodb://mongo:27017/Helix
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}

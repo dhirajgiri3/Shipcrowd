@@ -5,7 +5,7 @@ Complete reference for all Shopify integration endpoints.
 ## Base URL
 
 ```
-https://api.shipcrowd.com/api/v1
+https://api.Helix.com/api/v1
 ```
 
 ## Authentication
@@ -47,7 +47,7 @@ Generates Shopify OAuth installation URL.
 
 **Example Request:**
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/install?shop=example.myshopify.com" \
+curl -X GET "https://api.Helix.com/api/v1/integrations/shopify/install?shop=example.myshopify.com" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
@@ -55,7 +55,7 @@ curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/install?shop=
 ```json
 {
   "success": true,
-  "installUrl": "https://example.myshopify.com/admin/oauth/authorize?client_id=abc123&scope=read_orders,write_orders&redirect_uri=https://api.shipcrowd.com/api/v1/integrations/shopify/callback&state=base64encodedstate",
+  "installUrl": "https://example.myshopify.com/admin/oauth/authorize?client_id=abc123&scope=read_orders,write_orders&redirect_uri=https://api.Helix.com/api/v1/integrations/shopify/callback&state=base64encodedstate",
   "message": "Redirecting to Shopify for authorization"
 }
 ```
@@ -89,12 +89,12 @@ Handles OAuth callback from Shopify (automatic redirect).
 
 **Success Redirect:**
 ```
-https://app.shipcrowd.com/settings/integrations/shopify?status=success&store=example.myshopify.com
+https://app.Helix.com/settings/integrations/shopify?status=success&store=example.myshopify.com
 ```
 
 **Error Redirect:**
 ```
-https://app.shipcrowd.com/settings/integrations/shopify?status=error&message=Installation%20failed
+https://app.Helix.com/settings/integrations/shopify?status=error&message=Installation%20failed
 ```
 
 ---
@@ -111,7 +111,7 @@ Get all Shopify stores connected to the company.
 
 **Example Request:**
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/stores" \
+curl -X GET "https://api.Helix.com/api/v1/integrations/shopify/stores" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -174,7 +174,7 @@ Get detailed information about a specific store.
 
 **Example Request:**
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011" \
+curl -X GET "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -191,7 +191,7 @@ curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f
       {
         "topic": "orders/create",
         "shopifyWebhookId": "123456",
-        "address": "https://api.shipcrowd.com/api/v1/webhooks/shopify/orders/create",
+        "address": "https://api.Helix.com/api/v1/webhooks/shopify/orders/create",
         "isActive": true,
         "createdAt": "2025-01-01T00:00:00Z"
       }
@@ -212,7 +212,7 @@ Disconnect Shopify store and unregister webhooks.
 
 **Example Request:**
 ```bash
-curl -X DELETE "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011" \
+curl -X DELETE "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -236,7 +236,7 @@ Verify store connection is still valid.
 
 **Example Request:**
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/test" \
+curl -X POST "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/test" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -263,7 +263,7 @@ Pause or resume automatic syncing for a store.
 
 **Example Request (Pause):**
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/pause" \
+curl -X POST "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/pause" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -281,7 +281,7 @@ curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1
 
 ### 8. Auto-Map Products
 
-Automatically map Shopify products to Shipcrowd SKUs by exact match.
+Automatically map Shopify products to Helix SKUs by exact match.
 
 **Endpoint:** `POST /integrations/shopify/stores/:id/mappings/auto`
 
@@ -289,7 +289,7 @@ Automatically map Shopify products to Shipcrowd SKUs by exact match.
 
 **Example Request:**
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings/auto" \
+curl -X POST "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings/auto" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -327,7 +327,7 @@ Get all product mappings with pagination and filters.
 
 **Example Request:**
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings?page=1&limit=20&syncInventory=true" \
+curl -X GET "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings?page=1&limit=20&syncInventory=true" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -342,8 +342,8 @@ curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f
       "shopifyVariantId": "41234567890",
       "shopifySKU": "TSHIRT-BLK-M",
       "shopifyTitle": "Black T-Shirt - Medium",
-      "shipcrowdSKU": "APPAREL-001-BLK-M",
-      "shipcrowdProductName": "Premium Black T-Shirt Medium",
+      "HelixSKU": "APPAREL-001-BLK-M",
+      "HelixProductName": "Premium Black T-Shirt Medium",
       "mappingType": "AUTO",
       "syncInventory": true,
       "syncPrice": false,
@@ -379,8 +379,8 @@ Create a manual product mapping.
   "shopifyTitle": "Black T-Shirt - Medium",
   "shopifyBarcode": "123456789012",
   "shopifyInventoryItemId": "43123456789",
-  "shipcrowdSKU": "APPAREL-001-BLK-M",
-  "shipcrowdProductName": "Premium Black T-Shirt Medium",
+  "HelixSKU": "APPAREL-001-BLK-M",
+  "HelixProductName": "Premium Black T-Shirt Medium",
   "syncInventory": true,
   "syncPrice": false,
   "syncOnFulfillment": true
@@ -389,7 +389,7 @@ Create a manual product mapping.
 
 **Example Request:**
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings" \
+curl -X POST "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"shopifyProductId":"7123456789","shopifyVariantId":"41234567890",...}'
@@ -420,7 +420,7 @@ Delete a product mapping.
 
 **Example Request:**
 ```bash
-curl -X DELETE "https://api.shipcrowd.com/api/v1/integrations/shopify/mappings/507f1f77bcf86cd799439014" \
+curl -X DELETE "https://api.Helix.com/api/v1/integrations/shopify/mappings/507f1f77bcf86cd799439014" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -451,7 +451,7 @@ Activate or deactivate a product mapping.
 
 **Example Request:**
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/mappings/507f1f77bcf86cd799439014/toggle" \
+curl -X POST "https://api.Helix.com/api/v1/integrations/shopify/mappings/507f1f77bcf86cd799439014/toggle" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"isActive":false}'
@@ -478,7 +478,7 @@ Bulk import product mappings from CSV.
 **Request Body:**
 ```json
 {
-  "csvData": "shopifyProductId,shopifyVariantId,shopifySKU,shipcrowdSKU,syncInventory\n7123456789,41234567890,TSHIRT-BLK-M,APPAREL-001-BLK-M,true"
+  "csvData": "shopifyProductId,shopifyVariantId,shopifySKU,HelixSKU,syncInventory\n7123456789,41234567890,TSHIRT-BLK-M,APPAREL-001-BLK-M,true"
 }
 ```
 
@@ -508,7 +508,7 @@ Export all product mappings to CSV.
 
 **Example Request:**
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings/export" \
+curl -X GET "https://api.Helix.com/api/v1/integrations/shopify/stores/507f1f77bcf86cd799439011/mappings/export" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -o product-mappings.csv
 ```
@@ -560,7 +560,7 @@ Manually sync inventory for a single product mapping.
 
 **Example Request:**
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/integrations/shopify/mappings/507f1f77bcf86cd799439014/sync" \
+curl -X POST "https://api.Helix.com/api/v1/integrations/shopify/mappings/507f1f77bcf86cd799439014/sync" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"quantity":150}'

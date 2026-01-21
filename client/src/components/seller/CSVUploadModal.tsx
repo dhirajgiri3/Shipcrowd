@@ -171,7 +171,7 @@ Amit Kumar,9988776655,amit@email.com,789 Electronic City,,Bangalore,Karnataka,56
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'shipcrowd-bulk-order-template.csv';
+        a.download = 'Helix-bulk-order-template.csv';
         a.click();
         URL.revokeObjectURL(url);
 

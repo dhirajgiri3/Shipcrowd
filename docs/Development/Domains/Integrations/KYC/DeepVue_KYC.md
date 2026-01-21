@@ -32,7 +32,7 @@
 
 ### Purpose
 
-DeepVue is a comprehensive KYC (Know Your Customer) verification service providing real-time verification for Indian identity and business documents. Shipcrowd uses DeepVue to verify:
+DeepVue is a comprehensive KYC (Know Your Customer) verification service providing real-time verification for Indian identity and business documents. Helix uses DeepVue to verify:
 - **PAN Card** - Personal identification
 - **Aadhaar Card** - Government ID proof
 - **GSTIN** - GST registration for businesses
@@ -41,7 +41,7 @@ DeepVue is a comprehensive KYC (Know Your Customer) verification service providi
 
 ### Integration Points
 
-**Shipcrowd Use Cases:**
+**Helix Use Cases:**
 1. **User Onboarding** - Verify individual users before account activation
 2. **Business Verification** - Validate company GSTIN and business details
 3. **Payment Setup** - Verify bank accounts before COD remittance
