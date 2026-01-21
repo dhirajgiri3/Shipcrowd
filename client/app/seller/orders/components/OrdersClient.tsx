@@ -32,6 +32,9 @@ import {
     LazyResponsiveContainer as ResponsiveContainer
 } from '@/src/components/features/charts/LazyCharts';
 import { generateMockOrders } from '@/src/lib/mockData/orders';
+import { SmartFilterChips, FilterPreset } from '@/src/components/seller/orders/SmartFilterChips';
+import { ResponsiveOrderList } from '@/src/components/seller/orders/ResponsiveOrderList';
+import { useIsMobile } from '@/src/hooks/ux';
 
 // --- VISUALIZATION DATA ---
 const trendData = [
@@ -45,11 +48,13 @@ const trendData = [
 ];
 
 export function OrdersClient() {
+    const isMobile = useIsMobile();
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 300);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [activeTab, setActiveTab] = useState('all');
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
+    const [smartFilter, setSmartFilter] = useState<FilterPreset>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const limit = 20;
@@ -79,10 +84,11 @@ export function OrdersClient() {
     const error = null as Error | null;
     const refetch = async () => { setIsLoading(true); setTimeout(() => setIsLoading(false), 500); };
 
-    // Filter Mock Data
+    // Filter Mock Data with Smart Filters
     const filteredMockOrders = useMemo(() => {
         let filtered = MOCK_ORDERS_DATA;
 
+        // Search filter
         if (debouncedSearch) {
             const lowerSearch = debouncedSearch.toLowerCase();
             filtered = filtered.filter(o =>
@@ -91,16 +97,56 @@ export function OrdersClient() {
             );
         }
 
-        if (activeTab !== 'all') {
+        // Smart filter (takes precedence over tab filter)
+        if (smartFilter !== 'all') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            switch (smartFilter) {
+                case 'needs_attention':
+                    filtered = filtered.filter(o =>
+                        ['pickup_pending', 'pickup_failed', 'exception', 'rto_initiated'].includes(o.currentStatus)
+                    );
+                    break;
+                case 'today':
+                    filtered = filtered.filter(o => {
+                        const orderDate = new Date(o.createdAt);
+                        orderDate.setHours(0, 0, 0, 0);
+                        return orderDate.getTime() === today.getTime();
+                    });
+                    break;
+                case 'cod_pending':
+                    filtered = filtered.filter(o =>
+                        o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
+                    );
+                    break;
+                case 'last_7_days':
+                    filtered = filtered.filter(o => {
+                        const orderDate = new Date(o.createdAt);
+                        return orderDate >= sevenDaysAgo;
+                    });
+                    break;
+                case 'zone_b':
+                    // Assuming Zone B based on state (example logic)
+                    filtered = filtered.filter(o => {
+                        const state = o.customerInfo?.address?.state;
+                        return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
+                    });
+                    break;
+            }
+        } else if (activeTab !== 'all') {
+            // Tab filter (only if smart filter is 'all')
             if (activeTab === 'unshipped') {
-                filtered = filtered.filter(o => ['pending', 'processing'].includes(o.currentStatus));
+                filtered = filtered.filter(o => ['pending', 'processing', 'pickup_pending'].includes(o.currentStatus));
             } else {
                 filtered = filtered.filter(o => o.currentStatus === activeTab);
             }
         }
 
         return filtered;
-    }, [debouncedSearch, activeTab, MOCK_ORDERS_DATA]);
+    }, [debouncedSearch, activeTab, smartFilter, MOCK_ORDERS_DATA]);
 
     const orders = filteredMockOrders.slice((page - 1) * limit, page * limit);
     const pagination = {
@@ -124,6 +170,37 @@ export function OrdersClient() {
         const pendingPaymentCount = filteredData.filter(o => o.paymentStatus === 'pending').length;
         return { totalRevenue, pendingPaymentCount };
     }, [filteredData]);
+
+    // Smart Filter Counts
+    const filterCounts = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        return {
+            all: MOCK_ORDERS_DATA.length,
+            needs_attention: MOCK_ORDERS_DATA.filter(o =>
+                ['pickup_pending', 'pickup_failed', 'exception', 'rto_initiated'].includes(o.currentStatus)
+            ).length,
+            today: MOCK_ORDERS_DATA.filter(o => {
+                const orderDate = new Date(o.createdAt);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate.getTime() === today.getTime();
+            }).length,
+            cod_pending: MOCK_ORDERS_DATA.filter(o =>
+                o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
+            ).length,
+            last_7_days: MOCK_ORDERS_DATA.filter(o => {
+                const orderDate = new Date(o.createdAt);
+                return orderDate >= sevenDaysAgo;
+            }).length,
+            zone_b: MOCK_ORDERS_DATA.filter(o => {
+                const state = o.customerInfo?.address?.state;
+                return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
+            }).length
+        };
+    }, [MOCK_ORDERS_DATA]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -423,70 +500,61 @@ export function OrdersClient() {
                     </div>
                 </div>
 
-                <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm">
-                    {/* Error State */}
-                    {error && (
-                        <div className="py-20 text-center">
-                            <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
-                                <AlertCircle className="w-10 h-10 text-[var(--error)]" />
-                            </div>
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to load orders</h3>
-                            <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{error.message || 'An unexpected error occurred while fetching your orders. Please try again.'}</p>
-                            <Button
-                                variant="primary"
-                                onClick={() => refetch()}
-                                className="mx-auto"
-                            >
-                                <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
-                            </Button>
-                        </div>
-                    )}
+                {/* Smart Filter Chips */}
+                <SmartFilterChips
+                    activeFilter={smartFilter}
+                    onFilterChange={(filter) => {
+                        setSmartFilter(filter);
+                        setPage(1); // Reset pagination
+                    }}
+                    counts={filterCounts}
+                />
 
-                    {/* Loading State */}
-                    {isLoading && !error && (
-                        <div className="py-12">
-                            <div className="animate-pulse space-y-4 px-6">
-                                {Array.from({ length: 6 }).map((_, i) => (
-                                    <div key={i} className="flex items-center gap-6 py-2">
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-24" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-32" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-48 flex-1" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-24" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-20" />
-                                    </div>
-                                ))}
-                            </div>
+                {/* Error State */}
+                {error && (
+                    <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm py-20 text-center">
+                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertCircle className="w-10 h-10 text-[var(--error)]" />
                         </div>
-                    )}
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to load orders</h3>
+                        <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{error.message || 'An unexpected error occurred while fetching your orders. Please try again.'}</p>
+                        <Button
+                            variant="primary"
+                            onClick={() => refetch()}
+                            className="mx-auto"
+                        >
+                            <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
+                        </Button>
+                    </div>
+                )}
 
-                    {/* Data Table */}
-                    {!isLoading && !error && (
-                        <>
-                            <DataTable
-                                columns={columns}
-                                data={filteredData}
-                                onRowClick={(row) => setSelectedOrder(row)}
-                                isLoading={isLoading}
-                            />
-                            {filteredData.length === 0 && (
-                                <div className="py-24 text-center">
-                                    <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <Package className="w-10 h-10 text-[var(--text-muted)]" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-[var(--text-primary)]">No orders found</h3>
-                                    <p className="text-[var(--text-muted)] text-sm mt-2 mb-6">Your search criteria didn't match any records.</p>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => { setSearch(''); setActiveTab('all'); setPaymentFilter('all'); }}
-                                        className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
-                                    >
-                                        Clear all filters
-                                    </Button>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
+                {/* Responsive Order List */}
+                {!error && (
+                    <ResponsiveOrderList
+                        orders={filteredData}
+                        isLoading={isLoading}
+                        onOrderClick={(order) => setSelectedOrder(order)}
+                        className={isMobile ? '' : 'bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm'}
+                    />
+                )}
+
+                {/* Empty State with Clear Filters */}
+                {!isLoading && !error && filteredData.length === 0 && (
+                    <div className="text-center mt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setSearch('');
+                                setActiveTab('all');
+                                setPaymentFilter('all');
+                                setSmartFilter('all');
+                            }}
+                            className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                        >
+                            Clear all filters
+                        </Button>
+                    </div>
+                )}
 
                 {/* Pagination Controls */}
                 {pagination && pagination.pages > 1 && (

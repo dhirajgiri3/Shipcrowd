@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Package, Truck, Wallet, FileText, Settings, BarChart3, Upload, Download } from 'lucide-react';
+import { Truck, FileText, Settings, BarChart3, Upload, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '../../../hooks/ux';
@@ -21,23 +21,17 @@ interface QuickAction {
 }
 
 interface QuickActionsGridProps {
-    walletBalance?: number;
     pendingPickups?: number;
 }
 
-export function QuickActionsGrid({ walletBalance = 0, pendingPickups = 0 }: QuickActionsGridProps) {
+export function QuickActionsGrid({ pendingPickups = 0 }: QuickActionsGridProps) {
     const router = useRouter();
     const isMobile = useIsMobile();
 
+    // Research-backed: Removed "Create Order" (redundant with PerformanceBar CTA)
+    // Research-backed: Removed "Recharge Wallet" (wallet in PerformanceBar)
+    // Keep only contextual secondary actions
     const actions: QuickAction[] = [
-        {
-            id: 'create-order',
-            icon: Package,
-            title: 'Create Order',
-            description: 'Single or bulk upload',
-            url: '/seller/orders/create',
-            color: 'var(--primary-blue)'
-        },
         {
             id: 'schedule-pickup',
             icon: Truck,
@@ -48,20 +42,20 @@ export function QuickActionsGrid({ walletBalance = 0, pendingPickups = 0 }: Quic
             color: 'var(--warning)'
         },
         {
-            id: 'recharge-wallet',
-            icon: Wallet,
-            title: 'Recharge Wallet',
-            description: `Balance: ₹${walletBalance.toLocaleString()}`,
-            url: '/seller/wallet/recharge',
-            color: 'var(--success)'
-        },
-        {
             id: 'bulk-upload',
             icon: Upload,
             title: 'Bulk Upload',
             description: 'Import orders via CSV',
             url: '/seller/orders/bulk',
             color: 'var(--info)'
+        },
+        {
+            id: 'view-orders',
+            icon: FileText,
+            title: 'All Orders',
+            description: 'Complete order list',
+            url: '/seller/orders',
+            color: 'var(--text-secondary)'
         },
         {
             id: 'download-reports',
@@ -86,19 +80,11 @@ export function QuickActionsGrid({ walletBalance = 0, pendingPickups = 0 }: Quic
             description: 'Detailed insights',
             url: '/seller/analytics',
             color: 'var(--primary-blue)'
-        },
-        {
-            id: 'view-orders',
-            icon: FileText,
-            title: 'All Orders',
-            description: 'Complete order list',
-            url: '/seller/orders',
-            color: 'var(--text-secondary)'
         }
     ];
 
-    // Show 6 on mobile, all on desktop
-    const displayedActions = isMobile ? actions.slice(0, 6) : actions;
+    // Show 4 on mobile, all on desktop (reduced from 8 to 6 total actions)
+    const displayedActions = isMobile ? actions.slice(0, 4) : actions;
 
     return (
         <div className="space-y-4">

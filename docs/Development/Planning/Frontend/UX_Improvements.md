@@ -1,3059 +1,814 @@
-# ShipCrowd: Complete UX Transformation & Product Excellence Initiative
+# ShipCrowd: Dashboard Transformation Plan
 
-## Mission Statement
+**Mission:** Transform seller dashboard from card-heavy UI into decision-first operational cockpit that answers "What should I do?" in < 3 seconds.
 
-Transform ShipCrowd from a generic shipping aggregator into THE BEST shipping management platform in the Indian market - surpassing ShipRocket, DTDC, Delhivery, BlueDart, Shiprocket, and all competitors through superior user experience, intelligent information architecture, and genuine business impact.
+**Target:** Indian e-commerce sellers (70% mobile, price-sensitive, COD-heavy, RTO-averse)
 
-**This is not a minor refactoring. This is a complete UX reimagination.**
-
----
-
-## Critical Context & Codebase Access
-
-You have the complete ShipCrowd codebase including:
-- **Seller Dashboard** (`/client/src/pages/seller/`) - All pages, subpages, components
-- **Admin Dashboard** (`/client/src/pages/admin/`) - All pages, subpages, components  
-- **Shared Components** (`/client/components/`) - UI library and reusable components
-- **Existing Mock Data** (`/client/src/mockData/`) - Preserve and enhance
-- **API Integration** (`/client/src/hooks/`, `/client/src/services/`) - Backend integration layer
-- **Theme System** (`/client/src/styles/global.css`) - Color schemes and design tokens
-
-**Your Recent Quality Benchmark:**
-You previously delivered A+ code with 1,774 lines achieving:
-- 100% TypeScript type safety
-- Zero breaking changes, zero bugs
-- WCAG 2.1 AA accessibility
-- Comprehensive hooks and reusable components
-- Full dark mode support
-
-**Maintain or exceed this quality standard.**
+**Approach:** Incremental, measured, rollback-ready phases with strict acceptance criteria
 
 ---
 
-## The Brutal Truth About Current State
+## Current State Assessment (Brutal Truth)
 
-### Current Product Reality
+### What We Have (Phase 0 Status: ~60% Complete)
 
-**What exists today is NOT good enough:**
+✅ **Completed:**
+- PerformanceBar exists (compact KPI layout)
+- SmartInsightsPanel redesigned (no emojis/sparkles)
+- QuickActionsGrid reduced (8→6 items)
+- DashboardSetupBanner (gamified onboarding)
+- Component code quality improved
 
-❌ **No Information Hierarchy** - Everything shown with equal weight
-❌ **No Psychology** - Features placed randomly without user research
-❌ **Generic Experience** - Looks like every other shipping platform
-❌ **No User Flow Logic** - Workflows don't match how sellers think
-❌ **Complex Without Clarity** - Data presented in confusing ways
-❌ **No Business Impact Focus** - Metrics don't drive decisions
-❌ **Missing Indian Context** - Doesn't match Indian seller mindset
-❌ **Meaningless Features** - Things added without purpose
-❌ **Poor CTAs** - Actions buried or unclear
-❌ **No Data Flow Thinking** - Doesn't understand seller → admin → end user chain
+❌ **Critical Gaps (Must Fix):**
+- **No visual data hierarchy** — everything looks same weight
+- **No trend visualization** — KPIs show static numbers, no context
+- **No geographic insights** — city data not visualized
+- **Card-heavy layout** — 85% text/cards, 15% charts
+- **Charts hidden** — Order Trend buried in collapsed section (Priority 7)
+- **No shipment flow visualization** — 6 equal status cards instead of pipeline
+- **No data freshness indicators** — users don't know if data is stale
+- **No instrumentation** — can't measure UX improvements
+- **No decision clarity** — can't answer "Is revenue up?" or "Where are bottlenecks?" quickly
 
-**This needs complete UX overhaul, not minor tweaks.**
+### Research-Backed Problems
 
-### What We're Building Toward
+From [Dashboard Design Best Practices 2026](https://www.designrush.com/agency/ui-ux-design/dashboard/trends/dashboard-design-principles):
+- **Visual hierarchy broken:** Primary KPIs must be 1.5× larger than secondary
+- **Charts vs cards ratio wrong:** Should be 40-50% visual, 50-60% cards/text (we're at 15%/85%)
+- **Cognitive load high:** No progressive disclosure, everything visible always
 
-✅ **Best-in-class UX** - Better than ShipRocket, DTDC, Delhivery, ALL competitors
-✅ **Indian Market Fit** - Designed for Indian seller psychology and workflows  
-✅ **Business Partner** - Software that actively improves seller's business
-✅ **Intelligence Layer** - Analytics that drive real decisions
-✅ **Addictive Experience** - Sellers prefer us and can't switch back
-✅ **Research-Driven** - Every decision backed by user psychology
-✅ **Data Chain Aware** - Happy end customers → happy sellers → happy admins
-✅ **Professional Excellence** - Enterprise-grade with consumer-app simplicity
+From [Shipping Dashboard Examples](https://www.quantizeanalytics.co.uk/shipping-dashboard-examples/):
+- **Missing critical visuals:** No heatmap, no timeline, no sparklines, no gauge charts
+- **No geographic context:** Shipping dashboards need city-level heatmaps
 
----
+From [Data Visualization ROI Research](https://sranalytics.io/blog/data-visualization-techniques/):
+- **Visual retention:** 65% retention for visual data vs 10% for text
+- **Persuasion:** 67% convinced by visual data vs 50% by verbal content
 
-## Your Freedom & Constraints
-
-### ✅ YOU HAVE COMPLETE FREEDOM TO:
-
-**UX & Information Architecture:**
-- 🔄 **Completely redesign all user flows and workflows**
-- 🔄 **Remove ALL existing features/components** if better alternatives exist
-- 🔄 **Introduce entirely new interaction patterns**
-- 🔄 **Restructure information hierarchy from scratch**
-- 🔄 **Redesign all CTAs and action flows**
-- 🔄 **Rethink what data to show, where, when, and how**
-- 🔄 **Change navigation structure and mental models**
-- 🔄 **Apply user psychology and behavioral research**
-- 🔄 **Create new dashboard layouts**
-- 🔄 **Design new data visualization approaches**
-
-**Content & Features:**
-- ✅ Remove features that don't provide genuine value
-- ✅ Add features based on user research and psychology
-- ✅ Change how information is presented
-- ✅ Redesign forms, tables, charts completely
-- ✅ Introduce new components if they serve users better
-- ✅ Rethink empty states, error states, success flows
-- ✅ Design new onboarding experiences
-- ✅ Create contextual help and guidance
-
-**Business Logic:**
-- ✅ Decide which metrics matter most
-- ✅ Design analytics that drive decisions
-- ✅ Create insights that generate business value
-- ✅ Build features that make sellers more successful
-- ✅ Design admin tools that improve operations
-
-### ❌ YOU MUST PRESERVE:
-
-**Visual Design System (NOT UX):**
-- ⚠️ **Color schemes** from global.css (--primary, --secondary, etc.)
-- ⚠️ **Theme variables** (light/dark mode support via existing tokens)
-- ⚠️ **Component styling approach** (Tailwind + CSS variables)
-- ⚠️ **Overall visual aesthetic** (modern, clean, professional)
-
-**Technical Integrity:**
-- ⚠️ **Existing mock data structure** - Enhance but don't break
-- ⚠️ **TypeScript type safety** - Maintain 100% coverage
-- ⚠️ **Component architecture** - Use existing shadcn/ui components
-- ⚠️ **API integration layer** - Build on existing hooks/services
-
-**To Clarify:**
-- ✅ You CAN move a stat card from top to bottom if hierarchy demands it
-- ✅ You CAN change a table to a card layout if it's more intuitive
-- ✅ You CAN remove an entire dashboard section if it's not valuable
-- ✅ You CAN introduce completely new visualizations
-- ❌ You CANNOT change the color from `bg-primary` to `bg-blue-500`
-- ❌ You CANNOT create a new design system outside global.css
-- ✅ You CAN use the same `bg-primary` color in a completely different context
+**Verdict:** Current dashboard fails to leverage visual cognition and fails to establish clear hierarchy.
 
 ---
 
-## UX Research Foundation: Understanding Our Users
+## Design Principles (Non-Negotiable)
 
-### Primary User: Indian E-commerce Seller
+### 1. Decision-First Hierarchy
 
-**Profile:**
-- Age: 25-45
-- Business: Small to medium e-commerce (Shopify, WooCommerce, Amazon, Flipkart)
-- Daily orders: 5-500 orders/day
-- Primary device: Mobile phone (70% of usage)
-- Technical literacy: Medium (comfortable with apps, not with complex software)
-- Pain points: High shipping costs, courier delays, COD remittance delays, RTO losses
-- Goals: Save money, ship faster, reduce RTO, improve cash flow
-- Time available: Very limited - wants quick actions
+Every screen must answer these questions in order:
 
-**Behavioral Patterns:**
-- Checks app multiple times daily on phone
-- Needs quick access to critical info (wallet, pending actions)
-- Makes decisions based on cost first, speed second
-- Compares couriers frequently
-- Worries about COD collection and remittance
-- Panics during festival season peaks
-- Needs reassurance (confirmations, success states)
-- Prefers visual data over text-heavy reports
-- Takes shortcuts if available
+1. **Urgent:** What needs my attention NOW? (alerts, low balance, failed shipments)
+2. **Status:** Is my business healthy? (wallet, orders, revenue with trends)
+3. **Insights:** How can I improve? (cost savings, RTO prevention)
+4. **Details:** What are the patterns? (charts, analytics — expandable)
 
-**Psychology:**
-- **Price sensitivity (EXTREME):** Every ₹5 matters, shows savings prominently
-- **Trust issues:** Needs transparency, no hidden fees, clear pricing
-- **Loss aversion:** Fear of RTO losses more than desire for gains
-- **Decision fatigue:** Too many choices = paralysis, needs recommendations
-- **Social proof:** "Most sellers choose X" influences decisions
-- **Immediacy:** Wants instant gratification, real-time updates
-- **Control:** Needs to feel in control of shipping process
-- **Comparison:** Always comparing with other platforms
+### 2. Visual > Text
 
-### Secondary User: Platform Admin
+- **KPIs:** Number + sparkline + delta (not just number)
+- **Status:** Pipeline flow (not 6 equal cards)
+- **Geography:** Heatmap + bar chart (not hidden)
+- **Trends:** Dominant chart always visible (not collapsed)
 
-**Profile:**
-- Role: Operations, support, finance, or management
-- Goals: Monitor platform health, resolve issues, analyze trends, improve operations
-- Pain points: Scattered data, manual processes, dispute resolution, seller queries
-- Needs: Efficiency tools, automated insights, quick issue resolution
+### 3. Mobile-First (70% Usage)
 
-**Data Chain Understanding:**
-```
-End Customer Satisfaction
-    ↓
-Seller Retention & Growth
-    ↓
-Admin Operational Efficiency
-    ↓
-Platform Success
-```
+- Thumb-zone primary actions
+- Bottom sheets > modals
+- Swipeable KPIs and cards
+- Single-column collapsed layout
 
-**Admin's success = Seller's success = End customer's satisfaction**
+### 4. Indian Market Psychology
 
----
+- **Price sensitivity:** Show savings prominently (₹2,400/week saved)
+- **Trust:** Transparent cost breakdowns, no hidden fees
+- **COD focus:** 65% of orders — needs visibility
+- **RTO prevention:** Loss aversion — highlight risk early
 
-## Systematic Analysis Framework
+### 5. Data Freshness Contract
 
-### Phase 1: Current State Audit (CRITICAL FIRST STEP)
-
-**For EVERY page, component, and feature, document:**
-
-#### 1A: Functionality Audit
-```markdown
-## Feature: [Name]
-**Location:** [File path]
-**Purpose:** [What it claims to do]
-
-### Current State:
-- What data is shown?
-- What actions are available?
-- What is the user trying to accomplish?
-- What is the current user flow?
-
-### Problems Identified:
-- [ ] Information hierarchy issues
-- [ ] Unclear purpose
-- [ ] Missing context
-- [ ] Poor CTAs
-- [ ] Doesn't match user mental model
-- [ ] Complex without clarity
-- [ ] No psychological basis
-- [ ] Doesn't drive business decisions
-
-### User Value Assessment:
-- Does this help sellers save money? [Yes/No/Unclear]
-- Does this save time? [Yes/No/Unclear]
-- Does this reduce errors? [Yes/No/Unclear]
-- Does this improve decision-making? [Yes/No/Unclear]
-- Would user notice if removed? [Yes/No/Unclear]
-
-### Recommendation:
-- [ ] Remove (no value)
-- [ ] Keep as-is (working well)
-- [ ] Redesign completely (valuable but poorly executed)
-- [ ] Merge with [other feature]
-- [ ] Replace with [new approach]
-```
-
-#### 1B: Information Architecture Audit
-
-**Current Dashboard Structure Analysis:**
-
-```markdown
-## Seller Dashboard - Current IA
-
-### What's shown first (top of page):
-1. [Component name] - Shows: [data] - Issue: [why problematic]
-2. [Component name] - Shows: [data] - Issue: [why problematic]
-
-### What should be shown first (priority):
-Based on user psychology and behavior:
-1. [Critical action/info] - Why: [research/psychology basis]
-2. [Important metric] - Why: [business impact]
-
-### Current Navigation:
-- Menu structure: [current]
-- Issues: [problems with current nav]
-- User mental model: [how sellers think about tasks]
-- Gap: [difference between nav and mental model]
-
-### Proposed Navigation:
-- Reorganized around: [user tasks/workflows]
-- Structure: [new organization]
-- Rationale: [psychology/research basis]
-```
-
-#### 1C: User Flow Analysis
-
-**For each workflow, map current vs. ideal:**
-
-```markdown
-## Workflow: Create Bulk Order
-
-### Current Flow:
-1. Click "Orders" in sidebar
-2. Click "Bulk Upload"
-3. Download template
-4. Fill Excel
-5. Upload file
-6. Review errors (if any)
-7. Fix errors in Excel
-8. Re-upload
-9. Confirm
-Total steps: 9 | Pain points: Template confusion, error fixing
-
-### User's Mental Model:
-"I have 50 orders to ship. Just let me upload and go."
-
-### Ideal Flow:
-1. Click "Upload Orders" (prominent CTA)
-2. Drag & drop Excel (any format - we parse it)
-3. AI maps columns automatically
-4. Preview orders with inline error fixing
-5. Confirm & create
-Total steps: 5 | Intelligence: Auto-mapping, inline fixes
-
-### Implementation:
-- Remove: Template requirement
-- Add: Smart column detection
-- Add: Inline error editing
-- Add: Preview with clear summary
-```
-
-#### 1D: Competitive Analysis
-
-**Analyze each competitor feature:**
-
-```markdown
-## Competitor Feature Analysis
-
-### ShipRocket: [Feature Name]
-- What they do well: [strengths]
-- What they do poorly: [weaknesses]
-- User complaints: [from reviews/feedback]
-- Our opportunity: [how to do better]
-
-### DTDC Dashboard: [Feature Name]
-- Analysis: [what to learn/avoid]
-
-### Our Approach:
-- Differentiator: [how we'll be better]
-- Implementation: [specific improvements]
-```
-
-### Phase 2: Research-Driven Redesign
-
-#### 2A: Psychology-Based Information Hierarchy
-
-**Apply these principles to EVERY screen:**
-
-**Attention Priority Framework:**
-1. **Critical Actions (Top/Prominent):**
-   - What user came to do RIGHT NOW
-   - Emergency situations requiring attention
-   - High-value, low-effort quick wins
-   
-2. **Important Status (Immediate Visibility):**
-   - Money-related (wallet, pending COD, costs)
-   - Problem indicators (failed orders, disputes, RTO)
-   - Time-sensitive items (pickup pending, delivery today)
-
-3. **Decision Support (Easy Access):**
-   - Data that informs next action
-   - Comparative information (courier rates, zone performance)
-   - Trends and patterns (analytics, insights)
-
-4. **Contextual Help (Available but not intrusive):**
-   - Explanations, tooltips, guides
-   - Historical data, detailed analytics
-   - Settings and preferences
-
-**Example Application:**
-
-**BAD Current Dashboard (No Hierarchy):**
-```
-┌─────────────────────────────────────┐
-│ Total Orders: 1,247                 │
-│ Revenue: ₹2.4L                      │
-│ Avg Delivery Time: 3.2 days         │
-│ Top Courier: Delhivery              │
-│ Zone Distribution: A(40%) B(35%)    │
-│ Return Rate: 3.2%                   │
-│                                     │
-│ [Recent Orders Table]               │
-│ [Analytics Charts]                  │
-│ [Insights Section]                  │
-└─────────────────────────────────────┘
-```
-*Everything equal weight, no clear action, just data dump*
-
-**GOOD Redesigned Dashboard (Psychology-Driven):**
-```
-┌─────────────────────────────────────┐
-│ 🚨 Needs Attention (Priority 1)     │
-│ ⚠️  3 orders: Pickup pending        │ ← Critical
-│ 💰 ₹12,400 COD ready for remittance │ ← Money
-│ [Quick Action Buttons]              │
-├─────────────────────────────────────┤
-│ Today's Snapshot (Priority 2)       │
-│ Wallet: ₹45,230 | Orders: 23        │ ← Status
-│ [Prominent CTA: Create Order]       │
-├─────────────────────────────────────┤
-│ 💡 Save ₹2,400/week (Priority 3)    │
-│ Switch Zone B orders to Delhivery   │ ← Insight
-│ [Act on This]                       │
-├─────────────────────────────────────┤
-│ ▼ This Week's Performance           │ ← Expandable
-│   [Charts - collapsed by default]   │ ← Lower priority
-└─────────────────────────────────────┘
-```
-*Clear hierarchy: Urgent → Status → Actions → Details*
-
-#### 2B: Indian Market Psychology Integration
-
-**For EVERY feature, consider Indian context:**
-
-**Price Sensitivity:**
+Every API response MUST include:
 ```typescript
-// ❌ BAD - Hidden savings
-<OrderCard>
-  <div>Order #123</div>
-  <div>Courier: Delhivery</div>
-  <div>Cost: ₹65</div>
-</OrderCard>
-
-// ✅ GOOD - Savings prominent
-<OrderCard>
-  <div>Order #123</div>
-  <div className="flex items-center gap-2">
-    <Badge variant="success">Saved ₹22</Badge>
-    <span>Delhivery - ₹65</span>
-    <span className="text-muted line-through">₹87</span>
-  </div>
-</OrderCard>
-```
-
-**Trust Building:**
-```typescript
-// ❌ BAD - No transparency
-<ShippingCost>₹65</ShippingCost>
-
-// ✅ GOOD - Complete breakdown
-<ShippingCost>
-  <div>Base Rate: ₹45</div>
-  <div>Fuel Surcharge: ₹15</div>
-  <div>GST @18%: ₹10.80</div>
-  <Divider />
-  <div>Total: ₹70.80</div>
-  <InfoTooltip>No hidden fees ever</InfoTooltip>
-</ShippingCost>
-```
-
-**Decision Support:**
-```typescript
-// ❌ BAD - Choice overload
-<CourierSelect options={allCouriers} />
-
-// ✅ GOOD - Smart defaults with easy override
-<CourierRecommendation>
-  <RecommendedOption highlighted>
-    <Badge>Recommended</Badge>
-    Delhivery - ₹65
-    <Reason>Fastest to this pincode (2 days)</Reason>
-    <SocialProof>87% of sellers choose this</SocialProof>
-  </RecommendedOption>
-  
-  <AlternativeOptions collapsed>
-    <Option>BlueDart - ₹82 (1 day)</Option>
-    <Option>DTDC - ₹58 (4 days)</Option>
-  </AlternativeOptions>
-</CourierRecommendation>
-```
-
-**Mobile-First (70% Usage):**
-```typescript
-// Design every screen for mobile FIRST, then enhance for desktop
-
-// ❌ BAD - Desktop table on mobile
-<Table>
-  <Row>
-    <Cell>AWB</Cell>
-    <Cell>Customer</Cell>
-    <Cell>Address</Cell>
-    <Cell>Status</Cell>
-    <Cell>Courier</Cell>
-    <Cell>Cost</Cell>
-    <Cell>Actions</Cell>
-  </Row>
-</Table>
-// Unusable on mobile - requires horizontal scroll
-
-// ✅ GOOD - Mobile-first card layout
-<OrderCard>
-  <CardHeader>
-    <StatusBadge status={status} />
-    <AWB copyable>SHIP123456</AWB>
-  </CardHeader>
-  
-  <CardBody>
-    <CustomerInfo name={name} phone={phone} />
-    <DeliveryAddress short city={city} pincode={pincode} />
-  </CardBody>
-  
-  <CardFooter>
-    <CourierInfo logo={courier} />
-    <Cost amount={cost} saved={saved} />
-    <QuickActions>
-      <IconButton icon={<Phone />} />
-      <IconButton icon={<Eye />} />
-    </QuickActions>
-  </CardFooter>
-</OrderCard>
-// Scannable, touch-friendly, all info visible
-```
-
-#### 2C: Business Impact Focus
-
-**Every metric should drive a decision:**
-
-```typescript
-// ❌ BAD - Vanity metrics with no action
-<AnalyticsCard>
-  <Stat label="Total Orders" value="1,247" />
-  <Stat label="Avg Weight" value="2.3kg" />
-  <Stat label="Most Common Zone" value="B" />
-</AnalyticsCard>
-// So what? What do I do with this info?
-
-// ✅ GOOD - Actionable insights
-<ActionableInsight>
-  <Metric>
-    <Value>64% of your orders</Value>
-    <Label>go to Zone B</Label>
-  </Metric>
-  
-  <Recommendation>
-    <Badge variant="success">Save ₹2,400/week</Badge>
-    <Action>
-      Delhivery is ₹22 cheaper for Zone B.
-      <Button>Auto-select for Zone B orders</Button>
-    </Action>
-  </Recommendation>
-  
-  <Impact>
-    This week: ₹528 saved if you had this enabled.
-  </Impact>
-</ActionableInsight>
-// Clear value, clear action, clear impact
-```
-
-**Business Partner Thinking:**
-
-```markdown
-## Not Just Software - Business Partner
-
-### Software Approach:
-"Here's your data. You figure it out."
-
-### Business Partner Approach:
-"I noticed a problem. Here's how to fix it. Want me to do it?"
-
-### Implementation Example:
-
-Feature: RTO Prevention Assistant
-
-Instead of:
-- Show RTO rate: 8.2%
-
-Do this:
-- 🚨 Alert: "Your RTO rate increased from 5% to 8.2%"
-- 🔍 Analysis: "Most RTOs from Tier 3 cities (Customer unavailable)"
-- 💡 Recommendation: "Add IVR confirmation for Tier 3 cities"
-- ⚡ Action: [Enable IVR Confirmation] (one-click)
-- 📊 Projected Impact: "Reduce RTOs by ~40% (based on similar sellers)"
-```
-
-### Phase 3: Implementation Strategy
-
-#### 3A: Mock Data with Environmental Toggle
-
-**Preserve existing mock data structure, enhance quality:**
-
-```typescript
-// /client/src/mockData/index.ts - Keep existing exports
-// /client/src/mockData/seller/orders.ts - Enhance realism
-// Add: /client/src/mockData/seller/insights.ts (new)
-// Add: /client/src/mockData/seller/recommendations.ts (new)
-
-// Environment-based API integration
-// .env
-VITE_USE_MOCK_DATA=true  // For client demos
-VITE_API_FALLBACK=true   // Fallback to mock if API fails
-
-// Unified API layer
-export async function apiRequest<T>(
-  endpoint: string,
-  options?: RequestInit,
-  mockData?: T
-): Promise<T> {
-  const useMock = import.meta.env.VITE_USE_MOCK_DATA === 'true';
-  const allowFallback = import.meta.env.VITE_API_FALLBACK === 'true';
-  
-  if (useMock && mockData) {
-    await simulateDelay(); // Realistic UX
-    return mockData;
-  }
-  
-  try {
-    const response = await fetch(endpoint, options);
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
-    return await response.json();
-  } catch (error) {
-    if (allowFallback && mockData) {
-      console.warn(`Falling back to mock for ${endpoint}`);
-      return mockData;
-    }
-    throw error;
-  }
+{
+  data: T,
+  last_updated_at: string, // ISO 8601
+  freshness: 'real_time' | 'cached_60s' | 'stale_5m' | 'stale_15m'
 }
 ```
 
-#### 3B: Component Redesign Process
-
-**For each component being redesigned:**
-
-```markdown
-## Component Redesign: [Name]
-
-### Current Analysis:
-- Purpose: [what it does]
-- Problems: [UX issues identified]
-- User complaints: [if known]
-
-### Research Basis:
-- User need: [psychology/behavior insight]
-- Competitor analysis: [what others do]
-- Best practice: [industry standards]
-
-### Redesign Approach:
-- Information hierarchy: [priority order]
-- User flow: [interaction pattern]
-- Psychology applied: [specific principles]
-- Mobile considerations: [mobile-first design]
-
-### Implementation:
-- Preserve: [colors, theme from global.css]
-- Change: [layout, content, flows]
-- Add: [new features/interactions]
-- Remove: [unnecessary elements]
-
-### Success Metrics:
-- User can accomplish [task] in [N] steps (vs [M] currently)
-- Critical info visible in [N] seconds
-- Mobile usability score: [target]
-```
-
-#### 3C: Feature Decision Matrix
-
-**Systematic evaluation of every feature:**
-
-| Feature | User Value | Complexity | Indian Market Fit | Business Impact | Decision |
-|---------|-----------|------------|-------------------|-----------------|----------|
-| Bulk Upload | High | Medium | High | High | ✅ Keep & Enhance |
-| Zone Analytics | High | Low | High | High | ✅ Keep & Enhance |
-| Courier Compare | High | Low | High (price sensitive) | High | ✅ Keep & Enhance |
-| Advanced Filters | Medium | High | Medium | Low | ⚠️ Simplify |
-| Custom Reports | Low | High | Low | Low | 🗑️ Remove |
-| AI Predictions | High | Medium | Medium | High | ✅ Build |
-| RTO Prevention | High | Medium | High | High | ✅ Build |
-
-**Decision Rules:**
-- **✅ Keep & Enhance:** High value + Good fit = Polish and improve
-- **⚠️ Simplify:** Medium value + High complexity = Reduce to essentials
-- **🗑️ Remove:** Low value + Any complexity = Delete
-- **🆕 Build:** High value + Missing = Create
+Show amber badge if stale > 10 minutes.
 
 ---
 
-## Detailed Redesign Guidelines
+## Phase Breakdown
 
-### Information Architecture Patterns
+### Phase 0: Foundation (60% Complete) — FINISH FIRST
 
-#### Pattern 1: Progressive Disclosure
+**Remaining Tasks:**
 
-**Show less, reveal more on demand:**
+1. **Decision Map (1 page)**
+   - File: `/docs/Development/Planning/Frontend/DecisionMap.md`
+   - Content: Above-the-fold wireframes (desktop + mobile), Tier 1/2/3 rules
+   - Acceptance: All PRs must reference this doc
 
+2. **Instrumentation Schema**
+   - File: `/client/src/lib/analytics/events.ts`
+   - Events:
+     ```typescript
+     dashboard.viewed
+     kpi.clicked (kpi_name, filters)
+     trend.clicked (metric, range)
+     pipeline.stage.clicked (stage)
+     city.selected (city_id)
+     insight.actioned (insight_id, action_type)
+     ```
+   - Acceptance: Events fire and visible in console (dev mode)
+
+3. **Enhanced Mock Data**
+   - Files:
+     - `/client/src/lib/mockData/enhanced/kpiTrends.ts` (7-day sparklines)
+     - `/client/src/lib/mockData/enhanced/geoMetrics.ts` (city aggregates)
+     - `/client/src/lib/mockData/enhanced/pipelineFlow.ts` (stage counts)
+   - Acceptance: Mock data matches API contract types
+
+4. **Mobile-First Patterns**
+   - Files:
+     - `/client/src/components/patterns/BottomSheet.tsx`
+     - `/client/src/components/patterns/SwipeableCard.tsx`
+   - Acceptance: Components work on 360px width
+
+**Gate Criteria:**
+- [ ] Decision Map approved and published
+- [ ] Analytics events firing
+- [ ] Mock data types match API contracts
+- [ ] Mobile patterns tested on 360px
+
+---
+
+### Phase 1: Visual Hierarchy + Trends (NEXT — 5 days)
+
+**Objective:** Make dashboard answer "Is business healthy?" and "What's trending?" in < 3 seconds.
+
+**Scope:**
+
+#### 1.1: Add Sparklines to PerformanceBar
+
+**File:** `/client/src/components/seller/dashboard/PerformanceBar.tsx`
+
+**Changes:**
+- Add 7-day sparkline per KPI (Revenue, Profit, Orders)
+- Add delta text: `+12% vs last 7 days` or `↓ 3% vs last 7 days`
+- Add `last_updated_at` badge
+- Make each KPI clickable (applies filter to order list)
+
+**Implementation:**
 ```typescript
-// ❌ BAD - Everything visible always
-<Dashboard>
-  <Stats>All 15 metrics</Stats>
-  <Charts>All 8 charts</Charts>
-  <Tables>All data rows</Tables>
-  <Insights>All insights</Insights>
-</Dashboard>
+interface KPICardProps {
+  label: string;
+  value: number;
+  sparkline: number[]; // 7 data points
+  delta: number; // percentage change
+  trend: 'up' | 'down' | 'neutral';
+  onClick: () => void;
+}
 
-// ✅ GOOD - Progressive disclosure
-<Dashboard>
-  {/* Critical info - always visible */}
-  <CriticalAlerts />
-  <QuickStats top={3} />
-  
-  {/* Important - visible but collapsible */}
-  <Insights preview={2} expandable />
-  
-  {/* Detailed - hidden by default */}
-  <AnalyticsSection defaultCollapsed>
-    <Charts />
-    <DetailedMetrics />
-  </AnalyticsSection>
-</Dashboard>
+// Sparkline: lightweight SVG path (no heavy chart library)
+const Sparkline = ({ data }: { data: number[] }) => {
+  const points = data.map((v, i) =>
+    `${i * 10},${40 - (v / Math.max(...data)) * 30}`
+  ).join(' ');
+  return <polyline points={points} stroke="var(--primary-blue)" fill="none" />;
+};
 ```
 
-#### Pattern 2: Task-Based Navigation
-
-**Organize by what users want to DO, not by data structure:**
-
+**Mock Data:**
 ```typescript
-// ❌ BAD - System-centric navigation
-Navigation:
-- Orders (database table)
-- Products (database table)
-- Customers (database table)
-- Settings (misc)
-
-// ✅ GOOD - Task-centric navigation
-Navigation:
-- 📦 Ship Orders (primary action)
-  ├─ Create Single Order
-  ├─ Bulk Upload
-  └─ Import from Shopify
-  
-- 📊 Track & Manage (monitoring)
-  ├─ Active Shipments
-  ├─ Delivery Issues
-  └─ Returns & RTOs
-  
-- 💰 Money (finances)
-  ├─ Wallet & Payments
-  ├─ COD Remittance
-  └─ Cost Analytics
-  
-- 🎯 Optimize (improvement)
-  ├─ Smart Insights
-  ├─ Courier Performance
-  └─ Cost Savings
+// /client/src/lib/mockData/enhanced/kpiTrends.ts
+export const mockKPITrends = {
+  revenue: {
+    today: 52340,
+    sparkline: [45200, 48100, 51200, 49800, 52300, 50100, 52340],
+    delta: 12.3,
+    trend: 'up'
+  },
+  // ... profit, orders
+};
 ```
 
-#### Pattern 3: Contextual Actions
+**Acceptance:**
+- [ ] Sparkline renders correctly on mobile (360px)
+- [ ] Delta shows correct % and color (green up, red down)
+- [ ] Click KPI filters order list
+- [ ] `last_updated_at` visible
+- [ ] Analytics event `kpi.clicked` fires
 
-**Actions appear where needed, not in menus:**
-
+**Instrumentation:**
 ```typescript
-// ❌ BAD - Actions hidden in menu
-<OrderCard order={order}>
-  <OrderDetails />
-  <MoreMenu>
-    <MenuItem>Track</MenuItem>
-    <MenuItem>Print Label</MenuItem>
-    <MenuItem>Cancel</MenuItem>
-    <MenuItem>Contact Customer</MenuItem>
-  </MoreMenu>
-</OrderCard>
-
-// ✅ GOOD - Contextual actions based on status
-<OrderCard order={order}>
-  <OrderDetails />
-  
-  {order.status === 'created' && (
-    <PrimaryAction>
-      <Button>Schedule Pickup</Button>
-      <SecondaryActions>
-        <Button variant="ghost">Print Label</Button>
-        <Button variant="ghost">Edit</Button>
-      </SecondaryActions>
-    </PrimaryAction>
-  )}
-  
-  {order.status === 'pickup_pending' && (
-    <PrimaryAction>
-      <Button variant="warning">Pickup Overdue - Reschedule</Button>
-    </PrimaryAction>
-  )}
-  
-  {order.status === 'in_transit' && (
-    <PrimaryAction>
-      <Button>Track Live</Button>
-      <Button variant="ghost" onClick={() => shareTrackingWithCustomer()}>
-        Share with Customer
-      </Button>
-    </PrimaryAction>
-  )}
-</OrderCard>
-```
-
-#### Pattern 4: Smart Defaults
-
-**Reduce decisions with intelligent defaults:**
-
-```typescript
-// ❌ BAD - User must choose everything
-<CreateOrderForm>
-  <Select label="Courier" options={allCouriers} required />
-  <Select label="Service Type" options={serviceTypes} required />
-  <Select label="Package Type" options={packageTypes} required />
-  <Input label="Declared Value" required />
-</CreateOrderForm>
-
-// ✅ GOOD - Smart defaults with easy override
-<CreateOrderForm>
-  {/* Auto-selected based on: destination, weight, price */}
-  <RecommendedCourier>
-    <Badge>Auto-selected</Badge>
-    Delhivery - ₹65 (2 days)
-    <Reason>Best value for this destination</Reason>
-    <Button variant="link" onClick={showAllCouriers}>
-      Choose different courier
-    </Button>
-  </RecommendedCourier>
-  
-  {/* Auto-filled from product weight */}
-  <PackageWeight value={autoDetected} editable />
-  
-  {/* Auto-calculated from order value */}
-  <DeclaredValue value={calculated} editable />
-</CreateOrderForm>
-```
-
-### Mobile-First Design Patterns
-
-#### Pattern 1: Thumb-Zone Optimization
-
-```typescript
-// Design for single-handed use - place actions in thumb reach
-
-<MobileLayout>
-  {/* Top: Information (read-only) */}
-  <Header>
-    <Title>Active Orders</Title>
-    <Stats>24 orders today</Stats>
-  </Header>
-  
-  {/* Middle: Content (scrollable) */}
-  <ScrollableContent>
-    <OrderCards />
-  </ScrollableContent>
-  
-  {/* Bottom: Actions (thumb zone) */}
-  <BottomActionBar>
-    <FAB onClick={createOrder}>
-      <Plus /> Create Order
-    </FAB>
-    <QuickFilters />
-  </BottomActionBar>
-</MobileLayout>
-```
-
-#### Pattern 2: Gesture-Based Interactions
-
-```typescript
-// Swipe actions for common tasks
-<SwipeableOrderCard 
-  leftSwipe={{
-    action: 'track',
-    icon: <MapPin />,
-    color: 'blue',
-    label: 'Track'
-  }}
-  rightSwipe={{
-    action: 'call',
-    icon: <Phone />,
-    color: 'green',
-    label: 'Call Customer'
-  }}
->
-  <OrderContent />
-</SwipeableOrderCard>
-
-// Pull-to-refresh for data updates
-<PullToRefresh onRefresh={refreshOrders}>
-  <OrdersList />
-</PullToRefresh>
-```
-
-#### Pattern 3: Bottom Sheets for Mobile
-
-```typescript
-// Replace modals with bottom sheets on mobile
-const isMobile = useMediaQuery('(max-width: 768px)');
-
-{isMobile ? (
-  <BottomSheet 
-    open={isOpen} 
-    onClose={onClose}
-    snapPoints={[0.4, 0.9]} // Expandable
-  >
-    <CreateOrderForm />
-  </BottomSheet>
-) : (
-  <Dialog open={isOpen} onClose={onClose}>
-    <CreateOrderForm />
-  </Dialog>
-)}
-```
-
-### Data Visualization Excellence
-
-#### Principle 1: Show Trends, Not Just Numbers
-
-```typescript
-// ❌ BAD - Just a number
-<StatCard>
-  <Label>Revenue</Label>
-  <Value>₹2,45,000</Value>
-</StatCard>
-
-// ✅ GOOD - Number + trend + context
-<StatCard>
-  <Label>Revenue This Month</Label>
-  <Value>₹2,45,000</Value>
-  <Trend direction="up" value={23}>
-    ↑ 23% vs last month
-  </Trend>
-  <MiniChart data={last7Days} />
-  <Insight>
-    🎯 On track for ₹3L goal
-  </Insight>
-</StatCard>
-```
-
-#### Principle 2: Comparative Context
-
-```typescript
-// ❌ BAD - Absolute values only
-<CourierPerformance>
-  <Courier name="Delhivery" cost="₹65" time="2 days" />
-  <Courier name="BlueDart" cost="₹82" time="1 day" />
-  <Courier name="DTDC" cost="₹58" time="4 days" />
-</CourierPerformance>
-
-// ✅ GOOD - Relative comparison
-<CourierComparison>
-  <Courier name="Delhivery" highlighted="recommended">
-    <Cost>₹65</Cost>
-    <CostBar value={65} max={82} color="green" />
-    <Speed>2 days</Speed>
-    <SpeedBar value={2} max={4} color="yellow" />
-    <Badge>Best Balance</Badge>
-  </Courier>
-  
-  <Courier name="BlueDart">
-    <Cost>₹82 (+26% more)</Cost>
-    <Speed>1 day (2x faster)</Speed>
-    <Badge>Fastest</Badge>
-  </Courier>
-  
-  <Courier name="DTDC">
-    <Cost>₹58 (11% cheaper)</Cost>
-    <Speed>4 days (2x slower)</Speed>
-    <Badge>Cheapest</Badge>
-  </Courier>
-</CourierComparison>
-```
-
-#### Principle 3: Actionable Visualizations
-
-```typescript
-// ❌ BAD - Just a chart
-<ZoneDistributionChart data={zoneData} />
-
-// ✅ GOOD - Interactive, actionable chart
-<ZoneDistributionChart 
-  data={zoneData}
-  onZoneClick={(zone) => {
-    // Show zone-specific insights
-    showZoneDetails(zone);
-  }}
-  annotations={[
-    {
-      zone: 'B',
-      message: 'Switch to Delhivery here',
-      action: {
-        label: 'Save ₹2,400/week',
-        onClick: () => applyRecommendation('zone_b_courier')
-      }
-    }
-  ]}
-  highlights={{
-    'B': { color: 'yellow', reason: 'Optimization opportunity' }
-  }}
-/>
+analytics.track('kpi.clicked', {
+  kpi_name: 'revenue',
+  delta: 12.3,
+  trend: 'up',
+  filters_applied: { range: '7d' }
+});
 ```
 
 ---
 
-## Competitive Excellence Framework
+#### 1.2: Create Dominant Order Trend Chart
 
-### ShipRocket - What They Do (Gaps to Exploit)
+**File:** `/client/src/components/seller/dashboard/OrderTrendChart.tsx` (NEW)
 
-**Strengths to Match:**
-- Clean, modern interface
-- Quick order creation
-- Good courier selection
+**Design:**
+- Large area chart showing 30-day order volume
+- Always visible (Tier 1 priority, not collapsed)
+- Brushable (select time range)
+- Click data point → filter orders by date
 
-**Weaknesses to Capitalize On:**
-- ❌ Generic experience (no personalization)
-- ❌ Hidden costs (surprise fees)
-- ❌ Complex pricing (hard to understand)
-- ❌ Poor mobile experience (desktop-first)
-- ❌ Limited insights (just data, no recommendations)
-- ❌ Reactive (doesn't predict problems)
+**Placement:**
+- **Current:** AnalyticsSection (Priority 7, collapsed)
+- **New:** Directly after PerformanceBar (Priority 2, expanded)
 
-**Our Differentiation:**
-```markdown
-### ShipCrowd vs ShipRocket
-
-| Aspect | ShipRocket | ShipCrowd (Our Goal) |
-|--------|-----------|----------------------|
-| Pricing | Complex tiers, hidden fees | Transparent, no surprises |
-| Insights | Basic analytics | AI-powered recommendations |
-| Mobile | Desktop-first | Mobile-first (70% usage) |
-| Support | Generic | Contextual, predictive |
-| Courier Selection | Manual comparison | Smart defaults + easy override |
-| RTO Prevention | Reactive | Proactive alerts & solutions |
-| COD Remittance | Standard process | Real-time tracking, fast settlement |
-| User Experience | Professional, generic | Addictive, personalized |
-```
-
-### Design for "Better Than All" Status
-
-**Every feature must beat competitors:**
-
-1. **Courier Selection:**
-   - Competitors: Show list, user picks
-   - Us: AI recommends best, explains why, one-click accept or easy override
-
-2. **Order Tracking:**
-   - Competitors: Status updates
-   - Us: Predictive alerts ("Likely delay due to weather"), proactive solutions
-
-3. **Analytics:**
-   - Competitors: Charts and numbers
-   - Us: "You spent ₹12K more than needed last month. Here's how to save."
-
-4. **Bulk Upload:**
-   - Competitors: Download template, fill, upload, fix errors
-   - Us: Drop any Excel, we auto-map, inline error fixing
-
-5. **RTO Management:**
-   - Competitors: View RTO list
-   - Us: "RTO rate increased 40% from Tier 3 cities. Enable IVR confirmation? [Yes]"
-
----
-
-## Implementation Execution Plan
-
-### Step 1: Comprehensive Discovery (Week 1)
-
-**Task 1.1: Complete Codebase Inventory**
-```bash
-# Map entire dashboard structure
-find client/src/pages/seller -type f -name "*.tsx" > seller_inventory.txt
-find client/src/pages/admin -type f -name "*.tsx" > admin_inventory.txt
-find client/src/components -type f -name "*.tsx" > components_inventory.txt
-
-# Document each file:
-# - Purpose
-# - Current UX issues
-# - Mock data status
-# - API integration status
-```
-
-**Task 1.2: UX Audit Report**
-```markdown
-For each page/component, create:
-
-# [Component Name] - UX Audit
-
-## Current State
-- Screenshot/description of current UI
-- User flow diagram
-- Information shown
-- Actions available
-
-## Problems Identified
-1. [Specific UX issue]
-   - Impact: [how it hurts users]
-   - Evidence: [psychology/research basis]
-   
-2. [Another issue]
-   ...
-
-## Competitive Analysis
-- ShipRocket approach: [description]
-- Others: [DTDC, Delhivery, etc.]
-- Gap: [what's missing in market]
-
-## Redesign Proposal
-- User need: [core problem solving]
-- Information hierarchy: [priority order]
-- New flow: [step-by-step]
-- Psychology applied: [principles used]
-- Mobile optimization: [specific considerations]
-- Business impact: [how it improves metrics]
-
-## Implementation
-- Remove: [what to delete]
-- Keep: [what to preserve]
-- Add: [new features]
-- Mock data needed: [data requirements]
-- API contract: [backend requirements]
-```
-
-**Task 1.3: Create Master Redesign Roadmap**
-```markdown
-# ShipCrowd UX Transformation Roadmap
-
-## Phase 1: Critical User Flows (Week 2-3)
-- [ ] Dashboard home (seller)
-- [ ] Order creation flow
-- [ ] Bulk upload
-- [ ] Order tracking
-
-## Phase 2: Money & Analytics (Week 4-5)
-- [ ] Wallet & payments
-- [ ] COD remittance
-- [ ] Cost analytics
-- [ ] Smart insights
-
-## Phase 3: Advanced Features (Week 6-7)
-- [ ] RTO prevention
-- [ ] Courier optimization
-- [ ] Returns management
-- [ ] Dispute handling
-
-## Phase 4: Admin Dashboard (Week 8-9)
-- [ ] Admin overview
-- [ ] Seller management
-- [ ] Analytics & reporting
-- [ ] System health
-
-## Phase 5: Polish & Innovation (Week 10)
-- [ ] Micro-interactions
-- [ ] Onboarding flow
-- [ ] Help & guidance
-- [ ] Delight features
-```
-
-### Step 2: Systematic Redesign (Weeks 2-10)
-
-**For each component in roadmap:**
-
-#### 2.1: Research & Design
-```markdown
-1. Review audit findings
-2. Study user psychology for this task
-3. Analyze competitor approaches
-4. Design information hierarchy
-5. Create user flow diagram
-6. Design mobile-first wireframe
-7. Document design decisions
-8. Get conceptual validation
-```
-
-#### 2.2: Implementation
+**Implementation:**
 ```typescript
-// Follow this pattern for every redesign:
-
-// 1. Document current state
-/**
- * CURRENT STATE (Before Redesign):
- * File: OrdersList.tsx
- * Issues: 
- * - Desktop table unusable on mobile
- * - No status priority
- * - Actions hidden in menu
- * - No quick filters
- * - Information overload
- */
-
-// 2. Define new approach
-/**
- * REDESIGNED APPROACH:
- * - Mobile-first card layout
- * - Status-based grouping (urgent first)
- * - Contextual actions visible
- * - Smart filters with presets
- * - Progressive disclosure
- * 
- * Psychology Applied:
- * - Urgency bias: Critical orders first
- * - Recognition over recall: Icons + labels
- * - Progressive disclosure: Details on demand
- * 
- * Mobile Optimization:
- * - Cards stack vertically
- * - Swipe actions for quick tasks
- * - Bottom sheet for filters
- * - Infinite scroll with skeleton loading
- */
-
-// 3. Implement with quality
-export function OrdersList() {
-  const { data: orders, isLoading } = useOrders();
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  
-  // Group by urgency
-  const { urgent, normal, completed } = groupOrdersByPriority(orders);
-  
-  if (isLoading) return <OrdersListSkeleton />;
-  
+export function OrderTrendChart({ data }: { data: TrendData[] }) {
   return (
-    <div className="space-y-6">
-      {/* Urgent orders - always visible, prominent */}
-      {urgent.length > 0 && (
-        <UrgentOrdersSection orders={urgent} />
-      )}
-      
-      {/* Smart filters - mobile bottom sheet, desktop inline */}
-      {isMobile ? (
-        <BottomSheet trigger={<FilterButton />}>
-          <OrderFilters />
-        </BottomSheet>
-      ) : (
-        <OrderFilters inline />
-      )}
-      
-      {/* Orders list - layout based on device */}
-      {isMobile ? (
-        <OrderCardList 
-          orders={normal}
-          swipeActions={{
-            left: 'track',
-            right: 'call'
-          }}
-        />
-      ) : (
-        <OrderTable orders={normal} />
-      )}
+    <div className="rounded-2xl bg-[var(--bg-primary)] border p-6">
+      <h3>Order Volume Trend (Last 30 Days)</h3>
+      <ResponsiveContainer width="100%" height={250}>
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Area
+            type="monotone"
+            dataKey="orders"
+            fill="var(--primary-blue)"
+            stroke="var(--primary-blue-deep)"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
+```
 
-// 4. Add contextual intelligence
-function OrderCard({ order }) {
-  // Show relevant action based on status
-  const primaryAction = getPrimaryActionForStatus(order.status);
-  
+**Mock Data:**
+```typescript
+// /client/src/lib/mockData/enhanced/orderTrend.ts
+export const mockOrderTrend = generateRealisticTrend({
+  days: 30,
+  baseVolume: 42,
+  variance: 0.2,
+  weekendDrop: 0.3,
+  festivalSpikes: [{ day: 15, multiplier: 2.5 }]
+});
+```
+
+**Acceptance:**
+- [ ] Chart visible above fold (no scroll required)
+- [ ] Mobile: Chart readable at 360px width
+- [ ] Click data point filters order list
+- [ ] Chart loads in < 1s
+- [ ] Analytics event `trend.clicked` fires
+
+---
+
+#### 1.3: Restructure DashboardClient Hierarchy
+
+**File:** `/client/app/seller/components/DashboardClient.tsx`
+
+**Current Priority Order:**
+```
+1. UrgentActionsBar
+2. PerformanceBar (no sparklines)
+3. OrderStatusGrid (6 cards)
+4. CODStatusCard
+5. QuickActionsGrid
+6. SmartInsightsPanel
+7. AnalyticsSection (COLLAPSED)
+```
+
+**New Priority Order:**
+```
+TIER 1 (Above fold, no scroll)
+1. UrgentActionsBar (if alerts exist)
+2. PerformanceBar (WITH sparklines)
+3. OrderTrendChart (NEW — 30 days, always visible)
+
+TIER 2 (First scroll)
+4. ShipmentPipeline (REPLACES OrderStatusGrid in Phase 2)
+5. GeographicInsights (NEW — Phase 2)
+
+TIER 3 (Context & actions)
+6. SmartInsightsPanel
+7. CODStatusCard
+8. QuickActionsGrid
+
+TIER 4 (Expandable)
+9. DetailedAnalytics (courier comparison, zone distribution)
+```
+
+**Implementation:**
+```tsx
+return (
+  <div className="min-h-screen space-y-8">
+    {/* TIER 1: Decision-critical */}
+    {urgentActions.length > 0 && <UrgentActionsBar actions={urgentActions} />}
+
+    <PerformanceBar
+      kpis={kpisWithSparklines}
+      lastUpdated={lastSyncTime}
+    />
+
+    <OrderTrendChart data={orderTrend30Days} />
+
+    {/* TIER 2: Operational clarity */}
+    <OrderStatusGrid /> {/* Will be replaced with pipeline in Phase 2 */}
+
+    {/* TIER 3: Insights & actions */}
+    <SmartInsightsPanel insights={topInsights} />
+    <CODStatusCard {...codData} />
+    <QuickActionsGrid />
+
+    {/* TIER 4: Deep dive (collapsed by default on mobile) */}
+    <AnalyticsSection defaultExpanded={!isMobile}>
+      <CourierComparison />
+      <ZoneDistribution />
+    </AnalyticsSection>
+  </div>
+);
+```
+
+**Acceptance:**
+- [ ] Order Trend visible without scroll (desktop)
+- [ ] Mobile: Trend visible after 1 scroll
+- [ ] Visual hierarchy clear (Tier 1 elements 1.5× larger)
+- [ ] Page load < 2s
+
+---
+
+**Phase 1 Gate Criteria:**
+
+Before moving to Phase 2, verify:
+
+1. **Metrics (vs baseline):**
+   - [ ] Time to answer "Is revenue up?" reduced by ≥30%
+   - [ ] KPI click-through rate > 0% (instrumented)
+   - [ ] Trend chart interaction rate > 15% of sessions
+
+2. **Quality:**
+   - [ ] Mobile usability score (manual test) ≥ 8/10
+   - [ ] No TypeScript errors
+   - [ ] Dark mode works
+   - [ ] Accessibility: Lighthouse score ≥ 90
+
+3. **Instrumentation:**
+   - [ ] All analytics events firing correctly
+   - [ ] Baseline metrics captured (pre-Phase 1)
+   - [ ] Post-Phase 1 metrics show improvement
+
+**Rollback Trigger:**
+- If KPI click-through rate < 5% after 1 week → revert sparklines
+- If trend chart causes performance issues (load > 3s) → collapse by default
+
+---
+
+### Phase 2: Visual Pipeline + Geography (7 days)
+
+**Objective:** Replace static status cards with visual shipment flow and add geographic intelligence.
+
+**Scope:**
+
+#### 2.1: Replace OrderStatusGrid with Shipment Pipeline
+
+**Current:** 6 equal cards showing counts
+**New:** Horizontal flow visualization
+
+**File:** `/client/src/components/seller/dashboard/ShipmentPipeline.tsx` (NEW)
+
+**Design:**
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Pending → Picked → In Transit → OFD → Delivered → RTO      │
+│    12        5         42        8       156       3         │
+│  [████]   [██]    [████████]  [███]   [██████]   [█]         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- Width proportional to volume
+- Click stage → filter orders
+- Show % of total
+- Color-coded by health (green = good, amber = delayed, red = stuck)
+
+**Implementation:**
+```typescript
+interface PipelineStage {
+  name: string;
+  count: number;
+  percentage: number;
+  health: 'healthy' | 'warning' | 'critical';
+  onClick: () => void;
+}
+
+export function ShipmentPipeline({ stages }: { stages: PipelineStage[] }) {
+  const maxCount = Math.max(...stages.map(s => s.count));
+
   return (
-    <Card>
-      <CardHeader>
-        <StatusBadge status={order.status} priority={order.priority} />
-        <AWB value={order.awb} copyable />
-      </CardHeader>
-      
-      <CardBody>
-        {/* Progressive disclosure - tap to expand */}
-        <CustomerInfo {...order.customer} />
-        <DeliveryInfo {...order.delivery} collapsible />
-      </CardBody>
-      
-      <CardFooter>
-        {/* Contextual action - what user needs NOW */}
-        <PrimaryActionButton 
-          action={primaryAction}
-          variant="primary"
-        />
-        
-        <SecondaryActions>
-          <IconButton icon={<Eye />} onClick={() => viewDetails(order)} />
-          <IconButton icon={<Phone />} onClick={() => callCustomer(order)} />
-        </SecondaryActions>
-      </CardFooter>
-    </Card>
+    <div className="grid grid-cols-6 gap-2">
+      {stages.map(stage => (
+        <button
+          key={stage.name}
+          onClick={stage.onClick}
+          className="relative rounded-xl p-4 border hover:border-focus"
+          style={{
+            backgroundColor: healthColors[stage.health],
+            height: `${(stage.count / maxCount) * 100}px`
+          }}
+        >
+          <div className="font-bold text-2xl">{stage.count}</div>
+          <div className="text-xs">{stage.name}</div>
+          <div className="text-xs opacity-70">{stage.percentage}%</div>
+        </button>
+      ))}
+    </div>
   );
 }
 ```
 
-#### 2.3: Quality Checklist
-```markdown
-Before marking component complete:
+**Mock Data:**
+```typescript
+// /client/src/lib/mockData/enhanced/pipelineFlow.ts
+export const mockPipelineFlow = {
+  stages: [
+    { name: 'Pending', count: 12, health: 'warning' },
+    { name: 'Picked', count: 5, health: 'healthy' },
+    { name: 'In Transit', count: 42, health: 'healthy' },
+    { name: 'OFD', count: 8, health: 'healthy' },
+    { name: 'Delivered', count: 156, health: 'healthy' },
+    { name: 'RTO', count: 3, health: 'critical' }
+  ]
+};
+```
 
-## Functionality
+**Acceptance:**
+- [ ] Pipeline widths match counts (±2% tolerance)
+- [ ] Click stage filters orders
+- [ ] Mobile: Pipeline stacks vertically or shows stepper
+- [ ] Analytics event `pipeline.stage.clicked` fires
+
+---
+
+#### 2.2: Add Geographic Selector + Top Cities
+
+**File:** `/client/src/components/seller/dashboard/GeographicInsights.tsx` (NEW)
+
+**Design:**
+- City typeahead selector (fuzzy search)
+- Top 10 cities bar chart (by volume or exceptions)
+- Click city → filters entire dashboard (KPIs, pipeline, orders)
+
+**Implementation:**
+```typescript
+export function GeographicInsights() {
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const topCities = useTopCities({ metric: 'volume', limit: 10 });
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* City Selector */}
+      <CityTypeahead
+        onSelect={(city) => {
+          setSelectedCity(city);
+          // Update all dashboard filters
+          applyGlobalFilter({ city_id: city.id });
+        }}
+      />
+
+      {/* Top Cities Bar Chart */}
+      <TopCitiesChart
+        cities={topCities}
+        onClick={(city) => applyGlobalFilter({ city_id: city.id })}
+      />
+    </div>
+  );
+}
+```
+
+**Mock Data:**
+```typescript
+// /client/src/lib/mockData/enhanced/geoMetrics.ts
+export const mockCityMetrics = [
+  { city_id: 'mum', name: 'Mumbai', state: 'MH', orders: 145, exceptions: 8 },
+  { city_id: 'del', name: 'Delhi', state: 'DL', orders: 132, exceptions: 12 },
+  // ... top 10 cities
+];
+```
+
+**Acceptance:**
+- [ ] City selector filters dashboard in < 1s
+- [ ] Top cities chart clickable
+- [ ] Mobile: City selector uses bottom sheet
+- [ ] Analytics event `city.selected` fires
+
+---
+
+**Phase 2 Gate Criteria:**
+
+1. **Metrics:**
+   - [ ] Time to find "stuck shipments in City X" reduced by ≥40%
+   - [ ] Pipeline stage click rate > 20%
+   - [ ] City filter usage > 10% of sessions
+
+2. **Quality:**
+   - [ ] Pipeline proportions accurate (±2%)
+   - [ ] City filter doesn't break other components
+   - [ ] Mobile UX maintained
+
+**Rollback:**
+- If pipeline confuses users (A/B test shows worse metrics) → revert to card grid
+- If city filter causes perf issues → disable and optimize
+
+---
+
+### Phase 3: Carrier Intelligence (5 days)
+
+**Objective:** Provide instant carrier comparison and one-click optimization.
+
+**Scope:**
+
+#### 3.1: Carrier Performance Comparison
+
+**File:** `/client/src/components/seller/dashboard/CarrierComparison.tsx`
+
+**Design:**
+- Horizontal bar chart: delivery time, cost, success rate per carrier
+- Actionable insights: "Switch 18 orders to Delhivery → Save ₹2,400/week"
+- One-click apply (with confirmation)
+
+**Implementation:**
+```typescript
+export function CarrierComparison({ carriers }: { carriers: CarrierMetric[] }) {
+  return (
+    <div className="space-y-4">
+      {carriers.map(carrier => (
+        <div key={carrier.id} className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="font-bold">{carrier.name}</div>
+            <div className="flex items-center gap-4">
+              <BarIndicator label="Speed" value={carrier.avgDeliveryDays} max={5} />
+              <BarIndicator label="Cost" value={carrier.avgCost} max={100} />
+              <BarIndicator label="Success" value={carrier.successRate} max={100} />
+            </div>
+          </div>
+          {carrier.suggestion && (
+            <Button onClick={() => applyCarrierSwitch(carrier.suggestion)}>
+              Save {carrier.suggestion.savings}
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+**Acceptance:**
+- [ ] Carrier metrics match aggregates (±3%)
+- [ ] One-click apply has undo (10s window)
+- [ ] Confirmation modal shows impact clearly
+- [ ] Analytics event `carrier.switch.confirmed` fires
+
+---
+
+**Phase 3 Gate Criteria:**
+
+1. **Metrics:**
+   - [ ] Carrier switch acceptance rate > 30%
+   - [ ] Undo rate < 5% (low = good UX)
+   - [ ] Cost savings realized (instrumented)
+
+2. **Quality:**
+   - [ ] No financial errors (strict QA)
+   - [ ] Idempotency working (no duplicate switches)
+
+**Rollback:**
+- If undo rate > 10% → pause feature and investigate confusion
+- If errors > 1% → disable one-click, require manual approval
+
+---
+
+## Quality Checklist (Every Phase)
+
+Before marking phase complete:
+
+### Functionality
 - [ ] All user tasks completable
 - [ ] No broken workflows
 - [ ] Error states handled
 - [ ] Loading states smooth
 - [ ] Empty states helpful
 
-## UX Quality
-- [ ] Information hierarchy clear
-- [ ] Psychology principles applied
-- [ ] Mobile-first design
-- [ ] Touch targets 44px+
-- [ ] Gestures intuitive
+### UX Quality
+- [ ] Information hierarchy clear (Tier 1 > Tier 2 > Tier 3)
+- [ ] Mobile-first tested (360px, 768px, 1024px)
+- [ ] Touch targets ≥ 44px
 - [ ] Progressive disclosure used
 
-## Indian Market Fit
-- [ ] Price/savings prominent
-- [ ] Trust signals present
-- [ ] Smart defaults provided
-- [ ] Comparison context given
-- [ ] Indian number/currency format
-- [ ] Mobile optimized (360px+)
-
-## Business Impact
-- [ ] Drives user decisions
-- [ ] Provides actionable insights
-- [ ] Solves real problems
-- [ ] Saves time/money
-- [ ] Clear value proposition
-
-## Technical Quality
-- [ ] TypeScript type-safe
-- [ ] Accessible (WCAG 2.1 AA)
+### Technical Quality
+- [ ] TypeScript type-safe (no `any`)
+- [ ] Accessible (WCAG 2.1 AA, Lighthouse ≥ 90)
 - [ ] Theme colors from global.css
 - [ ] Dark mode supported
-- [ ] Performance optimized
-- [ ] Mock data realistic
-- [ ] API contract documented
+- [ ] Performance: page load < 2s, no layout shift
 
-## Competitive Excellence
-- [ ] Better than ShipRocket
-- [ ] Better than competitors
-- [ ] Unique differentiator
-- [ ] Clear advantage
+### Instrumentation
+- [ ] Analytics events firing
+- [ ] Baseline metrics captured
+- [ ] Post-phase metrics show improvement
+
+### Indian Market Fit
+- [ ] Price/savings prominent
+- [ ] COD visibility maintained
+- [ ] Indian number format (₹1,23,456)
+- [ ] Mobile optimized (360px+)
+
+---
+
+## Rollback & Safety Policy
+
+### Feature Flags
+
+Every major change behind flag:
+```typescript
+// /client/src/lib/featureFlags.ts
+export const FEATURES = {
+  KPI_SPARKLINES: true,
+  DOMINANT_TREND_CHART: true,
+  SHIPMENT_PIPELINE: false, // Phase 2
+  CITY_SELECTOR: false,
+  CARRIER_INTELLIGENCE: false // Phase 3
+};
 ```
 
-### Step 3: Mock Data Enhancement
+### Rollback Triggers
 
-**Enhance existing mock data for realism:**
+Automatically rollback if:
+- Critical metric regression > 10% vs baseline
+- Error rate > 2%
+- Page load time > 3s (p95)
+- Undo rate > 10% (indicates confusion)
+
+### Undo Window
+
+All one-click actions have 10-second undo:
+```typescript
+const undoTimeout = setTimeout(() => commitAction(), 10000);
+// Show toast: "Action applied. Undo?"
+```
+
+---
+
+## Instrumentation Schema
 
 ```typescript
-// /client/src/mockData/seller/orders.ts
+// /client/src/lib/analytics/events.ts
 
-// ❌ Current (simplistic)
-export const mockOrders = [
-  { id: 1, status: 'delivered', amount: 100 },
-  { id: 2, status: 'pending', amount: 200 },
-];
+export const track = (event: string, properties: Record<string, any>) => {
+  if (import.meta.env.DEV) {
+    console.log('[Analytics]', event, properties);
+  }
+  // Send to analytics backend
+};
 
-// ✅ Enhanced (realistic, rich)
-export const mockOrders: Order[] = generateRealisticOrders({
-  count: 150,
-  dateRange: { days: 30 },
-  statusDistribution: {
-    delivered: 0.70,      // 70% delivered
-    in_transit: 0.15,     // 15% in transit
-    pickup_pending: 0.08, // 8% pickup pending
-    rto: 0.05,            // 5% RTO
-    cancelled: 0.02       // 2% cancelled
-  },
-  courierDistribution: {
-    'Delhivery': 0.40,
-    'BlueDart': 0.25,
-    'DTDC': 0.20,
-    'Ecom Express': 0.15
-  },
-  zoneDistribution: {
-    'A': 0.20,
-    'B': 0.35,
-    'C': 0.25,
-    'D': 0.15,
-    'E': 0.05
-  },
-  paymentModes: {
-    'COD': 0.65,
-    'Prepaid': 0.35
-  },
-  // Realistic Indian data
-  cities: INDIAN_CITIES_DATASET,
-  names: INDIAN_NAMES_DATASET,
-  productCategories: ECOMMERCE_CATEGORIES
+// Events
+export const EVENTS = {
+  DASHBOARD_VIEWED: 'dashboard.viewed',
+  KPI_CLICKED: 'kpi.clicked',
+  TREND_CLICKED: 'trend.clicked',
+  PIPELINE_STAGE_CLICKED: 'pipeline.stage.clicked',
+  CITY_SELECTED: 'city.selected',
+  INSIGHT_ACTIONED: 'insight.actioned',
+  CARRIER_SWITCH_CONFIRMED: 'carrier.switch.confirmed',
+  UNDO_ACTION: 'undo.action'
+};
+
+// Example usage
+track(EVENTS.KPI_CLICKED, {
+  kpi_name: 'revenue',
+  delta: 12.3,
+  trend: 'up',
+  viewport_width: 1920
 });
-
-// Each order has complete, realistic data:
-// - Real Indian names, addresses, pincodes
-// - Proper status history with timestamps
-// - Realistic costs based on weight/zone
-// - Accurate delivery timelines
-// - Mobile numbers in Indian format
-// - GST calculations
 ```
 
-**Create new mock data for redesigned features:**
+---
 
+## API Contracts (Backend Reference)
+
+Every endpoint must return:
 ```typescript
-// /client/src/mockData/seller/insights.ts
-export const mockSmartInsights: Insight[] = [
-  {
-    id: 'insight_001',
-    type: 'cost_saving',
-    priority: 'high',
-    title: 'Switch 18 orders to Delhivery this week',
-    description: 'Based on your Zone B delivery patterns, Delhivery offers better rates (₹65 vs ₹87) with same delivery time.',
-    impact: {
-      metric: 'savings',
-      value: 2400,
-      period: 'week',
-      formatted: 'Save ₹2,400/week'
-    },
-    data: {
-      currentCourier: 'BlueDart',
-      recommendedCourier: 'Delhivery',
-      orderCount: 18,
-      currentAvgCost: 87,
-      recommendedAvgCost: 65,
-      savingsPerOrder: 22,
-      totalSavings: 396,
-      zone: 'B'
-    },
-    action: {
-      type: 'auto_apply',
-      label: 'Auto-select Delhivery for Zone B',
-      confirmMessage: 'Future Zone B orders will automatically use Delhivery. You can change this anytime.',
-      endpoint: '/api/seller/courier-rules',
-      payload: {
-        zone: 'B',
-        preferredCourier: 'delhivery'
-      }
-    },
-    socialProof: '87% of similar sellers made this switch',
-    confidence: 0.94,
-    createdAt: '2026-01-21T08:00:00Z'
-  },
-  
-  {
-    id: 'insight_002',
-    type: 'rto_prevention',
-    priority: 'high',
-    title: 'RTO rate increased 40% in last 7 days',
-    description: 'Most RTOs from Tier 3 cities with reason "Customer unavailable". IVR confirmation could reduce this by ~60%.',
-    impact: {
-      metric: 'rto_reduction',
-      value: 60,
-      unit: 'percent',
-      formatted: 'Reduce RTOs by 60%'
-    },
-    data: {
-      currentRTORate: 8.2,
-      previousRTORate: 5.8,
-      increase: 41.4,
-      affectedCities: ['Aligarh', 'Rohtak', 'Panipat'],
-      mainReason: 'Customer unavailable',
-      recommendedSolution: 'IVR Confirmation'
-    },
-    action: {
-      type: 'enable_feature',
-      label: 'Enable IVR Confirmation',
-      description: 'Automated call to customer before delivery',
-      costImpact: '₹2 per order',
-      endpoint: '/api/seller/features/ivr-confirmation'
-    },
-    projectedImpact: {
-      rtoReduction: 0.60,
-      monthlySavings: 8400, // Prevented RTO costs
-      additionalCost: 1200  // IVR charges
-    },
-    confidence: 0.87
-  },
-  
-  // More insights: peak time optimization, packing improvements, zone expansions, etc.
-];
-```
-
-### Step 4: Documentation
-
-**Document every redesign decision:**
-
-```markdown
-# Component Redesign Documentation
-
-## [Component Name]
-Date: [Date]
-Status: ✅ Completed / 🔄 In Progress / ⏳ Planned
-
-### Before (Problems)
-[Screenshot or description of old version]
-
-**Issues:**
-1. [Specific UX problem]
-2. [Another issue]
-3. [More issues]
-
-### Research & Analysis
-**User Psychology:**
-- [Psychological principle applied]
-- [User behavior insight]
-
-**Competitive Analysis:**
-- ShipRocket: [their approach]
-- Our differentiation: [how we're better]
-
-**Indian Market Considerations:**
-- [Specific cultural/behavioral factor]
-- [How we address it]
-
-### After (Solution)
-[Screenshot or description of new version]
-
-**Improvements:**
-1. [Specific improvement] - Impact: [user benefit]
-2. [Another improvement] - Impact: [benefit]
-3. [More improvements]
-
-**Design Decisions:**
-- Information hierarchy: [rationale]
-- User flow: [rationale]
-- Mobile optimization: [rationale]
-- Actions: [rationale]
-
-### Implementation Details
-**Files Modified:**
-- [filepath]: [changes made]
-
-**New Components Created:**
-- [ComponentName]: [purpose]
-
-**Mock Data:**
-- [mockDataFile]: [structure]
-
-**API Contract:**
-- Endpoint: [path]
-- Status: 🔄 Backend in development
-- Expected structure: [types]
-
-### Metrics & Success Criteria
-**User Experience:**
-- Task completion: [X] steps → [Y] steps (Z% reduction)
-- Time to complete: [X] seconds → [Y] seconds
-- Mobile usability: [score/rating]
-
-**Business Impact:**
-- [Metric]: Expected [X]% improvement
-- User satisfaction: Target [score]
-
-### Backend Requirements
-For this feature to work with real data:
-
-1. **API Endpoint Needed:**
-   - Path: [endpoint]
-   - Method: [GET/POST/etc]
-   - Purpose: [what it does]
-
-2. **Service Logic:**
-   - [Specific business logic needed]
-   - [Calculations required]
-   - [Data aggregations]
-
-3. **Database:**
-   - Tables/models needed: [list]
-   - Queries required: [description]
-
-4. **Estimated Effort:**
-   - Backend development: [X] days
-   - Testing: [Y] days
-```
-
----
-
-## Final Deliverables
-
-### 1. Transformed Dashboard
-```
-✅ Seller Dashboard - Complete UX overhaul
-✅ Admin Dashboard - Complete UX overhaul
-✅ All components redesigned with psychology-driven UX
-✅ Mobile-first throughout
-✅ Indian market optimized
-✅ Better than all competitors
-```
-
-### 2. Documentation Package
-```
-📄 Master UX Audit Report
-   - Current state analysis
-   - Problems identified
-   - Redesign rationale
-   
-📄 Component Redesign Documentation
-   - Before/after for each component
-   - Design decisions explained
-   - Psychology principles applied
-   
-📄 Backend Requirements Document
-   - All API contracts defined
-   - Service logic specified
-   - Database requirements listed
-   - Implementation timeline
-   
-📄 Mock Data Documentation
-   - All mock data files indexed
-   - Realistic data generation logic
-   - Environment toggle guide
-   
-📄 Competitive Analysis Report
-   - How we beat each competitor
-   - Unique differentiators
-   - Market positioning
-```
-
-### 3. Quality Assurance
-```
-✅ TypeScript type safety: 100%
-✅ Accessibility: WCAG 2.1 AA
-✅ Mobile optimization: 360px+ tested
-✅ Dark mode: Full support via global.css
-✅ Performance: Optimized (lazy loading, memoization)
-✅ Error handling: Comprehensive
-✅ Loading states: Smooth, informative
-✅ Empty states: Helpful, actionable
-```
-
----
-
-## Success Criteria - The Vision Realized
-
-### ✅ **User Experience Excellence**
-- Indian sellers find it INTUITIVE without training
-- Mobile experience is SUPERIOR to desktop (mobile-first reality)
-- Every action is OBVIOUS and requires minimal steps
-- Information hierarchy is CLEAR and psychology-driven
-- Users feel the platform is their BUSINESS PARTNER
-
-### ✅ **Competitive Superiority**
-- Demonstrably BETTER than ShipRocket in UX
-- BETTER than DTDC, Delhivery, BlueDart dashboards
-- BETTER than any shipping aggregator in market
-- Users say "This is so much better than [competitor]"
-
-### ✅ **Business Impact**
-- Features drive REAL decisions (not just information display)
-- Sellers SAVE MONEY through platform intelligence
-- Analytics generate ACTIONABLE insights
-- Platform actively helps sellers GROW BUSINESS
-- Users have quantifiable ROI from using platform
-
-### ✅ **Indian Market Fit**
-- Designed for Indian seller PSYCHOLOGY
-- Optimized for Indian MOBILE usage patterns
-- Indian PRICING sensitivity addressed
-- Indian LOGISTICS nuances handled (zones, COD, RTO, GST)
-- Indian TRUST factors integrated
-
-### ✅ **Product Quality**
-- NO meaningless features (everything serves purpose)
-- NO complexity without clarity
-- NO random placement (everything intentional)
-- NO generic experience (personalized and contextual)
-- ADDICTIVE user experience (users love using it)
-
-### ✅ **Technical Excellence**
-- Clean, maintainable code (A+ quality)
-- Type-safe throughout
-- Accessible to all users
-- Performant on low-end devices
-- Seamless mock ↔ real API transition
-
----
-
-## Your Mandate
-
-**You have COMPLETE FREEDOM to:**
-- Redesign any user flow from scratch
-- Remove any existing feature that doesn't serve users
-- Introduce any new pattern that improves UX
-- Reorganize all information architecture
-- Change all workflows and interaction patterns
-- Apply any psychology principle that helps users
-
-**You MUST PRESERVE:**
-- Color schemes and theme from global.css
-- Existing mock data structure (enhance, don't break)
-- TypeScript type safety and code quality
-- Technical architecture and component library
-
-**Your Goal:**
-Create THE BEST shipping aggregator platform in India - one that sellers get ADDICTED to, competitors envy, and becomes the gold standard for shipping SaaS UX.
-
-**Think systematically. Work methodically. Analyze deeply. Design thoughtfully. Build excellently.**
-
-**This is a transformational project. Make it extraordinary.** 🚀
-
-# ShipCrowd: Complete UX Transformation - Implementation Plan
-
-## Executive Summary
-
-This is a systematic, phased implementation plan to transform ShipCrowd from a generic shipping platform into **the best shipping management platform in India** through psychology-driven UX, mobile-first design, and intelligent business impact features.
-
-**Scope:** Complete redesign of 57 seller pages + 30+ admin pages
-**Approach:** Incremental, non-breaking, systematic transformation
-**Quality Bar:** A+ TypeScript, WCAG 2.1 AA, mobile-first, zero regressions
-
----
-
-## Phase 0: Foundation & Preparation (Days 1-2)
-
-### Objectives
-- Document current state baseline
-- Set up development workflow
-- Create reusable UX patterns
-- Establish quality gates
-
-### Tasks
-
-#### 0.1: Current State Documentation
-**Create:** `/docs/Development/Audit/Frontend/current-state-baseline.md`
-
-Document for each major feature:
-- Current information hierarchy
-- User flow diagrams (as-is)
-- Problems identified
-- Screenshots/descriptions
-
-**High-Priority Features to Document:**
-1. Dashboard home (seller + admin)
-2. Order creation flow
-3. Order list/management
-4. Wallet/financials
-5. Shipment tracking
-6. Analytics pages
-
-**Format:**
-```markdown
-## Feature: [Name]
-**File:** [path]
-**Current UX Issues:**
-- [ ] Issue 1: [description] - Impact: [user pain]
-- [ ] Issue 2: [description] - Impact: [user pain]
-
-**User Psychology Missed:**
-- [ ] Psychology principle: [what's missing]
-
-**Mobile Issues:**
-- [ ] Problem: [description]
-```
-
-#### 0.2: Enhanced Mock Data System
-**Create:** `/client/src/lib/mockData/enhanced/`
-
-**New Mock Data Files:**
-1. `smartInsights.ts` - Actionable AI recommendations
-2. `businessMetrics.ts` - Realistic seller analytics
-3. `rtoData.ts` - RTO prevention data
-4. `courierComparisons.ts` - Courier performance data
-5. `realisticOrders.ts` - Indian-market realistic orders
-
-**Data Generation Strategy:**
-```typescript
-// Example: smartInsights.ts
-export const mockSmartInsights: SmartInsight[] = [
-  {
-    id: 'cost-save-001',
-    type: 'cost_saving',
-    priority: 'high',
-    title: 'Save ₹2,400/week on Zone B deliveries',
-    description: '18 orders/week to Zone B. Delhivery ₹22 cheaper than current BlueDart',
-    impact: {
-      savings: 2400,
-      period: 'week',
-      metric: 'cost'
-    },
-    action: {
-      type: 'auto_apply',
-      label: 'Auto-select Delhivery for Zone B',
-      endpoint: '/api/courier-rules',
-      confirmMessage: 'Future Zone B orders will use Delhivery'
-    },
-    socialProof: '87% of similar sellers made this switch',
-    confidence: 0.94
-  }
-  // ... more insights
-];
-```
-
-**Indian Market Realism:**
-- Indian names dataset (realistic first/last names)
-- Real Indian cities, pincodes, addresses
-- Mobile numbers in +91 format
-- Realistic product categories (clothing, electronics, jewelry, etc.)
-- GST-inclusive pricing
-- COD vs Prepaid distribution (65%/35%)
-
-#### 0.3: Mobile-First Pattern Library
-**Create:** `/client/src/components/patterns/`
-
-**Components to Create:**
-1. `MobileCard.tsx` - Card optimized for mobile with swipe actions
-2. `BottomSheet.tsx` - Mobile modal replacement
-3. `FloatingActionButton.tsx` - Primary action button
-4. `MobileTable.tsx` - Card-based table for mobile
-5. `PullToRefresh.tsx` - Pull-to-refresh wrapper
-6. `SwipeableCard.tsx` - Card with left/right swipe actions
-7. `ThumbZoneAction.tsx` - Bottom action bar for thumb reach
-
-**Example: MobileCard.tsx**
-```typescript
-interface MobileCardProps {
-  status?: 'urgent' | 'normal' | 'completed';
-  header: React.ReactNode;
-  body: React.ReactNode;
-  footer?: React.ReactNode;
-  swipeLeft?: { icon: React.ReactNode; action: () => void; color: string };
-  swipeRight?: { icon: React.ReactNode; action: () => void; color: string };
+interface APIResponse<T> {
+  data: T;
+  last_updated_at: string; // ISO 8601
+  freshness: 'real_time' | 'cached_60s' | 'stale_5m' | 'stale_15m';
 }
 
-// Responsive: Card on mobile, can be table row on desktop
-```
-
-#### 0.4: UX Helper Hooks
-**Create:** `/client/src/hooks/ux/`
-
-1. `useMediaQuery.ts` - Responsive breakpoint detection
-2. `useThumbZone.ts` - Detect if element in thumb reach zone
-3. `useSwipeGesture.ts` - Swipe gesture handler
-4. `usePullToRefresh.ts` - Pull-to-refresh implementation
-5. `useProgressiveDisclosure.ts` - Expand/collapse state management
-6. `useInViewAnimation.ts` - Intersection observer for animations
-
-#### 0.5: Development Workflow
-**Quality Gates (Check before commit):**
-- [ ] TypeScript: No errors, no `any` types
-- [ ] Mobile: Test at 360px, 768px, 1024px widths
-- [ ] Dark Mode: Test both light and dark themes
-- [ ] Accessibility: Keyboard navigation works, proper ARIA
-- [ ] Performance: No unnecessary re-renders (React DevTools)
-
-**Testing Checklist Template:**
-```markdown
-## Component: [Name]
-- [ ] Mobile (360px): Works, touch targets 44px+
-- [ ] Tablet (768px): Optimized layout
-- [ ] Desktop (1024px+): Full features
-- [ ] Dark mode: Colors correct, contrast maintained
-- [ ] Keyboard: Tab navigation works, actions accessible
-- [ ] Screen reader: Proper labels, live regions
-- [ ] Loading state: Skeleton/spinner shown
-- [ ] Error state: Clear message, recovery action
-- [ ] Empty state: Helpful message, CTA
-```
-
----
-
-## Phase 1: Core Dashboard Transformation (Days 3-7)
-
-### 1.1: Seller Dashboard Home (Priority: Critical)
-
-**File:** `/client/app/seller/components/DashboardClient.tsx` (31KB)
-
-**Current Problems:**
-- ❌ No information hierarchy - all metrics equal weight
-- ❌ No urgent actions highlighted
-- ❌ Generic welcome message with no personalization
-- ❌ Charts not actionable
-- ❌ Mobile: Horizontal scroll required, poor UX
-
-**Psychology-Driven Redesign:**
-
-**New Information Hierarchy:**
-```
-1. URGENT ACTIONS (Top, cannot miss)
-   - Pickup pending (time-sensitive)
-   - Low wallet balance (blocks operations)
-   - KYC pending (blocks features)
-   - NDR requiring action (revenue at risk)
-
-2. TODAY'S SNAPSHOT (Quick status check)
-   - Wallet balance (money - critical for Indian sellers)
-   - Orders today
-   - Revenue today
-   - Prominent CTA: Create Order
-
-3. SMART INSIGHTS (Business partner)
-   - Cost savings opportunities
-   - RTO prevention alerts
-   - Courier optimization tips
-   - Each with one-click action
-
-4. PERFORMANCE (Expandable, details on demand)
-   - Charts and detailed analytics
-   - Collapsed by default on mobile
-```
-
-**Implementation Steps:**
-
-1. **Create Urgent Actions Component**
-   - File: `/client/src/components/seller/dashboard/UrgentActionsBar.tsx`
-   - Design: Horizontal alert bar (mobile) or card grid (desktop)
-   - Data: Real-time from `useSellerActions()` hook
-   - Features: Color-coded priority, one-click action, dismiss option
-
-2. **Redesign Today's Snapshot**
-   - File: `/client/src/components/seller/dashboard/TodaySnapshot.tsx`
-   - Layout: Mobile-first card grid (2 cols mobile, 4 cols desktop)
-   - Metrics: Wallet (prominent), Orders, Revenue, Primary CTA
-   - Animation: Stagger entrance with AnimatedNumber
-
-3. **Create Smart Insights Section**
-   - File: `/client/src/components/seller/dashboard/SmartInsightsPanel.tsx`
-   - Design: Carousel on mobile, grid on desktop
-   - Data: From new mock `smartInsights.ts`
-   - Features: Impact badge (savings amount), social proof, one-click apply
-
-4. **Progressive Disclosure for Analytics**
-   - File: `/client/src/components/seller/dashboard/AnalyticsSection.tsx`
-   - Behavior: Collapsed by default on mobile, expanded on desktop
-   - Charts: Responsive, mobile-optimized legends
-   - Filters: Bottom sheet on mobile, inline on desktop
-
-**Acceptance Criteria:**
-- [ ] Urgent actions visible within 1 second of page load
-- [ ] Mobile: No horizontal scroll, all content accessible
-- [ ] Smart insights: At least 3 actionable recommendations
-- [ ] Charts: Readable on 360px width
-- [ ] Performance: Page load < 2s, no layout shift
-
-### 1.2: Admin Dashboard Home
-
-**File:** `/client/app/admin/components/DashboardClient.tsx` (32KB)
-
-**Current Problems:**
-- ❌ Platform metrics lack actionability
-- ❌ Seller health dashboard needs better prioritization
-- ❌ No drill-down capabilities
-
-**Psychology-Driven Redesign:**
-
-**New Information Hierarchy:**
-```
-1. CRITICAL PLATFORM ALERTS
-   - At-risk sellers (RTO spike, wallet depleted)
-   - System issues (courier API down, payment failures)
-   - Fraud alerts
-
-2. PLATFORM HEALTH SNAPSHOT
-   - Revenue today/this week
-   - Active sellers
-   - Shipment volume
-   - Critical metrics with trends
-
-3. TOP PRIORITY SELLERS
-   - At-risk sellers requiring intervention
-   - High-value sellers with issues
-   - New sellers needing onboarding help
-
-4. DRILL-DOWN ANALYTICS (Expandable)
-   - Detailed charts and reports
-   - Historical trends
-```
-
-**Implementation Steps:**
-
-1. **Create Critical Alerts Component**
-   - File: `/client/src/components/admin/dashboard/CriticalAlertsBar.tsx`
-   - Features: Real-time alerts, action buttons, severity levels
-
-2. **Redesign Platform Health**
-   - File: `/client/src/components/admin/dashboard/PlatformHealthSnapshot.tsx`
-   - Metrics: Revenue, seller count, shipments, system health
-   - Trends: Week-over-week, month-over-month comparisons
-
-3. **Enhanced Seller Health Dashboard**
-   - File: `/client/src/components/admin/SellerHealthDashboard.tsx` (enhance existing)
-   - New Features: Click to drill down, filter by risk level, sort by revenue
-   - Quick Actions: Contact seller, view details, take action
-
-**Acceptance Criteria:**
-- [ ] Critical alerts appear first, can't be missed
-- [ ] Click any metric to see detailed breakdown
-- [ ] At-risk sellers have clear action buttons
-- [ ] Mobile: All features accessible, no horizontal scroll
-
----
-
-## Phase 2: Order Management Excellence (Days 8-12)
-
-### 2.1: Order Creation Flow
-
-**Files:**
-- `/client/src/components/seller/QuickOrderModal.tsx` (23KB)
-- `/client/src/components/seller/CSVUploadModal.tsx` (22.5KB)
-
-**Current Problems:**
-- ❌ Too many required fields, decision fatigue
-- ❌ No smart defaults based on history
-- ❌ CSV upload requires template, error fixing painful
-- ❌ No inline validation feedback
-
-**Psychology-Driven Redesign:**
-
-**Smart Defaults Strategy:**
-```typescript
-// Auto-fill based on:
-1. Recent customer (if selected from QuickCreate)
-2. Most frequent package weight
-3. Recommended courier (cheapest for destination)
-4. Declared value = order value (auto-calculated)
-5. Pickup address = default warehouse
-```
-
-**New User Flow:**
-```
-Current: 9 steps, 12 required fields
-New: 4 steps, 5 required fields (7 auto-filled)
-
-Step 1: Customer Info
-- Name, phone, pincode (rest auto-filled from pincode)
-- Recent customer selection for instant fill
-
-Step 2: Package Details
-- Weight (smart default from history)
-- Dimensions (optional, pre-filled from product)
-- Payment mode (COD/Prepaid)
-
-Step 3: Courier Selection
-- Recommended courier (highlighted)
-- Why recommended (cheapest/fastest/most reliable)
-- One-click accept or choose alternative
-
-Step 4: Confirm & Create
-- Summary with all details
-- Cost breakdown (transparent)
-- Create button (large, thumb-zone on mobile)
-```
-
-**Implementation Steps:**
-
-1. **Create Smart Order Form**
-   - File: `/client/src/components/seller/orders/SmartOrderForm.tsx`
-   - Features: Auto-fill, inline validation, progress indicator
-   - Form library: React Hook Form + Zod schema
-   - Mobile: Bottom sheet modal, one field per screen on mobile
-
-2. **Enhanced CSV Upload**
-   - File: `/client/src/components/seller/orders/SmartCSVUpload.tsx`
-   - Features: Auto-column detection (no template needed), inline error editing
-   - Preview: Show detected data with corrections
-   - Bulk actions: Fix all errors of same type
-
-3. **Courier Recommendation Engine**
-   - File: `/client/src/components/seller/orders/CourierRecommendation.tsx`
-   - Algorithm: Calculate best based on cost, speed, reliability, zone
-   - Display: Card with clear reasoning, savings badge, social proof
-
-**Acceptance Criteria:**
-- [ ] Order creation: 4 steps maximum
-- [ ] 70% fields auto-filled for returning customers
-- [ ] CSV: Any format accepted, auto-mapping works
-- [ ] Courier: Recommendation accuracy 85%+
-- [ ] Mobile: One-handed creation possible
-- [ ] Validation: Errors shown immediately, not on submit
-
-### 2.2: Order List & Management
-
-**Files:**
-- `/client/app/seller/orders/page.tsx`
-- Likely has OrdersClient component
-
-**Current Problems:**
-- ❌ Desktop table unusable on mobile
-- ❌ No status priority (urgent orders not highlighted)
-- ❌ Actions hidden in menu
-- ❌ No quick filters for common tasks
-
-**Psychology-Driven Redesign:**
-
-**New Layout:**
-```
-Mobile: Card-based list with swipe actions
-Desktop: Enhanced table with inline actions
-
-Hierarchy:
-1. Urgent orders (pickup pending, delivery issues)
-2. Normal orders (in transit, delivered)
-3. Completed/archived orders
-```
-
-**Smart Filters:**
-```
-Presets (one-tap):
-- Needs Attention (pending pickup, issues)
-- Today's Orders
-- COD Pending
-- Zone B (or most frequent zone)
-- Last 7 Days
-
-Advanced (bottom sheet on mobile):
-- Date range
-- Status
-- Courier
-- Zone
-- Payment mode
-```
-
-**Implementation Steps:**
-
-1. **Create Mobile Order Card**
-   - File: `/client/src/components/seller/orders/MobileOrderCard.tsx`
-   - Features: Swipe to track (left), swipe to call (right)
-   - Layout: Status badge, AWB (copyable), customer, action button
-   - Priority: Urgent orders with alert badge
-
-2. **Enhanced Desktop Table**
-   - File: `/client/src/components/seller/orders/OrdersTable.tsx`
-   - Features: Inline actions, bulk selection, quick filters
-   - Library: Consider TanStack Table for advanced features
-   - Sorting: Priority, then date
-
-3. **Smart Filter System**
-   - File: `/client/src/components/seller/orders/OrderFilters.tsx`
-   - Layout: Chips on desktop, bottom sheet on mobile
-   - Persistence: Save last filter in localStorage
-   - Badge counts: Show count for each filter
-
-4. **Contextual Actions**
-   - Different actions based on status:
-     - Created: Edit, Cancel, Print Label
-     - Pickup Pending: Reschedule Pickup, Cancel
-     - In Transit: Track, Share Tracking, Contact Customer
-     - Delivered: View Details, Download POD
-     - RTO: View Reason, Reschedule Delivery
-
-**Acceptance Criteria:**
-- [ ] Mobile: Card layout, swipe actions work
-- [ ] Desktop: Table with all features
-- [ ] Filters: Preset filters accessible in one tap
-- [ ] Urgent orders: Always at top, visually distinct
-- [ ] Actions: Status-appropriate actions visible
-- [ ] Performance: 1000 orders load without lag
-
----
-
-## Phase 3: Financial Excellence (Days 13-16)
-
-### 3.1: Wallet & Payments
-
-**File:** `/client/app/seller/financials/page.tsx`
-
-**Current Problems:**
-- ❌ Wallet balance not prominent enough (critical for operations)
-- ❌ Transaction list lacks context
-- ❌ No low-balance alerts
-- ❌ Add money flow too many steps
-
-**Psychology-Driven Redesign:**
-
-**New Information Hierarchy:**
-```
-1. WALLET BALANCE (Hero section, can't miss)
-   - Large, bold number
-   - Low balance warning if < threshold
-   - One-tap add money button
-
-2. ALERTS & RECOMMENDATIONS
-   - Low balance: "Add ₹5,000 to ship 20 more orders"
-   - Spending insights: "You spent 23% more this week"
-   - Optimization: "Save ₹400/week with rate card upgrade"
-
-3. QUICK ACTIONS
-   - Add Money (prominent)
-   - View Transactions
-   - Download Statement
-   - Set Auto-Recharge
-
-4. TRANSACTION HISTORY (Searchable, filterable)
-   - Credits (green) and debits (red)
-   - Context: "Shipped order #12345" not just "Debit"
-   - Running balance
-```
-
-**Implementation Steps:**
-
-1. **Wallet Hero Section**
-   - File: `/client/src/components/seller/wallet/WalletHero.tsx`
-   - Design: Large balance display, trend indicator, CTA
-   - Alert: If balance < ₹1000, show top alert
-   - Mobile: Full-width card, balance in center
-
-2. **Smart Spending Insights**
-   - File: `/client/src/components/seller/wallet/SpendingInsights.tsx`
-   - Data: Weekly spend, average per order, trend
-   - Recommendations: Based on spending patterns
-   - Visualization: Simple bar chart, week comparison
-
-3. **Quick Add Money Flow**
-   - File: `/client/src/components/seller/wallet/QuickAddMoney.tsx`
-   - UX: Bottom sheet on mobile, modal on desktop
-   - Presets: ₹1000, ₹5000, ₹10000, Custom
-   - Payment: Integrated gateway, saved cards
-
-4. **Contextual Transaction List**
-   - File: `/client/src/components/seller/wallet/TransactionList.tsx`
-   - Enhancement: Show order link, customer name, reason
-   - Filters: By type (credit/debit), date range, amount range
-   - Export: CSV/PDF download
-
-**Acceptance Criteria:**
-- [ ] Balance visible within 0.5s of page load
-- [ ] Low balance alert if < ₹1000
-- [ ] Add money: 2 taps maximum
-- [ ] Transactions: Clear context for each entry
-- [ ] Mobile: Optimized for frequent checking
-
-### 3.2: COD Remittance Tracking
-
-**File:** `/client/app/seller/cod/remittance/page.tsx`
-
-**Current Problems:**
-- ❌ No visibility into pending COD amount
-- ❌ Remittance timeline unclear
-- ❌ No alerts for delays
-
-**Psychology-Driven Redesign:**
-
-**New Layout:**
-```
-1. PENDING COD (Hero metric)
-   - Total pending: ₹X
-   - Ready for remittance: ₹Y
-   - Expected date: DD/MM/YYYY
-   - Alert if delayed
-
-2. REMITTANCE TIMELINE
-   - Visual progress: Collected → Processing → Remitted
-   - ETA for each stage
-   - Order-level details
-
-3. HISTORY
-   - Past remittances
-   - Average time taken
-   - Issues/delays history
-```
-
-**Implementation:**
-
-1. **COD Dashboard**
-   - File: `/client/src/components/seller/cod/CODDashboard.tsx`
-   - Metrics: Pending, in-process, remitted this month
-   - Alerts: Delays, high pending amount
-
-2. **Remittance Timeline**
-   - File: `/client/src/components/seller/cod/RemittanceTimeline.tsx`
-   - Visualization: Stepper component showing stages
-   - Details: Order-wise breakdown, click to expand
-
-**Acceptance Criteria:**
-- [ ] Pending COD amount always visible
-- [ ] Timeline shows expected dates
-- [ ] Alerts for delays > 2 days
-- [ ] Mobile: All info accessible, no scroll fatigue
-
----
-
-## Phase 4: Analytics & Intelligence (Days 17-21)
-
-### 4.1: Smart Insights System
-
-**File:** `/client/src/components/seller/SmartInsights.tsx` (8.3KB)
-
-**Current State:** Basic component, needs major enhancement
-
-**Psychology-Driven Redesign:**
-
-**Insight Types:**
-1. **Cost Savings** (priority: high)
-   - Courier switching opportunities
-   - Zone optimization
-   - Bulk shipping discounts
-
-2. **RTO Prevention** (priority: high)
-   - Risk alerts (Tier 3 cities, specific pincodes)
-   - Solutions (IVR, address verification)
-   - Projected savings
-
-3. **Performance Optimization**
-   - Delivery speed improvements
-   - Packaging optimization
-   - Warehouse placement
-
-4. **Growth Opportunities**
-   - Expand to new zones
-   - Seasonal demand predictions
-   - Customer retention insights
-
-**Implementation Steps:**
-
-1. **Enhanced SmartInsights Component**
-   - File: `/client/src/components/seller/SmartInsights.tsx` (rewrite)
-   - Layout: Card carousel on mobile, grid on desktop
-   - Priority: High-impact insights first
-   - Actions: One-click apply, dismiss, learn more
-
-2. **Insight Generator Mock Data**
-   - File: `/client/src/lib/mockData/enhanced/smartInsights.ts`
-   - Logic: Generate realistic insights based on order patterns
-   - Variety: 10+ insight types with dynamic data
-
-3. **Insight Action System**
-   - File: `/client/src/components/seller/insights/InsightActionPanel.tsx`
-   - Features: Confirmation modal, projected impact, apply settings
-   - Tracking: Analytics on which insights acted upon
-
-**Acceptance Criteria:**
-- [ ] At least 3 insights always available
-- [ ] Each insight: Clear value prop, one-click action
-- [ ] Impact: Show projected savings/improvement
-- [ ] Social proof: "87% of sellers did this"
-- [ ] Mobile: Swipe through insights easily
-
-### 4.2: Cost Analytics Dashboard
-
-**File:** `/client/app/seller/analytics/cost/page.tsx`
-
-**Current Problems:**
-- ❌ Just shows costs, no actionable insights
-- ❌ No comparisons (zones, couriers, time periods)
-- ❌ Not clear where money is going
-
-**Psychology-Driven Redesign:**
-
-**New Layout:**
-```
-1. SPENDING SUMMARY
-   - This month: ₹X (↑Y% vs last month)
-   - Average per order: ₹Z
-   - Breakdown: Base rate, fuel, GST
-
-2. COST DRIVERS (What's expensive)
-   - Zone B: 40% of spend, ₹22 avg per order
-   - BlueDart: 30% of spend, premium pricing
-   - Peak season: 20% surge in Sep-Oct
-
-3. OPTIMIZATION OPPORTUNITIES
-   - Switch Zone B to Delhivery: Save ₹2,400/week
-   - Use Surface for non-urgent: Save ₹1,800/week
-   - Bulk rate card upgrade: Save ₹3,000/month
-
-4. DETAILED BREAKDOWN (Drill-down)
-   - By zone, courier, time period
-   - Filters and exports
-```
-
-**Implementation:**
-
-1. **Cost Analytics Dashboard**
-   - File: `/client/src/components/seller/analytics/CostAnalyticsDashboard.tsx`
-   - Charts: Bar (by courier), pie (by zone), line (trend)
-   - Mobile: One chart visible, swipe to see others
-
-2. **Cost Breakdown Component**
-   - File: `/client/src/components/seller/analytics/CostBreakdown.tsx`
-   - Visualization: Sankey diagram or treemap
-   - Drill-down: Click to filter
-
-3. **Optimization Recommendations**
-   - File: `/client/src/components/seller/analytics/CostOptimizationPanel.tsx`
-   - Integration: Link to Smart Insights
-   - Actions: Apply recommendations directly
-
-**Acceptance Criteria:**
-- [ ] See top cost drivers within 2 seconds
-- [ ] At least 2 optimization recommendations
-- [ ] Click any metric to drill down
-- [ ] Mobile: Charts readable, interactions smooth
-- [ ] Export: Download CSV report
-
-### 4.3: Courier Comparison Analytics
-
-**File:** `/client/app/seller/analytics/courier-comparison/page.tsx`
-
-**Current Problems:**
-- ❌ Just lists couriers, no comparison
-- ❌ No zone-wise comparison
-- ❌ Not actionable
-
-**Psychology-Driven Redesign:**
-
-**Comparison Matrix:**
-```
-Table showing for each courier:
-- Average cost
-- Average delivery time
-- Success rate
-- RTO rate
-- Zone coverage
-- Best for (recommendation)
-
-Filters:
-- By zone
-- By service type (Express/Surface)
-- By date range
-
-Actions:
-- Set preferred courier for zone
-- Enable auto-selection
-```
-
-**Implementation:**
-
-1. **Courier Comparison Table**
-   - File: `/client/src/components/seller/analytics/CourierComparisonTable.tsx`
-   - Features: Sortable, filterable, highlights best option
-   - Mobile: Card-based comparison
-
-2. **Zone-Courier Matrix**
-   - File: `/client/src/components/seller/analytics/ZoneCourierMatrix.tsx`
-   - Visualization: Heatmap showing cost by zone/courier
-   - Interaction: Click cell to set preference
-
-**Acceptance Criteria:**
-- [ ] Compare all couriers at a glance
-- [ ] Filter by zone to see zone-specific comparison
-- [ ] Recommended courier highlighted
-- [ ] One-click to set courier preference
-- [ ] Mobile: Swipe through courier cards
-
----
-
-## Phase 5: Mobile-First Optimizations (Days 22-25)
-
-### 5.1: Navigation Enhancements
-
-**Files:**
-- `/client/src/components/seller/Sidebar.tsx` (14.8KB)
-- `/client/src/components/seller/Header.tsx` (8.6KB)
-
-**Current Issues:**
-- ❌ Mobile sidebar: Full-screen, blocks content
-- ❌ Header: Too many actions, cluttered on mobile
-- ❌ No bottom navigation for frequent actions
-
-**Mobile-First Redesign:**
-
-**Bottom Navigation (Mobile Only):**
-```
-[Home] [Orders] [Track] [Wallet] [More]
-  🏠      📦      📍      💰      ⋯
-
-Always visible, thumb-zone optimized
-Active state: Bold icon + label
-```
-
-**Sidebar (Mobile):**
-```
-Swipe from left to open
-Backdrop blur
-Close on outside tap or swipe right
-Keep all navigation items, organized
-```
-
-**Header (Mobile):**
-```
-Simplified: Logo + Search + Profile
-Remove: Theme toggle (in More), Notifications (badge on More)
-Sticky on scroll up, hide on scroll down
-```
-
-**Implementation:**
-
-1. **Bottom Navigation Component**
-   - File: `/client/src/components/seller/BottomNavigation.tsx`
-   - Design: Fixed bottom, 5 items, icon + label
-   - Behavior: Show on mobile only (< 1024px)
-   - Active state: Bold, color accent
-
-2. **Enhanced Mobile Sidebar**
-   - File: Update `/client/src/components/seller/Sidebar.tsx`
-   - Animation: Slide-in from left
-   - Backdrop: Blur with dark overlay
-   - Gesture: Swipe to close
-
-3. **Responsive Header**
-   - File: Update `/client/src/components/seller/Header.tsx`
-   - Mobile: Simplified actions
-   - Desktop: Full actions
-   - Scroll behavior: Hide on scroll down, show on scroll up
-
-**Acceptance Criteria:**
-- [ ] Bottom nav: Visible on mobile, accessible with thumb
-- [ ] Sidebar: Smooth animation, swipe to close
-- [ ] Header: Simplified on mobile, full on desktop
-- [ ] No UI conflicts between bottom nav and sidebar
-- [ ] Transitions: Smooth, no jank
-
-### 5.2: Touch Interactions
-
-**Scope:** All interactive components
-
-**Enhancements:**
-
-1. **Touch Target Sizes**
-   - Minimum: 44x44px (Apple HIG standard)
-   - Buttons, links, action icons: Increase padding
-   - Checkboxes, radio buttons: Larger hit area
-
-2. **Swipe Gestures**
-   - Order cards: Swipe to track, swipe to call
-   - Filter chips: Swipe to scroll
-   - Modals: Swipe down to dismiss
-
-3. **Pull to Refresh**
-   - Orders list
-   - Shipments list
-   - Dashboard
-   - Wallet transactions
-
-**Implementation:**
-
-1. **Touch Target Audit**
-   - Script: Check all interactive elements < 44px
-   - Fix: Add padding or increase size
-
-2. **Swipe Components**
-   - File: `/client/src/components/patterns/SwipeableCard.tsx`
-   - Library: Use `react-swipeable` or custom hook
-   - Feedback: Haptic feedback (if supported), visual cue
-
-3. **Pull to Refresh**
-   - File: `/client/src/components/patterns/PullToRefresh.tsx`
-   - Implementation: Custom hook + component
-   - Indicator: Loading spinner at top
-
-**Acceptance Criteria:**
-- [ ] All buttons: Minimum 44x44px
-- [ ] Swipe actions: Smooth, clear visual feedback
-- [ ] Pull to refresh: Works on all list pages
-- [ ] No accidental taps (adequate spacing)
-
-### 5.3: Responsive Charts
-
-**Files:** All pages using Recharts
-
-**Current Issues:**
-- ❌ Charts overflow on mobile
-- ❌ Legends cut off
-- ❌ Tooltips not mobile-friendly
-
-**Enhancements:**
-
-1. **Responsive Containers**
-   - Proper width/height constraints
-   - Mobile: Simplified charts, fewer data points
-
-2. **Mobile-Optimized Legends**
-   - Desktop: Right or bottom
-   - Mobile: Bottom, wrap if needed
-
-3. **Touch-Friendly Tooltips**
-   - Desktop: Hover tooltips
-   - Mobile: Tap to show tooltip, tap outside to dismiss
-
-**Implementation:**
-
-1. **Responsive Chart Wrapper**
-   - File: `/client/src/components/charts/ResponsiveChart.tsx`
-   - Features: Breakpoint-aware config, mobile simplification
-   - Props: Desktop config, mobile config
-
-2. **Mobile Tooltip Handler**
-   - Enhancement: Add tap handlers to chart components
-   - State: Track active tooltip on mobile
-
-**Acceptance Criteria:**
-- [ ] All charts: Readable on 360px width
-- [ ] Legends: Don't overflow or cut off
-- [ ] Tooltips: Work on touch devices
-- [ ] Data: Simplified on mobile if too dense
-
----
-
-## Phase 6: Admin Dashboard Optimization (Days 26-29)
-
-### 6.1: Admin Dashboard Redesign
-
-**File:** `/client/app/admin/components/DashboardClient.tsx` (32KB)
-
-**Focus Areas:**
-1. Critical alerts (system health, at-risk sellers)
-2. Seller health dashboard enhancements
-3. Drill-down capabilities
-4. Mobile optimization for admins on-the-go
-
-**Implementation:**
-- Similar patterns to seller dashboard
-- Admin-specific: Seller health scoring, platform metrics
-- Action-oriented: Quick access to seller management
-
-### 6.2: Seller Management UX
-
-**Files:**
-- `/client/app/admin/sellers/page.tsx`
-- `/client/app/admin/sellers/[id]/page.tsx`
-
-**Enhancements:**
-1. **Seller List:**
-   - Status-based grouping (at-risk, healthy, new)
-   - Quick filters (KYC pending, low wallet, high RTO)
-   - Bulk actions (send notification, apply rate card)
-
-2. **Seller Detail:**
-   - Health score visualization
-   - Timeline of key events
-   - Quick actions (contact, adjust rate, suspend)
-   - Embedded analytics (orders, revenue, issues)
-
-**Implementation:**
-
-1. **Seller Health Score Component**
-   - File: `/client/src/components/admin/sellers/SellerHealthScore.tsx`
-   - Visualization: Radial progress, color-coded
-   - Factors: RTO rate, wallet balance, order volume, KYC status
-
-2. **Seller Timeline**
-   - File: `/client/src/components/admin/sellers/SellerTimeline.tsx`
-   - Events: Orders, wallet recharges, disputes, KYC updates
-   - Filterable, searchable
-
-**Acceptance Criteria:**
-- [ ] At-risk sellers: Visible at top, clear indicators
-- [ ] Health score: Clear, actionable factors
-- [ ] Quick actions: Accessible within 2 clicks
-- [ ] Mobile: All features accessible
-
----
-
-## Phase 7: Polish & Micro-interactions (Days 30-32)
-
-### 7.1: Animation Polish
-
-**Enhancements:**
-1. **Page Transitions:** Smooth fade-in on route change
-2. **List Animations:** Stagger children on load
-3. **Hover States:** Subtle scale/shadow on desktop
-4. **Loading States:** Skeleton screens with shimmer
-5. **Success Feedback:** Checkmark animation on actions
-
-**Implementation:**
-- Use Framer Motion for complex animations
-- CSS transitions for simple hovers
-- Respect `prefers-reduced-motion`
-
-### 7.2: Empty States
-
-**Audit all empty states:**
-- Dashboard (no orders today)
-- Order list (no orders)
-- Shipments (no active shipments)
-- Wallet (no transactions)
-- Insights (no insights available)
-
-**Guidelines:**
-- Icon + message + CTA
-- Helpful, not accusatory
-- Suggest next action
-
-**Example:**
-```tsx
-<EmptyState
-  icon={<Package />}
-  title="No orders yet today"
-  description="Create your first order to start shipping"
-  action={
-    <Button onClick={createOrder}>Create Order</Button>
-  }
-/>
-```
-
-### 7.3: Error Handling
-
-**Enhancements:**
-1. **Network Errors:** Clear message, retry button
-2. **Validation Errors:** Inline, near field
-3. **API Errors:** User-friendly messages, not technical
-4. **404 Pages:** Helpful, link back to dashboard
-5. **Fallback UI:** Error boundary with recovery action
-
-**Implementation:**
-- Error boundary wrapper for each route
-- Consistent error message format
-- Logging for debugging (console, Sentry)
-
----
-
-## Phase 8: Testing & Quality Assurance (Days 33-35)
-
-### 8.1: Manual Testing Checklist
-
-**For Each Major Feature:**
-- [ ] Mobile (360px, 375px, 414px): Layout, touch targets, interactions
-- [ ] Tablet (768px, 1024px): Optimized layout, no wasted space
-- [ ] Desktop (1280px, 1920px): Full features, no crowding
-- [ ] Dark mode: Colors correct, sufficient contrast
-- [ ] Keyboard: Tab order, shortcuts, escape to close
-- [ ] Screen reader: NVDA/VoiceOver, proper labels
-- [ ] Slow network: Loading states, skeleton screens
-- [ ] Error scenarios: Validation, API failures, network errors
-- [ ] Edge cases: Empty states, long text, large numbers
-
-### 8.2: Performance Testing
-
-**Metrics to Track:**
-- [ ] First Contentful Paint < 1.5s
-- [ ] Largest Contentful Paint < 2.5s
-- [ ] Time to Interactive < 3.5s
-- [ ] Cumulative Layout Shift < 0.1
-- [ ] No unnecessary re-renders (React DevTools Profiler)
-
-**Optimizations:**
-- Lazy load heavy components (modals, charts)
-- Code splitting for routes
-- Optimize images (Next.js Image)
-- Memoize expensive computations
-
-### 8.3: Accessibility Audit
-
-**WCAG 2.1 AA Compliance:**
-- [ ] Color contrast: 4.5:1 for text, 3:1 for large text
-- [ ] Keyboard navigation: All actions accessible
-- [ ] Focus indicators: Visible, clear
-- [ ] ARIA labels: Buttons, links, form fields
-- [ ] Form validation: Error messages associated with fields
-- [ ] Headings: Proper hierarchy (h1 → h2 → h3)
-- [ ] Alt text: All images (decorative marked as such)
-
-**Tools:**
-- Lighthouse accessibility audit
-- axe DevTools
-- Manual keyboard testing
-- Screen reader testing
-
----
-
-## Phase 9: Documentation (Days 36-37)
-
-### 9.1: Component Documentation
-
-**For Each New/Modified Component:**
-```markdown
-# Component: [Name]
-
-## Purpose
-[What it does, when to use it]
-
-## Props
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| ... | ... | ... | ... |
-
-## Usage
-```tsx
-<Component prop={value} />
-```
-
-## Accessibility
-- Keyboard: [how to navigate]
-- Screen reader: [what's announced]
-
-## Mobile
-- Touch targets: [size]
-- Gestures: [supported gestures]
-
-## Examples
-[Common use cases with code]
-```
-
-### 9.2: UX Decision Documentation
-
-**File:** `/docs/Development/Planning/Frontend/UX_Decisions.md`
-
-**Document for Each Feature:**
-```markdown
-## Feature: [Name]
-
-**User Problem:** [What pain point this solves]
-
-**Psychology Applied:**
-- [Principle 1]: [How we applied it]
-- [Principle 2]: [How we applied it]
-
-**Design Decisions:**
-- [Decision 1]: [Rationale]
-- [Decision 2]: [Rationale]
-
-**Metrics:**
-- Before: [baseline metric]
-- After: [target metric]
-
-**Competitive Advantage:**
-- vs ShipRocket: [how we're better]
-- vs Others: [differentiator]
-```
-
-### 9.3: Backend Requirements
-
-**File:** `/docs/Development/Planning/Backend/API_Requirements.md`
-
-**For Each New Feature:**
-```markdown
-## Feature: [Name]
-
-**API Endpoints Needed:**
-
-### GET /api/v1/seller/insights
-**Purpose:** Fetch smart insights for seller
-**Response:**
-```json
+// Example: KPIs
+GET /api/v1/kpis?range=7d&city_id=mum
+Response:
 {
-  "insights": [
-    {
-      "id": "string",
-      "type": "cost_saving|rto_prevention|performance",
-      "priority": "high|medium|low",
-      "title": "string",
-      "description": "string",
-      "impact": {
-        "metric": "string",
-        "value": number,
-        "period": "string"
-      },
-      "action": {
-        "type": "auto_apply|manual",
-        "label": "string",
-        "endpoint": "string",
-        "payload": {}
-      }
-    }
-  ]
+  data: {
+    revenue: { value: 52340, sparkline: [...], delta: 12.3 },
+    orders: { value: 42, sparkline: [...], delta: -3.2 },
+    profit: { value: 8124, sparkline: [...], delta: 8.5 }
+  },
+  last_updated_at: "2026-01-21T10:00:00Z",
+  freshness: "cached_60s"
+}
+
+// Example: Pipeline
+GET /api/v1/pipeline?date=2026-01-21
+Response:
+{
+  data: {
+    stages: [
+      { name: 'pending', count: 12, percentage: 5.3, health: 'warning' },
+      // ...
+    ]
+  },
+  last_updated_at: "2026-01-21T10:05:00Z",
+  freshness: "real_time"
+}
+
+// Example: Cities
+GET /api/v1/cities?metric=volume&limit=10
+Response:
+{
+  data: [
+    { city_id: 'mum', name: 'Mumbai', state: 'MH', orders: 145, exceptions: 8 },
+    // ...
+  ],
+  last_updated_at: "2026-01-21T09:00:00Z",
+  freshness: "stale_5m"
 }
 ```
-
-**Business Logic Required:**
-- [Logic 1]: [Description]
-- [Logic 2]: [Description]
-
-**Database Changes:**
-- [Table/model]: [Fields needed]
-```
-
----
-
-## Implementation Guidelines
-
-### Code Quality Standards
-
-**TypeScript:**
-- No `any` types (use `unknown` if needed)
-- Proper interface/type definitions
-- Exported types for component props
-- JSDoc for complex logic
-
-**React Best Practices:**
-- Functional components with hooks
-- Memoize expensive computations (`useMemo`, `useCallback`)
-- Proper dependency arrays
-- No inline object/array creation in render
-- Extract complex logic to custom hooks
-
-**CSS/Styling:**
-- Use design tokens from `globals.css`
-- Tailwind for utility classes
-- `cn()` utility for conditional classes
-- No inline styles unless dynamic
-- Responsive: Mobile-first approach
-
-**Performance:**
-- Lazy load heavy components
-- Code split routes
-- Optimize images (Next.js Image)
-- Debounce search inputs
-- Virtualize long lists (react-window)
-
-**Accessibility:**
-- Semantic HTML (`<button>` not `<div onClick>`)
-- ARIA labels for icon buttons
-- Focus management in modals
-- Keyboard shortcuts documented
-- Color contrast checked
-
-### File Organization
-
-```
-/client/src/
-├── components/
-│   ├── seller/
-│   │   ├── dashboard/
-│   │   │   ├── UrgentActionsBar.tsx
-│   │   │   ├── TodaySnapshot.tsx
-│   │   │   ├── SmartInsightsPanel.tsx
-│   │   │   └── AnalyticsSection.tsx
-│   │   ├── orders/
-│   │   │   ├── SmartOrderForm.tsx
-│   │   │   ├── MobileOrderCard.tsx
-│   │   │   ├── OrdersTable.tsx
-│   │   │   └── OrderFilters.tsx
-│   │   └── wallet/
-│   │       ├── WalletHero.tsx
-│   │       ├── SpendingInsights.tsx
-│   │       └── TransactionList.tsx
-│   ├── admin/
-│   │   ├── dashboard/
-│   │   ├── sellers/
-│   │   └── ...
-│   ├── patterns/
-│   │   ├── MobileCard.tsx
-│   │   ├── BottomSheet.tsx
-│   │   ├── SwipeableCard.tsx
-│   │   └── PullToRefresh.tsx
-│   └── ui/
-│       └── (existing components)
-├── hooks/
-│   ├── ux/
-│   │   ├── useMediaQuery.ts
-│   │   ├── useSwipeGesture.ts
-│   │   └── usePullToRefresh.ts
-│   └── (existing hooks)
-├── lib/
-│   └── mockData/
-│       └── enhanced/
-│           ├── smartInsights.ts
-│           ├── businessMetrics.ts
-│           └── realisticOrders.ts
-└── (existing structure)
-```
-
-### Git Workflow
-
-**Branch Naming:**
-- `feature/ux-dashboard-redesign`
-- `feature/ux-mobile-orders`
-- `enhancement/ux-wallet-hero`
-- `fix/ux-chart-mobile-overflow`
-
-**Commit Messages:**
-```
-feat(dashboard): Add urgent actions bar with priority filtering
-
-- Created UrgentActionsBar component with color-coded priorities
-- Integrated with useSellerActions hook
-- Mobile: horizontal scroll, desktop: grid layout
-- Added dismiss functionality with localStorage
-
-Impact: Critical actions now visible within 1s of page load
-```
-
-**Pull Request Template:**
-```markdown
-## Feature: [Name]
-
-**UX Problem Solved:**
-[Description]
-
-**Changes:**
-- [ ] Component created/modified: [files]
-- [ ] Mobile optimized: [details]
-- [ ] Dark mode tested: ✅
-- [ ] Accessibility: [WCAG compliance notes]
-
-**Screenshots:**
-[Mobile | Tablet | Desktop]
-
-**Testing:**
-- [ ] Manual testing on mobile/tablet/desktop
-- [ ] Dark mode tested
-- [ ] Keyboard navigation tested
-- [ ] Screen reader tested (if applicable)
-
-**Backend Requirements:**
-[If any]
-```
-
----
-
-## Risk Management
-
-### Potential Risks & Mitigation
-
-1. **Risk:** Breaking existing functionality
-   - **Mitigation:** Incremental changes, thorough testing, feature flags
-
-2. **Risk:** Performance degradation with new features
-   - **Mitigation:** Performance budgets, Lighthouse CI, lazy loading
-
-3. **Risk:** Scope creep
-   - **Mitigation:** Stick to plan, document deviations, prioritize ruthlessly
-
-4. **Risk:** Mobile testing gaps
-   - **Mitigation:** Test on real devices, use BrowserStack, responsive design mode
-
-5. **Risk:** Accessibility regression
-   - **Mitigation:** Automated tests (axe), manual testing, screen reader testing
-
-6. **Risk:** Inconsistent UX across features
-   - **Mitigation:** Pattern library, code review, UX checklist
-
----
-
-## Success Metrics
-
-### Quantitative Metrics
-
-**Performance:**
-- [ ] Dashboard load time < 2s (currently: measure baseline)
-- [ ] Order creation flow: 4 steps (currently: ~9 steps)
-- [ ] Mobile touch targets: 100% compliance (44px+)
-- [ ] Accessibility: Lighthouse score > 95
-
-**User Experience:**
-- [ ] Critical info visible in first viewport (no scroll)
-- [ ] Mobile users: 100% features accessible without desktop
-- [ ] Smart insights: 3+ actionable recommendations always available
-- [ ] Form fields auto-filled: 70% for returning users
-
-### Qualitative Metrics
-
-**UX Excellence:**
-- [ ] Information hierarchy: Clear priority (urgent → status → details)
-- [ ] Psychology applied: Documented for each major feature
-- [ ] Mobile-first: All features designed for mobile first
-- [ ] Indian market fit: Price transparency, trust signals, smart defaults
-
-**Competitive Position:**
-- [ ] Better than ShipRocket: Documented for each feature
-- [ ] Unique differentiators: 5+ features competitors don't have
-- [ ] Business impact: Insights drive real decisions (actionable)
-
----
-
-## Timeline Summary
-
-| Phase | Days | Deliverables |
-|-------|------|-------------|
-| Phase 0: Foundation | 1-2 | Mock data, patterns, documentation template |
-| Phase 1: Core Dashboard | 3-7 | Seller + Admin dashboard redesigned |
-| Phase 2: Order Management | 8-12 | Order creation, list, management flows |
-| Phase 3: Financial | 13-16 | Wallet, COD, transaction UX |
-| Phase 4: Analytics | 17-21 | Smart insights, cost analytics, courier comparison |
-| Phase 5: Mobile Optimizations | 22-25 | Bottom nav, gestures, responsive charts |
-| Phase 6: Admin Dashboard | 26-29 | Admin-specific features and UX |
-| Phase 7: Polish | 30-32 | Animations, empty states, error handling |
-| Phase 8: Testing | 33-35 | Manual, performance, accessibility testing |
-| Phase 9: Documentation | 36-37 | Component docs, UX decisions, backend requirements |
-
-**Total Duration:** ~37 days (7-8 weeks)
 
 ---
 
 ## Next Steps
 
-1. **Review this plan** - Confirm approach, priorities, timeline
-2. **Set up development environment** - Ensure all dependencies installed
-3. **Create Phase 0 deliverables** - Foundation for all future work
-4. **Begin Phase 1** - Start with dashboard redesign (highest impact)
-5. **Iterate based on feedback** - Adjust plan as needed
+1. **Finish Phase 0 (1-2 days):**
+   - [ ] Create Decision Map
+   - [ ] Set up analytics events
+   - [ ] Create enhanced mock data
+   - [ ] Build mobile patterns
+
+2. **Implement Phase 1 (5 days):**
+   - [ ] Add KPI sparklines
+   - [ ] Create dominant trend chart
+   - [ ] Restructure hierarchy
+   - [ ] Measure improvement
+
+3. **Gate Review:**
+   - [ ] Verify acceptance criteria met
+   - [ ] Review metrics vs baseline
+   - [ ] Decision: proceed to Phase 2 or iterate
+
+4. **Implement Phase 2 (7 days):**
+   - [ ] Build shipment pipeline
+   - [ ] Add geographic insights
+   - [ ] Measure improvement
+
+5. **Implement Phase 3 (5 days):**
+   - [ ] Build carrier comparison
+   - [ ] Add one-click optimization
+   - [ ] Measure improvement
 
 ---
 
-## Verification Strategy
+## Success Criteria (Final)
 
-**How to Test Success:**
+After all phases complete:
 
-1. **Mobile-First Check:**
-   - Open every page on 360px width
-   - Can all tasks be completed?
-   - No horizontal scroll?
-   - Touch targets adequate?
+### User Experience
+- [ ] Time to answer "Is revenue up?" < 3 seconds (vs baseline)
+- [ ] Time to find "stuck shipments in City X" < 10 seconds
+- [ ] Mobile usability score ≥ 8/10
 
-2. **Psychology Check:**
-   - Is critical info visible first?
-   - Are actions contextual?
-   - Do insights drive decisions?
-   - Are smart defaults provided?
+### Business Impact
+- [ ] KPI interaction rate > 30%
+- [ ] Pipeline usage > 40%
+- [ ] City filter usage > 20%
+- [ ] Carrier optimization acceptance > 30%
 
-3. **Indian Market Check:**
-   - Is pricing transparent (no hidden fees)?
-   - Are savings highlighted?
-   - Is trust established (breakdowns, social proof)?
-   - Is COD prominent (65% of orders)?
+### Technical Quality
+- [ ] Page load < 2s (p95)
+- [ ] Zero TypeScript errors
+- [ ] Lighthouse accessibility ≥ 90
+- [ ] Mobile tested on 360px, 768px, 1024px
 
-4. **Competitive Check:**
-   - Open ShipRocket side-by-side
-   - Is our UX clearly better?
-   - Do we have unique features?
-   - Would users prefer us?
-
-5. **Business Impact Check:**
-   - Do analytics lead to actions?
-   - Are recommendations specific and actionable?
-   - Can sellers save money using our insights?
-   - Is the platform a business partner, not just software?
+### Competitive
+- [ ] Better than ShipRocket (user testing confirms)
+- [ ] Better than DTDC dashboard
+- [ ] Clear visual differentiation
 
 ---
 
-**This plan is a living document.** Adjust based on learnings, feedback, and discoveries during implementation. The goal is not just to execute the plan, but to create the best shipping platform in India.
-
-**Let's build something extraordinary.** 🚀
+**End of Plan. Ready for Phase 1 implementation.**

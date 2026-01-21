@@ -91,12 +91,12 @@ export function UrgentActionsBar({ actions }: UrgentActionsBarProps) {
                     const CardContent = (
                         <div className={`
                             relative h-full p-5 rounded-[var(--radius-xl)] border transition-all duration-[var(--duration-base)]
-                            bg-[color:var(--bg-primary)] 
+                            bg-[color:var(--bg-primary)]/80 backdrop-blur-md
                             hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5
                             group
                         `}
                             style={{
-                                borderColor: `var(${isHigh ? '--error' : '--warning'})`, // Fallback or strict
+                                borderColor: `rgba(${isHigh ? '239, 68, 68' : '234, 179, 8'}, 0.3)`, // Softer border (30% opacity)
                                 backgroundColor: isHigh ? 'var(--error-bg)' : 'var(--warning-bg)'
                             }}
                         >

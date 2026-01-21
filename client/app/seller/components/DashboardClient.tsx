@@ -2,28 +2,38 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Package } from 'lucide-react';
 import { useAuth } from '@/src/features/auth';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBanner';
+import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     PullToRefresh,
     FloatingActionButton,
     ScrollToTopButton
 } from '@/src/components/patterns';
 
-// Dashboard v3 Components
+// Dashboard Components (Research-backed UX)
 import {
     UrgentActionsBar,
-    BusinessHeroSection,
+    PerformanceBar,
+    OrderTrendChart,
+    ShipmentPipeline,
+    GeographicInsights,
     QuickActionsGrid,
-    OrderStatusGrid,
     AnalyticsSection,
     SmartInsightsPanel,
     CODStatusCard
+} from '@/src/components/seller/dashboard';
+
+// Dashboard Skeleton Loaders
+import {
+    PerformanceBarSkeleton,
+    OrderTrendChartSkeleton,
+    UrgentActionsBarSkeleton
 } from '@/src/components/seller/dashboard';
 
 // Mock Data
@@ -31,7 +41,10 @@ import {
     getPendingPickups,
     getRTOOrders,
     getTodaySnapshot,
-    getTopInsights
+    getTopInsights,
+    getMockKPITrends,
+    mockOrderTrend30Days,
+    mockGeographicInsights
 } from '@/src/lib/mockData/enhanced';
 
 // --- ANIMATION VARIANTS ---
@@ -49,11 +62,33 @@ export function DashboardClient() {
     const { user } = useAuth();
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isDataReady, setIsDataReady] = useState(false);
+
+    // Loading state management with flash prevention
+    const { isLoading, showLoader, startLoading, stopLoading } = useLoader({
+        minDelay: 300,     // Don't show loader for fast operations (<300ms)
+        minDisplay: 500    // Keep visible for at least 500ms for smooth UX
+    });
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
+
+    // Simulate initial data loading (in production, this would be actual API calls)
+    useEffect(() => {
+        const loadDashboardData = async () => {
+            startLoading();
+
+            // Simulate API call delay (500-800ms realistic for dashboard data)
+            await new Promise(resolve => setTimeout(resolve, 600));
+
+            setIsDataReady(true);
+            stopLoading();
+        };
+
+        loadDashboardData();
+    }, [startLoading, stopLoading]);
 
     // Get greeting based on time
     const getGreeting = () => {
@@ -106,6 +141,31 @@ export function DashboardClient() {
     // 2. Snapshot Data Logic - Use enhanced mock data
     const todayData = getTodaySnapshot();
 
+    // KPI Trends with sparklines, delta, and trend data
+    const kpiTrendsRaw = getMockKPITrends();
+
+    // Transform KPITrendData to match PerformanceBar's KPIData interface
+    const kpiTrends = {
+        revenue: {
+            value: kpiTrendsRaw.revenue.today,
+            sparkline: kpiTrendsRaw.revenue.sparkline,
+            delta: kpiTrendsRaw.revenue.delta,
+            trend: kpiTrendsRaw.revenue.trend
+        },
+        profit: {
+            value: kpiTrendsRaw.profit.today,
+            sparkline: kpiTrendsRaw.profit.sparkline,
+            delta: kpiTrendsRaw.profit.delta,
+            trend: kpiTrendsRaw.profit.trend
+        },
+        orders: {
+            value: kpiTrendsRaw.orders.today,
+            sparkline: kpiTrendsRaw.orders.sparkline,
+            delta: kpiTrendsRaw.orders.delta,
+            trend: kpiTrendsRaw.orders.trend
+        }
+    };
+
     // Smart insights data
     const smartInsights = getTopInsights(3);
 
@@ -130,10 +190,15 @@ export function DashboardClient() {
 
     // 4. Refresh Handler
     const handleRefresh = async () => {
-        // Simulate data fetching
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        startLoading();
+
+        // Simulate data fetching (in production, re-fetch all queries)
+        await new Promise(resolve => setTimeout(resolve, 800));
+
         setCurrentTime(new Date());
-        // In a real app, you would re-fetch queries here
+        setIsDataReady(true);
+
+        stopLoading();
     };
 
     return (
@@ -174,16 +239,7 @@ export function DashboardClient() {
 
                         <div className="flex items-center gap-3 flex-shrink-0">
                             <DateRangePicker />
-                            <Link href="/seller/orders/create">
-                                <motion.button
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className="px-4 py-2 rounded-lg bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-colors flex items-center gap-2 font-medium text-sm shadow-sm"
-                                >
-                                    <Package className="w-4 h-4" />
-                                    <span>Create Order</span>
-                                </motion.button>
-                            </Link>
+
                         </div>
                     </div>
                 </header>
@@ -191,8 +247,12 @@ export function DashboardClient() {
                 {/* Setup Banner */}
                 <DashboardSetupBanner />
 
-                {/* PRIORITY 1: URGENT ACTIONS (Cannot miss - Loss aversion psychology) */}
-                {urgentActions.length > 0 && (
+                {/* ========== TIER 1: DECISION-CRITICAL (Above fold, cannot miss) ========== */}
+
+                {/* TIER 1: URGENT ACTIONS (Loss aversion psychology - immediate attention required) */}
+                {showLoader ? (
+                    <UrgentActionsBarSkeleton />
+                ) : urgentActions.length > 0 && isDataReady ? (
                     <motion.section
                         variants={containerVariants}
                         initial="hidden"
@@ -200,94 +260,156 @@ export function DashboardClient() {
                     >
                         <UrgentActionsBar actions={urgentActions} />
                     </motion.section>
+                ) : null}
+
+                {/* TIER 1: PERFORMANCE BAR (Glanceable metrics with sparklines - answer "Is revenue up?" in <3s) */}
+                {showLoader ? (
+                    <PerformanceBarSkeleton />
+                ) : isDataReady ? (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <PerformanceBar
+                            revenue={kpiTrends.revenue}
+                            profit={kpiTrends.profit}
+                            orders={kpiTrends.orders}
+                            walletBalance={todayData.walletBalance}
+                            walletSparkline={kpiTrendsRaw.walletBalance.sparkline}
+                            lastUpdated={kpiTrendsRaw.revenue.last_updated_at}
+                            freshness={kpiTrendsRaw.revenue.freshness}
+                            shippingStreak={5} // TODO: Get from backend (habit-forming feature)
+                            lowBalanceThreshold={1000}
+                            onRevenueClick={() => router.push('/seller/analytics/revenue')}
+                            onProfitClick={() => router.push('/seller/analytics/profit')}
+                            onOrdersClick={() => router.push('/seller/orders')}
+                        />
+                    </motion.section>
+                ) : null}
+
+                {/* TIER 1: ORDER TREND CHART (Dominant visual - 30-day pattern recognition at a glance) */}
+                {showLoader ? (
+                    <OrderTrendChartSkeleton />
+                ) : isDataReady ? (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                    >
+                        <OrderTrendChart
+                            data={mockOrderTrend30Days}
+                            onDataPointClick={(dataPoint) => {
+                                // Navigate to orders filtered by date
+                                router.push(`/seller/orders?date=${dataPoint.date}`);
+                            }}
+                        />
+                    </motion.section>
+                ) : null}
+
+                {/* ========== TIER 2: OPERATIONAL CLARITY ========== */}
+
+                {/* TIER 2: SMART INSIGHTS (Actionable recommendations - Business partner) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <SmartInsightsPanel
+                            insights={smartInsights}
+                            onApply={(id) => console.log('Applied insight:', id)}
+                        />
+                    </motion.section>
                 )}
 
-                {/* PRIORITY 2: BUSINESS HERO (Money + Wallet + Primary CTA) */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                >
-                    <BusinessHeroSection
-                        revenue={todayData.revenue}
-                        profit={todayData.profit}
-                        shippingCost={todayData.shippingCost}
-                        orders={todayData.orders}
-                        walletBalance={todayData.walletBalance}
-                    />
-                </motion.section>
+                {/* TIER 2: SHIPMENT PIPELINE (Visual flow replacing static status cards - Phase 2.1) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
+                    >
+                        <ShipmentPipeline
+                            statusCounts={{
+                                pending: pendingPickups.length,
+                                picked: Math.floor(todayData.activeShipments * 0.2),
+                                inTransit: Math.floor(todayData.activeShipments * 0.5),
+                                outForDelivery: Math.floor(todayData.activeShipments * 0.3),
+                                delivered: todayData.delivered,
+                                rto: rtoOrders.length,
+                                failed: 2
+                            }}
+                        />
+                    </motion.section>
+                )}
 
-                {/* PRIORITY 3: ORDER STATUS GRID (Critical Business State) */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                >
-                    <OrderStatusGrid
-                        statusCounts={{
-                            pending: pendingPickups.length,
-                            shipped: todayData.activeShipments,
-                            delivered: todayData.delivered,
-                            rto: rtoOrders.length,
-                            failed: 2,
-                            cancelled: 5
-                        }}
-                    />
-                </motion.section>
+                {/* TIER 2: GEOGRAPHIC INSIGHTS (Top destinations - warehouse/routing decisions - Phase 2.2) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.38 }}
+                    >
+                        <GeographicInsights
+                            topCities={mockGeographicInsights.topCities}
+                            regions={mockGeographicInsights.regions}
+                            totalOrders={mockGeographicInsights.totalOrders}
+                        />
+                    </motion.section>
+                )}
 
-                {/* PRIORITY 4: COD STATUS (65% of Indian orders - needs visibility) */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                >
-                    <CODStatusCard
-                        pendingAmount={todayData.pendingCOD}
-                        readyForRemittance={Math.floor(todayData.pendingCOD * 0.6)}
-                        lastRemittanceAmount={18500}
-                    />
-                </motion.section>
+                {/* ========== TIER 3: CONTEXT & ACTIONS ========== */}
 
-                {/* PRIORITY 5: QUICK ACTIONS (Contextual Common Tasks) */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.35 }}
-                >
-                    <QuickActionsGrid
-                        walletBalance={todayData.walletBalance}
-                        pendingPickups={pendingPickups.length}
-                    />
-                </motion.section>
+                {/* TIER 3: COD STATUS (65% of Indian orders - financial visibility) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                    >
+                        <CODStatusCard
+                            pendingAmount={todayData.pendingCOD}
+                            readyForRemittance={Math.floor(todayData.pendingCOD * 0.6)}
+                            lastRemittanceAmount={18500}
+                        />
+                    </motion.section>
+                )}
 
-                {/* PRIORITY 6: SMART INSIGHTS (Recommendations - Progressive Disclosure) */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                >
-                    <SmartInsightsPanel
-                        insights={smartInsights}
-                        onApply={(id) => console.log('Applied insight:', id)}
-                    />
-                </motion.section>
+                {/* TIER 3: QUICK ACTIONS (Secondary contextual tasks) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.45 }}
+                    >
+                        <QuickActionsGrid
+                            pendingPickups={pendingPickups.length}
+                        />
+                    </motion.section>
+                )}
 
-                {/* PRIORITY 7: ANALYTICS (Details on Demand) */}
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                >
-                    <AnalyticsSection data={analyticsData} />
-                </motion.section>
+                {/* ========== TIER 4: EXPANDABLE DETAILS ========== */}
 
-                {/* Mobile FAB - Create Order (Thumb-zone optimized) */}
+                {/* TIER 4: ANALYTICS SECTION (Details on demand - Progressive disclosure) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                    >
+                        <AnalyticsSection data={analyticsData} />
+                    </motion.section>
+                )}
+
+                {/* Mobile FAB - Primary action (Research: Single CTA per context) */}
                 <FloatingActionButton
                     icon={<Package className="w-5 h-5" />}
                     label="Create Order"
                     onClick={() => router.push('/seller/orders/create')}
                     position="bottom-right"
                     variant="primary"
+                    showOnScrollUp={false} // Always visible on mobile
                 />
 
                 {/* Scroll to top button */}

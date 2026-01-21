@@ -1,80 +1,86 @@
 /**
- * Enhanced Mock Data - Indian Market Context
+ * Enhanced Mock Data - Centralized Exports
  *
- * This module provides realistic mock data tailored for the Indian shipping market.
- * All data includes Indian names, cities, pincodes, and realistic business scenarios.
+ * Import all enhanced mock data from this single entry point.
  *
  * Usage:
- * - Set VITE_USE_MOCK_DATA=true to use mock data in development
- * - Set VITE_API_FALLBACK=true to fallback to mock data if API fails
+ * ```typescript
+ * import { mockKPITrends, mockOrderTrend30Days } from '@/lib/mockData/enhanced';
+ * ```
  */
 
-// Export all Indian data utilities
-export * from './indianData';
-
-// Export smart insights
-export * from './smartInsights';
-
-// Export transaction history
-export * from './transactions';
-
-// Export order data
-export * from './orders';
-
-// Export business metrics
-export * from './businessMetrics';
-
-// Export courier comparison data
-export * from './courierComparison';
-
-// Re-export commonly used functions for convenience
+// KPI Trends
 export {
-    getRandomIndianName,
-    getRandomCity,
-    getRandomPincode,
-    getRandomProduct,
-    getRandomCourier
-} from './indianData';
+  getMockKPITrends,
+  mockRevenueTrend,
+  mockProfitTrend,
+  mockOrdersTrend,
+  mockWalletTrend,
+  type KPITrendData,
+  type AllKPITrends,
+} from './kpiTrends';
 
+// Order Trends
 export {
-    mockSmartInsights,
-    getInsightsByPriority,
-    getTopInsights
-} from './smartInsights';
+  generateRealisticTrend,
+  mockOrderTrend30Days,
+  mockOrderTrend7Days,
+  mockOrderTrendDeclining,
+  mockOrderTrendFlat,
+  mockOrderTrendVolatile,
+  getTrendMetadata,
+  mockOrderTrend30DaysMetadata,
+  type OrderTrendDataPoint,
+  type TrendMetadata,
+} from './orderTrend';
 
+// Pipeline Flow
 export {
-    mockTransactions,
-    generateTransactionHistory,
-    getTransactionsByType,
-    getTransactionsByCategory,
-    getTotalCredits,
-    getTotalDebits
-} from './transactions';
+  getMockPipelineFlow,
+  mockPipelineFlow,
+  type PipelineStage,
+  type PipelineFlowData,
+} from './pipelineFlow';
 
+// Geographic Metrics
 export {
-    mockOrders,
-    generateOrder,
-    generateBulkOrders,
-    getOrdersByStatus,
-    getOrdersByPaymentMode,
-    getUrgentOrders,
-    getPendingPickups,
-    getActiveOrders,
-    getRTOOrders
+  getTopCities,
+  searchCities,
+  getMockGeoMetrics,
+  getGeographicInsightsData,
+  mockGeoMetrics,
+  mockTopCitiesByVolume,
+  mockTopCitiesByExceptions,
+  mockGeographicInsights,
+  type CityMetric,
+  type GeoMetricsData,
+} from './geoMetrics';
+
+// Orders
+export {
+  getPendingPickups,
+  getRTOOrders,
+  type Order,
+  type OrderStatus,
+  type PaymentMode,
+  type OrderAddress,
 } from './orders';
 
+// Business Metrics
 export {
-    generateDailyMetrics,
-    generateWeeklyMetrics,
-    generateMonthlyMetrics,
-    getTodaySnapshot,
-    getZoneDistribution,
-    getHourlyDistribution
+  getTodaySnapshot,
+  type TodaySnapshot,
 } from './businessMetrics';
 
+// Smart Insights
 export {
-    mockCourierData,
-    getCourierRecommendation,
-    compareCouriers,
-    getCouriersSortedBy
-} from './courierComparison';
+  getTopInsights,
+  type SmartInsight,
+} from './smartInsights';
+
+// Wallet Transactions
+export {
+  mockTransactions,
+  type Transaction,
+} from './walletTransactions';
+

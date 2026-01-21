@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import WalletService from '../../../../core/application/services/wallet/wallet.service';
+import { WalletAnalyticsService } from '../../../../core/application/services/wallet';
 import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
@@ -240,11 +241,55 @@ export const updateLowBalanceThreshold = async (
     }
 };
 
+/**
+ * Get spending insights
+ * GET /api/v1/finance/wallet/insights
+ */
+export const getSpendingInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const insights = await WalletAnalyticsService.getSpendingInsights(auth.companyId);
+
+        sendSuccess(res, insights, 'Spending insights retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching spending insights:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get wallet trends
+ * GET /api/v1/finance/wallet/trends
+ */
+export const getWalletTrends = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const trends = await WalletAnalyticsService.getWalletTrends(auth.companyId);
+
+        sendSuccess(res, trends, 'Wallet trends retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching wallet trends:', error);
+        next(error);
+    }
+};
+
 export default {
     getBalance,
     getTransactionHistory,
     rechargeWallet,
     refundTransaction,
     getWalletStats,
+    getSpendingInsights,
+    getWalletTrends,
     updateLowBalanceThreshold,
 };

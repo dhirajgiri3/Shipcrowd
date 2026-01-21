@@ -23,6 +23,12 @@ router.post('/recharge', walletController.rechargeWallet);
 // Get wallet statistics
 router.get('/stats', walletController.getWalletStats);
 
+// Get spending insights (week-over-week, categories)
+router.get('/insights', walletController.getSpendingInsights);
+
+// Get wallet trends (projections, weekly change)
+router.get('/trends', walletController.getWalletTrends);
+
 // Update low balance threshold
 router.put('/threshold', walletController.updateLowBalanceThreshold);
 
