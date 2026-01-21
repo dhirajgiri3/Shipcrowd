@@ -105,36 +105,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Setup token refresh timer
    * Smart Refresh: Checks every minute, refreshes if 14 mins passed AND user is active
    */
+  /**
+   * ✅ PRODUCTION-GRADE TOKEN REFRESH (Industry Best Practice)
+   *
+   * Key Principles:
+   * 1. Fixed refresh cadence (9 mins) - runs BEFORE 15-min expiry
+   * 2. NO activity-based logic - refresh token controls session lifespan
+   * 3. Only stops when refresh fails (server decides validity)
+   * 4. Circuit breaker prevents infinite retry loops
+   *
+   * This follows the same model as Google/GitHub/Stripe/Shopify
+   */
   const setupTokenRefresh = useCallback(() => {
     // Clear existing interval
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
 
-    // CONFIG: Refresh every 10 mins (access token expires at 15 mins)
-    // This gives 5 minutes buffer and handles page reloads gracefully
-    const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
+    // ✅ CRITICAL: Refresh every 9 mins (access token expires at 15 mins)
+    // This provides 6-minute safety buffer and ensures no token expiry
+    const REFRESH_INTERVAL = 9 * 60 * 1000; // 9 minutes
 
-    // Perform refresh immediately on first call (if needed)
     const performRefresh = async () => {
-      const now = Date.now();
-      const timeSinceActivity = now - lastActivityRef.current;
-
-      // ✅ FIX: Only skip refresh if user has been completely inactive for >30 mins
-      // This prevents token expiry during normal idle periods (15-20 mins)
-      const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-
-      if (timeSinceActivity >= INACTIVITY_TIMEOUT) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Auth] Skipping refresh - User inactive for 30+ minutes');
-        }
-        return;
-      }
-
-      // Check circuit breaker before attempting refresh
+      // ✅ Check circuit breaker before attempting refresh
       if (isRefreshBlocked()) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[Auth] Skipping refresh - circuit breaker active');
+          console.warn('[Auth] Refresh blocked by circuit breaker - stopping refresh loop');
         }
         // Clear interval to stop further attempts
         if (refreshIntervalRef.current) {
@@ -146,12 +142,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       try {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[Auth] Refreshing token (Active Session)', {
-            timeSinceActivity: Math.floor(timeSinceActivity / 1000),
+          console.log('[Auth] 🔄 Proactive token refresh', {
             timestamp: new Date().toLocaleTimeString(),
+            interval: '9 minutes',
           });
         }
 
+        // ✅ Call refresh endpoint - server decides if session is valid
         const response = await authApi.refreshToken();
         if (response?.data?.user) {
           setUser(response.data.user);
@@ -164,8 +161,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('[Auth] ✅ Token refresh successful');
         }
       } catch (err) {
-        // Token refresh failed - session expired
-        console.error('[Auth] Refresh failed', err);
+        // ✅ Refresh failed - server rejected refresh token
+        // This happens when:
+        // - Refresh token expired (7 days default, 30 days with remember-me)
+        // - User logged out from another device
+        // - Token was revoked or blacklisted
+        console.error('[Auth] Refresh failed - session expired', err);
+
+        // Clear user state and stop refresh loop
         setUser(null);
         if (refreshIntervalRef.current) {
           clearInterval(refreshIntervalRef.current);
@@ -174,15 +177,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
-    // Reset timestamps
+    // ✅ Reset timestamps
     lastRefreshRef.current = Date.now();
     lastActivityRef.current = Date.now();
 
-    // Set up interval to refresh every 10 minutes
+    // ✅ Start fixed-cadence refresh (runs every 9 minutes regardless of activity)
     refreshIntervalRef.current = setInterval(performRefresh, REFRESH_INTERVAL);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Auth] Token refresh timer started (every 10 minutes)');
+      console.log('[Auth] 🔐 Token refresh timer started (every 9 minutes)');
+      console.log('[Auth] Session lifespan controlled by refresh token TTL (7-30 days)');
     }
   }, []);
 
