@@ -56,8 +56,14 @@ export function AuthGuard({
     // Check role-based access
     if (requiredRole && user) {
       const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-      if (!allowedRoles.includes(user.role)) {
-        // Redirect to user's default dashboard instead of generic unauthorized page for better UX
+
+      // ✅ FIX: Allow admins to access seller routes (admins can switch to seller dashboard)
+      const isAdminAccessingSeller = user.role === 'admin' && allowedRoles.includes('seller');
+      const hasRequiredRole = allowedRoles.includes(user.role);
+
+      if (!hasRequiredRole && !isAdminAccessingSeller) {
+        // Only redirect if user truly doesn't have access
+        // Sellers can't access admin routes, but admins CAN access seller routes
         const destination = user.role === 'admin' ? '/admin' : '/seller';
         if (pathname !== destination) {
           router.push(destination);

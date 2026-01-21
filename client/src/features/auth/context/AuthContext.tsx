@@ -78,19 +78,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } else if (event.data.type === 'LOGIN') {
         // Received LOGIN from another tab
-        // ✅ Fix #3: Move async logic outside setState callback
-        if (!user) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] Synced login from another tab');
-          }
-          try {
-            const userData = await authApi.getMe();
-            setUser(userData);
-            setupTokenRefresh();
-            prefetchCSRFToken().catch(console.warn);
-          } catch (err) {
-            console.error('[Auth] Failed to sync login from tab:', err);
-          }
+        // Silently ignore - cookies are not shared across tabs in browsers
+        // Each tab maintains its own auth state
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] Login event received from another tab (ignored - cookies not shared)');
         }
       }
     };
@@ -103,7 +94,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       window.removeEventListener('scroll', handleActivity);
       authChannel.close();
     };
-  }, []);
+  }, [user]);
 
   /**
    * Setup token refresh timer

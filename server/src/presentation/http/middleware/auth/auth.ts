@@ -39,7 +39,6 @@ export const authenticate = async (
       companyId: payload.companyId,
     };
 
-    // ✅ FEATURE 27: Company Suspension Check
     // Block access if user's company is suspended
     if (payload.companyId) {
       const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');

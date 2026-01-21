@@ -439,7 +439,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
       maxAge: cookieMaxAge,
     });
@@ -448,7 +448,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
@@ -579,7 +579,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     res.cookie(refreshCookieName, newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
       maxAge: remainingTimeMs, // Maintain original expiry
     });
@@ -588,7 +588,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
@@ -766,11 +766,20 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
     // ✅ FIX: Get access token to blacklist it immediately
     const accessToken = req.cookies?.[accessCookieName] || req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
 
-    // Clear both cookies (regular and secure-prefixed)
-    res.clearCookie(refreshCookieName);
-    res.clearCookie(accessCookieName);
-    res.clearCookie('refreshToken'); // Clear regular cookie for backwards compatibility
-    res.clearCookie('accessToken');
+    // ✅ CRITICAL FIX: Clear cookies with EXACT same options used when setting them
+    // Cookies must be cleared with the same path, domain, secure, and sameSite settings
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' as const : 'lax' as const,
+      path: '/',
+    };
+
+    // Clear both tokens with proper options
+    res.clearCookie(refreshCookieName, cookieOptions);
+    res.clearCookie(accessCookieName, cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions); // Clear regular cookie for backwards compatibility
+    res.clearCookie('accessToken', cookieOptions);
 
     // Cast to AuthRequest to access user property
     const authReq = req as Request;
@@ -902,14 +911,14 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
@@ -1160,14 +1169,14 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for OAuth
     });
 
@@ -1344,14 +1353,14 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
@@ -1740,14 +1749,14 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     res.cookie(refreshCookieName, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
     res.cookie(accessCookieName, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
