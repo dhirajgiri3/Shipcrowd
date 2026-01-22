@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Building2,
@@ -22,7 +22,6 @@ import {
     Edit,
     Trash2,
     CheckCircle2,
-    Star,
     Loader2,
     AlertCircle,
     Info
@@ -41,14 +40,14 @@ export function WarehousesClient() {
     const [deletingWarehouse, setDeletingWarehouse] = useState<Warehouse | null>(null);
     const [togglingDefaultId, setTogglingDefaultId] = useState<string | null>(null);
 
-    const updateWarehouseMutation = useUpdateWarehouse({
-        onSuccess: () => {
+    const updateWarehouseMutation = useUpdateWarehouse();
+
+    // Reset toggling state when mutation completes (success or error)
+    React.useEffect(() => {
+        if (!updateWarehouseMutation.isPending) {
             setTogglingDefaultId(null);
-        },
-        onError: () => {
-            setTogglingDefaultId(null);
-        },
-    });
+        }
+    }, [updateWarehouseMutation.isPending]);
 
     const handleToggleDefault = (warehouse: Warehouse) => {
         if (warehouse.isDefault) return; // Already default, nothing to do
@@ -224,7 +223,7 @@ export function WarehousesClient() {
                                 Default Warehouse
                             </p>
                             <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                                Your default warehouse is automatically selected for new shipments. Click <span className="font-semibold text-[var(--primary-blue)]">"Set as Default"</span> on any warehouse to change your primary pickup location.
+                                Your default warehouse is automatically selected for new shipments. Click <span className="font-semibold text-[var(--primary-blue)]">"Make Default"</span> on any warehouse to update your primary pickup location.
                             </p>
                         </div>
                     </motion.div>
@@ -240,20 +239,7 @@ export function WarehousesClient() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                     >
-                        <Card className={cn(
-                            "border-[var(--border-default)] hover:border-[var(--primary-blue)]/50 transition-all duration-300 h-full group relative overflow-hidden",
-                            warehouse.isDefault && "ring-2 ring-[var(--primary-blue)]/20 border-[var(--primary-blue)]/40"
-                        )}>
-                            {/* Default Warehouse Ribbon */}
-                            {warehouse.isDefault && (
-                                <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
-                                    <div className="absolute top-5 right-[-30px] w-32 h-6 bg-[var(--primary-blue)] text-white text-[10px] font-bold flex items-center justify-center transform rotate-45 shadow-lg">
-                                        <Star className="w-3 h-3 mr-1 fill-white" />
-                                        DEFAULT
-                                    </div>
-                                </div>
-                            )}
-
+                        <Card className="border-[var(--border-default)] hover:border-[var(--primary-blue)]/50 transition-all duration-300 h-full group">
                             <CardContent className="p-5 space-y-4">
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
@@ -261,23 +247,22 @@ export function WarehousesClient() {
                                         <div className={cn(
                                             "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border-2 transition-all",
                                             warehouse.isDefault
-                                                ? "bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white border-[var(--primary-blue)] shadow-lg shadow-blue-500/30"
-                                                : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-subtle)]"
+                                                ? "bg-[var(--primary-blue)]/10 border-[var(--primary-blue)]/20 text-[var(--primary-blue)]"
+                                                : "bg-[var(--bg-tertiary)] border-[var(--border-subtle)] text-[var(--text-muted)] group-hover:border-[var(--primary-blue)]/30 group-hover:text-[var(--primary-blue)]"
                                         )}>
                                             <Building2 className="w-6 h-6" />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <h3 className="font-bold text-[var(--text-primary)] leading-tight text-base">
-                                                {warehouse.name}
-                                            </h3>
-                                            {warehouse.isDefault && (
-                                                <div className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--primary-blue)]/10 border border-[var(--primary-blue)]/30">
-                                                    <Star className="w-3 h-3 mr-1.5 fill-[var(--primary-blue)] text-[var(--primary-blue)]" />
-                                                    <span className="text-xs font-semibold text-[var(--primary-blue)]">
-                                                        Primary Warehouse
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-[var(--text-primary)] leading-tight text-base">
+                                                    {warehouse.name}
+                                                </h3>
+                                                {warehouse.isDefault && (
+                                                    <Badge variant="outline" className="bg-[var(--primary-blue)]/10 text-[var(--primary-blue)] border-[var(--primary-blue)]/20 h-5 px-1.5 text-[10px] font-semibold">
+                                                        Default
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <p className="font-mono text-[10px] text-[var(--text-muted)] tracking-wide">
                                                 ID: {warehouse._id.slice(-8)}
                                             </p>
@@ -322,53 +307,48 @@ export function WarehousesClient() {
                                     )}
                                 </div>
 
-                                {/* Default Warehouse Toggle */}
-                                {!warehouse.isDefault && (
-                                    <div className="pt-3 border-t border-[var(--border-subtle)]">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full h-10 border-[var(--primary-blue)]/30 bg-[var(--primary-blue)]/5 hover:bg-[var(--primary-blue)]/10 hover:border-[var(--primary-blue)] text-[var(--primary-blue)] font-medium transition-all group"
-                                            onClick={() => handleToggleDefault(warehouse)}
-                                            disabled={togglingDefaultId === warehouse._id}
-                                        >
-                                            {togglingDefaultId === warehouse._id ? (
-                                                <>
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                    Setting as Default...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Star className="w-4 h-4 mr-2 group-hover:fill-[var(--primary-blue)] transition-all" />
-                                                    Set as Default Warehouse
-                                                </>
-                                            )}
-                                        </Button>
-                                    </div>
-                                )}
-
                                 {/* Actions */}
-                                <div className="pt-2 flex gap-2">
+                                <div className="pt-2 flex flex-wrap gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="flex-1 h-9 bg-[var(--bg-primary)] hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)] transition-colors"
+                                        className="h-8 text-xs bg-[var(--bg-primary)] hover:border-[var(--text-muted)] transition-colors"
                                         onClick={() => setEditingWarehouse(warehouse)}
                                     >
-                                        <Edit className="w-3.5 h-3.5 mr-2" />
-                                        Edit Details
+                                        <Edit className="w-3 h-3 mr-1.5" />
+                                        Edit
                                     </Button>
 
                                     {!warehouse.isDefault && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-9 px-0 border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/10 hover:border-[var(--error)]"
-                                            onClick={() => setDeletingWarehouse(warehouse)}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-xs border-[var(--primary-blue)]/30 text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5 hover:border-[var(--primary-blue)] transition-colors"
+                                                onClick={() => handleToggleDefault(warehouse)}
+                                                disabled={togglingDefaultId === warehouse._id}
+                                            >
+                                                {togglingDefaultId === warehouse._id ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                                                ) : (
+                                                    <CheckCircle2 className="w-3 h-3 mr-1.5" />
+                                                )}
+                                                Make Default
+                                            </Button>
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 w-8 p-0 border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/5 hover:border-[var(--error)] ml-auto"
+                                                onClick={() => setDeletingWarehouse(warehouse)}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </>
                                     )}
+
+                                    {/* Spacer for default card to push edit button */}
+                                    {warehouse.isDefault && <div className="flex-1" />}
                                 </div>
                             </CardContent>
                         </Card>

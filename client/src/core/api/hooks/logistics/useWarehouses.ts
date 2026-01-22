@@ -299,11 +299,52 @@ export const useUpdateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
             const response = await apiClient.patch(`/warehouses/${warehouseId}`, data);
             return response.data.data.warehouse;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+        onMutate: async ({ warehouseId, data }) => {
+            // Cancel outgoing refetches (so they don't overwrite our optimistic update)
+            await queryClient.cancelQueries({ queryKey: ['warehouses'] });
+
+            // Snapshot the previous value
+            const previousWarehouses = queryClient.getQueryData<Warehouse[]>(['warehouses']);
+
+            // Optimistically update the cache
+            if (previousWarehouses) {
+                queryClient.setQueryData<Warehouse[]>(['warehouses'], (old) => {
+                    if (!old) return old;
+
+                    return old.map(warehouse => {
+                        // If setting a warehouse as default, unset all others
+                        if (data.isDefault === true) {
+                            if (warehouse._id === warehouseId) {
+                                // This is the one being set as default
+                                return { ...warehouse, ...data, isDefault: true };
+                            } else {
+                                // All others should be non-default
+                                return { ...warehouse, isDefault: false };
+                            }
+                        }
+
+                        // For other updates, just update the specific warehouse
+                        if (warehouse._id === warehouseId) {
+                            return { ...warehouse, ...data };
+                        }
+
+                        return warehouse;
+                    });
+                });
+            }
+
+            return { previousWarehouses };
+        },
+        onSuccess: async () => {
+            // Refetch to ensure server state is synced
+            await queryClient.invalidateQueries({ queryKey: ['warehouses'] });
             showSuccessToast('Warehouse updated successfully');
         },
-        onError: (error) => {
+        onError: (error, _variables, context) => {
+            // Rollback to previous state on error
+            if (context?.previousWarehouses) {
+                queryClient.setQueryData(['warehouses'], context.previousWarehouses);
+            }
             handleApiError(error, 'Update Warehouse Failed');
         },
         ...options,

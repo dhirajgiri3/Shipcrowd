@@ -322,11 +322,16 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     }
 
     if (validation.data.isDefault === true) {
-      await Warehouse.updateMany(
+      // First, unset all other warehouses as default
+      const unsetResult = await Warehouse.updateMany(
         { companyId: req.user.companyId, _id: { $ne: warehouseId }, isDeleted: false },
         { $set: { isDefault: false } }
       );
+      logger.info(`[Warehouse] Set ${unsetResult.modifiedCount} other warehouses to isDefault: false`);
+
+      // Update company's default warehouse ID
       await Company.findByIdAndUpdate(req.user.companyId, { 'settings.defaultWarehouseId': warehouseId });
+      logger.info(`[Warehouse] Updated company ${req.user.companyId} default warehouse to ${warehouseId}`);
     } else if (validation.data.isDefault === false && warehouse.isDefault) {
       throw new ValidationError('Cannot unset the default warehouse. Set another warehouse as default first.');
     }
@@ -340,6 +345,8 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     if (!updatedWarehouse) {
       throw new NotFoundError('Warehouse not found after update', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
     }
+
+    logger.info(`[Warehouse] Updated warehouse ${warehouseId}, isDefault: ${updatedWarehouse.isDefault}`);
 
     await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
 
