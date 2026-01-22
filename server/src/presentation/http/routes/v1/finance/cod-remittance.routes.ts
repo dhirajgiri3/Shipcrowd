@@ -20,6 +20,12 @@ router.use(authenticate);
 // All COD remittance routes require KYC verification
 router.use(requireAccess({ kyc: true }));
 
+// Get COD settlement timeline (4-stage pipeline) - MUST be before /:id route
+router.get(
+    '/timeline',
+    codRemittanceController.getTimeline
+);
+
 // Get dashboard stats - MUST be before /:id route
 router.get(
     '/dashboard',

@@ -695,6 +695,145 @@ export default class CODRemittanceService {
     }
 
     /**
+     * Get COD settlement timeline (4-stage pipeline)
+     * Powers the CODSettlementTimeline dashboard component
+     * Stages: Collected → In Process → Scheduled → Settled
+     */
+    static async getTimeline(companyId: string): Promise<{
+        stages: Array<{
+            stage: 'collected' | 'in_process' | 'scheduled' | 'settled';
+            amount: number;
+            count: number;
+            date: string | null;
+        }>;
+        nextSettlementIn: string;
+        totalPending: number;
+    }> {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        // Stage 1: Collected (Delivered COD not yet in a batch)
+        let collected = { amount: 0, count: 0 };
+        try {
+            const eligibleData = await this.getEligibleShipments(companyId, now);
+            collected = {
+                amount: eligibleData.summary.totalCOD,
+                count: eligibleData.summary.totalShipments
+            };
+        } catch (error) {
+            // No eligible shipments is fine
+            collected = { amount: 0, count: 0 };
+        }
+
+        // Stage 2: In Process (Batches pending approval)
+        const inProcessResult = await CODRemittance.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: 'pending_approval',
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    amount: { $sum: '$financial.netPayable' },
+                    count: { $sum: '$financial.totalShipments' }
+                }
+            }
+        ]);
+        const inProcess = {
+            amount: inProcessResult[0]?.amount || 0,
+            count: inProcessResult[0]?.count || 0
+        };
+
+        // Stage 3: Scheduled (Approved, ready for payout)
+        const scheduledResult = await CODRemittance.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: 'approved',
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    amount: { $sum: '$financial.netPayable' },
+                    count: { $sum: '$financial.totalShipments' }
+                }
+            }
+        ]);
+        const scheduled = {
+            amount: scheduledResult[0]?.amount || 0,
+            count: scheduledResult[0]?.count || 0
+        };
+
+        // Get next scheduled payout date (estimate: tomorrow if approved batches exist)
+        const nextPayoutDate = scheduled.amount > 0
+            ? new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            : null;
+
+        // Stage 4: Settled (Paid in last 30 days)
+        const settledResult = await CODRemittance.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: 'paid',
+                    'payout.completedAt': { $gte: thirtyDaysAgo },
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    amount: { $sum: '$financial.netPayable' },
+                    count: { $sum: '$financial.totalShipments' }
+                }
+            }
+        ]);
+
+        // Get last settlement date
+        const lastSettlement = await CODRemittance.findOne({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            status: 'paid',
+            isDeleted: false
+        })
+            .sort({ 'payout.completedAt': -1 })
+            .select('payout.completedAt')
+            .lean();
+
+        const settled = {
+            amount: settledResult[0]?.amount || 0,
+            count: settledResult[0]?.count || 0,
+            date: lastSettlement?.payout?.completedAt
+                ? new Date(lastSettlement.payout.completedAt).toISOString().split('T')[0]
+                : null
+        };
+
+        // Calculate next settlement estimate
+        let nextSettlementIn = 'No pending settlements';
+        if (scheduled.amount > 0) {
+            nextSettlementIn = '1 day';
+        } else if (inProcess.amount > 0) {
+            nextSettlementIn = '2-3 days';
+        } else if (collected.amount > 0) {
+            nextSettlementIn = '3-5 days';
+        }
+
+        return {
+            stages: [
+                { stage: 'collected', amount: collected.amount, count: collected.count, date: null },
+                { stage: 'in_process', amount: inProcess.amount, count: inProcess.count, date: null },
+                { stage: 'scheduled', amount: scheduled.amount, count: scheduled.count, date: nextPayoutDate },
+                { stage: 'settled', amount: settled.amount, count: settled.count, date: settled.date }
+            ],
+            nextSettlementIn,
+            totalPending: collected.amount + inProcess.amount + scheduled.amount
+        };
+    }
+
+    /**
      * Schedule payout preference
      */
     static async schedulePayout(

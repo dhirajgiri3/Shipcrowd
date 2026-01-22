@@ -811,4 +811,130 @@ export default class WalletService {
             });
         }
     }
+
+    /**
+     * Get 7-day cash flow forecast
+     * Analyzes past 30 days to project future inflows (COD) and outflows (shipping)
+     * Powers the CashFlowForecast dashboard component
+     */
+    static async getCashFlowForecast(companyId: string): Promise<{
+        forecast: Array<{
+            date: string;
+            inflows: number;
+            outflows: number;
+            netChange: number;
+            projectedBalance: number;
+        }>;
+        summary: {
+            currentBalance: number;
+            projectedBalance7Days: number;
+            totalInflows: number;
+            totalOutflows: number;
+            lowBalanceWarning: boolean;
+            warningDate: string | null;
+        };
+        averages: {
+            dailyInflow: number;
+            dailyOutflow: number;
+        };
+    }> {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        // Get current balance
+        const balanceData = await this.getBalance(companyId);
+        const currentBalance = balanceData.balance;
+        const lowBalanceThreshold = balanceData.lowBalanceThreshold;
+
+        // Analyze past 30 days of transactions
+        const transactions = await WalletTransaction.aggregate([
+            {
+                $match: {
+                    company: new mongoose.Types.ObjectId(companyId),
+                    status: 'completed',
+                    createdAt: { $gte: thirtyDaysAgo }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    credits: {
+                        $sum: {
+                            $cond: [{ $eq: ['$type', 'credit'] }, '$amount', 0]
+                        }
+                    },
+                    debits: {
+                        $sum: {
+                            $cond: [{ $eq: ['$type', 'debit'] }, '$amount', 0]
+                        }
+                    }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Calculate daily averages
+        const daysWithData = transactions.length || 1;
+        const totalCredits = transactions.reduce((sum, t) => sum + t.credits, 0);
+        const totalDebits = transactions.reduce((sum, t) => sum + t.debits, 0);
+        const dailyInflow = totalCredits / Math.min(daysWithData, 30);
+        const dailyOutflow = totalDebits / Math.min(daysWithData, 30);
+
+        // Project next 7 days
+        const forecast: Array<{
+            date: string;
+            inflows: number;
+            outflows: number;
+            netChange: number;
+            projectedBalance: number;
+        }> = [];
+
+        let runningBalance = currentBalance;
+        let totalProjectedInflows = 0;
+        let totalProjectedOutflows = 0;
+        let warningDate: string | null = null;
+
+        for (let i = 1; i <= 7; i++) {
+            const forecastDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+            const dateStr = forecastDate.toISOString().split('T')[0];
+
+            // Use averages for projection (can be enhanced with day-of-week patterns)
+            const projectedInflow = Math.round(dailyInflow);
+            const projectedOutflow = Math.round(dailyOutflow);
+            const netChange = projectedInflow - projectedOutflow;
+            runningBalance += netChange;
+
+            totalProjectedInflows += projectedInflow;
+            totalProjectedOutflows += projectedOutflow;
+
+            // Check if balance will drop below threshold
+            if (!warningDate && runningBalance < lowBalanceThreshold) {
+                warningDate = dateStr;
+            }
+
+            forecast.push({
+                date: dateStr,
+                inflows: projectedInflow,
+                outflows: projectedOutflow,
+                netChange,
+                projectedBalance: Math.max(0, runningBalance)
+            });
+        }
+
+        return {
+            forecast,
+            summary: {
+                currentBalance,
+                projectedBalance7Days: Math.max(0, runningBalance),
+                totalInflows: totalProjectedInflows,
+                totalOutflows: totalProjectedOutflows,
+                lowBalanceWarning: warningDate !== null,
+                warningDate
+            },
+            averages: {
+                dailyInflow: Math.round(dailyInflow),
+                dailyOutflow: Math.round(dailyOutflow)
+            }
+        };
+    }
 }

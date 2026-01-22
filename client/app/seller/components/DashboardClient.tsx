@@ -64,6 +64,10 @@ import {
     mockGeographicInsights
 } from '@/src/lib/mockData/enhanced';
 
+// Phase 4: Keyboard Shortcuts
+import { useKeyboardShortcuts } from '@/src/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsModal } from '@/src/components/ui/KeyboardShortcutsModal';
+
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -209,6 +213,13 @@ export function DashboardClient() {
     const { isLoading, showLoader, startLoading, stopLoading } = useLoader({
         minDelay: 300,     // Don't show loader for fast operations (<300ms)
         minDisplay: 500    // Keep visible for at least 500ms for smooth UX
+    });
+
+    // Phase 4: Keyboard Shortcuts
+    const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+    const { shortcuts } = useKeyboardShortcuts({
+        onShowHelp: () => setShowShortcutsModal(true),
+        enabled: true,
     });
 
     // ========== REAL API HOOKS ==========
@@ -695,6 +706,13 @@ export function DashboardClient() {
 
                 {/* Scroll to top button */}
                 <ScrollToTopButton showAfter={400} />
+
+                {/* Phase 4: Keyboard Shortcuts Modal */}
+                <KeyboardShortcutsModal
+                    isOpen={showShortcutsModal}
+                    onClose={() => setShowShortcutsModal(false)}
+                    shortcuts={shortcuts}
+                />
             </div>
         </PullToRefresh>
     );

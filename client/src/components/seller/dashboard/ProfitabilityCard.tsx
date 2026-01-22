@@ -96,7 +96,7 @@ const CostBreakdownItem = memo(function CostBreakdownItem({
     amount: number;
     percentage: number;
     color: string;
-    icon: React.ElementType;
+    icon: React.ElementType<{ className?: string }>;
 }) {
     return (
         <div className="flex items-center gap-3 py-2">

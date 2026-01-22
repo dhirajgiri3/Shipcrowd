@@ -253,7 +253,7 @@ export function PerformanceBar({
           {/* Revenue */}
           <button
             onClick={handleRevenueClick}
-            className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-left hover:border-[var(--border-focus)] hover:shadow-sm transition-all active:scale-[0.98]"
+            className="group p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-left hover:border-[var(--border-focus)] hover:shadow-sm transition-all active:scale-[0.98]"
           >
             <div className="text-xs text-[var(--text-secondary)] mb-1">Revenue</div>
             <div className="flex items-baseline gap-2 mb-2">
@@ -285,7 +285,7 @@ export function PerformanceBar({
           {/* Profit */}
           <button
             onClick={handleProfitClick}
-            className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-left hover:border-[var(--border-focus)] hover:shadow-sm transition-all active:scale-[0.98]"
+            className="group p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-left hover:border-[var(--border-focus)] hover:shadow-sm transition-all active:scale-[0.98]"
           >
             <div className="text-xs text-[var(--text-secondary)] mb-1">Profit</div>
             <div className="flex items-baseline gap-2 mb-2">
@@ -320,7 +320,7 @@ export function PerformanceBar({
           {/* Orders */}
           <button
             onClick={handleOrdersClick}
-            className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-left hover:border-[var(--border-focus)] hover:shadow-sm transition-all active:scale-[0.98]"
+            className="group p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-left hover:border-[var(--border-focus)] hover:shadow-sm transition-all active:scale-[0.98]"
           >
             <div className="text-xs text-[var(--text-secondary)] mb-1">Orders</div>
             <div className="flex items-center gap-2 mb-2">

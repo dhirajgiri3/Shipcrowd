@@ -236,6 +236,25 @@ export const cancelRemittance = async (
 };
 
 
+/**
+ * Get COD settlement timeline (4-stage pipeline)
+ * GET /api/v1/finance/cod-remittance/timeline
+ */
+export const getTimeline = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const timeline = await CODRemittanceService.getTimeline(auth.companyId);
+        sendSuccess(res, timeline, 'COD timeline retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching COD timeline:', error);
+        next(error);
+    }
+};
+
 
 /**
  * Get dashboard stats

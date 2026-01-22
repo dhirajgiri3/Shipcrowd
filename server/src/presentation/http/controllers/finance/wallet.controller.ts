@@ -297,7 +297,8 @@ export const getAvailableBalance = async (
         const auth = guardChecks(req);
 
         // Get current wallet balance
-        const walletBalance = await WalletService.getBalance(auth.companyId);
+        const walletBalanceData = await WalletService.getBalance(auth.companyId);
+        const walletBalance = walletBalanceData.balance;
 
         // Estimate scheduled COD settlements (simplified for now)
         // In production, would query CODRemittanceService for scheduled settlements
@@ -332,6 +333,25 @@ export const getAvailableBalance = async (
     }
 };
 
+/**
+ * Get 7-day cash flow forecast
+ * GET /api/v1/finance/wallet/cash-flow-forecast
+ */
+export const getCashFlowForecast = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const forecast = await WalletService.getCashFlowForecast(auth.companyId);
+        sendSuccess(res, forecast, 'Cash flow forecast retrieved successfully');
+    } catch (error) {
+        logger.error('Error calculating cash flow forecast:', error);
+        next(error);
+    }
+};
+
 export default {
     getBalance,
     getTransactionHistory,
@@ -342,4 +362,5 @@ export default {
     getWalletTrends,
     updateLowBalanceThreshold,
     getAvailableBalance, // Phase 2: Dashboard Optimization
+    getCashFlowForecast, // Phase 3: Cash Flow Forecast
 };

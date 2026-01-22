@@ -60,7 +60,7 @@ export function DeltaSinceLastVisit({
             rtoCount: currentRtoCount,
         };
         localStorage.setItem('lastDashboardVisit', JSON.stringify(currentSnapshot));
-    }, []);
+    }, [currentOrderCount, currentWalletBalance, currentRtoCount]);
 
     if (!showSummary || !lastVisit) return null;
 
