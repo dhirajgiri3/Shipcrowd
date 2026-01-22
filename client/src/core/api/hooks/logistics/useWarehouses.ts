@@ -291,13 +291,14 @@ export const useCreateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
 /**
  * Update warehouse
  */
-export const useUpdateWarehouse = (options?: UseMutationOptions<Warehouse, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>) => {
+export const useUpdateWarehouse = (options?: UseMutationOptions<any, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>) => {
     const queryClient = useQueryClient();
 
-    return useMutation<Warehouse, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>({
+    return useMutation<any, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>({
         mutationFn: async ({ warehouseId, data }) => {
             const response = await apiClient.patch(`/warehouses/${warehouseId}`, data);
-            return response.data.data.warehouse;
+            // Backend now returns { warehouse, warehouses } where warehouses is the full list
+            return response.data.data;
         },
         onMutate: async ({ warehouseId, data }) => {
             // Cancel outgoing refetches (so they don't overwrite our optimistic update)
@@ -335,9 +336,15 @@ export const useUpdateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
 
             return { previousWarehouses };
         },
-        onSuccess: async () => {
-            // Refetch to ensure server state is synced
-            await queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+        onSuccess: async (data) => {
+            // ✅ FIX: Use server-provided warehouses list to update cache immediately
+            // This prevents race conditions with MongoDB index updates
+            if (data?.warehouses && Array.isArray(data.warehouses)) {
+                queryClient.setQueryData<Warehouse[]>(['warehouses'], data.warehouses);
+            } else {
+                // Fallback: invalidate if backend doesn't return warehouses array
+                await queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+            }
             showSuccessToast('Warehouse updated successfully');
         },
         onError: (error, _variables, context) => {

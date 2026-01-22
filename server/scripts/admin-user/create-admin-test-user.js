@@ -275,13 +275,19 @@ async function createAdminTestUser() {
                     country: 'India',
                     postalCode: city.pincode,
                 },
-                contact: {
+                // ✅ FIXED: Use contactInfo (not contact) to match warehouse.model.ts
+                contactInfo: {
                     name: 'Warehouse Manager',
                     phone: `+91-98765-${String(10000 + index).padStart(5, '0')}`,
                     email: `warehouse${index + 1}@admintest.com`,
                 },
+                // ✅ FIXED: Use individual days (not weekdays/saturday/sunday) to match warehouse.model.ts
                 operatingHours: {
-                    weekdays: { open: '09:00', close: '19:00' },
+                    monday: { open: '09:00', close: '19:00' },
+                    tuesday: { open: '09:00', close: '19:00' },
+                    wednesday: { open: '09:00', close: '19:00' },
+                    thursday: { open: '09:00', close: '19:00' },
+                    friday: { open: '09:00', close: '19:00' },
                     saturday: { open: '09:00', close: '14:00' },
                     sunday: { open: null, close: null },
                 },

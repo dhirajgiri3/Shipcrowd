@@ -350,12 +350,24 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 
     await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
 
-    const warehouseObj = updatedWarehouse.toObject();
-    if (warehouseObj.operatingHours) {
-      (warehouseObj as any).formattedHours = formatOperatingHours(warehouseObj.operatingHours);
-    }
+    // ✅ FIX: Return ALL warehouses to ensure frontend gets consistent state
+    // This prevents race conditions with MongoDB index updates on isDefault field
+    const allWarehouses = await Warehouse.find({
+      companyId: req.user.companyId,
+      isDeleted: false
+    }).sort({ isDefault: -1, name: 1 }).lean();
 
-    sendSuccess(res, { warehouse: warehouseObj }, 'Warehouse updated successfully');
+    const formattedWarehouses = allWarehouses.map(wh => {
+      if (wh.operatingHours) {
+        (wh as any).formattedHours = formatOperatingHours(wh.operatingHours);
+      }
+      return wh;
+    });
+
+    sendSuccess(res, {
+      warehouse: updatedWarehouse.toObject(),
+      warehouses: formattedWarehouses // Include all warehouses for frontend cache update
+    }, 'Warehouse updated successfully');
   } catch (error) {
     logger.error('Error updating warehouse:', error);
     next(error);
