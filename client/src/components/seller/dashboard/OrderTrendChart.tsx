@@ -189,10 +189,10 @@ export function OrderTrendChart({ data, onDataPointClick, className = '' }: Orde
       animate={{ opacity: 1, y: 0 }}
       className={`rounded-3xl p-4 md:p-6 shadow-md bg-[var(--bg-primary)] border border-[var(--border-subtle)] ${className}`}
     >
-      {/* Collapsible Header */}
+      {/* Collapsible Header - Enhanced visibility */}
       <button
         onClick={toggleCollapsed}
-        className="w-full flex items-center justify-between gap-4 mb-4 hover:opacity-80 transition-opacity"
+        className="w-full flex items-center justify-between gap-4 mb-4 p-3 rounded-xl hover:bg-[var(--bg-secondary)] transition-all group border border-transparent hover:border-[var(--border-default)]"
       >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -220,11 +220,18 @@ export function OrderTrendChart({ data, onDataPointClick, className = '' }: Orde
               </div>
             </div>
           )}
-          {isCollapsed ? (
-            <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
-          ) : (
-            <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
-          )}
+
+          {/* Prominent expand/collapse indicator */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--primary-blue)]/10 border border-[var(--primary-blue)]/20 group-hover:bg-[var(--primary-blue)]/20 transition-colors">
+            <span className="text-xs font-medium text-[var(--primary-blue)] hidden md:block">
+              {isCollapsed ? 'Click to expand' : 'Click to collapse'}
+            </span>
+            {isCollapsed ? (
+              <ChevronDown className="w-5 h-5 text-[var(--primary-blue)] group-hover:translate-y-0.5 transition-transform" />
+            ) : (
+              <ChevronUp className="w-5 h-5 text-[var(--primary-blue)] group-hover:-translate-y-0.5 transition-transform" />
+            )}
+          </div>
         </div>
       </button>
 

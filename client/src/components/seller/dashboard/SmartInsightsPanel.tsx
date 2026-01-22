@@ -101,7 +101,7 @@ export function SmartInsightsPanel({ insights, onApply }: SmartInsightsPanelProp
                                         className="text-xs font-medium"
                                         style={{ color: config.accentColor }}
                                     >
-                                        {insight.impact}
+                                        {typeof insight.impact === 'string' ? insight.impact : insight.impact.formatted}
                                     </span>
                                 </div>
                             )}

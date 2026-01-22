@@ -11,9 +11,10 @@ import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBann
 import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     PullToRefresh,
-    FloatingActionButton,
     ScrollToTopButton
 } from '@/src/components/patterns';
+
+import { ChevronRight } from 'lucide-react';
 
 // Dashboard Components (Research-backed UX)
 import {
@@ -22,8 +23,6 @@ import {
     OrderTrendChart,
     ShipmentPipeline,
     GeographicInsights,
-    QuickActionsGrid,
-    AnalyticsSection,
     SmartInsightsPanel,
     CODSettlementTimeline,
     CashFlowForecast,
@@ -51,6 +50,7 @@ import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, t
 import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
 import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
 import { useGeographicInsights } from '@/src/core/api/hooks/analytics/useGeographicInsights'; // Phase 4: Geographic Insights
+import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsFAB';
 
 // Dashboard Utilities
 import { transformDashboardToKPIs, USE_MOCK } from '@/src/lib/dashboard/data-utils';
@@ -64,8 +64,7 @@ import {
     getTodaySnapshot,
     getTopInsights,
     getMockKPITrends,
-    mockOrderTrend30Days,
-    mockGeographicInsights
+    mockOrderTrend30Days
 } from '@/src/lib/mockData/enhanced';
 
 // Phase 4: Keyboard Shortcuts
@@ -394,26 +393,7 @@ export function DashboardClient() {
         ? mockOrderTrend30Days
         : (orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : null) || mockOrderTrend30Days;
 
-    // 3. Analytics Data Logic (mock for components that still need it)
-    const mockAnalyticsData = {
-        orderTrend: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            values: [45, 52, 38, 65, 48, 59, 42] // Realistic variation
-        },
-        topCouriers: [
-            { name: 'Delhivery', orders: 156, avgCost: 65 },
-            { name: 'BlueDart', orders: 89, avgCost: 82 },
-            { name: 'Ecom Express', orders: 45, avgCost: 58 }
-        ],
-        zoneDistribution: [
-            { zone: 'A', percentage: 45, orders: 130 },
-            { zone: 'B', percentage: 30, orders: 87 },
-            { zone: 'C', percentage: 15, orders: 43 },
-            { zone: 'D', percentage: 10, orders: 29 }
-        ]
-    };
-
-    // 4. Refresh Handler
+    // 3. Refresh Handler
     const handleRefresh = async () => {
         startLoading();
 
@@ -672,53 +652,51 @@ export function DashboardClient() {
                     </motion.section>
                 ) : null}
 
-                {/* TIER 3: GEOGRAPHIC INSIGHTS (Strategic - warehouse/routing decisions, not daily ops) */}
-                {isDataReady && (
+                {/* TIER 3: GEOGRAPHIC INSIGHTS (Real API data) */}
+                {isDataReady && geographicData && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <GeographicInsights
-                            topCities={mockGeographicInsights.topCities}
-                            regions={mockGeographicInsights.regions}
-                            totalOrders={mockGeographicInsights.totalOrders}
+                            topCities={geographicData.topCities}
+                            regions={geographicData.regions}
+                            totalOrders={geographicData.totalOrders}
                         />
                     </motion.section>
                 )}
 
-                {/* TIER 3: QUICK ACTIONS (Secondary contextual tasks) */}
-                {isDataReady && (
-                    <motion.section
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <QuickActionsGrid
-                            pendingPickups={pendingPickups.length}
-                        />
-                    </motion.section>
-                )}
+                {/* Quick Actions moved to FAB at bottom of screen */}
 
                 {/* ========== TIER 4: EXPANDABLE DETAILS ========== */}
 
-                {/* TIER 4: ANALYTICS SECTION (Details on demand - Progressive disclosure) */}
+                {/* TIER 4: Detailed Analytics - Link to dedicated page */}
                 {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <AnalyticsSection data={mockAnalyticsData} />
+                        <div className="p-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
+                                        Detailed Analytics
+                                    </h3>
+                                    <p className="text-sm text-[var(--text-secondary)]">
+                                        Revenue, customers, inventory, and custom reports
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => router.push('/seller/analytics')}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] rounded-lg transition-colors"
+                                >
+                                    View Analytics
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
                     </motion.section>
                 )}
-
-                {/* Mobile FAB - Primary action (Research: Single CTA per context) */}
-                <FloatingActionButton
-                    icon={<Package className="w-5 h-5" />}
-                    label="Create Order"
-                    onClick={() => router.push('/seller/orders/create')}
-                    position="bottom-right"
-                    variant="primary"
-                    showOnScrollUp={false} // Always visible on mobile
-                />
 
                 {/* Scroll to top button */}
                 <ScrollToTopButton showAfter={400} />
@@ -730,6 +708,9 @@ export function DashboardClient() {
                     shortcuts={shortcuts}
                 />
             </div>
+
+            {/* Quick Actions FAB - Always accessible */}
+            <QuickActionsFAB />
         </PullToRefresh>
     );
 }

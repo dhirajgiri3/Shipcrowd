@@ -80,6 +80,7 @@ export default class GeographicAnalyticsService {
             const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
             // Aggregate orders by city (current month)
+            // Order model uses customerInfo.address structure
             const cityAggregation = await Order.aggregate([
                 {
                     $match: {
@@ -91,8 +92,8 @@ export default class GeographicAnalyticsService {
                 {
                     $group: {
                         _id: {
-                            city: '$deliveryAddress.city',
-                            state: '$deliveryAddress.state'
+                            city: '$customerInfo.address.city',
+                            state: '$customerInfo.address.state'
                         },
                         orders: { $sum: 1 }
                     }
@@ -117,8 +118,8 @@ export default class GeographicAnalyticsService {
                 {
                     $group: {
                         _id: {
-                            city: '$deliveryAddress.city',
-                            state: '$deliveryAddress.state'
+                            city: '$customerInfo.address.city',
+                            state: '$customerInfo.address.state'
                         },
                         orders: { $sum: 1 }
                     }
