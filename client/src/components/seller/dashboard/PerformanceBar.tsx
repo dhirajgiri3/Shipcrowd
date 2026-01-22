@@ -268,17 +268,20 @@ export function PerformanceBar({
             </div>
             <div className="flex items-center justify-between">
               <Sparkline data={revenue.sparkline} trend={revenue.trend} width={50} height={16} />
-              <span
-                className={`text-xs font-medium ${revenue.trend === 'up'
-                  ? 'text-[var(--success)]'
-                  : revenue.trend === 'down'
-                    ? 'text-[var(--error)]'
-                    : 'text-[var(--text-secondary)]'
-                  }`}
-              >
-                {revenue.delta > 0 ? '+' : ''}
-                {revenue.delta.toFixed(1)}%
-              </span>
+              <div className="text-right">
+                <span
+                  className={`text-xs font-medium ${revenue.trend === 'up'
+                    ? 'text-[var(--success)]'
+                    : revenue.trend === 'down'
+                      ? 'text-[var(--error)]'
+                      : 'text-[var(--text-secondary)]'
+                    }`}
+                >
+                  {revenue.delta > 0 ? '+' : ''}
+                  {revenue.delta.toFixed(1)}%
+                </span>
+                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs last week</div>
+              </div>
             </div>
           </button>
 
@@ -300,17 +303,20 @@ export function PerformanceBar({
             </div>
             <div className="flex items-center justify-between">
               <Sparkline data={profit.sparkline} trend={profit.trend} width={50} height={16} />
-              <span
-                className={`text-xs font-medium ${profit.trend === 'up'
-                  ? 'text-[var(--success)]'
-                  : profit.trend === 'down'
-                    ? 'text-[var(--error)]'
-                    : 'text-[var(--text-secondary)]'
-                  }`}
-              >
-                {profit.delta > 0 ? '+' : ''}
-                {profit.delta.toFixed(1)}%
-              </span>
+              <div className="text-right">
+                <span
+                  className={`text-xs font-medium ${profit.trend === 'up'
+                    ? 'text-[var(--success)]'
+                    : profit.trend === 'down'
+                      ? 'text-[var(--error)]'
+                      : 'text-[var(--text-secondary)]'
+                    }`}
+                >
+                  {profit.delta > 0 ? '+' : ''}
+                  {profit.delta.toFixed(1)}%
+                </span>
+                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs last week</div>
+              </div>
             </div>
           </button>
         </div>
@@ -329,17 +335,20 @@ export function PerformanceBar({
             </div>
             <div className="flex items-center justify-between">
               <Sparkline data={orders.sparkline} trend={orders.trend} width={50} height={16} />
-              <span
-                className={`text-xs font-medium ${orders.trend === 'up'
-                  ? 'text-[var(--success)]'
-                  : orders.trend === 'down'
-                    ? 'text-[var(--error)]'
-                    : 'text-[var(--text-secondary)]'
-                  }`}
-              >
-                {orders.delta > 0 ? '+' : ''}
-                {orders.delta.toFixed(1)}%
-              </span>
+              <div className="text-right">
+                <span
+                  className={`text-xs font-medium ${orders.trend === 'up'
+                    ? 'text-[var(--success)]'
+                    : orders.trend === 'down'
+                      ? 'text-[var(--error)]'
+                      : 'text-[var(--text-secondary)]'
+                    }`}
+                >
+                  {orders.delta > 0 ? '+' : ''}
+                  {orders.delta.toFixed(1)}%
+                </span>
+                <div className="text-[9px] text-[var(--text-muted)] mt-0.5">vs last week</div>
+              </div>
             </div>
           </button>
 

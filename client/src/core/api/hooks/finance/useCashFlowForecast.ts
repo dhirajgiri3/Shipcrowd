@@ -36,6 +36,36 @@ export interface CashFlowForecastResponse {
     };
 }
 
+// CashFlowForecast component interface (what component expects)
+interface CashFlowDay {
+    date: string;
+    inflows: {
+        type: 'cod_settlement' | 'refund' | 'other';
+        amount: number;
+        source?: string;
+    }[];
+    outflows: {
+        type: 'shipping_costs' | 'wallet_deduction' | 'fees' | 'other';
+        amount: number;
+        estimated?: boolean;
+    }[];
+    netChange: number;
+    endingBalance: number;
+}
+
+interface CashFlowAlert {
+    type: 'low_balance' | 'large_inflow' | 'high_outflow';
+    date: string;
+    message: string;
+}
+
+export interface CashFlowForecastData {
+    currentBalance: number;
+    forecast: CashFlowDay[];
+    projectedBalance: number;
+    alerts: CashFlowAlert[];
+}
+
 export function useCashFlowForecast() {
     return useQuery({
         queryKey: ["cash-flow-forecast"],
@@ -50,6 +80,50 @@ export function useCashFlowForecast() {
         staleTime: 10 * 60 * 1000,
         gcTime: 15 * 60 * 1000,
     });
+}
+
+// Transform API response to CashFlowForecast component format
+export function transformCashFlowToComponent(data: CashFlowForecastResponse): CashFlowForecastData {
+    const forecast: CashFlowDay[] = data.forecast.map(day => {
+        // Convert simple numbers to detailed arrays
+        const inflows: CashFlowDay['inflows'] = day.inflows > 0 ? [{
+            type: 'cod_settlement',
+            amount: day.inflows,
+            source: 'COD Settlement'
+        }] : [];
+
+        const outflows: CashFlowDay['outflows'] = day.outflows > 0 ? [{
+            type: 'shipping_costs',
+            amount: day.outflows,
+            estimated: true
+        }] : [];
+
+        return {
+            date: day.date,
+            inflows,
+            outflows,
+            netChange: day.netChange,
+            endingBalance: day.projectedBalance
+        };
+    });
+
+    // Generate alerts if low balance warning exists
+    const alerts: CashFlowAlert[] = [];
+    if (data.summary.lowBalanceWarning && data.summary.warningDate) {
+        const warningDate = new Date(data.summary.warningDate);
+        alerts.push({
+            type: 'low_balance',
+            date: data.summary.warningDate,
+            message: `Balance will drop below threshold on ${warningDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}. Consider recharging.`
+        });
+    }
+
+    return {
+        currentBalance: data.summary.currentBalance,
+        forecast,
+        projectedBalance: data.summary.projectedBalance7Days,
+        alerts
+    };
 }
 
 // Helper to format forecast for CashFlowForecast component

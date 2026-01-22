@@ -47,6 +47,7 @@ import { useWalletBalance } from '@/src/core/api/hooks/finance/useWallet';
 import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
 import { useOrderTrends } from '@/src/core/api/hooks/analytics/useOrderTrends';
+import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, transformCashFlowToComponent } from '@/src/core/api/hooks/finance'; // Phase 3: New APIs
 
 // Dashboard Utilities
 import { transformDashboardToKPIs, USE_MOCK } from '@/src/lib/dashboard/data-utils';
@@ -246,6 +247,10 @@ export function DashboardClient() {
         limit: 100,
         status: 'all'
     });
+
+    // Phase 3: COD Timeline & Cash Flow Forecast APIs
+    const { data: codTimelineData, isLoading: codTimelineLoading } = useCODTimeline();
+    const { data: cashFlowData, isLoading: cashFlowLoading } = useCashFlowForecast();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -553,12 +558,11 @@ export function DashboardClient() {
                         transition={{ delay: 0.25 }}
                     >
                         <CODSettlementTimeline
-                            isUsingMock={USE_MOCK}
-                        // data prop will be added when backend API is ready
+                            isUsingMock={!codTimelineData}
+                            data={codTimelineData ? transformCODTimelineToComponent(codTimelineData) : undefined}
                         />
                     </motion.section>
                 )}
-
 
 
                 {/* ========== TIER 2: OPERATIONAL CLARITY ========== */}
@@ -610,8 +614,8 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <CashFlowForecast
-                            isUsingMock={USE_MOCK}
-                        // data prop will be added when backend API is ready
+                            isUsingMock={!cashFlowData}
+                            data={cashFlowData ? transformCashFlowToComponent(cashFlowData) : undefined}
                         />
                     </motion.section>
                 )}
