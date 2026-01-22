@@ -28,7 +28,10 @@ import {
     CODSettlementTimeline,
     CashFlowForecast,
     RTOAnalytics,
-    ProfitabilityCard
+    ProfitabilityCard,
+    // Phase 2: Dashboard Optimization
+    CriticalAlertsBanner,
+    DeltaSinceLastVisit,
 } from '@/src/components/seller/dashboard';
 
 // Dashboard Skeleton Loaders
@@ -440,6 +443,34 @@ export function DashboardClient() {
 
                 {/* Setup Banner */}
                 <DashboardSetupBanner />
+
+                {/* Phase 2: Critical Alerts Banner (Above Everything) */}
+                {isDataReady && (
+                    <CriticalAlertsBanner
+                        alerts={[
+                            // Mock alert for demonstration - will be replaced with real logic
+                            ...(walletData?.balance && walletData.balance < 5000 ? [{
+                                id: 'wallet-low-' + Date.now(),
+                                type: 'wallet_low' as const,
+                                severity: 'critical' as const,
+                                title: 'Low Wallet Balance',
+                                message: `Your wallet balance is ₹${walletData.balance.toLocaleString('en-IN')}. Recharge now to avoid order disruptions.`,
+                                ctaLabel: 'Recharge Wallet',
+                                ctaUrl: '/seller/wallet',
+                                dismissable: true,
+                            }] : []),
+                        ]}
+                    />
+                )}
+
+                {/* Phase 2: Delta Since Last Visit */}
+                {isDataReady && (
+                    <DeltaSinceLastVisit
+                        currentOrderCount={dashboardMetrics?.totalOrders || 0}
+                        currentWalletBalance={walletData?.balance || 0}
+                        currentRtoCount={dashboardMetrics?.rto || 0}
+                    />
+                )}
 
                 {/* ========== TIER 1: DECISION-CRITICAL (Above fold, cannot miss) ========== */}
 
