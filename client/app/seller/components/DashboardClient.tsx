@@ -21,7 +21,6 @@ import {
     UrgentActionsBar,
     PerformanceBar,
     OrderTrendChart,
-    ShipmentPipeline,
     GeographicInsights,
     SmartInsightsPanel,
     CODSettlementTimeline,
@@ -32,6 +31,7 @@ import {
     CriticalAlertsBanner,
     DeltaSinceLastVisit,
 } from '@/src/components/seller/dashboard';
+import type { CriticalAlert } from '@/src/components/seller/dashboard/CriticalAlertsBanner';
 
 // Dashboard Skeleton Loaders
 import {
@@ -453,23 +453,41 @@ export function DashboardClient() {
                 <DashboardSetupBanner />
 
                 {/* Phase 2: Critical Alerts Banner (Above Everything) */}
-                {isDataReady && (
-                    <CriticalAlertsBanner
-                        alerts={[
-                            // Mock alert for demonstration - will be replaced with real logic
-                            ...(walletData?.balance && walletData.balance < 5000 ? [{
-                                id: 'wallet-low-' + Date.now(),
-                                type: 'wallet_low' as const,
-                                severity: 'critical' as const,
-                                title: 'Low Wallet Balance',
-                                message: `Your wallet balance is ₹${walletData.balance.toLocaleString('en-IN')}. Recharge now to avoid order disruptions.`,
-                                ctaLabel: 'Recharge Wallet',
-                                ctaUrl: '/seller/wallet',
-                                dismissable: true,
-                            }] : []),
-                        ]}
-                    />
-                )}
+                {isDataReady && (() => {
+                    const alerts: any[] = [];
+
+                    // Wallet low balance alert
+                    if (walletData?.balance && walletData.balance < 5000) {
+                        alerts.push({
+                            id: 'wallet-low-' + Date.now(),
+                            type: 'wallet_low' as const,
+                            severity: (walletData.balance < 1000 ? 'critical' : 'warning'),
+                            title: 'Low Wallet Balance',
+                            message: `Your wallet balance is ₹${walletData.balance.toLocaleString('en-IN')}. Recharge now to avoid order disruptions.`,
+                            ctaLabel: 'Recharge Wallet',
+                            ctaUrl: '/seller/wallet',
+                            dismissable: true,
+                        });
+                    }
+
+                    // RTO spike detection (>20% increase)
+                    if (rtoAnalyticsData?.summary && rtoAnalyticsData.summary.change > 20) {
+                        alerts.push({
+                            id: 'rto-spike-' + Date.now(),
+                            type: 'rto_spike' as const,
+                            severity: 'warning' as const,
+                            title: 'RTO Rate Spike Detected',
+                            message: `RTO rate increased by ${rtoAnalyticsData.summary.change.toFixed(1)}% compared to last period. Review affected orders.`,
+                            ctaLabel: 'View RTO Analytics',
+                            ctaUrl: '/seller/analytics/rto',
+                            dismissable: true,
+                        });
+                    }
+
+                    return alerts.length > 0 ? (
+                        <CriticalAlertsBanner alerts={alerts} />
+                    ) : null;
+                })()}
 
                 {/* Phase 2: Delta Since Last Visit */}
                 {isDataReady && (
@@ -612,25 +630,7 @@ export function DashboardClient() {
                     </motion.section>
                 )}
 
-                {/* TIER 2: SHIPMENT PIPELINE (Visual flow replacing static status cards) */}
-                {isDataReady && (
-                    <motion.section
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <ShipmentPipeline
-                            statusCounts={{
-                                pending: USE_MOCK ? pendingPickups.length : (dashboardMetrics?.pendingPickup || pendingPickups.length),
-                                picked: USE_MOCK ? Math.floor(todayData.activeShipments * 0.2) : Math.floor((dashboardMetrics?.activeOrders || todayData.activeShipments) * 0.15),
-                                inTransit: USE_MOCK ? Math.floor(todayData.activeShipments * 0.5) : (dashboardMetrics?.inTransit || Math.floor(todayData.activeShipments * 0.5)),
-                                outForDelivery: USE_MOCK ? Math.floor(todayData.activeShipments * 0.3) : Math.floor((dashboardMetrics?.activeOrders || todayData.activeShipments) * 0.2),
-                                delivered: USE_MOCK ? todayData.delivered : (dashboardMetrics?.delivered || todayData.delivered),
-                                rto: USE_MOCK ? rtoOrders.length : (dashboardMetrics?.rto || rtoOrders.length),
-                                failed: USE_MOCK ? 2 : ((dashboardMetrics?.ndr || 0) + 2)
-                            }}
-                        />
-                    </motion.section>
-                )}
+                {/* Shipment Pipeline removed as per user request (redundant/cluttered) */}
 
                 {/* ========== TIER 3: CONTEXT & ACTIONS ========== */}
 

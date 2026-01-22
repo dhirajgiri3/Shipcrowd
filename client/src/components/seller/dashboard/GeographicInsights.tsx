@@ -43,6 +43,18 @@ interface GeographicInsightsProps {
   regions: RegionMetric[];
   totalOrders: number;
 }
+// ============================================================================
+// Region Colors (User Requested Palette)
+// ============================================================================
+
+const REGION_COLORS: Record<string, string> = {
+  North: '#6366F1',      // Violet/Purple
+  South: '#EF4444',      // Red
+  East: '#EAB308',       // Yellow
+  West: '#E5E7EB',       // Light Gray
+  Northeast: '#D1D5DB',  // Light Gray (darker shade)
+  Central: '#9CA3AF'     // Light Gray (darker shade)
+};
 
 // ============================================================================
 // Premium 3D Donut Chart with Enhanced Interactivity
@@ -434,7 +446,10 @@ export function GeographicInsights({
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  // Take only top 5 cities
+  // ============================================================================
+  // Region Colors (User Requested Palette)
+  // ============================================================================
+
   const top5Cities = topCities.slice(0, 5);
 
   // Rank colors gradient
