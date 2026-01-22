@@ -14,6 +14,9 @@ router.use(requireAccess({ kyc: true }));
 // Get wallet balance
 router.get('/balance', walletController.getBalance);
 
+// Get available balance (Phase 2: Dashboard Optimization)
+router.get('/available-balance', walletController.getAvailableBalance);
+
 // Get transaction history
 router.get('/transactions', walletController.getTransactionHistory);
 

@@ -283,6 +283,55 @@ export const getWalletTrends = async (
     }
 };
 
+/**
+ * Get available balance (Phase 2: Dashboard Optimization)
+ * Formula: Wallet Balance + Scheduled COD - Projected Outflows (7 days)
+ * GET /api/v1/finance/wallet/available-balance
+ */
+export const getAvailableBalance = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        // Get current wallet balance
+        const walletBalance = await WalletService.getBalance(auth.companyId);
+
+        // Estimate scheduled COD settlements (simplified for now)
+        // In production, would query CODRemittanceService for scheduled settlements
+        const scheduledCODSettlements = 0; // TODO: Integrate with CODRemittanceService
+
+        // Estimate projected outflows based on average daily shipping costs
+        // In production, would analyze past 30 days and project next 7 days
+        const projectedOutflows = 0; // TODO: Calculate from WalletService transaction history
+
+        // Calculate available to spend
+        const availableToSpend = walletBalance + scheduledCODSettlements - projectedOutflows;
+
+        // Low balance warning if available < 5000 (customizable threshold)
+        const lowBalanceThreshold = 5000;
+        const lowBalanceWarning = availableToSpend < lowBalanceThreshold;
+
+        sendSuccess(
+            res,
+            {
+                walletBalance,
+                scheduledCODSettlements,
+                projectedOutflows,
+                availableToSpend,
+                lowBalanceWarning,
+                threshold: lowBalanceThreshold,
+            },
+            'Available balance calculated successfully'
+        );
+    } catch (error) {
+        logger.error('Error calculating available balance:', error);
+        next(error);
+    }
+};
+
 export default {
     getBalance,
     getTransactionHistory,
@@ -292,4 +341,5 @@ export default {
     getSpendingInsights,
     getWalletTrends,
     updateLowBalanceThreshold,
+    getAvailableBalance, // Phase 2: Dashboard Optimization
 };

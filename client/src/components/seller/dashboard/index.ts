@@ -12,8 +12,16 @@ export { GeographicInsights } from './GeographicInsights';
 export { SmartInsightsPanel } from './SmartInsightsPanel';
 export { AnalyticsSection } from './AnalyticsSection';
 export { QuickActionsGrid } from './QuickActionsGrid';
-export { OrderStatusGrid } from './OrderStatusGrid';
-export { CODStatusCard } from './CODStatusCard';
+
+// Phase 3: Critical Indian E-Commerce Components
+export { CODSettlementTimeline } from './CODSettlementTimeline';
+export { CashFlowForecast } from './CashFlowForecast';
+export { RTOAnalytics } from './RTOAnalytics';
+export { ProfitabilityCard } from './ProfitabilityCard';
+
+// Phase 2: Dashboard Optimization
+export { CriticalAlertsBanner } from './CriticalAlertsBanner';
+export { DeltaSinceLastVisit } from './DeltaSinceLastVisit';
 
 // Skeleton Loaders (organized in /skeletons subfolder)
 export { PerformanceBarSkeleton, OrderTrendChartSkeleton, UrgentActionsBarSkeleton } from './skeletons';

@@ -25,7 +25,10 @@ import {
     QuickActionsGrid,
     AnalyticsSection,
     SmartInsightsPanel,
-    CODStatusCard
+    CODSettlementTimeline,
+    CashFlowForecast,
+    RTOAnalytics,
+    ProfitabilityCard
 } from '@/src/components/seller/dashboard';
 
 // Dashboard Skeleton Loaders
@@ -500,33 +503,56 @@ export function DashboardClient() {
                     </motion.section>
                 ) : null}
 
-                {/* TIER 1: ORDER TREND CHART (Dominant visual - 30-day pattern recognition at a glance) */}
-                {showLoader ? (
-                    <OrderTrendChartSkeleton />
-                ) : isDataReady ? (
+                {/* TIER 1: COD SETTLEMENT TIMELINE (Critical for Indian sellers - 65% orders are COD, cash flow visibility) */}
+                {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 }}
                     >
-                        <OrderTrendChart
-                            data={orderTrendChartData}
-                            onDataPointClick={(dataPoint) => {
-                                // Navigate to orders filtered by date
-                                router.push(`/seller/orders?date=${dataPoint.date}`);
-                            }}
+                        <CODSettlementTimeline
+                            isUsingMock={USE_MOCK}
+                        // data prop will be added when backend API is ready
                         />
                     </motion.section>
-                ) : null}
+                )}
+
+
 
                 {/* ========== TIER 2: OPERATIONAL CLARITY ========== */}
+
+                {/* TIER 2: RTO ANALYTICS (Loss prevention FIRST - High RTO = revenue loss, actionable insights) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <RTOAnalytics
+                            isUsingMock={USE_MOCK}
+                        // data prop will be added when backend API is ready
+                        />
+                    </motion.section>
+                )}
+
+                {/* TIER 2: PROFITABILITY CARD (Real profit calculation - not estimated 15%) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <ProfitabilityCard
+                            isUsingMock={USE_MOCK}
+                            onViewDetails={() => router.push('/seller/analytics/profitability')}
+                        // data prop will be added when backend API is ready
+                        />
+                    </motion.section>
+                )}
 
                 {/* TIER 2: SMART INSIGHTS (Actionable recommendations - Business partner) */}
                 {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
                     >
                         <SmartInsightsPanel
                             insights={smartInsights}
@@ -535,12 +561,24 @@ export function DashboardClient() {
                     </motion.section>
                 )}
 
-                {/* TIER 2: SHIPMENT PIPELINE (Visual flow replacing static status cards - Phase 2.1) */}
+                {/* TIER 2: CASH FLOW FORECAST (Financial planning - know when money arrives) */}
                 {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.35 }}
+                    >
+                        <CashFlowForecast
+                            isUsingMock={USE_MOCK}
+                        // data prop will be added when backend API is ready
+                        />
+                    </motion.section>
+                )}
+
+                {/* TIER 2: SHIPMENT PIPELINE (Visual flow replacing static status cards) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
                     >
                         <ShipmentPipeline
                             statusCounts={{
@@ -556,12 +594,31 @@ export function DashboardClient() {
                     </motion.section>
                 )}
 
-                {/* TIER 2: GEOGRAPHIC INSIGHTS (Top destinations - warehouse/routing decisions - Phase 2.2) */}
+                {/* ========== TIER 3: CONTEXT & ACTIONS ========== */}
+
+                {/* TIER 3: ORDER TREND CHART (Strategic - 30-day trends for planning, not urgent) */}
+                {showLoader ? (
+                    <OrderTrendChartSkeleton />
+                ) : isDataReady ? (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <OrderTrendChart
+                            data={orderTrendChartData}
+                            onDataPointClick={(dataPoint) => {
+                                // Navigate to orders filtered by date
+                                router.push(`/seller/orders?date=${dataPoint.date}`);
+                            }}
+                        />
+                    </motion.section>
+                ) : null}
+
+                {/* TIER 3: GEOGRAPHIC INSIGHTS (Strategic - warehouse/routing decisions, not daily ops) */}
                 {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.38 }}
                     >
                         <GeographicInsights
                             topCities={mockGeographicInsights.topCities}
@@ -571,29 +628,11 @@ export function DashboardClient() {
                     </motion.section>
                 )}
 
-                {/* ========== TIER 3: CONTEXT & ACTIONS ========== */}
-
-                {/* TIER 3: COD STATUS (65% of Indian orders - financial visibility) */}
-                {isDataReady && (
-                    <motion.section
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                    >
-                        <CODStatusCard
-                            pendingAmount={USE_MOCK ? todayData.pendingCOD : (codStatsData?.pending?.amount || todayData.pendingCOD)}
-                            readyForRemittance={USE_MOCK ? Math.floor(todayData.pendingCOD * 0.6) : (codStatsData?.pending?.amount ? Math.floor(codStatsData.pending.amount * 0.6) : Math.floor(todayData.pendingCOD * 0.6))}
-                            lastRemittanceAmount={USE_MOCK ? 18500 : 18500}
-                        />
-                    </motion.section>
-                )}
-
                 {/* TIER 3: QUICK ACTIONS (Secondary contextual tasks) */}
                 {isDataReady && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.45 }}
                     >
                         <QuickActionsGrid
                             pendingPickups={pendingPickups.length}
@@ -608,7 +647,6 @@ export function DashboardClient() {
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
                     >
                         <AnalyticsSection data={mockAnalyticsData} />
                     </motion.section>
