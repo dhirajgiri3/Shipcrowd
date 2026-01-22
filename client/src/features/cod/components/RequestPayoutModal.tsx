@@ -62,15 +62,15 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                 />
 
                 {/* Modal */}
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <div className="relative bg-[var(--bg-primary)] rounded-lg shadow-xl max-w-md w-full p-6 border border-[var(--border-default)]">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                        <h2 className="text-xl font-semibold text-[var(--text-primary)]">
                             Request Payout
                         </h2>
                         <button
                             onClick={handleCancel}
-                            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                            className="text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -81,25 +81,25 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                     {!showConfirmation ? (
                         <>
                             {/* Available Balance */}
-                            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">
+                            <div className="mb-6 p-4 bg-[var(--primary-blue)]/10 border border-[var(--primary-blue)]/20 rounded-lg">
+                                <p className="text-sm text-[var(--primary-blue)] mb-1 font-medium">
                                     Available Balance
                                 </p>
-                                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                                <p className="text-2xl font-bold text-[var(--primary-blue)]">
                                     {formatCurrency(availableBalance)}
                                 </p>
-                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
                                     From {stats?.pending?.count || 0} eligible shipments
                                 </p>
                             </div>
 
                             {/* Amount Input */}
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                                     Payout Amount
                                 </label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
                                         ₹
                                     </span>
                                     <input
@@ -107,13 +107,13 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                        className="w-full pl-8 pr-4 py-3 border border-[var(--border-default)] rounded-lg focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent bg-[var(--bg-primary)] text-[var(--text-primary)]"
                                         max={availableBalance}
                                         step="0.01"
                                     />
                                 </div>
                                 {amount && !isValidAmount && (
-                                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                    <p className="mt-2 text-sm text-[var(--error)]">
                                         {numAmount > availableBalance
                                             ? 'Amount exceeds available balance'
                                             : 'Please enter a valid amount'}
@@ -123,25 +123,25 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
 
                             {/* Quick Amount Buttons */}
                             <div className="mb-6">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                <p className="text-sm text-[var(--text-secondary)] mb-2">
                                     Quick Select
                                 </p>
                                 <div className="grid grid-cols-3 gap-2">
                                     <button
                                         onClick={() => setAmount((availableBalance * 0.25).toString())}
-                                        className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                        className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
                                     >
                                         25%
                                     </button>
                                     <button
                                         onClick={() => setAmount((availableBalance * 0.5).toString())}
-                                        className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                        className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
                                     >
                                         50%
                                     </button>
                                     <button
                                         onClick={() => setAmount(availableBalance.toString())}
-                                        className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                        className="px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
                                     >
                                         100%
                                     </button>
@@ -149,12 +149,12 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                             </div>
 
                             {/* Info */}
-                            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <div className="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
                                 <div className="flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-[var(--text-muted)] mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    <div className="text-sm text-[var(--text-secondary)]">
                                         <p className="font-medium mb-1">Processing Time</p>
                                         <p>On-demand payouts are typically processed within 4 hours during business hours.</p>
                                     </div>
@@ -165,14 +165,14 @@ export function RequestPayoutModal({ isOpen, onClose }: RequestPayoutModalProps)
                             <div className="flex gap-3">
                                 <button
                                     onClick={handleCancel}
-                                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    className="flex-1 px-4 py-2 border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => setShowConfirmation(true)}
                                     disabled={!isValidAmount}
-                                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="flex-1 px-4 py-2 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     Continue
                                 </button>
