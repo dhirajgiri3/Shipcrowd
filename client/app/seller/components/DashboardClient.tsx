@@ -36,7 +36,16 @@ import {
     UrgentActionsBarSkeleton
 } from '@/src/components/seller/dashboard';
 
-// Mock Data
+// Real API Hooks
+import { useAnalytics, useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useWalletBalance } from '@/src/core/api/hooks/finance/useWallet';
+import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
+import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
+
+// Dashboard Utilities
+import { transformDashboardToKPIs, USE_MOCK } from '@/src/lib/dashboard/data-utils';
+
+// Mock Data (Fallback)
 import {
     getPendingPickups,
     getRTOOrders,
@@ -70,6 +79,16 @@ export function DashboardClient() {
         minDisplay: 500    // Keep visible for at least 500ms for smooth UX
     });
 
+    // ========== REAL API HOOKS ==========
+
+    // Core Metrics - Dashboard (only if not using mock)
+    const { data: dashboardMetrics, isLoading: metricsLoading } = useDashboardMetrics();
+
+    // Wallet Balance (only if not using mock)
+    const { data: walletData, isLoading: walletLoading } = useWalletBalance({
+        enabled: !USE_MOCK
+    });
+
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
@@ -80,15 +99,24 @@ export function DashboardClient() {
         const loadDashboardData = async () => {
             startLoading();
 
-            // Simulate API call delay (500-800ms realistic for dashboard data)
-            await new Promise(resolve => setTimeout(resolve, 600));
-
-            setIsDataReady(true);
-            stopLoading();
+            // If using real APIs, wait for them to load
+            if (!USE_MOCK) {
+                // Wait for critical data
+                const isLoadingData = metricsLoading || walletLoading;
+                if (!isLoadingData) {
+                    setIsDataReady(true);
+                    stopLoading();
+                }
+            } else {
+                // Mock data simulation
+                await new Promise(resolve => setTimeout(resolve, 600));
+                setIsDataReady(true);
+                stopLoading();
+            }
         };
 
         loadDashboardData();
-    }, [startLoading, stopLoading]);
+    }, [startLoading, stopLoading, metricsLoading, walletLoading]);
 
     // Get greeting based on time
     const getGreeting = () => {
@@ -98,12 +126,14 @@ export function DashboardClient() {
         return 'Good Evening';
     };
 
-    // --- PREPARE DATA FOR COMPONENTS ---
+    // --- PREPARE DATA FOR COMPONENTS (with fallback) ---
 
     // 1. Urgent Actions Logic
 
+    // For now, use mock data for orders (hook signature issue to be fixed)
     const pendingPickups = getPendingPickups();
     const rtoOrders = getRTOOrders();
+
 
     // Simulate some logic to determine urgent actions
     const urgentActions = [
@@ -138,11 +168,18 @@ export function DashboardClient() {
         }
     ];
 
-    // 2. Snapshot Data Logic - Use enhanced mock data
-    const todayData = getTodaySnapshot();
+    // 2. Snapshot Data Logic - Use real API or fallback to mock
 
-    // KPI Trends with sparklines, delta, and trend data
-    const kpiTrendsRaw = getMockKPITrends();
+    const todayData = getTodaySnapshot(); // Mock data for fallback
+
+    // Transform API data to KPI format
+    const kpiTrendsFromAPI = dashboardMetrics ? transformDashboardToKPIs(
+        dashboardMetrics,
+        walletData?.balance
+    ) : null;
+
+    // Use real data if available, otherwise use mock
+    const kpiTrendsRaw = USE_MOCK ? getMockKPITrends() : (kpiTrendsFromAPI || getMockKPITrends());
 
     // Transform KPITrendData to match PerformanceBar's KPIData interface
     const kpiTrends = {
@@ -169,8 +206,8 @@ export function DashboardClient() {
     // Smart insights data
     const smartInsights = getTopInsights(3);
 
-    // 3. Analytics Data Logic
-    const analyticsData = {
+    // 3. Analytics Data Logic (mock for components that still need it)
+    const mockAnalyticsData = {
         orderTrend: {
             labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             values: [45, 52, 38, 65, 48, 59, 42] // Realistic variation
@@ -275,7 +312,7 @@ export function DashboardClient() {
                             revenue={kpiTrends.revenue}
                             profit={kpiTrends.profit}
                             orders={kpiTrends.orders}
-                            walletBalance={todayData.walletBalance}
+                            walletBalance={kpiTrendsRaw.walletBalance.today}
                             walletSparkline={kpiTrendsRaw.walletBalance.sparkline}
                             lastUpdated={kpiTrendsRaw.revenue.last_updated_at}
                             freshness={kpiTrendsRaw.revenue.freshness}
@@ -398,7 +435,7 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
                     >
-                        <AnalyticsSection data={analyticsData} />
+                        <AnalyticsSection data={mockAnalyticsData} />
                     </motion.section>
                 )}
 
