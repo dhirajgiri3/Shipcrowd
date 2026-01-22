@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Company, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
@@ -173,13 +172,18 @@ export const getSellerDashboard = async (
         const actualProfit = actualProfitData[0]?.totalProfit || 0;
         const totalCosts = actualProfitData[0]?.totalCosts || 0;
 
-        // ✅ PHASE 1.4: Extended trend (last 14 days) for delta calculation
+        // ✅ PHASE 1.4: Extended trend for delta calculation
+        // Strategy: Fetch 14 days BEFORE the selected date range for comparison
+        const selectedRangeDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+        const extendedStartDate = new Date(startDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+
         const weeklyTrend = await Order.aggregate([
             {
                 $match: {
                     companyId: companyObjectId,
                     isDeleted: false,
-                    createdAt: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+                    // Fetch selected range + 14 days before for comparison
+                    createdAt: { $gte: extendedStartDate, $lte: endDate },
                 },
             },
             {
@@ -215,15 +219,19 @@ export const getSellerDashboard = async (
             { $sort: { _id: 1 } },
         ]);
 
-        // ✅ PHASE 1.4: Calculate real week-over-week deltas
+        // ✅ PHASE 1.4: Calculate real deltas comparing current period vs previous period
         const calculateDelta = (data: any[], field: 'revenue' | 'profit' | 'orders') => {
-            if (data.length < 7) return 0;
+            if (data.length < 2) return 0;
 
-            const currentWeek = data.slice(-7);
-            const previousWeek = data.slice(-14, -7);
+            // Split data into current period (selected range) and previous period (14 days before)
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const currentPeriodData = data.filter(d => d._id >= startDateStr);
+            const previousPeriodData = data.filter(d => d._id < startDateStr);
 
-            const currentTotal = currentWeek.reduce((sum, d) => sum + (d[field] || 0), 0);
-            const previousTotal = previousWeek.reduce((sum, d) => sum + (d[field] || 0), 0);
+            if (currentPeriodData.length === 0 || previousPeriodData.length === 0) return 0;
+
+            const currentTotal = currentPeriodData.reduce((sum, d) => sum + (d[field] || 0), 0);
+            const previousTotal = previousPeriodData.reduce((sum, d) => sum + (d[field] || 0), 0);
 
             if (previousTotal === 0) return currentTotal > 0 ? 100 : 0;
             return ((currentTotal - previousTotal) / previousTotal) * 100;
@@ -295,7 +303,6 @@ export const getSellerDashboard = async (
         }
 
         // ✅ PHASE 1.4: Update streak history in company
-        const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');
         const company = await Company.findById(companyObjectId);
 
         if (company) {
@@ -362,8 +369,8 @@ export const getSellerDashboard = async (
                 count: codPending[0]?.count || 0,
             },
             recentShipments,
-            // ✅ PHASE 1.4: Enhanced weekly trend (14 days for delta calc, return last 7)
-            weeklyTrend: weeklyTrend.slice(-7),
+            // ✅ PHASE 1.4: Return only data within selected date range for sparklines
+            weeklyTrend: weeklyTrend.filter(d => d._id >= startDate.toISOString().split('T')[0]),
             // ✅ PHASE 1.4: Active Days (renamed from shippingStreak)
             activeDays: streak,
             longestStreak: company?.streakHistory?.longest || streak,

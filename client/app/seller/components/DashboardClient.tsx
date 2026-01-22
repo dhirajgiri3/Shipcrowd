@@ -482,7 +482,13 @@ export function DashboardClient() {
                                 trend: (dashboardMetrics?.deltas?.orders || 0) >= 0 ? 'up' : 'down'
                             }}
                             walletBalance={walletData?.balance || 0}
-                            activeDays={dashboardMetrics?.activeDays || dashboardMetrics?.shippingStreak || 0}
+                            // Only show activeDays if viewing today/current period (streak is real-time)
+                            activeDays={(() => {
+                                const today = new Date();
+                                const endDate = new Date(dateParams.endDate);
+                                const isViewingCurrent = endDate >= today || endDate.toDateString() === today.toDateString();
+                                return isViewingCurrent ? (dashboardMetrics?.activeDays || dashboardMetrics?.shippingStreak || 0) : 0;
+                            })()}
                             longestStreak={dashboardMetrics?.longestStreak || 0}
                             milestones={dashboardMetrics?.milestones || []}
                             lastUpdated={new Date().toISOString()}

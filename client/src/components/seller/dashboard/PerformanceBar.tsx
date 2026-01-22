@@ -37,9 +37,41 @@ interface SparklineProps {
 function Sparkline({ data, trend, width = 60, height = 20 }: SparklineProps) {
   if (!data || data.length === 0) return null;
 
+  // Handle single data point - show a dot instead of a line
+  if (data.length === 1) {
+    const strokeColor =
+      trend === 'up'
+        ? 'var(--success)'
+        : trend === 'down'
+          ? 'var(--error)'
+          : 'var(--text-secondary)';
+
+    return (
+      <svg width={width} height={height} viewBox="0 0 100 100" preserveAspectRatio="none" className="opacity-70">
+        <circle cx="50" cy="50" r="8" fill={strokeColor} />
+      </svg>
+    );
+  }
+
   const max = Math.max(...data);
   const min = Math.min(...data);
-  const range = max - min || 1;
+  const range = max - min;
+
+  // If all values are the same, show a horizontal line in the middle
+  if (range === 0) {
+    const strokeColor =
+      trend === 'up'
+        ? 'var(--success)'
+        : trend === 'down'
+          ? 'var(--error)'
+          : 'var(--text-secondary)';
+
+    return (
+      <svg width={width} height={height} viewBox="0 0 100 100" preserveAspectRatio="none" className="opacity-70">
+        <line x1="0" y1="50" x2="100" y2="50" stroke={strokeColor} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      </svg>
+    );
+  }
 
   const points = data
     .map((value, index) => {
