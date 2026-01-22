@@ -7,6 +7,8 @@ import cacheService from '../../../../shared/services/cache.service';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import RTOService from '../../../../core/application/services/rto/rto.service';
+import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
 
 /**
  * Analytics Controller
@@ -1206,6 +1208,105 @@ export const getRecentCustomers = async (
     }
 };
 
+/**
+ * Get RTO Analytics for dashboard
+ * Phase 4: Powers RTOAnalytics component
+ * @route GET /api/v1/analytics/rto
+ */
+export const getRTOAnalytics = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache key
+        const cacheKey = `analytics:rto:${auth.companyId}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'RTO analytics retrieved from cache');
+            return;
+        }
+
+        const analytics = await RTOService.getRTOAnalytics(auth.companyId!);
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, analytics, 300);
+
+        sendSuccess(res, analytics, 'RTO analytics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching RTO analytics:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get Profitability Analytics for dashboard
+ * Phase 4: Powers ProfitabilityCard component
+ * @route GET /api/v1/analytics/profitability
+ */
+export const getProfitabilityAnalytics = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache key
+        const cacheKey = `analytics:profitability:${auth.companyId}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Profitability analytics retrieved from cache');
+            return;
+        }
+
+        const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId!);
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, analytics, 300);
+
+        sendSuccess(res, analytics, 'Profitability analytics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching profitability analytics:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get Geographic Insights for dashboard
+ * Phase 4: Powers GeographicInsights component
+ * @route GET /api/v1/analytics/geography
+ */
+export const getGeographicInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache key
+        const cacheKey = `analytics:geography:${auth.companyId}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Geographic insights retrieved from cache');
+            return;
+        }
+
+        const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId!);
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, analytics, 300);
+
+        sendSuccess(res, analytics, 'Geographic insights retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching geographic insights:', error);
+        next(error);
+    }
+};
+
 export default {
     getSellerDashboard,
     getAdminDashboard,
@@ -1224,4 +1325,8 @@ export default {
     deleteReportConfig,
     getSellerActions,
     getRecentCustomers,
+    // Phase 4: Dashboard Analytics
+    getRTOAnalytics,
+    getProfitabilityAnalytics,
+    getGeographicInsights,
 };

@@ -101,6 +101,24 @@ router.get('/seller-actions', authenticate, asyncHandler(analyticsController.get
  */
 router.get('/recent-customers', authenticate, asyncHandler(analyticsController.getRecentCustomers));
 
+/**
+ * Phase 4: RTO Analytics (Dashboard)
+ * @route GET /api/v1/analytics/rto
+ */
+router.get('/rto', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getRTOAnalytics));
+
+/**
+ * Phase 4: Profitability Analytics (Dashboard)
+ * @route GET /api/v1/analytics/profitability
+ */
+router.get('/profitability', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getProfitabilityAnalytics));
+
+/**
+ * Phase 4: Geographic Insights (Dashboard)
+ * @route GET /api/v1/analytics/geography
+ */
+router.get('/geography', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getGeographicInsights));
+
 // ✅ FEATURE 10: Authentication Analytics Dashboard
 import authAnalyticsRouter from '../analytics/auth.routes';
 router.use('/auth', authAnalyticsRouter);

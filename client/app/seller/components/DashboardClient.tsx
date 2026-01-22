@@ -48,6 +48,9 @@ import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
 import { useOrderTrends } from '@/src/core/api/hooks/analytics/useOrderTrends';
 import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, transformCashFlowToComponent } from '@/src/core/api/hooks/finance'; // Phase 3: New APIs
+import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
+import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
+import { useGeographicInsights } from '@/src/core/api/hooks/analytics/useGeographicInsights'; // Phase 4: Geographic Insights
 
 // Dashboard Utilities
 import { transformDashboardToKPIs, USE_MOCK } from '@/src/lib/dashboard/data-utils';
@@ -251,6 +254,15 @@ export function DashboardClient() {
     // Phase 3: COD Timeline & Cash Flow Forecast APIs
     const { data: codTimelineData, isLoading: codTimelineLoading } = useCODTimeline();
     const { data: cashFlowData, isLoading: cashFlowLoading } = useCashFlowForecast();
+
+    // Phase 4: RTO Analytics API
+    const { data: rtoAnalyticsData, isLoading: rtoAnalyticsLoading } = useRTOAnalytics();
+
+    // Phase 4: Profitability Analytics API
+    const { data: profitabilityData, isLoading: profitabilityLoading } = useProfitabilityAnalytics();
+
+    // Phase 4: Geographic Insights API
+    const { data: geographicData, isLoading: geographicLoading } = useGeographicInsights();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -574,8 +586,8 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <RTOAnalytics
-                            isUsingMock={USE_MOCK}
-                        // data prop will be added when backend API is ready
+                            isUsingMock={!rtoAnalyticsData}
+                            data={rtoAnalyticsData}
                         />
                     </motion.section>
                 )}
@@ -587,9 +599,9 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <ProfitabilityCard
-                            isUsingMock={USE_MOCK}
+                            isUsingMock={!profitabilityData}
+                            data={profitabilityData}
                             onViewDetails={() => router.push('/seller/analytics/profitability')}
-                        // data prop will be added when backend API is ready
                         />
                     </motion.section>
                 )}

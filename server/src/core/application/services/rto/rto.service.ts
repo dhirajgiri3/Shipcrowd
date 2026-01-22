@@ -1103,4 +1103,213 @@ export default class RTOService {
             returnRate: 0, // Metric requires total shipment count context, to be implemented in AnalyticsService
         };
     }
+
+    /**
+     * Get comprehensive RTO analytics for dashboard
+     * Phase 4: Powers RTOAnalytics component with real data
+     */
+    static async getRTOAnalytics(companyId: string): Promise<{
+        summary: {
+            currentRate: number;
+            previousRate: number;
+            change: number;
+            industryAverage: number;
+            totalRTO: number;
+            totalOrders: number;
+            estimatedLoss: number;
+        };
+        trend: Array<{ month: string; rate: number }>;
+        byCourier: Array<{ courier: string; rate: number; count: number; total: number }>;
+        byReason: Array<{ reason: string; label: string; percentage: number; count: number }>;
+        recommendations: Array<{ type: string; message: string; impact?: string }>;
+    }> {
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+        // Current + previous month stats using proper models
+        const [currentRTOs, currentShipments, previousRTOs, previousShipments] = await Promise.all([
+            RTOEvent.countDocuments({
+                company: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: currentMonthStart },
+                isDeleted: false
+            }),
+            Shipment.countDocuments({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: currentMonthStart }
+            }),
+            RTOEvent.countDocuments({
+                company: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
+                isDeleted: false
+            }),
+            Shipment.countDocuments({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd }
+            })
+        ]);
+
+        const currentRate = currentShipments > 0 ? (currentRTOs / currentShipments) * 100 : 0;
+        const previousRate = previousShipments > 0 ? (previousRTOs / previousShipments) * 100 : 0;
+        const change = previousRate > 0 ? currentRate - previousRate : 0;
+        const industryAverage = 10.5; // Benchmark for Indian e-commerce COD
+        const avgRTOCharge = 80; // Average RTO charge in INR
+        const estimatedLoss = currentRTOs * avgRTOCharge;
+
+        // 6-month trend using proper model
+        const trend: Array<{ month: string; rate: number }> = [];
+        for (let i = 5; i >= 0; i--) {
+            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+            const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' });
+
+            const [rtos, shipments] = await Promise.all([
+                RTOEvent.countDocuments({
+                    company: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: monthStart, $lte: monthEnd },
+                    isDeleted: false
+                }),
+                Shipment.countDocuments({
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: monthStart, $lte: monthEnd }
+                })
+            ]);
+
+            const rate = shipments > 0 ? (rtos / shipments) * 100 : 0;
+            trend.push({ month: monthName, rate: Math.round(rate * 10) / 10 });
+        }
+
+        // Courier breakdown using Shipment model aggregation
+        const courierBreakdown = await Shipment.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: currentMonthStart },
+                    status: 'rto'
+                }
+            },
+            {
+                $group: {
+                    _id: '$carrier', // Use 'carrier' field from Shipment model
+                    rtoCount: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const courierTotals = await Shipment.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: currentMonthStart }
+                }
+            },
+            {
+                $group: {
+                    _id: '$carrier',
+                    total: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const courierMap = new Map(courierTotals.map((c: any) => [c._id, c.total]));
+        const byCourier = courierBreakdown.map((item: any) => {
+            const total = courierMap.get(item._id) || 0;
+            const rate = total > 0 ? (item.rtoCount / total) * 100 : 0;
+            return {
+                courier: item._id || 'Unknown',
+                rate: Math.round(rate * 10) / 10,
+                count: item.rtoCount,
+                total
+            };
+        }).sort((a, b) => a.rate - b.rate); // Best courier first (lowest RTO rate)
+
+        // Reason breakdown using RTOEvent model
+        const reasonBreakdown = await RTOEvent.aggregate([
+            {
+                $match: {
+                    company: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: currentMonthStart },
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: '$rtoReason',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const totalReasonCount = reasonBreakdown.reduce((sum, r) => sum + r.count, 0);
+        const reasonLabels: Record<string, string> = {
+            'ndr_unresolved': 'Customer Unavailable',
+            'customer_cancellation': 'Customer Refused',
+            'refused': 'Order Refused',
+            'incorrect_product': 'Incorrect Address',
+            'damaged_in_transit': 'Damaged',
+            'qc_failure': 'QC Failure',
+            'other': 'Other'
+        };
+
+        const byReason = reasonBreakdown.map(item => ({
+            reason: item._id,
+            label: reasonLabels[item._id] || item._id,
+            percentage: totalReasonCount > 0 ? Math.round((item.count / totalReasonCount) * 100) : 0,
+            count: item.count
+        })).sort((a, b) => b.percentage - a.percentage);
+
+        // Generate smart recommendations based on data patterns
+        const recommendations: Array<{ type: string; message: string; impact?: string }> = [];
+
+        // Recommendation 1: Courier switching if high variance exists
+        if (byCourier.length > 1) {
+            const worst = byCourier[byCourier.length - 1];
+            const best = byCourier[0];
+            if (worst.rate - best.rate > 3) { // >3% difference
+                const savings = Math.round((worst.count - (worst.total * best.rate / 100)) * avgRTOCharge);
+                recommendations.push({
+                    type: 'courier_switch',
+                    message: `Switch orders from ${worst.courier} to ${best.courier}`,
+                    impact: `Save ₹${savings.toLocaleString()}/month`
+                });
+            }
+        }
+
+        // Recommendation 2: Address verification if incorrect address is significant
+        const addressReason = byReason.find(r => r.reason === 'incorrect_product');
+        if (addressReason && addressReason.percentage > 10) {
+            recommendations.push({
+                type: 'verification',
+                message: 'Enable address verification before dispatch',
+                impact: 'Reduce incorrect address RTOs by 40%'
+            });
+        }
+
+        // Recommendation 3: IVR confirmation if customer unavailable is high
+        const unavailableReason = byReason.find(r => r.reason === 'ndr_unresolved');
+        if (unavailableReason && unavailableReason.percentage > 30) {
+            recommendations.push({
+                type: 'verification',
+                message: 'Enable IVR confirmation for COD orders above ₹1,000',
+                impact: 'Reduce customer unavailable by 25%'
+            });
+        }
+
+        return {
+            summary: {
+                currentRate: Math.round(currentRate * 10) / 10,
+                previousRate: Math.round(previousRate * 10) / 10,
+                change: Math.round(change * 10) / 10,
+                industryAverage,
+                totalRTO: currentRTOs,
+                totalOrders: currentShipments,
+                estimatedLoss
+            },
+            trend,
+            byCourier,
+            byReason,
+            recommendations
+        };
+    }
 }

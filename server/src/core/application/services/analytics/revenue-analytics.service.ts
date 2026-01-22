@@ -208,4 +208,186 @@ export default class RevenueAnalyticsService {
             throw error;
         }
     }
+
+    /**
+     * Get Real Profitability Analytics
+     * Phase 4: Powers ProfitabilityCard component
+     * 
+     * Calculates ACTUAL profit from Order data, not estimated margins:
+     * Profit = Revenue - (Shipping + COD fees + Platform fees + Taxes + RTO costs)
+     */
+    static async getProfitabilityAnalytics(companyId: string): Promise<{
+        summary: {
+            totalRevenue: number;
+            totalCosts: number;
+            netProfit: number;
+            profitMargin: number;
+        };
+        breakdown: {
+            shippingCosts: number;
+            codCharges: number;
+            platformFees: number;
+            gst: number;
+            rtoCosts: number;
+            otherCosts?: number;
+        };
+        averagePerOrder: {
+            revenue: number;
+            profit: number;
+            margin: number;
+        };
+        comparison?: {
+            previousPeriod: {
+                margin: number;
+                change: number;
+            };
+        };
+    }> {
+        try {
+            const now = new Date();
+            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+            // Current month profitability using Order model
+            const [currentStats] = await Order.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        createdAt: { $gte: currentMonthStart },
+                        isDeleted: false
+                    }
+                },
+                {
+                    $project: {
+                        revenue: '$totals.total',
+                        shippingCost: { $ifNull: ['$shippingCost', 0] },
+                        codCharge: { $ifNull: ['$codCharge', 0] },
+                        platformFee: { $ifNull: ['$platformFee', 0] },
+                        gst: { $ifNull: ['$totals.tax', 0] },
+                        // RTO cost (only for RTO orders - double shipping)
+                        rtoCost: {
+                            $cond: [
+                                { $eq: ['$currentStatus', 'rto'] },
+                                { $multiply: [{ $ifNull: ['$shippingCost', 0] }, 2] },
+                                0
+                            ]
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        revenue: 1,
+                        shippingCost: 1,
+                        codCharge: 1,
+                        platformFee: 1,
+                        gst: 1,
+                        rtoCost: 1,
+                        totalCosts: {
+                            $add: ['$shippingCost', '$codCharge', '$platformFee', '$gst', '$rtoCost']
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$revenue' },
+                        shippingCosts: { $sum: '$shippingCost' },
+                        codCharges: { $sum: '$codCharge' },
+                        platformFees: { $sum: '$platformFee' },
+                        gst: { $sum: '$gst' },
+                        rtoCosts: { $sum: '$rtoCost' },
+                        totalCosts: { $sum: '$totalCosts' },
+                        orderCount: { $sum: 1 }
+                    }
+                }
+            ]);
+
+            // Previous month stats for comparison
+            const [previousStats] = await Order.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
+                        isDeleted: false
+                    }
+                },
+                {
+                    $project: {
+                        revenue: '$totals.total',
+                        shippingCost: { $ifNull: ['$shippingCost', 0] },
+                        codCharge: { $ifNull: ['$codCharge', 0] },
+                        platformFee: { $ifNull: ['$platformFee', 0] },
+                        gst: { $ifNull: ['$totals.tax', 0] },
+                        rtoCost: {
+                            $cond: [
+                                { $eq: ['$currentStatus', 'rto'] },
+                                { $multiply: [{ $ifNull: ['$shippingCost', 0] }, 2] },
+                                0
+                            ]
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        revenue: 1,
+                        totalCosts: {
+                            $add: ['$shippingCost', '$codCharge', '$platformFee', '$gst', '$rtoCost']
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$revenue' },
+                        totalCosts: { $sum: '$totalCosts' }
+                    }
+                }
+            ]);
+
+            // Calculate current period metrics
+            const totalRevenue = currentStats?.totalRevenue || 0;
+            const totalCosts = currentStats?.totalCosts || 0;
+            const netProfit = totalRevenue - totalCosts;
+            const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+            const orderCount = currentStats?.orderCount || 0;
+
+            // Calculate previous period margin for comparison
+            const prevRevenue = previousStats?.totalRevenue || 0;
+            const prevCosts = previousStats?.totalCosts || 0;
+            const prevProfit = prevRevenue - prevCosts;
+            const prevMargin = prevRevenue > 0 ? (prevProfit / prevRevenue) * 100 : 0;
+            const marginChange = prevMargin > 0 ? profitMargin - prevMargin : 0;
+
+            return {
+                summary: {
+                    totalRevenue: Math.round(totalRevenue * 100) / 100,
+                    totalCosts: Math.round(totalCosts * 100) / 100,
+                    netProfit: Math.round(netProfit * 100) / 100,
+                    profitMargin: Math.round(profitMargin * 10) / 10
+                },
+                breakdown: {
+                    shippingCosts: Math.round((currentStats?.shippingCosts || 0) * 100) / 100,
+                    codCharges: Math.round((currentStats?.codCharges || 0) * 100) / 100,
+                    platformFees: Math.round((currentStats?.platformFees || 0) * 100) / 100,
+                    gst: Math.round((currentStats?.gst || 0) * 100) / 100,
+                    rtoCosts: Math.round((currentStats?.rtoCosts || 0) * 100) / 100
+                },
+                averagePerOrder: {
+                    revenue: orderCount > 0 ? Math.round((totalRevenue / orderCount) * 100) / 100 : 0,
+                    profit: orderCount > 0 ? Math.round((netProfit / orderCount) * 100) / 100 : 0,
+                    margin: Math.round(profitMargin * 10) / 10
+                },
+                comparison: {
+                    previousPeriod: {
+                        margin: Math.round(prevMargin * 10) / 10,
+                        change: Math.round(marginChange * 10) / 10
+                    }
+                }
+            };
+        } catch (error) {
+            logger.error('Error getting profitability analytics:', error);
+            throw error;
+        }
+    }
 }
