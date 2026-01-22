@@ -20,6 +20,12 @@ router.use(authenticate);
 // All COD remittance routes require KYC verification
 router.use(requireAccess({ kyc: true }));
 
+// Get dashboard stats - MUST be before /:id route
+router.get(
+    '/dashboard',
+    codRemittanceController.getDashboard
+);
+
 // Get eligible shipments for remittance
 router.get(
     '/eligible-shipments',
@@ -38,7 +44,7 @@ router.get(
     codRemittanceController.listRemittances
 );
 
-// Get remittance details
+// Get remittance details - MUST be after specific routes like /dashboard
 router.get(
     '/:id',
     codRemittanceController.getRemittanceDetails
@@ -67,12 +73,7 @@ router.post(
 
 // --- New Routes ---
 
-// Get dashboard stats
-router.get(
-    '/dashboard',
-    codRemittanceController.getDashboard
-);
-
+// Note: /dashboard route is defined ABOVE /:id route to prevent route conflict
 // Note: /webhook route is defined BEFORE authenticate middleware at the top of this file
 
 // Request on-demand payout

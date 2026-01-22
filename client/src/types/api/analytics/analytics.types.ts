@@ -18,6 +18,9 @@ export interface DateRangeFilter {
 export interface AnalyticsFilters {
     dateRange?: TimeRange;
     customDateRange?: DateRangeFilter;
+    // ✅ PHASE 3: Added for centralized date filtering
+    startDate?: string;
+    endDate?: string;
     courierIds?: string[];
     zoneIds?: string[];
     paymentMethod?: 'COD' | 'PREPAID' | 'ALL';
@@ -228,9 +231,24 @@ export interface CostAnalysis {
 export interface DashboardMetrics {
     totalRevenue: number;
     totalShipments: number;
+    totalOrders: number; // ✅ Added matching backend field
     totalCost: number;
+    // ✅ PHASE 1.3: Real profit from backend
+    totalProfit?: number;
+    totalCosts?: number;
+    profitMargin?: string;
     avgDeliveryTime: number;
     successRate: number;
+
+    // Backend fields
+    pendingOrders?: number;
+    readyToShip?: number;
+    shippedOrders?: number;
+    deliveredOrders?: number;
+    cancelledOrders?: number;
+    rtoOrders?: number;
+
+    // Frontend aliases (legacy)
     activeOrders: number;
     pendingPickup: number;
     inTransit: number;
@@ -244,6 +262,28 @@ export interface DashboardMetrics {
     topZone: {
         name: string;
         shipments: number;
+    };
+    // ✅ PHASE 1.3: Historical data for sparklines
+    weeklyTrend?: Array<{
+        _id: string; // Date string (YYYY-MM-DD)
+        orders: number;
+        revenue: number;
+        profit?: number;
+    }>;
+    // ✅ PHASE 1.4: Active Days feature (renamed from shippingStreak)
+    activeDays?: number;
+    shippingStreak?: number; // Deprecated, use activeDays
+    longestStreak?: number;
+    milestones?: Array<{
+        days: number;
+        achievedAt: string;
+        badge: string;
+    }>;
+    // ✅ PHASE 1.4: Real week-over-week deltas
+    deltas?: {
+        revenue: number;
+        profit: number;
+        orders: number;
     };
 }
 

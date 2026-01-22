@@ -313,7 +313,8 @@ export async function seedOrders(): Promise<void> {
         }
 
         const orders: any[] = [];
-        const months = generateMonthRange();
+        // ✅ Generate orders for last 30 days (recent data for testing)
+        const months = generateMonthRange(new Date(), true); // recentOnly = true
 
         let totalProcessed = 0;
         const totalCompanies = companies.length;
@@ -326,12 +327,18 @@ export async function seedOrders(): Promise<void> {
             const orderVolumeConfig = SEED_CONFIG.volume.ordersPerCompanyPerMonth[businessType];
             const baseMonthlyOrders = randomInt(orderVolumeConfig.min, orderVolumeConfig.max);
 
-            for (const monthStart of months) {
-                const multiplier = getSeasonalMultiplier(monthStart);
-                const orderCount = Math.round(baseMonthlyOrders * multiplier);
+            // Since we're generating daily data now, divide monthly orders by 30
+            const dailyOrders = Math.max(1, Math.round(baseMonthlyOrders / 30));
+
+            for (const dayDate of months) {
+                const multiplier = getSeasonalMultiplier(dayDate);
+                const orderCount = Math.round(dailyOrders * multiplier);
 
                 for (let i = 0; i < orderCount; i++) {
-                    const orderDate = randomDateInMonth(monthStart.getFullYear(), monthStart.getMonth() + 1);
+                    // Use the day date directly instead of randomDateInMonth
+                    const orderDate = new Date(dayDate);
+                    orderDate.setHours(randomInt(9, 18), randomInt(0, 59), randomInt(0, 59));
+
                     const warehouse = selectRandom(companyWarehouses);
 
                     const orderData = generateOrderData(company, warehouse, orderDate, businessType);

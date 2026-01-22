@@ -21,6 +21,7 @@ import { Package, Wallet, AlertTriangle, TrendingUp, TrendingDown, Flame } from 
 import { motion } from 'framer-motion';
 import { useIsMobile } from '../../../hooks/ux';
 import { trackKPIClick } from '@/src/lib/analytics/events';
+import { DataSourceBadge } from '@/src/components/ui/DataSourceBadge';
 
 // ============================================================================
 // Sparkline Component (Lightweight SVG)
@@ -52,8 +53,8 @@ function Sparkline({ data, trend, width = 60, height = 20 }: SparklineProps) {
     trend === 'up'
       ? 'var(--success)'
       : trend === 'down'
-      ? 'var(--error)'
-      : 'var(--text-secondary)';
+        ? 'var(--error)'
+        : 'var(--text-secondary)';
 
   return (
     <svg
@@ -104,13 +105,12 @@ function FreshnessIndicator({ lastUpdated, freshness }: FreshnessIndicatorProps)
   return (
     <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
       <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          isRealTime
-            ? 'bg-[var(--success)] animate-pulse'
-            : isStale
+        className={`h-1.5 w-1.5 rounded-full ${isRealTime
+          ? 'bg-[var(--success)] animate-pulse'
+          : isStale
             ? 'bg-[var(--warning)]'
             : 'bg-[var(--text-muted)]'
-        }`}
+          }`}
       />
       <span className="uppercase tracking-wide font-medium">
         {isRealTime ? 'Live' : formatRelativeTime(lastUpdated)}
@@ -130,6 +130,12 @@ interface KPIData {
   trend: 'up' | 'down' | 'neutral';
 }
 
+interface Milestone {
+  days: number;
+  achievedAt: string;
+  badge: string;
+}
+
 interface PerformanceBarProps {
   // Enhanced KPI data (with sparklines)
   revenue: KPIData;
@@ -138,13 +144,16 @@ interface PerformanceBarProps {
   walletBalance: number;
   walletSparkline?: number[];
 
-  // Optional features
-  shippingStreak?: number;
+  // ✅ PHASE 1.4: Active Days (renamed from activeDays)
+  activeDays?: number;
+  longestStreak?: number;
+  milestones?: Milestone[];
   lowBalanceThreshold?: number;
 
   // Data freshness
   lastUpdated: string; // ISO 8601
   freshness?: 'real_time' | 'cached_60s' | 'stale_5m' | 'stale_15m';
+  isUsingMock?: boolean; // Show mock data badge in dev
 
   // Click handlers (optional - defaults to analytics tracking)
   onRevenueClick?: () => void;
@@ -162,10 +171,13 @@ export function PerformanceBar({
   orders,
   walletBalance,
   walletSparkline,
-  shippingStreak = 0,
+  activeDays = 0,
+  longestStreak = 0,
+  milestones = [],
   lowBalanceThreshold = 1000,
   lastUpdated,
   freshness = 'cached_60s',
+  isUsingMock = false,
   onRevenueClick,
   onProfitClick,
   onOrdersClick,
@@ -199,7 +211,8 @@ export function PerformanceBar({
         className="space-y-3"
       >
         {/* Data Freshness (Top) */}
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <DataSourceBadge isUsingMock={isUsingMock} lastUpdated={lastUpdated} />
           <FreshnessIndicator lastUpdated={lastUpdated} freshness={freshness} />
         </div>
 
@@ -224,13 +237,12 @@ export function PerformanceBar({
             <div className="flex items-center justify-between">
               <Sparkline data={revenue.sparkline} trend={revenue.trend} width={50} height={16} />
               <span
-                className={`text-xs font-medium ${
-                  revenue.trend === 'up'
-                    ? 'text-[var(--success)]'
-                    : revenue.trend === 'down'
+                className={`text-xs font-medium ${revenue.trend === 'up'
+                  ? 'text-[var(--success)]'
+                  : revenue.trend === 'down'
                     ? 'text-[var(--error)]'
                     : 'text-[var(--text-secondary)]'
-                }`}
+                  }`}
               >
                 {revenue.delta > 0 ? '+' : ''}
                 {revenue.delta.toFixed(1)}%
@@ -257,13 +269,12 @@ export function PerformanceBar({
             <div className="flex items-center justify-between">
               <Sparkline data={profit.sparkline} trend={profit.trend} width={50} height={16} />
               <span
-                className={`text-xs font-medium ${
-                  profit.trend === 'up'
-                    ? 'text-[var(--success)]'
-                    : profit.trend === 'down'
+                className={`text-xs font-medium ${profit.trend === 'up'
+                  ? 'text-[var(--success)]'
+                  : profit.trend === 'down'
                     ? 'text-[var(--error)]'
                     : 'text-[var(--text-secondary)]'
-                }`}
+                  }`}
               >
                 {profit.delta > 0 ? '+' : ''}
                 {profit.delta.toFixed(1)}%
@@ -287,13 +298,12 @@ export function PerformanceBar({
             <div className="flex items-center justify-between">
               <Sparkline data={orders.sparkline} trend={orders.trend} width={50} height={16} />
               <span
-                className={`text-xs font-medium ${
-                  orders.trend === 'up'
-                    ? 'text-[var(--success)]'
-                    : orders.trend === 'down'
+                className={`text-xs font-medium ${orders.trend === 'up'
+                  ? 'text-[var(--success)]'
+                  : orders.trend === 'down'
                     ? 'text-[var(--error)]'
                     : 'text-[var(--text-secondary)]'
-                }`}
+                  }`}
               >
                 {orders.delta > 0 ? '+' : ''}
                 {orders.delta.toFixed(1)}%
@@ -304,11 +314,10 @@ export function PerformanceBar({
           {/* Wallet */}
           <button
             onClick={() => router.push('/seller/wallet')}
-            className={`p-4 rounded-xl text-left transition-all active:scale-[0.98] ${
-              isLowBalance
-                ? 'bg-[var(--error-bg)] border-2 border-[var(--error)] animate-pulse'
-                : 'bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-focus)] hover:shadow-sm'
-            }`}
+            className={`p-4 rounded-xl text-left transition-all active:scale-[0.98] ${isLowBalance
+              ? 'bg-[var(--error-bg)] border-2 border-[var(--error)] animate-pulse'
+              : 'bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-focus)] hover:shadow-sm'
+              }`}
           >
             <div className="flex items-center gap-2 mb-1">
               {isLowBalance ? (
@@ -327,14 +336,14 @@ export function PerformanceBar({
           </button>
         </div>
 
-        {/* Streak (if exists) */}
-        {shippingStreak > 0 && (
+        {/* Active Days (if exists) */}
+        {activeDays > 0 && (
           <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--warning-bg)] to-[var(--bg-secondary)] border border-[var(--warning)]/30 shadow-sm">
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-[var(--warning)] animate-pulse" />
               <div>
-                <div className="text-xs text-[var(--text-secondary)]">Shipping Streak</div>
-                <div className="text-xl font-bold text-[var(--warning)]">{shippingStreak} days</div>
+                <div className="text-xs text-[var(--text-secondary)]">Active Days</div>
+                <div className="text-xl font-bold text-[var(--warning)]">{activeDays} days</div>
               </div>
             </div>
           </div>
@@ -348,27 +357,31 @@ export function PerformanceBar({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl p-8 shadow-md bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
+      className="rounded-3xl p-6 lg:p-8 shadow-md bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
     >
       {/* Header with Freshness */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wide">
-          Today's Performance
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wide">
+            Today's Performance
+          </h3>
+          <DataSourceBadge isUsingMock={isUsingMock} lastUpdated={lastUpdated} />
+        </div>
         <FreshnessIndicator lastUpdated={lastUpdated} freshness={freshness} />
       </div>
 
-      <div className="flex items-start justify-between gap-8">
-        {/* Left: KPIs with Sparklines */}
-        <div className="flex items-start gap-10 flex-1">
+      <div className="flex flex-col xl:flex-row items-stretch gap-6 xl:gap-8">
+        {/* Main KPIs Container */}
+        <div className="flex flex-1 flex-wrap gap-6 items-center">
+
           {/* Revenue */}
           <button
             onClick={handleRevenueClick}
-            className="group text-left hover:opacity-80 transition-opacity"
+            className="group flex-1 min-w-[200px] text-left hover:bg-[var(--bg-secondary)] p-3 -ml-3 rounded-xl transition-all"
           >
             <div className="text-xs text-[var(--text-secondary)] mb-2 font-medium">Revenue</div>
             <div className="flex items-baseline gap-3 mb-2">
-              <div className="text-4xl font-bold text-[var(--text-primary)]">
+              <div className="text-3xl lg:text-4xl font-bold text-[var(--text-primary)]">
                 ₹{revenue.value.toLocaleString('en-IN')}
               </div>
               {revenue.trend === 'up' ? (
@@ -377,134 +390,108 @@ export function PerformanceBar({
                 <TrendingDown className="w-5 h-5 text-[var(--error)]" />
               ) : null}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto">
               <Sparkline data={revenue.sparkline} trend={revenue.trend} width={80} height={24} />
-              <span
-                className={`text-sm font-medium ${
-                  revenue.trend === 'up'
-                    ? 'text-[var(--success)]'
-                    : revenue.trend === 'down'
-                    ? 'text-[var(--error)]'
-                    : 'text-[var(--text-secondary)]'
-                }`}
-              >
-                {revenue.delta > 0 ? '↑' : revenue.delta < 0 ? '↓' : ''}
-                {Math.abs(revenue.delta).toFixed(1)}% vs last week
+              <span className={`text-sm font-medium ${revenue.trend === 'up' ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+                {revenue.delta > 0 ? '+' : ''}{revenue.delta.toFixed(1)}%
               </span>
             </div>
           </button>
 
-          {/* Divider */}
-          <div className="h-20 w-px bg-[var(--border-default)]" />
+          {/* Divider (Hidden on small screens) */}
+          <div className="hidden md:block h-16 w-px bg-[var(--border-default)]" />
 
           {/* Profit */}
           <button
             onClick={handleProfitClick}
-            className="group text-left hover:opacity-80 transition-opacity"
+            className="group flex-1 min-w-[200px] text-left hover:bg-[var(--bg-secondary)] p-3 rounded-xl transition-all"
           >
             <div className="text-xs text-[var(--text-secondary)] mb-2 font-medium">Profit</div>
             <div className="flex items-baseline gap-3 mb-2">
-              <div className="text-4xl font-bold text-[var(--success)]">
+              <div className="text-3xl lg:text-4xl font-bold text-[var(--success)]">
                 ₹{profit.value.toLocaleString('en-IN')}
               </div>
               {profit.trend === 'up' ? (
                 <TrendingUp className="w-5 h-5 text-[var(--success)]" />
-              ) : profit.trend === 'down' ? (
-                <TrendingDown className="w-5 h-5 text-[var(--error)]" />
               ) : null}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto">
               <Sparkline data={profit.sparkline} trend={profit.trend} width={80} height={24} />
-              <span
-                className={`text-sm font-medium ${
-                  profit.trend === 'up'
-                    ? 'text-[var(--success)]'
-                    : profit.trend === 'down'
-                    ? 'text-[var(--error)]'
-                    : 'text-[var(--text-secondary)]'
-                }`}
-              >
-                {profit.delta > 0 ? '↑' : profit.delta < 0 ? '↓' : ''}
-                {Math.abs(profit.delta).toFixed(1)}% vs last week
+              <span className={`text-sm font-medium ${profit.trend === 'up' ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+                {profit.delta > 0 ? '+' : ''}{profit.delta.toFixed(1)}%
               </span>
             </div>
           </button>
 
           {/* Divider */}
-          <div className="h-20 w-px bg-[var(--border-default)]" />
+          <div className="hidden md:block h-16 w-px bg-[var(--border-default)]" />
 
           {/* Orders */}
           <button
             onClick={handleOrdersClick}
-            className="group text-left hover:opacity-80 transition-opacity"
+            className="group flex-1 min-w-[180px] text-left hover:bg-[var(--bg-secondary)] p-3 rounded-xl transition-all"
           >
             <div className="text-xs text-[var(--text-secondary)] mb-2 font-medium">Orders</div>
             <div className="flex items-center gap-3 mb-2">
               <Package className="w-6 h-6 text-[var(--primary-blue)]" />
-              <div className="text-4xl font-bold text-[var(--text-primary)]">{orders.value}</div>
+              <div className="text-3xl lg:text-4xl font-bold text-[var(--text-primary)]">{orders.value}</div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-auto">
               <Sparkline data={orders.sparkline} trend={orders.trend} width={80} height={24} />
-              <span
-                className={`text-sm font-medium ${
-                  orders.trend === 'up'
-                    ? 'text-[var(--success)]'
-                    : orders.trend === 'down'
-                    ? 'text-[var(--error)]'
-                    : 'text-[var(--text-secondary)]'
-                }`}
-              >
-                {orders.delta > 0 ? '↑' : orders.delta < 0 ? '↓' : ''}
-                {Math.abs(orders.delta).toFixed(1)}% vs last week
+              <span className={`text-sm font-medium ${orders.trend === 'up' ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+                {orders.delta > 0 ? '+' : ''}{orders.delta.toFixed(1)}%
               </span>
             </div>
           </button>
 
-          {/* Streak (if exists) */}
-          {shippingStreak > 0 && (
+          {/* Active Days (Vertical integration) */}
+          {activeDays > 0 && (
             <>
-              <div className="h-20 w-px bg-[var(--border-default)]" />
-              <div>
-                <div className="text-xs text-[var(--text-secondary)] mb-2 font-medium">Streak</div>
-                <div className="flex items-center gap-3 mb-2">
-                  <Flame className="w-6 h-6 text-[var(--warning)]" />
-                  <div className="text-4xl font-bold text-[var(--warning)]">{shippingStreak}</div>
+              <div className="hidden lg:block h-16 w-px bg-[var(--border-default)]" />
+              <div className="min-w-[120px] p-3 rounded-xl bg-[var(--warning-bg)]/10 border border-[var(--warning-border)]/20">
+                <div className="text-xs text-[var(--text-secondary)] mb-1 font-medium">Active Days</div>
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-[var(--warning)] animate-pulse" />
+                  <div className="text-2xl font-bold text-[var(--warning)]">{activeDays}</div>
+                  <span className="text-xs text-[var(--text-muted)]">days</span>
                 </div>
-                <div className="text-sm text-[var(--text-secondary)]">days shipping</div>
               </div>
             </>
           )}
         </div>
 
-        {/* Right: Wallet */}
+        {/* Right: Wallet (Responsive Width) */}
         <button
           onClick={() => router.push('/seller/wallet')}
-          className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all ${
-            isLowBalance
+          className={`
+            flex-shrink-0 xl:w-72 w-full flex items-center justify-between xl:block 
+            p-5 rounded-2xl transition-all active:scale-[0.99]
+            ${isLowBalance
               ? 'bg-[var(--error-bg)] border-2 border-[var(--error)] hover:bg-[var(--error-bg)]'
               : 'bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-focus)]'
-          }`}
+            }
+          `}
         >
-          {isLowBalance ? (
-            <AlertTriangle className="w-6 h-6 text-[var(--error)]" />
-          ) : (
-            <Wallet className="w-6 h-6 text-[var(--success)]" />
-          )}
-          <div className="text-left">
-            <div className="text-xs font-bold uppercase tracking-wide text-[var(--text-secondary)] mb-1">
-              Wallet Balance
-            </div>
-            <div className={`text-2xl font-bold ${isLowBalance ? 'text-[var(--error)]' : 'text-[var(--text-primary)]'}`}>
+          <div className="flex items-center gap-3 mb-0 xl:mb-3">
+            {isLowBalance ? (
+              <AlertTriangle className="w-5 h-5 text-[var(--error)]" />
+            ) : (
+              <Wallet className="w-5 h-5 text-[var(--success)]" />
+            )}
+            <span className="text-xs font-bold uppercase tracking-wide text-[var(--text-secondary)]">Wallet Balance</span>
+          </div>
+
+          <div className="text-right xl:text-left">
+            <div className={`text-2xl font-bold mb-1 ${isLowBalance ? 'text-[var(--error)]' : 'text-[var(--text-primary)]'}`}>
               ₹{walletBalance.toLocaleString('en-IN')}
             </div>
-            {walletSparkline && walletSparkline.length > 0 && (
-              <div className="mt-2">
-                <Sparkline data={walletSparkline} trend="down" width={60} height={20} />
-              </div>
-            )}
+            {isLowBalance && <span className="text-xs font-bold text-[var(--error)] animate-pulse">RECHARGE NOW</span>}
           </div>
-          {isLowBalance && (
-            <span className="text-sm font-medium text-[var(--error)]">Recharge →</span>
+
+          {walletSparkline && (
+            <div className="hidden xl:block mt-3 opacity-60">
+              <Sparkline data={walletSparkline} trend="down" width={120} height={30} />
+            </div>
           )}
         </button>
       </div>

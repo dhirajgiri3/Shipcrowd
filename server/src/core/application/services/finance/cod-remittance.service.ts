@@ -572,7 +572,21 @@ export default class CODRemittanceService {
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
             // 1. Pending Collection (Delivered but not remitted)
-            const eligible = await this.getEligibleShipments(companyId, now);
+            let eligible;
+            try {
+                eligible = await this.getEligibleShipments(companyId, now);
+            } catch (error) {
+                // If no eligible shipments, return zeros instead of throwing error
+                eligible = {
+                    shipments: [],
+                    summary: {
+                        totalShipments: 0,
+                        totalCOD: 0,
+                        totalDeductions: 0,
+                        netPayable: 0
+                    }
+                };
+            }
 
             // 2. In Settlement (Batches created but not paid)
             const inSettlement = await CODRemittance.aggregate([

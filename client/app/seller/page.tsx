@@ -11,12 +11,20 @@
  */
 
 import { DashboardClient } from './components/DashboardClient';
+import { DashboardErrorBoundary } from '@/src/components/errors/DashboardErrorBoundary';
+import { DashboardDateProvider } from '@/src/contexts/DashboardDateContext';
 
 export default function SellerDashboardPage() {
     // TODO: Fetch dashboard data from API server-side
     // const data = await getDashboardData();
     // return <DashboardClient initialData={data} />;
 
-    // For now, client component handles its own data
-    return <DashboardClient />;
+    // For now, client component handles its own data with error boundary protection
+    return (
+        <DashboardErrorBoundary>
+            <DashboardDateProvider>
+                <DashboardClient />
+            </DashboardDateProvider>
+        </DashboardErrorBoundary>
+    );
 }

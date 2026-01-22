@@ -20,6 +20,18 @@ router.get(
 );
 
 /**
+ * @route GET /api/v1/analytics/dashboard/metrics
+ * @desc Get seller dashboard metrics (alias for /dashboard/seller for compatibility)
+ * @access Private
+ */
+router.get(
+    '/dashboard/metrics',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(analyticsController.getSellerDashboard)
+);
+
+/**
  * @route GET /api/v1/analytics/dashboard/admin
  * @desc Get admin dashboard analytics (multi-company, admin only)
  * @access Private (Admin)

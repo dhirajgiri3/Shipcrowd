@@ -34,7 +34,7 @@ const {
 
 // Use environment variable to match server's database
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd';
-const ADMIN_EMAIL = 'admin1@shipcrowd.com';
+const ADMIN_EMAIL = 'admin1@Helix.com';
 const ADMIN_PASSWORD = 'Admin@123456';
 
 async function createAdminTestUser() {

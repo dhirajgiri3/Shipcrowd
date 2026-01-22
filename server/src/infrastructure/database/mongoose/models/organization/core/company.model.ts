@@ -72,6 +72,19 @@ export interface ICompany extends Document {
   isSuspended?: boolean;
   suspendedAt?: Date;
   suspensionReason?: string;
+
+  // ✅ PHASE 1.4: Active Days (Streak) Tracking
+  streakHistory?: {
+    current: number;
+    longest: number;
+    longestAchievedAt?: Date;
+    milestones?: Array<{
+      days: number;
+      achievedAt: Date;
+      badge: string;
+    }>;
+  };
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -225,6 +238,24 @@ const CompanySchema = new Schema<ICompany>(
     },
     suspendedAt: Date,
     suspensionReason: String,
+
+    // ✅ PHASE 1.4: Active Days (Streak) Tracking
+    streakHistory: {
+      current: {
+        type: Number,
+        default: 0,
+      },
+      longest: {
+        type: Number,
+        default: 0,
+      },
+      longestAchievedAt: Date,
+      milestones: [{
+        days: Number,
+        achievedAt: Date,
+        badge: String,
+      }],
+    },
   },
   {
     timestamps: true,

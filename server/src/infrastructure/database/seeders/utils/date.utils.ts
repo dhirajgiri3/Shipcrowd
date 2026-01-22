@@ -177,17 +177,31 @@ export function randomDateInMonth(year: number, month: number): Date {
 
 /**
  * Generate an array of months for the seeding date range
+ * @param endDate - End date for range (defaults to now)
+ * @param recentOnly - If true, generates only last 30 days instead of 12 months
  */
-export function generateMonthRange(endDate: Date = new Date()): Date[] {
+export function generateMonthRange(endDate: Date = new Date(), recentOnly: boolean = false): Date[] {
     const months: Date[] = [];
-    const startDate = subMonths(endDate, SEED_CONFIG.dateRange.monthsBack);
 
-    let current = startOfMonth(startDate);
-    const end = startOfMonth(endDate);
+    if (recentOnly) {
+        // Generate last 30 days for testing/demo
+        const startDate = subDays(endDate, 30);
+        let current = new Date(startDate);
 
-    while (current <= end) {
-        months.push(new Date(current));
-        current = addMonths(current, 1);
+        while (current <= endDate) {
+            months.push(new Date(current));
+            current = addDays(current, 1);
+        }
+    } else {
+        // Original behavior: 12 months back
+        const startDate = subMonths(endDate, SEED_CONFIG.dateRange.monthsBack);
+        let current = startOfMonth(startDate);
+        const end = startOfMonth(endDate);
+
+        while (current <= end) {
+            months.push(new Date(current));
+            current = addMonths(current, 1);
+        }
     }
 
     return months;

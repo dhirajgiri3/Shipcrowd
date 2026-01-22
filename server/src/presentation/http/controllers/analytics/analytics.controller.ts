@@ -46,13 +46,17 @@ export const getSellerDashboard = async (
             return;
         }
 
-        // Date filters
+        // Date filters - Default to "today" for dashboard (00:00 to 23:59)
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
         const startDate = req.query.startDate
             ? new Date(req.query.startDate as string)
-            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+            : todayStart; // Default to today 00:00
         const endDate = req.query.endDate
             ? new Date(req.query.endDate as string)
-            : new Date();
+            : todayEnd; // Default to today 23:59
 
         // Order counts by status
         const orderStats = await Order.aggregate([
@@ -122,27 +126,225 @@ export const getSellerDashboard = async (
             .select('trackingNumber carrier currentStatus createdAt deliveryDetails')
             .lean();
 
-        // Weekly trend (last 7 days)
+        // ✅ PHASE 1.3: Calculate actual profit from all orders in date range
+        // Note: This includes projected profit from pending/shipped orders
+        // For realized profit only, filter by currentStatus: 'delivered'
+        const actualProfitData = await Order.aggregate([
+            {
+                $match: {
+                    companyId: companyObjectId,
+                    isDeleted: false,
+                    // Removed 'delivered' filter to match revenue scope
+                    createdAt: { $gte: startDate, $lte: endDate },
+                },
+            },
+            {
+                $project: {
+                    revenue: '$totals.total',
+                    shippingCost: { $ifNull: ['$shippingCost', 0] },
+                    platformFee: { $ifNull: ['$platformFee', 0] },
+                    codCharge: { $ifNull: ['$codCharge', 0] },
+                    taxes: { $ifNull: ['$totals.tax', 0] },
+                },
+            },
+            {
+                $project: {
+                    revenue: 1,
+                    totalCosts: {
+                        $add: ['$shippingCost', '$platformFee', '$codCharge', '$taxes'],
+                    },
+                    profit: {
+                        $subtract: [
+                            '$revenue',
+                            { $add: ['$shippingCost', '$platformFee', '$codCharge', '$taxes'] },
+                        ],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalProfit: { $sum: '$profit' },
+                    totalCosts: { $sum: '$totalCosts' },
+                },
+            },
+        ]);
+
+        const actualProfit = actualProfitData[0]?.totalProfit || 0;
+        const totalCosts = actualProfitData[0]?.totalCosts || 0;
+
+        // ✅ PHASE 1.4: Extended trend (last 14 days) for delta calculation
         const weeklyTrend = await Order.aggregate([
             {
                 $match: {
                     companyId: companyObjectId,
                     isDeleted: false,
-                    createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+                    createdAt: { $gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+                },
+            },
+            {
+                $project: {
+                    date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    revenue: '$totals.total',
+                    shippingCost: { $ifNull: ['$shippingCost', 0] },
+                    platformFee: { $ifNull: ['$platformFee', 0] },
+                    codCharge: { $ifNull: ['$codCharge', 0] },
+                    taxes: { $ifNull: ['$totals.tax', 0] },
+                },
+            },
+            {
+                $project: {
+                    date: 1,
+                    revenue: 1,
+                    profit: {
+                        $subtract: [
+                            '$revenue',
+                            { $add: ['$shippingCost', '$platformFee', '$codCharge', '$taxes'] },
+                        ],
+                    },
                 },
             },
             {
                 $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    _id: '$date',
                     orders: { $sum: 1 },
-                    revenue: { $sum: '$totals.total' },
+                    revenue: { $sum: '$revenue' },
+                    profit: { $sum: '$profit' },
                 },
             },
             { $sort: { _id: 1 } },
         ]);
 
+        // ✅ PHASE 1.4: Calculate real week-over-week deltas
+        const calculateDelta = (data: any[], field: 'revenue' | 'profit' | 'orders') => {
+            if (data.length < 7) return 0;
+
+            const currentWeek = data.slice(-7);
+            const previousWeek = data.slice(-14, -7);
+
+            const currentTotal = currentWeek.reduce((sum, d) => sum + (d[field] || 0), 0);
+            const previousTotal = previousWeek.reduce((sum, d) => sum + (d[field] || 0), 0);
+
+            if (previousTotal === 0) return currentTotal > 0 ? 100 : 0;
+            return ((currentTotal - previousTotal) / previousTotal) * 100;
+        };
+
+        const revenueDelta = calculateDelta(weeklyTrend, 'revenue');
+        const profitDelta = calculateDelta(weeklyTrend, 'profit');
+        const ordersDelta = calculateDelta(weeklyTrend, 'orders');
+
+        // ✅ PHASE 1.4: Calculate Shipping Streak (Consecutive days with orders)
+        // Logic: Count consecutive days going backwards from today/yesterday
+        const last30DaysOrders = await Order.aggregate([
+            {
+                $match: {
+                    companyId: companyObjectId,
+                    isDeleted: false,
+                    createdAt: {
+                        $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Check last 30 days
+                        $lte: new Date()
+                    },
+                },
+            },
+            {
+                $project: {
+                    date: {
+                        $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Kolkata' }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$date'
+                }
+            },
+            { $sort: { _id: -1 } } // Sort latest first
+        ]);
+
+        const activeDates = new Set(last30DaysOrders.map(o => o._id));
+        let streak = 0;
+        const checkDate = new Date();
+
+        // Convert to IST date string helper
+        const getISTDateString = (date: Date) => {
+            return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        };
+
+        // Check today
+        let currentDateStr = getISTDateString(checkDate);
+        if (activeDates.has(currentDateStr)) {
+            streak++;
+        }
+
+        // Loop backwards continuously
+        for (let i = 1; i <= 30; i++) {
+            const prevDate = new Date();
+            prevDate.setDate(prevDate.getDate() - i);
+            const prevDateStr = getISTDateString(prevDate);
+
+            if (activeDates.has(prevDateStr)) {
+                streak++;
+            } else if (i === 1 && streak === 0) {
+                // If today has no orders, but yesterday did, streak starts from yesterday
+                // Do nothing, continue to check if yesterday existed in next iteration
+                continue;
+            } else {
+                // Break streak if gap found (unless we just started and today was empty)
+                if (streak > 0 || i > 1) break;
+            }
+        }
+
+        // ✅ PHASE 1.4: Update streak history in company
+        const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+        const company = await Company.findById(companyObjectId);
+
+        if (company) {
+            // Initialize streakHistory if it doesn't exist
+            if (!company.streakHistory) {
+                company.streakHistory = {
+                    current: streak,
+                    longest: streak,
+                    longestAchievedAt: new Date(),
+                    milestones: []
+                };
+            } else {
+                company.streakHistory.current = streak;
+
+                // Update longest if current exceeds it
+                if (streak > (company.streakHistory.longest || 0)) {
+                    company.streakHistory.longest = streak;
+                    company.streakHistory.longestAchievedAt = new Date();
+                }
+            }
+
+            // Check and add milestones
+            const milestones = [
+                { days: 7, badge: 'Week Warrior' },
+                { days: 30, badge: 'Monthly Master' },
+                { days: 100, badge: 'Century Champion' },
+                { days: 365, badge: 'Year Legend' }
+            ];
+
+            for (const milestone of milestones) {
+                const alreadyAchieved = company.streakHistory.milestones?.some((m: { days: number }) => m.days === milestone.days);
+                if (streak >= milestone.days && !alreadyAchieved) {
+                    if (!company.streakHistory.milestones) {
+                        company.streakHistory.milestones = [];
+                    }
+                    company.streakHistory.milestones.push({
+                        days: milestone.days,
+                        achievedAt: new Date(),
+                        badge: milestone.badge
+                    });
+                }
+            }
+
+            await company.save();
+        }
+
         const responseData = {
             totalOrders,
+            totalShipments: totalOrders, // Alias for frontend compatibility
             pendingOrders: statusCounts['pending'] || 0,
             readyToShip: statusCounts['ready_to_ship'] || 0,
             shippedOrders: statusCounts['shipped'] || 0,
@@ -150,13 +352,28 @@ export const getSellerDashboard = async (
             cancelledOrders: statusCounts['cancelled'] || 0,
             rtoOrders: statusCounts['rto'] || 0,
             totalRevenue,
+            // ✅ PHASE 1.3: Real profit calculation
+            totalProfit: actualProfit,
+            totalCosts,
+            profitMargin: totalRevenue > 0 ? ((actualProfit / totalRevenue) * 100).toFixed(2) : '0.00',
             successRate: parseFloat(successRate),
             codPending: {
                 amount: codPending[0]?.total || 0,
                 count: codPending[0]?.count || 0,
             },
             recentShipments,
-            weeklyTrend,
+            // ✅ PHASE 1.4: Enhanced weekly trend (14 days for delta calc, return last 7)
+            weeklyTrend: weeklyTrend.slice(-7),
+            // ✅ PHASE 1.4: Active Days (renamed from shippingStreak)
+            activeDays: streak,
+            longestStreak: company?.streakHistory?.longest || streak,
+            milestones: company?.streakHistory?.milestones || [],
+            // ✅ PHASE 1.4: Real deltas
+            deltas: {
+                revenue: parseFloat(revenueDelta.toFixed(2)),
+                profit: parseFloat(profitDelta.toFixed(2)),
+                orders: parseFloat(ordersDelta.toFixed(2)),
+            },
             dateRange: { startDate, endDate },
         };
 

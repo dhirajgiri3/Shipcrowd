@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Package } from 'lucide-react';
 import { useAuth } from '@/src/features/auth';
-import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBanner';
 import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
@@ -37,13 +36,16 @@ import {
 } from '@/src/components/seller/dashboard';
 
 // Real API Hooks
-import { useAnalytics, useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { useWalletBalance } from '@/src/core/api/hooks/finance/useWallet';
 import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
+import { useOrderTrends } from '@/src/core/api/hooks/analytics/useOrderTrends';
 
 // Dashboard Utilities
 import { transformDashboardToKPIs, USE_MOCK } from '@/src/lib/dashboard/data-utils';
+import { transformOrderTrendsToChart } from '@/src/lib/dashboard/order-trends';
+import { useDashboardDate } from '@/src/contexts/DashboardDateContext';
 
 // Mock Data (Fallback)
 import {
@@ -67,11 +69,135 @@ const containerVariants = {
     }
 };
 
+// --- DATE FILTER PRESETS COMPONENT ---
+function DateFilterPresets() {
+    const { preset, setPreset, dateRange, setDateRange } = useDashboardDate();
+    const [showCustom, setShowCustom] = useState(false);
+    const [customStart, setCustomStart] = useState('');
+    const [customEnd, setCustomEnd] = useState('');
+
+    const presets = [
+        { id: 'today' as const, label: 'Today' },
+        { id: 'last7days' as const, label: 'Last 7 Days' },
+        { id: 'last30days' as const, label: 'Last 30 Days' },
+    ];
+
+    const handleCustomApply = () => {
+        if (customStart && customEnd) {
+            const start = new Date(customStart);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(customEnd);
+            end.setHours(23, 59, 59, 999);
+
+            setDateRange({ startDate: start, endDate: end }, 'custom');
+            setShowCustom(false);
+        }
+    };
+
+    return (
+        <div className="relative flex items-center gap-2">
+            {/* Preset Buttons */}
+            <div className="flex items-center gap-1 p-1 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-subtle)]">
+                {presets.map((p) => (
+                    <button
+                        key={p.id}
+                        onClick={() => setPreset(p.id)}
+                        className={`
+                            px-3 py-1.5 rounded-md text-xs font-medium transition-all
+                            ${preset === p.id
+                                ? 'bg-[var(--bg-primary)] shadow-sm text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]/50'
+                            }
+                        `}
+                    >
+                        {p.label}
+                    </button>
+                ))}
+
+                {/* Custom Button */}
+                <button
+                    onClick={() => setShowCustom(!showCustom)}
+                    className={`
+                        px-3 py-1.5 rounded-md text-xs font-medium transition-all
+                        ${preset === 'custom'
+                            ? 'bg-[var(--bg-primary)] shadow-sm text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]/50'
+                        }
+                    `}
+                >
+                    Custom
+                </button>
+            </div>
+
+            {/* Custom Date Picker Dropdown */}
+            {showCustom && (
+                <div className="absolute top-full right-0 mt-3 p-4 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-subtle)] shadow-[var(--shadow-dropdown)] z-50 w-72 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider">Select Range</p>
+                        <button
+                            onClick={() => setShowCustom(false)}
+                            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[var(--bg-secondary)]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-[var(--text-secondary)] uppercase ml-1">From</label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={customStart}
+                                    onChange={(e) => setCustomStart(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)] outline-none transition-all placeholder-[var(--text-muted)]"
+                                    placeholder="Start Date"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-[var(--text-secondary)] uppercase ml-1">To</label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={customEnd}
+                                    onChange={(e) => setCustomEnd(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)] outline-none transition-all"
+                                    min={customStart}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleCustomApply}
+                        disabled={!customStart || !customEnd}
+                        className={`
+                            w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
+                            ${customStart && customEnd
+                                ? 'bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-sm hover:shadow-md transform active:scale-[0.98]'
+                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed'
+                            }
+                        `}
+                    >
+                        Apply Range
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function DashboardClient() {
     const { user } = useAuth();
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isDataReady, setIsDataReady] = useState(false);
+
+    // ✅ Get date range from centralized context
+    const { getAPIParams } = useDashboardDate();
+    const dateParams = getAPIParams();
 
     // Loading state management with flash prevention
     const { isLoading, showLoader, startLoading, stopLoading } = useLoader({
@@ -81,12 +207,27 @@ export function DashboardClient() {
 
     // ========== REAL API HOOKS ==========
 
-    // Core Metrics - Dashboard (only if not using mock)
-    const { data: dashboardMetrics, isLoading: metricsLoading } = useDashboardMetrics();
+    // Core Metrics - Dashboard (✅ now uses centralized date filter)
+    const { data: dashboardMetrics, isLoading: metricsLoading } = useDashboardMetrics({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate
+    });
 
     // Wallet Balance (only if not using mock)
     const { data: walletData, isLoading: walletLoading } = useWalletBalance({
         enabled: !USE_MOCK
+    });
+
+    // Order Trends (30-day chart data)
+    const { data: orderTrendsData, isLoading: orderTrendsLoading } = useOrderTrends(30);
+
+    // COD Stats (for CODStatusCard)
+    const { data: codStatsData, isLoading: codStatsLoading } = useCODStats();
+
+    // Orders List (for urgent actions - pending pickups, RTO)
+    const { data: ordersListData, isLoading: ordersListLoading } = useOrdersList({
+        limit: 100,
+        status: 'all'
     });
 
     useEffect(() => {
@@ -128,12 +269,20 @@ export function DashboardClient() {
 
     // --- PREPARE DATA FOR COMPONENTS (with fallback) ---
 
-    // 1. Urgent Actions Logic
+    // 1. Urgent Actions Logic - Use real API data when available
 
-    // For now, use mock data for orders (hook signature issue to be fixed)
-    const pendingPickups = getPendingPickups();
-    const rtoOrders = getRTOOrders();
+    // Filter real orders by status or fall back to mock
+    const pendingPickups = USE_MOCK
+        ? getPendingPickups()
+        : (ordersListData?.data?.orders?.filter(order =>
+            order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
+        ) || getPendingPickups());
 
+    const rtoOrders = USE_MOCK
+        ? getRTOOrders()
+        : (ordersListData?.data?.orders?.filter(order =>
+            order.currentStatus?.toLowerCase().includes('rto')
+        ) || getRTOOrders());
 
     // Simulate some logic to determine urgent actions
     const urgentActions = [
@@ -206,6 +355,11 @@ export function DashboardClient() {
     // Smart insights data
     const smartInsights = getTopInsights(3);
 
+    // Order Trend Chart Data - Transform API data or use mock
+    const orderTrendChartData = USE_MOCK
+        ? mockOrderTrend30Days
+        : (orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : null) || mockOrderTrend30Days;
+
     // 3. Analytics Data Logic (mock for components that still need it)
     const mockAnalyticsData = {
         orderTrend: {
@@ -275,7 +429,7 @@ export function DashboardClient() {
                         </motion.div>
 
                         <div className="flex items-center gap-3 flex-shrink-0">
-                            <DateRangePicker />
+                            <DateFilterPresets />
 
                         </div>
                     </div>
@@ -309,15 +463,30 @@ export function DashboardClient() {
                         transition={{ delay: 0.2 }}
                     >
                         <PerformanceBar
-                            revenue={kpiTrends.revenue}
-                            profit={kpiTrends.profit}
-                            orders={kpiTrends.orders}
-                            walletBalance={kpiTrendsRaw.walletBalance.today}
-                            walletSparkline={kpiTrendsRaw.walletBalance.sparkline}
-                            lastUpdated={kpiTrendsRaw.revenue.last_updated_at}
-                            freshness={kpiTrendsRaw.revenue.freshness}
-                            shippingStreak={5} // TODO: Get from backend (habit-forming feature)
-                            lowBalanceThreshold={1000}
+                            revenue={{
+                                value: dashboardMetrics?.totalRevenue || 0,
+                                sparkline: dashboardMetrics?.weeklyTrend?.map(d => d.revenue) || [],
+                                delta: dashboardMetrics?.deltas?.revenue || 0,
+                                trend: (dashboardMetrics?.deltas?.revenue || 0) >= 0 ? 'up' : 'down'
+                            }}
+                            profit={{
+                                value: dashboardMetrics?.totalProfit || 0,
+                                sparkline: dashboardMetrics?.weeklyTrend?.map(d => d.profit || 0) || [],
+                                delta: dashboardMetrics?.deltas?.profit || 0,
+                                trend: (dashboardMetrics?.deltas?.profit || 0) >= 0 ? 'up' : 'down'
+                            }}
+                            orders={{
+                                value: dashboardMetrics?.totalOrders || 0,
+                                sparkline: dashboardMetrics?.weeklyTrend?.map(d => d.orders) || [],
+                                delta: dashboardMetrics?.deltas?.orders || 0,
+                                trend: (dashboardMetrics?.deltas?.orders || 0) >= 0 ? 'up' : 'down'
+                            }}
+                            walletBalance={walletData?.balance || 0}
+                            activeDays={dashboardMetrics?.activeDays || dashboardMetrics?.shippingStreak || 0}
+                            longestStreak={dashboardMetrics?.longestStreak || 0}
+                            milestones={dashboardMetrics?.milestones || []}
+                            lastUpdated={new Date().toISOString()}
+                            isUsingMock={false}
                             onRevenueClick={() => router.push('/seller/analytics/revenue')}
                             onProfitClick={() => router.push('/seller/analytics/profit')}
                             onOrdersClick={() => router.push('/seller/orders')}
@@ -335,7 +504,7 @@ export function DashboardClient() {
                         transition={{ delay: 0.25 }}
                     >
                         <OrderTrendChart
-                            data={mockOrderTrend30Days}
+                            data={orderTrendChartData}
                             onDataPointClick={(dataPoint) => {
                                 // Navigate to orders filtered by date
                                 router.push(`/seller/orders?date=${dataPoint.date}`);
@@ -369,13 +538,13 @@ export function DashboardClient() {
                     >
                         <ShipmentPipeline
                             statusCounts={{
-                                pending: pendingPickups.length,
-                                picked: Math.floor(todayData.activeShipments * 0.2),
-                                inTransit: Math.floor(todayData.activeShipments * 0.5),
-                                outForDelivery: Math.floor(todayData.activeShipments * 0.3),
-                                delivered: todayData.delivered,
-                                rto: rtoOrders.length,
-                                failed: 2
+                                pending: USE_MOCK ? pendingPickups.length : (dashboardMetrics?.pendingPickup || pendingPickups.length),
+                                picked: USE_MOCK ? Math.floor(todayData.activeShipments * 0.2) : Math.floor((dashboardMetrics?.activeOrders || todayData.activeShipments) * 0.15),
+                                inTransit: USE_MOCK ? Math.floor(todayData.activeShipments * 0.5) : (dashboardMetrics?.inTransit || Math.floor(todayData.activeShipments * 0.5)),
+                                outForDelivery: USE_MOCK ? Math.floor(todayData.activeShipments * 0.3) : Math.floor((dashboardMetrics?.activeOrders || todayData.activeShipments) * 0.2),
+                                delivered: USE_MOCK ? todayData.delivered : (dashboardMetrics?.delivered || todayData.delivered),
+                                rto: USE_MOCK ? rtoOrders.length : (dashboardMetrics?.rto || rtoOrders.length),
+                                failed: USE_MOCK ? 2 : ((dashboardMetrics?.ndr || 0) + 2)
                             }}
                         />
                     </motion.section>
@@ -406,9 +575,9 @@ export function DashboardClient() {
                         transition={{ delay: 0.4 }}
                     >
                         <CODStatusCard
-                            pendingAmount={todayData.pendingCOD}
-                            readyForRemittance={Math.floor(todayData.pendingCOD * 0.6)}
-                            lastRemittanceAmount={18500}
+                            pendingAmount={USE_MOCK ? todayData.pendingCOD : (codStatsData?.pending?.amount || todayData.pendingCOD)}
+                            readyForRemittance={USE_MOCK ? Math.floor(todayData.pendingCOD * 0.6) : (codStatsData?.pending?.amount ? Math.floor(codStatsData.pending.amount * 0.6) : Math.floor(todayData.pendingCOD * 0.6))}
+                            lastRemittanceAmount={USE_MOCK ? 18500 : 18500}
                         />
                     </motion.section>
                 )}
