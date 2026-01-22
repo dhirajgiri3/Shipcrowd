@@ -336,6 +336,7 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
       throw new ValidationError('Cannot unset the default warehouse. Set another warehouse as default first.');
     }
 
+    // Update the warehouse with new data
     const updatedWarehouse = await Warehouse.findByIdAndUpdate(
       warehouseId,
       { $set: validation.data },
@@ -350,8 +351,10 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
 
     await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
 
-    // ✅ FIX: Return ALL warehouses to ensure frontend gets consistent state
-    // This prevents race conditions with MongoDB index updates on isDefault field
+    // ✅ FIX: Fetch fresh data AFTER all updates are complete
+    // Use a small delay to ensure MongoDB index updates are complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     const allWarehouses = await Warehouse.find({
       companyId: req.user.companyId,
       isDeleted: false

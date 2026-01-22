@@ -291,67 +291,64 @@ export const useCreateWarehouse = (options?: UseMutationOptions<Warehouse, ApiEr
 /**
  * Update warehouse
  */
-export const useUpdateWarehouse = (options?: UseMutationOptions<any, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>) => {
+interface UpdateWarehouseContext {
+    previousWarehouses?: Warehouse[];
+}
+
+export const useUpdateWarehouse = (options?: UseMutationOptions<any, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }, UpdateWarehouseContext>) => {
     const queryClient = useQueryClient();
 
-    return useMutation<any, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }>({
+    return useMutation<any, ApiError, { warehouseId: string; data: Partial<CreateWarehousePayload> }, UpdateWarehouseContext>({
         mutationFn: async ({ warehouseId, data }) => {
             const response = await apiClient.patch(`/warehouses/${warehouseId}`, data);
-            // Backend now returns { warehouse, warehouses } where warehouses is the full list
             return response.data.data;
         },
-        onMutate: async ({ warehouseId, data }) => {
-            // Cancel outgoing refetches (so they don't overwrite our optimistic update)
-            await queryClient.cancelQueries({ queryKey: ['warehouses'] });
-
-            // Snapshot the previous value
-            const previousWarehouses = queryClient.getQueryData<Warehouse[]>(['warehouses']);
-
-            // Optimistically update the cache
-            if (previousWarehouses) {
-                queryClient.setQueryData<Warehouse[]>(['warehouses'], (old) => {
-                    if (!old) return old;
-
-                    return old.map(warehouse => {
-                        // If setting a warehouse as default, unset all others
-                        if (data.isDefault === true) {
-                            if (warehouse._id === warehouseId) {
-                                // This is the one being set as default
-                                return { ...warehouse, ...data, isDefault: true };
-                            } else {
-                                // All others should be non-default
-                                return { ...warehouse, isDefault: false };
-                            }
-                        }
-
-                        // For other updates, just update the specific warehouse
-                        if (warehouse._id === warehouseId) {
-                            return { ...warehouse, ...data };
-                        }
-
-                        return warehouse;
-                    });
-                });
-            }
-
-            return { previousWarehouses };
-        },
         onSuccess: async (data) => {
+            console.log('=== [useUpdateWarehouse] onSuccess FIRED ===');
+            console.log('[useUpdateWarehouse] Raw data received:', data);
+            console.log('[useUpdateWarehouse] data.warehouses exists?', !!data?.warehouses);
+            console.log('[useUpdateWarehouse] data.warehouses is array?', Array.isArray(data?.warehouses));
+
             // ✅ FIX: Use server-provided warehouses list to update cache immediately
             // This prevents race conditions with MongoDB index updates
             if (data?.warehouses && Array.isArray(data.warehouses)) {
+                console.log('[useUpdateWarehouse] ✅ Updating cache with server warehouses:', data.warehouses.length, 'items');
+                const defaultWarehouse = data.warehouses.find((w: Warehouse) => w.isDefault);
+                console.log('[useUpdateWarehouse] Default warehouse after update:', {
+                    id: defaultWarehouse?._id,
+                    name: defaultWarehouse?.name,
+                    isDefault: defaultWarehouse?.isDefault
+                });
+
+                // Log all warehouse default states
+                console.log('[useUpdateWarehouse] All warehouse default states:');
+                data.warehouses.forEach((w: Warehouse) => {
+                    console.log(`  - ${w.name}: isDefault = ${w.isDefault}`);
+                });
+
+                // Update the cache
+                console.log('[useUpdateWarehouse] Setting queryClient data for key ["warehouses"]');
                 queryClient.setQueryData<Warehouse[]>(['warehouses'], data.warehouses);
+                console.log('[useUpdateWarehouse] ✅ Cache updated successfully');
+
+                // Verify cache was actually updated
+                const cachedData = queryClient.getQueryData<Warehouse[]>(['warehouses']);
+                console.log('[useUpdateWarehouse] Verifying cached data:', cachedData?.length, 'items');
+                if (cachedData) {
+                    const cachedDefault = cachedData.find(w => w.isDefault);
+                    console.log('[useUpdateWarehouse] Cached default warehouse:', cachedDefault?.name);
+                }
             } else {
+                console.warn('[useUpdateWarehouse] ❌ No warehouses array in response!');
+                console.warn('[useUpdateWarehouse] Response structure:', Object.keys(data || {}));
+                console.warn('[useUpdateWarehouse] Falling back to invalidateQueries');
                 // Fallback: invalidate if backend doesn't return warehouses array
                 await queryClient.invalidateQueries({ queryKey: ['warehouses'] });
             }
             showSuccessToast('Warehouse updated successfully');
+            console.log('=== [useUpdateWarehouse] onSuccess COMPLETE ===');
         },
-        onError: (error, _variables, context) => {
-            // Rollback to previous state on error
-            if (context?.previousWarehouses) {
-                queryClient.setQueryData(['warehouses'], context.previousWarehouses);
-            }
+        onError: (error) => {
             handleApiError(error, 'Update Warehouse Failed');
         },
         ...options,

@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, MapPin, User, CheckCircle2 } from 'lucide-react';
+import { Building2, MapPin, User } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { FormField } from '@/src/components/ui/form/FormField';
-import { Switch } from '@/src/components/ui/core/Switch';
+
 import { Label } from '@/src/components/ui/core/Label';
 import { CreateWarehousePayload } from '@/src/core/api/hooks/logistics/useWarehouses';
 import { isValidPhoneWithCountryCode, normalizePhoneToE164 } from '@/src/lib/utils/validators';
@@ -337,28 +337,6 @@ export function AddWarehouseForm({
                 </div>
 
                 <div className="h-px bg-[var(--border-subtle)]" />
-
-                {/* Settings */}
-                <div className="flex items-start justify-between p-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)]/30">
-                    <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                            <Label className="text-sm font-semibold text-[var(--text-primary)] mb-0">
-                                Default Warehouse
-                            </Label>
-                            {formData.isDefault && (
-                                <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
-                            )}
-                        </div>
-                        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                            Use this warehouse as the default for new shipments
-                        </p>
-                    </div>
-                    <Switch
-                        checked={formData.isDefault}
-                        onCheckedChange={(checked: boolean) => updateField('isDefault', checked)}
-                        disabled={isLoading}
-                    />
-                </div>
 
                 {/* Form Actions */}
                 <div className="flex items-center justify-end gap-3 pt-2">
