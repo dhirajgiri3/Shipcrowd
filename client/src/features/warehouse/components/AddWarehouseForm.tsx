@@ -8,6 +8,7 @@ import { FormField } from '@/src/components/ui/form/FormField';
 import { Switch } from '@/src/components/ui/core/Switch';
 import { Label } from '@/src/components/ui/core/Label';
 import { CreateWarehousePayload } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { isValidPhoneWithCountryCode, normalizePhoneToE164 } from '@/src/lib/utils/validators';
 
 interface AddWarehouseFormProps {
     mode: 'create' | 'edit';
@@ -100,13 +101,8 @@ export function AddWarehouseForm({
 
         if (!formData.contactInfo.phone.trim()) {
             newErrors['contactInfo.phone'] = 'Contact phone is required';
-        } else {
-            // Remove all non-digit characters for validation
-            const digitsOnly = formData.contactInfo.phone.replace(/\D/g, '');
-            // Accept 10 digits (without country code) or 12 digits (with +91)
-            if (digitsOnly.length !== 10 && digitsOnly.length !== 12) {
-                newErrors['contactInfo.phone'] = 'Phone must be 10 digits (or 12 with country code)';
-            }
+        } else if (!isValidPhoneWithCountryCode(formData.contactInfo.phone)) {
+            newErrors['contactInfo.phone'] = 'Phone must be 10 digits (or 12 with +91 country code)';
         }
 
         // Validate email if provided
@@ -143,9 +139,12 @@ export function AddWarehouseForm({
             },
             contactInfo: {
                 name: formData.contactInfo.name.trim(),
-                phone: formData.contactInfo.phone.trim(),
+                // ✅ Normalize to E.164 format (+919876543210) for consistent storage
+                phone: normalizePhoneToE164(formData.contactInfo.phone),
                 email: formData.contactInfo.email?.trim() || undefined,
-                alternatePhone: formData.contactInfo.alternatePhone?.trim() || undefined,
+                alternatePhone: formData.contactInfo.alternatePhone?.trim()
+                    ? normalizePhoneToE164(formData.contactInfo.alternatePhone)
+                    : undefined,
             },
         };
 

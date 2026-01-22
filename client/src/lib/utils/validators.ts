@@ -69,5 +69,38 @@ export const formatPincode = (pincode: string): string =>
 export const formatPhone = (phone: string): string =>
     phone.replace(/\D/g, '').slice(0, 10);
 
+/**
+ * Normalize phone to E.164 format (+919876543210)
+ * Accepts various formats: 9876543210, +91-9876543210, +91 9876543210
+ * Returns: +919876543210 (international standard for storage)
+ */
+export const normalizePhoneToE164 = (phone: string): string => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+
+    // If 10 digits, add +91 prefix (Indian number)
+    if (digitsOnly.length === 10) {
+        return `+91${digitsOnly}`;
+    }
+
+    // If 12 digits starting with 91, add + prefix
+    if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
+        return `+${digitsOnly}`;
+    }
+
+    // Return with + prefix
+    return `+${digitsOnly}`;
+};
+
+/**
+ * Validate phone number (accepts 10 or 12 digits)
+ * 10 digits: Indian mobile without country code
+ * 12 digits: Indian mobile with +91 country code
+ */
+export const isValidPhoneWithCountryCode = (phone: string): boolean => {
+    const digitsOnly = phone.replace(/\D/g, '');
+    return digitsOnly.length === 10 || (digitsOnly.length === 12 && digitsOnly.startsWith('91'));
+};
+
 export const formatIFSC = (ifsc: string): string =>
     ifsc.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
