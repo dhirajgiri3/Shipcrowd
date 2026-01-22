@@ -24,20 +24,41 @@ import {
     CheckCircle2,
     Star,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Info
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { cn } from '@/src/lib/utils';
 import Link from 'next/link';
-import { useWarehouses, Warehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { useWarehouses, useUpdateWarehouse, Warehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
 import { EditWarehouseModal, DeleteWarehouseDialog } from '@/src/features/warehouse';
 
 export function WarehousesClient() {
     const { data: warehouses, isLoading, isError, error, refetch } = useWarehouses();
     const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
     const [deletingWarehouse, setDeletingWarehouse] = useState<Warehouse | null>(null);
+    const [togglingDefaultId, setTogglingDefaultId] = useState<string | null>(null);
+
+    const updateWarehouseMutation = useUpdateWarehouse({
+        onSuccess: () => {
+            setTogglingDefaultId(null);
+        },
+        onError: () => {
+            setTogglingDefaultId(null);
+        },
+    });
+
+    const handleToggleDefault = (warehouse: Warehouse) => {
+        if (warehouse.isDefault) return; // Already default, nothing to do
+
+        setTogglingDefaultId(warehouse._id);
+        updateWarehouseMutation.mutate({
+            warehouseId: warehouse._id,
+            data: { isDefault: true },
+        });
+    };
 
     // Extract error message from API response
     const errorMessage = error?.message || 'We couldn\'t fetch your warehouses. Please try again.';
@@ -167,26 +188,47 @@ export function WarehousesClient() {
     return (
         <div className="min-h-screen space-y-6 pb-10">
             {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-3xl font-bold text-[var(--text-primary)] tracking-tight"
-                    >
-                        Warehouses
-                    </motion.h1>
-                    <p className="text-sm text-[var(--text-secondary)] mt-2">
-                        Manage your pickup locations and warehouses
-                    </p>
+            <header className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-3xl font-bold text-[var(--text-primary)] tracking-tight"
+                        >
+                            Warehouses
+                        </motion.h1>
+                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                            Manage your pickup locations and warehouses
+                        </p>
+                    </div>
+
+                    <Link href="/seller/warehouses/add">
+                        <Button variant="primary" className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Warehouse
+                        </Button>
+                    </Link>
                 </div>
 
-                <Link href="/seller/warehouses/add">
-                    <Button variant="primary" className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Warehouse
-                    </Button>
-                </Link>
+                {/* Info Banner */}
+                {warehouses.length > 1 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-start gap-3 p-4 rounded-xl bg-[var(--primary-blue)]/5 border border-[var(--primary-blue)]/20"
+                    >
+                        <Info className="w-5 h-5 text-[var(--primary-blue)] shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-sm text-[var(--text-primary)] font-medium">
+                                Default Warehouse
+                            </p>
+                            <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                                Your default warehouse is automatically selected for new shipments. Click <span className="font-semibold text-[var(--primary-blue)]">"Set as Default"</span> on any warehouse to change your primary pickup location.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
             </header>
 
             {/* Warehouses Grid */}
@@ -198,30 +240,44 @@ export function WarehousesClient() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                     >
-                        <Card className="border-[var(--border-default)] hover:border-[var(--primary-blue)]/50 transition-all duration-300 h-full group">
+                        <Card className={cn(
+                            "border-[var(--border-default)] hover:border-[var(--primary-blue)]/50 transition-all duration-300 h-full group relative overflow-hidden",
+                            warehouse.isDefault && "ring-2 ring-[var(--primary-blue)]/20 border-[var(--primary-blue)]/40"
+                        )}>
+                            {/* Default Warehouse Ribbon */}
+                            {warehouse.isDefault && (
+                                <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
+                                    <div className="absolute top-5 right-[-30px] w-32 h-6 bg-[var(--primary-blue)] text-white text-[10px] font-bold flex items-center justify-center transform rotate-45 shadow-lg">
+                                        <Star className="w-3 h-3 mr-1 fill-white" />
+                                        DEFAULT
+                                    </div>
+                                </div>
+                            )}
+
                             <CardContent className="p-5 space-y-4">
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-4">
                                         <div className={cn(
-                                            "w-10 h-10 rounded-full flex items-center justify-center shrink-0 border",
+                                            "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border-2 transition-all",
                                             warehouse.isDefault
-                                                ? "bg-[var(--primary-blue)] text-white border-[var(--primary-blue)]"
+                                                ? "bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-deep)] text-white border-[var(--primary-blue)] shadow-lg shadow-blue-500/30"
                                                 : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-subtle)]"
                                         )}>
-                                            <Building2 className="w-5 h-5" />
+                                            <Building2 className="w-6 h-6" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-[var(--text-primary)] leading-tight">
-                                                    {warehouse.name}
-                                                </h3>
-                                                {warehouse.isDefault && (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--primary-blue)]/10 text-[var(--primary-blue)] border border-[var(--primary-blue)]/20">
-                                                        Default
+                                        <div className="space-y-1.5">
+                                            <h3 className="font-bold text-[var(--text-primary)] leading-tight text-base">
+                                                {warehouse.name}
+                                            </h3>
+                                            {warehouse.isDefault && (
+                                                <div className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--primary-blue)]/10 border border-[var(--primary-blue)]/30">
+                                                    <Star className="w-3 h-3 mr-1.5 fill-[var(--primary-blue)] text-[var(--primary-blue)]" />
+                                                    <span className="text-xs font-semibold text-[var(--primary-blue)]">
+                                                        Primary Warehouse
                                                     </span>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                             <p className="font-mono text-[10px] text-[var(--text-muted)] tracking-wide">
                                                 ID: {warehouse._id.slice(-8)}
                                             </p>
@@ -265,6 +321,31 @@ export function WarehousesClient() {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Default Warehouse Toggle */}
+                                {!warehouse.isDefault && (
+                                    <div className="pt-3 border-t border-[var(--border-subtle)]">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full h-10 border-[var(--primary-blue)]/30 bg-[var(--primary-blue)]/5 hover:bg-[var(--primary-blue)]/10 hover:border-[var(--primary-blue)] text-[var(--primary-blue)] font-medium transition-all group"
+                                            onClick={() => handleToggleDefault(warehouse)}
+                                            disabled={togglingDefaultId === warehouse._id}
+                                        >
+                                            {togglingDefaultId === warehouse._id ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    Setting as Default...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Star className="w-4 h-4 mr-2 group-hover:fill-[var(--primary-blue)] transition-all" />
+                                                    Set as Default Warehouse
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                )}
 
                                 {/* Actions */}
                                 <div className="pt-2 flex gap-2">

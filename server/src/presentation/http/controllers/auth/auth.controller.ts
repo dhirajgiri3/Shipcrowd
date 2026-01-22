@@ -513,9 +513,6 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
     }
 
-    // Check for inactivity timeout
-    const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(SESSION_CONSTANTS.DEFAULT_TIMEOUT_MS));
-
     // Find session by comparing hashed refresh token (tokens are hashed in DB)
     // Cannot use findOneAndUpdate because we need to compare bcrypt hash
     const activeSessions = await Session.find({
@@ -540,20 +537,10 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       );
     }
 
-    const lastActiveTime = updatedSession.lastActive?.getTime() || updatedSession.createdAt.getTime();
-    const timeSinceActive = Date.now() - lastActiveTime;
-
-    if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
-      updatedSession.isRevoked = true;
-      await updatedSession.save();
-
-      res.clearCookie('accessToken');
-      res.clearCookie('refreshToken');
-      throw new AuthenticationError(
-        'Your session expired due to inactivity. For security, please log in again.',
-        ErrorCode.AUTH_TOKEN_EXPIRED
-      );
-    }
+    // ✅ PRODUCTION-GRADE: No inactivity timeout on refresh
+    // Refresh token TTL (7-30 days) controls session lifespan
+    // This follows industry best practice (Google, GitHub, Stripe, Shopify)
+    // Activity checks belong in access token validation, NOT refresh validation
 
     const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
 
