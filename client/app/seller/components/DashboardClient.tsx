@@ -454,14 +454,20 @@ export function DashboardClient() {
 
                 {/* Phase 2: Critical Alerts Banner (Above Everything) */}
                 {isDataReady && (() => {
-                    const alerts: any[] = [];
+                    const alerts: CriticalAlert[] = [];
 
-                    // Wallet low balance alert
+                    // Wallet low balance alert (stable ID based on threshold)
                     if (walletData?.balance && walletData.balance < 5000) {
+                        const severity: 'critical' | 'warning' = walletData.balance < 1000 ? 'critical' : 'warning';
+                        // ✅ FIXED: Stable ID based on severity threshold
+                        const walletAlertId = walletData.balance < 1000
+                            ? 'wallet-critical-sub1k'
+                            : 'wallet-warning-sub5k';
+
                         alerts.push({
-                            id: 'wallet-low-' + Date.now(),
-                            type: 'wallet_low' as const,
-                            severity: (walletData.balance < 1000 ? 'critical' : 'warning'),
+                            id: walletAlertId,
+                            type: 'wallet_low',
+                            severity: severity,
                             title: 'Low Wallet Balance',
                             message: `Your wallet balance is ₹${walletData.balance.toLocaleString('en-IN')}. Recharge now to avoid order disruptions.`,
                             ctaLabel: 'Recharge Wallet',
@@ -472,10 +478,14 @@ export function DashboardClient() {
 
                     // RTO spike detection (>20% increase)
                     if (rtoAnalyticsData?.summary && rtoAnalyticsData.summary.change > 20) {
+                        // ✅ FIXED: Stable ID based on change magnitude (rounded to 10%)
+                        const rtoChangeRounded = Math.floor(rtoAnalyticsData.summary.change / 10) * 10;
+                        const rtoAlertId = `rto-spike-${rtoChangeRounded}pct`;
+
                         alerts.push({
-                            id: 'rto-spike-' + Date.now(),
-                            type: 'rto_spike' as const,
-                            severity: 'warning' as const,
+                            id: rtoAlertId,
+                            type: 'rto_spike',
+                            severity: 'warning',
                             title: 'RTO Rate Spike Detected',
                             message: `RTO rate increased by ${rtoAnalyticsData.summary.change.toFixed(1)}% compared to last period. Review affected orders.`,
                             ctaLabel: 'View RTO Analytics',
@@ -484,8 +494,40 @@ export function DashboardClient() {
                         });
                     }
 
+                    // Settlement delayed alert (>3 days overdue)
+                    if (codTimelineData?.stages) {
+                        const inProcessStage = codTimelineData.stages.find(s => s.stage === 'in_process');
+
+                        if (inProcessStage?.date) {
+                            const expectedDate = new Date(inProcessStage.date);
+                            const now = new Date();
+                            const daysOverdue = Math.floor((now.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                            if (daysOverdue > 3) {
+                                // ✅ NEW: Settlement delay alert
+                                const delayAlertId = `settlement-delayed-${Math.floor(daysOverdue / 3)}x`;
+
+                                alerts.push({
+                                    id: delayAlertId,
+                                    type: 'settlement_delayed',
+                                    severity: 'warning',
+                                    title: 'COD Settlement Delayed',
+                                    message: `Your COD settlement of ₹${inProcessStage.amount.toLocaleString('en-IN')} is ${daysOverdue} days overdue.`,
+                                    ctaLabel: 'Contact Support',
+                                    ctaUrl: '/seller/support',
+                                    dismissable: true,
+                                });
+                            }
+                        }
+                    }
+
                     return alerts.length > 0 ? (
-                        <CriticalAlertsBanner alerts={alerts} />
+                        <motion.section
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <CriticalAlertsBanner alerts={alerts} />
+                        </motion.section>
                     ) : null;
                 })()}
 

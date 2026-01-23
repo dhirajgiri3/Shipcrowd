@@ -937,4 +937,71 @@ export default class WalletService {
             }
         };
     }
+
+    /**
+     * Calculate projected outflows for next N days based on past 30 days
+     * Used by Available Balance calculation to estimate future spending
+     * 
+     * @param companyId - Company ID
+     * @param days - Number of days to project (default: 7)
+     * @returns Estimated spending for next N days
+     */
+    static async getProjectedOutflows(
+        companyId: string,
+        days: number = 7
+    ): Promise<number> {
+        try {
+            const last30Days = new Date();
+            last30Days.setDate(last30Days.getDate() - 30);
+
+            // Get all debit transactions from last 30 days
+            const debits = await WalletTransaction.find({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                type: 'debit',
+                createdAt: { $gte: last30Days },
+            })
+                .select('amount')
+                .lean();
+
+            // Handle edge case: new sellers with no transaction history
+            if (!debits || debits.length === 0) {
+                logger.info('No transaction history found for projected outflows', {
+                    companyId,
+                    days,
+                });
+                return 0;
+            }
+
+            // Calculate total outflows in last 30 days
+            const totalOutflows = debits.reduce(
+                (sum, tx) => sum + Math.abs(tx.amount),
+                0
+            );
+
+            // Calculate average daily outflow
+            const avgDailyOutflow = totalOutflows / 30;
+
+            // Project for next N days
+            const projected = avgDailyOutflow * days;
+
+            logger.info('Calculated projected outflows', {
+                companyId,
+                days,
+                totalOutflows,
+                avgDailyOutflow,
+                projected,
+                transactionCount: debits.length,
+            });
+
+            return Math.round(projected); // Round to nearest rupee
+        } catch (error) {
+            logger.error('Error calculating projected outflows', {
+                companyId,
+                days,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            });
+            // Return 0 instead of throwing - don't block Available Balance calculation
+            return 0;
+        }
+    }
 }

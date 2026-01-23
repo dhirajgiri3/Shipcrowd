@@ -848,4 +848,59 @@ export default class CODRemittanceService {
             nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         };
     }
+
+    /**
+     * Get total scheduled COD settlements for next N days
+     * Used by Available Balance calculation to show incoming cash flow
+     * 
+     * @param companyId - Company ID
+     * @param days - Number of days to look ahead (default: 7)
+     * @returns Total amount scheduled to arrive in seller's wallet
+     */
+    static async getScheduledSettlements(
+        companyId: string,
+        days: number = 7
+    ): Promise<number> {
+        try {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() + days);
+
+            // Find all approved batches scheduled for payout within N days
+            const scheduled = await CODRemittance.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        status: 'approved', // Ready for payout
+                        scheduledDate: { $lte: cutoffDate },
+                        isDeleted: false,
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAmount: { $sum: '$netPayable' },
+                    },
+                },
+            ]);
+
+            const total = scheduled[0]?.totalAmount || 0;
+
+            logger.info('Calculated scheduled COD settlements', {
+                companyId,
+                days,
+                total,
+                cutoffDate: cutoffDate.toISOString(),
+            });
+
+            return total;
+        } catch (error) {
+            logger.error('Error calculating scheduled COD settlements', {
+                companyId,
+                days,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            });
+            // Return 0 instead of throwing - don't block Available Balance calculation
+            return 0;
+        }
+    }
 }

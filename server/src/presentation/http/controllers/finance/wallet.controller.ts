@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import WalletService from '../../../../core/application/services/wallet/wallet.service';
 import { WalletAnalyticsService } from '../../../../core/application/services/wallet';
+import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
@@ -300,13 +301,17 @@ export const getAvailableBalance = async (
         const walletBalanceData = await WalletService.getBalance(auth.companyId);
         const walletBalance = walletBalanceData.balance;
 
-        // Estimate scheduled COD settlements (simplified for now)
-        // In production, would query CODRemittanceService for scheduled settlements
-        const scheduledCODSettlements = 0; // TODO: Integrate with CODRemittanceService
+        // ✅ FIXED: Get real scheduled COD settlements (next 7 days)
+        const scheduledCODSettlements = await CODRemittanceService.getScheduledSettlements(
+            auth.companyId,
+            7
+        );
 
-        // Estimate projected outflows based on average daily shipping costs
-        // In production, would analyze past 30 days and project next 7 days
-        const projectedOutflows = 0; // TODO: Calculate from WalletService transaction history
+        // ✅ FIXED: Calculate real projected outflows based on past 30 days
+        const projectedOutflows = await WalletService.getProjectedOutflows(
+            auth.companyId,
+            7
+        );
 
         // Calculate available to spend
         const availableToSpend = walletBalance + scheduledCODSettlements - projectedOutflows;
@@ -324,6 +329,12 @@ export const getAvailableBalance = async (
                 availableToSpend,
                 lowBalanceWarning,
                 threshold: lowBalanceThreshold,
+                breakdown: {
+                    currentBalance: walletBalance,
+                    incomingCOD: scheduledCODSettlements,
+                    expectedExpenses: projectedOutflows,
+                    netAvailable: availableToSpend,
+                },
             },
             'Available balance calculated successfully'
         );
