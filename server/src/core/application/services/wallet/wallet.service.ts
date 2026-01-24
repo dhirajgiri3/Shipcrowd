@@ -874,13 +874,28 @@ export default class WalletService {
         ]);
 
         // Calculate daily averages
+        // Calculate daily averages by day of week
+        const dayStats = transactions.reduce((acc, t) => {
+            const date = new Date(t._id);
+            const dayOfWeek = date.getDay(); // 0-6 (Sun-Sat)
+
+            if (!acc[dayOfWeek]) {
+                acc[dayOfWeek] = { credits: 0, debits: 0, count: 0 };
+            }
+
+            acc[dayOfWeek].credits += t.credits;
+            acc[dayOfWeek].debits += t.debits;
+            acc[dayOfWeek].count++;
+            return acc;
+        }, {} as Record<number, { credits: number; debits: number; count: number }>);
+
         const daysWithData = transactions.length || 1;
         const totalCredits = transactions.reduce((sum, t) => sum + t.credits, 0);
         const totalDebits = transactions.reduce((sum, t) => sum + t.debits, 0);
         const dailyInflow = totalCredits / Math.min(daysWithData, 30);
         const dailyOutflow = totalDebits / Math.min(daysWithData, 30);
 
-        // Project next 7 days
+        // Project next 7 days (including today)
         const forecast: Array<{
             date: string;
             inflows: number;
@@ -894,21 +909,25 @@ export default class WalletService {
         let totalProjectedOutflows = 0;
         let warningDate: string | null = null;
 
-        for (let i = 1; i <= 7; i++) {
+        // Loop 0 to 6 (7 days starting Today), matching UI EXPECTATION
+        for (let i = 0; i < 7; i++) {
             const forecastDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
             const dateStr = forecastDate.toISOString().split('T')[0];
+            const dayOfWeek = forecastDate.getDay();
 
-            // Use averages for projection (can be enhanced with day-of-week patterns)
-            const projectedInflow = Math.round(dailyInflow);
-            const projectedOutflow = Math.round(dailyOutflow);
+            // Use day-specific average if available, otherwise fallback to global average
+            const dayStat = dayStats[dayOfWeek];
+            const projectedInflow = Math.round(dayStat ? dayStat.credits / dayStat.count : dailyInflow);
+            const projectedOutflow = Math.round(dayStat ? dayStat.debits / dayStat.count : dailyOutflow);
+
             const netChange = projectedInflow - projectedOutflow;
             runningBalance += netChange;
 
             totalProjectedInflows += projectedInflow;
             totalProjectedOutflows += projectedOutflow;
 
-            // Check if balance will drop below threshold
-            if (!warningDate && runningBalance < lowBalanceThreshold) {
+            /* Check if balance will drop below threshold (only future warning) */
+            if (!warningDate && runningBalance < lowBalanceThreshold && i > 0) {
                 warningDate = dateStr;
             }
 
@@ -960,8 +979,8 @@ export default class WalletService {
                 type: 'debit',
                 createdAt: { $gte: last30Days },
             })
-                .select('amount')
-                .lean();
+                .select('amount createdAt')
+                .lean() as unknown as Array<{ amount: number; createdAt: Date }>;
 
             // Handle edge case: new sellers with no transaction history
             if (!debits || debits.length === 0) {
@@ -972,14 +991,24 @@ export default class WalletService {
                 return 0;
             }
 
-            // Calculate total outflows in last 30 days
+            // ✅ IMPROVED: Calculate actual days of data (handle new sellers with <30 days history)
+            const oldestTx = debits.reduce((oldest, tx) =>
+                new Date(tx.createdAt) < new Date(oldest.createdAt) ? tx : oldest
+            );
+
+            const actualDays = Math.max(
+                1,
+                Math.floor((Date.now() - new Date(oldestTx.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+            );
+
+            // Calculate total outflows
             const totalOutflows = debits.reduce(
                 (sum, tx) => sum + Math.abs(tx.amount),
                 0
             );
 
-            // Calculate average daily outflow
-            const avgDailyOutflow = totalOutflows / 30;
+            // Calculate average daily outflow using ACTUAL data range (not fixed 30 days)
+            const avgDailyOutflow = totalOutflows / actualDays;
 
             // Project for next N days
             const projected = avgDailyOutflow * days;
@@ -987,6 +1016,7 @@ export default class WalletService {
             logger.info('Calculated projected outflows', {
                 companyId,
                 days,
+                actualDays, // Log actual data range
                 totalOutflows,
                 avgDailyOutflow,
                 projected,

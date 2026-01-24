@@ -34,7 +34,7 @@ export interface User {
     name: string;
     phone?: string;
     avatar?: string;
-    role: 'admin' | 'seller' | 'staff';
+    role: 'super_admin' | 'admin' | 'seller' | 'staff';
     companyId?: string;
     createdAt: string;
     updatedAt: string;

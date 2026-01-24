@@ -8,14 +8,15 @@
 
 import { TrendingDown, Shield, Package, Zap, Target, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { SmartInsight } from '../../../lib/mockData/enhanced';
+// ✅ FIXED: Using real API type definition instead of mock data
+import type { SmartInsight } from '@/src/core/api/hooks/analytics/useSmartInsights';
 
 interface SmartInsightsPanelProps {
     insights: SmartInsight[];
     onApply?: (insightId: string) => void;
 }
 
-const typeConfig = {
+const typeConfig: Record<SmartInsight['type'], { icon: any; accentColor: string; label: string }> = {
     cost_saving: {
         icon: TrendingDown,
         accentColor: 'var(--success)',

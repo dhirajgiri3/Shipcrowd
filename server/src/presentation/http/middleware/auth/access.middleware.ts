@@ -2,13 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuditLog, User, TeamPermission } from '../../../../infrastructure/database/mongoose/models';
+import { PermissionService } from '../../../../core/application/services/auth/permission.service';
 
 /**
  * Unified Access Control Options
  */
 export interface AccessOptions {
     /** Platform roles required (OR logic) */
-    roles?: ('admin' | 'seller' | 'staff')[];
+    roles?: ('super_admin' | 'admin' | 'seller' | 'staff')[];
 
     /** Team roles required (OR logic) */
     teamRoles?: ('owner' | 'admin' | 'manager' | 'member' | 'viewer')[];
@@ -69,9 +70,9 @@ export const requireAccess = (options: AccessOptions = {}) => {
 
             // 2. Check Team Role
             if (options.teamRoles && options.teamRoles.length > 0) {
-                // Admin bypass? Typically Platform Admins might bypass team roles, but functionally they shouldn't operate AS a team member unless imposter
-                // Let's enforce strict team roles if user is in 'seller'/'staff' context
-                if (user.role !== 'admin') {
+                // Super admins and admins can bypass team role checks
+                const isAdminRole = user.role === 'super_admin' || user.role === 'admin';
+                if (!isAdminRole) {
                     if (!user.teamRole || !options.teamRoles.includes(user.teamRole as any)) {
                         logAccessDenial(req, user, 'insufficient_team_role', { required: options.teamRoles });
                         throw new AppError('Insufficient team privileges', 'FORBIDDEN', 403);
@@ -80,17 +81,23 @@ export const requireAccess = (options: AccessOptions = {}) => {
             }
 
             // 3. Check Company Match (Isolation)
-            if (options.requireCompanyMatch && user.role !== 'admin') {
+            const isAdminRole = user.role === 'super_admin' || user.role === 'admin';
+            if (options.requireCompanyMatch && !isAdminRole) {
                 const resourceCompanyId = req.params.companyId || req.body.companyId || req.query.companyId;
 
                 if (resourceCompanyId && user.companyId?.toString() !== resourceCompanyId.toString()) {
+                    // V5: Invalidate permissions if suspicious activity
+                    // @ts-ignore - user type is not fully defined here yet
+                    await PermissionService.invalidate(user._id?.toString() || '');
+
                     logAccessDenial(req, user, 'cross_company_access', { target: resourceCompanyId });
                     throw new AppError('Cross-company access denied', 'FORBIDDEN', 403);
                 }
             }
 
             // 4. Check KYC
-            if (options.requireKYC && user.role !== 'admin') {
+            const isAdminRoleForKYC = user.role === 'super_admin' || user.role === 'admin';
+            if (options.requireKYC && !isAdminRoleForKYC) {
                 // Check user flag first
                 if (!user.kycStatus?.isComplete) {
                     logAccessDenial(req, user, 'kyc_required');
@@ -114,7 +121,8 @@ export const requireAccess = (options: AccessOptions = {}) => {
             }
 
             // 5. Check Access Tier
-            if (options.tier && user.role !== 'admin') {
+            const isAdminRoleForTier = user.role === 'super_admin' || user.role === 'admin';
+            if (options.tier && !isAdminRoleForTier) {
                 const tiers = ['explorer', 'sandbox', 'production'];
                 const userTierIndex = tiers.indexOf(user.accessTier || 'explorer');
                 const requiredTierIndex = tiers.indexOf(options.tier);
@@ -143,8 +151,8 @@ export const requireAccess = (options: AccessOptions = {}) => {
             if (options.permission) {
                 const { module, action } = options.permission;
 
-                // Admins and Owners usually have full access
-                const hasFullAccess = user.role === 'admin' || user.teamRole === 'owner' || user.teamRole === 'admin';
+                // Super admins, admins and Owners usually have full access
+                const hasFullAccess = user.role === 'super_admin' || user.role === 'admin' || user.teamRole === 'owner' || user.teamRole === 'admin';
 
                 if (!hasFullAccess) {
                     // Managers handling

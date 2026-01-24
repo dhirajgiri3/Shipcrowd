@@ -1,7 +1,7 @@
 import { Order } from '@/src/types/domain/order';
 
 export const generateMockOrders = (): Order[] => {
-    const statuses = ['delivered', 'in_transit', 'shipped', 'pending', 'cancelled', 'rto'];
+    const statuses = ['delivered', 'in_transit', 'shipped', 'pending', 'cancelled', 'rto', 'ready_to_ship', 'ndr'];
     const paymentStatuses = ['paid', 'pending', 'failed'];
     const productsList = [
         'Wireless Noise Cancelling Headphones', 'Smart Fitness Watch Gen 4', 'Ergonomic Office Chair',

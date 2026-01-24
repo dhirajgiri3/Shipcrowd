@@ -13,15 +13,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-interface User {
-    name: string;
-    email: string;
-    avatar?: string;
-    role: 'admin' | 'seller' | 'admin+seller';
-}
+import type { User as AuthUser } from '@/src/types/auth'; // Alias to avoid collision with Lucide User icon
 
 interface ProfileDropdownProps {
-    user: User;
+    user: Pick<AuthUser, 'name' | 'email' | 'role' | 'avatar'>;
     onSignOut?: () => void;
 }
 
@@ -32,11 +27,12 @@ export function ProfileDropdown({ user, onSignOut }: ProfileDropdownProps) {
 
     const isAdminDashboard = pathname.startsWith('/admin');
     const isSellerDashboard = pathname.startsWith('/seller');
-    const canAccessAdmin = user.role === 'admin' || user.role === 'admin+seller';
-    const canAccessSeller = user.role === 'seller' || user.role === 'admin+seller' || user.role === 'admin';
+    const canAccessAdmin = ['admin', 'super_admin'].includes(user.role);
+    // Allow admins/super_admins to access seller view as well
+    const canAccessSeller = ['seller', 'admin', 'super_admin'].includes(user.role);
 
     // Dynamic role label based on current dashboard
-    const currentRoleLabel = isAdminDashboard ? 'Admin' : isSellerDashboard ? 'Seller' : user.role;
+    const currentRoleLabel = isAdminDashboard ? 'Admin' : isSellerDashboard ? 'Seller' : user.role.replace('_', ' ');
 
     // Get user initials
     const initials = user.name

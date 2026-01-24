@@ -22,6 +22,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 // Define required fields for different user roles
 const REQUIRED_FIELDS = {
+  super_admin: ['name', 'email', 'profile.phone'],
   admin: ['name', 'email', 'profile.phone'],
   seller: ['name', 'email', 'profile.phone', 'profile.address', 'profile.city', 'profile.country'],
   staff: ['name', 'email', 'profile.phone'],

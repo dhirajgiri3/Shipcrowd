@@ -59,7 +59,7 @@ function LoginForm() {
             }
 
             // Role-based redirection
-            const destination = user.role === 'admin' ? '/admin' : '/seller';
+            const destination = ['admin', 'super_admin'].includes(user.role) ? '/admin' : '/seller';
             router.push(destination);
         }
     }, [isInitialized, isAuthenticated, user, router, redirectPath]);

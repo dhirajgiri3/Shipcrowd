@@ -3,16 +3,19 @@ import bcrypt from 'bcrypt';
 import { arrayLimit } from '../../../../../../shared/utils/arrayValidators';
 import { fieldEncryption } from 'mongoose-field-encryption';
 import crypto from 'crypto';
+import logger from '../../../../../../shared/logger/winston.logger';
 
 // Define the interface for User document
 export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
-  role: 'admin' | 'seller' | 'staff';
-  companyId?: mongoose.Types.ObjectId;
+  role: 'super_admin' | 'admin' | 'seller' | 'staff';
+  companyId?: mongoose.Types.ObjectId; // Admin with company = dual role (admin + seller)
   teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
   teamStatus?: 'active' | 'invited' | 'suspended';
+  // ✅ V5 RBAC: Platform Role (replaces role enum)
+  platformRole?: mongoose.Types.ObjectId;
   // ✅ FEATURE 5: Tiered Access
   accessTier: 'explorer' | 'sandbox' | 'production';
   // OAuth fields
@@ -145,8 +148,8 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['admin', 'seller', 'staff'],
-      default: 'seller',
+      enum: ['super_admin', 'admin', 'seller', 'staff'],
+      default: 'seller', // New users default to seller
     },
     companyId: {
       type: Schema.Types.ObjectId,
@@ -160,6 +163,11 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ['active', 'invited', 'suspended'],
       default: 'active',
+    },
+    // ✅ V5 RBAC: Platform Role (ref to Role model)
+    platformRole: {
+      type: Schema.Types.ObjectId,
+      ref: 'Role',
     },
     // ✅ FEATURE 5: Tiered Access
     accessTier: {
@@ -436,6 +444,279 @@ UserSchema.pre('save', async function (next) {
     next();
   } catch (error: any) {
     next(error);
+  }
+});
+
+// ============================================================================
+// CRITICAL V5 RBAC: Bidirectional Sync Hook (pre('save'))
+// ============================================================================
+// When legacy fields (role, companyId, teamRole) change, automatically update
+// V5 RBAC models (platformRole, Membership) to keep systems synchronized.
+// ============================================================================
+UserSchema.pre('save', async function(next) {
+  // Skip if new document (handled by registration flow)
+  if (this.isNew) return next();
+
+  try {
+    const Role = mongoose.model('Role');
+    const Membership = mongoose.model('Membership');
+
+    // 1. Sync platformRole when role changes
+    if (this.isModified('role')) {
+      const roleMap: Record<string, string> = {
+        'super_admin': 'super_admin',
+        'admin': 'admin',
+        'seller': 'user',
+        'staff': 'user'
+      };
+
+      const globalRole = await Role.findOne({
+        name: roleMap[this.role as string],
+        scope: 'global'
+      }).lean() as any;
+
+      if (globalRole) {
+        this.platformRole = globalRole._id;
+        logger.info(`[Sync] Updated platformRole for user ${this._id}: ${this.role} → ${globalRole.name}`);
+      }
+    }
+
+    // 2. Sync Membership when companyId or teamRole changes
+    if (this.isModified('companyId') || this.isModified('teamRole')) {
+      if (this.companyId && this.teamRole) {
+        // Map teamRole to Role
+        const teamRoleMap: Record<string, string> = {
+          'owner': 'owner',
+          'admin': 'manager',
+          'manager': 'manager',
+          'member': 'member',
+          'viewer': 'viewer'
+        };
+
+        const companyRole = await Role.findOne({
+          name: teamRoleMap[this.teamRole as string] || 'member',
+          scope: 'company'
+        }).lean() as any;
+
+        if (companyRole) {
+          // Upsert membership
+          await Membership.findOneAndUpdate(
+            { userId: this._id, companyId: this.companyId },
+            {
+              roles: [companyRole._id],
+              status: this.teamStatus || 'active',
+              $inc: { permissionsVersion: 1 }
+            },
+            { upsert: true, new: true }
+          );
+
+          logger.info(`[Sync] Updated Membership for user ${this._id} in company ${this.companyId}: ${this.teamRole} → ${companyRole.name}`);
+        }
+      } else if (!this.companyId) {
+        // User left company - mark all memberships as suspended
+        await Membership.updateMany(
+          { userId: this._id },
+          { status: 'suspended', $inc: { permissionsVersion: 1 } }
+        );
+      }
+    }
+
+    // 3. Note: Cache invalidation handled separately via controller/middleware
+    // to avoid circular dependencies
+
+    next();
+  } catch (error) {
+    logger.error('[Sync] User save hook failed:', error);
+    next(error as Error);
+  }
+});
+
+// ============================================================================
+// CRITICAL V5 RBAC: Prevent Last Owner Removal (pre('save'))
+// ============================================================================
+// Ensure every company has at least one active owner. Prevent changing role
+// of the last owner away from 'owner' status.
+// ============================================================================
+UserSchema.pre('save', async function(next) {
+  if (!this.isModified('teamRole') && !this.isModified('companyId')) {
+    return next();
+  }
+
+  try {
+    // If user was owner and is being changed
+    const oldUser = await mongoose.model('User').findById(this._id).select('teamRole companyId').lean() as any;
+
+    if (oldUser?.teamRole === 'owner' && this.teamRole !== 'owner' && this.companyId) {
+      // Check if other active owners exist
+      const otherOwners = await mongoose.model('User').countDocuments({
+        companyId: this.companyId,
+        teamRole: 'owner',
+        _id: { $ne: this._id },
+        isActive: true
+      });
+
+      if (otherOwners === 0) {
+        return next(new Error('Cannot change role of last owner. Transfer ownership first.'));
+      }
+    }
+
+    next();
+  } catch (error) {
+    logger.error('[Ownership] Last owner protection check failed:', error);
+    next(error as Error);
+  }
+});
+
+// ============================================================================
+// CRITICAL V5 RBAC: Sync Hook for findOneAndUpdate (pre('findOneAndUpdate'))
+// ============================================================================
+// CRITICAL FIX: Controllers use User.findByIdAndUpdate() which bypasses
+// pre('save') hooks. This hook ensures sync happens even with findByIdAndUpdate.
+//
+// Affected controllers:
+// - company.controller.ts:111 - Sets companyId and teamRole
+// - kyc.controller.ts:281 - Safe (updates kycStatus only)
+// - user.controller.ts:89 - Safe (profile fields only)
+// ============================================================================
+UserSchema.pre('findOneAndUpdate', async function(next) {
+  try {
+    const update = this.getUpdate() as any;
+    const Role = mongoose.model('Role');
+    const Membership = mongoose.model('Membership');
+
+    // Check if role/companyId/teamRole fields are being updated
+    const updatingRole = update.role || update.$set?.role;
+    const updatingCompanyId = update.companyId !== undefined || update.$set?.companyId !== undefined;
+    const updatingTeamRole = update.teamRole || update.$set?.teamRole;
+
+    if (!updatingRole && !updatingCompanyId && !updatingTeamRole) {
+      return next(); // No sync needed
+    }
+
+    // Get current user document
+    const query = this.getQuery() as any;
+    const userId = query._id;
+    const user = await mongoose.model('User').findById(userId).lean() as any;
+
+    if (!user) return next();
+
+    // 1. Sync platformRole if role changed
+    if (updatingRole) {
+      const roleMap: Record<string, string> = {
+        'super_admin': 'super_admin',
+        'admin': 'admin',
+        'seller': 'user',
+        'staff': 'user'
+      };
+
+      const newRole = updatingRole;
+      const globalRole = await Role.findOne({
+        name: roleMap[newRole],
+        scope: 'global'
+      }).lean() as any;
+
+      if (globalRole) {
+        if (!update.$set) update.$set = {};
+        update.$set.platformRole = globalRole._id;
+        logger.info(`[Sync-Update] Set platformRole for user ${userId}: ${newRole} → ${globalRole.name}`);
+      }
+    }
+
+    // 2. Sync Membership if companyId/teamRole changed
+    const newCompanyId = updatingCompanyId ? (update.companyId || update.$set?.companyId) : user.companyId;
+    const newTeamRole = updatingTeamRole ? (update.teamRole || update.$set?.teamRole) : user.teamRole;
+
+    if (newCompanyId && newTeamRole) {
+      const teamRoleMap: Record<string, string> = {
+        'owner': 'owner',
+        'admin': 'manager',
+        'manager': 'manager',
+        'member': 'member',
+        'viewer': 'viewer'
+      };
+
+      const companyRole = await Role.findOne({
+        name: teamRoleMap[newTeamRole] || 'member',
+        scope: 'company'
+      }).lean() as any;
+
+      if (companyRole) {
+        await Membership.findOneAndUpdate(
+          { userId, companyId: newCompanyId },
+          {
+            roles: [companyRole._id],
+            status: 'active',
+            $inc: { permissionsVersion: 1 }
+          },
+          { upsert: true }
+        );
+        logger.info(`[Sync-Update] Updated Membership for user ${userId}`);
+      }
+    }
+
+    next();
+  } catch (error) {
+    logger.error('[Sync-Update] findOneAndUpdate hook failed:', error);
+    next(error as Error);
+  }
+});
+
+// ============================================================================
+// CRITICAL V5 RBAC: Cache Invalidation (post hooks)
+// ============================================================================
+// Invalidate permission cache after role-related changes.
+// Uses direct Redis pub/sub to avoid circular import with PermissionService.
+// ============================================================================
+
+// Lazy-loaded Redis client for cache invalidation
+let invalidationRedis: any = null;
+const RBAC_CHANNEL = 'rbac:invalidation';
+
+async function invalidatePermissionCache(userId: string, companyId?: string): Promise<void> {
+  try {
+    if (!invalidationRedis) {
+      const ioredis = await import('ioredis');
+      const RedisClient = ioredis.default || ioredis;
+      invalidationRedis = new (RedisClient as any)(process.env.REDIS_URL || 'redis://localhost:6379');
+    }
+
+    // Delete local cache keys
+    const pattern = `rbac:perms:${userId}:${companyId || '*'}`;
+    const keys: string[] = [];
+
+    for await (const keyBatch of invalidationRedis.scanStream({ match: pattern, count: 100 })) {
+      keys.push(...keyBatch);
+    }
+
+    if (keys.length > 0) {
+      await invalidationRedis.del(...keys);
+    }
+
+    // Publish to other nodes
+    await invalidationRedis.publish(RBAC_CHANNEL, JSON.stringify({ userId, companyId }));
+
+    logger.debug(`[Cache] Invalidated permissions for user ${userId}`);
+  } catch (error) {
+    logger.warn('[Cache] Failed to invalidate:', error);
+  }
+}
+
+UserSchema.post('save', async function() {
+  // Only invalidate if role-related fields were modified
+  if (this.isModified('role') || this.isModified('companyId') || this.isModified('teamRole')) {
+    await invalidatePermissionCache(
+      (this._id as mongoose.Types.ObjectId).toString(),
+      this.companyId?.toString()
+    );
+  }
+});
+
+UserSchema.post('findOneAndUpdate', async function(doc) {
+  if (doc) {
+    await invalidatePermissionCache(
+      (doc._id as mongoose.Types.ObjectId).toString(),
+      doc.companyId?.toString()
+    );
   }
 });
 

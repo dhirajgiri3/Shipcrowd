@@ -19,7 +19,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const currentUser = {
         name: user?.name || 'Admin',
         email: user?.email || '',
-        role: (user?.role || 'admin') as 'admin' | 'seller' | 'admin+seller',
+        role: user?.role || 'admin',
         walletBalance: 0
     };
 

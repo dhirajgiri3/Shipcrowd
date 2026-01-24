@@ -43,6 +43,8 @@ import returnWebhooksRoutes from './logistics/return-webhooks.routes';
 import fraudRoutes from './fraud/fraud.routes';
 // General Dispute Resolution
 import disputeRoutes from './logistics/dispute.routes';
+// Admin: User Management
+import userManagementRoutes from './admin/user-management.routes';
 
 const router = express.Router();
 
@@ -142,5 +144,8 @@ router.use('/fraud', fraudRoutes);
 
 // Phase 4: General Dispute Resolution System
 router.use('/disputes', disputeRoutes);
+
+// Admin: User Management (Super Admin Only)
+router.use('/admin/users', userManagementRoutes);
 
 export default router;

@@ -224,7 +224,7 @@ async function runSeeders(): Promise<void> {
         { name: 'Marketplace Sync Logs', fn: seedMarketplaceSyncLogs },
         { name: 'Product Mappings', fn: seedMarketplaceProductMappings },
         { name: 'Audit Logs', fn: seedAuditLogs },
-        { name: 'Payouts', fn: seedPayouts },
+        { name: 'Commission Payouts', fn: seedPayouts },
         { name: 'Pincodes', fn: seedPincodes },
     ];
 

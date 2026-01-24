@@ -1132,8 +1132,7 @@ export default class RTOService {
         const [currentRTOs, currentShipments, previousRTOs, previousShipments] = await Promise.all([
             RTOEvent.countDocuments({
                 company: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: currentMonthStart },
-                isDeleted: false
+                createdAt: { $gte: currentMonthStart }
             }),
             Shipment.countDocuments({
                 companyId: new mongoose.Types.ObjectId(companyId),
@@ -1141,8 +1140,7 @@ export default class RTOService {
             }),
             RTOEvent.countDocuments({
                 company: new mongoose.Types.ObjectId(companyId),
-                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
-                isDeleted: false
+                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd }
             }),
             Shipment.countDocuments({
                 companyId: new mongoose.Types.ObjectId(companyId),
@@ -1167,8 +1165,7 @@ export default class RTOService {
             const [rtos, shipments] = await Promise.all([
                 RTOEvent.countDocuments({
                     company: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: monthStart, $lte: monthEnd },
-                    isDeleted: false
+                    createdAt: { $gte: monthStart, $lte: monthEnd }
                 }),
                 Shipment.countDocuments({
                     companyId: new mongoose.Types.ObjectId(companyId),
@@ -1186,7 +1183,7 @@ export default class RTOService {
                 $match: {
                     companyId: new mongoose.Types.ObjectId(companyId),
                     createdAt: { $gte: currentMonthStart },
-                    status: 'rto'
+                    currentStatus: { $regex: 'rto', $options: 'i' }
                 }
             },
             {
@@ -1229,8 +1226,7 @@ export default class RTOService {
             {
                 $match: {
                     company: new mongoose.Types.ObjectId(companyId),
-                    createdAt: { $gte: currentMonthStart },
-                    isDeleted: false
+                    createdAt: { $gte: currentMonthStart }
                 }
             },
             {

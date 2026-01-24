@@ -9,6 +9,7 @@ import { AuthorizationError, ValidationError } from '../../../../shared/errors/a
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import RTOService from '../../../../core/application/services/rto/rto.service';
 import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
+import SmartInsightsService from '../../../../core/application/services/analytics/smart-insights.service';
 
 /**
  * Analytics Controller
@@ -1275,6 +1276,29 @@ export const getProfitabilityAnalytics = async (
 };
 
 /**
+ * Get Smart Insights for dashboard
+ * Phase 5: Powers SmartInsightsPanel component
+ * @route GET /api/v1/analytics/insights
+ */
+export const getSmartInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache handled within Service layer (1 hour)
+        const insights = await SmartInsightsService.generateInsights(auth.companyId!);
+
+        sendSuccess(res, insights, 'Smart insights generated successfully');
+    } catch (error) {
+        logger.error('Error generating smart insights:', error);
+        next(error);
+    }
+};
+
+/**
  * Get Geographic Insights for dashboard
  * Phase 4: Powers GeographicInsights component
  * @route GET /api/v1/analytics/geography
@@ -1329,4 +1353,6 @@ export default {
     getRTOAnalytics,
     getProfitabilityAnalytics,
     getGeographicInsights,
+    // Phase 5: Smart Insights
+    getSmartInsights,
 };

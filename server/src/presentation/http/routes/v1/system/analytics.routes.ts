@@ -119,6 +119,12 @@ router.get('/profitability', authenticate, requireAccess({ tier: AccessTier.SAND
  */
 router.get('/geography', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getGeographicInsights));
 
+/**
+ * Phase 5: Smart Insights - AI-powered business recommendations
+ * @route GET /api/v1/analytics/insights
+ */
+router.get('/insights', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getSmartInsights));
+
 // ✅ FEATURE 10: Authentication Analytics Dashboard
 import authAnalyticsRouter from '../analytics/auth.routes';
 router.use('/auth', authAnalyticsRouter);

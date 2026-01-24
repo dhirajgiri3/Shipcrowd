@@ -16,6 +16,10 @@ export { default as TeamPermission } from './iam/access/team-permission.model';
 export * from './iam/access/team-permission.model';
 export { default as TeamInvitation } from './iam/access/team-invitation.model';
 export * from './iam/access/team-invitation.model';
+export { default as Role } from './iam/role.model';
+export * from './iam/role.model';
+export { default as Membership } from './iam/membership.model';
+export * from './iam/membership.model';
 
 // Organization
 export { default as Company } from './organization/core/company.model';

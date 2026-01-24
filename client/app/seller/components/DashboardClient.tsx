@@ -50,6 +50,7 @@ import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, t
 import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
 import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
 import { useGeographicInsights } from '@/src/core/api/hooks/analytics/useGeographicInsights'; // Phase 4: Geographic Insights
+import { useSmartInsights } from '@/src/core/api/hooks/analytics/useSmartInsights'; // Phase 5: Smart Insights (100% Real Data)
 import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsFAB';
 
 // Dashboard Utilities
@@ -263,6 +264,9 @@ export function DashboardClient() {
     // Phase 4: Geographic Insights API
     const { data: geographicData, isLoading: geographicLoading } = useGeographicInsights();
 
+    // Phase 5: Smart Insights API (100% Real Data)
+    const { data: smartInsightsData, isLoading: smartInsightsLoading } = useSmartInsights();
+
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
@@ -317,7 +321,7 @@ export function DashboardClient() {
             order.currentStatus?.toLowerCase().includes('rto')
         ) || getRTOOrders());
 
-    // Simulate some logic to determine urgent actions
+    // Determine urgent actions based on REAL data
     const urgentActions = [
         ...(pendingPickups.length > 0 ? [{
             id: 'pickup-1',
@@ -339,15 +343,16 @@ export function DashboardClient() {
             ctaUrl: '/seller/orders?status=rto_risk',
             severity: 'medium' as const
         }] : []),
-        {
+        // ✅ FIXED: Only show wallet alert if balance is actually low
+        ...(walletData?.balance !== undefined && walletData.balance < 1000 ? [{
             id: 'wallet-1',
             type: 'wallet' as const,
             title: 'Low Wallet Balance',
-            description: 'Balance below ₹1,000 threshold',
+            description: `Balance ₹${walletData.balance.toLocaleString('en-IN')} below ₹1,000 threshold`,
             ctaLabel: 'Recharge Now',
             ctaUrl: '/seller/wallet',
             severity: 'high' as const
-        }
+        }] : [])
     ];
 
     // 2. Snapshot Data Logic - Use real API or fallback to mock
@@ -385,8 +390,8 @@ export function DashboardClient() {
         }
     };
 
-    // Smart insights data
-    const smartInsights = getTopInsights(3);
+    // Smart insights data - Use REAL API (Phase 5: 100% Real Data)
+    const smartInsights = smartInsightsData || [];
 
     // Order Trend Chart Data - Transform API data or use mock
     const orderTrendChartData = USE_MOCK
@@ -646,8 +651,8 @@ export function DashboardClient() {
                     </motion.section>
                 )}
 
-                {/* TIER 2: SMART INSIGHTS (Actionable recommendations - Business partner) */}
-                {isDataReady && (
+                {/* TIER 2: SMART INSIGHTS (Actionable recommendations - Business partner) - Phase 5: 100% Real Data */}
+                {isDataReady && smartInsights.length > 0 && (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}

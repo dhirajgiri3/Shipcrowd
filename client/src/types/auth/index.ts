@@ -11,7 +11,7 @@ export interface User {
   _id: string;
   email: string;
   name: string;
-  role: 'admin' | 'seller' | 'staff';
+  role: 'super_admin' | 'admin' | 'seller' | 'staff';
   companyId?: string;
 
   // Team fields
@@ -67,7 +67,7 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
-  role?: 'admin' | 'seller' | 'staff';
+  role?: 'super_admin' | 'admin' | 'seller' | 'staff';
   invitationToken?: string;
 }
 

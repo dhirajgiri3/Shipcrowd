@@ -12,7 +12,7 @@ import crypto from 'crypto';
 import User from '../../mongoose/models/iam/users/user.model';
 import Company from '../../mongoose/models/organization/core/company.model';
 import TeamInvitation from '../../mongoose/models/iam/access/team-invitation.model';
-import TeamPermission from '../../mongoose/models/iam/access/team-permission.model';
+// import TeamPermission from '../../mongoose/models/iam/access/team-permission.model'; // Deprecated in V5
 import TeamActivity from '../../mongoose/models/organization/teams/team-activity.model';
 import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -241,6 +241,8 @@ export async function seedTeams(): Promise<void> {
             }
         }
 
+        // Legacy TeamPermission seeding removed (Replaced by V5 Roles)
+        /*
         // Generate permissions for team members (excluding owners who have full access by default)
         for (const member of teamMembers) {
             const memberAny = member as any;
@@ -254,6 +256,7 @@ export async function seedTeams(): Promise<void> {
                 });
             }
         }
+        */
 
         // Add some activity logs for team members
         for (const member of teamMembers) {
@@ -277,12 +280,14 @@ export async function seedTeams(): Promise<void> {
             });
         }
 
+        /*
         if (permissions.length > 0) {
             await TeamPermission.insertMany(permissions, { ordered: false }).catch((err) => {
                 if (err.code !== 11000) throw err;
                 logger.warn(`Skipped ${err.writeErrors?.length || 0} duplicate permissions`);
             });
         }
+        */
 
         if (activities.length > 0) {
             await TeamActivity.insertMany(activities);
@@ -291,9 +296,8 @@ export async function seedTeams(): Promise<void> {
         logger.complete('teams', invitations.length + permissions.length + activities.length, timer.elapsed());
         logger.table({
             'Team Invitations': invitations.length,
-            'Team Permissions': permissions.length,
             'Team Activities': activities.length,
-            'Total Records': invitations.length + permissions.length + activities.length,
+            'Total Records': invitations.length + activities.length,
         });
 
     } catch (error) {

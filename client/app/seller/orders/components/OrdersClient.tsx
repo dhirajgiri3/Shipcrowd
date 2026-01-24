@@ -106,8 +106,9 @@ export function OrdersClient() {
 
             switch (smartFilter) {
                 case 'needs_attention':
+                    // Updated to match actual statuses that might need attention
                     filtered = filtered.filter(o =>
-                        ['pickup_pending', 'pickup_failed', 'exception', 'rto_initiated'].includes(o.currentStatus)
+                        ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
                     );
                     break;
                 case 'today':
@@ -181,7 +182,7 @@ export function OrdersClient() {
         return {
             all: MOCK_ORDERS_DATA.length,
             needs_attention: MOCK_ORDERS_DATA.filter(o =>
-                ['pickup_pending', 'pickup_failed', 'exception', 'rto_initiated'].includes(o.currentStatus)
+                ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
             ).length,
             today: MOCK_ORDERS_DATA.filter(o => {
                 const orderDate = new Date(o.createdAt);

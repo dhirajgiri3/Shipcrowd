@@ -42,13 +42,13 @@ export default class CODRemittanceService {
         // Find all delivered COD shipments not yet remitted
         const eligibleShipments = await Shipment.find({
             companyId: new mongoose.Types.ObjectId(companyId),
-            paymentMode: 'COD',
+            'paymentDetails.type': 'cod',
             currentStatus: 'delivered',
             actualDelivery: { $lte: cutoffDate },
             'remittance.included': { $ne: true },
             isDeleted: false,
         })
-            .select('trackingNumber billing.codAmount billing.totalAmount actualDelivery')
+            .select('trackingNumber paymentDetails.codAmount paymentDetails.shippingCost actualDelivery')
             .lean();
 
         if (!eligibleShipments || eligibleShipments.length === 0) {
@@ -62,8 +62,8 @@ export default class CODRemittanceService {
         let totalDeductions = 0;
 
         const formattedShipments = eligibleShipments.map((shipment: any) => {
-            const codAmount = shipment.billing?.codAmount || 0;
-            const shippingCharge = shipment.billing?.totalAmount || 0;
+            const codAmount = shipment.paymentDetails?.codAmount || 0;
+            const shippingCharge = shipment.paymentDetails?.shippingCost || 0;
             const platformFee = codAmount * 0.005; // 0.5% platform fee
 
             const deductionsTotal = shippingCharge + platformFee;

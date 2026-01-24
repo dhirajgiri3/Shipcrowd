@@ -24,7 +24,8 @@ import {
     Headphones,
     Scale as ScaleIcon,
     ChevronRight,
-    Zap
+    Zap,
+    UserCog
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/core/Button';
@@ -47,6 +48,7 @@ const navItems = [
     { label: 'Profit', href: '/admin/profit', icon: BarChart3 },
     { label: 'Sales Team', href: '/admin/sales', icon: Users },
     { label: 'Coupons', href: '/admin/coupons', icon: Ticket },
+    { label: 'User Management', href: '/admin/users', icon: UserCog, superAdminOnly: true },
     { label: 'Support Tickets', href: '/admin/support', icon: Headphones },
     { label: 'Integrations', href: '/admin/integrations', icon: Plug },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
@@ -69,13 +71,22 @@ function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () 
         router.push('/login');
     };
 
-    // Group navigation items
-    const coreItems = navItems.slice(0, 4); // Dashboard, Sellers, KYC, Intelligence
-    const operationsItems = navItems.slice(4, 9); // Orders, Shipments, Warehouses, Returns, Weight
-    const financeItems = navItems.slice(9, 16); // Courier, Rate Cards, Financials, Billing, Profit, Sales, Coupons
-    const systemItems = navItems.slice(16); // Support, Integrations, Settings
+    // Filter items based on user role
+    const isSuperAdmin = user?.role === 'super_admin';
+    const filteredNavItems = navItems.filter(item => {
+        if (item.superAdminOnly) {
+            return isSuperAdmin;
+        }
+        return true;
+    });
 
-    const renderNavItems = (items: typeof navItems, showDivider = false) => (
+    // Group navigation items
+    const coreItems = filteredNavItems.slice(0, 4); // Dashboard, Sellers, KYC, Intelligence
+    const operationsItems = filteredNavItems.slice(4, 9); // Orders, Shipments, Warehouses, Returns, Weight
+    const financeItems = filteredNavItems.slice(9, 16); // Courier, Rate Cards, Financials, Billing, Profit, Sales, Coupons
+    const systemItems = filteredNavItems.slice(16); // User Management (super admin), Support, Integrations, Settings
+
+    const renderNavItems = (items: typeof filteredNavItems, showDivider = false) => (
         <>
             {items.map((item) => {
                 // Precise matching for root admin, partial for sub-routes

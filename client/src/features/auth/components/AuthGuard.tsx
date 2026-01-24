@@ -57,14 +57,18 @@ export function AuthGuard({
     if (requiredRole && user) {
       const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
 
-      // ✅ FIX: Allow admins to access seller routes (admins can switch to seller dashboard)
-      const isAdminAccessingSeller = user.role === 'admin' && allowedRoles.includes('seller');
-      const hasRequiredRole = allowedRoles.includes(user.role);
+      // ✅ FIX: Role hierarchy - super_admin has all admin privileges
+      const isSuperAdmin = user.role === 'super_admin';
+      const isAdminAccessingSeller = (user.role === 'admin' || isSuperAdmin) && allowedRoles.includes('seller');
+
+      // Super admin can access any admin or seller route
+      const hasRequiredRole = allowedRoles.includes(user.role) ||
+                              (isSuperAdmin && allowedRoles.includes('admin'));
 
       if (!hasRequiredRole && !isAdminAccessingSeller) {
         // Only redirect if user truly doesn't have access
-        // Sellers can't access admin routes, but admins CAN access seller routes
-        const destination = user.role === 'admin' ? '/admin' : '/seller';
+        // Sellers can't access admin routes, but admins/super_admins CAN access seller routes
+        const destination = (user.role === 'admin' || isSuperAdmin) ? '/admin' : '/seller';
         if (pathname !== destination) {
           router.push(destination);
         }

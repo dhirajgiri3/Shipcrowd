@@ -6,6 +6,8 @@
 
 import bcrypt from 'bcrypt';
 import User from '../../mongoose/models/iam/users/user.model';
+import mongoose from 'mongoose'; // Needed for Role model
+import Role from '../../mongoose/models/iam/role.model';
 import { SEED_CONFIG } from '../config';
 import { randomInt, selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -40,16 +42,22 @@ function generateGoogleId(): string {
 /**
  * Generate admin user data
  */
-async function generateAdminUser(index: number, hashedPassword: string) {
+async function generateAdminUser(index: number, hashedPassword: string, roles: any) {
     const gender = generateGender();
     const name = generateIndianName(gender);
     const city = selectRandom(INDIAN_CITIES.metro);
+
+    // admin1 = super_admin (platform owner), others = regular admin
+    const role = index === 0 ? 'super_admin' : 'admin';
+    const platformRole = index === 0 ? roles.super_admin : roles.admin;
+    const bio = index === 0 ? 'Helix Super Admin (Platform Owner)' : 'Helix Admin';
 
     return {
         email: `admin${index + 1}@Helix.com`,
         password: hashedPassword,
         name,
-        role: 'admin',
+        role,
+        platformRole,
         isEmailVerified: true,
         oauthProvider: 'email',
         profile: {
@@ -61,7 +69,7 @@ async function generateAdminUser(index: number, hashedPassword: string) {
             gender,
             timezone: 'Asia/Kolkata',
             preferredCurrency: 'INR',
-            bio: 'Helix Admin',
+            bio,
         },
         profileCompletion: {
             status: 100,
@@ -81,7 +89,7 @@ async function generateAdminUser(index: number, hashedPassword: string) {
 /**
  * Generate seller user data
  */
-async function generateSellerUser(index: number, hashedPassword: string) {
+async function generateSellerUser(index: number, hashedPassword: string, userRoleId: any) {
     const gender = generateGender();
     const name = generateIndianName(gender);
     const city = selectWeightedCity();
@@ -93,8 +101,8 @@ async function generateSellerUser(index: number, hashedPassword: string) {
         password: hashedPassword,
         name,
         role: 'seller',
-        teamRole: 'owner',
-        teamStatus: 'active',
+        platformRole: userRoleId,
+        // teamRole & teamStatus removed (handled by Membership)
         isEmailVerified: true,
         oauthProvider: isOAuth ? 'google' : 'email',
         googleId: isOAuth ? generateGoogleId() : undefined,
@@ -135,7 +143,7 @@ async function generateSellerUser(index: number, hashedPassword: string) {
 /**
  * Generate staff user data
  */
-async function generateStaffUser(index: number, hashedPassword: string) {
+async function generateStaffUser(index: number, hashedPassword: string, userRoleId: any) {
     const gender = generateGender();
     const name = generateIndianName(gender);
     const city = selectWeightedCity();
@@ -147,8 +155,8 @@ async function generateStaffUser(index: number, hashedPassword: string) {
         password: hashedPassword,
         name,
         role: 'staff',
-        teamRole: selectRandom(TEAM_ROLES),
-        teamStatus: isActive ? 'active' : 'invited',
+        platformRole: userRoleId,
+        // teamRole & teamStatus removed (handled by Membership)
         isEmailVerified: isActive,
         oauthProvider: 'email',
         profile: {
@@ -191,12 +199,27 @@ export async function seedUsers(): Promise<void> {
             staff: await bcrypt.hash(DEFAULT_PASSWORDS.staff, salt),
         };
 
+        // V5: Fetch Global Roles
+        const superAdminRole = await Role.findOne({ name: 'super_admin', scope: 'global' });
+        const adminRole = await Role.findOne({ name: 'admin', scope: 'global' });
+        const userRole = await Role.findOne({ name: 'user', scope: 'global' });
+
+        if (!superAdminRole || !adminRole || !userRole) {
+            throw new Error('Global roles not found. Run "20260124000000-seed-roles" migration first.');
+        }
+
+        const roleMap = {
+            super_admin: superAdminRole._id,
+            admin: adminRole._id,
+            user: userRole._id
+        };
+
         const users: any[] = [];
 
         // Generate admin users
         const adminCount = SEED_CONFIG.volume.users.admin;
         for (let i = 0; i < adminCount; i++) {
-            users.push(await generateAdminUser(i, hashedPasswords.admin));
+            users.push(await generateAdminUser(i, hashedPasswords.admin, roleMap));
             logger.progress(i + 1, adminCount, 'Admin Users');
         }
 
@@ -206,7 +229,7 @@ export async function seedUsers(): Promise<void> {
             SEED_CONFIG.volume.users.sellers.max
         );
         for (let i = 0; i < sellerCount; i++) {
-            users.push(await generateSellerUser(i, hashedPasswords.seller));
+            users.push(await generateSellerUser(i, hashedPasswords.seller, roleMap.user));
             if ((i + 1) % 20 === 0 || i === sellerCount - 1) {
                 logger.progress(i + 1, sellerCount, 'Seller Users');
             }
@@ -218,7 +241,7 @@ export async function seedUsers(): Promise<void> {
             SEED_CONFIG.volume.users.staff.max
         );
         for (let i = 0; i < staffCount; i++) {
-            users.push(await generateStaffUser(i, hashedPasswords.staff));
+            users.push(await generateStaffUser(i, hashedPasswords.staff, roleMap.user));
             if ((i + 1) % 20 === 0 || i === staffCount - 1) {
                 logger.progress(i + 1, staffCount, 'Staff Users');
             }

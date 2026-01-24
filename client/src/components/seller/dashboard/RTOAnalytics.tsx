@@ -213,8 +213,9 @@ const RTOAnalytics = memo(function RTOAnalytics({
                             <p className={`text-2xl font-bold ${rtoData.summary.currentRate > 10 ? 'text-[var(--error)]' : 'text-[var(--text-primary)]'}`}>
                                 {rtoData.summary.currentRate}%
                             </p>
-                            <span className={`text-xs font-medium ${isImproving ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
-                                {isImproving ? '↓' : '↑'}{Math.abs(rtoData.summary.change)}%
+                            <span className={`text-xs font-medium ${isImproving ? 'text-[var(--success)]' : 'text-[var(--error)]'} flex items-center gap-1`}>
+                                <span>{isImproving ? '↓' : '↑'}{Math.abs(rtoData.summary.change)}%</span>
+                                <span className="text-[10px] opacity-80 hidden sm:inline">{isImproving ? 'Improved' : 'Degraded'}</span>
                             </span>
                         </div>
                     </motion.div>
@@ -292,7 +293,7 @@ const RTOAnalytics = memo(function RTOAnalytics({
                                         <p className="text-sm font-medium text-[var(--text-primary)]">
                                             {courier.courier}
                                         </p>
-                                        {courier === bestCourier && (
+                                        {courier === bestCourier && sortedCouriers.length > 1 && courier.rate <= 7 && (
                                             <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--success-bg)] text-[var(--success)] rounded">
                                                 Best
                                             </span>

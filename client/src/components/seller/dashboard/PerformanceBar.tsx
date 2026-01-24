@@ -486,19 +486,15 @@ export function PerformanceBar({
           </button>
 
           {/* Active Days (Vertical integration) */}
-          {activeDays > 0 && (
-            <>
-              <div className="hidden lg:block h-16 w-px bg-[var(--border-default)]" />
-              <div className="min-w-[120px] p-3 rounded-xl bg-[var(--warning-bg)]/10 border border-[var(--warning-border)]/20">
-                <div className="text-xs text-[var(--text-secondary)] mb-1 font-medium">Active Days</div>
-                <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-[var(--warning)] animate-pulse" />
-                  <div className="text-2xl font-bold text-[var(--warning)]">{activeDays}</div>
-                  <span className="text-xs text-[var(--text-muted)]">days</span>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="hidden lg:block h-16 w-px bg-[var(--border-default)]" />
+          <div className="min-w-[120px] p-3 rounded-xl bg-[var(--warning-bg)]/10 border border-[var(--warning-border)]/20">
+            <div className="text-xs text-[var(--text-secondary)] mb-1 font-medium">Active Days</div>
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-[var(--warning)] animate-pulse" />
+              <div className="text-2xl font-bold text-[var(--warning)]">{activeDays}</div>
+              <span className="text-xs text-[var(--text-muted)]">days</span>
+            </div>
+          </div>
         </div>
 
         {/* Right: Wallet (Responsive Width) */}

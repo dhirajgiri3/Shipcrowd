@@ -81,7 +81,7 @@ export interface UserResponse {
     _id: string;
     email: string;
     name: string;
-    role: 'admin' | 'seller' | 'staff';
+    role: 'super_admin' | 'admin' | 'seller' | 'staff';
     companyId?: string;
     teamRole?: 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
     teamStatus?: 'active' | 'invited' | 'suspended';
@@ -131,7 +131,7 @@ export interface MinimalUserResponse {
     _id: string;
     email: string;
     name: string;
-    role: 'admin' | 'seller' | 'staff';
+    role: 'super_admin' | 'admin' | 'seller' | 'staff';
     avatar?: string;
     isActive: boolean;
 }
