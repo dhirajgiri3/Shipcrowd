@@ -42,6 +42,8 @@ class UserManagementController {
 
             const result = await UserManagementService.listUsers(filters, userId);
 
+
+
             res.status(200).json({
                 success: true,
                 data: result,

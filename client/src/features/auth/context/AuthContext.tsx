@@ -361,31 +361,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await authApi.verifyEmail(token);
 
-        // ✅ If auto-login is enabled, set user state
+        // ✅ If auto-login is enabled, fetch full user data to ensure state consistency
         if (response.autoLogin && response.user) {
-          // Map response user to full User type
-          const fullUser: User = {
-            _id: response.user.id,
-            name: response.user.name,
-            email: response.user.email,
-            role: response.user.role as any,
-            companyId: response.user.companyId,
-            teamRole: response.user.teamRole as any,
-            isEmailVerified: true,
-            isActive: true,
-            kycStatus: {
-              isComplete: false,
-              lastUpdated: undefined,
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          setUser(fullUser);
+          // Fetch authoritative user data from backend (includes all V5 fields)
+          const userData = await authApi.getMe();
+          setUser(userData);
 
           // Broadcast login to other tabs via BroadcastChannel
           const authChannel = new BroadcastChannel('auth_channel');
-          authChannel.postMessage({ type: 'LOGIN', user: fullUser });
+          authChannel.postMessage({ type: 'LOGIN', user: userData });
           authChannel.close();
         }
 

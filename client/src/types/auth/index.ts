@@ -12,6 +12,7 @@ export interface User {
   email: string;
   name: string;
   role: 'super_admin' | 'admin' | 'seller' | 'staff';
+  platformRole?: string; // V5 RBAC Identity
   companyId?: string;
 
   // Team fields

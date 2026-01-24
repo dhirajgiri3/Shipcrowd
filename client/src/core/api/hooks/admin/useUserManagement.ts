@@ -21,6 +21,14 @@ interface PaginatedResponse<T> {
         totalUsers: number;
         limit: number;
     };
+    stats: {
+        totalUsers: number;
+        superAdmins: number;
+        admins: number;
+        sellers: number;
+        staff: number;
+        users: number;
+    };
 }
 
 export interface UserListItem {

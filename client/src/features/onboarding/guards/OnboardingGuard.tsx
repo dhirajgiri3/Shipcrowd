@@ -20,7 +20,7 @@ export const OnboardingGuard = ({ children }: OnboardingGuardProps) => {
     useEffect(() => {
         // If user already has a company, redirect to dashboard
         if (!isLoading && user?.companyId) {
-            const redirectPath = user.role === 'admin' ? '/admin/dashboard' : '/seller/dashboard';
+            const redirectPath = ['admin', 'super_admin'].includes(user.role) ? '/admin' : '/seller';
             router.push(redirectPath);
         }
     }, [user, isLoading, router]);

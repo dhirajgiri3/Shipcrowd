@@ -53,7 +53,20 @@ class UserManagementService {
     async listUsers(
         filters: UserListFilters,
         currentUserId: string
-    ): Promise<{ users: UserListItem[]; total: number; page: number; pages: number }> {
+    ): Promise<{
+        users: UserListItem[];
+        total: number;
+        page: number;
+        pages: number;
+        stats: {
+            totalUsers: number;
+            superAdmins: number;
+            admins: number;
+            sellers: number;
+            staff: number;
+            users: number;
+        }
+    }> {
         const { role = 'all', search = '', page = 1, limit = 20 } = filters;
 
         // Build query
@@ -129,11 +142,54 @@ class UserManagementService {
             isDualRole: (user.role === 'admin' || user.role === 'super_admin') && !!user.companyId,
         }));
 
+        // Calculate global stats
+        const stats = await User.aggregate([
+            { $match: { isDeleted: false } },
+            {
+                $group: {
+                    _id: null,
+                    totalUsers: { $sum: 1 },
+                    superAdmins: {
+                        $sum: { $cond: [{ $eq: ['$role', 'super_admin'] }, 1, 0] }
+                    },
+                    admins: {
+                        $sum: { $cond: [{ $eq: ['$role', 'admin'] }, 1, 0] }
+                    },
+                    sellers: {
+                        $sum: { $cond: [{ $eq: ['$role', 'seller'] }, 1, 0] }
+                    },
+                    staff: {
+                        $sum: { $cond: [{ $eq: ['$role', 'staff'] }, 1, 0] }
+                    },
+                    users: {
+                        $sum: { $cond: [{ $eq: ['$role', 'user'] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        const globalStats = stats.length > 0 ? stats[0] : {
+            totalUsers: 0,
+            superAdmins: 0,
+            admins: 0,
+            sellers: 0,
+            staff: 0,
+            users: 0
+        };
+
         return {
             users: enrichedUsers,
             total,
             page,
             pages: Math.ceil(total / limit),
+            stats: {
+                totalUsers: globalStats.totalUsers,
+                superAdmins: globalStats.superAdmins,
+                admins: globalStats.admins,
+                sellers: globalStats.sellers,
+                staff: globalStats.staff,
+                users: globalStats.users
+            }
         };
     }
 
