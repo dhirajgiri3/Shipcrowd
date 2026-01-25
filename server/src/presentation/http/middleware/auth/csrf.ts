@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { RedisConnection } from '../../../../infrastructure/utilities/redis.connection';
+import { RedisManager } from '../../../../infrastructure/redis/redis.manager';
 import logger from '../../../../shared/logger/winston.logger';
 
 const CSRF_TOKEN_EXPIRY = 900; // 15 minutes
@@ -20,8 +20,8 @@ export const generateCSRFToken = async (sessionId: string): Promise<string> => {
         const key = `csrf:${sessionId}:${token}`;
 
         // Store token in Redis with expiry
-        const redisClient = await RedisConnection.getConnection();
-        await redisClient.setEx(key, CSRF_TOKEN_EXPIRY, '1');
+        const redisClient = await RedisManager.getMainClient();
+        await redisClient.setex(key, CSRF_TOKEN_EXPIRY, '1');
 
         logger.debug('CSRF token generated', {
             sessionId,
@@ -62,7 +62,7 @@ export const validateCSRFToken = async (
 
     try {
         const key = `csrf:${sessionId}:${token}`;
-        const redisClient = await RedisConnection.getConnection();
+        const redisClient = await RedisManager.getMainClient();
         const exists = await redisClient.exists(key);
 
         if (exists !== 1) {

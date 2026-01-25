@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
 import crypto from 'crypto';
-import Redis from 'ioredis';
 import logger from '../logger/winston.logger';
+import { RedisManager } from '../../infrastructure/redis/redis.manager';
 
 // Define token types
 export interface AccessTokenPayload {
@@ -28,36 +28,6 @@ const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'refresh_token_
 const ACCESS_TOKEN_EXPIRY = '15m'; // 15 minutes
 const REFRESH_TOKEN_EXPIRY = '7d'; // 7 days
 
-// Redis client for token blacklist (persistent storage)
-let redisClient: Redis | null = null;
-let redisAvailable = false;
-
-// Initialize Redis connection for token blacklist
-const initRedisBlacklist = async (): Promise<void> => {
-  try {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        if (times > 3) return null; // Stop retrying
-        return Math.min(times * 100, 3000);
-      },
-      lazyConnect: true,
-    });
-
-    await redisClient.connect();
-    redisAvailable = true;
-    logger.info('Token blacklist Redis connected - tokens will persist across restarts');
-  } catch (error) {
-    logger.warn('Redis unavailable for token blacklist - falling back to in-memory (tokens lost on restart)', error);
-    redisClient = null;
-    redisAvailable = false;
-  }
-};
-
-// Initialize Redis on module load
-initRedisBlacklist().catch(() => { });
-
 // Fallback in-memory blacklist (only used if Redis unavailable)
 interface BlacklistedToken {
   jti: string;
@@ -79,14 +49,15 @@ const generateJwtId = (): string => {
  */
 export const blacklistToken = async (jti: string, expiry: number): Promise<boolean> => {
   try {
-    if (redisAvailable && redisClient) {
-      // Use Redis with automatic expiration
-      await redisClient.setex(`token:blacklist:${jti}`, expiry, '1');
+    if (await RedisManager.healthCheck()) {
+      const redis = await RedisManager.getMainClient();
+      await redis.setex(`token:blacklist:${jti}`, expiry, '1');
       logger.debug(`Token ${jti} blacklisted in Redis for ${expiry}s`);
     } else {
       // Fallback to in-memory
       const expiresAt = Math.floor(Date.now() / 1000) + expiry;
       fallbackBlacklist.push({ jti, expiresAt });
+
       // Cleanup expired tokens
       const now = Math.floor(Date.now() / 1000);
       for (let i = fallbackBlacklist.length - 1; i >= 0; i--) {
@@ -109,8 +80,9 @@ export const blacklistToken = async (jti: string, expiry: number): Promise<boole
  */
 export const isTokenBlacklisted = async (jti: string): Promise<boolean> => {
   try {
-    if (redisAvailable && redisClient) {
-      const exists = await redisClient.exists(`token:blacklist:${jti}`);
+    if (await RedisManager.healthCheck()) {
+      const redis = await RedisManager.getMainClient();
+      const exists = await redis.exists(`token:blacklist:${jti}`);
       return exists === 1;
     } else {
       // Fallback check
@@ -149,9 +121,6 @@ export const generateAccessToken = (
 
 /**
  * Generate a refresh token for a user
- * @param userId User ID
- * @param tokenVersion Token version for security
- * @param expiry Optional custom expiry time (e.g., '30d' for remember me)
  */
 export const generateRefreshToken = (
   userId: string | Types.ObjectId,
@@ -175,8 +144,6 @@ export const generateRefreshToken = (
 
 /**
  * Verify an access token
- * @param token Access token to verify
- * @param checkBlacklist Whether to check if the token is blacklisted
  */
 export const verifyAccessToken = async (
   token: string,
@@ -200,8 +167,6 @@ export const verifyAccessToken = async (
 
 /**
  * Verify a refresh token
- * @param token Refresh token to verify
- * @param checkBlacklist Whether to check if the token is blacklisted
  */
 export const verifyRefreshToken = async (
   token: string,
@@ -225,7 +190,6 @@ export const verifyRefreshToken = async (
 
 /**
  * Revoke an access token
- * @param token Access token to revoke
  */
 export const revokeAccessToken = async (token: string): Promise<boolean> => {
   try {
@@ -250,7 +214,6 @@ export const revokeAccessToken = async (token: string): Promise<boolean> => {
 
 /**
  * Revoke a refresh token
- * @param token Refresh token to revoke
  */
 export const revokeRefreshToken = async (token: string): Promise<boolean> => {
   try {

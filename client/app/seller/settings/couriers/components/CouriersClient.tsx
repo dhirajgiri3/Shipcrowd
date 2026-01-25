@@ -37,6 +37,10 @@ export function CouriersClient() {
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const { addToast } = useToast();
 
+    // Note: Currently using local state (no backend API yet)
+    // TODO: Create backend endpoint for courier priority management
+    const isUsingMockData = true; // Always true until backend API is created
+
     const handleDragStart = (e: React.DragEvent, id: string) => {
         setDraggedId(id);
         e.dataTransfer.effectAllowed = 'move';
@@ -87,6 +91,11 @@ export function CouriersClient() {
                     <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                         <Truck className="h-6 w-6 text-[var(--primary-blue)]" />
                         Courier Priority Settings
+                        {isUsingMockData && (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                ⚠️ Local Only (No Backend)
+                            </span>
+                        )}
                     </h1>
                     <p className="text-[var(--text-muted)] text-sm mt-1">
                         Drag to reorder couriers by preference for automatic selection

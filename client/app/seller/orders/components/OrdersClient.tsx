@@ -35,6 +35,7 @@ import { generateMockOrders } from '@/src/lib/mockData/orders';
 import { SmartFilterChips, FilterPreset } from '@/src/components/seller/orders/SmartFilterChips';
 import { ResponsiveOrderList } from '@/src/components/seller/orders/ResponsiveOrderList';
 import { useIsMobile } from '@/src/hooks/ux';
+import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 
 // --- VISUALIZATION DATA ---
 const trendData = [
@@ -69,24 +70,45 @@ export function OrdersClient() {
         setPage(1);
     }, [activeTab]);
 
-    // --- MOCK DATA GENERATOR ---
+    // --- REAL API INTEGRATION ---
+    const {
+        data: ordersResponse,
+        isLoading,
+        error,
+        refetch: refetchOrders
+    } = useOrdersList({
+        page,
+        limit,
+        status: activeTab !== 'all' ? activeTab : undefined,
+        search: debouncedSearch || undefined,
+    });
+
+    // Fallback to mock data if API fails (development only)
     const MOCK_ORDERS_DATA = useMemo(() => {
         return generateMockOrders();
     }, []);
 
-    // Simulate Loading
-    const [isLoading, setIsLoading] = useState(true);
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+    // Use real data if available, otherwise fallback to mock
+    // Note: Backend sends { success, data: Order[], pagination } via sendPaginated()
+    // So we access response.data directly (not response.data.orders)
+    const ordersData: Order[] = ordersResponse?.data || MOCK_ORDERS_DATA;
+    const isUsingMockData = !ordersResponse?.data;
 
-    const error = null as Error | null;
-    const refetch = async () => { setIsLoading(true); setTimeout(() => setIsLoading(false), 500); };
+    const refetch = async () => {
+        setIsRefreshing(true);
+        await refetchOrders();
+        setTimeout(() => setIsRefreshing(false), 500);
+    };
 
-    // Filter Mock Data with Smart Filters
-    const filteredMockOrders = useMemo(() => {
-        let filtered = MOCK_ORDERS_DATA;
+    // Filter Data with Smart Filters (client-side filtering for mock, server-side for real API)
+    const filteredOrders = useMemo(() => {
+        // If using real API, filtering is done server-side
+        if (!isUsingMockData) {
+            return ordersData;
+        }
+
+        // Client-side filtering for mock data only
+        let filtered = ordersData;
 
         // Search filter
         if (debouncedSearch) {
@@ -147,19 +169,19 @@ export function OrdersClient() {
         }
 
         return filtered;
-    }, [debouncedSearch, activeTab, smartFilter, MOCK_ORDERS_DATA]);
+    }, [debouncedSearch, activeTab, smartFilter, ordersData]);
 
-    const orders = filteredMockOrders.slice((page - 1) * limit, page * limit);
+    const orders = filteredOrders.slice((page - 1) * limit, page * limit);
     const pagination = {
-        total: filteredMockOrders.length,
-        pages: Math.ceil(filteredMockOrders.length / limit),
+        total: filteredOrders.length,
+        pages: Math.ceil(filteredOrders.length / limit),
         page,
         limit
     };
 
     // Filter Logic (client-side for payment filter)
     const filteredData = useMemo(() => {
-        return orders.filter(item => {
+        return orders.filter((item: Order) => {
             const matchesPayment = paymentFilter === 'all' || item.paymentStatus === paymentFilter;
             return matchesPayment;
         });
@@ -167,8 +189,8 @@ export function OrdersClient() {
 
     // Derived Metrics
     const metrics = useMemo(() => {
-        const totalRevenue = filteredData.reduce((acc, curr) => acc + (curr.totals?.total || 0), 0);
-        const pendingPaymentCount = filteredData.filter(o => o.paymentStatus === 'pending').length;
+        const totalRevenue = filteredData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0);
+        const pendingPaymentCount = filteredData.filter((o: Order) => o.paymentStatus === 'pending').length;
         return { totalRevenue, pendingPaymentCount };
     }, [filteredData]);
 
@@ -180,28 +202,28 @@ export function OrdersClient() {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
         return {
-            all: MOCK_ORDERS_DATA.length,
-            needs_attention: MOCK_ORDERS_DATA.filter(o =>
+            all: ordersData.length,
+            needs_attention: ordersData.filter((o: Order) =>
                 ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
             ).length,
-            today: MOCK_ORDERS_DATA.filter(o => {
+            today: ordersData.filter((o: Order) => {
                 const orderDate = new Date(o.createdAt);
                 orderDate.setHours(0, 0, 0, 0);
                 return orderDate.getTime() === today.getTime();
             }).length,
-            cod_pending: MOCK_ORDERS_DATA.filter(o =>
+            cod_pending: ordersData.filter((o: Order) =>
                 o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
             ).length,
-            last_7_days: MOCK_ORDERS_DATA.filter(o => {
+            last_7_days: ordersData.filter((o: Order) => {
                 const orderDate = new Date(o.createdAt);
                 return orderDate >= sevenDaysAgo;
             }).length,
-            zone_b: MOCK_ORDERS_DATA.filter(o => {
+            zone_b: ordersData.filter((o: Order) => {
                 const state = o.customerInfo?.address?.state;
                 return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
             }).length
         };
-    }, [MOCK_ORDERS_DATA]);
+    }, [ordersData]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -335,7 +357,14 @@ export function OrdersClient() {
             {/* --- HEADER --- */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
+                        {isUsingMockData && (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                ⚠️ Mock Data
+                            </span>
+                        )}
+                    </div>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Manage your orders and fulfillments</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -431,7 +460,7 @@ export function OrdersClient() {
                                 <p className="text-xs text-[var(--text-muted)] mt-1">Payments Pending</p>
                             </div>
                             <div className="flex-1 p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{orders.filter(o => o.currentStatus === 'pending').length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{orders.filter((o: Order) => o.currentStatus === 'pending').length}</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">To Ship</p>
                             </div>
                         </div>

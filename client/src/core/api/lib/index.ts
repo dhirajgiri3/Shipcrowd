@@ -5,3 +5,4 @@
  */
 
 export * from './optimistic-updates';
+export * from './idb-persister';

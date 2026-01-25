@@ -311,13 +311,13 @@ export function DashboardClient() {
     // Filter real orders by status or fall back to mock
     const pendingPickups = USE_MOCK
         ? getPendingPickups()
-        : (ordersListData?.data?.orders?.filter(order =>
+        : (ordersListData?.data?.filter(order =>
             order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
         ) || getPendingPickups());
 
     const rtoOrders = USE_MOCK
         ? getRTOOrders()
-        : (ordersListData?.data?.orders?.filter(order =>
+        : (ordersListData?.data?.filter(order =>
             order.currentStatus?.toLowerCase().includes('rto')
         ) || getRTOOrders());
 

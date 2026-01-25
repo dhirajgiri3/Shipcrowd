@@ -7,8 +7,9 @@
  * - Graceful fallback to in-memory when Redis unavailable
  */
 
-import Redis from 'ioredis';
+import { RedisManager } from '../../infrastructure/redis/redis.manager';
 import logger from '../../shared/logger/winston.logger';
+import { Redis, Cluster } from 'ioredis';
 
 export interface RateLimitResult {
     allowed: boolean;
@@ -17,74 +18,38 @@ export interface RateLimitResult {
 }
 
 export class RedisRateLimiter {
-    private redis: Redis | null = null;
-    private isRedisAvailable: boolean = false;
-
     // Fallback: In-memory rate limiter (for development/Redis failure)
     private inMemoryLimiter: Map<string, { count: number; resetAt: number }> = new Map();
     private cleanupInterval?: NodeJS.Timeout;
 
-    constructor(redisUrl?: string) {
-        try {
-            const url = redisUrl || process.env.REDIS_URL;
-
-            if (url) {
-                this.redis = new Redis(url, {
-                    maxRetriesPerRequest: 3,
-                    retryStrategy: (times) => {
-                        if (times > 3) {
-                            logger.warn('Redis connection failed, falling back to in-memory rate limiter');
-                            this.isRedisAvailable = false;
-                            return null; // Stop retrying
-                        }
-                        return Math.min(times * 100, 3000);
-                    },
-                });
-
-                this.redis.on('connect', () => {
-                    logger.info('Redis rate limiter connected');
-                    this.isRedisAvailable = true;
-                });
-
-                this.redis.on('error', (err) => {
-                    logger.error('Redis rate limiter error', { error: err.message });
-                    this.isRedisAvailable = false;
-                });
-            } else {
-                logger.warn('No Redis URL provided, using in-memory rate limiter (NOT for production)');
-            }
-
-            // Cleanup old in-memory entries every minute
-            this.cleanupInterval = setInterval(() => this.cleanupInMemory(), 60000);
-        } catch (error: any) {
-            logger.error('Failed to initialize Redis rate limiter', { error: error.message });
-            this.isRedisAvailable = false;
-        }
+    constructor() {
+        // Cleanup old in-memory entries every minute
+        this.cleanupInterval = setInterval(() => this.cleanupInMemory(), 60000);
     }
 
     /**
      * Check rate limit using Redis or in-memory fallback
-     *
-     * @param key - Unique identifier for rate limit (e.g., "rto:companyId")
-     * @param limit - Maximum requests allowed in window
-     * @param windowSeconds - Time window in seconds
      */
     async checkLimit(
         key: string,
         limit: number,
         windowSeconds: number
     ): Promise<RateLimitResult> {
-        // Try Redis first if available
-        if (this.redis && this.isRedisAvailable) {
-            try {
-                return await this.checkLimitRedis(key, limit, windowSeconds);
-            } catch (error: any) {
-                logger.error('Redis rate limit check failed, falling back to in-memory', {
-                    key,
-                    error: error.message,
-                });
-                this.isRedisAvailable = false;
+        try {
+            // Try Redis first
+            if (await RedisManager.healthCheck()) {
+                const redis = await RedisManager.getMainClient();
+                try {
+                    return await this.checkLimitRedis(redis, key, limit, windowSeconds);
+                } catch (error: any) {
+                    logger.error('Redis rate limit check failed, falling back to in-memory', {
+                        key,
+                        error: error.message,
+                    });
+                }
             }
+        } catch (e) {
+            // Ignore connection errors and fall back
         }
 
         // Fallback to in-memory
@@ -96,6 +61,7 @@ export class RedisRateLimiter {
      * Uses atomic INCR operation to prevent race conditions
      */
     private async checkLimitRedis(
+        redis: Redis | Cluster,
         key: string,
         limit: number,
         windowSeconds: number
@@ -103,15 +69,15 @@ export class RedisRateLimiter {
         const fullKey = `rate_limit:${key}`;
 
         // Atomic increment with INCR
-        const current = await this.redis!.incr(fullKey);
+        const current = await redis.incr(fullKey);
 
         if (current === 1) {
             // First request in window - set expiry
-            await this.redis!.expire(fullKey, windowSeconds);
+            await redis.expire(fullKey, windowSeconds);
         }
 
         if (current > limit) {
-            const ttl = await this.redis!.ttl(fullKey);
+            const ttl = await redis.ttl(fullKey);
             return {
                 allowed: false,
                 retryAfter: ttl > 0 ? ttl : windowSeconds,
@@ -127,7 +93,6 @@ export class RedisRateLimiter {
 
     /**
      * In-memory rate limit check (fallback/development)
-     * Note: Not atomic, but acceptable for fallback scenario
      */
     private checkLimitInMemory(
         key: string,
@@ -183,8 +148,9 @@ export class RedisRateLimiter {
     async reset(key: string): Promise<void> {
         const fullKey = `rate_limit:${key}`;
 
-        if (this.redis && this.isRedisAvailable) {
-            await this.redis.del(fullKey);
+        if (await RedisManager.healthCheck()) {
+            const redis = await RedisManager.getMainClient();
+            await redis.del(fullKey);
         }
 
         this.inMemoryLimiter.delete(key);
@@ -197,21 +163,14 @@ export class RedisRateLimiter {
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
         }
-
-        if (this.redis) {
-            await this.redis.quit();
-        }
-
         this.inMemoryLimiter.clear();
+        // RedisManager handles persistent connections
     }
 }
 
 // Singleton instance
 let rateLimiterInstance: RedisRateLimiter | null = null;
 
-/**
- * Get rate limiter singleton instance
- */
 export function getRateLimiter(): RedisRateLimiter {
     if (!rateLimiterInstance) {
         rateLimiterInstance = new RedisRateLimiter();

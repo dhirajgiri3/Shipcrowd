@@ -167,16 +167,17 @@ export interface GetOrderResponse {
 
 export interface GetOrdersResponse {
   success: true;
-  message: string;
-  data: {
-    orders: Order[];
-    pagination?: {
-      total: number;
-      page: number;
-      limit: number;
-      pages: number;
-    };
+  message?: string;
+  data: Order[]; // Backend uses sendPaginated which puts array directly in data
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
   };
+  timestamp: string;
 }
 
 export interface UpdateOrderResponse {

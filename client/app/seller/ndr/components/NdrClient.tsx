@@ -25,22 +25,46 @@ import {
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { mockNDRCases, mockNDRMetrics } from '@/src/lib/mockData/enhanced';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+import { useNDRCases, useNDRMetrics } from '@/src/core/api/hooks/returns/useNDR';
 
 export function NDRClient() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [riskFilter, setRiskFilter] = useState<string>('all');
 
-    const metrics = USE_MOCK ? mockNDRMetrics : null;
-    const cases = USE_MOCK ? mockNDRCases : [];
+    // --- REAL API INTEGRATION ---
+    // WARNING: Backend endpoint mismatch detected!
+    // - Frontend hook calls: /api/ndr/cases (doesn't exist)
+    // - Backend has: /ndr/events (different endpoint)
+    // - Mock data structure != Real API NDRCase type structure
+    // TODO: Either fix hook to call /ndr/events OR create /api/ndr/cases endpoint
+    // TODO: Align mock data structure with real NDRCase type
+    const {
+        data: ndrCasesResponse,
+        isLoading: casesLoading,
+        error: casesError
+    } = useNDRCases({
+        status: statusFilter !== 'all' ? (statusFilter as any) : undefined,
+        search: searchTerm || undefined,
+    });
+
+    const {
+        data: metricsResponse,
+        isLoading: metricsLoading
+    } = useNDRMetrics();
+
+    // Use real data if available, otherwise fallback to mock
+    // Note: Mock data has different structure (awb, rtoRisk, etc.) vs real API (ndrId, shipmentId, etc.)
+    // Using 'as any[]' because mock structure doesn't match real NDRCase type
+    const cases: any[] = (ndrCasesResponse?.cases as any[]) || mockNDRCases;
+    const metrics: any = metricsResponse || mockNDRMetrics;
+    const isUsingMockData = !ndrCasesResponse?.cases;
 
     // Filter cases
-    const filteredCases = cases.filter(c => {
-        const matchesSearch = c.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.awb.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.orderId.toLowerCase().includes(searchTerm.toLowerCase());
+    const filteredCases = cases.filter((c: any) => {
+        const matchesSearch = c.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.awb?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (typeof c.orderId === 'string' ? c.orderId : c.orderId?.orderNumber || '')?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
         const matchesRisk = riskFilter === 'all' || c.rtoRisk === riskFilter;
         return matchesSearch && matchesStatus && matchesRisk;
@@ -48,10 +72,10 @@ export function NDRClient() {
 
     const statusTabs = [
         { id: 'all', label: 'All Cases', count: cases.length },
-        { id: 'open', label: 'Open', count: cases.filter(c => c.status === 'open').length },
-        { id: 'in_progress', label: 'In Progress', count: cases.filter(c => c.status === 'in_progress').length },
-        { id: 'customer_action', label: 'Awaiting Customer', count: cases.filter(c => c.status === 'customer_action').length },
-        { id: 'escalated', label: 'Escalated', count: cases.filter(c => c.status === 'escalated').length }
+        { id: 'open', label: 'Open', count: cases.filter((c: any) => c.status === 'open').length },
+        { id: 'in_progress', label: 'In Progress', count: cases.filter((c: any) => c.status === 'in_progress').length },
+        { id: 'customer_action', label: 'Awaiting Customer', count: cases.filter((c: any) => c.status === 'customer_action').length },
+        { id: 'escalated', label: 'Escalated', count: cases.filter((c: any) => c.status === 'escalated').length }
     ];
 
     const getStatusColor = (status: string) => {
@@ -101,12 +125,19 @@ export function NDRClient() {
                     className="flex items-center justify-between"
                 >
                     <div>
-                        <h1 className="text-3xl font-bold text-[var(--text-primary)] flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center">
-                                <AlertCircle className="w-6 h-6 text-[var(--primary-blue)]" />
-                            </div>
-                            NDR Management
-                        </h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-3xl font-bold text-[var(--text-primary)] flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                    <AlertCircle className="w-6 h-6 text-[var(--primary-blue)]" />
+                                </div>
+                                NDR Management
+                            </h1>
+                            {isUsingMockData && (
+                                <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    ⚠️ Mock Data (API endpoint mismatch)
+                                </span>
+                            )}
+                        </div>
                         <p className="text-[var(--text-secondary)] mt-2">
                             Manage non-delivery reports and customer communications
                         </p>
@@ -270,9 +301,9 @@ export function NDRClient() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-default)] bg-[var(--bg-primary)]">
-                                {filteredCases.map((ndrCase, index) => (
+                                {filteredCases.map((ndrCase: any, index: number) => (
                                     <motion.tr
-                                        key={ndrCase.id}
+                                        key={ndrCase.id || ndrCase._id}
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.05 }}

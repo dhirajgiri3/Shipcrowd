@@ -15,6 +15,8 @@ import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
 import CacheService from './infrastructure/utilities/cache.service';
+import { initializeRateLimitRedis } from './shared/config/rateLimit.config';
+import { PubSubService } from './infrastructure/redis/pubsub.service';
 
 // Load environment variables
 dotenv.config();
@@ -36,6 +38,13 @@ const startServer = async (): Promise<void> => {
 
         // Initialize Cache Service (Redis or Memory)
         await CacheService.initialize();
+
+        // Initialize Rate Limiter Redis Client (BEFORE routes are loaded)
+        await initializeRateLimitRedis();
+
+        // Initialize PubSub for distributed cache invalidation
+        await PubSubService.initialize();
+        logger.info('PubSub service initialized');
 
         // Initialize Queue Manager FIRST (creates all queues)
         await QueueManager.initialize();

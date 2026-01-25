@@ -26,34 +26,60 @@ import {
     BarChart3
 } from 'lucide-react';
 import { Shipment } from '@/src/types/domain/admin';
+import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 300);
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
     const [statusFilter, setStatusFilter] = useState('all');
+    const [page, setPage] = useState(1);
+    const limit = 20;
 
-    // Derived Data
+    // --- REAL API INTEGRATION ---
+    const {
+        data: shipmentsResponse,
+        isLoading,
+        error
+    } = useShipments({
+        page,
+        limit,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: debouncedSearch || undefined
+    });
+
+    // Use real data if available, otherwise fallback to mock
+    const shipmentsData: any[] = shipmentsResponse?.shipments || MOCK_SHIPMENTS;
+    const isUsingMockData = !shipmentsResponse?.shipments;
+
+    // Derived Data (for mock data client-side filtering)
     const filteredData = useMemo(() => {
-        return MOCK_SHIPMENTS.filter(item => {
-            const matchesSearch =
-                item.awb.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                item.customer.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                item.orderNumber.toLowerCase().includes(debouncedSearch.toLowerCase());
+        // If using real API, filtering is done server-side
+        if (!isUsingMockData) {
+            return shipmentsData;
+        }
 
-            const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+        // Client-side filtering for mock data only
+        return shipmentsData.filter((item: any) => {
+            const matchesSearch =
+                item.awb?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                item.trackingNumber?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                item.customer?.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                item.orderNumber?.toLowerCase().includes(debouncedSearch.toLowerCase());
+
+            const matchesStatus = statusFilter === 'all' || item.status === statusFilter || item.currentStatus === statusFilter;
             return matchesSearch && matchesStatus;
         });
-    }, [debouncedSearch, statusFilter]);
+    }, [shipmentsData, debouncedSearch, statusFilter, isUsingMockData]);
 
     // Status Cards Data
     const statusGrid = [
-        { id: 'all', label: 'Total Shipments', icon: Package, color: 'blue', count: MOCK_SHIPMENTS.length },
-        { id: 'pending', label: 'Pending Pickup', icon: Clock, color: 'amber', count: MOCK_SHIPMENTS.filter(s => s.status === 'pending').length },
-        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'violet', count: MOCK_SHIPMENTS.filter(s => s.status === 'in-transit').length },
-        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'emerald', count: MOCK_SHIPMENTS.filter(s => s.status === 'delivered').length },
-        { id: 'ndr', label: 'NDR / Issues', icon: AlertTriangle, color: 'orange', count: MOCK_SHIPMENTS.filter(s => s.status === 'ndr').length },
-        { id: 'rto', label: 'RTO / Returned', icon: RotateCcw, color: 'rose', count: MOCK_SHIPMENTS.filter(s => s.status === 'rto').length },
+        { id: 'all', label: 'Total Shipments', icon: Package, color: 'blue', count: shipmentsData.length },
+        { id: 'pending', label: 'Pending Pickup', icon: Clock, color: 'amber', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'pending' || (s.status || s.currentStatus) === 'created').length },
+        { id: 'in-transit', label: 'In Transit', icon: Truck, color: 'violet', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'in-transit' || (s.status || s.currentStatus) === 'in_transit').length },
+        { id: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'emerald', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'delivered').length },
+        { id: 'ndr', label: 'NDR / Issues', icon: AlertTriangle, color: 'orange', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'ndr').length },
+        { id: 'rto', label: 'RTO / Returned', icon: RotateCcw, color: 'rose', count: shipmentsData.filter((s: any) => (s.status || s.currentStatus) === 'rto').length },
     ];
 
     // Helper to get color classes based on status color ID
@@ -180,13 +206,20 @@ export function ShipmentsClient() {
                             Tracking Live
                         </div>
                     </motion.div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
-                    >
-                        Shipments
-                    </motion.h1>
+                    <div className="flex items-center gap-3">
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-4xl font-bold text-[var(--text-primary)] tracking-tight"
+                        >
+                            Shipments
+                        </motion.h1>
+                        {isUsingMockData && (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                ⚠️ Mock Data
+                            </span>
+                        )}
+                    </div>
                     <p className="text-[var(--text-muted)] mt-1 font-medium">Track and manage all your deliveries</p>
                 </div>
 

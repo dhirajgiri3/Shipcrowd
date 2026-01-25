@@ -49,10 +49,10 @@ export const useAnalytics = (options: { period?: '7d' | '30d' | '90d' | '1y' } =
     return useQuery<AnalyticsData>({
         queryKey: queryKeys.analytics.dashboard(period as any),
         queryFn: async () => {
-            const response = await apiClient.get('/analytics/dashboard', {
+            const response = await apiClient.get('/analytics/dashboard/seller', {
                 params: { period },
             });
-            return response.data as AnalyticsData;
+            return response.data.data as AnalyticsData;
         },
         staleTime: 5 * 60 * 1000,
         retry: 2,

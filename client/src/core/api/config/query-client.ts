@@ -13,8 +13,8 @@ export const QUERY_CONFIG = {
         /** Default for most queries - 30 seconds */
         default: 30_000,
 
-        /** Static data that rarely changes - 10 minutes */
-        static: 600_000,
+        /** Static data that rarely changes - 24 hours (matches backend Tier 1) */
+        static: 1000 * 60 * 60 * 24,
 
         /** Analytics dashboard data - 5 minutes */
         analytics: 300_000,

@@ -33,7 +33,7 @@ export function useReturns(filters?: ReturnFilters) {
     return useQuery({
         queryKey: queryKeys.returns.list(filters),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnListResponse>('/api/returns', {
+            const { data } = await apiClient.get<ReturnListResponse>('/returns', {
                 params: filters,
             });
             return data;
@@ -48,7 +48,7 @@ export function useReturn(returnId: string) {
     return useQuery({
         queryKey: queryKeys.returns.detail(returnId),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnRequest>(`/api/returns/${returnId}`);
+            const { data } = await apiClient.get<ReturnRequest>(`/returns/${returnId}`);
             return data;
         },
         enabled: !!returnId,
@@ -62,7 +62,7 @@ export function useReturnMetrics() {
     return useQuery({
         queryKey: queryKeys.returns.analytics(),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnMetrics>('/api/returns/metrics');
+            const { data } = await apiClient.get<ReturnMetrics>('/returns/stats');
             return data;
         },
     });
@@ -75,7 +75,7 @@ export function useReturnAnalytics(filters?: { startDate?: string; endDate?: str
     return useQuery({
         queryKey: queryKeys.returns.analytics(filters?.startDate),
         queryFn: async () => {
-            const { data } = await apiClient.get<ReturnAnalytics>('/api/returns/analytics', {
+            const { data } = await apiClient.get<ReturnAnalytics>('/returns/stats', {
                 params: filters,
             });
             return data;

@@ -3,7 +3,7 @@ import { EmailJob, EmailJobResult, EmailJobType } from '../../../core/domain/typ
 import logger from '../../../shared/logger/winston.logger.js';
 import { AuditLog } from '../../database/mongoose/models/index.js';
 import QueueManager from '../../utilities/queue-manager.js';
-import RedisConnection from '../../utilities/redis.connection.js';
+import { RedisManager } from '../../redis/redis.manager.js';
 import nodemailer from 'nodemailer';
 
 /**
@@ -230,7 +230,7 @@ function getEmailTemplate(template: string): string {
  * Register email worker with QueueManager
  */
 export function registerEmailWorker(): Worker {
-  const connection = RedisConnection.getConnectionOptions();
+  const connection = RedisManager.getBullMQConnection();
 
   const worker = new Worker<EmailJob, EmailJobResult>('email-queue', processEmailJob, {
     connection,

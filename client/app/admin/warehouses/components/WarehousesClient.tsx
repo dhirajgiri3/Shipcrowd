@@ -8,7 +8,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Input } from '@/src/components/ui/core/Input';
 import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
-import { MOCK_INVENTORY } from '@/src/lib/mockData/mockData';
+import { MOCK_INVENTORY, MOCK_WAREHOUSES } from '@/src/lib/mockData/mockData';
 import {
     Warehouse,
     MapPin,
@@ -31,7 +31,11 @@ export function WarehousesClient() {
     const { addToast } = useToast();
 
     // Fetch warehouses from API (with mock fallback)
-    const { data: warehouses = [], isLoading, error } = useWarehouses();
+    const { data: warehousesResponse, isLoading, error } = useWarehouses();
+
+    // Use real data if available, otherwise fallback to mock
+    const warehouses = warehousesResponse && warehousesResponse.length > 0 ? warehousesResponse : MOCK_WAREHOUSES;
+    const isUsingMockData = !warehousesResponse || warehousesResponse.length === 0;
 
     // Stats - Using real data
     const stats = {
@@ -40,7 +44,7 @@ export function WarehousesClient() {
         // For now, we'll use placeholder values, but these should be added to backend
         capacity: warehouses.length * 10000, // Placeholder: 10k units per warehouse
         utilized: warehouses.length * 7500, // Placeholder: 75% utilization
-        active: warehouses.filter(w => !w.isDeleted).length
+        active: warehouses.filter(w => !(w as any).isDeleted).length
     };
 
     const overallUtilization = stats.capacity > 0 ? Math.round((stats.utilized / stats.capacity) * 100) : 0;
@@ -91,7 +95,14 @@ export function WarehousesClient() {
                         <Warehouse className="h-6 w-6" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Warehouse Network</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Warehouse Network</h1>
+                            {isUsingMockData && (
+                                <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    ⚠️ Mock Data
+                                </span>
+                            )}
+                        </div>
                         <p className="text-[var(--text-muted)] text-sm">Manage fulfillment centers and inventory distribution</p>
                     </div>
                 </div>
@@ -178,7 +189,7 @@ export function WarehousesClient() {
                             <p className="text-[var(--text-muted)]">No warehouses found</p>
                         </div>
                     ) : (
-                        warehouses.map((wh, i) => {
+                        warehouses.map((wh: any, i) => {
                             // Calculate placeholder capacity metrics (since backend doesn't have these yet)
                             const placeholderCapacity = 10000;
                             const placeholderUtilized = 7500;
@@ -198,9 +209,9 @@ export function WarehousesClient() {
                                         </div>
                                         <span className={cn(
                                             "px-2.5 py-1 rounded-full text-xs font-bold",
-                                            !wh.isDeleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-gray-500/10 text-gray-500"
+                                            !(wh as any).isDeleted ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-gray-500/10 text-gray-500"
                                         )}>
-                                            {!wh.isDeleted ? 'Active' : 'Inactive'}
+                                            {!(wh as any).isDeleted ? 'Active' : 'Inactive'}
                                         </span>
                                     </div>
 
@@ -302,6 +313,6 @@ export function WarehousesClient() {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -51,7 +51,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
         // Note: Pickup address is determined by warehouse selection, validation should happen getting warehouse details or during shipment creation
 
-        const order = await OrderService.createOrder({
+        const order = await OrderService.getInstance().createOrder({
             companyId: new mongoose.Types.ObjectId(auth.companyId),
             userId: auth.userId,
             payload: validation.data
@@ -172,12 +172,13 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         }
 
         if (validation.data.currentStatus && validation.data.currentStatus !== order.currentStatus) {
-            const result = await OrderService.updateOrderStatus({
+            const result = await OrderService.getInstance().updateOrderStatus({
                 orderId: String(order._id),
                 currentStatus: order.currentStatus,
                 newStatus: validation.data.currentStatus,
                 currentVersion: order.__v,
-                userId: auth.userId
+                userId: auth.userId,
+                companyId: auth.companyId // Added for cache tagging
             });
 
             if (!result.success) {
@@ -232,7 +233,7 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
             throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
-        const { canDelete, reason } = OrderService.canDeleteOrder(order.currentStatus);
+        const { canDelete, reason } = OrderService.getInstance().canDeleteOrder(order.currentStatus);
         if (!canDelete) {
             throw new AppError(reason || 'Cannot delete order', 'CANNOT_DELETE_ORDER', 400);
         }
@@ -265,7 +266,7 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
             .on('data', (row) => rows.push(row))
             .on('end', async () => {
                 try {
-                    const result = await OrderService.bulkImportOrders({
+                    const result = await OrderService.getInstance().bulkImportOrders({
                         rows,
                         companyId: new mongoose.Types.ObjectId(auth.companyId)
                     });

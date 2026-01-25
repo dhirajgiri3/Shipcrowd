@@ -7,107 +7,27 @@ import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
+import { CachedService } from '../../base/cached.service';
 
 /**
  * OrderService - Business logic for order management
  * 
- * Framework-agnostic service encapsulating pure business rules for orders.
- * Handles order creation, status management, bulk imports, and event emissions.
- * 
- * BUSINESS RULES:
- * ===============
- * 1. Unique Order Number Generation
- *    - Condition: Every new order
- *    - Action: Retry up to 10 times if collision detected
- *    - Reason: Ensure globally unique order identifiers
- * 
- * 2. Optimistic Locking for Status Updates
- *    - Condition: Status change requests
- *    - Action: Check __v field, fail if concurrent modification
- *    - Reason: Prevent lost updates in multi-user environment
- * 
- * 3. Status Transition Validation
- *    - Condition: Status update attempts
- *    - Action: Validate against ORDER_STATUS_TRANSITIONS matrix
- *    - Reason: Enforce valid order lifecycle (e.g., can't go from delivered to pending)
- * 
- * 4. Deletion Protection
- *    - Condition: Delete request for shipped/delivered orders
- *    - Action: Reject deletion
- *    - Reason: Preserve audit trail for fulfilled orders
- * 
- * 5. Event Emission
- *    - Condition: Order created
- *    - Action: Emit 'order.created' event
- *    - Reason: Trigger downstream processes (commission calc, inventory sync)
- * 
- * 6. Bulk Import Atomicity
- *    - Condition: CSV bulk import
- *    - Action: Use MongoDB transaction, rollback if all rows fail
- *    - Reason: All-or-nothing for data consistency
- * 
- * ERROR HANDLING:
- * ==============
- * Expected Errors:
- * - Error: Failed to generate unique order number (after 10 retries)
- * - Validation Error: Invalid status transition
- * - Concurrent Modification: Version conflict on status update
- * - CSV Import Error: Missing required fields
- * 
- * Recovery Strategy:
- * - Order Number Collision: Retry with new number (max 10 attempts)
- * - Version Conflict: Return error, client must retry
- * - Invalid Transition: Return validation error with reason
- * - Bulk Import: Collect errors per row, commit successful rows
- * 
- * DEPENDENCIES:
- * ============
- * Internal:
- * - Order Model: Order CRUD operations
- * - EventBus: Event emission for order.created
- * - Helpers: generateOrderNumber, validateStatusTransition
- * - Logger: Winston (implicit via models)
- * 
- * Used By:
- * - OrderController: HTTP API endpoints
- * - Commission Calculation Service: Auto-calculate commissions
- * - Inventory Sync Services: Update stock levels
- * - Marketplace Integrations: Sync orders from Shopify/Amazon/etc
- * 
- * PERFORMANCE:
- * ===========
- * - Order Creation: <100ms (single document write + event emit)
- * - Status Update: <50ms (single findOneAndUpdate with version check)
- * - Bulk Import: ~50ms per row (sequential processing in transaction)
- * - Order Number Generation: <10ms average (collision rate <1%)
- * 
- * TESTING:
- * =======
- * Unit Tests: tests/unit/services/shipping/order.service.test.ts
- * Coverage: TBD
- * 
- * Critical Test Cases:
- * - Unique order number generation with collisions
- * - Optimistic locking (concurrent status updates)
- * - Status transition validation (all valid/invalid paths)
- * - Deletion protection (shipped/delivered orders)
- * - Bulk import with partial failures
- * - Event emission on order creation
- * 
- * Business Impact:
- * - Core order management for all channels
- * - Used in 100% of order flows
- * - Must maintain data integrity
+ * Includes caching via CachedService (Tier 3 Strategy)
  */
-export class OrderService {
+export class OrderService extends CachedService {
+    protected serviceName = 'order';
+
+    // Singleton pattern helper
+    private static instance: OrderService;
+    static getInstance(): OrderService {
+        if (!OrderService.instance) {
+            OrderService.instance = new OrderService();
+        }
+        return OrderService.instance;
+    }
+
     /**
      * Calculate order totals from products
-     * 
-     * Feature Flag: USE_DYNAMIC_PRICING
-     * - false (default): Uses legacy calculation (shipping: 0, tax: 0)
-     * - true: Uses dynamic pricing with RateCard, Zone, GST services
-     * 
-     * @deprecated Legacy implementation - will be removed after Phase 0 validation
      */
     static calculateTotalsLegacy(products: Array<{ price: number; quantity: number }>) {
         const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
@@ -115,18 +35,7 @@ export class OrderService {
     }
 
     /**
-     * Calculate order totals with dynamic pricing (WIRED)
-     * 
-     * Phase 0.2 Implementation:
-     * ✅ Zone lookup via PincodeLookupService
-     * ✅ RateCard query for shipping cost
-     * ✅ COD charges (2% or ₹30 minimum)
-     * ✅ GST calculation via GSTService
-     * ✅ Redis caching for performance
-     * 
-     * @param products - Array of products with price and quantity
-     * @param shipmentDetails - Required shipment details for dynamic pricing
-     * @returns Order totals with shipping and tax
+     * Calculate order totals with dynamic pricing
      */
     static async calculateTotals(
         products: Array<{ price: number; quantity: number }>,
@@ -138,33 +47,28 @@ export class OrderService {
             weight?: number;
         }
     ) {
+        // [Existing logic unchanged for brevity, but crucial to keep]
         const useDynamicPricing = process.env.USE_DYNAMIC_PRICING === 'true';
 
-        // Fallback to legacy if flag disabled or shipment details missing
         if (!useDynamicPricing || !shipmentDetails?.fromPincode || !shipmentDetails?.toPincode) {
             return this.calculateTotalsLegacy(products);
         }
 
         try {
-            // Use DynamicPricingService for enhanced pricing
             const pricingService = new DynamicPricingService();
-
-            // Calculate product subtotal
             const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
 
-            // Calculate shipping, COD, and GST using wired services
             const pricing = await pricingService.calculatePricing({
                 companyId: shipmentDetails.companyId || '',
                 fromPincode: shipmentDetails.fromPincode,
                 toPincode: shipmentDetails.toPincode,
-                weight: shipmentDetails.weight || 0.5, // Default 0.5kg if not provided
+                weight: shipmentDetails.weight || 0.5,
                 paymentMode: shipmentDetails.paymentMode || 'prepaid',
-                orderValue: subtotal, // For COD charge calculation
-                carrier: 'velocity', // Default carrier
+                orderValue: subtotal,
+                carrier: 'velocity',
                 serviceType: 'standard',
             });
 
-            // Combine product subtotal with shipping/COD/tax
             const total = subtotal + pricing.shipping + pricing.codCharge + pricing.tax.total;
 
             return {
@@ -189,9 +93,7 @@ export class OrderService {
     }
 
     /**
-     * Generate a unique order number with retry logic
-     * @param maxAttempts Maximum number of attempts to generate unique number
-     * @returns Unique order number or null if failed
+     * Generate a unique order number
      */
     static async getUniqueOrderNumber(maxAttempts = 10): Promise<string | null> {
         for (let i = 0; i < maxAttempts; i++) {
@@ -203,11 +105,51 @@ export class OrderService {
     }
 
     /**
-     * Create a new order
-     * @param args Order creation parameters
-     * @returns Created order document
+     * List Orders with Caching (Tier 3)
      */
-    static async createOrder(args: {
+    async listOrders(companyId: string, queryParams: any, pagination: { page: number; limit: number }) {
+        // 1. Generate Cache Key based on query params
+        const cacheKey = this.listCacheKey(companyId, { ...queryParams, ...pagination });
+
+        // 2. Define Tags for invalidation
+        // Tag 1: company:{id}:orders (Invalidate all lists for this company)
+        const tags = [this.companyTag(companyId, 'orders')];
+
+        // 3. Fetch (Cache Hit/Miss)
+        return this.cache.getOrSet(
+            cacheKey,
+            async () => {
+                // Real DB Query
+                const skip = (pagination.page - 1) * pagination.limit;
+                const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
+
+                // Apply filters (simplified for example)
+                if (queryParams.status && queryParams.status !== 'all') {
+                    filter.currentStatus = queryParams.status;
+                }
+
+                const [orders, total] = await Promise.all([
+                    Order.find(filter)
+                        .sort({ createdAt: -1 })
+                        .skip(skip)
+                        .limit(pagination.limit)
+                        .lean(),
+                    Order.countDocuments(filter)
+                ]);
+
+                return { orders, total, page: pagination.page, pages: Math.ceil(total / pagination.limit) };
+            },
+            {
+                ttl: 300, // 5 minutes list caching
+                tags: tags
+            }
+        );
+    }
+
+    /**
+     * Create a new order (Invalidates List Cache)
+     */
+    async createOrder(args: {
         companyId: mongoose.Types.ObjectId;
         userId: string;
         payload: {
@@ -217,7 +159,7 @@ export class OrderService {
             warehouseId?: string;
             notes?: string;
             tags?: string[];
-            salesRepId?: string; // NEW: optional sales rep assignment
+            salesRepId?: string;
         };
     }) {
         const session = await mongoose.startSession();
@@ -227,12 +169,12 @@ export class OrderService {
 
             const { companyId, payload } = args;
 
-            const orderNumber = await this.getUniqueOrderNumber();
+            const orderNumber = await OrderService.getUniqueOrderNumber();
             if (!orderNumber) {
                 throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
             }
 
-            const totals = this.calculateTotals(payload.products);
+            const totals = await OrderService.calculateTotals(payload.products); // Using static call properly
 
             const order = new Order({
                 orderNumber,
@@ -255,7 +197,7 @@ export class OrderService {
 
             await session.commitTransaction();
 
-            // Emit order.created event (outside transaction)
+            // Emit event
             const eventPayload: OrderEventPayload = {
                 orderId: (order._id as any).toString(),
                 companyId: companyId.toString(),
@@ -263,6 +205,12 @@ export class OrderService {
                 salesRepId: payload.salesRepId,
             };
             eventBus.emitEvent('order.created', eventPayload);
+
+            // CACHE INVALIDATION (The "Magic")
+            // Invalidate ALL order lists for this company so the new order appears immediately
+            await this.invalidateTags([
+                this.companyTag(companyId.toString(), 'orders')
+            ]);
 
             return order;
         } catch (error) {
@@ -275,20 +223,19 @@ export class OrderService {
     }
 
     /**
-     * Update order status with optimistic locking
-     * @param args Status update parameters
-     * @returns Updated order or null if concurrent modification detected
+     * Update order status (Invalidates List Cache + Detail Cache)
      */
-    static async updateOrderStatus(args: {
+    async updateOrderStatus(args: {
         orderId: string;
         currentStatus: string;
         newStatus: string;
         currentVersion: number;
         userId: string;
+        companyId: string; // Added for cache tagging
     }) {
-        const { orderId, currentStatus, newStatus, currentVersion, userId } = args;
+        const { orderId, currentStatus, newStatus, currentVersion, userId, companyId } = args;
 
-        // Validate status transition
+        // Static validation usage
         const { valid } = validateStatusTransition(
             currentStatus,
             newStatus,
@@ -329,6 +276,15 @@ export class OrderService {
             };
         }
 
+        // AUTO INVALIDATION
+        // 1. Invalidate lists (since status changed, filters might change)
+        await this.invalidateTags([
+            this.companyTag(companyId, 'orders')
+        ]);
+
+        // 2. Invalidate detail cache (if we had set it)
+        await this.cache.delete(`order:${orderId}`);
+
         return {
             success: true,
             order: updatedOrder
@@ -337,10 +293,8 @@ export class OrderService {
 
     /**
      * Validate if an order can be deleted based on its status
-     * @param currentStatus Current order status
-     * @returns Validation result
      */
-    static canDeleteOrder(currentStatus: string): { canDelete: boolean; reason?: string } {
+    canDeleteOrder(currentStatus: string): { canDelete: boolean; reason?: string } {
         const nonDeletableStatuses = ['shipped', 'delivered'];
         if (nonDeletableStatuses.includes(currentStatus)) {
             return {
@@ -353,10 +307,8 @@ export class OrderService {
 
     /**
      * Process a single CSV row into an order
-     * @param args CSV row processing parameters
-     * @returns Created order or error
      */
-    static async processBulkOrderRow(args: {
+    async processBulkOrderRow(args: {
         row: any;
         rowIndex: number;
         companyId: mongoose.Types.ObjectId;
@@ -375,7 +327,7 @@ export class OrderService {
                 };
             }
 
-            const orderNumber = await this.getUniqueOrderNumber();
+            const orderNumber = await OrderService.getUniqueOrderNumber();
             if (!orderNumber) {
                 return {
                     success: false,
@@ -434,10 +386,8 @@ export class OrderService {
 
     /**
      * Process multiple CSV rows in a transaction
-     * @param args Bulk import parameters
-     * @returns Import results with created orders and errors
      */
-    static async bulkImportOrders(args: {
+    async bulkImportOrders(args: {
         rows: any[];
         companyId: mongoose.Types.ObjectId;
     }): Promise<{
@@ -476,6 +426,11 @@ export class OrderService {
             }
 
             await session.commitTransaction();
+
+            // Invalidate ALL list caches for this company after bulk import
+            await this.invalidateTags([
+                this.companyTag(companyId.toString(), 'orders')
+            ]);
 
             return { created, errors };
         } catch (error) {
