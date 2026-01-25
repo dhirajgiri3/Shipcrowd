@@ -1,16 +1,16 @@
 /**
- * Helix Business Constants
+ * Shipcrowd Business Constants
  * Centralized configuration for company details, GST information, and invoice settings
  */
 
 /**
- * Helix Company Details
+ * Shipcrowd Company Details
  * Used across all invoices, PDFs, and official documents
  */
-export const Helix = {
-    LEGAL_NAME: 'Helix Logistics Private Limited',
-    GSTIN: process.env.Helix_GSTIN || '06FKCPS6109D3Z7',
-    PAN: process.env.Helix_PAN || 'FKCPS6109D',
+export const Shipcrowd = {
+    LEGAL_NAME: 'Shipcrowd Logistics Private Limited',
+    GSTIN: process.env.Shipcrowd_GSTIN || '06FKCPS6109D3Z7',
+    PAN: process.env.Shipcrowd_PAN || 'FKCPS6109D',
 
     ADDRESS: {
         line1: 'Industrial Area Phase 1',
@@ -23,10 +23,10 @@ export const Helix = {
     },
 
     CONTACT: {
-        email: 'invoices@Helix.com',
+        email: 'invoices@Shipcrowd.com',
         phone: '+91-1800-XXX-XXXX',
-        website: 'www.Helix.com',
-        supportEmail: 'support@Helix.com',
+        website: 'www.Shipcrowd.com',
+        supportEmail: 'support@Shipcrowd.com',
     },
 
     // GST Configuration

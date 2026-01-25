@@ -51,10 +51,10 @@ export class CODRemittancePDFTemplate {
 
         // Add footer with terms
         pdfService.addFooter([
-            'COD remittance charges: 3-4% of collection amount (as per Helix standard rates)',
+            'COD remittance charges: 3-4% of collection amount (as per Shipcrowd standard rates)',
             'Settlement processed within 7 business days after delivery',
             'Disputes must be raised within 30 days of remittance date',
-            'For queries: finance@Helix.com',
+            'For queries: finance@Shipcrowd.com',
         ]);
 
         // Generate and return buffer

@@ -1,5 +1,5 @@
 # MongoDB Schema Analysis & Inconsistency Report
-**Helix Platform - Complete Database Architecture Review**
+**Shipcrowd Platform - Complete Database Architecture Review**
 
 **Generated:** 2026-01-16
 **Models Analyzed:** 69
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This report presents a comprehensive analysis of all 69 MongoDB (Mongoose) models in the Helix codebase. The analysis reveals a **generally well-architected system** with strong domain-driven design, but identifies **27 critical inconsistencies** and **156 standardization opportunities** that could impact data integrity, query performance, and maintainability.
+This report presents a comprehensive analysis of all 69 MongoDB (Mongoose) models in the Shipcrowd codebase. The analysis reveals a **generally well-architected system** with strong domain-driven design, but identifies **27 critical inconsistencies** and **156 standardization opportunities** that could impact data integrity, query performance, and maintainability.
 
 ### Key Findings
 
@@ -1634,13 +1634,13 @@ db.salesrepresentatives.updateMany({}, { $unset: { company: "" } });
 **Before Each Migration:**
 ```bash
 # Full database backup
-mongodump --uri="mongodb://localhost:27017/Helix" --out="/backup/$(date +%Y%m%d_%H%M%S)"
+mongodump --uri="mongodb://localhost:27017/Shipcrowd" --out="/backup/$(date +%Y%m%d_%H%M%S)"
 
 # Specific collection backup
-mongodump --uri="mongodb://localhost:27017/Helix" --collection=salesrepresentatives --out="/backup/salesreps_$(date +%Y%m%d_%H%M%S)"
+mongodump --uri="mongodb://localhost:27017/Shipcrowd" --collection=salesrepresentatives --out="/backup/salesreps_$(date +%Y%m%d_%H%M%S)"
 
 # Verify backup
-mongorestore --uri="mongodb://localhost:27017/Helix_test" --dir="/backup/20260116_120000" --dryRun
+mongorestore --uri="mongodb://localhost:27017/Shipcrowd_test" --dir="/backup/20260116_120000" --dryRun
 ```
 
 **Backup Retention:**
@@ -1972,7 +1972,7 @@ if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
 
 ### Summary of Findings
 
-This comprehensive analysis of Helix's 69 MongoDB models reveals:
+This comprehensive analysis of Shipcrowd's 69 MongoDB models reveals:
 
 **Strengths:**
 - ✅ Well-organized domain-driven architecture
@@ -2031,7 +2031,7 @@ This comprehensive analysis of Helix's 69 MongoDB models reveals:
 
 5. **Ongoing:** Enforce new guidelines for all future models
 
-Helix Schema Inventory
+Shipcrowd Schema Inventory
 Date: 2026-01-20 Scope: Server-side Mongoose Models Total Models: ~60
 
 1. Domain: IAM & Authentication

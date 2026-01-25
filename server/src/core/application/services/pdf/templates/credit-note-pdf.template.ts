@@ -8,7 +8,7 @@ import { BasePDFService } from '../base-pdf.service';
 import { PDFPartyDetails, PDFTableColumn } from '../pdf.types';
 import { ICreditNote } from '../../../../../infrastructure/database/mongoose/models/finance/billing/credit-note.model';
 import { ICompany } from '../../../../../infrastructure/database/mongoose/models/organization/core/company.model';
-import { Helix } from '../../../../../shared/constants/shipcrowd.constants';
+import { Shipcrowd } from '../../../../../shared/constants/shipcrowd.constants';
 import { convertToIndianWords } from '../../../../../shared/utils/number-to-words.util';
 import { formatINR } from '../../../../../shared/utils/indian-currency.util';
 import { formatInvoiceDate } from '../../../../../shared/utils/date-format.util';
@@ -70,7 +70,7 @@ export class CreditNotePDFTemplate {
         pdfService.addFooter([
             'This is a computer-generated credit note and does not require signature',
             'Credit amount will be adjusted in your next invoice or refunded as per terms',
-            'For queries: finance@Helix.com',
+            'For queries: finance@Shipcrowd.com',
         ]);
 
         // Generate and return buffer
@@ -175,13 +175,13 @@ export class CreditNotePDFTemplate {
      */
     private buildSellerDetails(): PDFPartyDetails {
         return {
-            name: Helix.LEGAL_NAME,
-            gstin: Helix.GSTIN,
-            pan: Helix.PAN,
-            address: Helix.ADDRESS,
+            name: Shipcrowd.LEGAL_NAME,
+            gstin: Shipcrowd.GSTIN,
+            pan: Shipcrowd.PAN,
+            address: Shipcrowd.ADDRESS,
             contact: {
-                email: Helix.CONTACT.email,
-                phone: Helix.CONTACT.phone,
+                email: Shipcrowd.CONTACT.email,
+                phone: Shipcrowd.CONTACT.phone,
             },
         };
     }

@@ -1,9 +1,9 @@
 /**
  * Velocity Shipfast Data Mapper
  *
- * Transforms data between Helix models and Velocity API format
+ * Transforms data between Shipcrowd models and Velocity API format
  *
- * Layer 1: Helix Order/Shipment → Generic CourierShipmentData (handled by ShipmentService)
+ * Layer 1: Shipcrowd Order/Shipment → Generic CourierShipmentData (handled by ShipmentService)
  * Layer 2: Generic CourierShipmentData → Velocity-specific format (this file)
  *
  * @see docs/Development/Backend/Integrations/VELOCITY_SHIPFAST_INTEGRATION.md Section 5
@@ -140,7 +140,7 @@ export class VelocityMapper {
       billing_pincode: data.destination.pincode,
       billing_state: data.destination.state,
       billing_country: data.destination.country,
-      billing_email: (data.destination as any).email || warehouseDetails?.email || 'noreply@Helix.com',
+      billing_email: (data.destination as any).email || warehouseDetails?.email || 'noreply@Shipcrowd.com',
       billing_phone: this.normalizePhone(data.destination.phone),
       shipping_is_billing: true,
       print_label: true,
@@ -161,7 +161,7 @@ export class VelocityMapper {
   }
 
   /**
-   * Map Velocity status code to Helix shipment status
+   * Map Velocity status code to Shipcrowd shipment status
    */
   static mapStatus(velocityStatusCode: string): {
     status: string;
@@ -208,7 +208,7 @@ export class VelocityMapper {
     return {
       name: warehouse.name,
       phone: this.normalizePhone(warehouse.contactInfo.phone),
-      email: warehouse.contactInfo.email || 'noreply@Helix.com',
+      email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
       address: warehouse.address.line1,
       address_2: warehouse.address.line2 || '',
       city: warehouse.address.city,

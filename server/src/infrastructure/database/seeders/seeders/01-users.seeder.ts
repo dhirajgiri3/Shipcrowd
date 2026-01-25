@@ -50,10 +50,10 @@ async function generateAdminUser(index: number, hashedPassword: string, roles: a
     // admin1 = super_admin (platform owner), others = regular admin
     const role = index === 0 ? 'super_admin' : 'admin';
     const platformRole = index === 0 ? roles.super_admin : roles.admin;
-    const bio = index === 0 ? 'Helix Super Admin (Platform Owner)' : 'Helix Admin';
+    const bio = index === 0 ? 'Shipcrowd Super Admin (Platform Owner)' : 'Shipcrowd Admin';
 
     return {
-        email: `admin${index + 1}@Helix.com`,
+        email: `admin${index + 1}@Shipcrowd.com`,
         password: hashedPassword,
         name,
         role,

@@ -61,7 +61,7 @@ class LabelService {
                 doc.on('error', reject);
 
                 // ====== Header ======
-                doc.fontSize(14).font('Helvetica-Bold').text('Helix', 10, 10);
+                doc.fontSize(14).font('Helvetica-Bold').text('Shipcrowd', 10, 10);
                 doc.fontSize(8).font('Helvetica').text(shipment.carrier.toUpperCase(), 200, 12);
 
                 // ====== Barcode (AWB Number) ======
@@ -134,7 +134,7 @@ class LabelService {
 
                 // ====== Footer ======
                 doc.fontSize(6).font('Helvetica').text(
-                    'Powered by Helix',
+                    'Powered by Shipcrowd',
                     10,
                     410,
                     { align: 'center', width: 268 }
@@ -155,7 +155,7 @@ class LabelService {
     generateZPL(shipment: ShipmentData): string {
         const zpl = `
 ^XA
-^FO50,20^A0N,25,25^FDHelix^FS
+^FO50,20^A0N,25,25^FDShipcrowd^FS
 ^FO200,20^A0N,20,20^FD${shipment.carrier.toUpperCase()}^FS
 
 ^FO50,50^BY2^BCN,80,Y,N,N^FD${shipment.awb}^FS
@@ -176,7 +176,7 @@ ${shipment.paymentMode === 'cod'
                 ? `^FO200,420^A0N,22,22^FR^FDCOD: Rs${shipment.codAmount || 0}^FS`
                 : `^FO200,420^A0N,20,20^FDPREPAID^FS`}
 
-^FO50,460^A0N,14,14^FDPowered by Helix^FS
+^FO50,460^A0N,14,14^FDPowered by Shipcrowd^FS
 ^XZ
     `.trim();
 
@@ -210,7 +210,7 @@ ${shipment.paymentMode === 'cod'
                     const shipment = shipments[i];
 
                     // Header
-                    doc.fontSize(14).font('Helvetica-Bold').text('Helix', 10, 10);
+                    doc.fontSize(14).font('Helvetica-Bold').text('Shipcrowd', 10, 10);
                     doc.fontSize(8).font('Helvetica').text(shipment.carrier.toUpperCase(), 200, 12);
 
                     // Barcode

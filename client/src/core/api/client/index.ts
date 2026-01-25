@@ -34,7 +34,7 @@ const getBaseURL = (): string => {
         throw new Error(
             '❌ NEXT_PUBLIC_API_URL is required in production.\n' +
             'Please configure it in your environment variables.\n' +
-            'Example: NEXT_PUBLIC_API_URL=https://api.Helix.com/v1'
+            'Example: NEXT_PUBLIC_API_URL=https://api.Shipcrowd.com/v1'
         );
     }
 
@@ -45,7 +45,7 @@ const getBaseURL = (): string => {
             throw new Error(
                 `❌ Invalid NEXT_PUBLIC_API_URL: "${apiUrl}"\n` +
                 'Must start with http:// or https://\n' +
-                'Example: https://api.Helix.com/v1'
+                'Example: https://api.Shipcrowd.com/v1'
             );
         }
 
@@ -56,7 +56,7 @@ const getBaseURL = (): string => {
             throw new Error(
                 `❌ Invalid NEXT_PUBLIC_API_URL: "${apiUrl}"\n` +
                 'Must be a valid URL.\n' +
-                'Example: https://api.Helix.com/v1'
+                'Example: https://api.Shipcrowd.com/v1'
             );
         }
 

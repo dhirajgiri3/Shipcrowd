@@ -147,7 +147,7 @@ export default class FlipkartOAuthService {
           inventorySync: {
             enabled: true,
             autoSync: false, // Manual inventory sync by default
-            syncDirection: 'ONE_WAY' as const, // Helix → Flipkart
+            syncDirection: 'ONE_WAY' as const, // Shipcrowd → Flipkart
             errorCount: 0,
           },
           webhooksEnabled: true,
@@ -224,7 +224,7 @@ export default class FlipkartOAuthService {
         sellerId: store.sellerId,
       });
 
-      const appUrl = process.env.APP_URL || 'https://api.Helix.com';
+      const appUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
       const results: WebhookRegistrationResult[] = [];
 
       for (const topic of WEBHOOK_TOPICS) {

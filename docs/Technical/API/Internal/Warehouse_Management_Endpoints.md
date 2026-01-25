@@ -1,8 +1,8 @@
-# Helix Warehouse Management System Documentation
+# Shipcrowd Warehouse Management System Documentation
 
 ## Overview
 
-The Warehouse Management System in Helix allows businesses to manage their physical storage locations from which products are shipped to customers. The system enables centralized storage management, streamlined order fulfillment, operational efficiency, and logistics coordination.
+The Warehouse Management System in Shipcrowd allows businesses to manage their physical storage locations from which products are shipped to customers. The system enables centralized storage management, streamlined order fulfillment, operational efficiency, and logistics coordination.
 
 ## Key Features
 

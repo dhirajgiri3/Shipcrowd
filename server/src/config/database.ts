@@ -6,7 +6,7 @@ import { createIndexes } from "../infrastructure/database/indexes";
 dotenv.config();
 
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/Helix";
+  process.env.MONGODB_URI || "mongodb://localhost:27017/Shipcrowd";
 
 // Database connection options
 const options = {

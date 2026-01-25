@@ -1,8 +1,8 @@
-# Helix Backend Validation, Testing & Frontend Integration - Execution Plan
+# Shipcrowd Backend Validation, Testing & Frontend Integration - Execution Plan
 
 ## Executive Summary
 
-**Objective**: Validate Helix backend completeness (Weeks 1-10), test all APIs comprehensively, and create actionable frontend integration guides.
+**Objective**: Validate Shipcrowd backend completeness (Weeks 1-10), test all APIs comprehensively, and create actionable frontend integration guides.
 
 **Scope**:
 - **Backend**: 319 TypeScript files, 48 Mongoose models, 89 services, 43 controllers, ~75K LOC
@@ -371,7 +371,7 @@ npm run dev
 
 **2. Shopify Order Fulfillment Flow**:
 - Trigger: Shopify webhook → POST /webhooks/shopify/orders/create
-- Verify: Order created in Helix DB
+- Verify: Order created in Shipcrowd DB
 - POST /warehouses/:id/assign (assign warehouse based on inventory)
 - POST /warehouse/pick-lists (generate picking list)
 - PUT /warehouse/pick-lists/:id/complete (mark items picked)
@@ -465,7 +465,7 @@ npm run dev
 [Detailed test scenarios for all domains]
 
 ## Database Verification
-mongosh Helix_dev
+mongosh Shipcrowd_dev
 db.users.find({ email: "test@example.com" })
 db.orders.find({ company: ObjectId("...") })
 

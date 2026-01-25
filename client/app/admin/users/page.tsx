@@ -8,7 +8,7 @@
 import { UserManagementClient } from './components/UserManagementClient';
 
 export const metadata = {
-    title: 'User Management | Helix Admin',
+    title: 'User Management | Shipcrowd Admin',
     description: 'Manage platform users, roles, and permissions',
 };
 

@@ -1,4 +1,4 @@
-# Helix 6 Collections - Comprehensive Production Readiness Gap Analysis
+# Shipcrowd 6 Collections - Comprehensive Production Readiness Gap Analysis
 
 ## Executive Summary
 
@@ -115,7 +115,7 @@ POST /sessions/invalidate-all-except-current       - Logout others
 
 ### Comparison with Industry Leaders
 
-| Feature | Helix | Shiprocket | Delhivery | Industry Standard |
+| Feature | Shipcrowd | Shiprocket | Delhivery | Industry Standard |
 |---------|-----------|------------|-----------|------------------|
 | JWT Authentication | ✅ | ✅ | ✅ | ✅ Required |
 | MFA/TOTP | ❌ | ✅ | ✅ | ✅ Required (NIST) |
@@ -217,7 +217,7 @@ DELETE /team/roles/:roleId                 - Delete role
 
 ### Comparison with Industry Leaders
 
-| Feature | Helix | Shiprocket | Delhivery | Industry Standard |
+| Feature | Shipcrowd | Shiprocket | Delhivery | Industry Standard |
 |---------|-----------|------------|-----------|------------------|
 | PAN Verification | ✅ | ✅ | ✅ | ✅ Required (India) |
 | Aadhaar Verification | ✅ | ✅ | ✅ | ✅ Required (India) |
@@ -319,7 +319,7 @@ POST /shipments/rate-comparison            - Compare carrier rates
 
 ### Comparison with Industry Leaders
 
-| Feature | Helix | Shiprocket | ClickPost | Industry Standard |
+| Feature | Shipcrowd | Shiprocket | ClickPost | Industry Standard |
 |---------|-----------|------------|-----------|------------------|
 | Order CRUD | ✅ | ✅ | ✅ | ✅ Required |
 | Bulk Import | ✅ | ✅ | ✅ | ✅ Standard |
@@ -429,7 +429,7 @@ GET /warehouses/:id/analytics/bottlenecks  - Operational bottlenecks
 
 ### Comparison with Industry Leaders
 
-| Feature | Helix | Oracle WMS | Logiwa | Industry Standard |
+| Feature | Shipcrowd | Oracle WMS | Logiwa | Industry Standard |
 |---------|-----------|------------|--------|------------------|
 | Inventory Management | ✅ | ✅ | ✅ | ✅ Required |
 | Picking Workflows | ✅ | ✅ | ✅ | ✅ Standard |
@@ -533,7 +533,7 @@ GET /ndr/analytics/by-carrier              - NDR rate by carrier
 
 ### Comparison with Industry Leaders
 
-| Feature | Helix | Shiprocket | ClickPost | Industry Standard |
+| Feature | Shipcrowd | Shiprocket | ClickPost | Industry Standard |
 |---------|-----------|------------|-----------|------------------|
 | NDR Tracking | ✅ | ✅ | ✅ | ✅ Required |
 | RTO Management | ✅ | ✅ | ✅ | ✅ Standard |
@@ -628,7 +628,7 @@ GET /reports/tax-liability                 - GST/TDS payable
 
 ### Comparison with Industry Leaders
 
-| Feature | Helix | Shiprocket | Delhivery | Industry Standard |
+| Feature | Shipcrowd | Shiprocket | Delhivery | Industry Standard |
 |---------|-----------|------------|-----------|------------------|
 | Wallet Management | ✅ | ✅ | ✅ | ✅ Required |
 | COD Remittance | ✅ | ✅ | ✅ | ✅ Required (India) |

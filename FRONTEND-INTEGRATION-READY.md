@@ -9,7 +9,7 @@
 ## ✅ Backend Verification Complete
 
 ### Test User Credentials
-- **Email:** demo@Helix.test
+- **Email:** demo@Shipcrowd.test
 - **Password:** Demo@123456
 - **Company:** Demo Test Shop Pvt Ltd
 - **Tier:** Sandbox (Full API Access)
@@ -258,7 +258,7 @@ const fetchDashboard = async () => {
 All backend APIs are production-ready and working. The authentication works perfectly in the browser environment. You can now proceed with frontend integration with confidence!
 
 **Test Credentials for Demo:**
-- Email: demo@Helix.test
+- Email: demo@Shipcrowd.test
 - Password: Demo@123456
 
 ---

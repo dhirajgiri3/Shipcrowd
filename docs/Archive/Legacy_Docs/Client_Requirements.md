@@ -1,5 +1,5 @@
 Client Requirements for Building a Shipping Aggregator Software
-When building a shipping aggregator platform like Helix, you'll need to gather specific information and resources from the client to ensure successful implementation. Here's a comprehensive list of what you'll need to request:
+When building a shipping aggregator platform like Shipcrowd, you'll need to gather specific information and resources from the client to ensure successful implementation. Here's a comprehensive list of what you'll need to request:
 
 1. Business Information
 Company Details: Legal name, address, tax information, and business registration documents

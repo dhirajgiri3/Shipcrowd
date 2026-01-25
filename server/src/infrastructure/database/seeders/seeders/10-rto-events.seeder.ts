@@ -72,8 +72,8 @@ function generateQCResult(returnStatus: RTOStatus, rtoReason: RTOReason): any | 
                 'Label/barcode damaged',
             ]),
         images: passed ? undefined : [
-            `https://storage.Helix.com/qc/${Math.random().toString(36).substring(7)}_1.jpg`,
-            `https://storage.Helix.com/qc/${Math.random().toString(36).substring(7)}_2.jpg`,
+            `https://storage.Shipcrowd.com/qc/${Math.random().toString(36).substring(7)}_1.jpg`,
+            `https://storage.Shipcrowd.com/qc/${Math.random().toString(36).substring(7)}_2.jpg`,
         ],
         inspectedBy: `QC-${randomInt(100, 999)}`,
         inspectedAt: new Date(Date.now() - randomInt(1, 48) * 60 * 60 * 1000),

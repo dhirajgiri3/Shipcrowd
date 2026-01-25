@@ -50,7 +50,7 @@ export class TokenService {
 
         const token = jwt.sign(payload, this.SECRET_KEY, {
             expiresIn: this.ADDRESS_UPDATE_EXPIRY,
-            issuer: 'Helix',
+            issuer: 'Shipcrowd',
             subject: 'address-update',
         });
 
@@ -68,7 +68,7 @@ export class TokenService {
             }
 
             const decoded = jwt.verify(token, this.SECRET_KEY, {
-                issuer: 'Helix',
+                issuer: 'Shipcrowd',
                 subject: 'address-update',
             }) as AddressUpdateTokenPayload;
 

@@ -1,15 +1,15 @@
 Real-Life Scenario: Fashion E-commerce Seller
-Let's follow a day in the life of "TrendyStyles," an online fashion retailer using Helix to manage their shipping operations.
+Let's follow a day in the life of "TrendyStyles," an online fashion retailer using Shipcrowd to manage their shipping operations.
 
 Morning Operations (9:00 AM - 12:00 PM)
 Order Processing:
 
 TrendyStyles receives 75 new orders overnight through their Shopify store
 Their warehouse staff begins picking and packing these orders
-Each order is entered into Helix as it's packed
+Each order is entered into Shipcrowd as it's packed
 Warehouse Activity:
 
-Warehouse manager Priya logs into Helix dashboard
+Warehouse manager Priya logs into Shipcrowd dashboard
 She sees 75 new orders with status "Ready to Ship"
 Orders are destined for various locations across India
 Multiple courier services will be used based on delivery locations
@@ -21,23 +21,23 @@ She decides to create a manifest for these Delhivery shipments
 The remaining orders will use other couriers (DTDC, Xpressbees)
 Manifest Generation Process:
 
-Priya navigates to "Shipments" → "Ready to Ship" in Helix
+Priya navigates to "Shipments" → "Ready to Ship" in Shipcrowd
 She filters the list to show only Delhivery shipments
 She selects all 40 Delhivery shipments
 She clicks "Generate Manifest" button
-Helix prompts for pickup details:
+Shipcrowd prompts for pickup details:
 Pickup date: Today at 4:00 PM
 Pickup location: Main Warehouse
 Contact person: Priya
 Contact number: 9904392992
 System Actions:
 
-Helix generates a unique manifest ID: "UNIQ-DEL-20230615-001"
+Shipcrowd generates a unique manifest ID: "UNIQ-DEL-20230615-001"
 The system groups all 40 shipments under this manifest
-Helix calls Delhivery's manifest API endpoint:
+Shipcrowd calls Delhivery's manifest API endpoint:
 The API payload includes all 40 shipment details and pickup information
 Delhivery responds with a job_id: "DEL123456789"
-Helix stores this job_id in the manifest record
+Shipcrowd stores this job_id in the manifest record
 System generates a PDF manifest document showing:
 Manifest ID and date
 List of all 40 shipments with AWB numbers
@@ -59,9 +59,9 @@ Any discrepancies are noted (e.g., one package damaged, needs repackaging)
 Manifest Adjustment:
 
 One order (#TS-5643) has a damaged package
-Priya opens the manifest in Helix
+Priya opens the manifest in Shipcrowd
 She removes shipment #TS-5643 from the manifest
-Helix calls Delhivery's API to update the manifest
+Shipcrowd calls Delhivery's API to update the manifest
 System regenerates the manifest PDF with 39 shipments
 The removed shipment returns to "Ready to Ship" status
 Courier Pickup (4:00 PM)
@@ -82,14 +82,14 @@ One copy is attached to the packages (transit document)
 System Updates:
 
 Rajesh marks the pickup as complete in his system
-Delhivery's system sends a webhook to Helix
-Helix updates the manifest status to "Picked Up"
+Delhivery's system sends a webhook to Shipcrowd
+Shipcrowd updates the manifest status to "Picked Up"
 All 39 shipments update to status "In Transit"
 TrendyStyles' customers receive shipping confirmation emails with tracking details
 End-of-Day Reconciliation (5:30 PM)
 Financial Tracking:
 
-Priya runs an "End of Day" report in Helix
+Priya runs an "End of Day" report in Shipcrowd
 The report shows:
 Total shipments: 75
 Manifested and picked up: 39 (Delhivery)
@@ -99,12 +99,12 @@ The system calculates total shipping charges for the day
 Delhivery manifest charges are grouped for easier reconciliation with future invoices
 Performance Monitoring:
 
-Helix dashboard shows pickup performance metrics:
+Shipcrowd dashboard shows pickup performance metrics:
 Scheduled pickup time: 4:00 PM
 Actual pickup time: 4:10 PM
 Pickup delay: 10 minutes
 Manifest processing time: 3.5 hours (from creation to pickup)
-Business Value of Manifests for Helix Users
+Business Value of Manifests for Shipcrowd Users
 Operational Benefits
 Time Savings:
 Without manifests: Priya would process each shipment individually with the courier
@@ -136,16 +136,16 @@ Faster Processing:
 Batch processing speeds up order fulfillment
 Orders move from "Ready to Ship" to "In Transit" faster
 Customers receive tracking information sooner
-Technical Implementation in Helix
-The manifest functionality in Helix connects multiple system components:
+Technical Implementation in Shipcrowd
+The manifest functionality in Shipcrowd connects multiple system components:
 
 Order Management:
-Orders flow from e-commerce platforms into Helix
+Orders flow from e-commerce platforms into Shipcrowd
 System determines optimal courier based on rules
 Orders become eligible for manifesting when "Ready to Ship"
 Courier Integration:
 Each courier has specific manifest API requirements
-Helix translates internal data to courier-specific formats
+Shipcrowd translates internal data to courier-specific formats
 System handles courier-specific responses and error cases
 Document Generation:
 Manifest PDFs created in standardized format
@@ -173,7 +173,7 @@ Checksum: For verification
 This information is encoded in a 1D (linear) or 2D (QR/DataMatrix) barcode format printed prominently on the manifest document.
 
 Technical Implementation:
-The barcode is generated when Helix creates the manifest PDF:
+The barcode is generated when Shipcrowd creates the manifest PDF:
 
 server/src/services
 generateManifestBarcode(manifest) {
@@ -194,7 +194,7 @@ API Call: Device makes an API call to Delhivery's backend:
 Data Retrieval: Delhivery's system returns manifest details
 Display: Device shows manifest information on screen
 Behind the Scenes at Delhivery:
-When Helix created the manifest, it sent all details to Delhivery's API
+When Shipcrowd created the manifest, it sent all details to Delhivery's API
 Delhivery stored this information in their database with job_id "DEL123456789"
 Delhivery's system dispatched Rajesh based on the pickup schedule
 Rajesh's device is synchronized with Delhivery's backend
@@ -211,11 +211,11 @@ System flags any missing or extra packages
 Status Update:
 After verification, Rajesh marks the pickup as complete on his device
 This triggers a status update in Delhivery's system
-Delhivery sends a webhook notification to Helix
-Helix updates the manifest status to "Picked Up"
+Delhivery sends a webhook notification to Shipcrowd
+Shipcrowd updates the manifest status to "Picked Up"
 The Three Copies of the Manifest Document
 Source of the Copies:
-Priya prints three identical copies of the manifest PDF from Helix. All three copies contain the same information:
+Priya prints three identical copies of the manifest PDF from Shipcrowd. All three copies contain the same information:
 
 Manifest header with ID, date, and company details
 Barcode for scanning
@@ -250,7 +250,7 @@ The copies are distributed as described above
 Digital Record-Keeping
 While the physical copies are important for the immediate handover process, the digital record in both systems is the master record:
 
-In Helix:
+In Shipcrowd:
 Manifest status updated to "Picked Up"
 Pickup time recorded
 Courier agent name (Rajesh) recorded
@@ -261,14 +261,14 @@ Package count confirmed
 Any exceptions noted
 Timestamp and GPS location of pickup recorded
 Data Synchronization:
-Delhivery sends webhook notification to Helix
-Helix updates shipment statuses to "In Transit"
+Delhivery sends webhook notification to Shipcrowd
+Shipcrowd updates shipment statuses to "In Transit"
 Customers receive automated shipping notifications
 Real-World Considerations
 Partial Pickups: If Rajesh can only take 35 of the 39 packages (due to vehicle capacity, etc.):
 This is noted on all copies
 Rajesh's device records the exception
-Helix receives partial pickup notification
+Shipcrowd receives partial pickup notification
 Remaining packages stay in "Manifest Generated" status
 A new pickup is scheduled for remaining packages
 Discrepancies: If the physical count doesn't match the manifest:
@@ -281,7 +281,7 @@ Technical Issues: If Rajesh's scanner doesn't work:
 Manual entry of manifest ID is possible
 Paper-based verification is conducted
 Status updates may be delayed until system access is restored
-Helix may show "Pending Confirmation" status
+Shipcrowd may show "Pending Confirmation" status
 
 Additional Real-World Considerations for Manifest Processes
 Weather and Environmental Factors

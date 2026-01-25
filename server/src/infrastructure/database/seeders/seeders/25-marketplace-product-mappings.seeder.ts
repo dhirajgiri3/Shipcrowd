@@ -23,8 +23,8 @@ import { selectRandom, selectWeightedFromObject } from '../utils/random.utils';
 // Helper to generate common fields
 const generateCommonFields = (store: any, inventory: any) => ({
     companyId: store.companyId,
-    HelixSKU: inventory.sku.toUpperCase(),
-    HelixProductName: inventory.productName,
+    ShipcrowdSKU: inventory.sku.toUpperCase(),
+    ShipcrowdProductName: inventory.productName,
     syncInventory: true,
     syncPrice: Math.random() > 0.8, // Occasional price sync
     isActive: Math.random() > 0.1, // 90% active

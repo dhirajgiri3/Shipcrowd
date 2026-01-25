@@ -2,7 +2,7 @@
  * Shopify Fulfillment Service
  *
  * Purpose: Push fulfillment and tracking information back to Shopify
- * when orders are shipped in Helix.
+ * when orders are shipped in Shipcrowd.
  *
  * FEATURES:
  * - Create fulfillment with tracking info when shipment is booked
@@ -78,9 +78,9 @@ interface CreateFulfillmentPayload {
 }
 
 /**
- * Status update mappings from Helix to Shopify
+ * Status update mappings from Shipcrowd to Shopify
  */
-const Helix_TO_SHOPIFY_STATUS: Record<string, string> = {
+const Shipcrowd_TO_SHOPIFY_STATUS: Record<string, string> = {
     PICKED_UP: 'in_transit',
     IN_TRANSIT: 'in_transit',
     OUT_FOR_DELIVERY: 'out_for_delivery',
@@ -104,7 +104,7 @@ export class ShopifyFulfillmentService {
     /**
      * Create a fulfillment in Shopify when a shipment is created
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @param trackingInfo - Tracking information (AWB, courier, URL)
      * @returns Shopify fulfillment response
      */
@@ -243,7 +243,7 @@ export class ShopifyFulfillmentService {
     /**
      * Update tracking information on an existing fulfillment
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @param trackingInfo - New tracking information
      * @returns Updated Shopify fulfillment
      */
@@ -330,13 +330,13 @@ export class ShopifyFulfillmentService {
      * Note: Shopify doesn't have a direct API for shipment_status updates.
      * We use fulfillment events API to add status updates.
      *
-     * @param orderId - Helix order ID
-     * @param HelixStatus - Helix shipment status
+     * @param orderId - Shipcrowd order ID
+     * @param ShipcrowdStatus - Shipcrowd shipment status
      * @param message - Optional status message
      */
     static async updateShipmentStatus(
         orderId: string,
-        HelixStatus: string,
+        ShipcrowdStatus: string,
         message?: string
     ): Promise<void> {
         try {
@@ -360,12 +360,12 @@ export class ShopifyFulfillmentService {
                 accessToken: store.decryptAccessToken(),
             });
 
-            // Map Helix status to Shopify status
-            const shopifyStatus = Helix_TO_SHOPIFY_STATUS[HelixStatus];
+            // Map Shipcrowd status to Shopify status
+            const shopifyStatus = Shipcrowd_TO_SHOPIFY_STATUS[ShipcrowdStatus];
 
             if (!shopifyStatus) {
-                logger.debug('No Shopify status mapping for Helix status', {
-                    HelixStatus,
+                logger.debug('No Shopify status mapping for Shipcrowd status', {
+                    ShipcrowdStatus,
                 });
                 return;
             }
@@ -376,7 +376,7 @@ export class ShopifyFulfillmentService {
                 {
                     event: {
                         status: shopifyStatus,
-                        message: message || `Shipment status: ${HelixStatus}`,
+                        message: message || `Shipment status: ${ShipcrowdStatus}`,
                     },
                 }
             );
@@ -390,7 +390,7 @@ export class ShopifyFulfillmentService {
             // Log but don't throw - status updates are non-critical
             logger.warn('Failed to update Shopify shipment status', {
                 orderId,
-                HelixStatus,
+                ShipcrowdStatus,
                 error: error.message,
             });
         }
@@ -399,7 +399,7 @@ export class ShopifyFulfillmentService {
     /**
      * Cancel fulfillment when order is cancelled
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @returns True if cancellation was successful
      */
     static async cancelFulfillment(orderId: string): Promise<boolean> {
@@ -467,9 +467,9 @@ export class ShopifyFulfillmentService {
     /**
      * Handle shipment status webhook and push to Shopify
      *
-     * Called automatically when a shipment status changes in Helix.
+     * Called automatically when a shipment status changes in Shipcrowd.
      *
-     * @param shipmentId - Helix shipment ID
+     * @param shipmentId - Shipcrowd shipment ID
      * @param newStatus - New shipment status
      */
     static async handleShipmentStatusChange(
@@ -583,8 +583,8 @@ export class ShopifyFulfillmentService {
             }
         }
 
-        // Default fallback - Helix tracking page
-        return `${process.env.FRONTEND_URL || 'https://Helix.com'}/track/${awbNumber}`;
+        // Default fallback - Shipcrowd tracking page
+        return `${process.env.FRONTEND_URL || 'https://Shipcrowd.com'}/track/${awbNumber}`;
     }
 
     /**

@@ -1,4 +1,4 @@
-# Helix - What to Do Next
+# Shipcrowd - What to Do Next
 
 **Date:** January 10, 2026  
 **Status:** ✅ Ready for Testing Phase

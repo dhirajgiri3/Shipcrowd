@@ -1,10 +1,10 @@
 /**
  * Code Quality & Best Practices Guide
  * 
- * This document outlines coding standards and best practices for the Helix frontend.
+ * This document outlines coding standards and best practices for the Shipcrowd frontend.
  */
 
-# Helix Frontend - Code Quality Guidelines
+# Shipcrowd Frontend - Code Quality Guidelines
 
 ## 1. TypeScript Best Practices
 

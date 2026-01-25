@@ -140,7 +140,7 @@ export function generateOrder(overrides?: Partial<Order>): Order {
             landmark: ['Near Metro Station', 'Opposite Mall', 'Behind Temple'][Math.floor(Math.random() * 3)]
         },
         pickup: {
-            name: 'Helix Warehouse',
+            name: 'Shipcrowd Warehouse',
             phone: '+91 9876543210',
             addressLine1: 'Plot 45, Industrial Area',
             city: pickupCity.name,

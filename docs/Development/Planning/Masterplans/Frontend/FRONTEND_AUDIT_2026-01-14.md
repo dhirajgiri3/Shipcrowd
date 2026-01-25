@@ -1,4 +1,4 @@
-# Helix Frontend Implementation Audit Report
+# Shipcrowd Frontend Implementation Audit Report
 **Date:** January 14, 2026
 **Scope:** Complete frontend implementation (Weeks 1-5 + Full Codebase)
 **Methodology:** Code inspection, plan comparison, quality verification
@@ -2226,7 +2226,7 @@ export default function ProtectedLayout({ children }) {
 ✅ **HTTPS Enforced**
 ```typescript
 // API client configured for HTTPS
-baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.Helix.com',
+baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.Shipcrowd.com',
 ```
 
 **Gaps:**

@@ -116,8 +116,8 @@ export class AmazonProductMappingController {
                 amazonListingId,
                 amazonTitle,
                 amazonCategory,
-                HelixSKU,
-                HelixProductName,
+                ShipcrowdSKU,
+                ShipcrowdProductName,
                 fulfillmentType,
                 syncInventory,
                 syncPrice,
@@ -142,8 +142,8 @@ export class AmazonProductMappingController {
                 throw new ValidationError('Amazon SKU is required');
             }
 
-            if (!HelixSKU) {
-                throw new ValidationError('Helix SKU is required');
+            if (!ShipcrowdSKU) {
+                throw new ValidationError('Shipcrowd SKU is required');
             }
 
             const mapping = await AmazonProductMappingService.createManualMapping({
@@ -153,8 +153,8 @@ export class AmazonProductMappingController {
                 amazonListingId,
                 amazonTitle,
                 amazonCategory,
-                HelixSKU,
-                HelixProductName,
+                ShipcrowdSKU,
+                ShipcrowdProductName,
                 fulfillmentType,
                 mappedBy: String(userId),
                 syncInventory,
@@ -166,7 +166,7 @@ export class AmazonProductMappingController {
                     id: mapping._id,
                     amazonASIN: mapping.amazonASIN,
                     amazonSKU: mapping.amazonSKU,
-                    HelixSKU: mapping.HelixSKU,
+                    ShipcrowdSKU: mapping.ShipcrowdSKU,
                     fulfillmentType: mapping.fulfillmentType,
                 },
             }, 'Mapping created successfully');

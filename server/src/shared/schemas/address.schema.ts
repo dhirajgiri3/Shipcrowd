@@ -1,5 +1,5 @@
 import { Schema } from 'mongoose';
-import { IndiaValidators } from '../validators/india-validators';
+import { IndiaValidators } from '../validation/india-validators';
 
 export interface IAddress {
     line1: string;

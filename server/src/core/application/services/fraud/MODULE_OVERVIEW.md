@@ -2,7 +2,7 @@
 
 ## Status: ✅ Production Ready | Standalone | Not Integrated
 
-The fraud detection module is **complete, fully functional, and ready for production use** but currently **not integrated** into the main Helix application. It will be integrated in the future when activation is needed.
+The fraud detection module is **complete, fully functional, and ready for production use** but currently **not integrated** into the main Shipcrowd application. It will be integrated in the future when activation is needed.
 
 ## Module Structure
 

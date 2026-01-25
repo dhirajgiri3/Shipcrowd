@@ -1,6 +1,6 @@
 // Site configuration
 export const siteConfig = {
-    name: 'Helix',
+    name: 'Shipcrowd',
     description: 'AI-Powered Multi-Carrier Shipping Platform',
     url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
 
@@ -16,9 +16,9 @@ export const siteConfig = {
 
     // Links
     links: {
-        twitter: 'https://twitter.com/Helix',
-        github: 'https://github.com/Helix',
-        linkedin: 'https://linkedin.com/company/Helix',
+        twitter: 'https://twitter.com/Shipcrowd',
+        github: 'https://github.com/Shipcrowd',
+        linkedin: 'https://linkedin.com/company/Shipcrowd',
     },
 
     // Features

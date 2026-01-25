@@ -34,7 +34,7 @@ export async function processEmailJob(job: Job<EmailJob>): Promise<EmailJobResul
   try {
     // Send email via SMTP
     const result = await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@Helix.com',
+      from: process.env.SMTP_FROM || 'noreply@Shipcrowd.com',
       to,
       subject,
       html: renderEmailTemplate(template, data),
@@ -131,7 +131,7 @@ function getEmailTemplate(template: string): string {
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>Welcome to Helix, {{name}}!</h2>
+            <h2>Welcome to Shipcrowd, {{name}}!</h2>
             <p>Please verify your email address by clicking the link below:</p>
             <p>
               <a href="{{verificationUrl}}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: #fff; text-decoration: none; border-radius: 5px;">
@@ -205,7 +205,7 @@ function getEmailTemplate(template: string): string {
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>Sign in to Helix</h2>
+            <h2>Sign in to Shipcrowd</h2>
             <p>Hi {{name}},</p>
             <p>Click the link below to sign in to your account:</p>
             <p>

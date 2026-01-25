@@ -2,7 +2,7 @@
  * Amazon Fulfillment Service
  *
  * Purpose: Push fulfillment and tracking information back to Amazon SP-API
- * when MFN (Merchant Fulfilled Network) orders are shipped in Helix.
+ * when MFN (Merchant Fulfilled Network) orders are shipped in Shipcrowd.
  *
  * IMPORTANT: This service ONLY handles MFN orders. FBA (Fulfilled by Amazon)
  * orders are skipped entirely as Amazon handles their fulfillment.
@@ -11,7 +11,7 @@
  * - Confirm shipment for MFN orders via Feed API
  * - Update tracking information
  * - Cancel shipments when orders are cancelled
- * - Handle shipment status changes from Helix webhooks
+ * - Handle shipment status changes from Shipcrowd webhooks
  * - Carrier code mapping for Indian carriers
  * - Feed status polling and error handling
  *
@@ -60,9 +60,9 @@ const CARRIER_CODE_MAP: Record<string, string> = {
 };
 
 /**
- * Status mappings from Helix to Amazon
+ * Status mappings from Shipcrowd to Amazon
  */
-const Helix_TO_AMAZON_STATUS: Record<string, string> = {
+const Shipcrowd_TO_AMAZON_STATUS: Record<string, string> = {
     BOOKED: 'Pending',
     MANIFESTED: 'Shipped',
     PICKED_UP: 'Shipped',
@@ -88,7 +88,7 @@ export class AmazonFulfillmentService {
      * Uses Amazon Feed API to submit shipment confirmation.
      * This is the primary method for informing Amazon that an order has shipped.
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @param trackingInfo - Tracking information
      * @returns Feed submission result
      */
@@ -249,7 +249,7 @@ export class AmazonFulfillmentService {
 <AmazonEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="amzn-envelope.xsd">
     <Header>
         <DocumentVersion>1.01</DocumentVersion>
-        <MerchantIdentifier>Helix</MerchantIdentifier>
+        <MerchantIdentifier>Shipcrowd</MerchantIdentifier>
     </Header>
     <MessageType>OrderFulfillment</MessageType>
     <Message>
@@ -291,7 +291,7 @@ export class AmazonFulfillmentService {
     /**
      * Cancel shipment when order is cancelled
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @returns True if cancellation was successful
      */
     static async cancelShipment(orderId: string): Promise<boolean> {
@@ -330,10 +330,10 @@ export class AmazonFulfillmentService {
     /**
      * Handle shipment status webhook and push to Amazon
      *
-     * Called automatically when a shipment status changes in Helix.
+     * Called automatically when a shipment status changes in Shipcrowd.
      * Only processes MFN orders.
      *
-     * @param shipmentId - Helix shipment ID
+     * @param shipmentId - Shipcrowd shipment ID
      * @param newStatus - New shipment status
      */
     static async handleShipmentStatusChange(

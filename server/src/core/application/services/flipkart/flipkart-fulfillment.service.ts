@@ -2,7 +2,7 @@
  * Flipkart Fulfillment Service
  *
  * Purpose: Push fulfillment and tracking information back to Flipkart Seller API
- * when orders are shipped in Helix.
+ * when orders are shipped in Shipcrowd.
  *
  * IMPORTANT: Flipkart uses order item-based updates (not order-based).
  * Each order item must be updated individually via the Flipkart API.
@@ -12,7 +12,7 @@
  * - Dispatch order items with tracking information
  * - Mark order items as delivered
  * - Cancel order items
- * - Handle shipment status changes from Helix webhooks
+ * - Handle shipment status changes from Shipcrowd webhooks
  * - Bulk sync pending dispatches
  *
  * DEPENDENCIES:
@@ -40,9 +40,9 @@ interface TrackingInfo {
 }
 
 /**
- * Status mappings from Helix to Flipkart
+ * Status mappings from Shipcrowd to Flipkart
  */
-const Helix_TO_FLIPKART_STATUS: Record<string, string> = {
+const Shipcrowd_TO_FLIPKART_STATUS: Record<string, string> = {
     BOOKED: 'APPROVED',
     MANIFESTED: 'READY_TO_DISPATCH',
     PICKED_UP: 'READY_TO_DISPATCH',
@@ -67,7 +67,7 @@ export class FlipkartFulfillmentService {
      *
      * This is the first step in fulfillment - tells Flipkart the item is ready to ship.
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @returns Success status
      */
     static async markAsReadyToDispatch(orderId: string): Promise<boolean> {
@@ -168,7 +168,7 @@ export class FlipkartFulfillmentService {
      *
      * This is the main fulfillment action - provides tracking details to Flipkart.
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @param trackingInfo - Tracking information
      * @returns Success status
      */
@@ -282,7 +282,7 @@ export class FlipkartFulfillmentService {
     /**
      * Mark order item as delivered
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @returns Success status
      */
     static async markAsDelivered(orderId: string): Promise<boolean> {
@@ -341,7 +341,7 @@ export class FlipkartFulfillmentService {
     /**
      * Cancel order item
      *
-     * @param orderId - Helix order ID
+     * @param orderId - Shipcrowd order ID
      * @param reason - Cancellation reason
      * @returns Success status
      */
@@ -404,9 +404,9 @@ export class FlipkartFulfillmentService {
     /**
      * Handle shipment status webhook and push to Flipkart
      *
-     * Called automatically when a shipment status changes in Helix.
+     * Called automatically when a shipment status changes in Shipcrowd.
      *
-     * @param shipmentId - Helix shipment ID
+     * @param shipmentId - Shipcrowd shipment ID
      * @param newStatus - New shipment status
      */
     static async handleShipmentStatusChange(

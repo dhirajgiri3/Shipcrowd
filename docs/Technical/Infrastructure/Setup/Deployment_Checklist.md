@@ -30,7 +30,7 @@ VELOCITY_PASSWORD=Velocity@123
 VELOCITY_WEBHOOK_SECRET=<generate-with-openssl-rand-hex-32>
 
 # Database
-MONGO_URI=mongodb://localhost:27017/Helix-production
+MONGO_URI=mongodb://localhost:27017/Shipcrowd-production
 
 # Node Environment
 NODE_ENV=production
@@ -130,7 +130,7 @@ export BYPASS_WEBHOOK_VERIFICATION="false"
 npm install -g pm2
 
 # Start application
-pm2 start dist/index.js --name Helix-api
+pm2 start dist/index.js --name Shipcrowd-api
 
 # Save PM2 configuration
 pm2 save
@@ -143,14 +143,14 @@ pm2 startup
 
 ```bash
 # Build Docker image
-docker build -t Helix-api:latest .
+docker build -t Shipcrowd-api:latest .
 
 # Run container
 docker run -d \
-  --name Helix-api \
+  --name Shipcrowd-api \
   -p 5000:5000 \
   --env-file .env.production \
-  Helix-api:latest
+  Shipcrowd-api:latest
 ```
 
 **Option C: Cloud Platform (AWS/GCP/Azure)**
@@ -161,7 +161,7 @@ Follow platform-specific deployment guides.
 
 **1. Get your production webhook URL**:
 ```
-https://api.Helix.com/api/v1/webhooks/velocity
+https://api.Shipcrowd.com/api/v1/webhooks/velocity
 ```
 
 **2. Contact Velocity Shipfast Support**:
@@ -173,7 +173,7 @@ https://api.Helix.com/api/v1/webhooks/velocity
 **3. Verify webhook configuration**:
 ```bash
 # Test webhook health from external
-curl https://api.Helix.com/api/v1/webhooks/velocity/health
+curl https://api.Shipcrowd.com/api/v1/webhooks/velocity/health
 ```
 
 ### Step 5: Firewall Configuration
@@ -197,10 +197,10 @@ sudo iptables -A INPUT -s <velocity-ip> -p tcp --dport 443 -j ACCEPT
 
 ```bash
 # Using Let's Encrypt with Certbot
-sudo certbot --nginx -d api.Helix.com
+sudo certbot --nginx -d api.Shipcrowd.com
 
 # Verify SSL
-curl -I https://api.Helix.com/health
+curl -I https://api.Shipcrowd.com/health
 ```
 
 ### Step 7: Monitoring Setup
@@ -221,7 +221,7 @@ pm2 set pm2-logrotate:retain 7
 ```bash
 # Test metrics endpoint (requires authentication)
 curl -H "Authorization: Bearer <token>" \
-  https://api.Helix.com/api/v1/webhooks/velocity/metrics
+  https://api.Shipcrowd.com/api/v1/webhooks/velocity/metrics
 ```
 
 ### Step 8: Logging Configuration
@@ -230,10 +230,10 @@ curl -H "Authorization: Bearer <token>" \
 
 ```bash
 # Check application logs
-pm2 logs Helix-api
+pm2 logs Shipcrowd-api
 
 # Or with Docker
-docker logs Helix-api -f
+docker logs Shipcrowd-api -f
 ```
 
 ---
@@ -244,10 +244,10 @@ docker logs Helix-api -f
 
 ```bash
 # Main API health
-curl https://api.Helix.com/health
+curl https://api.Shipcrowd.com/health
 
 # Webhook health
-curl https://api.Helix.com/api/v1/webhooks/velocity/health
+curl https://api.Shipcrowd.com/api/v1/webhooks/velocity/health
 ```
 
 **Expected Response**:
@@ -266,7 +266,7 @@ curl https://api.Helix.com/api/v1/webhooks/velocity/health
 npm run seed:velocity
 
 # Verify in database
-mongo Helix-production
+mongo Shipcrowd-production
 > db.integrations.find({ provider: 'velocity-shipfast' })
 ```
 
@@ -299,7 +299,7 @@ npm run test:webhook:local
 Access webhook metrics:
 
 ```bash
-GET https://api.Helix.com/api/v1/webhooks/velocity/metrics
+GET https://api.Shipcrowd.com/api/v1/webhooks/velocity/metrics
 Authorization: Bearer <token>
 ```
 
@@ -357,26 +357,26 @@ Authorization: Bearer <token>
 **1. Immediate Rollback**:
 ```bash
 # Using PM2
-pm2 stop Helix-api
+pm2 stop Shipcrowd-api
 pm2 start <previous-version>
 
 # Using Docker
-docker stop Helix-api
+docker stop Shipcrowd-api
 docker run <previous-image>
 ```
 
 **2. Verify Previous Version**:
 ```bash
-curl https://api.Helix.com/health
+curl https://api.Shipcrowd.com/health
 ```
 
 **3. Investigate Issues**:
 ```bash
 # Check logs
-pm2 logs Helix-api --lines 100
+pm2 logs Shipcrowd-api --lines 100
 
 # Check database
-mongo Helix-production
+mongo Shipcrowd-production
 ```
 
 **4. Fix and Redeploy**:
@@ -458,24 +458,24 @@ db.webhookdeadletters.createIndex({ provider: 1, status: 1, receivedAt: -1 });
 
 ```bash
 # 1. Health check
-curl https://api.Helix.com/health
+curl https://api.Shipcrowd.com/health
 
 # 2. Webhook health
-curl https://api.Helix.com/api/v1/webhooks/velocity/health
+curl https://api.Shipcrowd.com/api/v1/webhooks/velocity/health
 
 # 3. API endpoints (requires auth)
 curl -H "Authorization: Bearer <token>" \
-  https://api.Helix.com/api/v1/shipments
+  https://api.Shipcrowd.com/api/v1/shipments
 ```
 
 ### Load Testing (Before Production Traffic)
 
 ```bash
 # Using Apache Bench
-ab -n 1000 -c 10 https://api.Helix.com/api/v1/webhooks/velocity/health
+ab -n 1000 -c 10 https://api.Shipcrowd.com/api/v1/webhooks/velocity/health
 
 # Using Artillery
-artillery quick --count 100 --num 10 https://api.Helix.com/health
+artillery quick --count 100 --num 10 https://api.Shipcrowd.com/health
 ```
 
 **Expected Performance**:
@@ -501,12 +501,12 @@ artillery quick --count 100 --num 10 https://api.Helix.com/health
 
 2. Verify webhook endpoint is accessible
    ```bash
-   curl https://api.Helix.com/api/v1/webhooks/velocity/health
+   curl https://api.Shipcrowd.com/api/v1/webhooks/velocity/health
    ```
 
 3. Check application logs
    ```bash
-   pm2 logs Helix-api | grep webhook
+   pm2 logs Shipcrowd-api | grep webhook
    ```
 
 4. Verify webhook secret
@@ -567,9 +567,9 @@ artillery quick --count 100 --num 10 https://api.Helix.com/health
 
 ### Internal Team
 
-- **DevOps**: devops@Helix.com
-- **Backend Lead**: backend@Helix.com
-- **On-Call**: oncall@Helix.com
+- **DevOps**: devops@Shipcrowd.com
+- **Backend Lead**: backend@Shipcrowd.com
+- **On-Call**: oncall@Shipcrowd.com
 
 ---
 

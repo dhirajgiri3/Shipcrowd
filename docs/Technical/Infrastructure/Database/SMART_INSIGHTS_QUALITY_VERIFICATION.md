@@ -224,7 +224,7 @@ try {
 
 Run comprehensive quality checks:
 ```bash
-cd /Users/dhirajgiri/Documents/Projects/Helix\ India/Shipcrowd/server
+cd /Users/dhirajgiri/Documents/Projects/Shipcrowd\ India/Shipcrowd/server
 ./test-smart-insights.sh YOUR_AUTH_TOKEN
 ```
 

@@ -33,8 +33,8 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   // Core metadata
   title: {
-    default: "Helix - AI-Powered Shipping Aggregator for India",
-    template: "%s | Helix",
+    default: "Shipcrowd - AI-Powered Shipping Aggregator for India",
+    template: "%s | Shipcrowd",
   },
   description:
     "Ship Smarter, Not Harder. Compare rates from Delhivery, Bluedart, Xpressbees, DTDC & more. One dashboard, all couriers, best prices. India's smartest shipping platform for eCommerce sellers.",
@@ -59,9 +59,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: "https://Helix.com",
-    siteName: "Helix",
-    title: "Helix - India's Smartest Shipping Aggregator",
+    url: "https://Shipcrowd.com",
+    siteName: "Shipcrowd",
+    title: "Shipcrowd - India's Smartest Shipping Aggregator",
     description:
       "Compare rates, book shipments, and track deliveries across all major couriers. Save up to 40% on shipping costs.",
   },
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "Helix - Ship Smarter, Not Harder",
+    title: "Shipcrowd - Ship Smarter, Not Harder",
     description: "India's smartest shipping aggregator for eCommerce sellers.",
   },
 
@@ -133,7 +133,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var storageKey = 'Helix-theme';
+                  var storageKey = 'Shipcrowd-theme';
                   var savedTheme = localStorage.getItem(storageKey);
                   var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                   var theme = savedTheme === 'system' || !savedTheme ? systemTheme : savedTheme;

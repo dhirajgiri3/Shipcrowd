@@ -29,7 +29,7 @@
 
 ### 1.1 Purpose
 
-The Order module is the **central business entity** of Helix. It represents customer orders before they are converted into shipments and sent to courier partners. Orders serve as the source of truth for order details, products, customer information, and payment status.
+The Order module is the **central business entity** of Shipcrowd. It represents customer orders before they are converted into shipments and sent to courier partners. Orders serve as the source of truth for order details, products, customer information, and payment status.
 
 ### 1.2 Core Responsibilities
 
@@ -71,10 +71,10 @@ type OrderSource = 'manual' | 'shopify' | 'woocommerce' | 'api';
 ```
 
 **Sources:**
-- **manual**: Created via Helix dashboard
+- **manual**: Created via Shipcrowd dashboard
 - **shopify**: Imported from Shopify via webhook
 - **woocommerce**: Imported from WooCommerce via webhook
-- **api**: Created via Helix REST API
+- **api**: Created via Shipcrowd REST API
 
 **Source Tracking:**
 - `source` field identifies origin
@@ -1167,7 +1167,7 @@ statusHistory: [
 ```
 10:30 AM - Customer places order on website (Shopify)
          - Order created: status = pending, paymentStatus = paid (prepaid)
-         - Webhook sends order to Helix API
+         - Webhook sends order to Shipcrowd API
 
 11:00 AM - Warehouse staff picks order
          - Status: pending → processing
@@ -1508,7 +1508,7 @@ Shipment = {
 **Shopify Integration (Week 8):**
 - Webhook: `orders/create`
 - Create order with `source: 'shopify'`, `sourceId: <shopify_order_id>`
-- Map Shopify order to Helix order schema
+- Map Shopify order to Shipcrowd order schema
 - Auto-create shipment
 
 **WooCommerce Integration (Week 9):**
@@ -1798,7 +1798,7 @@ await createAuditLog(
 
 ```bash
 # MongoDB
-MONGODB_URI=mongodb://localhost:27017/Helix
+MONGODB_URI=mongodb://localhost:27017/Shipcrowd
 
 # JWT (for authentication)
 JWT_SECRET=<secret>

@@ -34,7 +34,7 @@ export function useMediaQuery(query: string): boolean {
     return matches;
 }
 
-// Predefined breakpoints for Helix
+// Predefined breakpoints for Shipcrowd
 // Mobile-first approach: 70% of users are on mobile
 export const BREAKPOINTS = {
     mobile: '(max-width: 767px)',

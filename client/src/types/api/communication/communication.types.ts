@@ -121,8 +121,8 @@ export const AVAILABLE_VARIABLES: TemplateVariable[] = [
     { name: 'today', displayName: 'Today\'s Date', category: 'DATE', example: '15 Jan 2026', description: 'Current date' },
 
     // Company Variables
-    { name: 'companyName', displayName: 'Company Name', category: 'COMPANY', example: 'Helix', description: 'Your company name' },
-    { name: 'supportEmail', displayName: 'Support Email', category: 'COMPANY', example: 'support@Helix.com', description: 'Support email address' },
+    { name: 'companyName', displayName: 'Company Name', category: 'COMPANY', example: 'Shipcrowd', description: 'Your company name' },
+    { name: 'supportEmail', displayName: 'Support Email', category: 'COMPANY', example: 'support@Shipcrowd.com', description: 'Support email address' },
     { name: 'supportPhone', displayName: 'Support Phone', category: 'COMPANY', example: '+91 1234567890', description: 'Support phone number' },
 ];
 

@@ -29,7 +29,7 @@ const DISPUTE_STATUS_DISTRIBUTION = {
 // Resolution outcome distribution
 const RESOLUTION_OUTCOMES = {
     seller_favor: 30,      // Seller was right
-    Helix_favor: 40,   // Carrier was right
+    Shipcrowd_favor: 40,   // Carrier was right
     split: 20,             // Compromise
     waived: 10,            // Small amount, waived
 };
@@ -41,7 +41,7 @@ const REASON_CODES = {
         'CARRIER_SCALE_ERROR',
         'PACKAGING_WEIGHT_EXCLUDED',
     ],
-    Helix_favor: [
+    Shipcrowd_favor: [
         'AUTO_RESOLVED_NO_RESPONSE',
         'SELLER_NO_EVIDENCE',
         'CARRIER_PROOF_VALID',
@@ -117,7 +117,7 @@ function generateWeightDisputeData(shipment: any, company: any): any {
 
         if (outcome === 'seller_favor') {
             refundAmount = chargeDirection === 'debit' ? difference : 0;
-        } else if (outcome === 'Helix_favor') {
+        } else if (outcome === 'Shipcrowd_favor') {
             deductionAmount = chargeDirection === 'debit' ? difference : 0;
         } else if (outcome === 'split') {
             const splitAmount = Math.round(difference / 2);
@@ -205,8 +205,8 @@ function generateWeightDisputeData(shipment: any, company: any): any {
         detectedBy: 'carrier_webhook',
         evidence: ['seller_response', 'manual_resolved'].includes(status) ? {
             sellerPhotos: [
-                `https://storage.Helix.com/disputes/${shipment.trackingNumber}/photo1.jpg`,
-                `https://storage.Helix.com/disputes/${shipment.trackingNumber}/photo2.jpg`,
+                `https://storage.Shipcrowd.com/disputes/${shipment.trackingNumber}/photo1.jpg`,
+                `https://storage.Shipcrowd.com/disputes/${shipment.trackingNumber}/photo2.jpg`,
             ],
             submittedAt: addDays(detectedAt, randomInt(2, 4)),
             notes: 'Package weight includes protective packaging materials.',

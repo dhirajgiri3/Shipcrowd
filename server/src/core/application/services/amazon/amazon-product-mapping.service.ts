@@ -44,8 +44,8 @@ interface CreateMappingData {
     amazonListingId?: string;
     amazonTitle?: string;
     amazonCategory?: string;
-    HelixSKU: string;
-    HelixProductName?: string;
+    ShipcrowdSKU: string;
+    ShipcrowdProductName?: string;
     fulfillmentType?: 'FBA' | 'MFN';
     mappedBy?: string;
     syncInventory?: boolean;
@@ -126,8 +126,8 @@ export default class AmazonProductMappingService {
             amazonListingId: data.amazonListingId,
             amazonTitle: data.amazonTitle,
             amazonCategory: data.amazonCategory,
-            HelixSKU: data.HelixSKU.toUpperCase(),
-            HelixProductName: data.HelixProductName,
+            ShipcrowdSKU: data.ShipcrowdSKU.toUpperCase(),
+            ShipcrowdProductName: data.ShipcrowdProductName,
             fulfillmentType: data.fulfillmentType || 'MFN',
             mappingType: 'MANUAL',
             mappedBy: data.mappedBy,
@@ -147,7 +147,7 @@ export default class AmazonProductMappingService {
         logger.info('Created manual Amazon mapping', {
             mappingId: mapping._id,
             asin: data.amazonASIN,
-            sku: data.HelixSKU,
+            sku: data.ShipcrowdSKU,
         });
 
         return mapping;
@@ -168,7 +168,7 @@ export default class AmazonProductMappingService {
         logger.info('Deleted Amazon mapping', {
             mappingId,
             asin: mapping.amazonASIN,
-            sku: mapping.HelixSKU,
+            sku: mapping.ShipcrowdSKU,
         });
     }
 
@@ -209,9 +209,9 @@ export default class AmazonProductMappingService {
             query.$or = [
                 { amazonSKU: { $regex: filters.search, $options: 'i' } },
                 { amazonASIN: { $regex: filters.search, $options: 'i' } },
-                { HelixSKU: { $regex: filters.search, $options: 'i' } },
+                { ShipcrowdSKU: { $regex: filters.search, $options: 'i' } },
                 { amazonTitle: { $regex: filters.search, $options: 'i' } },
-                { HelixProductName: { $regex: filters.search, $options: 'i' } },
+                { ShipcrowdProductName: { $regex: filters.search, $options: 'i' } },
             ];
         }
 
@@ -252,7 +252,7 @@ export default class AmazonProductMappingService {
     /**
      * Import mappings from CSV
      *
-     * CSV Format: HelixSKU,amazonASIN,amazonSKU,fulfillmentType,syncInventory
+     * CSV Format: ShipcrowdSKU,amazonASIN,amazonSKU,fulfillmentType,syncInventory
      */
     static async importMappingsFromCSV(
         storeId: string,
@@ -275,7 +275,7 @@ export default class AmazonProductMappingService {
         const headers = lines[0].split(',').map((h) => h.trim());
 
         // Validate headers
-        const requiredHeaders = ['HelixSKU', 'amazonASIN', 'amazonSKU'];
+        const requiredHeaders = ['ShipcrowdSKU', 'amazonASIN', 'amazonSKU'];
         const hasAllHeaders = requiredHeaders.every((h) => headers.includes(h));
 
         if (!hasAllHeaders) {
@@ -296,7 +296,7 @@ export default class AmazonProductMappingService {
 
             try {
                 // Validate required fields
-                if (!row.HelixSKU || !row.amazonASIN || !row.amazonSKU) {
+                if (!row.ShipcrowdSKU || !row.amazonASIN || !row.amazonSKU) {
                     result.errors.push(`Row ${i + 1}: Missing required fields`);
                     result.failed++;
                     continue;
@@ -323,8 +323,8 @@ export default class AmazonProductMappingService {
                     amazonListingId: row.amazonListingId || undefined,
                     amazonTitle: row.amazonTitle || 'Imported from CSV',
                     amazonCategory: row.amazonCategory || undefined,
-                    HelixSKU: row.HelixSKU.toUpperCase(),
-                    HelixProductName: row.HelixProductName || row.amazonTitle || 'Imported',
+                    ShipcrowdSKU: row.ShipcrowdSKU.toUpperCase(),
+                    ShipcrowdProductName: row.ShipcrowdProductName || row.amazonTitle || 'Imported',
                     fulfillmentType: row.fulfillmentType === 'FBA' ? 'FBA' : 'MFN',
                     mappingType: 'CSV_IMPORT',
                     mappedAt: new Date(),
@@ -356,13 +356,13 @@ export default class AmazonProductMappingService {
         const mappings = await AmazonProductMapping.find({ amazonStoreId: storeId });
 
         const data = mappings.map((m) => ({
-            HelixSKU: m.HelixSKU,
+            ShipcrowdSKU: m.ShipcrowdSKU,
             amazonASIN: m.amazonASIN,
             amazonSKU: m.amazonSKU,
             amazonListingId: m.amazonListingId || '',
             amazonTitle: m.amazonTitle || '',
             amazonCategory: m.amazonCategory || '',
-            HelixProductName: m.HelixProductName || '',
+            ShipcrowdProductName: m.ShipcrowdProductName || '',
             fulfillmentType: m.fulfillmentType,
             mappingType: m.mappingType,
             syncInventory: m.syncInventory,

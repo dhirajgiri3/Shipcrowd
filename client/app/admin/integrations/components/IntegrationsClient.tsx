@@ -13,10 +13,10 @@ const mockIntegrations = [
 ];
 
 const mockUsers = [
-    { name: 'Rajesh Kumar', email: 'rajesh@Helix.in', role: 'Admin', status: 'Active', lastActive: '2 mins ago' },
-    { name: 'Priya Sharma', email: 'priya@Helix.in', role: 'Operations', status: 'Active', lastActive: '10 mins ago' },
-    { name: 'Amit Verma', email: 'amit@Helix.in', role: 'Finance', status: 'Active', lastActive: '1 hour ago' },
-    { name: 'Sneha Patel', email: 'sneha@Helix.in', role: 'Support', status: 'Inactive', lastActive: '2 days ago' },
+    { name: 'Rajesh Kumar', email: 'rajesh@Shipcrowd.in', role: 'Admin', status: 'Active', lastActive: '2 mins ago' },
+    { name: 'Priya Sharma', email: 'priya@Shipcrowd.in', role: 'Operations', status: 'Active', lastActive: '10 mins ago' },
+    { name: 'Amit Verma', email: 'amit@Shipcrowd.in', role: 'Finance', status: 'Active', lastActive: '1 hour ago' },
+    { name: 'Sneha Patel', email: 'sneha@Shipcrowd.in', role: 'Support', status: 'Inactive', lastActive: '2 days ago' },
 ];
 
 export function IntegrationsClient() {

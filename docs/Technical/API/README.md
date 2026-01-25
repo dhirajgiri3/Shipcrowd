@@ -5,7 +5,7 @@ Complete API documentation organized by scope and purpose.
 ## 📁 Structure
 
 ### [Internal/](./Internal/)
-Internal Helix API endpoints:
+Internal Shipcrowd API endpoints:
 - **Auth_Endpoints.md** - Authentication and session management APIs
 - **Team_Management_Endpoints.md** - Team and user management APIs
 - **Warehouse_Management_Endpoints.md** - Warehouse operations APIs

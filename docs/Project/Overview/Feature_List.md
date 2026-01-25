@@ -1,14 +1,14 @@
-# Helix India - Complete Feature Specification
+# Shipcrowd India - Complete Feature Specification
 **Comprehensive Software Features & Functionality Overview**  
 **Date:** January 4, 2026  
 **Document Version:** 1.0  
-**Project:** Helix - Next Generation Shipping Aggregator Platform
+**Project:** Shipcrowd - Next Generation Shipping Aggregator Platform
 
 ---
 
 ## EXECUTIVE SUMMARY
 
-Helix India is a comprehensive shipping aggregator platform that streamlines logistics operations for businesses of all sizes. The software provides end-to-end shipping solutions, integrating with multiple courier partners, payment gateways, and e-commerce platforms to deliver a unified logistics management experience.
+Shipcrowd India is a comprehensive shipping aggregator platform that streamlines logistics operations for businesses of all sizes. The software provides end-to-end shipping solutions, integrating with multiple courier partners, payment gateways, and e-commerce platforms to deliver a unified logistics management experience.
 
 **Key Value Propositions:**
 - **Multi-Courier Integration:** Single platform access to 10+ courier partners
@@ -1710,7 +1710,7 @@ Helix India is a comprehensive shipping aggregator platform that streamlines log
 
 ## CONCLUSION
 
-Helix India represents a comprehensive, next-generation shipping aggregator platform designed to meet the evolving needs of modern businesses. With its robust feature set, scalable architecture, and user-centric design, the platform provides end-to-end logistics solutions that drive operational efficiency and business growth.
+Shipcrowd India represents a comprehensive, next-generation shipping aggregator platform designed to meet the evolving needs of modern businesses. With its robust feature set, scalable architecture, and user-centric design, the platform provides end-to-end logistics solutions that drive operational efficiency and business growth.
 
 **Key Strengths:**
 - **Comprehensive Feature Set:** 200+ features covering all aspects of logistics management
@@ -1731,6 +1731,6 @@ The platform is positioned to revolutionize logistics management by providing bu
 - **Version Control:** This document will be updated quarterly or as major features are added
 
 **Contact Information:**
-- **Technical Support:** support@Helix.in
-- **Business Development:** sales@Helix.in
-- **Documentation Updates:** docs@Helix.in
+- **Technical Support:** support@Shipcrowd.in
+- **Business Development:** sales@Shipcrowd.in
+- **Documentation Updates:** docs@Shipcrowd.in

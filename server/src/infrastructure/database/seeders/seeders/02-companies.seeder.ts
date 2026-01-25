@@ -132,7 +132,7 @@ export async function seedCompanies(): Promise<void> {
         if (CREATE_ADMIN_COMPANY) {
             logger.info('Creating admin company for dual-role testing...');
             const adminCompanyData = {
-                name: 'Helix Demo Store',
+                name: 'Shipcrowd Demo Store',
                 address: {
                     line1: 'Demo Store HQ',
                     line2: 'Tech Park',
@@ -147,7 +147,7 @@ export async function seedCompanies(): Promise<void> {
                     bankName: 'HDFC Bank',
                     accountNumber: generateAccountNumber(selectBank()),
                     ifscCode: 'HDFC0000001',
-                    upiId: 'admin@helix',
+                    upiId: 'admin@Shipcrowd',
                 },
                 branding: {
                     logo: 'https://ui-avatars.com/api/?name=HD&background=6366f1&color=fff',
@@ -157,7 +157,7 @@ export async function seedCompanies(): Promise<void> {
                 },
                 integrations: {},
                 settings: {
-                    notificationEmail: 'admin1@helix.com',
+                    notificationEmail: 'admin1@Shipcrowd.com',
                     notificationPhone: '+919999999999',
                     autoGenerateInvoice: true,
                 },
@@ -175,7 +175,7 @@ export async function seedCompanies(): Promise<void> {
             const adminCompany = await Company.create(adminCompanyData);
 
             // Link only admin1 to this company using V5 Membership
-            const adminUser = await User.findOne({ email: 'admin1@helix.com' });
+            const adminUser = await User.findOne({ email: 'admin1@Shipcrowd.com' });
             if (adminUser) {
                 await Membership.create({
                     userId: adminUser._id,
@@ -186,7 +186,7 @@ export async function seedCompanies(): Promise<void> {
             }
 
             adminCompanyCount = 1;
-            logger.success(`✓ Admin company created and linked to admin1@helix.com`);
+            logger.success(`✓ Admin company created and linked to admin1@Shipcrowd.com`);
         }
 
         // ============================================
@@ -207,7 +207,7 @@ export async function seedCompanies(): Promise<void> {
         const businessTypes: BusinessType[] = [];
         const usedNames = new Set<string>();
         if (CREATE_ADMIN_COMPANY) {
-            usedNames.add('Helix Demo Store');
+            usedNames.add('Shipcrowd Demo Store');
         }
 
         // Generate companies for each seller

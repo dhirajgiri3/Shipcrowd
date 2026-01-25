@@ -1,4 +1,4 @@
-# Helix Authentication API Documentation
+# Shipcrowd Authentication API Documentation
 
 ## Overview
 

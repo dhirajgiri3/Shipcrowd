@@ -1,7 +1,7 @@
 /**
  * WooCommerceProductMapping Model
  *
- * Maps WooCommerce products/variations to Helix SKUs for inventory synchronization.
+ * Maps WooCommerce products/variations to Shipcrowd SKUs for inventory synchronization.
  * Similar to ShopifyProductMapping but for WooCommerce stores.
  *
  * Features:
@@ -16,7 +16,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 // Static methods interface
 interface IWooCommerceProductMappingModel extends Model<IWooCommerceProductMapping> {
-  findByHelixSKU(storeId: string, sku: string): Promise<IWooCommerceProductMapping | null>;
+  findByShipcrowdSKU(storeId: string, sku: string): Promise<IWooCommerceProductMapping | null>;
   findByWooCommerceId(storeId: string, productId: number, variationId?: number): Promise<IWooCommerceProductMapping | null>;
   getMappingStats(storeId: string): Promise<{
     total: number;
@@ -38,8 +38,8 @@ export interface IWooCommerceProductMapping extends Document {
   woocommerceVariationId?: number; // Null for simple products
   woocommerceSKU: string;
   woocommerceTitle: string;
-  HelixSKU: string;
-  HelixProductName?: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName?: string;
   mappingType: 'AUTO' | 'MANUAL';
   syncInventory: boolean;
   syncPrice: boolean;
@@ -87,14 +87,14 @@ const WooCommerceProductMappingSchema = new Schema<IWooCommerceProductMapping>(
       type: String,
       required: true,
     },
-    HelixSKU: {
+    ShipcrowdSKU: {
       type: String,
       required: true,
       uppercase: true,
       trim: true,
       index: true,
     },
-    HelixProductName: {
+    ShipcrowdProductName: {
       type: String,
     },
     mappingType: {
@@ -152,11 +152,11 @@ WooCommerceProductMappingSchema.index(
   { unique: true }
 );
 
-// Lookup by Helix SKU
+// Lookup by Shipcrowd SKU
 WooCommerceProductMappingSchema.index({
   companyId: 1,
   woocommerceStoreId: 1,
-  HelixSKU: 1,
+  ShipcrowdSKU: 1,
 });
 
 // Query active mappings
@@ -204,15 +204,15 @@ WooCommerceProductMappingSchema.methods.recordSyncError = async function (
  */
 
 /**
- * Find mapping by Helix SKU
+ * Find mapping by Shipcrowd SKU
  */
-WooCommerceProductMappingSchema.statics.findByHelixSKU = function (
+WooCommerceProductMappingSchema.statics.findByShipcrowdSKU = function (
   storeId: string,
   sku: string
 ) {
   return this.findOne({
     woocommerceStoreId: storeId,
-    HelixSKU: sku.toUpperCase(),
+    ShipcrowdSKU: sku.toUpperCase(),
     isActive: true,
   });
 };

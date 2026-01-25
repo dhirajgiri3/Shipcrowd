@@ -32,7 +32,7 @@ describe('Token Refresh Race Conditions', () => {
     beforeAll(async () => {
         // Connect to test database if not already connected
         if (mongoose.connection.readyState === 0) {
-            await mongoose.connect(process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/Helix-test');
+            await mongoose.connect(process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/Shipcrowd-test');
         }
     });
 

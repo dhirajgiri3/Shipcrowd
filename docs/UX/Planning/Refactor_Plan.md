@@ -1,6 +1,6 @@
-# Helix UX Transformation - Enhanced Implementation Plan
+# Shipcrowd UX Transformation - Enhanced Implementation Plan
 
-> **Transform Helix into a world-class, intuitive shipping platform with exceptional UX**
+> **Transform Shipcrowd into a world-class, intuitive shipping platform with exceptional UX**
 
 ---
 
@@ -837,7 +837,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-light)] bg-clip-text text-transparent">
-            Helix
+            Shipcrowd
           </h1>
         </div>
 
@@ -1322,7 +1322,7 @@ Priya Singh,9123456789,priya@email.com,456 Park Street,,Delhi,Delhi,110001,Jeans
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'Helix-bulk-order-template.csv';
+    a.download = 'Shipcrowd-bulk-order-template.csv';
     a.click();
     URL.revokeObjectURL(url);
   };

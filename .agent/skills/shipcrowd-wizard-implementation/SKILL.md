@@ -1,11 +1,11 @@
 ---
-name: Helix-wizard-implementation
-description: Implements multi-step wizard flows for Helix (E-Commerce integrations, Bulk operations, Onboarding, etc.). Use when building step-by-step guided experiences with form validation, progress tracking, and state management across steps.
+name: Shipcrowd-wizard-implementation
+description: Implements multi-step wizard flows for Shipcrowd (E-Commerce integrations, Bulk operations, Onboarding, etc.). Use when building step-by-step guided experiences with form validation, progress tracking, and state management across steps.
 ---
 
-# Helix Wizard Implementation Skill
+# Shipcrowd Wizard Implementation Skill
 
-This skill guides implementation of multi-step wizard flows (E-Commerce integration setup, Bulk operation wizards, Onboarding flows, etc.) following established patterns in the Helix codebase.
+This skill guides implementation of multi-step wizard flows (E-Commerce integration setup, Bulk operation wizards, Onboarding flows, etc.) following established patterns in the Shipcrowd codebase.
 
 ## When to Use This Skill
 
@@ -16,7 +16,7 @@ Use this skill when implementing:
 - Guided setup flows (Courier integration, Rate configuration)
 
 **DO NOT use this skill for:**
-- Simple single-step forms (use Helix-feature-implementation skill)
+- Simple single-step forms (use Shipcrowd-feature-implementation skill)
 - Basic modals without steps
 
 ## Architecture Pattern
@@ -632,7 +632,7 @@ export function Step4Confirmation({ data, errors, onUpdate }: Step4ConfirmationP
           <div>
             <p className="font-medium">I confirm that the above details are correct</p>
             <p className="text-sm text-muted-foreground mt-1">
-              By confirming, you authorize Helix to access your Shopify store data
+              By confirming, you authorize Shipcrowd to access your Shopify store data
               according to the permissions specified above.
             </p>
           </div>

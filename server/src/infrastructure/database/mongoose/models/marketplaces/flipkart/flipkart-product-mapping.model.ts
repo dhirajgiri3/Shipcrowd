@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 /**
  * FlipkartProductMapping Model
  *
- * Maps Helix products (SKU) to Flipkart listings (FSN/SKU).
+ * Maps Shipcrowd products (SKU) to Flipkart listings (FSN/SKU).
  * Enables bi-directional inventory synchronization.
  *
  * Features:
@@ -17,10 +17,10 @@ export interface IFlipkartProductMapping extends Document {
   flipkartStoreId: Schema.Types.ObjectId;
   companyId: Schema.Types.ObjectId;
 
-  // Helix product
-  HelixSKU: string;
-  HelixProductId?: Schema.Types.ObjectId;
-  HelixProductName?: string;
+  // Shipcrowd product
+  ShipcrowdSKU: string;
+  ShipcrowdProductId?: Schema.Types.ObjectId;
+  ShipcrowdProductName?: string;
 
   // Flipkart listing
   flipkartFSN: string; // Flipkart Serial Number (unique product identifier)
@@ -43,7 +43,7 @@ export interface IFlipkartProductMapping extends Document {
   lastSyncError?: string;
 
   // Inventory tracking
-  lastHelixQuantity?: number;
+  lastShipcrowdQuantity?: number;
   lastFlipkartQuantity?: number;
   lastInventorySyncAt?: Date;
 
@@ -71,18 +71,18 @@ const FlipkartProductMappingSchema = new Schema<IFlipkartProductMapping>(
       index: true,
     },
 
-    // Helix product
-    HelixSKU: {
+    // Shipcrowd product
+    ShipcrowdSKU: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
     },
-    HelixProductId: {
+    ShipcrowdProductId: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
     },
-    HelixProductName: {
+    ShipcrowdProductName: {
       type: String,
     },
 
@@ -149,7 +149,7 @@ const FlipkartProductMappingSchema = new Schema<IFlipkartProductMapping>(
     },
 
     // Inventory tracking
-    lastHelixQuantity: {
+    lastShipcrowdQuantity: {
       type: Number,
     },
     lastFlipkartQuantity: {
@@ -165,9 +165,9 @@ const FlipkartProductMappingSchema = new Schema<IFlipkartProductMapping>(
 );
 
 // Indexes
-FlipkartProductMappingSchema.index({ flipkartStoreId: 1, HelixSKU: 1 }, { unique: true });
+FlipkartProductMappingSchema.index({ flipkartStoreId: 1, ShipcrowdSKU: 1 }, { unique: true });
 FlipkartProductMappingSchema.index({ flipkartStoreId: 1, flipkartFSN: 1 });
-FlipkartProductMappingSchema.index({ companyId: 1, HelixSKU: 1 });
+FlipkartProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 FlipkartProductMappingSchema.index({ isActive: 1, syncInventory: 1 });
 
 // Instance Methods

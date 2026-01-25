@@ -29,7 +29,7 @@
 
 ### 1.1 Purpose
 
-This package now encompasses the full **Warehouse Operating System (WOS)** for Helix, including:
+This package now encompasses the full **Warehouse Operating System (WOS)** for Shipcrowd, including:
 - **Warehouse**: Physical facility management.
 - **Inventory**: SKU-level stock tracking and movements.
 - **Picking**: Order fulfillment (Pick Lists, Batches).

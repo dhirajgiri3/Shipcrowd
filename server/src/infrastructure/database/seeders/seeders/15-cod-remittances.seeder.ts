@@ -281,7 +281,7 @@ async function generateRemittanceBatch(
         cancelledAt: status === 'cancelled' ? addDays(createdDate, 1) : undefined,
         cancellationReason: status === 'cancelled' ? 'Cancelled by admin' : undefined,
         reportGenerated: status === 'paid',
-        reportUrl: status === 'paid' ? `https://storage.Helix.com/remittances/${generateRemittanceId(createdDate)}.pdf` : undefined,
+        reportUrl: status === 'paid' ? `https://storage.Shipcrowd.com/remittances/${generateRemittanceId(createdDate)}.pdf` : undefined,
         reportGeneratedAt: status === 'paid' ? completedAt : undefined,
         timeline,
         isDeleted: false,

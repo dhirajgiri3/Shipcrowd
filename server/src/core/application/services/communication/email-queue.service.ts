@@ -26,7 +26,7 @@ export async function queueVerificationEmail(
     await emailQueue.add('verification-email', {
         type: EmailJobType.VERIFICATION,
         to,
-        subject: 'Verify Your Email - Helix',
+        subject: 'Verify Your Email - Shipcrowd',
         template: 'verification',
         data: {
             name,
@@ -58,7 +58,7 @@ export async function queuePasswordResetEmail(
     await emailQueue.add('password-reset-email', {
         type: EmailJobType.PASSWORD_RESET,
         to,
-        subject: 'Reset Your Password - Helix',
+        subject: 'Reset Your Password - Shipcrowd',
         template: 'password_reset',
         data: {
             name,
@@ -88,7 +88,7 @@ export async function queueMagicLinkEmail(
     await emailQueue.add('magic-link-email', {
         type: EmailJobType.MAGIC_LINK,
         to,
-        subject: 'Your Magic Link - Helix',
+        subject: 'Your Magic Link - Shipcrowd',
         template: 'magic_link',
         data: {
             name,
@@ -123,7 +123,7 @@ export async function queueNewDeviceLoginEmail(
     await emailQueue.add('new-device-alert-email', {
         type: EmailJobType.NEW_DEVICE_ALERT,
         to,
-        subject: 'New Device Sign-in Alert - Helix',
+        subject: 'New Device Sign-in Alert - Shipcrowd',
         template: 'new_device_alert',
         data: {
             name,
@@ -153,7 +153,7 @@ export async function queueSecurityAlertEmail(
     await emailQueue.add('security-alert-email', {
         type: EmailJobType.SECURITY_ALERT,
         to,
-        subject: `Security Alert: ${alertType} - Helix`,
+        subject: `Security Alert: ${alertType} - Shipcrowd`,
         template: 'security_alert',
         data: {
             name,
@@ -184,7 +184,7 @@ export async function queueOrderConfirmationEmail(
     await emailQueue.add('order-confirmation-email', {
         type: EmailJobType.ORDER_CONFIRMATION,
         to,
-        subject: `Order Confirmation #${orderId} - Helix`,
+        subject: `Order Confirmation #${orderId} - Shipcrowd`,
         template: 'order_confirmation',
         data: {
             customerName,
@@ -216,7 +216,7 @@ export async function queueShipmentUpdateEmail(
     await emailQueue.add('shipment-update-email', {
         type: EmailJobType.SHIPMENT_UPDATE,
         to,
-        subject: `Shipment Update: ${status} - Helix`,
+        subject: `Shipment Update: ${status} - Shipcrowd`,
         template: 'shipment_update',
         data: {
             customerName,
@@ -246,7 +246,7 @@ export async function queueWelcomeEmail(
     await emailQueue.add('welcome-email', {
         type: EmailJobType.WELCOME,
         to,
-        subject: 'Welcome to Helix!',
+        subject: 'Welcome to Shipcrowd!',
         template: 'welcome',
         data: {
             name,
@@ -278,7 +278,7 @@ export async function queueTeamInvitationEmail(
     await emailQueue.add('team-invitation-email', {
         type: EmailJobType.TEAM_INVITATION,
         to,
-        subject: `Invitation to join ${companyName} - Helix`,
+        subject: `Invitation to join ${companyName} - Shipcrowd`,
         template: 'team_invitation',
         data: {
             companyName,
@@ -308,7 +308,7 @@ export async function queueKYCApprovedEmail(
     await emailQueue.add('kyc-approved-email', {
         type: EmailJobType.KYC_APPROVED,
         to,
-        subject: 'KYC Verification Approved - Helix',
+        subject: 'KYC Verification Approved - Shipcrowd',
         template: 'kyc_approved',
         data: {
             name,
@@ -336,7 +336,7 @@ export async function queueKYCRejectedEmail(
     await emailQueue.add('kyc-rejected-email', {
         type: EmailJobType.KYC_REJECTED,
         to,
-        subject: 'KYC Verification Requires Attention - Helix',
+        subject: 'KYC Verification Requires Attention - Shipcrowd',
         template: 'kyc_rejected',
         data: {
             name,

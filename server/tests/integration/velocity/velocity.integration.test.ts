@@ -28,7 +28,7 @@ describe('Velocity Shipfast Integration', () => {
   beforeAll(async () => {
     // Ensure MongoDB connection
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/Helix_test');
+      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd_test');
     }
   });
 

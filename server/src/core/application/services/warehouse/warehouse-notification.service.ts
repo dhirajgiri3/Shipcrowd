@@ -73,7 +73,7 @@ ${shipmentDetails.reverseAwb ? `**Reverse AWB:** ${shipmentDetails.reverseAwb}\n
 
 Please prepare for incoming return.
 
--Helix System`;
+-Shipcrowd System`;
 
             // Send WhatsApp notification
             if (warehouseContact.phone) {
@@ -136,7 +136,7 @@ ${this.formatAddress(newAddress)}
 
 Delivery will be attempted to new address.
 
--Helix System`;
+-Shipcrowd System`;
 
             if (warehouseContact.phone) {
                 await this.whatsapp.sendMessage(warehouseContact.phone, message);

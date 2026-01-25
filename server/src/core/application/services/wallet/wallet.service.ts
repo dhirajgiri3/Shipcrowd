@@ -796,7 +796,7 @@ export default class WalletService {
                     <p><strong>Current Balance:</strong> ₹${currentBalance.toFixed(2)}</p>
                     <p><strong>Threshold:</strong> ₹${threshold.toFixed(2)}</p>
                     <p>Please recharge your wallet to avoid service interruptions.</p>
-                    <p>- The Helix Team</p>
+                    <p>- The Shipcrowd Team</p>
                 `;
 
                 await EmailService.sendEmail(notificationEmail, subject, html);

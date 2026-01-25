@@ -136,7 +136,7 @@ export interface IntegrationSettings {
 
 export interface FieldMapping {
     // Order fields
-    orderNumber: string; // Platform field → Helix field
+    orderNumber: string; // Platform field → Shipcrowd field
     orderDate: string;
     orderTotal: string;
     paymentMethod: string;

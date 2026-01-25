@@ -20,7 +20,7 @@ const TEAM_ROLE_HIERARCHY: Record<string, number> = {
 };
 
 /**
- * Check if user is a platform-level admin (Helix staff)
+ * Check if user is a platform-level admin (Shipcrowd staff)
  * Platform admins have access to all companies and admin features
  */
 export const isPlatformAdmin = (user: IUser | { role?: string }): boolean => {

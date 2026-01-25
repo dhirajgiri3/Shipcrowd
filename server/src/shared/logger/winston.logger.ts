@@ -28,7 +28,7 @@ const getLogLevel = () => {
 const logger = winston.createLogger({
   level: getLogLevel(),
   format: logFormat,
-  defaultMeta: { service: 'Helix-api' },
+  defaultMeta: { service: 'Shipcrowd-api' },
   transports: [
     // Write logs to console
     new winston.transports.Console({
@@ -53,7 +53,7 @@ const logger = winston.createLogger({
     }),
     // Write logs to MongoDB (optional - can be enabled later)
     // new winston.transports.MongoDB({
-    //   db: process.env.MONGODB_URI || 'mongodb://localhost:27017/Helix',
+    //   db: process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd',
     //   collection: 'logs',
     //   options: { useUnifiedTopology: true },
     //   expireAfterSeconds: 30 * 24 * 60 * 60, // 30 days

@@ -26,7 +26,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 export default class WooCommerceWebhookService {
   /**
    * Handle order.created webhook
-   * Sync new order to Helix
+   * Sync new order to Shipcrowd
    */
   static async handleOrderCreated(payload: WooCommerceOrder, storeId: string): Promise<void> {
     try {
@@ -56,7 +56,7 @@ export default class WooCommerceWebhookService {
 
   /**
    * Handle order.updated webhook
-   * Update order status in Helix
+   * Update order status in Shipcrowd
    */
   static async handleOrderUpdated(payload: WooCommerceOrder, storeId: string): Promise<void> {
     try {
@@ -96,7 +96,7 @@ export default class WooCommerceWebhookService {
 
   /**
    * Handle order.deleted webhook
-   * Cancel order in Helix
+   * Cancel order in Shipcrowd
    */
   static async handleOrderDeleted(payload: WooCommerceOrder, storeId: string): Promise<void> {
     try {

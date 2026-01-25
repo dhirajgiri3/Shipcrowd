@@ -205,7 +205,7 @@ export default function ShopifyIntegrationPage() {
             onStepChange={setCurrentStep}
             onClose={handleClose}
             title="Connect Shopify Store"
-            subtitle="Automatically sync your Shopify orders to Helix"
+            subtitle="Automatically sync your Shopify orders to Shipcrowd"
             canGoBack={currentStep > 1}
             canGoNext={canProceed()}
             onBack={handleBack}
@@ -281,7 +281,7 @@ export default function ShopifyIntegrationPage() {
                             Authenticate with Shopify
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400">
-                            Click the button below to authorize Helix to access your Shopify store
+                            Click the button below to authorize Shipcrowd to access your Shopify store
                         </p>
                     </div>
 
@@ -321,7 +321,7 @@ export default function ShopifyIntegrationPage() {
                                 </h4>
                                 <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                                     <li>1. You'll be redirected to Shopify to log in</li>
-                                    <li>2. Review the permissions Helix is requesting</li>
+                                    <li>2. Review the permissions Shipcrowd is requesting</li>
                                     <li>3. Click "Install app" to authorize</li>
                                     <li>4. You'll be brought back here to continue setup</li>
                                 </ol>
@@ -339,7 +339,7 @@ export default function ShopifyIntegrationPage() {
                             Configure Sync Settings
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400">
-                            Customize how orders are synced between Shopify and Helix
+                            Customize how orders are synced between Shopify and Shipcrowd
                         </p>
                     </div>
 

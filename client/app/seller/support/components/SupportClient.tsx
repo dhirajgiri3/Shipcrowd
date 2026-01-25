@@ -254,7 +254,7 @@ export function SupportClient() {
                                     <Mail className="h-6 w-6 text-[var(--warning)]" />
                                 </div>
                                 <h3 className="font-semibold text-[var(--text-primary)]">Email Support</h3>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">support@Helix.in</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">support@Shipcrowd.in</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-2">Response within 24hrs</p>
                             </CardContent>
                         </Card>

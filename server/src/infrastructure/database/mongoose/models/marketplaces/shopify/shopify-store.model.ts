@@ -46,7 +46,7 @@ export interface IShopifyStore extends Document {
       autoSync: boolean;
       syncInterval: number; // minutes
       lastSyncAt?: Date;
-      syncDirection: 'ONE_WAY' | 'TWO_WAY'; // Helix→Shopify or bidirectional
+      syncDirection: 'ONE_WAY' | 'TWO_WAY'; // Shipcrowd→Shopify or bidirectional
       errorCount: number;
       lastError?: string;
     };
@@ -179,7 +179,7 @@ const ShopifyStoreSchema = new Schema<IShopifyStore>(
         syncDirection: {
           type: String,
           enum: ['ONE_WAY', 'TWO_WAY'],
-          default: 'ONE_WAY', // Helix → Shopify only
+          default: 'ONE_WAY', // Shipcrowd → Shopify only
         },
         errorCount: { type: Number, default: 0 },
         lastError: { type: String },

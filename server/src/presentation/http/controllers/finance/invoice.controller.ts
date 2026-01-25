@@ -252,9 +252,9 @@ class InvoiceController {
             }
 
             // Send email with PDF attachment
-            const emailSubject = `Invoice ${invoice.invoiceNumber} from Helix`;
+            const emailSubject = `Invoice ${invoice.invoiceNumber} from Shipcrowd`;
             const emailHtml = `
-                <h2>Invoice from Helix</h2>
+                <h2>Invoice from Shipcrowd</h2>
                 <p>Dear ${company.name},</p>
                 <p>Please find attached your invoice <strong>${invoice.invoiceNumber}</strong> for the billing period 
                 ${new Date(invoice.billingPeriod.startDate).toLocaleDateString()} to 
@@ -268,7 +268,7 @@ class InvoiceController {
                     <li>Grand Total: ₹${invoice.financialSummary.grandTotal.toFixed(2)}</li>
                 </ul>
                 <p>Thank you for your business!</p>
-                <p>Best regards,<br>Helix Team</p>
+                <p>Best regards,<br>Shipcrowd Team</p>
             `;
 
             await sendEmail(

@@ -1,4 +1,4 @@
-# Helix Loading System
+# Shipcrowd Loading System
 
 Comprehensive loading system with intelligent state management and brand-aligned animations.
 

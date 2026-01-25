@@ -24,10 +24,10 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * ShopifyInventorySyncService
  *
- * Handles pushing inventory from Helix to Shopify.
+ * Handles pushing inventory from Shipcrowd to Shopify.
  *
  * Features:
- * - One-way sync (Helix → Shopify)
+ * - One-way sync (Shipcrowd → Shopify)
  * - Batch updates (50 SKUs per request)
  * - GraphQL inventory mutations
  * - ProductMapping validation
@@ -79,7 +79,7 @@ export class ShopifyInventorySyncService {
     // Find product mapping
     const mapping = await ProductMapping.findOne({
       shopifyStoreId: storeId,
-      HelixSKU: sku.toUpperCase(),
+      ShipcrowdSKU: sku.toUpperCase(),
       isActive: true,
       syncInventory: true,
     });
@@ -182,7 +182,7 @@ export class ShopifyInventorySyncService {
           // Find mapping
           const mapping = await ProductMapping.findOne({
             shopifyStoreId: storeId,
-            HelixSKU: update.sku.toUpperCase(),
+            ShipcrowdSKU: update.sku.toUpperCase(),
             isActive: true,
             syncInventory: true,
           });
@@ -382,7 +382,7 @@ export class ShopifyInventorySyncService {
 
     await this.pushInventoryToShopify(
       mapping.shopifyStoreId.toString(),
-      mapping.HelixSKU,
+      mapping.ShipcrowdSKU,
       quantity
     );
   }
@@ -401,7 +401,7 @@ export class ShopifyInventorySyncService {
   ): Promise<void> {
     const mapping = await ProductMapping.findOne({
       shopifyStoreId: storeId,
-      HelixSKU: sku.toUpperCase(),
+      ShipcrowdSKU: sku.toUpperCase(),
       isActive: true,
       syncOnFulfillment: true,
     });
@@ -417,7 +417,7 @@ export class ShopifyInventorySyncService {
       decreaseBy,
     });
 
-    // Get current inventory from Helix (would integrate with InventoryService)
+    // Get current inventory from Shipcrowd (would integrate with InventoryService)
     // For now, we'll just push the decrease
     // In production, you'd fetch current inventory and subtract decreaseBy
 

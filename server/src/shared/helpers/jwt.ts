@@ -142,8 +142,8 @@ export const generateAccessToken = (
 
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRY,
-    audience: 'Helix-api',
-    issuer: 'Helix-auth',
+    audience: 'Shipcrowd-api',
+    issuer: 'Shipcrowd-auth',
   } as jwt.SignOptions);
 };
 
@@ -168,8 +168,8 @@ export const generateRefreshToken = (
 
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, {
     expiresIn: expiry || REFRESH_TOKEN_EXPIRY,
-    audience: 'Helix-api',
-    issuer: 'Helix-auth',
+    audience: 'Shipcrowd-api',
+    issuer: 'Shipcrowd-auth',
   } as jwt.SignOptions);
 };
 
@@ -183,8 +183,8 @@ export const verifyAccessToken = async (
   checkBlacklist: boolean = true
 ): Promise<AccessTokenPayload> => {
   const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET, {
-    audience: 'Helix-api',
-    issuer: 'Helix-auth',
+    audience: 'Shipcrowd-api',
+    issuer: 'Shipcrowd-auth',
   }) as AccessTokenPayload;
 
   // Check if token is blacklisted
@@ -208,8 +208,8 @@ export const verifyRefreshToken = async (
   checkBlacklist: boolean = true
 ): Promise<RefreshTokenPayload> => {
   const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET, {
-    audience: 'Helix-api',
-    issuer: 'Helix-auth',
+    audience: 'Shipcrowd-api',
+    issuer: 'Shipcrowd-auth',
   }) as RefreshTokenPayload;
 
   // Check if token is blacklisted

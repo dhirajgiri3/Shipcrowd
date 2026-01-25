@@ -1,4 +1,4 @@
-# Courier APIs Documentation for Helix
+# Courier APIs Documentation for Shipcrowd
 
 **Version:** 2025-04
 

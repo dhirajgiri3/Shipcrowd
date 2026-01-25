@@ -238,7 +238,7 @@
       "expectedThroughput": "3 user flows tested in 1 hour, 10 bugs fixed in 1.5 hours",
       "preconditions": [
         "All features integrated (Backend + Frontend + Seed complete)",
-        "Test credentials created (demo@Helix.com)",
+        "Test credentials created (demo@Shipcrowd.com)",
         "Chrome, Safari, Firefox installed for cross-browser testing"
       ],
       "outputs": [

@@ -49,13 +49,13 @@ export class BasePDFService {
             primaryColor: PDF_BRAND_COLORS.PRIMARY_BLUE,
             secondaryColor: PDF_BRAND_COLORS.TEXT_PRIMARY,
             borderColor: PDF_BRAND_COLORS.BORDER_DEFAULT,
-            logoPath: path.join(__dirname, '../../../../../assets/Helix-logo.png'),
-            companyName: 'Helix',
+            logoPath: path.join(__dirname, '../../../../../assets/Shipcrowd-logo.png'),
+            companyName: 'Shipcrowd',
         };
     }
 
     /**
-     * Add Helix branded header with logo and document title
+     * Add Shipcrowd branded header with logo and document title
      */
     addHeader(title: string, subtitle?: string, copyType?: 'ORIGINAL' | 'DUPLICATE' | 'TRIPLICATE'): this {
         const y = this.margins.top;
@@ -72,7 +72,7 @@ export class BasePDFService {
                 .fontSize(16)
                 .fillColor(this.brandConfig.primaryColor)
                 .font('Helvetica-Bold')
-                .text('Helix', this.margins.left, y);
+                .text('Shipcrowd', this.margins.left, y);
         }
 
         // Document title (center)

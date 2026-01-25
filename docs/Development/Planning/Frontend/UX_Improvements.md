@@ -1,4 +1,4 @@
-# Helix: Dashboard Transformation Plan
+# Shipcrowd: Dashboard Transformation Plan
 
 **Mission:** Transform seller dashboard from card-heavy UI into decision-first operational cockpit that answers "What should I do?" in < 3 seconds.
 

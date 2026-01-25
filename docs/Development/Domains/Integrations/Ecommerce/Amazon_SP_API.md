@@ -1,4 +1,4 @@
-# Amazon SP-API Integration Guide for Helix
+# Amazon SP-API Integration Guide for Shipcrowd
 
 **API Version**: Orders v0, Tokens v2021-03-01, Merchant Fulfillment v0  
 **Last Updated**: January 7, 2026  
@@ -27,7 +27,7 @@
 
 ## Overview
 
-Helix integrates with Amazon SP-API to enable sellers to manage their Merchant Fulfilled Network (MFN) orders. This integration allows:
+Shipcrowd integrates with Amazon SP-API to enable sellers to manage their Merchant Fulfilled Network (MFN) orders. This integration allows:
 
 - **Order Ingestion**: Fetch unshipped orders from Amazon marketplaces
 - **Shipment Confirmation**: Send tracking information back to Amazon
@@ -49,7 +49,7 @@ graph TD
         RDT[RDT Token Service]
     end
 
-    subgraph Helix ["Helix Backend"]
+    subgraph Shipcrowd ["Shipcrowd Backend"]
         P[Polling Service]
         N[Notification Handler]
         OM[Order Manager]
@@ -112,8 +112,8 @@ Amazon SP-API uses **Login with Amazon (LWA)** OAuth 2.0 for authentication. As 
 **Step 2: Create SP-API Application**
 
 ```
-App Name: Helix Integration
-OAuth Redirect URIs: https://Helix.com/auth/amazon/callback
+App Name: Shipcrowd Integration
+OAuth Redirect URIs: https://Shipcrowd.com/auth/amazon/callback
 IAM ARN: (Leave blank for LWA-only apps)
 ```
 
@@ -162,7 +162,7 @@ app.get('/auth/amazon/callback', async (req, res) => {
     code: spapi_oauth_code,
     client_id: process.env.AMAZON_LWA_CLIENT_ID,
     client_secret: process.env.AMAZON_LWA_CLIENT_SECRET,
-    redirect_uri: 'https://Helix.com/auth/amazon/callback'
+    redirect_uri: 'https://Shipcrowd.com/auth/amazon/callback'
   });
   
   // Store refresh_token for this seller
@@ -468,7 +468,7 @@ curl -X GET \
 }
 ```
 
-**Helix Implementation**:
+**Shipcrowd Implementation**:
 ```javascript
 async function syncOrderFromAmazon(orderId, sellerId) {
   const accessToken = await AmazonAuthService.getAccessToken(sellerId);
@@ -479,8 +479,8 @@ async function syncOrderFromAmazon(orderId, sellerId) {
   // Get order items
   const items = await amazonAPI.getOrderItems(orderId, accessToken);
   
-  // Create in Helix DB
-  await HelixOrder.create({
+  // Create in Shipcrowd DB
+  await ShipcrowdOrder.create({
     channel: 'AMAZON',
     channelOrderId: order.AmazonOrderId,
     channelOrderDisplayId: order.AmazonOrderId,
@@ -667,8 +667,8 @@ async function fetchOrderWithPII(orderId, sellerId) {
     }
   );
   
-  // Update Helix order with PII
-  await HelixOrder.updateOne(
+  // Update Shipcrowd order with PII
+  await ShipcrowdOrder.updateOne(
     { channelOrderId: orderId },
     {
       'customer.name': orderResponse.data.payload.BuyerInfo.BuyerName,
@@ -695,7 +695,7 @@ async function fetchOrderWithPII(orderId, sellerId) {
 async function deleteStalePII() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   
-  const result = await HelixOrder.updateMany(
+  const result = await ShipcrowdOrder.updateMany(
     {
       channel: 'AMAZON',
       'shipment.deliveredAt': { $lt: thirtyDaysAgo },
@@ -727,7 +727,7 @@ Use this API when sellers want to purchase shipping labels through **Amazon Buy 
 - Competitive carrier rates (UPS, FedEx, BlueDart, etc.)
 - Automatic tracking updates to Amazon
 
-**Alternative**: If using Helix's own courier aggregator (Velocity), skip this section and use **Shipment Confirmation** (Section 6).
+**Alternative**: If using Shipcrowd's own courier aggregator (Velocity), skip this section and use **Shipment Confirmation** (Section 6).
 
 ### 5.2 Get Eligible Shipping Services
 
@@ -961,7 +961,7 @@ async function purchaseAmazonLabel(order) {
   }, accessToken);
   
   // Step 4: Save label and tracking
-  await HelixOrder.updateOne(
+  await ShipcrowdOrder.updateOne(
     { _id: order._id },
     {
       'shipment.awbNumber': shipmentResponse.TrackingId,
@@ -983,7 +983,7 @@ async function purchaseAmazonLabel(order) {
 
 ### 6.1 Confirm Shipment (Aggregator Fulfilled)
 
-When Helix generates labels via Velocity (not Amazon Buy Shipping), use this endpoint to notify Amazon.
+When Shipcrowd generates labels via Velocity (not Amazon Buy Shipping), use this endpoint to notify Amazon.
 
 **Endpoint**: `POST /orders/v0/orders/{orderId}/shipmentConfirmation`
 
@@ -1060,7 +1060,7 @@ async function confirmShipmentToAmazon(order, shipment) {
     }
   );
   
-  await HelixOrder.updateOne(
+  await ShipcrowdOrder.updateOne(
     { _id: order._id },
     {
       'shipment.confirmedToAmazon': true,
@@ -1214,10 +1214,10 @@ Avoid aggressive polling by subscribing to **Amazon SQS notifications** for real
 {
   "resourceSpecification": {
     "sqs": {
-      "arn": "arn:aws:sqs:eu-west-1:123456789012:Helix-amazon-notifications"
+      "arn": "arn:aws:sqs:eu-west-1:123456789012:Shipcrowd-amazon-notifications"
     }
   },
-  "name": "Helix-Notifications"
+  "name": "Shipcrowd-Notifications"
 }
 ```
 
@@ -1226,10 +1226,10 @@ Avoid aggressive polling by subscribing to **Amazon SQS notifications** for real
 {
   "payload": {
     "destinationId": "dest-12345678-1234-1234-1234-123456789012",
-    "name": "Helix-Notifications",
+    "name": "Shipcrowd-Notifications",
     "resource": {
       "sqs": {
-        "arn": "arn:aws:sqs:eu-west-1:123456789012:Helix-amazon-notifications"
+        "arn": "arn:aws:sqs:eu-west-1:123456789012:Shipcrowd-amazon-notifications"
       }
     }
   }
@@ -1284,7 +1284,7 @@ const sqs = new AWS.SQS({ region: 'eu-west-1' });
 
 async function pollAmazonNotifications() {
   const params = {
-    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789012/Helix-amazon-notifications',
+    QueueUrl: 'https://sqs.eu-west-1.amazonaws.com/123456789012/Shipcrowd-amazon-notifications',
     MaxNumberOfMessages: 10,
     WaitTimeSeconds: 20
   };
@@ -1422,7 +1422,7 @@ curl -X GET \
 **Document Version**: 2.0 (Comprehensive)  
 **Last Reviewed**: January 7, 2026  
 **Next Review**: April 1, 2026  
-**Maintained By**: Helix Technical Team
+**Maintained By**: Shipcrowd Technical Team
 
 **Official References**:
 - Orders API: https://developer-docs.amazon.com/sp-api/docs/orders-api-v0-reference

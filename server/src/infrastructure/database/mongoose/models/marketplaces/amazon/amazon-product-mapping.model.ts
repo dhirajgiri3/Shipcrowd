@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 /**
  * AmazonProductMapping Model
  *
- * Maps Helix products (SKU) to Amazon listings (ASIN/SKU).
+ * Maps Shipcrowd products (SKU) to Amazon listings (ASIN/SKU).
  * Enables bi-directional inventory synchronization.
  *
  * Features:
@@ -18,10 +18,10 @@ export interface IAmazonProductMapping extends Document {
   amazonStoreId: Schema.Types.ObjectId;
   companyId: Schema.Types.ObjectId;
 
-  // Helix product
-  HelixSKU: string;
-  HelixProductId?: Schema.Types.ObjectId;
-  HelixProductName?: string;
+  // Shipcrowd product
+  ShipcrowdSKU: string;
+  ShipcrowdProductId?: Schema.Types.ObjectId;
+  ShipcrowdProductName?: string;
 
   // Amazon listing
   amazonASIN: string; // Amazon Standard Identification Number
@@ -45,7 +45,7 @@ export interface IAmazonProductMapping extends Document {
   lastSyncError?: string;
 
   // Inventory tracking
-  lastHelixQuantity?: number;
+  lastShipcrowdQuantity?: number;
   lastAmazonQuantity?: number;
   lastInventorySyncAt?: Date;
 
@@ -69,18 +69,18 @@ const AmazonProductMappingSchema = new Schema<IAmazonProductMapping>(
       index: true,
     },
 
-    // Helix product
-    HelixSKU: {
+    // Shipcrowd product
+    ShipcrowdSKU: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
     },
-    HelixProductId: {
+    ShipcrowdProductId: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
     },
-    HelixProductName: {
+    ShipcrowdProductName: {
       type: String,
     },
 
@@ -154,7 +154,7 @@ const AmazonProductMappingSchema = new Schema<IAmazonProductMapping>(
     },
 
     // Inventory tracking
-    lastHelixQuantity: {
+    lastShipcrowdQuantity: {
       type: Number,
     },
     lastAmazonQuantity: {
@@ -170,10 +170,10 @@ const AmazonProductMappingSchema = new Schema<IAmazonProductMapping>(
 );
 
 // Indexes
-AmazonProductMappingSchema.index({ amazonStoreId: 1, HelixSKU: 1 }, { unique: true });
+AmazonProductMappingSchema.index({ amazonStoreId: 1, ShipcrowdSKU: 1 }, { unique: true });
 AmazonProductMappingSchema.index({ amazonStoreId: 1, amazonASIN: 1 });
 AmazonProductMappingSchema.index({ amazonStoreId: 1, amazonSKU: 1 });
-AmazonProductMappingSchema.index({ companyId: 1, HelixSKU: 1 });
+AmazonProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 AmazonProductMappingSchema.index({ isActive: 1, syncInventory: 1 });
 AmazonProductMappingSchema.index({ fulfillmentType: 1, isActive: 1 });
 

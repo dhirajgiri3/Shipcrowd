@@ -229,7 +229,7 @@ export function StatusCard({
                                 <img src={carrierLogo} alt={carrier} className="h-full w-full object-contain object-left" />
                             </div>
                         ) : (
-                            <span className="text-sm font-semibold text-[var(--text-primary)]">{carrier || 'Helix'}</span>
+                            <span className="text-sm font-semibold text-[var(--text-primary)]">{carrier || 'Shipcrowd'}</span>
                         )}
                         {serviceType && (
                             <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">{serviceType}</p>

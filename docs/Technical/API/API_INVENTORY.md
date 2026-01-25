@@ -1,4 +1,4 @@
-# Helix API Inventory
+# Shipcrowd API Inventory
 
 **Version**: 1.0
 **Base URL**: `http://localhost:5005/api/v1` (Development)

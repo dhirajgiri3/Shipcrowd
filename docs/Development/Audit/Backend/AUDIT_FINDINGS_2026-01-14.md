@@ -4,7 +4,7 @@
 > **Key Action:** Focus on **wiring existing services** rather than building from scratch.
 > See [AUDIT_VERIFICATION_2026-01-14.md](file:///Users/dhirajgiri/.gemini/antigravity/brain/c2b7a7af-c0f5-41aa-85a0-6bf3e70e89f5/AUDIT_VERIFICATION_2026-01-14.md) for full details.
 
-# Helix Backend: Comprehensive Audit Report
+# Shipcrowd Backend: Comprehensive Audit Report
 **Date:** January 14, 2026
 **Conducted By:** Claude Code AI + Web Research + BlueShip Analysis
 **Scope:** Complete backend system audit (all files in `/server/src`)

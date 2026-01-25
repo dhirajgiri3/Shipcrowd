@@ -1,4 +1,4 @@
-te# Helix Backend Master Development Plan
+te# Shipcrowd Backend Master Development Plan
 ## CANON Methodology - Week 1-2 Detailed Implementation
 
 **Created:** December 25, 2025
@@ -13,7 +13,7 @@ te# Helix Backend Master Development Plan
 ## EXECUTIVE SUMMARY
 
 ### Implementation Scope: Week 1-2
-This document provides **extremely detailed, day-by-day execution plans** for the first 2 weeks of Helix backend development following CANON AI-native methodology.
+This document provides **extremely detailed, day-by-day execution plans** for the first 2 weeks of Shipcrowd backend development following CANON AI-native methodology.
 
 **Week 1:** Foundation, infrastructure, context packages, race condition fixes
 **Week 2:** Velocity Shipfast courier integration (12 API endpoints)
@@ -60,15 +60,15 @@ By end of Week 2:
 **Agent:** Claude Sonnet
 **Prompt Pattern:**
 ```
-You are establishing comprehensive backend development context for Helix.
+You are establishing comprehensive backend development context for Shipcrowd.
 
-PROJECT: Helix - Next-gen shipping aggregator platform
+PROJECT: Shipcrowd - Next-gen shipping aggregator platform
 CURRENT STATE: 24% backend complete, clean architecture established
 GOAL: Create master context for AI-native development
 
 Based on:
 - docs/Backend-Gap-Analysis.md
-- docs/Helix_COMPLETE_FEATURE_LIST.md
+- docs/Shipcrowd_COMPLETE_FEATURE_LIST.md
 - Current codebase analysis
 
 Generate master context including:
@@ -89,7 +89,7 @@ Make it detailed enough for any AI session to understand project in 5 minutes.
 # MASTER_CONTEXT.md
 
 ## Project Overview
-- What Helix is
+- What Shipcrowd is
 - Target users
 - Core value proposition
 - Competitive advantages
@@ -4744,7 +4744,7 @@ export class ShippingLabelGenerator extends PDFGenerator {
     this.doc
       .fontSize(8)
       .font('Helvetica')
-      .text('Powered by Helix', { align: 'center' })
+      .text('Powered by Shipcrowd', { align: 'center' })
       .text(new Date().toLocaleString(), { align: 'center' });
 
     return await this.finalize();
@@ -4779,7 +4779,7 @@ export class S3Service {
       region: process.env.AWS_REGION || 'ap-south-1'
     });
 
-    this.bucket = process.env.AWS_S3_BUCKET || 'Helix-documents';
+    this.bucket = process.env.AWS_S3_BUCKET || 'Shipcrowd-documents';
   }
 
   async uploadPDF(
@@ -4831,7 +4831,7 @@ export class S3Service {
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_REGION=ap-south-1
-AWS_S3_BUCKET=Helix-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 ```
 
 **Deliverable:** S3 service configured
@@ -5401,7 +5401,7 @@ describe('Document Service Integration Tests', () => {
       const signedUrl = await documentService.getSignedDownloadUrl(document._id);
 
       expect(signedUrl).toContain('X-Amz-Signature');
-      expect(signedUrl).toContain('Helix-documents');
+      expect(signedUrl).toContain('Shipcrowd-documents');
     });
 
     it('should expire signed URL after configured time', async () => {
@@ -5526,7 +5526,7 @@ Generate a shipping label PDF for a shipment.
     "_id": "60d5ec49f1b2c72b8c8e4f1b",
     "type": "SHIPPING_LABEL",
     "fileName": "label-AWB123456-1640000000000.pdf",
-    "s3Url": "https://Helix-documents.s3.amazonaws.com/labels/...",
+    "s3Url": "https://Shipcrowd-documents.s3.amazonaws.com/labels/...",
     "metadata": {
       "awbNumber": "AWB123456"
     },
@@ -5589,7 +5589,7 @@ Get a signed S3 URL for downloading the document.
 {
   "success": true,
   "data": {
-    "downloadUrl": "https://Helix-documents.s3.amazonaws.com/...?X-Amz-Signature=..."
+    "downloadUrl": "https://Shipcrowd-documents.s3.amazonaws.com/...?X-Amz-Signature=..."
   }
 }
 ```
@@ -5734,7 +5734,7 @@ PDFKit-based document generation (labels, invoices, manifests) with S3 storage.
 ```bash
 AWS_ACCESS_KEY_ID=xxxxx
 AWS_SECRET_ACCESS_KEY=xxxxx
-AWS_S3_BUCKET=Helix-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 AWS_REGION=ap-south-1
 ```
 
@@ -5834,7 +5834,7 @@ RAZORPAY_WEBHOOK_SECRET=xxxxx
 # AWS S3
 AWS_ACCESS_KEY_ID=xxxxx
 AWS_SECRET_ACCESS_KEY=xxxxx
-AWS_S3_BUCKET=Helix-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 AWS_REGION=ap-south-1
 ```
 
@@ -7675,18 +7675,18 @@ Create week 5 implementation summary documenting 15+ new files created, test cov
 
 **Objectives:**
 1. Implement Shopify OAuth authentication and app installation
-2. Build order sync engine (pull orders from Shopify → Helix)
-3. Create inventory sync system (push stock from Helix → Shopify)
+2. Build order sync engine (pull orders from Shopify → Shipcrowd)
+3. Create inventory sync system (push stock from Shipcrowd → Shopify)
 4. Implement webhook handlers for real-time updates
 5. Build product mapping system for SKU matching
 6. Achieve 75%+ test coverage for e-commerce integrations
 
 **Key Deliverables:**
 - Shopify app configuration and OAuth flow
-- Order sync service (pull orders, map to Helix format)
+- Order sync service (pull orders, map to Shipcrowd format)
 - Inventory sync service (push stock levels, handle variants)
 - Webhook handlers (order/create, order/update, product/update)
-- Product mapping interface (Shopify SKU ↔ Helix SKU)
+- Product mapping interface (Shopify SKU ↔ Shipcrowd SKU)
 - E-commerce integration API endpoints
 
 ---
@@ -7780,9 +7780,9 @@ interface IProductMapping {
   shopifyTitle: string;
   shopifyBarcode?: string;
 
-  // Helix product
-  HelixSKU: string;
-  HelixProductName: string;
+  // Shipcrowd product
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
 
   // Mapping details
   mappingType: 'AUTO' | 'MANUAL';
@@ -8028,16 +8028,16 @@ router.delete('/stores/:storeId', authenticate, controller.disconnectStore.bind(
 #### **Day 2 (Tuesday): Order Sync Engine**
 
 **Agent:** Cursor
-**Focus:** Pull orders from Shopify, map to Helix format, create orders
+**Focus:** Pull orders from Shopify, map to Shipcrowd format, create orders
 **Files:** 3 new, 2 updated
 
 **Morning (3hrs): Task 2.1-2.3 - Order Sync Service**
 
-Create ShopifyOrderSyncService with `fetchOrders()` using Shopify GraphQL API (orders query with pagination cursor, filter by created_at/updated_at). Implement `mapShopifyOrderToHelix()` transforming Shopify order schema to Helix Order model (map line_items to orderItems, customer to recipientDetails, shipping_address to address). Handle variant SKU mapping, discount codes, shipping method extraction, and order notes preservation.
+Create ShopifyOrderSyncService with `fetchOrders()` using Shopify GraphQL API (orders query with pagination cursor, filter by created_at/updated_at). Implement `mapShopifyOrderToShipcrowd()` transforming Shopify order schema to Shipcrowd Order model (map line_items to orderItems, customer to recipientDetails, shipping_address to address). Handle variant SKU mapping, discount codes, shipping method extraction, and order notes preservation.
 
 **Afternoon (3hrs): Task 2.4-2.6 - Order Creation Integration**
 
-Update OrderService with `createFromShopifyOrder()` method that validates mapped order data, creates Order document with `shopifyOrderId` field for bidirectional linking. Implement status mapping: Shopify's `financial_status=paid` → Helix `PAID`, `fulfillment_status=fulfilled` → `FULFILLED`, default → `PENDING`. Add duplicate order prevention using `shopifyOrderId` unique index check before creation.
+Update OrderService with `createFromShopifyOrder()` method that validates mapped order data, creates Order document with `shopifyOrderId` field for bidirectional linking. Implement status mapping: Shopify's `financial_status=paid` → Shipcrowd `PAID`, `fulfillment_status=fulfilled` → `FULFILLED`, default → `PENDING`. Add duplicate order prevention using `shopifyOrderId` unique index check before creation.
 
 **Evening (2hrs): Task 2.7-2.9 - Sync Scheduling**
 
@@ -8062,7 +8062,7 @@ Create Bull queue ShopifyOrderSyncJob with cron schedule (every 15 mins) calling
 
 **Morning (3hrs): Task 3.1-3.3 - Inventory Sync Service**
 
-Create ShopifyInventorySyncService with `pushInventoryToShopify()` using Shopify GraphQL inventoryItemUpdate mutation. Implement `syncProductVariantInventory()` that maps Helix SKU to Shopify variant_id via ProductMapping, then updates available quantity at specific location_id. Add `batchInventorySync()` processing 50 SKUs per batch with rate limiting (2 requests/second) to avoid Shopify API throttling. Track sync status in InventorySyncLog model.
+Create ShopifyInventorySyncService with `pushInventoryToShopify()` using Shopify GraphQL inventoryItemUpdate mutation. Implement `syncProductVariantInventory()` that maps Shipcrowd SKU to Shopify variant_id via ProductMapping, then updates available quantity at specific location_id. Add `batchInventorySync()` processing 50 SKUs per batch with rate limiting (2 requests/second) to avoid Shopify API throttling. Track sync status in InventorySyncLog model.
 
 **Afternoon (3hrs): Task 3.4-3.7 - Webhook Handlers**
 
@@ -8092,11 +8092,11 @@ Create ShopifyWebhookController with POST endpoints: /webhooks/shopify/orders/cr
 
 **Morning (3hrs): Task 4.1-4.3 - Product Mapping**
 
-Create ProductMappingService with `autoMapProducts()` that matches Helix SKUs to Shopify variant SKUs using fuzzy string matching (Levenshtein distance). Create ProductMappingController with endpoints: GET /product-mappings (list all), POST /product-mappings (manual map), DELETE /product-mappings/:id (unmap). Implement `bulkImportMappings()` accepting CSV file (columns: HelixSKU, shopifyVariantId) and `exportMappings()` generating CSV for download. Store mappings in ProductMapping model with company scoping.
+Create ProductMappingService with `autoMapProducts()` that matches Shipcrowd SKUs to Shopify variant SKUs using fuzzy string matching (Levenshtein distance). Create ProductMappingController with endpoints: GET /product-mappings (list all), POST /product-mappings (manual map), DELETE /product-mappings/:id (unmap). Implement `bulkImportMappings()` accepting CSV file (columns: ShipcrowdSKU, shopifyVariantId) and `exportMappings()` generating CSV for download. Store mappings in ProductMapping model with company scoping.
 
 **Afternoon (3hrs): Task 4.4-4.6 - Unit Tests**
 
-Create ShopifyOAuthService.test.ts testing `initiateOAuth()` redirect URL generation, `handleCallback()` token exchange, and `refreshAccessToken()` expiry handling. Create ShopifyOrderSyncService.test.ts with `fetchOrders()` pagination tests, `mapShopifyOrderToHelix()` field mapping validation, and error handling for invalid orders. Create ShopifyInventorySyncService.test.ts with `batchInventorySync()` batch processing, rate limiting verification, and Shopify API error retry logic.
+Create ShopifyOAuthService.test.ts testing `initiateOAuth()` redirect URL generation, `handleCallback()` token exchange, and `refreshAccessToken()` expiry handling. Create ShopifyOrderSyncService.test.ts with `fetchOrders()` pagination tests, `mapShopifyOrderToShipcrowd()` field mapping validation, and error handling for invalid orders. Create ShopifyInventorySyncService.test.ts with `batchInventorySync()` batch processing, rate limiting verification, and Shopify API error retry logic.
 
 **Evening (2hrs): Task 4.7-4.9 - Integration Tests**
 
@@ -8155,8 +8155,8 @@ Create week 6 implementation summary documenting OAuth implementation, order syn
 
 ✅ **Order Sync Complete (100%)**
 - Pull orders from Shopify with pagination
-- Order mapping to Helix format
-- Automatic order creation in Helix
+- Order mapping to Shipcrowd format
+- Automatic order creation in Shipcrowd
 - Background sync job with configurable intervals
 - Manual sync trigger endpoint
 

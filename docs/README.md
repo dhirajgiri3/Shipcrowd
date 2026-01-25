@@ -1,6 +1,6 @@
-# Helix Documentation
+# Shipcrowd Documentation
 
-Welcome to the Helix documentation! This directory contains all project, development, technical, and design documentation organized in a deep hierarchical structure.
+Welcome to the Shipcrowd documentation! This directory contains all project, development, technical, and design documentation organized in a deep hierarchical structure.
 
 ## 📚 Navigation
 

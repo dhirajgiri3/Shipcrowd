@@ -173,7 +173,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       warehouse.name,
       velocityWarehouseId,
       {
-        email: warehouse.contactInfo.email || 'noreply@Helix.com',
+        email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
         phone: warehouse.contactInfo.phone,
         contactName: warehouse.contactInfo.name,
         address: {
@@ -577,7 +577,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       weight: packageDetails.weight,
       reason: reason || 'RTO - Return to Origin',
       vendor_details: {
-        email: warehouse.contactInfo.email || 'noreply@Helix.com',
+        email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
         phone: warehouse.contactInfo.phone,
         name: warehouse.contactInfo.name,
         address: warehouse.address.line1,

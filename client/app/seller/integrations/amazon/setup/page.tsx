@@ -260,7 +260,7 @@ export default function AmazonIntegrationPage() {
                         <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                             <li>1. Go to Settings → User Permissions in Seller Central</li>
                             <li>2. Visit Apps & Services</li>
-                            <li>3. Authorize Helix to access your account</li>
+                            <li>3. Authorize Shipcrowd to access your account</li>
                             <li>4. Copy the MWS Auth Token provided</li>
                         </ol>
                     </div>

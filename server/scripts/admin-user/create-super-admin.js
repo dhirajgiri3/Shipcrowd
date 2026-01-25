@@ -8,7 +8,7 @@
  * - Complete KYC verification
  * - Access to all seeded data
  * 
- * Email: admin@helix.com
+ * Email: admin@Shipcrowd.com
  * Password: Admin@123456
  */
 
@@ -21,7 +21,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd';
-const ADMIN_EMAIL = 'admin@helix.com';
+const ADMIN_EMAIL = 'admin@Shipcrowd.com';
 const ADMIN_PASSWORD = 'Admin@123456';
 
 async function createSuperAdminUser() {
@@ -64,13 +64,13 @@ async function createSuperAdminUser() {
             // Create new company if none exists
             console.log('  ⚠️  No existing company found, creating new one...');
             companyId = new ObjectId();
-            companyName = 'Helix Super Admin Enterprise';
+            companyName = 'Shipcrowd Super Admin Enterprise';
             walletBalance = 500000;
 
             const newCompany = {
                 _id: companyId,
                 name: companyName,
-                displayName: 'Helix Admin',
+                displayName: 'Shipcrowd Admin',
                 businessType: 'ecommerce',
                 status: 'approved',
                 tier: 'production',
@@ -85,10 +85,10 @@ async function createSuperAdminUser() {
                 contact: {
                     email: ADMIN_EMAIL,
                     phone: '+91-98765-00001',
-                    website: 'https://helix.com',
+                    website: 'https://Shipcrowd.com',
                 },
                 gst: {
-                    number: '27HELIX1234A1Z5',
+                    number: '27Shipcrowd1234A1Z5',
                     verified: true,
                     verifiedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
                 },
@@ -176,7 +176,7 @@ async function createSuperAdminUser() {
             _id: userId,
             email: ADMIN_EMAIL,
             password: hashedPassword,
-            name: 'Helix Super Admin',
+            name: 'Shipcrowd Super Admin',
 
             // ✅ DUAL ACCESS: Admin role + Company association
             role: 'admin',           // Admin dashboard access
@@ -210,7 +210,7 @@ async function createSuperAdminUser() {
                 gender: 'other',
                 timezone: 'Asia/Kolkata',
                 preferredCurrency: 'INR',
-                website: 'https://helix.com',
+                website: 'https://Shipcrowd.com',
                 bio: 'Super Admin - Full Platform Access',
             },
 
@@ -259,12 +259,12 @@ async function createSuperAdminUser() {
             kycType: 'business',
             documents: {
                 pan: {
-                    number: 'HELIX1234A',
+                    number: 'Shipcrowd1234A',
                     verified: true,
                     verifiedAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
                 },
                 gstin: {
-                    number: '27HELIX1234A1Z5',
+                    number: '27Shipcrowd1234A1Z5',
                     verified: true,
                     verifiedAt: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
                 },

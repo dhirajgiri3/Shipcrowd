@@ -73,7 +73,7 @@ function generateAwsCredentials(): { accessKeyId: string; secretAccessKey: strin
     return {
         accessKeyId: `AKIATEST${generateAlphanumeric(16).toUpperCase()}`,
         secretAccessKey: generateHexString(40),
-        roleArn: `arn:aws:iam::${randomInt(100000000000, 999999999999)}:role/HelixSellerRole`,
+        roleArn: `arn:aws:iam::${randomInt(100000000000, 999999999999)}:role/ShipcrowdSellerRole`,
     };
 }
 
@@ -161,7 +161,7 @@ function generateShopifyStore(companyId: any, createdBy: any): any {
         webhooks: SHOPIFY_WEBHOOK_TOPICS.slice(0, randomInt(2, 5)).map(topic => ({
             topic,
             shopifyWebhookId: String(randomInt(1000000, 9999999)),
-            address: `https://api.Helix.com/webhooks/shopify/${generateHexString(16)}`,
+            address: `https://api.Shipcrowd.com/webhooks/shopify/${generateHexString(16)}`,
             isActive: true,
             createdAt: installedAt,
         })),
@@ -236,7 +236,7 @@ function generateAmazonStore(companyId: any, createdBy: any): any {
         awsAccessKeyId: aws.accessKeyId,
         awsSecretAccessKey: aws.secretAccessKey,
         roleArn: aws.roleArn,
-        sqsQueueUrl: `https://sqs.${marketplace.region}.amazonaws.com/${randomInt(100000000000, 999999999999)}/Helix-orders`,
+        sqsQueueUrl: `https://sqs.${marketplace.region}.amazonaws.com/${randomInt(100000000000, 999999999999)}/Shipcrowd-orders`,
         isActive: status !== 'error',
         isPaused: status === 'paused',
         lastSyncAt: subDays(new Date(), randomInt(0, 3)),

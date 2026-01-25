@@ -1,4 +1,4 @@
-# Flipkart Seller API Integration Guide for Helix
+# Flipkart Seller API Integration Guide for Shipcrowd
 
 **API Version**: Developer API v3.0  
 **Last Updated**: January 7, 2026  
@@ -26,7 +26,7 @@
 
 ## Overview
 
-Helix integrates with Flipkart Seller API v3 to enable marketplace sellers to manage their orders, shipments, and fulfillment operations. This integration allows:
+Shipcrowd integrates with Flipkart Seller API v3 to enable marketplace sellers to manage their orders, shipments, and fulfillment operations. This integration allows:
 
 - **Order Ingestion**: Fetch approved orders awaiting fulfillment
 - **Shipment Management**: Generate labels, mark as ready to dispatch
@@ -48,7 +48,7 @@ graph TD
         AT[Access Token Cache]
     end
 
-    subgraph Helix ["Helix Backend"]
+    subgraph Shipcrowd ["Shipcrowd Backend"]
         P[Polling Service]
         NH[Notification Handler]
         OM[Order Manager]
@@ -107,8 +107,8 @@ Flipkart supports two OAuth 2.0 flows depending on your application type:
 3. Click **"Create New Access"**
 4. Fill in details:
    ```
-   Application Name: Helix Integration
-   Description: Order and shipment management for Helix
+   Application Name: Shipcrowd Integration
+   Description: Order and shipment management for Shipcrowd
    ```
 5. Click **"Submit"**
 
@@ -138,9 +138,9 @@ After creation, you'll receive:
 3. Click **"Create Application"**
 4. Fill in details:
    ```
-   Application Name: Helix Multi-Seller Integration
+   Application Name: Shipcrowd Multi-Seller Integration
    Description: Aggregator platform for order management
-   Redirect URL: https://Helix.com/auth/flipkart/callback
+   Redirect URL: https://Shipcrowd.com/auth/flipkart/callback
    ```
    **⚠️ Important**: Redirect URL must be HTTPS.
 
@@ -217,7 +217,7 @@ res.redirect(authorizationUrl);
 
 After seller authorizes, Flipkart redirects to:
 ```
-https://Helix.com/auth/flipkart/callback?code=AUTH_CODE&state=CSRF_TOKEN
+https://Shipcrowd.com/auth/flipkart/callback?code=AUTH_CODE&state=CSRF_TOKEN
 ```
 
 **Step 3: Exchange Code for Token**
@@ -229,7 +229,7 @@ curl -X POST https://api.flipkart.net/oauth-service/oauth/token \
   -d "code=AUTH_CODE" \
   -d "client_id=app_xxxxxxxxxxxxx" \
   -d "client_secret=YOUR_SECRET" \
-  -d "redirect_uri=https://Helix.com/auth/flipkart/callback"
+  -d "redirect_uri=https://Shipcrowd.com/auth/flipkart/callback"
 ```
 
 **Response**:
@@ -597,11 +597,11 @@ async function generateAndDownloadLabels(shipmentIds, sellerId) {
     await saveLabelToS3(labelBuffer, `labels/${labelResponse.shipmentId}.pdf`);
     await saveLabelToS3(invoiceBuffer, `invoices/${labelResponse.shipmentId}.pdf`);
     
-    await HelixOrder.updateOne(
+    await ShipcrowdOrder.updateOne(
       { channelShipmentId: labelResponse.shipmentId },
       {
-        'shipment.labelUrl': `https://s3.amazonaws.com/Helix/labels/${labelResponse.shipmentId}.pdf`,
-        'shipment.invoiceUrl': `https://s3.amazonaws.com/Helix/invoices/${labelResponse.shipmentId}.pdf`,
+        'shipment.labelUrl': `https://s3.amazonaws.com/Shipcrowd/labels/${labelResponse.shipmentId}.pdf`,
+        'shipment.invoiceUrl': `https://s3.amazonaws.com/Shipcrowd/invoices/${labelResponse.shipmentId}.pdf`,
         'shipment.status': 'PACKED'
       }
     );
@@ -644,7 +644,7 @@ async function markReadyForDispatch(shipmentIds, sellerId) {
   
   // Update successful shipments
   for (const shipmentId of response.successful) {
-    await HelixOrder.updateOne(
+    await ShipcrowdOrder.updateOne(
       { channelShipmentId: shipmentId },
       {
         'shipment.status': 'READY_TO_DISPATCH',
@@ -669,7 +669,7 @@ async function markReadyForDispatch(shipmentIds, sellerId) {
 Self-Ship APIs allow sellers to use their own logistics partners instead of Flipkart's default couriers.
 
 **Use Cases**:
-- Using Helix's Velocity aggregator
+- Using Shipcrowd's Velocity aggregator
 - Preferred courier contracts
 - Specific delivery requirements
 
@@ -756,7 +756,7 @@ async function selfShipDispatch(order, shipment, sellerId) {
     sellerId
   );
   
-  await HelixOrder.updateOne(
+  await ShipcrowdOrder.updateOne(
     { _id: order._id },
     {
       'shipment.dispatchedToFlipkart': true,
@@ -892,7 +892,7 @@ Flipkart provides a push-based notification service to avoid aggressive polling.
 **Setup** (via Seller Dashboard):
 1. Navigate to **Settings** → **Notifications**
 2. Click **"Configure Webhook"**
-3. Enter webhook URL: `https://Helix.com/webhooks/flipkart`
+3. Enter webhook URL: `https://Shipcrowd.com/webhooks/flipkart`
 4. Select notification types
 5. Save configuration
 
@@ -1029,7 +1029,7 @@ setInterval(async () => {
   });
   
   for (const shipment of shipments) {
-    await createHelixOrder(shipment, sellerId);
+    await createShipcrowdOrder(shipment, sellerId);
   }
 }, 5 * 60 * 1000);
 ```
@@ -1065,7 +1065,7 @@ async function safeFlipkartCall(endpoint, options, sellerId, retries = 3) {
 **Document Version**: 2.0 (Comprehensive)  
 **Last Reviewed**: January 7, 2026  
 **Next Review**: April 1, 2026  
-**Maintained By**: Helix Technical Team
+**Maintained By**: Shipcrowd Technical Team
 
 **Official References**:
 - Developer Portal: https://seller.flipkart.com/api-docs

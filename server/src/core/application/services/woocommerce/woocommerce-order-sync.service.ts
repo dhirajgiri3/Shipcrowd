@@ -137,8 +137,8 @@ export default class WooCommerceOrderSyncService {
             }
           }
 
-          // Transform WooCommerce order to Helix order
-          const mappedOrder = this.mapWooCommerceOrderToHelix(wooOrder, store);
+          // Transform WooCommerce order to Shipcrowd order
+          const mappedOrder = this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
 
           // Create or update order
           if (existingOrder) {
@@ -149,7 +149,7 @@ export default class WooCommerceOrderSyncService {
 
             logger.debug('WooCommerce order updated', {
               orderId: wooOrder.id,
-              HelixOrderId: existingOrder._id,
+              ShipcrowdOrderId: existingOrder._id,
             });
           } else {
             // Create new order
@@ -158,7 +158,7 @@ export default class WooCommerceOrderSyncService {
 
             logger.debug('WooCommerce order created', {
               orderId: wooOrder.id,
-              HelixOrderId: newOrder._id,
+              ShipcrowdOrderId: newOrder._id,
             });
           }
         } catch (error: any) {
@@ -263,7 +263,7 @@ export default class WooCommerceOrderSyncService {
       });
 
       // Transform order
-      const mappedOrder = this.mapWooCommerceOrderToHelix(wooOrder, store);
+      const mappedOrder = this.mapWooCommerceOrderToShipcrowd(wooOrder, store);
 
       // Create or update
       let order;
@@ -276,7 +276,7 @@ export default class WooCommerceOrderSyncService {
 
       logger.info('WooCommerce order synced', {
         wooOrderId,
-        HelixOrderId: order._id,
+        ShipcrowdOrderId: order._id,
       });
 
       return order;
@@ -292,10 +292,10 @@ export default class WooCommerceOrderSyncService {
   }
 
   /**
-   * Transform WooCommerce order to Helix order format
-   * Maps all fields from WooCommerce schema to Helix schema
+   * Transform WooCommerce order to Shipcrowd order format
+   * Maps all fields from WooCommerce schema to Shipcrowd schema
    */
-  private static mapWooCommerceOrderToHelix(
+  private static mapWooCommerceOrderToShipcrowd(
     wooOrder: WooCommerceOrder,
     store: any
   ): any {
@@ -379,14 +379,14 @@ export default class WooCommerceOrderSyncService {
   }
 
   /**
-   * Generate Helix order number from WooCommerce order
+   * Generate Shipcrowd order number from WooCommerce order
    */
   private static generateOrderNumber(wooOrder: WooCommerceOrder): string {
     return `WOO-${wooOrder.number}`;
   }
 
   /**
-   * Map WooCommerce order status to Helix payment status
+   * Map WooCommerce order status to Shipcrowd payment status
    */
   private static mapPaymentStatus(
     wooStatus: string
@@ -405,7 +405,7 @@ export default class WooCommerceOrderSyncService {
   }
 
   /**
-   * Map WooCommerce order status to Helix order status
+   * Map WooCommerce order status to Shipcrowd order status
    */
   private static mapOrderStatus(wooStatus: string): string {
     const statusMap: Record<string, string> = {

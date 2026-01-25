@@ -95,7 +95,7 @@ export default function CODSettingsPage() {
 
     // Mock bank account data - in production, fetch from API
     const bankAccount = {
-        accountHolderName: 'Helix Seller',
+        accountHolderName: 'Shipcrowd Seller',
         bankName: 'HDFC Bank',
         accountNumber: '****1234',
         ifsc: 'HDFC0001234',

@@ -151,7 +151,7 @@ export default class WooCommerceOAuthService {
             enabled: true,
             autoSync: false, // Manual inventory sync by default
             syncInterval: 60, // 1 hour
-            syncDirection: 'ONE_WAY', // Helix → WooCommerce
+            syncDirection: 'ONE_WAY', // Shipcrowd → WooCommerce
             errorCount: 0,
           },
           webhooksEnabled: true,
@@ -216,7 +216,7 @@ export default class WooCommerceOAuthService {
         consumerSecret: store.decryptConsumerSecret(),
       });
 
-      const appUrl = process.env.APP_URL || 'https://api.Helix.com';
+      const appUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
       const results: WebhookRegistrationResult[] = [];
 
       for (const topic of WEBHOOK_TOPICS) {
@@ -226,7 +226,7 @@ export default class WooCommerceOAuthService {
 
           // Create webhook in WooCommerce
           const webhook = await client.post<WooCommerceWebhook>('/webhooks', {
-            name: `Helix - ${topic}`,
+            name: `Shipcrowd - ${topic}`,
             topic,
             delivery_url: `${appUrl}/api/v1/webhooks/woocommerce/${topic.replace('.', '/')}`,
             secret: webhookSecret,

@@ -1477,7 +1477,7 @@ export const sendVerificationSMS = async (req, res, next) => {
     await user.save();
 
     // Send SMS via Twilio/etc
-    await sendSMS(phone, `Your Helix verification code: ${otp}`);
+    await sendSMS(phone, `Your Shipcrowd verification code: ${otp}`);
 
     sendSuccess(res, null, 'SMS sent to your phone');
   } catch (error) {

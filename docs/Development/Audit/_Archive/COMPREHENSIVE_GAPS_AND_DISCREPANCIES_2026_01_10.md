@@ -1,4 +1,4 @@
-# Helix: Comprehensive Gaps & Discrepancies Audit
+# Shipcrowd: Comprehensive Gaps & Discrepancies Audit
 **Date:** January 10, 2026
 **Scope:** Complete analysis of planned vs implemented features, missing APIs, security vulnerabilities, and technical debt
 **Status:** PRODUCTION READINESS BLOCKED - 11 critical items preventing launch
@@ -8,7 +8,7 @@
 
 ## EXECUTIVE SUMMARY
 
-Helix is **NOT PRODUCTION READY** with the following critical blockers:
+Shipcrowd is **NOT PRODUCTION READY** with the following critical blockers:
 
 | Issue Category | Count | Severity | Can Launch? |
 |---|---|---|---|
@@ -237,8 +237,8 @@ if (isDevelopmentMode) {
 ```
 1. Orders Delivered → COD collected by courier (₹10,000)
 2. Courier deposits to Velocity (₹9,800 after fee)
-3. Velocity deposits to Helix (₹9,750 after fee)
-4. Helix calculates seller payout:
+3. Velocity deposits to Shipcrowd (₹9,750 after fee)
+4. Shipcrowd calculates seller payout:
    - COD: ₹10,000
    - Shipping deduction: -₹500
    - Dispute deduction: -₹200
@@ -528,7 +528,7 @@ const mockReverseAwb = `RMA-${Date.now()}`; // ❌ Fake format
    - Line: "currentInventory = 0; // Not fetching from InventoryService"
 
 ❌ Product mapping placeholder
-   - "TODO: Check if SKU exists in Helix inventory"
+   - "TODO: Check if SKU exists in Shipcrowd inventory"
 
 ❌ Customer sync not implemented
    - "TODO: Implement customer sync if needed"
@@ -918,7 +918,7 @@ Without dispute resolution system:
 
 ## CONCLUSION
 
-Helix is **NOT PRODUCTION READY** due to 11 critical blockers spanning security, missing features, incomplete integrations, and technical debt. The platform would require **7-9 weeks of focused development** to achieve production readiness.
+Shipcrowd is **NOT PRODUCTION READY** due to 11 critical blockers spanning security, missing features, incomplete integrations, and technical debt. The platform would require **7-9 weeks of focused development** to achieve production readiness.
 
 **Key Findings:**
 - ✅ Good: Marketplace integrations, core order workflow, analytics

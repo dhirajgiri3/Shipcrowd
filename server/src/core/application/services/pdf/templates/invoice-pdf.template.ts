@@ -8,7 +8,7 @@ import { BasePDFService } from '../base-pdf.service';
 import { PDFPartyDetails, PDFTableColumn } from '../pdf.types';
 import { IInvoice } from '../../../../../infrastructure/database/mongoose/models/finance/billing/invoice.model';
 import { ICompany } from '../../../../../infrastructure/database/mongoose/models/organization/core/company.model';
-import { Helix, INVOICE_TERMS } from '../../../../../shared/constants/shipcrowd.constants';
+import { Shipcrowd, INVOICE_TERMS } from '../../../../../shared/constants/shipcrowd.constants';
 import { convertToIndianWords, formatIndianNumber } from '../../../../../shared/utils/number-to-words.util';
 import { formatINR } from '../../../../../shared/utils/indian-currency.util';
 import { formatInvoiceDate, formatInvoiceDateTime } from '../../../../../shared/utils/date-format.util';
@@ -99,17 +99,17 @@ export class InvoicePDFTemplate {
     }
 
     /**
-     * Build seller (Helix) details from constants
+     * Build seller (Shipcrowd) details from constants
      */
     private buildSellerDetails(): PDFPartyDetails {
         return {
-            name: Helix.LEGAL_NAME,
-            gstin: Helix.GSTIN,
-            pan: Helix.PAN,
-            address: Helix.ADDRESS,
+            name: Shipcrowd.LEGAL_NAME,
+            gstin: Shipcrowd.GSTIN,
+            pan: Shipcrowd.PAN,
+            address: Shipcrowd.ADDRESS,
             contact: {
-                email: Helix.CONTACT.email,
-                phone: Helix.CONTACT.phone,
+                email: Shipcrowd.CONTACT.email,
+                phone: Shipcrowd.CONTACT.phone,
             },
         };
     }

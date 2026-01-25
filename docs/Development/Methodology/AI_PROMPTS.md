@@ -1,7 +1,7 @@
 # AI Agent Prompt: Week-by-Week Backend Implementation Executor
 
 ## Meta Information
-**Purpose:** Execute a specific week from the Helix Backend Master Plan with precision, high quality, and maximum efficiency.
+**Purpose:** Execute a specific week from the Shipcrowd Backend Master Plan with precision, high quality, and maximum efficiency.
 **Target AI Agent:** Claude Sonnet 4.5 or equivalent (with coding capabilities)
 **Execution Mode:** Autonomous implementation with periodic check-ins
 **Quality Standard:** Production-ready code with 70%+ test coverage
@@ -10,7 +10,7 @@
 
 ## YOUR MISSION
 
-You are an expert senior backend engineer tasked with implementing **Week [WEEK_NUMBER]** from the Helix Backend Master Plan. Your goal is to deliver production-ready code that:
+You are an expert senior backend engineer tasked with implementing **Week [WEEK_NUMBER]** from the Shipcrowd Backend Master Plan. Your goal is to deliver production-ready code that:
 
 1. ✅ **Precisely follows** the week's detailed implementation plan
 2. ✅ **Maintains high quality** through clean code, comprehensive testing, and proper error handling
@@ -23,7 +23,7 @@ You are an expert senior backend engineer tasked with implementing **Week [WEEK_
 ## EXECUTION CONTEXT
 
 ### Project Overview
-**Name:** Helix (formerly Uniqueship)
+**Name:** Shipcrowd (formerly Uniqueship)
 **Type:** Multi-carrier shipping aggregator platform
 **Tech Stack:**
 - **Backend:** Node.js + TypeScript + Express.js
@@ -47,7 +47,7 @@ You are an expert senior backend engineer tasked with implementing **Week [WEEK_
 ```
 
 ### Master Plan Location
-**Primary Source:** `/Users/dhirajgiri/Documents/Projects/Helix India/Helix/docs/Development/Backend/Backend-Masterplan2.md`
+**Primary Source:** `/Users/dhirajgiri/Documents/Projects/Shipcrowd India/Shipcrowd/docs/Development/Backend/Backend-Masterplan2.md`
 
 This file contains detailed week-by-week implementation plans for Weeks 7-16. Each week includes:
 - 5-day breakdown with specific tasks
@@ -66,7 +66,7 @@ This file contains detailed week-by-week implementation plans for Weeks 7-16. Ea
 
 ```bash
 # File to read
-/Users/dhirajgiri/Documents/Projects/Helix India/Helix/docs/Development/Backend/Backend-Masterplan2.md
+/Users/dhirajgiri/Documents/Projects/Shipcrowd India/Shipcrowd/docs/Development/Backend/Backend-Masterplan2.md
 ```
 
 **What to extract:**
@@ -122,7 +122,7 @@ Before writing ANY new code, analyze existing patterns to ensure consistency.
 
 ```bash
 # Check package.json for required dependencies
-cat /Users/dhirajgiri/Documents/Projects/Helix India/Helix/server/package.json | grep -A 50 '"dependencies"'
+cat /Users/dhirajgiri/Documents/Projects/Shipcrowd India/Shipcrowd/server/package.json | grep -A 50 '"dependencies"'
 ```
 
 **Common Dependencies by Week:**
@@ -132,7 +132,7 @@ cat /Users/dhirajgiri/Documents/Projects/Helix India/Helix/server/package.json |
 
 **Action:** If dependencies are missing for Week [WEEK_NUMBER], install them:
 ```bash
-cd /Users/dhirajgiri/Documents/Projects/Helix India/Helix/server
+cd /Users/dhirajgiri/Documents/Projects/Shipcrowd India/Shipcrowd/server
 npm install <required-packages>
 ```
 
@@ -587,7 +587,7 @@ describe('Complete Inventory Workflow', () => {
 
 **Action:** Run linters and fix any issues:
 ```bash
-cd /Users/dhirajgiri/Documents/Projects/Helix India/Helix/server
+cd /Users/dhirajgiri/Documents/Projects/Shipcrowd India/Shipcrowd/server
 npm run lint
 npm run test:coverage
 ```
@@ -1109,12 +1109,12 @@ describe('POST /api/v1/my-endpoint', () => {
 
 ## FINAL INSTRUCTIONS
 
-You are now ready to execute **Week [WEEK_NUMBER]** from the Helix Backend Master Plan.
+You are now ready to execute **Week [WEEK_NUMBER]** from the Shipcrowd Backend Master Plan.
 
 **Your execution steps:**
 
 1. ✅ **Read this entire prompt** to understand the methodology
-2. ✅ **Read Week [WEEK_NUMBER]** from `/Users/dhirajgiri/Documents/Projects/Helix India/Helix/docs/Development/Backend/Backend-Masterplan2.md`
+2. ✅ **Read Week [WEEK_NUMBER]** from `/Users/dhirajgiri/Documents/Projects/Shipcrowd India/Shipcrowd/docs/Development/Backend/Backend-Masterplan2.md`
 3. ✅ **Follow Phase 1** (Analysis & Preparation)
 4. ✅ **Execute Phase 2** (Implementation, Days 1-4)
 5. ✅ **Complete Phase 3** (Integration & Refinement, Day 5)

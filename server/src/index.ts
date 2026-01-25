@@ -14,6 +14,7 @@ import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.j
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
+import CacheService from './infrastructure/utilities/cache.service';
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +33,9 @@ const startServer = async (): Promise<void> => {
         // Load Pincode Cache from CSV (in-memory for fast lookups)
         await PincodeLookupService.loadPincodesFromCSV();
         logger.info('Pincode cache loaded successfully');
+
+        // Initialize Cache Service (Redis or Memory)
+        await CacheService.initialize();
 
         // Initialize Queue Manager FIRST (creates all queues)
         await QueueManager.initialize();

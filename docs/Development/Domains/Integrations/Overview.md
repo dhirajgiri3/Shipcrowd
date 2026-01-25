@@ -11,7 +11,7 @@
 
 ### E-Commerce Platform Integration Strategy
 
-Helix integrates with major e-commerce platforms to enable seamless order fulfillment automation. Merchants connect their online stores once, and Helix automatically pulls orders, creates shipments, and pushes tracking/fulfillment updates back to the platform.
+Shipcrowd integrates with major e-commerce platforms to enable seamless order fulfillment automation. Merchants connect their online stores once, and Shipcrowd automatically pulls orders, creates shipments, and pushes tracking/fulfillment updates back to the platform.
 
 **Supported Platforms (2025 Roadmap):**
 1. **Shopify** (Week 6) ✅ - Market leader in India/Global
@@ -27,7 +27,7 @@ Helix integrates with major e-commerce platforms to enable seamless order fulfil
 │                 E-COMMERCE INTEGRATION FLOW                  │
 └─────────────────────────────────────────────────────────────┘
 
-PLATFORM                 Helix                 COURIER
+PLATFORM                 Shipcrowd                 COURIER
 ┌─────────┐             ┌─────────┐              ┌─────────┐
 │ Shopify │────────────▶│  Order  │─────────────▶│Velocity │
 │  Store  │  Webhook    │ Service │  API Call    │Shipfast │
@@ -55,7 +55,7 @@ PLATFORM                 Helix                 COURIER
 1. **OAuth Authentication**: Secure app installation with token-based access
 2. **Bi-Directional Sync**: Orders flow in, fulfillment/tracking flows out
 3. **Webhook-Based**: Real-time order notifications, no polling required
-4. **Product Mapping**: SKU mapping between platform and Helix
+4. **Product Mapping**: SKU mapping between platform and Shipcrowd
 5. **Inventory Sync**: Stock level updates pushed to platform
 6. **Multi-Store Support**: One company can connect multiple stores
 
@@ -238,9 +238,9 @@ export interface IProductMapping extends Document {
   platformTitle: string;
   platformBarcode?: string;
 
-  // Helix product identifiers
-  HelixSKU: string;
-  HelixProductName: string;
+  // Shipcrowd product identifiers
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
 
   // Mapping metadata
   mappingType: 'AUTO' | 'MANUAL';
@@ -286,12 +286,12 @@ const ProductMappingSchema = new Schema<IProductMapping>({
   },
   platformTitle: String,
   platformBarcode: String,
-  HelixSKU: {
+  ShipcrowdSKU: {
     type: String,
     required: true,
     index: true
   },
-  HelixProductName: String,
+  ShipcrowdProductName: String,
   mappingType: {
     type: String,
     enum: ['AUTO', 'MANUAL'],
@@ -326,7 +326,7 @@ const ProductMappingSchema = new Schema<IProductMapping>({
 
 // Indexes for quick lookups
 ProductMappingSchema.index({ companyId: 1, platformSKU: 1 });
-ProductMappingSchema.index({ companyId: 1, HelixSKU: 1 });
+ProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 ProductMappingSchema.index({ platformStoreId: 1, platformProductId: 1 });
 
 const ProductMapping = mongoose.model<IProductMapping>('ProductMapping', ProductMappingSchema);
@@ -516,7 +516,7 @@ export class ShopifyOAuthService {
    */
   private async registerWebhooks(shop: string, accessToken: string, storeId: string): Promise<void> {
     const shopDomain = this.normalizeShopDomain(shop);
-    const baseUrl = process.env.APP_URL || 'https://api.Helix.com';
+    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
 
     const webhooks = [
       {
@@ -704,7 +704,7 @@ export class ShopifyOrderSyncService {
       return;
     }
 
-    // Create order in Helix
+    // Create order in Shipcrowd
     await this.createOrderFromShopify(store, shopifyOrder);
 
     // Update sync stats
@@ -715,7 +715,7 @@ export class ShopifyOrderSyncService {
   }
 
   /**
-   * Create Helix order from Shopify order
+   * Create Shipcrowd order from Shopify order
    */
   private async createOrderFromShopify(store: IShopifyStore, shopifyOrder: ShopifyOrder): Promise<void> {
     // Map line items
@@ -733,7 +733,7 @@ export class ShopifyOrderSyncService {
           productId: item.product_id.toString(),
           variantId: item.variant_id.toString(),
           productName: item.title,
-          sku: mapping?.HelixSKU || item.sku,
+          sku: mapping?.ShipcrowdSKU || item.sku,
           quantity: item.quantity,
           unitPrice: parseFloat(item.price),
           totalPrice: parseFloat(item.price) * item.quantity
@@ -987,7 +987,7 @@ export class WooCommerceService {
    */
   async registerWebhooks(store: IWooCommerceStore): Promise<void> {
     const apiClient = this.createApiClient(store);
-    const baseUrl = process.env.APP_URL || 'https://api.Helix.com';
+    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
 
     const webhooks = [
       {
@@ -1515,7 +1515,7 @@ export class FlipkartOAuthService {
    */
   async registerWebhooks(store: IFlipkartStore): Promise<void> {
     const apiClient = await this.createApiClient(store);
-    const baseUrl = process.env.APP_URL || 'https://api.Helix.com';
+    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
     const webhookSecret = crypto.randomBytes(32).toString('hex');
 
     const webhookTopics = [
@@ -2266,12 +2266,12 @@ export class AmazonSPAPIService {
 - Orders automatically fulfilled by Amazon
 - Inventory tracked by Amazon
 - Tracking provided by Amazon
-- Helix syncs for reporting only
+- Shipcrowd syncs for reporting only
 
 **MFN (Merchant Fulfilled Network):**
 - Merchant handles fulfillment
-- Helix creates shipments
-- Helix pushes tracking to Amazon
+- Shipcrowd creates shipments
+- Shipcrowd pushes tracking to Amazon
 - Full lifecycle management
 
 ---
@@ -2290,7 +2290,7 @@ export class AmazonSPAPIService {
 **Day 2: Order Sync (8 hours)**
 - [ ] Implement ShopifyOrderSyncService
 - [ ] Create webhook handler for orders/create
-- [ ] Map Shopify orders to Helix orders
+- [ ] Map Shopify orders to Shipcrowd orders
 - [ ] Handle product mapping
 - [ ] Write unit tests
 
@@ -2331,7 +2331,7 @@ export class AmazonSPAPIService {
 **Day 2: Order Sync (8 hours)**
 - [ ] Implement WooCommerceOrderSyncService
 - [ ] Create webhook handlers
-- [ ] Map WooCommerce orders to Helix
+- [ ] Map WooCommerce orders to Shipcrowd
 - [ ] Handle product mapping
 - [ ] Test order sync
 
@@ -2415,7 +2415,7 @@ Add to `.env`:
 # Shopify Configuration
 SHOPIFY_API_KEY=your_shopify_api_key
 SHOPIFY_API_SECRET=your_shopify_api_secret
-SHOPIFY_REDIRECT_URI=https://api.Helix.com/api/v1/integrations/shopify/auth/callback
+SHOPIFY_REDIRECT_URI=https://api.Shipcrowd.com/api/v1/integrations/shopify/auth/callback
 
 # WooCommerce Configuration
 # (Keys are per-store, stored encrypted in database)
@@ -2433,7 +2433,7 @@ FLIPKART_API_BASE_URL=https://api.flipkart.net/sellers
 ENCRYPTION_KEY=your_64_char_hex_encryption_key
 
 # App URL
-APP_URL=https://api.Helix.com
+APP_URL=https://api.Shipcrowd.com
 ```
 
 ---

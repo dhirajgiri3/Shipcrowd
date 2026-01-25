@@ -64,10 +64,10 @@ router.post(
  * @route POST /api/v1/disputes/weight/:disputeId/resolve
  * @desc Resolve dispute (admin only)
  * @access Private (Admin)
- * @body outcome - Resolution outcome (seller_favor, Helix_favor, split, waived)
+ * @body outcome - Resolution outcome (seller_favor, Shipcrowd_favor, split, waived)
  * @body adjustedWeight - Optional adjusted weight
  * @body refundAmount - Refund amount if seller_favor
- * @body deductionAmount - Deduction amount if Helix_favor
+ * @body deductionAmount - Deduction amount if Shipcrowd_favor
  * @body reasonCode - Reason code for resolution
  * @body notes - Resolution notes
  */

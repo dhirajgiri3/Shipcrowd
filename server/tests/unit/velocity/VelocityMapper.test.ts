@@ -1,7 +1,7 @@
 /**
  * VelocityMapper Unit Tests
  *
- * Tests all data transformation functions between Helix and Velocity formats
+ * Tests all data transformation functions between Shipcrowd and Velocity formats
  * Coverage targets: 95%+
  */
 
@@ -286,7 +286,7 @@ describe('VelocityMapper', () => {
         'WHTEST123'
       );
 
-      expect(result.billing_email).toBe('noreply@Helix.com');
+      expect(result.billing_email).toBe('noreply@Shipcrowd.com');
     });
 
     it('should use warehouse email when provided', () => {
@@ -389,7 +389,7 @@ describe('VelocityMapper', () => {
       };
 
       const result = VelocityMapper.mapToWarehouseRequest(warehouseWithoutEmail);
-      expect(result.email).toBe('noreply@Helix.com');
+      expect(result.email).toBe('noreply@Shipcrowd.com');
     });
   });
 

@@ -1,5 +1,5 @@
 /**
- * Helix Design Tokens
+ * Shipcrowd Design Tokens
  * 
  * TypeScript constants for design system values.
  * Use these when CSS custom properties aren't accessible (e.g., in JS logic).

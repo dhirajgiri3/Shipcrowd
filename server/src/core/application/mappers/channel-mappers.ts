@@ -2,12 +2,12 @@
  * Channel Mappers
  *
  * Purpose: Centralized data transformation utilities for e-commerce platform integrations.
- * Provides consistent mapping between Shopify/WooCommerce data formats and Helix models.
+ * Provides consistent mapping between Shopify/WooCommerce data formats and Shipcrowd models.
  *
  * FEATURES:
- * - Shopify order → Helix order mapping
- * - WooCommerce order → Helix order mapping
- * - Helix shipment → Platform fulfillment mapping
+ * - Shopify order → Shipcrowd order mapping
+ * - WooCommerce order → Shipcrowd order mapping
+ * - Shipcrowd shipment → Platform fulfillment mapping
  * - Status mapping between platforms
  * - Address normalization
  * - Payment method detection
@@ -16,10 +16,10 @@
  * ```typescript
  * import { ShopifyOrderMapper, WooCommerceOrderMapper, FulfillmentMapper } from './channel-mappers';
  *
- * // Convert Shopify order to Helix format
- * const HelixOrder = ShopifyOrderMapper.toHelix(shopifyOrder, store);
+ * // Convert Shopify order to Shipcrowd format
+ * const ShipcrowdOrder = ShopifyOrderMapper.toShipcrowd(shopifyOrder, store);
  *
- * // Convert Helix shipment to Shopify fulfillment
+ * // Convert Shipcrowd shipment to Shopify fulfillment
  * const fulfillmentPayload = FulfillmentMapper.toShopifyFulfillment(shipment, order);
  * ```
  */
@@ -61,9 +61,9 @@ interface NormalizedTotals {
 }
 
 /**
- * Helix order format (target format)
+ * Shipcrowd order format (target format)
  */
-interface HelixOrderData {
+interface ShipcrowdOrderData {
     orderNumber: string;
     companyId: any;
     source: string;
@@ -163,17 +163,17 @@ interface ShopifyOrderData {
 /**
  * ShopifyOrderMapper
  *
- * Handles transformation between Shopify order format and Helix order format.
+ * Handles transformation between Shopify order format and Shipcrowd order format.
  */
 export class ShopifyOrderMapper {
     /**
-     * Convert Shopify order to Helix order format
+     * Convert Shopify order to Shipcrowd order format
      *
      * @param shopifyOrder - Raw Shopify order data
      * @param store - ShopifyStore document with companyId
-     * @returns Helix-formatted order data
+     * @returns Shipcrowd-formatted order data
      */
-    static toHelix(shopifyOrder: ShopifyOrderData, store: { companyId: any; _id: any }): HelixOrderData {
+    static toShipcrowd(shopifyOrder: ShopifyOrderData, store: { companyId: any; _id: any }): ShipcrowdOrderData {
         return {
             orderNumber: this.generateOrderNumber(shopifyOrder),
             companyId: store.companyId,
@@ -223,7 +223,7 @@ export class ShopifyOrderMapper {
     }
 
     /**
-     * Generate Helix order number from Shopify order
+     * Generate Shipcrowd order number from Shopify order
      */
     static generateOrderNumber(order: ShopifyOrderData): string {
         return `SHOPIFY-${order.order_number}`;
@@ -275,7 +275,7 @@ export class ShopifyOrderMapper {
     }
 
     /**
-     * Map Shopify line items to Helix products
+     * Map Shopify line items to Shipcrowd products
      */
     private static mapLineItems(lineItems: ShopifyOrderData['line_items']): NormalizedProduct[] {
         return lineItems.map((item) => ({
@@ -306,7 +306,7 @@ export class ShopifyOrderMapper {
     }
 
     /**
-     * Map Shopify fulfillment status to Helix order status
+     * Map Shopify fulfillment status to Shipcrowd order status
      */
     static mapFulfillmentStatus(fulfillmentStatus: string | null): string {
         if (!fulfillmentStatus) return 'PENDING';
@@ -403,17 +403,17 @@ interface WooCommerceOrderData {
 /**
  * WooCommerceOrderMapper
  *
- * Handles transformation between WooCommerce order format and Helix order format.
+ * Handles transformation between WooCommerce order format and Shipcrowd order format.
  */
 export class WooCommerceOrderMapper {
     /**
-     * Convert WooCommerce order to Helix order format
+     * Convert WooCommerce order to Shipcrowd order format
      *
      * @param wooOrder - Raw WooCommerce order data
      * @param store - WooCommerceStore document with companyId
-     * @returns Helix-formatted order data
+     * @returns Shipcrowd-formatted order data
      */
-    static toHelix(wooOrder: WooCommerceOrderData, store: { companyId: any; _id: any }): HelixOrderData {
+    static toShipcrowd(wooOrder: WooCommerceOrderData, store: { companyId: any; _id: any }): ShipcrowdOrderData {
         return {
             orderNumber: this.generateOrderNumber(wooOrder),
             companyId: store.companyId,
@@ -465,7 +465,7 @@ export class WooCommerceOrderMapper {
     }
 
     /**
-     * Generate Helix order number from WooCommerce order
+     * Generate Shipcrowd order number from WooCommerce order
      */
     static generateOrderNumber(order: WooCommerceOrderData): string {
         return `WOO-${order.number}`;
@@ -502,7 +502,7 @@ export class WooCommerceOrderMapper {
     }
 
     /**
-     * Map WooCommerce line items to Helix products
+     * Map WooCommerce line items to Shipcrowd products
      */
     private static mapLineItems(lineItems: WooCommerceOrderData['line_items']): NormalizedProduct[] {
         return lineItems.map((item) => ({
@@ -532,7 +532,7 @@ export class WooCommerceOrderMapper {
     }
 
     /**
-     * Map WooCommerce order status to Helix order status
+     * Map WooCommerce order status to Shipcrowd order status
      */
     static mapOrderStatus(wooStatus: string): string {
         const statusMap: Record<string, string> = {
@@ -570,14 +570,14 @@ export class WooCommerceOrderMapper {
 /**
  * FulfillmentMapper
  *
- * Handles transformation of Helix shipment data to platform-specific fulfillment formats.
+ * Handles transformation of Shipcrowd shipment data to platform-specific fulfillment formats.
  */
 export class FulfillmentMapper {
     /**
-     * Create Shopify fulfillment payload from Helix shipment
+     * Create Shopify fulfillment payload from Shipcrowd shipment
      *
-     * @param shipment - Helix Shipment document
-     * @param order - Helix Order document
+     * @param shipment - Shipcrowd Shipment document
+     * @param order - Shipcrowd Order document
      * @param locationId - Shopify location ID
      * @returns Shopify fulfillment creation payload
      */
@@ -608,7 +608,7 @@ export class FulfillmentMapper {
     /**
      * Create WooCommerce order update payload for fulfillment
      *
-     * @param shipment - Helix Shipment document
+     * @param shipment - Shipcrowd Shipment document
      * @param newStatus - Target WooCommerce status
      * @returns WooCommerce order update payload
      */
@@ -633,9 +633,9 @@ export class FulfillmentMapper {
     }
 
     /**
-     * Map Helix shipment status to Shopify fulfillment status
+     * Map Shipcrowd shipment status to Shopify fulfillment status
      */
-    static toShopifyStatus(HelixStatus: string): string {
+    static toShopifyStatus(ShipcrowdStatus: string): string {
         const statusMap: Record<string, string> = {
             PICKED_UP: 'in_transit',
             IN_TRANSIT: 'in_transit',
@@ -648,13 +648,13 @@ export class FulfillmentMapper {
             RTO_DELIVERED: 'failure',
         };
 
-        return statusMap[HelixStatus] || 'in_transit';
+        return statusMap[ShipcrowdStatus] || 'in_transit';
     }
 
     /**
-     * Map Helix shipment status to WooCommerce order status
+     * Map Shipcrowd shipment status to WooCommerce order status
      */
-    static toWooCommerceStatus(HelixStatus: string): 'processing' | 'completed' | 'cancelled' | 'failed' {
+    static toWooCommerceStatus(ShipcrowdStatus: string): 'processing' | 'completed' | 'cancelled' | 'failed' {
         const statusMap: Record<string, 'processing' | 'completed' | 'cancelled' | 'failed'> = {
             PENDING: 'processing',
             BOOKED: 'processing',
@@ -666,7 +666,7 @@ export class FulfillmentMapper {
             RTO_DELIVERED: 'failed',
         };
 
-        return statusMap[HelixStatus] || 'processing';
+        return statusMap[ShipcrowdStatus] || 'processing';
     }
 
     /**
@@ -693,7 +693,7 @@ export class FulfillmentMapper {
             }
         }
 
-        return `${process.env.FRONTEND_URL || 'https://Helix.com'}/track/${awbNumber}`;
+        return `${process.env.FRONTEND_URL || 'https://Shipcrowd.com'}/track/${awbNumber}`;
     }
 }
 

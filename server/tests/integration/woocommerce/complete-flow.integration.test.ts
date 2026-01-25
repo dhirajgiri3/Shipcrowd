@@ -96,7 +96,7 @@ describe('WooCommerce Integration - Complete Flow', () => {
           {
             topic: 'order.created',
             woocommerceWebhookId: '123',
-            address: 'https://api.Helix.com/webhooks/woocommerce/order/created',
+            address: 'https://api.Shipcrowd.com/webhooks/woocommerce/order/created',
             secret: 'test_webhook_secret',
             isActive: true,
             createdAt: new Date(),
@@ -133,8 +133,8 @@ describe('WooCommerce Integration - Complete Flow', () => {
         woocommerceProductId: 123,
         woocommerceSKU: 'TSHIRT-BLK-M',
         woocommerceTitle: 'Black T-Shirt - Medium',
-        HelixSKU: 'TSHIRT-BLK-M',
-        HelixProductName: 'Black T-Shirt Medium',
+        ShipcrowdSKU: 'TSHIRT-BLK-M',
+        ShipcrowdProductName: 'Black T-Shirt Medium',
         mappingType: 'AUTO',
         syncInventory: true,
         syncPrice: false,
@@ -148,8 +148,8 @@ describe('WooCommerce Integration - Complete Flow', () => {
         woocommerceProductId: 124,
         woocommerceSKU: 'TSHIRT-WHT-L',
         woocommerceTitle: 'White T-Shirt - Large',
-        HelixSKU: 'TSHIRT-WHT-L',
-        HelixProductName: 'White T-Shirt Large',
+        ShipcrowdSKU: 'TSHIRT-WHT-L',
+        ShipcrowdProductName: 'White T-Shirt Large',
         mappingType: 'AUTO',
         syncInventory: true,
         syncPrice: false,
@@ -341,7 +341,7 @@ describe('WooCommerce Integration - Complete Flow', () => {
     test('should have active product mapping for inventory sync', async () => {
       const mapping = await WooCommerceProductMapping.findOne({
         woocommerceStoreId: storeId,
-        HelixSKU: 'TSHIRT-BLK-M',
+        ShipcrowdSKU: 'TSHIRT-BLK-M',
         syncInventory: true,
         isActive: true,
       });
@@ -354,7 +354,7 @@ describe('WooCommerce Integration - Complete Flow', () => {
     test('should record successful inventory sync', async () => {
       const mapping = await WooCommerceProductMapping.findOne({
         woocommerceStoreId: storeId,
-        HelixSKU: 'TSHIRT-BLK-M',
+        ShipcrowdSKU: 'TSHIRT-BLK-M',
       });
 
       // Simulate successful inventory sync
@@ -369,7 +369,7 @@ describe('WooCommerce Integration - Complete Flow', () => {
     test('should record sync error and auto-disable after 10 errors', async () => {
       const mapping = await WooCommerceProductMapping.findOne({
         woocommerceStoreId: storeId,
-        HelixSKU: 'TSHIRT-WHT-L',
+        ShipcrowdSKU: 'TSHIRT-WHT-L',
       });
 
       // Simulate 10 sync errors

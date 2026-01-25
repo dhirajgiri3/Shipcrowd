@@ -42,7 +42,7 @@ Razorpay is India's leading payment gateway providing a unified interface for ac
 
 ### Integration Points
 
-**Helix Use Cases:**
+**Shipcrowd Use Cases:**
 1. **Prepaid Orders** - Accept online payments before shipment
 2. **Wallet Recharge** - Top-up customer wallet balances
 3. **COD to Prepaid Conversion** - Offer payment links for COD orders
@@ -487,8 +487,8 @@ export class RazorpayService {
     currency?: string;        // Default: 'INR'
     receipt?: string;         // Auto-generated if not provided
     notes?: {
-      orderId?: string;       // Helix order ID
-      userId?: string;        // Helix user ID
+      orderId?: string;       // Shipcrowd order ID
+      userId?: string;        // Shipcrowd user ID
       purpose?: string;       // 'order_payment' | 'wallet_recharge'
       [key: string]: string | undefined;
     };
@@ -559,7 +559,7 @@ export class PaymentController {
       const { orderId, amount, purpose } = req.body;
       const userId = req.user?.id;
 
-      // Validate Helix order exists
+      // Validate Shipcrowd order exists
       const order = await Order.findById(orderId);
       if (!order) {
         res.status(404).json({ error: 'Order not found' });
@@ -717,12 +717,12 @@ async verifyPayment(req: Request, res: Response): Promise<void> {
     // Fetch Razorpay order
     const razorpayOrder = await this.razorpayService.fetchOrder(razorpay_order_id);
 
-    // Extract Helix order ID from notes
-    const HelixOrderId = razorpayOrder.notes.orderId;
+    // Extract Shipcrowd order ID from notes
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
     // Update order in database
     const order = await Order.findByIdAndUpdate(
-      HelixOrderId,
+      ShipcrowdOrderId,
       {
         paymentStatus: 'paid',
         'shippingDetails.paymentId': razorpay_payment_id,
@@ -893,10 +893,10 @@ export class RazorpayWebhookController {
 
     // Fetch order from notes
     const razorpayOrder = await this.razorpayService.fetchOrder(payment.order_id);
-    const HelixOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
     // Update order status
-    await Order.findByIdAndUpdate(HelixOrderId, {
+    await Order.findByIdAndUpdate(ShipcrowdOrderId, {
       paymentStatus: 'paid',
       'shippingDetails.paymentId': payment.id,
     });
@@ -915,9 +915,9 @@ export class RazorpayWebhookController {
 
     // Update order status
     const razorpayOrder = await this.razorpayService.fetchOrder(payment.order_id);
-    const HelixOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
-    await Order.findByIdAndUpdate(HelixOrderId, {
+    await Order.findByIdAndUpdate(ShipcrowdOrderId, {
       paymentStatus: 'failed',
     });
 
@@ -936,9 +936,9 @@ export class RazorpayWebhookController {
     // Update order status
     const payment = await this.razorpayService.fetchPayment(refund.payment_id);
     const razorpayOrder = await this.razorpayService.fetchOrder(payment.order_id);
-    const HelixOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
-    await Order.findByIdAndUpdate(HelixOrderId, {
+    await Order.findByIdAndUpdate(ShipcrowdOrderId, {
       paymentStatus: 'refunded',
     });
 
@@ -1266,7 +1266,7 @@ console.log('Payment created:', {
 const order = await razorpay.orders.create({
   amount: 50000,
   currency: 'INR',
-  receipt: `order_${uniqueOrderNumber}`,  // Unique per Helix order
+  receipt: `order_${uniqueOrderNumber}`,  // Unique per Shipcrowd order
 });
 ```
 

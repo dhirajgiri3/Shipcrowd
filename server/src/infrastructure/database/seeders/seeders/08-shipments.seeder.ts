@@ -229,12 +229,12 @@ function generateShipmentData(order: any, warehouse: any): any {
         documents: [
             {
                 type: 'label',
-                url: `https://storage.Helix.com/labels/${generateTrackingNumber(carrier)}.pdf`,
+                url: `https://storage.Shipcrowd.com/labels/${generateTrackingNumber(carrier)}.pdf`,
                 createdAt: pickupDate,
             },
             {
                 type: 'invoice',
-                url: `https://storage.Helix.com/invoices/${order.orderNumber}.pdf`,
+                url: `https://storage.Shipcrowd.com/invoices/${order.orderNumber}.pdf`,
                 createdAt: pickupDate,
             },
         ],

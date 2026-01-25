@@ -70,8 +70,8 @@ await PincodeLookupService.loadPincodesFromCSV();  // Works perfectly!
 
 ## Files Changed
 
-1. [`src/index.ts`](file:///Users/dhirajgiri/Documents/Projects/Helix%20India/Helix/server/src/index.ts#L15) - Added static import
-2. [`src/index.ts`](file:///Users/dhirajgiri/Documents/Projects/Helix%20India/Helix/server/src/index.ts#L32) - Removed dynamic import
+1. [`src/index.ts`](file:///Users/dhirajgiri/Documents/Projects/Shipcrowd%20India/Shipcrowd/server/src/index.ts#L15) - Added static import
+2. [`src/index.ts`](file:///Users/dhirajgiri/Documents/Projects/Shipcrowd%20India/Shipcrowd/server/src/index.ts#L32) - Removed dynamic import
 
 ## Verification
 

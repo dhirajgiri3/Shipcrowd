@@ -44,7 +44,7 @@ export class WooCommerceClient {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'User-Agent': 'Helix/1.0',
+        'User-Agent': 'Shipcrowd/1.0',
       },
       // Basic Auth for consumer key/secret
       auth: {

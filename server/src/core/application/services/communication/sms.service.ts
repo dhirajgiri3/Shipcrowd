@@ -139,7 +139,7 @@ export const sendShipmentStatusSMS = async (
   awbId: string
 ): Promise<boolean> => {
   try {
-    const message = `Hello ${customerName}, your order #${orderId} with tracking number ${awbId} has been ${status}. Thank you for choosing Helix.`;
+    const message = `Hello ${customerName}, your order #${orderId} with tracking number ${awbId} has been ${status}. Thank you for choosing Shipcrowd.`;
     return await sendSMS(phoneNumber, message);
   } catch (error) {
     logger.error('Error sending shipment status SMS:', error);
@@ -172,7 +172,7 @@ export const sendReturnStatusSMS = async (
     };
 
     const friendlyStatus = statusMessageMap[status] || status;
-    const message = `Hello ${customerName}, your return #${returnId} is ${friendlyStatus}. Check app for details. - Helix`;
+    const message = `Hello ${customerName}, your return #${returnId} is ${friendlyStatus}. Check app for details. - Shipcrowd`;
 
     return await sendSMS(phoneNumber, message);
   } catch (error) {

@@ -39,15 +39,15 @@ function generateKYCData(
         documents: {
             pan: {
                 number: company.billingInfo?.pan || generatePAN(),
-                image: `https://storage.Helix.com/kyc/pan/${generateUUID()}.pdf`,
+                image: `https://storage.Shipcrowd.com/kyc/pan/${generateUUID()}.pdf`,
                 verified: status === 'verified',
                 verifiedAt,
                 name: company.name,
             },
             aadhaar: {
                 number: generateAadhaar(),
-                frontImage: `https://storage.Helix.com/kyc/aadhaar/${generateUUID()}_front.jpg`,
-                backImage: `https://storage.Helix.com/kyc/aadhaar/${generateUUID()}_back.jpg`,
+                frontImage: `https://storage.Shipcrowd.com/kyc/aadhaar/${generateUUID()}_front.jpg`,
+                backImage: `https://storage.Shipcrowd.com/kyc/aadhaar/${generateUUID()}_back.jpg`,
                 verified: status === 'verified',
                 verifiedAt,
             },
@@ -78,7 +78,7 @@ function generateKYCData(
                 bankName: company.billingInfo?.bankName || bank.name,
                 verified: status === 'verified',
                 verifiedAt,
-                proofImage: `https://storage.Helix.com/kyc/bank/${generateUUID()}.pdf`,
+                proofImage: `https://storage.Shipcrowd.com/kyc/bank/${generateUUID()}.pdf`,
             },
         },
         completionStatus: {

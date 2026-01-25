@@ -1,4 +1,4 @@
-# Helix Backend - Master Context Document
+# Shipcrowd Backend - Master Context Document
 **Version:** 1.0
 **Created:** December 26, 2025
 **Last Updated:** December 26, 2025
@@ -29,9 +29,9 @@
 
 ## 1. PROJECT OVERVIEW
 
-### 1.1 What is Helix?
+### 1.1 What is Shipcrowd?
 
-**Helix** (formerly Uniqueship) is a **next-generation multi-carrier shipping aggregator platform** designed for the Indian e-commerce market. It serves as a unified API and dashboard for businesses to manage shipments across multiple courier partners without maintaining separate integrations.
+**Shipcrowd** (formerly Uniqueship) is a **next-generation multi-carrier shipping aggregator platform** designed for the Indian e-commerce market. It serves as a unified API and dashboard for businesses to manage shipments across multiple courier partners without maintaining separate integrations.
 
 ### 1.2 Target Users
 
@@ -47,7 +47,7 @@
 ### 1.3 Core Value Proposition
 
 1. **Single Integration, Multiple Couriers**
-   - Replace 5-10 courier integrations with one Helix API
+   - Replace 5-10 courier integrations with one Shipcrowd API
    - Unified data model across all carriers
 
 2. **AI-Powered Rate Optimization**
@@ -83,7 +83,7 @@
 
 ### 2.1 Clean Architecture Overview
 
-Helix follows **Clean Architecture** (also known as Hexagonal or Ports & Adapters Architecture) to ensure:
+Shipcrowd follows **Clean Architecture** (also known as Hexagonal or Ports & Adapters Architecture) to ensure:
 - **Separation of Concerns:** Business logic isolated from frameworks
 - **Testability:** Each layer can be tested independently
 - **Maintainability:** Changes in one layer don't cascade
@@ -1286,7 +1286,7 @@ const cleanContent = xss(userInput);
 **5. AWS S3 (Infrastructure Ready)**
 - **Purpose:** Document storage (labels, invoices, KYC docs)
 - **Status:** Dependencies installed, integration pending Week 4
-- **Bucket:** Helix-documents (configured in env)
+- **Bucket:** Shipcrowd-documents (configured in env)
 
 ### 9.2 Future Integrations (Week 2+)
 
@@ -1926,8 +1926,8 @@ chore: Update dependencies (Mongoose 8.0)
 
 **Environments:**
 1. **Development** - Local machine
-2. **Staging** - `api-staging.Helix.com`
-3. **Production** - `api.Helix.com`
+2. **Staging** - `api-staging.Shipcrowd.com`
+3. **Production** - `api.Shipcrowd.com`
 
 **CI/CD Pipeline (Future):**
 ```
@@ -2019,7 +2019,7 @@ NODE_ENV=development
 PORT=5000
 
 # Database
-MONGO_URI=mongodb://localhost:27017/Helix
+MONGO_URI=mongodb://localhost:27017/Shipcrowd
 MONGO_TEST_URI=<set by MongoDB Memory Server>
 
 # Authentication
@@ -2035,8 +2035,8 @@ GOOGLE_CALLBACK_URL=http://localhost:5000/api/v1/auth/google/callback
 
 # Email (SendGrid)
 SENDGRID_API_KEY=SG.your_sendgrid_api_key
-FROM_EMAIL=noreply@Helix.com
-FROM_NAME=Helix
+FROM_EMAIL=noreply@Shipcrowd.com
+FROM_NAME=Shipcrowd
 
 # SMS (Twilio)
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
@@ -2046,7 +2046,7 @@ TWILIO_PHONE_NUMBER=+1234567890
 # AWS S3
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_S3_BUCKET=Helix-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 AWS_REGION=ap-south-1
 
 # DeepVue KYC

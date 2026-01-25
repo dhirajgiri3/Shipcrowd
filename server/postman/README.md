@@ -1,10 +1,10 @@
-# Helix API Testing - Postman Collections
+# Shipcrowd API Testing - Postman Collections
 
-**Professional API testing infrastructure for Helix platform**
+**Professional API testing infrastructure for Shipcrowd platform**
 
 ## 📋 Overview
 
-This directory contains a comprehensive, production-grade Postman testing suite for the Helix backend API. The collections are organized by business domain, following industry best practices for API testing, documentation, and maintenance.
+This directory contains a comprehensive, production-grade Postman testing suite for the Shipcrowd backend API. The collections are organized by business domain, following industry best practices for API testing, documentation, and maintenance.
 
 **Total Endpoints:** 108+ documented (385+ total across 51 route files)
 **Collections:** 6 domain-specific collections (in progress)
@@ -23,7 +23,7 @@ Our Postman collections follow a **domain-driven design** where each collection 
 postman/
 ├── README.md (this file)
 ├── environments/
-│   └── Helix.postman_environment.json (unified environment)
+│   └── Shipcrowd.postman_environment.json (unified environment)
 ├── collections/
 │   ├── 01-Authentication-Identity.postman_collection.json (34 endpoints)
 │   ├── 02-Company-KYC.postman_collection.json (24 endpoints)
@@ -43,7 +43,7 @@ postman/
 
 1. Open Postman
 2. Click **Environments** → **Import**
-3. Select `environments/Helix.postman_environment.json`
+3. Select `environments/Shipcrowd.postman_environment.json`
 4. Set as active environment
 
 ### 2. Import Collections
@@ -264,7 +264,7 @@ TEAM_ROLE            // Team role (owner | admin | member)
 
 ### Collection 01: Authentication Variables
 ```javascript
-TEST_EMAIL           // Test account email (test.seller@Helix.com)
+TEST_EMAIL           // Test account email (test.seller@Shipcrowd.com)
 TEST_PASSWORD        // Test account password
 TEST_PHONE           // Test phone number (+919876543210)
 ```
@@ -513,7 +513,7 @@ When adding new endpoints:
 
 ## 📄 License
 
-Internal use only - Helix Platform
+Internal use only - Shipcrowd Platform
 
 ---
 

@@ -1,4 +1,4 @@
-# Helix Backend - Parallel Implementation Guide
+# Shipcrowd Backend - Parallel Implementation Guide
 ## 📚 Complete Documentation Index
 
 **Last Updated:** December 27, 2025

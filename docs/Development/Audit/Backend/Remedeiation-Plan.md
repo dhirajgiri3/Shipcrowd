@@ -1,4 +1,4 @@
-# Helix Backend: Complete Remediation Plan
+# Shipcrowd Backend: Complete Remediation Plan
 
 **Created**: 2026-01-08
 **Status**: READY FOR EXECUTION
@@ -93,7 +93,7 @@ CompanySchema.plugin(fieldEncryption, {
 **Verification**:
 ```bash
 # 1. Start MongoDB shell
-mongosh Helix
+mongosh Shipcrowd
 
 # 2. Check encrypted field (should see encrypted data)
 db.companies.findOne({ 'integrations.shopify.accessToken': { $exists: true } })
@@ -2426,7 +2426,7 @@ UserSchema.index({ email: 1, isActive: 1 });  // ❌ REDUNDANT
 ```bash
 # Remove from code (line 315)
 # Then drop index in MongoDB
-mongosh Helix
+mongosh Shipcrowd
 db.users.dropIndex({ email: 1, isActive: 1 })
 ```
 
@@ -2479,7 +2479,7 @@ db.setProfilingLevel(2);
 
 // Make authenticated request
 // Check slow queries
-db.system.profile.find({ ns: 'Helix.companies', millis: { $gt: 10 } })
+db.system.profile.find({ ns: 'Shipcrowd.companies', millis: { $gt: 10 } })
 
 // Should use index after adding
 ```

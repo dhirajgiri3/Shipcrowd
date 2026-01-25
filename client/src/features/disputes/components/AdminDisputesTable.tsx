@@ -115,7 +115,7 @@ export function AdminDisputesTable() {
                             Bulk Resolve: Seller Favor
                         </button>
                         <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
-                            Bulk Resolve: Helix Favor
+                            Bulk Resolve: Shipcrowd Favor
                         </button>
                         <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                             Clear

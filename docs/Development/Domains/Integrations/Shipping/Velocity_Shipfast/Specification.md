@@ -30,7 +30,7 @@
 
 ### 1.1 Objective
 
-Implement complete Velocity Shipfast API integration, establishing the courier provider framework for Helix. Transform from static carrier selection to dynamic, API-based shipment orchestration.
+Implement complete Velocity Shipfast API integration, establishing the courier provider framework for Shipcrowd. Transform from static carrier selection to dynamic, API-based shipment orchestration.
 
 ### 1.2 Implementation Status: ✅ COMPLETE
 
@@ -371,7 +371,7 @@ if (expiresAt < oneHourFromNow) {
 
 ### 4.3 VelocityMapper.ts (294 lines)
 
-**Purpose:** Data transformation between Helix and Velocity formats
+**Purpose:** Data transformation between Shipcrowd and Velocity formats
 
 **Key Functions:**
 
@@ -386,7 +386,7 @@ if (expiresAt < oneHourFromNow) {
    - COD: Only include cod_collectible if COD order
    ```
 
-2. **mapStatus()** - Velocity status → Helix status
+2. **mapStatus()** - Velocity status → Shipcrowd status
    ```typescript
    'IT' → {status: 'in_transit', description: 'In transit'}
    'DEL' → {status: 'delivered', description: 'Delivered'}
@@ -404,7 +404,7 @@ if (expiresAt < oneHourFromNow) {
    - `validateForwardOrderData(data)` - Complete validation with error list
 
 **Edge Cases Handled:**
-- Missing email → 'noreply@Helix.com'
+- Missing email → 'noreply@Shipcrowd.com'
 - Missing SKU → Generated from product name
 - shipping_is_billing → always true
 - Phone with country code → stripped to 10 digits
@@ -1003,7 +1003,7 @@ describe('Velocity Shipfast Integration', () => {
 
   describe('Tracking', () => {
     it('should track shipment by AWB');
-    it('should map Velocity status to Helix status');
+    it('should map Velocity status to Shipcrowd status');
   });
 
   describe('Cancellation', () => {

@@ -1,8 +1,8 @@
-# Helix PDF Generation System
+# Shipcrowd PDF Generation System
 
 ## Overview
 
-The Helix PDF generation system provides production-ready PDF templates for all critical business documents in the logistics workflow. Each template is built on a robust base service with reusable components, ensuring consistency, maintainability, and compliance with Indian GST regulations.
+The Shipcrowd PDF generation system provides production-ready PDF templates for all critical business documents in the logistics workflow. Each template is built on a robust base service with reusable components, ensuring consistency, maintainability, and compliance with Indian GST regulations.
 
 ## Architecture
 
@@ -288,7 +288,7 @@ All styles are centralized in `pdf-styles.ts` for consistency:
 ```typescript
 // RGB colors (for screen display)
 PDF_COLORS.primary.rgb      // [26, 26, 26] - Dark charcoal
-PDF_COLORS.accent.rgb       // [0, 102, 204] - Helix blue
+PDF_COLORS.accent.rgb       // [0, 102, 204] - Shipcrowd blue
 PDF_COLORS.success.rgb      // [34, 177, 76] - Green
 PDF_COLORS.danger.rgb       // [244, 67, 54] - Red
 

@@ -76,8 +76,8 @@ export function ForgotPasswordClient() {
                     {/* Logo */}
                     <Link href="/" className="inline-block mb-12">
                         <img
-                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="Helix"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+                            alt="Shipcrowd"
                             className="h-8 w-auto rounded-full"
                         />
                     </Link>

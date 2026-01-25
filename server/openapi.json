@@ -1,12 +1,12 @@
 {
     "openapi": "3.0.3",
     "info": {
-        "title": "Helix API",
-        "description": "Production-ready API for Helix logistics and shipping management platform. Handles orders, shipments, carrier selection, analytics, rate cards, and zone management with intelligent automation.",
+        "title": "Shipcrowd API",
+        "description": "Production-ready API for Shipcrowd logistics and shipping management platform. Handles orders, shipments, carrier selection, analytics, rate cards, and zone management with intelligent automation.",
         "version": "1.0.0",
         "contact": {
-            "name": "Helix Team",
-            "email": "api@Helix.com"
+            "name": "Shipcrowd Team",
+            "email": "api@Shipcrowd.com"
         },
         "license": {
             "name": "Proprietary"
@@ -18,7 +18,7 @@
             "description": "Development server"
         },
         {
-            "url": "https://api.Helix.com/v1",
+            "url": "https://api.Shipcrowd.com/v1",
             "description": "Production server"
         }
     ],

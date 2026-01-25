@@ -327,8 +327,8 @@ export function OnboardingClient() {
                 <div className="flex items-center justify-between mb-8">
                     <Link href="/" className="inline-block">
                         <img
-                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="Helix"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+                            alt="Shipcrowd"
                             className="h-8 rounded-full"
                         />
                     </Link>
@@ -392,7 +392,7 @@ export function OnboardingClient() {
                                         )}
                                     </div>
                                     <div>
-                                        <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome to Helix</h1>
+                                        <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome to Shipcrowd</h1>
                                         <p className="text-slate-600">Let's get your account set up in just a few steps</p>
                                     </div>
 

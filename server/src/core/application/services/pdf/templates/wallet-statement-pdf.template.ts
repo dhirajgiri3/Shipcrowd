@@ -66,7 +66,7 @@ export class WalletStatementPDFTemplate {
             'Minimum balance maintained: ₹500 (auto-debit protection)',
             'Interest on balance: Not applicable',
             'No monthly subscription fees',
-            'For detailed transaction queries: support@Helix.com',
+            'For detailed transaction queries: support@Shipcrowd.com',
         ]);
 
         // Generate and return buffer

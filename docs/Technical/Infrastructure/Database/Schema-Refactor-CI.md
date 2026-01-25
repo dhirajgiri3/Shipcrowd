@@ -133,7 +133,7 @@ jobs:
       - name: Run migration dry-run
         working-directory: ./server
         env:
-          MONGODB_URI: mongodb://localhost:27017/Helix_test
+          MONGODB_URI: mongodb://localhost:27017/Shipcrowd_test
         run: |
           # Check if migration scripts exist
           if [ -d "src/infrastructure/database/migrations" ]; then

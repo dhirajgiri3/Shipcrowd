@@ -9,7 +9,7 @@ import logger from '../../../../shared/logger/winston.logger';
 /**
  * FlipkartProductMappingController
  *
- * Handles product mapping management between Flipkart and Helix.
+ * Handles product mapping management between Flipkart and Shipcrowd.
  *
  * Endpoints:
  * - POST /stores/:id/mappings/auto - Auto-map products by SKU

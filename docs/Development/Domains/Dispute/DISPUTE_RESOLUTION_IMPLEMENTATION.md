@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The **General Dispute Resolution System** has been successfully implemented for Helix. This is a production-ready, enterprise-grade dispute management system that handles delivery issues, damaged packages, lost shipments, and other customer disputes with full SLA management, analytics, and automation.
+The **General Dispute Resolution System** has been successfully implemented for Shipcrowd. This is a production-ready, enterprise-grade dispute management system that handles delivery issues, damaged packages, lost shipments, and other customer disputes with full SLA management, analytics, and automation.
 
 ### Key Metrics
 - **Total Lines of Code**: 2,500+ lines
@@ -391,12 +391,12 @@ DISPUTE_AUTO_ESCALATION_HOURS=2
 DISPUTE_AUTO_CLOSE_DAYS=7
 
 # Admin Notifications
-DISPUTE_ADMIN_EMAIL=disputes@Helix.com
-DISPUTE_ESCALATION_EMAIL=escalations@Helix.com
+DISPUTE_ADMIN_EMAIL=disputes@Shipcrowd.com
+DISPUTE_ESCALATION_EMAIL=escalations@Shipcrowd.com
 
 # Dashboard URLs
-DASHBOARD_URL=https://app.Helix.com
-ADMIN_DASHBOARD_URL=https://admin.Helix.com
+DASHBOARD_URL=https://app.Shipcrowd.com
+ADMIN_DASHBOARD_URL=https://admin.Shipcrowd.com
 ```
 
 ---

@@ -42,7 +42,7 @@ export default class ExcelExportService {
     ): Promise<Buffer> {
         try {
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'Helix Analytics';
+            workbook.creator = 'Shipcrowd Analytics';
             workbook.created = new Date();
 
             const worksheet = workbook.addWorksheet(options.sheetName || 'Report');
@@ -134,7 +134,7 @@ export default class ExcelExportService {
     ): Promise<Buffer> {
         try {
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'Helix Analytics';
+            workbook.creator = 'Shipcrowd Analytics';
             workbook.created = new Date();
 
             for (const sheet of sheets) {

@@ -1,6 +1,6 @@
 {
     "info": {
-        "_postman_id": "Helix-company-kyc-v1",
+        "_postman_id": "Shipcrowd-company-kyc-v1",
         "name": "02 - Company & KYC",
         "description": "## Company & KYC Management Collection\n\n**Domain:** Company profile management, KYC verification, team setup\n**Total Endpoints:** 24\n**Version:** 1.0.0\n\n### Complete Coverage\n✅ Company Profile Management (6 endpoints)\n✅ KYC Document Submission & Verification (12 endpoints)\n✅ Company Status Management (2 endpoints)\n✅ Company Settings (4 endpoints)\n\n### Critical Business Rules\n- **KYC Required:** Company must complete KYC before shipping\n- **Multi-Tenancy:** Users can only access their own company data\n- **Company Isolation:** Strict data isolation between companies\n- **Status Transitions:** pending_verification → kyc_submitted → approved/rejected\n\n### Quick Start\n1. Prerequisites: Completed authentication (Collection 01)\n2. Get Company Profile → Update Company Info\n3. Submit KYC Documents → Wait for Approval\n4. Verify Company Status = 'approved'\n\n### Auto Features\n🔄 Auto token refresh\n✅ Global test assertions\n📊 Environment variable management\n🔐 Company ID auto-captured",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
