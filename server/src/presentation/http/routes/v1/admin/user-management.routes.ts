@@ -67,4 +67,12 @@ router.post(
     asyncHandler(userManagementController.demoteUser)
 );
 
+// Impersonate user (Super Admin only)
+router.post(
+    '/:id/impersonate',
+    authenticate,
+    requireAccess({ roles: ['super_admin'] }), // Using roles instead of tier for super admin actions
+    asyncHandler(userManagementController.impersonateUser)
+);
+
 export default router;

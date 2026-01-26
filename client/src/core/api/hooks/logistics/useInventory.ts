@@ -12,6 +12,7 @@ export interface InventoryItem {
     quantity: number;
     reservedQuantity?: number;
     damagedQuantity?: number;
+    location?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -84,6 +85,42 @@ export function useAdjustStock(
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.warehouseOps.all() });
             showSuccessToast('Stock adjusted successfully');
+        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+export interface ImportInventoryPayload {
+    warehouseId: string;
+    file: File;
+}
+
+export function useImportInventory(
+    options?: UseMutationOptions<any, ApiError, ImportInventoryPayload>
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation<any, ApiError, ImportInventoryPayload>({
+        mutationFn: async ({ warehouseId, file }) => {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await apiClient.post<{ success: boolean; data: any }>(
+                `/warehouses/${warehouseId}/import`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
+            return res.data.data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.warehouseOps.all() });
+            showSuccessToast(`Import successful: ${data.success} rows processed, ${data.failed} failed.`);
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

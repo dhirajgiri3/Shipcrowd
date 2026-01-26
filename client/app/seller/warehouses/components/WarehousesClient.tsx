@@ -24,7 +24,8 @@ import {
     CheckCircle2,
     Loader2,
     AlertCircle,
-    Info
+    Info,
+    Boxes
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
@@ -309,6 +310,17 @@ export function WarehousesClient() {
 
                                 {/* Actions */}
                                 <div className="pt-2 flex flex-wrap gap-2">
+                                    <Link href={`/seller/warehouses/${warehouse._id}/inventory`}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 text-xs bg-[var(--bg-primary)] hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)] transition-colors"
+                                        >
+                                            <Boxes className="w-3.5 h-3.5 mr-1.5" />
+                                            Inventory
+                                        </Button>
+                                    </Link>
+
                                     <Button
                                         variant="outline"
                                         size="sm"

@@ -14,6 +14,7 @@ import Company from '../../../../infrastructure/database/mongoose/models/organiz
 import { AuthorizationError, ValidationError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
+import { generateAccessToken, generateRefreshToken } from '../../../../shared/helpers/jwt';
 
 export interface UserListFilters {
     role?: 'all' | 'super_admin' | 'admin' | 'seller' | 'staff';
@@ -338,6 +339,62 @@ class UserManagementService {
         }
 
         return user;
+    }
+
+
+
+    /**
+     * Impersonate a user (generate tokens for them)
+     * Restricted to super_admin only (enforced by controller)
+     */
+    async impersonateUser(
+        targetUserId: string,
+        performedBy: string
+    ): Promise<{ accessToken: string; refreshToken: string; user: any }> {
+        // Validate IDs
+        if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+            throw new ValidationError('Invalid user ID', ErrorCode.VAL_INVALID_INPUT);
+        }
+
+        // Fetch target user
+        const user = await User.findById(targetUserId);
+        if (!user) {
+            throw new NotFoundError('User not found', ErrorCode.RES_NOT_FOUND);
+        }
+
+        // Security: Cannot impersonate another super_admin
+        if (user.role === 'super_admin') {
+            throw new AuthorizationError(
+                'Cannot impersonate a super admin',
+                ErrorCode.AUTHZ_FORBIDDEN
+            );
+        }
+
+        // Generate tokens
+        // Explicitly cast _id to string or ObjectId to satisfy TypeScript
+        const userId = user._id as mongoose.Types.ObjectId;
+        const accessToken = generateAccessToken(userId, user.role, user.companyId);
+        const refreshToken = generateRefreshToken(userId, 1); // Assuming version 1 for now
+
+        // Log audit
+        logger.warn(`Super Admin ${performedBy} impersonated user ${user.email} (${userId})`, {
+            action: 'impersonation_login',
+            performedBy,
+            targetUser: targetUserId,
+            targetRole: user.role
+        });
+
+        return {
+            accessToken,
+            refreshToken,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                companyId: user.companyId
+            }
+        };
     }
 
     // Helper methods

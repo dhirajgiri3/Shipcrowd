@@ -321,3 +321,81 @@ export function useInitiateCommissionPayout(
         ...options,
     });
 }
+// ===================== Transactions =====================
+
+// We need to define the CommissionTransaction interface based on the backend model
+export interface CommissionTransaction {
+    _id: string;
+    // Add other fields as needed based on ICommissionTransaction
+    status: 'pending' | 'approved' | 'rejected' | 'paid';
+    amount: number;
+    finalAmount: number;
+    salesRepresentative: SalesRepresentative;
+    // ... other fields
+    createdAt: string;
+}
+
+export function useCommissionTransactions(
+    filters?: FilterParams & { status?: string; salesRepId?: string; startDate?: string; endDate?: string },
+    options?: UseQueryOptions<PaginatedResult<CommissionTransaction>, ApiError>
+) {
+    return useQuery<PaginatedResult<CommissionTransaction>, ApiError>({
+        queryKey: queryKeys.commission.transactions(filters),
+        queryFn: async () => {
+            const { data } = await apiClient.get<{ success: boolean; data: CommissionTransaction[]; pagination?: any }>(
+                '/commission/transactions',
+                { params: filters }
+            );
+            return { data: data.data, pagination: data.pagination };
+        },
+        ...CACHE_TIMES.SHORT, // Transactions change frequently
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+export function useBulkApproveTransactions(
+    options?: UseMutationOptions<any, ApiError, { transactionIds: string[] }>
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation<any, ApiError, { transactionIds: string[] }>({
+        mutationFn: async (payload) => {
+            const { data } = await apiClient.post<{ success: boolean; data: any }>(
+                '/commission/transactions/bulk-approve',
+                payload
+            );
+            return data.data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.commission.all() });
+            showSuccessToast(`Bulk approve completed: ${data.success} succeeded, ${data.failed} failed`);
+        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}
+
+export function useBulkRejectTransactions(
+    options?: UseMutationOptions<any, ApiError, { transactionIds: string[]; reason: string }>
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation<any, ApiError, { transactionIds: string[]; reason: string }>({
+        mutationFn: async (payload) => {
+            const { data } = await apiClient.post<{ success: boolean; data: any }>(
+                '/commission/transactions/bulk-reject',
+                payload
+            );
+            return data.data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.commission.all() });
+            showSuccessToast(`Bulk reject completed: ${data.success} succeeded, ${data.failed} failed`);
+        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+}

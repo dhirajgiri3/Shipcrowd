@@ -1,32 +1,70 @@
-import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import {
+    useQuery,
+    UseQueryOptions,
+} from '@tanstack/react-query';
 
-export interface Integration {
-    id: string;
-    name: string;
-    platform: 'shopify' | 'woocommerce' | 'magento' | 'wix' | 'custom';
-    status: 'active' | 'inactive' | 'error' | 'syncing';
-    lastSync: string;
-    icon?: string;
+// --- Types based on Backend Service ---
+
+export interface StoreHealth {
+    storeId: string;
+    storeName: string;
+    storeUrl?: string;
+    platform: string;
+    isActive: boolean;
+    isPaused: boolean;
+    lastSyncAt?: string; // Serialized as string from API
+    syncStatus?: string;
+    errorCount24h: number;
+    errorCount7d: number;
+    syncSuccessRate?: number;
+    webhooksActive: number;
+    webhooksTotal: number;
 }
 
-export interface IntegrationsResponse {
-    integrations: Integration[];
+export interface PlatformHealth {
+    platform: 'shopify' | 'woocommerce' | 'amazon' | 'flipkart';
+    totalStores: number;
+    activeStores: number;
+    pausedStores: number;
+    inactiveStores: number;
+    stores: StoreHealth[];
+    overallErrorRate: number;
+    overallSuccessRate: number;
 }
+
+export interface IntegrationHealthResponse {
+    companyId: string;
+    timestamp: string;
+    platforms: {
+        shopify?: PlatformHealth;
+        woocommerce?: PlatformHealth;
+        amazon?: PlatformHealth;
+        flipkart?: PlatformHealth;
+    };
+    summary: {
+        totalStores: number;
+        activeStores: number;
+        healthyStores: number;
+        unhealthyStores: number;
+    };
+}
+
+// --- Hooks ---
 
 /**
- * Fetch connected store integrations
+ * Fetch integration health status for dashboard
  */
-export const useIntegrations = (options?: UseQueryOptions<IntegrationsResponse, ApiError>) => {
-    return useQuery<IntegrationsResponse, ApiError>({
-        queryKey: queryKeys.integrations.all(),
+export const useIntegrationHealth = (options?: UseQueryOptions<IntegrationHealthResponse, ApiError>) => {
+    return useQuery<IntegrationHealthResponse, ApiError>({
+        queryKey: queryKeys.integrations.health(),
         queryFn: async () => {
-            const response = await apiClient.get('/integrations');
-            return response.data.data;
+            const response = await apiClient.get('/integrations/health');
+            return response.data;
         },
-        ...CACHE_TIMES.MEDIUM,
+        ...CACHE_TIMES.SHORT, // Refresh often (e.g. 5 mins)
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });

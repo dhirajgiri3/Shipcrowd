@@ -187,6 +187,7 @@ export const queryKeys = {
     payout: (id: string) => ['commission', 'payouts', id],
     salesReps: (filters?: FilterParams) => ['commission', 'sales-reps', filters],
     salesRep: (id: string) => ['commission', 'sales-reps', id],
+    transactions: (filters?: FilterParams) => ['commission', 'transactions', filters],
   },
 
   // ========================================================================
@@ -417,7 +418,7 @@ export const queryKeys = {
     whatsapp: () => ['settings', 'whatsapp'] as const,
     invoices: () => ['settings', 'invoices'] as const,
     marketing: () => ['settings', 'marketing'] as const,
-    
+
   },
 
   // ========================================================================

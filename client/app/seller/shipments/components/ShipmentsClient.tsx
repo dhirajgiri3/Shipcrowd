@@ -26,7 +26,7 @@ import {
     BarChart3
 } from 'lucide-react';
 import { Shipment } from '@/src/types/domain/admin';
-import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
+import { useShipments, useGenerateBulkLabels } from '@/src/core/api/hooks/orders/useShipments';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
@@ -35,6 +35,9 @@ export function ShipmentsClient() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const limit = 20;
+
+    // Bulk Actions State
+    const [selectedShipmentIds, setSelectedShipmentIds] = useState<Set<string>>(new Set());
 
     // --- REAL API INTEGRATION ---
     const {
@@ -47,6 +50,8 @@ export function ShipmentsClient() {
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: debouncedSearch || undefined
     });
+
+    const generateBulkLabels = useGenerateBulkLabels();
 
     // Use real data if available, otherwise fallback to mock
     const shipmentsData: any[] = shipmentsResponse?.shipments || MOCK_SHIPMENTS;
@@ -71,6 +76,30 @@ export function ShipmentsClient() {
             return matchesSearch && matchesStatus;
         });
     }, [shipmentsData, debouncedSearch, statusFilter, isUsingMockData]);
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const allIds = new Set(filteredData.map((s: any) => s._id || s.id));
+            setSelectedShipmentIds(allIds);
+        } else {
+            setSelectedShipmentIds(new Set());
+        }
+    };
+
+    const handleSelectRow = (id: string, checked: boolean) => {
+        const newSelected = new Set(selectedShipmentIds);
+        if (checked) {
+            newSelected.add(id);
+        } else {
+            newSelected.delete(id);
+        }
+        setSelectedShipmentIds(newSelected);
+    };
+
+    const handleBulkPrint = () => {
+        if (selectedShipmentIds.size === 0) return;
+        generateBulkLabels.mutate(Array.from(selectedShipmentIds));
+    };
 
     // Status Cards Data
     const statusGrid = [
@@ -97,6 +126,21 @@ export function ShipmentsClient() {
 
     // Columns
     const columns = [
+        {
+            header: '',
+            accessorKey: 'select',
+            width: 'w-10',
+            cell: (row: Shipment) => (
+                <div className="flex items-center justify-center -ml-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                        checked={selectedShipmentIds.has((row as any)._id || (row as any).id)}
+                        onChange={(e) => handleSelectRow((row as any)._id || (row as any).id, e.target.checked)}
+                    />
+                </div>
+            )
+        },
         {
             header: 'Shipment Details',
             accessorKey: 'awb',
@@ -289,6 +333,46 @@ export function ShipmentsClient() {
                 </div>
             </div>
 
+            {/* Bulk Action Bar */}
+            {selectedShipmentIds.size > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center justify-between p-4 bg-[var(--primary-blue-soft)] border border-[var(--primary-blue-light)]/30 rounded-[var(--radius-xl)]"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--primary-blue)] text-white text-sm font-bold">
+                            {selectedShipmentIds.size}
+                        </div>
+                        <span className="text-[var(--primary-blue-deep)] font-medium">Shipments Selected</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedShipmentIds(new Set())}
+                            className="text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleBulkPrint}
+                            disabled={generateBulkLabels.isPending}
+                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white gap-2"
+                        >
+                            {generateBulkLabels.isPending ? (
+                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4" />
+                            )}
+                            Print Bulk Labels
+                        </Button>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Shipments Table */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -311,11 +395,21 @@ export function ShipmentsClient() {
                     </div>
                 </div>
 
-                <DataTable
-                    columns={columns}
-                    data={filteredData}
-                    onRowClick={(row) => setSelectedShipment(row)}
-                />
+                <div className='relative'>
+                    <div className='absolute top-3 left-6 z-10' onClick={(e) => e.stopPropagation()}>
+                        <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                            checked={filteredData.length > 0 && selectedShipmentIds.size === filteredData.length}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                        />
+                    </div>
+                    <DataTable
+                        columns={columns}
+                        data={filteredData}
+                        onRowClick={(row) => setSelectedShipment(row)}
+                    />
+                </div>
             </motion.div>
 
             {/* Detail Modal */}

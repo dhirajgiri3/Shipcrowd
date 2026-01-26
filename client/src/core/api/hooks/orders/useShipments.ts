@@ -247,3 +247,38 @@ export const useDeleteShipment = (options?: UseMutationOptions<void, ApiError, s
         ...options,
     });
 };
+
+/**
+ * Generate bulk labels for multiple shipments
+ * Returns a PDF blob for download
+ */
+export const useGenerateBulkLabels = (options?: UseMutationOptions<void, ApiError, string[]>) => {
+    return useMutation<void, ApiError, string[]>({
+        mutationFn: async (shipmentIds) => {
+            const response = await apiClient.post('/shipments/bulk-labels', { shipmentIds }, {
+                responseType: 'blob', // Important for file download
+                headers: {
+                    'Accept': 'application/pdf'
+                }
+            });
+
+            // Create a blob from the response data
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `bulk-labels-${new Date().toISOString().split('T')[0]}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        },
+        onSuccess: () => {
+            showSuccessToast('Labels generated successfully');
+        },
+        onError: (error) => {
+            handleApiError(error, 'Failed to generate labels');
+        },
+        ...options,
+    });
+};

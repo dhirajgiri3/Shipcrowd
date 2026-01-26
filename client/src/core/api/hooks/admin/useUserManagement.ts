@@ -159,3 +159,26 @@ export function useUserDetails(userId: string | null, options?: UseQueryOptions<
         ...options,
     });
 }
+/**
+ * Impersonate a user (Super Admin only)
+ */
+export function useImpersonateUser(options?: UseMutationOptions<ApiResponse<{ user: any }>, ApiError, { userId: string }>) {
+    return useMutation<ApiResponse<{ user: any }>, ApiError, { userId: string }>({
+        mutationFn: async ({ userId }: { userId: string }) => {
+            const response = await apiClient.post<ApiResponse<{ user: any }>>(
+                `/admin/users/${userId}/impersonate`,
+                {}
+            );
+            return response.data;
+        },
+        onSuccess: () => {
+            showSuccessToast('Impersonation successful. Redirecting...');
+            // Force reload to pick up new cookies and reset application state
+            window.location.href = '/dashboard';
+        },
+        onError: (error) => {
+            handleApiError(error);
+        },
+        ...options,
+    });
+}

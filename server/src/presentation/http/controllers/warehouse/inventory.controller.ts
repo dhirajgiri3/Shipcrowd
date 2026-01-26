@@ -489,6 +489,44 @@ async function getMovementSummary(req: Request, res: Response, next: NextFunctio
     }
 }
 
+/**
+ * Import inventory from CSV
+ * POST /api/v1/warehouses/:warehouseId/inventory/import
+ */
+async function importInventory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+        const auth = guardChecks(req);
+
+        const { warehouseId } = req.params;
+        validateObjectId(warehouseId, 'warehouse');
+
+        if (!req.file) {
+            throw new ValidationError('No file uploaded', [{ message: 'CSV file is required' }]);
+        }
+
+        const result = await InventoryService.importFromCSV(
+            auth.companyId,
+            warehouseId,
+            req.file.buffer,
+            auth.userId
+        );
+
+        await createAuditLog(
+            auth.userId,
+            auth.companyId,
+            'update',
+            'inventory',
+            warehouseId,
+            { action: 'csv_import', success: result.success, failed: result.failed },
+            req
+        );
+
+        sendSuccess(res, result, 'Inventory import completed');
+    } catch (error) {
+        next(error);
+    }
+}
+
 export default {
     createInventory,
     getInventoryList,
@@ -506,4 +544,5 @@ export default {
     getMovements,
     getInventoryStats,
     getMovementSummary,
+    importInventory,
 };

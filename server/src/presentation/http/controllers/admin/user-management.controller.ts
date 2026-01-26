@@ -12,6 +12,18 @@ import { ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 
+import { AUTH_COOKIES } from '../../../../shared/constants/security';
+
+// Helper function to get cookie options for auth tokens
+const getAuthCookieOptions = (maxAge: number) => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
+    path: '/',
+    domain: process.env.NODE_ENV === 'development' ? 'localhost' : undefined,
+    maxAge,
+});
+
 class UserManagementController {
     /**
      * GET /admin/users
@@ -41,8 +53,6 @@ class UserManagementController {
             };
 
             const result = await UserManagementService.listUsers(filters, userId);
-
-
 
             res.status(200).json({
                 success: true,
@@ -158,6 +168,50 @@ class UserManagementController {
             res.status(200).json({
                 success: true,
                 data: { user },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * POST /admin/users/:id/impersonate
+     * Impersonate a user (Super Admin only)
+     * Sets auth cookies for the target user
+     */
+    async impersonateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+
+            // Strict Super Admin Check
+            if (!isSuperAdmin) {
+                throw new ValidationError(
+                    'Super admin access required',
+                    ErrorCode.AUTHZ_FORBIDDEN
+                );
+            }
+
+            const { id: targetUserId } = req.params;
+
+            const result = await UserManagementService.impersonateUser(targetUserId, userId);
+
+            // Cookie names with secure prefix in production
+            const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
+            const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+
+            // Set cookies (Access: 15m, Refresh: 7d as impersonation default)
+            const refreshMaxAge = 7 * 24 * 60 * 60 * 1000;
+            const accessMaxAge = 15 * 60 * 1000;
+
+            res.cookie(refreshCookieName, result.refreshToken, getAuthCookieOptions(refreshMaxAge));
+            res.cookie(accessCookieName, result.accessToken, getAuthCookieOptions(accessMaxAge));
+
+            res.status(200).json({
+                success: true,
+                message: 'Impersonation successful. Redirecting...',
+                data: {
+                    user: result.user
+                },
             });
         } catch (error) {
             next(error);

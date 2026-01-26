@@ -5,17 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users,
     Search,
-    Filter,
     UserCheck,
     UserX,
     Shield,
     ShieldAlert,
     Building2,
-    ChevronDown,
     MoreVertical,
-    ArrowUpRight,
-    ArrowDownRight,
-    User
+    User,
+    LogIn
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { useToast } from '@/src/components/ui/feedback/Toast';
@@ -24,6 +21,7 @@ import {
     useUserList,
     usePromoteUser,
     useDemoteUser,
+    useImpersonateUser,
     type UserListFilters,
     type UserListItem
 } from '@/src/core/api/hooks/admin/useUserManagement';
@@ -91,9 +89,9 @@ export function UserManagementClient() {
 
     const { data, isLoading, error } = useUserList(filters);
 
-
     const promoteUser = usePromoteUser();
     const demoteUser = useDemoteUser();
+    const impersonateUser = useImpersonateUser();
 
     const handlePromote = async (userId: string, reason?: string) => {
         try {
@@ -103,8 +101,7 @@ export function UserManagementClient() {
             setSelectedUser(null);
         } catch (error: any) {
             addToast(error.response?.data?.message || 'Failed to promote user', 'error');
-        }
-    };
+        }};
 
     const handleDemote = async (userId: string, reason?: string) => {
         try {
@@ -114,6 +111,19 @@ export function UserManagementClient() {
             setSelectedUser(null);
         } catch (error: any) {
             addToast(error.response?.data?.message || 'Failed to demote user', 'error');
+        }
+    };
+
+    const handleImpersonate = async (userId: string, userName: string) => {
+        if (!window.confirm(`Are you sure you want to login as ${userName}? You will be logged out of your current session.`)) {
+            return;
+        }
+
+        try {
+            await impersonateUser.mutateAsync({ userId });
+            // Redirect is handled in hook onSuccess
+        } catch (error: any) {
+            addToast(error.response?.data?.message || 'Failed to impersonate user', 'error');
         }
     };
 
@@ -230,6 +240,7 @@ export function UserManagementClient() {
                                         user={user}
                                         onPromote={() => { setSelectedUser(user); setShowPromoteModal(true); }}
                                         onDemote={() => { setSelectedUser(user); setShowDemoteModal(true); }}
+                                        onImpersonate={() => handleImpersonate(user._id, user.name)}
                                     />
                                 ))
                             )}
@@ -378,9 +389,10 @@ function StatsCard({ title, value, icon: Icon, accentColor, trend, trendUp }: an
     );
 }
 
-function UserRow({ user, onPromote, onDemote }: any) {
+function UserRow({ user, onPromote, onDemote, onImpersonate }: any) {
     const roleConfig = roleColors[user.role as keyof typeof roleColors] || roleColors.user;
     const RoleIcon = roleConfig.icon;
+    const isSuperAdmin = user.role === 'super_admin';
 
     // Subtle stripe effect & hover
     return (
@@ -426,12 +438,19 @@ function UserRow({ user, onPromote, onDemote }: any) {
 
             {/* Actions Column - Hidden by default until hover */}
             <div className="col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {!isSuperAdmin && (
+                    <button
+                        onClick={onImpersonate}
+                        className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5 rounded-lg transition-colors tooltip tooltip-left"
+                        title="Login as User">
+                        <LogIn className="w-4 h-4" />
+                    </button>
+                )}
                 {user.canPromote && (
                     <button
                         onClick={onPromote}
                         className="p-1.5 text-[var(--text-secondary)] hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors tooltip tooltip-left"
-                        title="Promote to Admin"
-                    >
+                        title="Promote to Admin">
                         <UserCheck className="w-4 h-4" />
                     </button>
                 )}
@@ -439,8 +458,7 @@ function UserRow({ user, onPromote, onDemote }: any) {
                     <button
                         onClick={onDemote}
                         className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors tooltip tooltip-left"
-                        title="Demote to Seller"
-                    >
+                        title="Demote to Seller">
                         <UserX className="w-4 h-4" />
                     </button>
                 )}
@@ -451,4 +469,3 @@ function UserRow({ user, onPromote, onDemote }: any) {
         </div>
     );
 }
-
