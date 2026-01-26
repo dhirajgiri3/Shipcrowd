@@ -34,6 +34,13 @@ router.post('/calculate', authenticate, asyncHandler(ratecardController.calculat
 router.post('/compare', authenticate, asyncHandler(ratecardController.compareCarrierRates));
 
 /**
+ * @route POST /api/v1/ratecards/smart-calculate
+ * @desc Smart rate calculation with AI-powered recommendations
+ * @access Private
+ */
+router.post('/smart-calculate', authenticate, asyncHandler(ratecardController.calculateSmartRates));
+
+/**
  * @route GET /api/v1/ratecards/:id
  * @desc Get a rate card by ID
  * @access Private
@@ -60,5 +67,19 @@ router.get('/:id/analytics', authenticate, asyncHandler(ratecardController.getRa
  * @access Private
  */
 router.get('/:id/revenue-series', authenticate, asyncHandler(ratecardController.getRateCardRevenueSeries));
+
+/**
+ * @route GET /api/v1/ratecards/export
+ * @desc Export all rate cards to CSV
+ * @access Private
+ */
+router.get('/export', authenticate, asyncHandler(ratecardController.exportRateCards));
+
+/**
+ * @route POST /api/v1/ratecards/bulk-update
+ * @desc Bulk update rate cards (activate/deactivate/adjust prices)
+ * @access Private
+ */
+router.post('/bulk-update', authenticate, csrfProtection, asyncHandler(ratecardController.bulkUpdateRateCards));
 
 export default router;

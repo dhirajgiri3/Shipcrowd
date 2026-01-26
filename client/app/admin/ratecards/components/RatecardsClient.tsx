@@ -14,13 +14,21 @@ import {
     Copy,
     CheckCircle,
     AlertCircle,
-    Package
+    Package,
+    Download,
+    CheckSquare,
+    Square,
+    Power,
+    PowerOff,
+    TrendingUp,
+    TrendingDown
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
 import { useRateCards } from '@/src/core/api/hooks/logistics/useRateCards';
 import { Loader } from '@/src/components/ui/feedback/Loader';
+import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
 
 const categories = ['all', 'lite', 'basic', 'advanced', 'pro', 'enterprise'];
 const couriers = ['All Couriers', 'Delhivery', 'Xpressbees', 'DTDC', 'Bluedart', 'Ecom Express'];
@@ -28,10 +36,96 @@ const couriers = ['All Couriers', 'Delhivery', 'Xpressbees', 'DTDC', 'Bluedart',
 export function RatecardsClient() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
+    const [selectedCards, setSelectedCards] = useState<string[]>([]);
+    const [showBulkActions, setShowBulkActions] = useState(false);
     const { addToast } = useToast();
 
     // Integration: Fetch real rate cards
     const { data: rateCards = [], isLoading, isError, error } = useRateCards();
+
+    // Bulk operations hooks
+    const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateRateCards();
+    const { mutate: exportCards, isPending: isExporting } = useExportRateCards();
+
+    const handleSelectAll = () => {
+        if (selectedCards.length === filteredRateCards.length) {
+            setSelectedCards([]);
+        } else {
+            setSelectedCards(filteredRateCards.map(card => card._id));
+        }
+    };
+
+    const handleSelectCard = (cardId: string) => {
+        setSelectedCards(prev =>
+            prev.includes(cardId)
+                ? prev.filter(id => id !== cardId)
+                : [...prev, cardId]
+        );
+    };
+
+    const handleBulkActivate = () => {
+        if (selectedCards.length === 0) {
+            addToast('Please select at least one rate card', 'error');
+            return;
+        }
+        bulkUpdate({
+            rateCardIds: selectedCards,
+            operation: 'activate'
+        }, {
+            onSuccess: () => {
+                setSelectedCards([]);
+                setShowBulkActions(false);
+            }
+        });
+    };
+
+    const handleBulkDeactivate = () => {
+        if (selectedCards.length === 0) {
+            addToast('Please select at least one rate card', 'error');
+            return;
+        }
+        bulkUpdate({
+            rateCardIds: selectedCards,
+            operation: 'deactivate'
+        }, {
+            onSuccess: () => {
+                setSelectedCards([]);
+                setShowBulkActions(false);
+            }
+        });
+    };
+
+    const handleBulkPriceAdjustment = (type: 'increase' | 'decrease') => {
+        if (selectedCards.length === 0) {
+            addToast('Please select at least one rate card', 'error');
+            return;
+        }
+
+        const value = prompt(`Enter ${type === 'increase' ? 'increase' : 'decrease'} percentage (e.g., 10 for 10%)`);
+        if (!value) return;
+
+        const percentage = parseFloat(value);
+        if (isNaN(percentage) || percentage <= 0) {
+            addToast('Please enter a valid percentage', 'error');
+            return;
+        }
+
+        bulkUpdate({
+            rateCardIds: selectedCards,
+            operation: 'adjust_price',
+            adjustmentType: 'percentage',
+            adjustmentValue: type === 'increase' ? percentage : -percentage
+        }, {
+            onSuccess: () => {
+                setSelectedCards([]);
+                setShowBulkActions(false);
+            }
+        });
+    };
+
+    const handleExport = () => {
+        exportCards();
+    };
 
     // Handle error
     if (isError) {
@@ -68,13 +162,92 @@ export function RatecardsClient() {
                         Manage pricing plans for courier services
                     </p>
                 </div>
-                <Link href="/admin/ratecards/create">
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Rate Card
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleExport}
+                        disabled={isExporting}
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        {isExporting ? 'Exporting...' : 'Export CSV'}
                     </Button>
-                </Link>
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowBulkActions(!showBulkActions)}
+                    >
+                        <CheckSquare className="h-4 w-4 mr-2" />
+                        Bulk Actions
+                    </Button>
+                    <Link href="/admin/ratecards/create">
+                        <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Rate Card
+                        </Button>
+                    </Link>
+                </div>
             </div>
+
+            {/* Bulk Actions Bar */}
+            {showBulkActions && (
+                <Card className="bg-indigo-50 border-indigo-200">
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleSelectAll}
+                                >
+                                    {selectedCards.length === filteredRateCards.length ? (
+                                        <CheckSquare className="h-4 w-4 mr-2" />
+                                    ) : (
+                                        <Square className="h-4 w-4 mr-2" />
+                                    )}
+                                    Select All ({selectedCards.length}/{filteredRateCards.length})
+                                </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleBulkActivate}
+                                    disabled={selectedCards.length === 0 || isBulkUpdating}
+                                >
+                                    <Power className="h-4 w-4 mr-2" />
+                                    Activate
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleBulkDeactivate}
+                                    disabled={selectedCards.length === 0 || isBulkUpdating}
+                                >
+                                    <PowerOff className="h-4 w-4 mr-2" />
+                                    Deactivate
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleBulkPriceAdjustment('increase')}
+                                    disabled={selectedCards.length === 0 || isBulkUpdating}
+                                >
+                                    <TrendingUp className="h-4 w-4 mr-2" />
+                                    Increase Price
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleBulkPriceAdjustment('decrease')}
+                                    disabled={selectedCards.length === 0 || isBulkUpdating}
+                                >
+                                    <TrendingDown className="h-4 w-4 mr-2" />
+                                    Decrease Price
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -141,7 +314,10 @@ export function RatecardsClient() {
                 {filteredRateCards.map((card) => (
                     <Card
                         key={card._id}
-                        className="hover:shadow-lg transition-all cursor-pointer group"
+                        className={cn(
+                            "hover:shadow-lg transition-all cursor-pointer group",
+                            selectedCards.includes(card._id) && "ring-2 ring-indigo-500"
+                        )}
                         onClick={() => addToast(`Opening ${card.name}...`, 'info')}
                     >
                         <CardContent className="p-5">
@@ -149,6 +325,21 @@ export function RatecardsClient() {
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
+                                        {showBulkActions && (
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelectCard(card._id);
+                                                }}
+                                                className="cursor-pointer"
+                                            >
+                                                {selectedCards.includes(card._id) ? (
+                                                    <CheckSquare className="h-5 w-5 text-indigo-600" />
+                                                ) : (
+                                                    <Square className="h-5 w-5 text-[var(--text-muted)]" />
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center text-lg font-bold text-[var(--text-secondary)]">
                                             RC
                                         </div>

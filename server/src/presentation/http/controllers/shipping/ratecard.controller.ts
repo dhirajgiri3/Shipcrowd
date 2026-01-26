@@ -15,6 +15,7 @@ import { AuthenticationError, ValidationError, NotFoundError, ConflictError, App
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
 import RateCardAnalyticsService from '../../../../core/application/services/analytics/rate-card-analytics.service';
+import SmartRateCalculatorService from '../../../../core/application/services/pricing/smart-rate-calculator.service';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -62,6 +63,38 @@ const calculateRateSchema = z.object({
     destinationPincode: z.string().optional(),
     carrier: z.string().optional(),
     serviceType: z.enum(['express', 'standard']).default('standard'),
+    dimensions: z.object({
+        length: z.number(),
+        width: z.number(),
+        height: z.number()
+    }).optional(),
+    paymentMode: z.enum(['prepaid', 'cod']).optional(),
+    orderValue: z.number().optional(),
+});
+
+const smartRateCalculateSchema = z.object({
+    originPincode: z.string().min(6).max(6),
+    destinationPincode: z.string().min(6).max(6),
+    weight: z.number().min(0.01),
+    dimensions: z.object({
+        length: z.number().min(1),
+        width: z.number().min(1),
+        height: z.number().min(1)
+    }).optional(),
+    paymentMode: z.enum(['prepaid', 'cod']),
+    orderValue: z.number().min(0),
+    preferredCarriers: z.array(z.string()).optional(),
+    excludedCarriers: z.array(z.string()).optional(),
+    scoringWeights: z.object({
+        price: z.number().min(0).max(100),
+        speed: z.number().min(0).max(100),
+        reliability: z.number().min(0).max(100),
+        performance: z.number().min(0).max(100),
+    }).optional().refine((weights) => {
+        if (!weights) return true;
+        const sum = weights.price + weights.speed + weights.reliability + weights.performance;
+        return sum === 100;
+    }, { message: 'Scoring weights must sum to 100' }),
 });
 
 const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number }>): boolean => {
@@ -360,29 +393,29 @@ export const compareCarrierRates = async (req: Request, res: Response, next: Nex
         }
 
         // Get all carriers from CARRIERS static data
-        const { CARRIERS } = await import('../../../../infrastructure/database/seeders/data/carrier-data');
+        const { CARRIERS } = await import('../../../../infrastructure/database/seeders/data/carrier-data.js');
         const carriers = Object.values(CARRIERS);
 
         const rates: any[] = [];
 
         // Calculate rates for each carrier
-        for (const carrier of carriers) {
-            for (const serviceType of carrier.serviceTypes) {
+        for (const carrierData of carriers) {
+            for (const serviceType of carrierData.serviceTypes) {
                 try {
                     const pricingResult = await PricingOrchestratorService.calculateShipmentPricing({
                         companyId,
-                        fromPincode: validation.data.originPincode,
-                        toPincode: validation.data.destinationPincode,
+                        fromPincode: validation.data.originPincode || '110001',
+                        toPincode: validation.data.destinationPincode || '400001',
                         weight: validation.data.weight,
                         dimensions: validation.data.dimensions || { length: 10, width: 10, height: 10 },
                         paymentMode: validation.data.paymentMode || 'prepaid',
                         orderValue: validation.data.orderValue || 1000,
-                        carrier: carrier.displayName,
+                        carrier: carrierData.displayName,
                         serviceType
                     });
 
                     rates.push({
-                        carrier: carrier.displayName,
+                        carrier: carrierData.displayName,
                         serviceType,
                         rate: pricingResult.totalPrice,
                         breakdown: {
@@ -400,7 +433,7 @@ export const compareCarrierRates = async (req: Request, res: Response, next: Nex
                         recommended: false
                     });
                 } catch (error) {
-                    logger.warn(`Failed to calculate rate for ${carrier.displayName} - ${serviceType}:`, error);
+                    logger.warn(`Failed to calculate rate for ${carrierData.displayName} - ${serviceType}:`, error);
                 }
             }
         }
@@ -416,7 +449,7 @@ export const compareCarrierRates = async (req: Request, res: Response, next: Nex
         const cheapest = rates[0];
         const fastest = rates.reduce((prev, curr) =>
             (curr.eta.maxDays < prev.eta.maxDays) ? curr : prev
-        , rates[0]);
+            , rates[0]);
 
         sendSuccess(res, {
             rates,
@@ -524,6 +557,221 @@ export const getRateCardRevenueSeries = async (req: Request, res: Response, next
     }
 };
 
+export const exportRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const rateCards = await RateCard.find({
+            companyId,
+            isDeleted: false
+        }).populate('zoneRules.zoneId', 'name standardZoneCode').lean();
+
+        // Convert to CSV format
+        const csvRows: string[] = [];
+        csvRows.push('Name,Carrier,Service Type,Base Price,Min Weight,Max Weight,Zone,Zone Price,Status,Effective Start Date');
+
+        for (const card of rateCards) {
+            const baseRates = card.baseRates || [];
+            const zoneRules = card.zoneRules || [];
+
+            for (const baseRate of baseRates) {
+                for (const zoneRule of zoneRules) {
+                    const zoneName = (zoneRule.zoneId as any)?.standardZoneCode || (zoneRule.zoneId as any)?.name || 'Unknown';
+                    csvRows.push([
+                        `"${card.name}"`,
+                        baseRate.carrier,
+                        baseRate.serviceType,
+                        baseRate.basePrice,
+                        baseRate.minWeight,
+                        baseRate.maxWeight,
+                        zoneName,
+                        zoneRule.additionalPrice,
+                        card.status,
+                        card.effectiveDates.startDate.toISOString().split('T')[0]
+                    ].join(','));
+                }
+            }
+        }
+
+        const csv = csvRows.join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="rate-cards-${Date.now()}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        logger.error('Error exporting rate cards:', error);
+        next(error);
+    }
+};
+
+export const bulkUpdateRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const bulkUpdateSchema = z.object({
+            rateCardIds: z.array(z.string()).min(1),
+            operation: z.enum(['activate', 'deactivate', 'adjust_price']),
+            adjustmentType: z.enum(['percentage', 'fixed']).optional(),
+            adjustmentValue: z.number().optional()
+        });
+
+        const validation = bulkUpdateSchema.safeParse(req.body);
+        if (!validation.success) {
+            throw new ValidationError('Invalid bulk update data', validation.error.errors);
+        }
+
+        const { rateCardIds, operation, adjustmentType, adjustmentValue } = validation.data;
+
+        // Verify all rate cards belong to company
+        const rateCards = await RateCard.find({
+            _id: { $in: rateCardIds.map(id => new mongoose.Types.ObjectId(id)) },
+            companyId,
+            isDeleted: false
+        });
+
+        if (rateCards.length !== rateCardIds.length) {
+            throw new ValidationError('Some rate cards not found or do not belong to your company');
+        }
+
+        let updatedCount = 0;
+
+        if (operation === 'activate' || operation === 'deactivate') {
+            const status = operation === 'activate' ? 'active' : 'inactive';
+            await RateCard.updateMany(
+                { _id: { $in: rateCardIds.map(id => new mongoose.Types.ObjectId(id)) } },
+                { $set: { status } }
+            );
+            updatedCount = rateCards.length;
+        } else if (operation === 'adjust_price' && adjustmentType && adjustmentValue !== undefined) {
+            for (const card of rateCards) {
+                if (adjustmentType === 'percentage') {
+                    // Adjust base rates
+                    card.baseRates = card.baseRates.map(rate => ({
+                        ...rate,
+                        basePrice: rate.basePrice * (1 + adjustmentValue / 100)
+                    }));
+
+                    // Adjust zone rules
+                    card.zoneRules = card.zoneRules.map(rule => ({
+                        ...rule,
+                        additionalPrice: rule.additionalPrice * (1 + adjustmentValue / 100)
+                    }));
+                } else {
+                    // Fixed adjustment
+                    card.baseRates = card.baseRates.map(rate => ({
+                        ...rate,
+                        basePrice: rate.basePrice + adjustmentValue
+                    }));
+
+                    card.zoneRules = card.zoneRules.map(rule => ({
+                        ...rule,
+                        additionalPrice: rule.additionalPrice + adjustmentValue
+                    }));
+                }
+
+                await card.save();
+                updatedCount++;
+            }
+        }
+
+        await createAuditLog(
+            req.user._id,
+            companyId,
+            'update',
+            'ratecard',
+            'multiple',
+            {
+                message: `Bulk ${operation} on rate cards`,
+                count: updatedCount,
+                operation,
+                adjustmentType,
+                adjustmentValue
+            },
+            req
+        );
+        sendSuccess(res, { updatedCount }, `Successfully updated ${updatedCount} rate cards`);
+    } catch (error) {
+        logger.error('Error in bulk update:', error);
+        next(error);
+    }
+};
+
+/**
+ * Smart Rate Calculator Endpoint
+ * Uses AI-powered recommendation engine with weighted scoring
+ */
+export const calculateSmartRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const validation = smartRateCalculateSchema.safeParse(req.body);
+        if (!validation.success) {
+            const errors = validation.error.errors.map(err => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', errors);
+        }
+
+        const data = validation.data;
+
+        // Call smart rate calculator service
+        const result = await SmartRateCalculatorService.calculateSmartRates({
+            companyId,
+            originPincode: data.originPincode,
+            destinationPincode: data.destinationPincode,
+            weight: data.weight,
+            dimensions: data.dimensions,
+            paymentMode: data.paymentMode,
+            orderValue: data.orderValue,
+            preferredCarriers: data.preferredCarriers,
+            excludedCarriers: data.excludedCarriers,
+            scoringWeights: data.scoringWeights,
+        });
+
+        await createAuditLog(
+            req.user._id,
+            companyId,
+            'read',
+            'smart_rate_calculation',
+            undefined,
+            {
+                message: 'Smart rate calculated',
+                route: `${data.originPincode} -> ${data.destinationPincode}`,
+                weight: data.weight,
+                optionsReturned: result.totalOptions,
+            },
+            req
+        );
+
+        sendSuccess(res, result, 'Smart rates calculated successfully');
+    } catch (error) {
+        logger.error('Error calculating smart rates:', error);
+        next(error);
+    }
+};
+
 export default {
     createRateCard,
     getRateCards,
@@ -531,6 +779,9 @@ export default {
     updateRateCard,
     calculateRate,
     compareCarrierRates,
+    calculateSmartRates,
     getRateCardAnalytics,
     getRateCardRevenueSeries,
+    exportRateCards,
+    bulkUpdateRateCards,
 };

@@ -80,6 +80,8 @@ export { default as Zone } from './logistics/shipping/configuration/zone.model';
 export * from './logistics/shipping/configuration/zone.model';
 export { default as RateCard } from './logistics/shipping/configuration/rate-card.model';
 export * from './logistics/shipping/configuration/rate-card.model';
+export { default as CourierPerformance } from './shipping/courier-performance.model';
+export * from './shipping/courier-performance.model';
 export { default as RTOEvent } from './logistics/shipping/exceptions/rto-event.model';
 export * from './logistics/shipping/exceptions/rto-event.model';
 export { default as NDREvent } from './logistics/shipping/exceptions/ndr-event.model';

@@ -193,7 +193,7 @@ class PromoCodeService {
 
         if (data.code && data.code.toUpperCase() !== coupon.code) {
             const existing = await Coupon.findOne({ code: data.code.toUpperCase() });
-            if (existing && existing._id.toString() !== id) {
+            if (existing && (existing._id as mongoose.Types.ObjectId).toString() !== id) {
                 throw new ConflictError('Promo code already exists');
             }
             coupon.code = data.code.toUpperCase();
