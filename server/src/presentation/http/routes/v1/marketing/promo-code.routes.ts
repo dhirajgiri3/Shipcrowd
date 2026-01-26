@@ -33,4 +33,20 @@ router.get(
     PromoCodeController.listPromos
 );
 
+// Update promo code
+router.patch(
+    '/:id',
+    authenticate,
+    apiRateLimiter,
+    PromoCodeController.updatePromo
+);
+
+// Delete promo code
+router.delete(
+    '/:id',
+    authenticate,
+    apiRateLimiter,
+    PromoCodeController.deletePromo
+);
+
 export default router;

@@ -109,6 +109,51 @@ class PromoCodeController {
             next(error);
         }
     }
+
+    /**
+     * Update promo code
+     * PATCH /promos/:id
+     */
+    async updatePromo(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const data = req.body;
+
+            if (!req.user?.companyId) {
+                throw new ValidationError('Company ID required');
+            }
+
+            const promo = await PromoCodeService.updatePromo(
+                id,
+                req.user.companyId.toString(),
+                data
+            );
+
+            sendSuccess(res, { promo }, 'Promo code updated successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Delete promo code (Soft Delete)
+     * DELETE /promos/:id
+     */
+    async deletePromo(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+
+            if (!req.user?.companyId) {
+                throw new ValidationError('Company ID required');
+            }
+
+            await PromoCodeService.deletePromo(id, req.user.companyId.toString());
+
+            sendSuccess(res, null, 'Promo code deleted successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export default new PromoCodeController();

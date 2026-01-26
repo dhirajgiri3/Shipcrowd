@@ -23,32 +23,8 @@ import {
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
 import { getCourierLogo } from '@/src/constants';
-
-// Note: The backend `/ratecards/calculate` endpoint requires full implementation
-// For now, this calculates client-side but validates against available carriers
-const calculateRates = (data: any) => {
-    const { weight, originPincode, destinationPincode } = data;
-    const baseWeight = parseFloat(weight) || 0.5;
-
-    // Mock calculation (replace with API call when ready)
-    const carriers = ['Delhivery', 'Xpressbees', 'DTDC', 'Bluedart', 'EcomExpress'];
-    return carriers.map((courier, idx) => {
-        const baseRate = 50 + (idx * 10);
-        const weightCharge = baseWeight * (30 - idx * 2);
-        const zoneMultiplier = Math.random() > 0.5 ? 1.2 : 1.0;
-        const rate = Math.round((baseRate + weightCharge) * zoneMultiplier);
-        const eta = idx === 0 ? '1-2 days' : idx === 1 ? '2-3 days' : '3-4 days';
-        const rating = (4.0 + Math.random() * 0.8).toFixed(1);
-
-        return {
-            courier,
-            rate,
-            eta,
-            rating: parseFloat(rating),
-            recommended: idx === 1 // Xpressbees recommended for best value
-        };
-    }).sort((a, b) => a.rate - b.rate);
-};
+import { useRateCalculation } from '@/src/hooks/shipping/use-rate-calculation';
+import { useMultiCarrierRates } from '@/src/hooks/shipping/use-multi-carrier-rates';
 
 export function RatesClient() {
     const [formData, setFormData] = useState({
@@ -62,8 +38,13 @@ export function RatesClient() {
     });
     const [calculatedRates, setCalculatedRates] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
-    const [isCalculating, setIsCalculating] = useState(false);
-    const { addToast } = useToast();
+    const [compareMode, setCompareMode] = useState(true); // Multi-carrier by default
+    const { addToast} = useToast();
+
+    const { mutate: calculateRate, isPending: isSingleCalculating } = useRateCalculation();
+    const { mutate: compareRates, isPending: isComparing } = useMultiCarrierRates();
+
+    const isCalculating = compareMode ? isComparing : isSingleCalculating;
 
     const handleCalculate = () => {
         if (!formData.originPincode || !formData.destinationPincode || !formData.weight) {
@@ -77,16 +58,59 @@ export function RatesClient() {
             return;
         }
 
-        setIsCalculating(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            const rates = calculateRates(formData);
-            setCalculatedRates(rates);
-            setShowResults(true);
-            setIsCalculating(false);
-            addToast('Rates calculated successfully!', 'success');
-        }, 800);
+        if (compareMode) {
+            // Multi-carrier comparison
+            compareRates({
+                originPincode: formData.originPincode,
+                destinationPincode: formData.destinationPincode,
+                weight: parseFloat(formData.weight),
+                paymentMode: formData.paymentMode as 'prepaid' | 'cod',
+                orderValue: formData.paymentMode === 'cod' ? 1000 : undefined
+            }, {
+                onSuccess: (response) => {
+                    const rates = response.data.rates.map((rate: any) => ({
+                        courier: rate.carrier,
+                        serviceType: rate.serviceType,
+                        rate: rate.rate,
+                        eta: `${rate.eta.minDays}-${rate.eta.maxDays} days`,
+                        rating: 4.5,
+                        recommended: rate.recommended,
+                        breakdown: rate.breakdown,
+                        zone: rate.zone
+                    }));
+                    setCalculatedRates(rates);
+                    setShowResults(true);
+                    addToast('Multi-carrier rates calculated!', 'success');
+                },
+                onError: (error: any) => {
+                    addToast(error?.response?.data?.message || 'Failed to compare rates', 'error');
+                }
+            });
+        } else {
+            // Single carrier calculation
+            calculateRate({
+                originPincode: formData.originPincode,
+                destinationPincode: formData.destinationPincode,
+                weight: parseFloat(formData.weight)
+            }, {
+                onSuccess: (response) => {
+                    const rateData = response.data;
+                    setCalculatedRates([{
+                        courier: rateData.carrier,
+                        rate: rateData.rate,
+                        eta: '2-3 days',
+                        rating: 4.5,
+                        recommended: true,
+                        breakdown: rateData.breakdown
+                    }]);
+                    setShowResults(true);
+                    addToast('Rate calculated successfully!', 'success');
+                },
+                onError: (error: any) => {
+                    addToast(error?.response?.data?.message || 'Failed to calculate rate', 'error');
+                }
+            });
+        }
     };
 
     const handleReset = () => {

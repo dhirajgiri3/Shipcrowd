@@ -27,6 +27,13 @@ router.get('/', authenticate, asyncHandler(ratecardController.getRateCards));
 router.post('/calculate', authenticate, asyncHandler(ratecardController.calculateRate));
 
 /**
+ * @route POST /api/v1/ratecards/compare
+ * @desc Compare rates across all carriers
+ * @access Private
+ */
+router.post('/compare', authenticate, asyncHandler(ratecardController.compareCarrierRates));
+
+/**
  * @route GET /api/v1/ratecards/:id
  * @desc Get a rate card by ID
  * @access Private
@@ -39,5 +46,19 @@ router.get('/:id', authenticate, asyncHandler(ratecardController.getRateCardById
  * @access Private
  */
 router.patch('/:id', authenticate, csrfProtection, asyncHandler(ratecardController.updateRateCard));
+
+/**
+ * @route GET /api/v1/ratecards/:id/analytics
+ * @desc Get rate card usage analytics
+ * @access Private
+ */
+router.get('/:id/analytics', authenticate, asyncHandler(ratecardController.getRateCardAnalytics));
+
+/**
+ * @route GET /api/v1/ratecards/:id/revenue-series
+ * @desc Get rate card revenue time series
+ * @access Private
+ */
+router.get('/:id/revenue-series', authenticate, asyncHandler(ratecardController.getRateCardRevenueSeries));
 
 export default router;

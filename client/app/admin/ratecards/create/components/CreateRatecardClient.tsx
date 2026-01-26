@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
+import { useCreateRateCard } from '@/src/hooks/shipping/use-create-rate-card';
+import { useRouter } from 'next/navigation';
 
 // Mock couriers for dropdown
 const couriers = [
@@ -35,6 +37,8 @@ const zoneMappings = ['state', 'region'];
 
 export function CreateRatecardClient() {
     const { addToast } = useToast();
+    const router = useRouter();
+    const { mutate: createRateCard, isPending } = useCreateRateCard();
     const [selectedCourier, setSelectedCourier] = useState('');
     const [formData, setFormData] = useState({
         courierProviderId: '',
@@ -78,6 +82,63 @@ export function CreateRatecardClient() {
 
     const selectedCourierData = couriers.find(c => c.id === selectedCourier);
 
+    const handleSubmit = () => {
+        // Validation
+        if (!formData.courierProviderId || !formData.courierServiceId || !formData.rateCardCategory) {
+            addToast('Please fill all required fields', 'error');
+            return;
+        }
+
+        if (!formData.basicZoneA || !formData.basicZoneB) {
+            addToast('Please set at least Zone A and Zone B rates', 'error');
+            return;
+        }
+
+        // Transform to API format
+        const payload = {
+            courierProviderId: formData.courierProviderId,
+            courierServiceId: formData.courierServiceId,
+            rateCardCategory: formData.rateCardCategory,
+            shipmentType: formData.shipmentType as 'forward' | 'reverse',
+            gst: parseFloat(formData.gst),
+            minimumFare: parseFloat(formData.minimumFare) || 0,
+            minimumFareCalculatedOn: formData.minimumFareCalculatedOn as 'freight' | 'freight_overhead',
+            zoneBType: formData.zoneBType as 'state' | 'region',
+            isWeightConstraint: formData.isWeightConstraint,
+            minWeight: formData.minWeight ? parseFloat(formData.minWeight) : undefined,
+            maxWeight: formData.maxWeight ? parseFloat(formData.maxWeight) : undefined,
+            status: formData.status as 'active' | 'inactive',
+            baseWeight: parseFloat(formData.basicWeight),
+            baseRates: [
+                { zone: 'zoneA', price: parseFloat(formData.basicZoneA) || 0 },
+                { zone: 'zoneB', price: parseFloat(formData.basicZoneB) || 0 },
+                { zone: 'zoneC', price: parseFloat(formData.basicZoneC) || 0 },
+                { zone: 'zoneD', price: parseFloat(formData.basicZoneD) || 0 },
+                { zone: 'zoneE', price: parseFloat(formData.basicZoneE) || 0 },
+            ].filter(r => r.price > 0),
+            additionalWeight: parseFloat(formData.additionalWeight),
+            additionalRates: [
+                { zone: 'zoneA', price: parseFloat(formData.additionalZoneA) || 0 },
+                { zone: 'zoneB', price: parseFloat(formData.additionalZoneB) || 0 },
+                { zone: 'zoneC', price: parseFloat(formData.additionalZoneC) || 0 },
+                { zone: 'zoneD', price: parseFloat(formData.additionalZoneD) || 0 },
+                { zone: 'zoneE', price: parseFloat(formData.additionalZoneE) || 0 },
+            ].filter(r => r.price > 0),
+            codPercentage: parseFloat(formData.codPercentage),
+            codMinimumCharge: parseFloat(formData.codMinimumCharge),
+        };
+
+        createRateCard(payload, {
+            onSuccess: () => {
+                addToast('Rate card created successfully!', 'success');
+                router.push('/admin/ratecards');
+            },
+            onError: (error: any) => {
+                addToast(error?.response?.data?.message || 'Failed to create rate card', 'error');
+            }
+        });
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
             {/* Header */}
@@ -98,9 +159,9 @@ export function CreateRatecardClient() {
                         </p>
                     </div>
                 </div>
-                <Button onClick={() => addToast('Rate card saved successfully!', 'success')}>
+                <Button onClick={handleSubmit} disabled={isPending}>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Rate Card
+                    {isPending ? 'Saving...' : 'Save Rate Card'}
                 </Button>
             </div>
 

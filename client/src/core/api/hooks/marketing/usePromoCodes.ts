@@ -12,31 +12,31 @@ import { handleApiError, showSuccessToast } from '@/src/lib/error';
 export interface PromoCode {
     _id: string;
     code: string;
-    type: 'percentage' | 'fixed';
-    value: number;
-    maxDiscount?: number;
-    minRecharge?: number;
-    usageLimit?: number;
-    usedCount: number;
+    companyId: string;
+    discount: {
+        type: 'percentage' | 'fixed';
+        value: number;
+    };
     validFrom: string;
-    validTo: string;
-    status: 'active' | 'expired' | 'inactive';
-    description?: string;
-    createdBy?: string;
+    validUntil: string;
+    restrictions: {
+        minOrderValue?: number;
+        maxDiscount?: number;
+        usageLimit?: number;
+        usageCount?: number;
+        carriers?: string[];
+        serviceTypes?: string[];
+    };
+    isActive: boolean;
+    isDeleted: boolean;
     createdAt: string;
     updatedAt: string;
 }
 
-export interface PromoCodeResponse {
-    promoCodes: PromoCode[];
-    pagination: { page: number; limit: number; total: number; pages: number; };
-}
+export type PromoCodeResponse = PromoCode[];
 
 export interface PromoCodeFilters {
-    status?: 'active' | 'expired' | 'inactive';
-    search?: string;
-    page?: number;
-    limit?: number;
+    active?: boolean; // Backend only supports active=true/false
 }
 
 export interface ValidatePromoPayload { code: string; amount: number; }
@@ -46,6 +46,7 @@ export const usePromoCodes = (filters?: PromoCodeFilters, options?: UseQueryOpti
     return useQuery<PromoCodeResponse, ApiError>({
         queryKey: queryKeys.marketing.promoCodes(filters),
         queryFn: async () => {
+            // Backend returns { data: PromoCode[] }
             const response = await apiClient.get<{ data: PromoCodeResponse }>('/promos', { params: filters });
             return response.data.data;
         },

@@ -14,6 +14,7 @@ import {
 import { AuthenticationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
+import RateCardAnalyticsService from '../../../../core/application/services/analytics/rate-card-analytics.service';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -342,10 +343,194 @@ export const calculateRate = async (req: Request, res: Response, next: NextFunct
     }
 };
 
+export const compareCarrierRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const validation = calculateRateSchema.safeParse(req.body);
+        if (!validation.success) {
+            throw new ValidationError(validation.error.errors[0].message, ErrorCode.VAL_INVALID_INPUT);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User not associated with company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        // Get all carriers from CARRIERS static data
+        const { CARRIERS } = await import('../../../../infrastructure/database/seeders/data/carrier-data');
+        const carriers = Object.values(CARRIERS);
+
+        const rates: any[] = [];
+
+        // Calculate rates for each carrier
+        for (const carrier of carriers) {
+            for (const serviceType of carrier.serviceTypes) {
+                try {
+                    const pricingResult = await PricingOrchestratorService.calculateShipmentPricing({
+                        companyId,
+                        fromPincode: validation.data.originPincode,
+                        toPincode: validation.data.destinationPincode,
+                        weight: validation.data.weight,
+                        dimensions: validation.data.dimensions || { length: 10, width: 10, height: 10 },
+                        paymentMode: validation.data.paymentMode || 'prepaid',
+                        orderValue: validation.data.orderValue || 1000,
+                        carrier: carrier.displayName,
+                        serviceType
+                    });
+
+                    rates.push({
+                        carrier: carrier.displayName,
+                        serviceType,
+                        rate: pricingResult.totalPrice,
+                        breakdown: {
+                            base: pricingResult.baseRate,
+                            weightCharge: pricingResult.weightCharge,
+                            zoneCharge: pricingResult.zoneCharge,
+                            tax: pricingResult.gstAmount,
+                            codCharge: pricingResult.codCharge
+                        },
+                        zone: pricingResult.zone,
+                        eta: {
+                            minDays: serviceType === 'Express' ? 1 : serviceType === 'Air' ? 2 : 3,
+                            maxDays: serviceType === 'Express' ? 2 : serviceType === 'Air' ? 3 : 5
+                        },
+                        recommended: false
+                    });
+                } catch (error) {
+                    logger.warn(`Failed to calculate rate for ${carrier.displayName} - ${serviceType}:`, error);
+                }
+            }
+        }
+
+        // Sort by price
+        rates.sort((a, b) => a.rate - b.rate);
+
+        // Mark cheapest and fastest
+        if (rates.length > 0) {
+            rates[0].recommended = true; // Cheapest
+        }
+
+        const cheapest = rates[0];
+        const fastest = rates.reduce((prev, curr) =>
+            (curr.eta.maxDays < prev.eta.maxDays) ? curr : prev
+        , rates[0]);
+
+        sendSuccess(res, {
+            rates,
+            cheapest,
+            fastest
+        }, 'Multi-carrier rates calculated successfully');
+
+    } catch (error) {
+        logger.error('Error comparing carrier rates:', error);
+        next(error);
+    }
+};
+
+export const getRateCardAnalytics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const rateCardId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        // Verify rate card exists and belongs to company
+        const rateCard = await RateCard.findOne({
+            _id: rateCardId,
+            companyId,
+            isDeleted: false,
+        }).lean();
+
+        if (!rateCard) {
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+        }
+
+        // Parse date filters
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+        const stats = await RateCardAnalyticsService.getRateCardUsageStats(
+            rateCardId,
+            startDate,
+            endDate
+        );
+
+        sendSuccess(res, { stats }, 'Rate card analytics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching rate card analytics:', error);
+        next(error);
+    }
+};
+
+export const getRateCardRevenueSeries = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const rateCardId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        // Verify rate card exists and belongs to company
+        const rateCard = await RateCard.findOne({
+            _id: rateCardId,
+            companyId,
+            isDeleted: false,
+        }).lean();
+
+        if (!rateCard) {
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+        }
+
+        // Parse parameters
+        const startDate = new Date(req.query.startDate as string);
+        const endDate = new Date(req.query.endDate as string);
+        const granularity = (req.query.granularity as 'day' | 'week' | 'month') || 'day';
+
+        if (!startDate || !endDate) {
+            throw new ValidationError('startDate and endDate are required');
+        }
+
+        const timeSeries = await RateCardAnalyticsService.getRevenueTimeSeries(
+            rateCardId,
+            startDate,
+            endDate,
+            granularity
+        );
+
+        sendSuccess(res, { timeSeries }, 'Revenue time series retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching revenue time series:', error);
+        next(error);
+    }
+};
+
 export default {
     createRateCard,
     getRateCards,
     getRateCardById,
     updateRateCard,
     calculateRate,
+    compareCarrierRates,
+    getRateCardAnalytics,
+    getRateCardRevenueSeries,
 };

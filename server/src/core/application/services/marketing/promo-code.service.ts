@@ -172,6 +172,70 @@ class PromoCodeService {
 
         return Coupon.find(query).sort({ createdAt: -1 });
     }
+
+    /**
+     * Update a promo code
+     */
+    async updatePromo(
+        id: string,
+        companyId: string,
+        data: Partial<CreatePromoDto> & { isActive?: boolean }
+    ): Promise<ICoupon> {
+        const coupon = await Coupon.findOne({
+            _id: id,
+            companyId: new mongoose.Types.ObjectId(companyId),
+            isDeleted: false
+        });
+
+        if (!coupon) {
+            throw new NotFoundError('Promo code not found');
+        }
+
+        if (data.code && data.code.toUpperCase() !== coupon.code) {
+            const existing = await Coupon.findOne({ code: data.code.toUpperCase() });
+            if (existing && existing._id.toString() !== id) {
+                throw new ConflictError('Promo code already exists');
+            }
+            coupon.code = data.code.toUpperCase();
+        }
+
+        // Update core fields
+        if (data.discountType) coupon.discount.type = data.discountType;
+        if (data.discountValue !== undefined) coupon.discount.value = data.discountValue;
+        if (data.validFrom) coupon.validFrom = data.validFrom;
+        if (data.validUntil) coupon.validUntil = data.validUntil;
+        if (data.isActive !== undefined) coupon.isActive = data.isActive;
+
+        // Update restrictions
+        if (data.minOrderValue !== undefined) coupon.restrictions.minOrderValue = data.minOrderValue;
+        if (data.maxDiscount !== undefined) coupon.restrictions.maxDiscount = data.maxDiscount;
+        if (data.usageLimit !== undefined) coupon.restrictions.usageLimit = data.usageLimit;
+        if (data.carriers) coupon.restrictions.carriers = data.carriers;
+        if (data.serviceTypes) coupon.restrictions.serviceTypes = data.serviceTypes;
+
+        await coupon.save();
+        logger.info(`Promo code updated: ${coupon.code}`);
+        return coupon;
+    }
+
+    /**
+     * Soft delete a promo code
+     */
+    async deletePromo(id: string, companyId: string): Promise<void> {
+        const coupon = await Coupon.findOne({
+            _id: id,
+            companyId: new mongoose.Types.ObjectId(companyId),
+            isDeleted: false
+        });
+
+        if (!coupon) {
+            throw new NotFoundError('Promo code not found');
+        }
+
+        coupon.isDeleted = true;
+        await coupon.save();
+        logger.info(`Promo code deleted: ${coupon.code}`);
+    }
 }
 
 export default new PromoCodeService();
