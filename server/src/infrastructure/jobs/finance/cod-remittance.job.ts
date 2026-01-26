@@ -229,6 +229,11 @@ export class CODRemittanceJob {
                 bankDetails: settlement.bank_details
             };
         } catch (error: any) {
+            // Check if error is 404 (Settlement not found) - Treat as pending
+            if (error.statusCode === 404 || error.message.includes('not found')) {
+                return { status: 'pending' };
+            }
+
             logger.error('Velocity settlement API call failed', {
                 remittanceId,
                 error: error.message,
@@ -284,9 +289,13 @@ export class CODRemittanceJob {
 
                 if (useRealAPI) {
                     // REAL API MODE - Call actual Razorpay API
-                    payoutStatus = await this.fetchRazorpayPayoutStatus(
-                        remittance.payout.razorpayPayoutId! // Non-null: query filters for existence
-                    );
+                    const payoutId = remittance.payout.razorpayPayoutId;
+                    if (!payoutId) {
+                        logger.warn('Skipping payout verification: No Payout ID', { remittanceId: remittance.remittanceId });
+                        continue;
+                    }
+
+                    payoutStatus = await this.fetchRazorpayPayoutStatus(payoutId);
                 } else {
                     // MOCK MODE - Simulate payout status check
                     await MockDataService.simulateDelay(1000);
@@ -311,7 +320,7 @@ export class CODRemittanceJob {
                     });
                 } else if (payoutStatus.status === 'failed') {
                     remittance.payout.status = 'failed';
-                    remittance.payout.failureReason = payoutStatus.failure_reason;
+                    remittance.payout.failureReason = payoutStatus.failure_reason || undefined;
                     remittance.status = 'failed'; // Correct enum value
                     await remittance.save();
 
@@ -339,7 +348,7 @@ export class CODRemittanceJob {
      */
     private static async fetchRazorpayPayoutStatus(razorpayPayoutId: string): Promise<{
         status: string;
-        utr?: string | null;
+        utr?: string;
         failure_reason?: string;
         reversed_at?: Date | null;
         amount?: number;
@@ -347,16 +356,17 @@ export class CODRemittanceJob {
         tax?: number;
     }> {
         try {
-            const RazorpayPayoutProvider = (await import(
-                '../../../infrastructure/payment/razorpay/RazorpayPayoutProvider'
-            )).default;
+            // Fix: Cast imported module default to any to avoid "not constructable" TS error
+            const RazorpayPayoutProviderClass = (await import(
+                '../../../infrastructure/payment/razorpay/RazorpayPayoutProvider.js'
+            )).default as any;
 
-            const razorpayClient = new RazorpayPayoutProvider();
+            const razorpayClient = new RazorpayPayoutProviderClass();
             const payout = await razorpayClient.getPayoutStatus(razorpayPayoutId);
 
             return {
                 status: payout.status,
-                utr: payout.utr,
+                utr: payout.utr || undefined,
                 failure_reason: payout.failure_reason,
                 // Razorpay payout object may include these fields; we keep them optional
                 reversed_at: (payout as any).reversed_at

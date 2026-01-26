@@ -411,13 +411,17 @@ export default class RTOService {
             const isVelocity = courierProvider?.includes('velocity');
 
             if (!isVelocity) {
-                // Fallback for non-Velocity couriers
-                logger.info('Non-Velocity courier detected, using mock reverse AWB', {
+                // FAIL FAST: Enforce courier integration
+                logger.error('RTO attempted for unsupported courier', {
                     courier: courierProvider,
                     originalAwb: shipment.awb
                 });
-                const timestamp = Date.now().toString().slice(-6);
-                return `RTO-${shipment.awb}-${timestamp}`;
+
+                throw new AppError(
+                    `Automated RTO not supported for courier: ${courierProvider}`,
+                    'RTO_COURIER_NOT_SUPPORTED',
+                    400
+                );
             }
 
             // Import Velocity provider

@@ -28,6 +28,7 @@ export * from './finance';
 export * from './integrations';
 
 // Communication & Notifications
+export * from './support';
 export * from './communication';
 
 // Security & Compliance

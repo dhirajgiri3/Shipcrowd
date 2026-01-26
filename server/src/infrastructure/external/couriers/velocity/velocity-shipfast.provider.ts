@@ -808,7 +808,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
   }
 
   /**
-   * 10. Get Settlement Status (COD Remittance)
+   * 10. Get Settlement Status
    * Maps to: POST /custom/api/v1/settlement-status
    *
    * Checks settlement status for COD remittance from Velocity
