@@ -41,12 +41,81 @@ export const authenticate = async (
 
     // Fetch full user data from database for access tier checks
     const dbUser = await User.findById(payload.userId)
-      .select('_id role companyId isEmailVerified kycStatus teamRole teamStatus')
+      .select('_id role companyId isEmailVerified kycStatus teamRole teamStatus isSuspended suspensionReason suspendedAt suspensionExpiresAt isBanned banReason bannedAt')
       .lean();
 
     if (!dbUser) {
       res.status(401).json({ message: 'User not found' });
       return;
+    }
+
+    // Check if user is banned
+    if (dbUser.isBanned) {
+      logger.error('Access denied: User is banned', {
+        userId: payload.userId,
+        bannedAt: dbUser.bannedAt,
+        reason: dbUser.banReason,
+      });
+
+      res.status(403).json({
+        success: false,
+        message: 'Your account has been permanently banned. Please contact support if you believe this is an error.',
+        code: 'USER_BANNED',
+        data: {
+          bannedAt: dbUser.bannedAt,
+          reason: dbUser.banReason,
+          contactSupport: true,
+        },
+      });
+      return;
+    }
+
+    // Check if user is suspended
+    if (dbUser.isSuspended) {
+      // Check if suspension has expired
+      if (dbUser.suspensionExpiresAt && new Date() > dbUser.suspensionExpiresAt) {
+        // Auto-unsuspend
+        await User.updateOne(
+          { _id: dbUser._id },
+          {
+            $set: {
+              isSuspended: false,
+              isActive: true,
+            },
+            $unset: {
+              suspensionReason: 1,
+              suspendedAt: 1,
+              suspendedBy: 1,
+              suspensionExpiresAt: 1,
+            },
+          }
+        );
+        logger.info('User auto-unsuspended after expiration', {
+          userId: payload.userId,
+        });
+      } else {
+        logger.warn('Access denied: User is suspended', {
+          userId: payload.userId,
+          suspendedAt: dbUser.suspendedAt,
+          expiresAt: dbUser.suspensionExpiresAt,
+          reason: dbUser.suspensionReason,
+        });
+
+        res.status(403).json({
+          success: false,
+          message: dbUser.suspensionExpiresAt
+            ? `Your account is temporarily suspended until ${dbUser.suspensionExpiresAt.toISOString()}. ${dbUser.suspensionReason || ''}`
+            : `Your account is suspended. ${dbUser.suspensionReason || 'Please contact support for assistance.'}`,
+          code: 'USER_SUSPENDED',
+          data: {
+            suspendedAt: dbUser.suspendedAt,
+            expiresAt: dbUser.suspensionExpiresAt,
+            reason: dbUser.suspensionReason,
+            contactSupport: true,
+          },
+        });
+        return;
+      }
     }
 
     // Set full user object in request for downstream middleware

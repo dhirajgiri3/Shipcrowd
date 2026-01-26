@@ -63,6 +63,7 @@ const COLLECTIONS_TO_CLEAR = [
     'flipkartstores',  // Actual MongoDB collection name
     // Integrations
     'integrations',
+    'couriers', // New collection
     // Phase 3 collections
     'rate_cards',  // Fixed: was 'ratecards'
     'zones',
@@ -193,6 +194,7 @@ async function runSeeders(): Promise<void> {
     const { seedAuditLogs } = await import('./seeders/26-audit-logs.seeder.js');
     const { seedPayouts } = await import('./seeders/27-payouts.seeder.js');
     const { seedPincodes } = await import('./seeders/28-pincodes.seeder.js');
+    const { seedCouriers } = await import('./seeders/29-couriers.seeder.js');
 
     // Seeder order based on dependencies
     const seeders = [
@@ -226,6 +228,7 @@ async function runSeeders(): Promise<void> {
         { name: 'Audit Logs', fn: seedAuditLogs },
         { name: 'Commission Payouts', fn: seedPayouts },
         { name: 'Pincodes', fn: seedPincodes },
+        { name: 'Couriers', fn: seedCouriers },
     ];
 
     for (const seeder of seeders) {

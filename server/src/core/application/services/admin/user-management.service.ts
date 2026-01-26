@@ -397,6 +397,287 @@ class UserManagementService {
         };
     }
 
+    /**
+     * Suspend a user account
+     */
+    async suspendUser(args: {
+        targetUserId: string;
+        performedBy: string;
+        reason: string;
+        duration?: number; // Duration in days (optional)
+    }) {
+        const { targetUserId, performedBy, reason, duration } = args;
+
+        // Validate IDs
+        if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+            throw new ValidationError('Invalid user ID', ErrorCode.VAL_INVALID_INPUT);
+        }
+
+        // Cannot suspend self
+        if (targetUserId === performedBy) {
+            throw new AuthorizationError(
+                'Cannot suspend yourself',
+                ErrorCode.AUTHZ_FORBIDDEN
+            );
+        }
+
+        // Fetch target user
+        const user = await User.findById(targetUserId);
+        if (!user) {
+            throw new NotFoundError('User not found', ErrorCode.RES_NOT_FOUND);
+        }
+
+        // Cannot suspend super_admin or admin
+        if (['super_admin', 'admin'].includes(user.role)) {
+            throw new ValidationError(
+                'Cannot suspend admin users',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Check if already suspended
+        if (user.isSuspended) {
+            throw new ValidationError(
+                'User is already suspended',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Check if banned (cannot suspend banned users)
+        if (user.isBanned) {
+            throw new ValidationError(
+                'Cannot suspend a banned user. Unban first.',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Calculate expiration if duration provided
+        let expiresAt: Date | undefined;
+        if (duration && duration > 0) {
+            expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + duration);
+        }
+
+        // Perform suspension
+        user.isSuspended = true;
+        user.suspensionReason = reason;
+        user.suspendedAt = new Date();
+        user.suspendedBy = new mongoose.Types.ObjectId(performedBy);
+        user.suspensionExpiresAt = expiresAt;
+        user.isActive = false; // Deactivate account
+        await user.save();
+
+        logger.warn(`User suspended`, {
+            performedBy,
+            targetUser: targetUserId,
+            targetEmail: user.email,
+            reason,
+            duration,
+            expiresAt,
+        });
+
+        return {
+            success: true,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                isSuspended: true,
+                suspendedAt: user.suspendedAt,
+                suspensionExpiresAt: user.suspensionExpiresAt,
+            },
+        };
+    }
+
+    /**
+     * Unsuspend a user account
+     */
+    async unsuspendUser(args: {
+        targetUserId: string;
+        performedBy: string;
+        reason?: string;
+    }) {
+        const { targetUserId, performedBy, reason } = args;
+
+        // Validate IDs
+        if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+            throw new ValidationError('Invalid user ID', ErrorCode.VAL_INVALID_INPUT);
+        }
+
+        // Fetch target user
+        const user = await User.findById(targetUserId);
+        if (!user) {
+            throw new NotFoundError('User not found', ErrorCode.RES_NOT_FOUND);
+        }
+
+        // Check if suspended
+        if (!user.isSuspended) {
+            throw new ValidationError(
+                'User is not suspended',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Perform unsuspension
+        user.isSuspended = false;
+        user.suspensionReason = reason ? `Unsuspended: ${reason}` : 'Unsuspended by admin';
+        user.suspendedAt = undefined;
+        user.suspendedBy = undefined;
+        user.suspensionExpiresAt = undefined;
+        user.isActive = true; // Reactivate account
+        await user.save();
+
+        logger.info(`User unsuspended`, {
+            performedBy,
+            targetUser: targetUserId,
+            targetEmail: user.email,
+            reason,
+        });
+
+        return {
+            success: true,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                isSuspended: false,
+            },
+        };
+    }
+
+    /**
+     * Permanently ban a user account
+     */
+    async banUser(args: {
+        targetUserId: string;
+        performedBy: string;
+        reason: string;
+    }) {
+        const { targetUserId, performedBy, reason } = args;
+
+        // Validate IDs
+        if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+            throw new ValidationError('Invalid user ID', ErrorCode.VAL_INVALID_INPUT);
+        }
+
+        // Cannot ban self
+        if (targetUserId === performedBy) {
+            throw new AuthorizationError(
+                'Cannot ban yourself',
+                ErrorCode.AUTHZ_FORBIDDEN
+            );
+        }
+
+        // Fetch target user
+        const user = await User.findById(targetUserId);
+        if (!user) {
+            throw new NotFoundError('User not found', ErrorCode.RES_NOT_FOUND);
+        }
+
+        // Cannot ban super_admin or admin
+        if (['super_admin', 'admin'].includes(user.role)) {
+            throw new ValidationError(
+                'Cannot ban admin users',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Check if already banned
+        if (user.isBanned) {
+            throw new ValidationError(
+                'User is already banned',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Perform ban (clears suspension if any)
+        user.isBanned = true;
+        user.banReason = reason;
+        user.bannedAt = new Date();
+        user.bannedBy = new mongoose.Types.ObjectId(performedBy);
+        user.isActive = false; // Deactivate account
+        // Clear suspension fields
+        user.isSuspended = false;
+        user.suspensionReason = undefined;
+        user.suspendedAt = undefined;
+        user.suspendedBy = undefined;
+        user.suspensionExpiresAt = undefined;
+        await user.save();
+
+        logger.error(`User permanently banned`, {
+            performedBy,
+            targetUser: targetUserId,
+            targetEmail: user.email,
+            reason,
+        });
+
+        return {
+            success: true,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                isBanned: true,
+                bannedAt: user.bannedAt,
+            },
+        };
+    }
+
+    /**
+     * Unban a user account
+     */
+    async unbanUser(args: {
+        targetUserId: string;
+        performedBy: string;
+        reason?: string;
+    }) {
+        const { targetUserId, performedBy, reason } = args;
+
+        // Validate IDs
+        if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+            throw new ValidationError('Invalid user ID', ErrorCode.VAL_INVALID_INPUT);
+        }
+
+        // Fetch target user
+        const user = await User.findById(targetUserId);
+        if (!user) {
+            throw new NotFoundError('User not found', ErrorCode.RES_NOT_FOUND);
+        }
+
+        // Check if banned
+        if (!user.isBanned) {
+            throw new ValidationError(
+                'User is not banned',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        // Perform unban
+        user.isBanned = false;
+        user.banReason = reason ? `Unbanned: ${reason}` : 'Unbanned by admin';
+        user.bannedAt = undefined;
+        user.bannedBy = undefined;
+        user.isActive = true; // Reactivate account
+        await user.save();
+
+        logger.info(`User unbanned`, {
+            performedBy,
+            targetUser: targetUserId,
+            targetEmail: user.email,
+            reason,
+        });
+
+        return {
+            success: true,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                isBanned: false,
+            },
+        };
+    }
+
     // Helper methods
     private canPromoteUser(role: string): boolean {
         return role === 'seller';

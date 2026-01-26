@@ -9,6 +9,7 @@ import { Package, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/src/features/auth';
 import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBanner';
 import { useLoader } from '@/src/hooks/utility/useLoader';
+import { Loader, TruckLoader } from '@/src/components/ui';
 import {
     PullToRefresh,
     ScrollToTopButton
@@ -196,6 +197,7 @@ export function DashboardClient() {
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isDataReady, setIsDataReady] = useState(false);
+    const [isManualRefresh, setIsManualRefresh] = useState(false);
 
     // ✅ Get date range from centralized context
     const { getAPIParams } = useDashboardDate();
@@ -367,7 +369,10 @@ export function DashboardClient() {
 
     // 3. Refresh Handler
     const handleRefresh = async () => {
-        startLoading();
+        setIsManualRefresh(true);
+        // We don't call startLoading() here because we want to show the TruckLoader overlay
+        // instead of converting existing UI to skeletons.
+        // startLoading(); 
 
         // Refetch all queries
         await Promise.all([
@@ -386,7 +391,8 @@ export function DashboardClient() {
 
         setCurrentTime(new Date());
         setIsDataReady(true);
-        stopLoading();
+        // stopLoading();
+        setIsManualRefresh(false);
     };
 
     return (
@@ -721,6 +727,15 @@ export function DashboardClient() {
 
             {/* Quick Actions FAB - Always accessible */}
             <QuickActionsFAB />
+
+            {/* Manual Refresh Delight - Truck Loader */}
+            {isManualRefresh && (
+                <TruckLoader
+                    message="Syncing latest updates..."
+                    subMessage="Fetching real-time data from carriers"
+                    fullScreen={true}
+                />
+            )}
         </PullToRefresh>
     );
 }

@@ -807,11 +807,131 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
   }
 
+
   /**
-   * 10. Get Settlement Status
+   * 12. Update Delivery Address
+   * Maps to: PUT /custom/api/v1/order (Maps to Order Update)
+   */
+  async updateDeliveryAddress(
+    awb: string,
+    newAddress: {
+      line1: string;
+      city: string;
+      state: string;
+      pincode: string;
+      country: string;
+    },
+    orderId: string, // Required for PUT /order
+    phone?: string
+  ): Promise<{ success: boolean; message: string }> {
+    // We need to map this to "Order Update" which requires full payload structure
+    // Since we only want to update address, we send just the fields allowed in update
+    const request = {
+      order_id: orderId,
+      billing_address: newAddress.line1,
+      billing_city: newAddress.city,
+      billing_state: newAddress.state,
+      billing_pincode: newAddress.pincode,
+      billing_country: newAddress.country,
+      billing_phone: phone, // Optional update
+      shipping_is_billing: true // Assume shipping matches billing for update simplicity
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.forwardOrder.acquire();
+
+    try {
+      const response = await retryWithBackoff<{ data: { status: string; message: string } }>(
+        async () => {
+          logger.info('Updating Velocity delivery address', { awb, orderId });
+          return await this.httpClient.put(
+            '/custom/api/v1/order',
+            request
+          );
+        },
+        3,
+        1000,
+        'Velocity updateDeliveryAddress'
+      );
+
+      return {
+        success: true,
+        message: 'Address updated successfully via Courier API'
+      };
+    } catch (error) {
+      logger.error('Velocity address update failed', {
+        awb,
+        orderId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return { success: false, message: 'Failed to update address via Courier API' };
+    }
+  }
+
+  /**
+   * 13. Request Delivery Reattempt
+   * Maps to: POST /custom/api/v1/reattempt-delivery
+   * Used for NDR (Non-Delivery Report) scenarios where customer wants to reattempt delivery
+   */
+  async requestReattempt(
+    awb: string,
+    preferredDate?: Date,
+    remarks?: string
+  ): Promise<{ success: boolean; message: string; reattemptId?: string }> {
+    const request: any = {
+      awb,
+    };
+
+    if (preferredDate) {
+      request.preferred_date = preferredDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    }
+
+    // Velocity API uses 'notes' for remarks according to types
+    if (remarks) {
+      request.notes = remarks;
+    }
+
+    // Apply rate limiting
+    await VelocityRateLimiters.tracking.acquire(); // Reuse tracking limiter
+
+    try {
+      const response = await retryWithBackoff<{
+        data: {
+          status: string;
+          message: string;
+          reattempt_id?: string;
+        };
+      }>(
+        async () => {
+          logger.info('Requesting Velocity delivery reattempt', { awb, preferredDate });
+          return await this.httpClient.post('/custom/api/v1/reattempt-delivery', request);
+        },
+        3,
+        1000,
+        'Velocity requestReattempt'
+      );
+
+      return {
+        success: response.data.status === 'success',
+        message: response.data.message || 'Reattempt requested successfully',
+        reattemptId: response.data.reattempt_id,
+      };
+    } catch (error) {
+      logger.error('Velocity reattempt request failed', {
+        awb,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return {
+        success: false,
+        message: 'Failed to request reattempt via Courier API',
+      };
+    }
+  }
+
+  /**
+   * 14. Get Settlement Status
    * Maps to: POST /custom/api/v1/settlement-status
-   *
-   * Checks settlement status for COD remittance from Velocity
+   * Used for COD remittance tracking
    */
   async getSettlementStatus(remittanceId: string): Promise<VelocitySettlementResponse> {
     const request: VelocitySettlementRequest = {
@@ -819,36 +939,46 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     };
 
     // Apply rate limiting
-    await VelocityRateLimiters.serviceability.acquire(); // Reuse existing limiter
+    // Using serviceability limiter as it's a general info request, or tracking
+    await VelocityRateLimiters.tracking.acquire();
 
-    // Make API call with retry
-    const response = await retryWithBackoff<{ data: VelocitySettlementResponse }>(
-      async () => {
-        logger.info('Fetching Velocity settlement status', {
-          remittanceId,
-          companyId: this.companyId.toString(),
-        });
+    try {
+      const response = await retryWithBackoff<{ data: VelocitySettlementResponse }>(
+        async () => {
+          logger.info('Fetching Velocity settlement status', { remittanceId });
+          return await this.httpClient.post<VelocitySettlementResponse>(
+            '/custom/api/v1/settlement-status',
+            request
+          );
+        },
+        3,
+        1000,
+        'Velocity getSettlementStatus'
+      );
 
-        return await this.httpClient.post<VelocitySettlementResponse>(
-          '/custom/api/v1/settlement-status',
-          request
-        );
-      },
-      3,
-      1000,
-      'Velocity getSettlementStatus'
-    );
+      const settlement = response.data;
 
-    const settlement = response.data;
+      logger.info('Velocity settlement status fetched', {
+        remittanceId,
+        settlementId: settlement.settlement_id,
+        status: settlement.status
+      });
 
-    logger.info('Velocity settlement status fetched', {
-      remittanceId,
-      settlementId: settlement.settlement_id,
-      status: settlement.status,
-      utr: settlement.utr_number,
-    });
-
-    return settlement;
+      return settlement;
+    } catch (error) {
+      logger.error('Velocity settlement status fetch failed', {
+        remittanceId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new VelocityError(
+        500,
+        {
+          message: 'Failed to fetch settlement status from Velocity',
+          status_code: 500,
+        },
+        false
+      );
+    }
   }
 
   /**

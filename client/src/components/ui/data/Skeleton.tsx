@@ -8,8 +8,7 @@ import { cn } from '@/src/lib/utils';
  * Improved with shimmer animation from globals.css.
  */
 
-interface SkeletonProps {
-    className?: string;
+interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
     /** Use shimmer animation instead of pulse */
     shimmer?: boolean;
     /** Delay animation start (useful for stagger effects) */
@@ -17,7 +16,7 @@ interface SkeletonProps {
 }
 
 // Base skeleton with shimmer/pulse animation
-export function Skeleton({ className, shimmer = true, delay = 0 }: SkeletonProps) {
+export function Skeleton({ className, shimmer = true, delay = 0, style, ...props }: SkeletonProps) {
     return (
         <div
             className={cn(
@@ -25,7 +24,11 @@ export function Skeleton({ className, shimmer = true, delay = 0 }: SkeletonProps
                 shimmer ? 'skeleton' : 'animate-pulse bg-[var(--bg-tertiary)]',
                 className
             )}
-            style={delay > 0 ? { animationDelay: `${delay}ms` } : undefined}
+            style={{
+                ...(delay > 0 ? { animationDelay: `${delay}ms` } : {}),
+                ...style
+            }}
+            {...props}
         />
     );
 }
@@ -45,26 +48,26 @@ export function CardSkeleton({ className }: { className?: string }) {
 }
 
 // Skeleton for data tables
-export function TableSkeleton({ rows = 5 }: { rows?: number }) {
+export function TableSkeleton({ rows = 5, columns = 4, showHeader = true }: { rows?: number; columns?: number; showHeader?: boolean }) {
     return (
         <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] overflow-hidden">
             {/* Header */}
-            <div className="bg-[--color-gray-50] border-b border-[--color-gray-100] p-4">
-                <div className="flex gap-4">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-28" />
+            {showHeader && (
+                <div className="bg-[--color-gray-50] border-b border-[--color-gray-100] p-4">
+                    <div className="flex gap-4">
+                        {Array.from({ length: columns }).map((_, i) => (
+                            <Skeleton key={i} className="h-4" style={{ width: `${Math.max(60, Math.floor(Math.random() * 100)) + 20}px` }} />
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
             {/* Rows */}
             <div className="divide-y divide-[--color-gray-100]">
                 {Array.from({ length: rows }).map((_, i) => (
                     <div key={i} className="p-4 flex gap-4 items-center">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-6 w-16 rounded-[--radius-full]" />
+                        {Array.from({ length: columns }).map((_, j) => (
+                            <Skeleton key={j} className="h-4" style={{ width: j === 0 ? '120px' : j === columns - 1 ? '60px' : `${Math.max(40, Math.floor(Math.random() * 80)) + 20}px` }} />
+                        ))}
                     </div>
                 ))}
             </div>

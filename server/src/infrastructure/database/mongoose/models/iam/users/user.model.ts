@@ -110,6 +110,16 @@ export interface IUser extends Document {
   deletionReason?: string;
   scheduledDeletionDate?: Date;
   anonymized: boolean;
+  // Admin suspension/ban
+  isSuspended?: boolean;
+  suspensionReason?: string;
+  suspendedAt?: Date;
+  suspendedBy?: mongoose.Types.ObjectId;
+  suspensionExpiresAt?: Date;
+  isBanned?: boolean;
+  bannedAt?: Date;
+  bannedBy?: mongoose.Types.ObjectId;
+  banReason?: string;
   kycStatus: {
     isComplete: boolean;
     lastUpdated?: Date;
@@ -321,6 +331,33 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    // Admin suspension/ban fields
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    suspensionReason: String,
+    suspendedAt: Date,
+    suspendedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    suspensionExpiresAt: {
+      type: Date,
+      index: true, // For auto-unsuspension queries
+    },
+    isBanned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    bannedAt: Date,
+    bannedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    banReason: String,
     kycStatus: {
       isComplete: {
         type: Boolean,

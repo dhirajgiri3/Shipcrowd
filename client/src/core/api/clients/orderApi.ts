@@ -157,6 +157,94 @@ class OrderApiService {
     const response = await apiClient.delete<DeleteOrderResponse>(`/orders/${orderId}`);
     return response.data;
   }
+
+  /**
+   * Clone an existing order with optional modifications
+   * POST /api/v1/orders/:id/clone
+   */
+  async cloneOrder(
+    orderId: string,
+    modifications?: {
+      customerInfo?: any;
+      products?: any[];
+      paymentMethod?: string;
+      warehouseId?: string;
+      notes?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    data: {
+      success: boolean;
+      clonedOrder: Order;
+      originalOrderNumber: string;
+    };
+  }> {
+    const response = await apiClient.post(`/orders/${orderId}/clone`, {
+      modifications,
+    });
+    return response.data;
+  }
+
+  /**
+   * Split a single order into multiple orders
+   * POST /api/v1/orders/:id/split
+   */
+  async splitOrder(
+    orderId: string,
+    splits: Array<{
+      products: Array<{ sku?: string; name: string; quantity: number }>;
+      warehouseId?: string;
+      notes?: string;
+    }>
+  ): Promise<{
+    success: boolean;
+    data: {
+      success: boolean;
+      originalOrderNumber: string;
+      splitOrders: Array<{
+        orderNumber: string;
+        id: string;
+        products: any[];
+        totals: any;
+      }>;
+    };
+  }> {
+    const response = await apiClient.post(`/orders/${orderId}/split`, {
+      splits,
+    });
+    return response.data;
+  }
+
+  /**
+   * Merge multiple orders into a single order
+   * POST /api/v1/orders/merge
+   */
+  async mergeOrders(
+    orderIds: string[],
+    mergeOptions?: {
+      warehouseId?: string;
+      paymentMethod?: string;
+      notes?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    data: {
+      success: boolean;
+      mergedOrder: {
+        orderNumber: string;
+        id: string;
+        products: any[];
+        totals: any;
+      };
+      cancelledOrders: string[];
+    };
+  }> {
+    const response = await apiClient.post('/orders/merge', {
+      orderIds,
+      mergeOptions,
+    });
+    return response.data;
+  }
 }
 
 /**

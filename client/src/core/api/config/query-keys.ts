@@ -126,6 +126,8 @@ export const queryKeys = {
     tracking: (awb: string) => ['shipments', 'tracking', awb],
     byOrder: (orderId: string) => ['shipments', 'order', orderId],
     stats: () => ['shipments', 'stats'],
+    manifests: (filters?: FilterParams) => ['shipments', 'manifests', filters],
+    manifest: (id: string) => ['shipments', 'manifests', id],
   },
 
   // ========================================================================
@@ -313,9 +315,11 @@ export const queryKeys = {
   // ========================================================================
   communication: {
     all: () => ['communication'],
-    templates: () => ['communication', 'templates'],
-    templates_list: (type?: string) => ['communication', 'templates', 'list', type],
-    template: (id: string) => ['communication', 'template', id],
+    templates: (filters?: FilterParams) => ['communication', 'templates', filters],
+    template: (id: string) => ['communication', 'templates', id],
+    templateByCode: (code: string) => ['communication', 'templates', 'code', code],
+    defaultTemplate: (category: string, channel: string) => ['communication', 'templates', 'default', category, channel],
+    templateStats: () => ['communication', 'templates', 'stats'],
     rules: () => ['communication', 'rules'],
     rules_list: (filters?: any) => ['communication', 'rules', 'list', filters],
     rule: (id: string) => ['communication', 'rule', id],
@@ -452,6 +456,21 @@ export const queryKeys = {
     detail: (id: string) => ['rto', 'detail', id],
   },
 
+  // ========================================================================
+  // SYSTEM DOMAIN
+  // ========================================================================
+  system: {
+    all: () => ['system'],
+    health: {
+      all: () => ['system', 'health'],
+      basic: () => ['system', 'health', 'basic'],
+      detailed: () => ['system', 'health', 'detailed'],
+      metrics: () => ['system', 'health', 'metrics'],
+      database: () => ['system', 'health', 'database'],
+      services: () => ['system', 'health', 'services'],
+      systemMetrics: () => ['system', 'health', 'system-metrics'],
+    },
+  },
 
 };
 

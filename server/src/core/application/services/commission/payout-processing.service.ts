@@ -19,7 +19,7 @@ import { Payout, IPayout } from '../../../../infrastructure/database/mongoose/mo
 import { CommissionTransaction } from '../../../../infrastructure/database/mongoose/models';
 import { SalesRepresentative } from '../../../../infrastructure/database/mongoose/models';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
-import RazorpayPayoutProvider from '../../../../infrastructure/payment/razorpay/RazorpayPayoutProvider';
+import { RazorpayPayoutProvider } from '../../../../infrastructure/payment/razorpay/razorpay-payout.provider.js';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError } from '../../../../shared/errors/index';
 import eventBus from '../../../../shared/events/eventBus';

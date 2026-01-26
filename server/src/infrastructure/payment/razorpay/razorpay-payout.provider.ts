@@ -41,6 +41,7 @@ export interface RazorpayPayout {
     reference_id: string | null;
     narration: string;
     created_at: number;
+    failure_reason?: string; // Added to interface to allow direct access
 }
 
 export interface PayoutStatus {
@@ -72,7 +73,7 @@ interface RazorpayContact {
     active: boolean;
 }
 
-export default class RazorpayPayoutProvider {
+export class RazorpayPayoutProvider {
     private baseUrl = 'https://api.razorpay.com/v1';
     private keyId: string;
     private keySecret: string;
@@ -240,16 +241,11 @@ export default class RazorpayPayoutProvider {
     /**
      * Get payout status
      */
-    async getPayoutStatus(razorpayPayoutId: string): Promise<PayoutStatus> {
+    async getPayoutStatus(razorpayPayoutId: string): Promise<RazorpayPayout> {
         try {
             const payout = await this.request<RazorpayPayout>('GET', `/payouts/${razorpayPayoutId}`);
 
-            return {
-                id: payout.id,
-                status: payout.status,
-                utr: payout.utr,
-                failure_reason: (payout as any).failure_reason,
-            };
+            return payout;
         } catch (error: any) {
             logger.error('Failed to fetch payout status', {
                 razorpayPayoutId,

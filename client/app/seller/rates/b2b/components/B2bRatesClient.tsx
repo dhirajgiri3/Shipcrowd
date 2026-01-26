@@ -23,6 +23,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
+import { TruckLoader } from '@/src/components/ui';
 
 // Mock B2B rate results
 const mockB2BRates = [
@@ -384,6 +385,14 @@ export function B2bRatesClient() {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+            {/* Truck Loader Overlay */}
+            {isLoading && (
+                <TruckLoader
+                    message="Fetching best rates..."
+                    subMessage="Analyzing carrier network"
+                    fullScreen={true}
+                />
             )}
         </div>
     );

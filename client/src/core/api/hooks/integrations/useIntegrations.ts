@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '../../client';
+import { apiClient } from '@/src/lib/api-client';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import {
@@ -50,6 +50,7 @@ export interface IntegrationHealthResponse {
         healthyStores: number;
         unhealthyStores: number;
     };
+    integrations?: any[]; // Added to match UI expectation
 }
 
 // --- Hooks ---
@@ -57,15 +58,17 @@ export interface IntegrationHealthResponse {
 /**
  * Fetch integration health status for dashboard
  */
-export const useIntegrationHealth = (options?: UseQueryOptions<IntegrationHealthResponse, ApiError>) => {
-    return useQuery<IntegrationHealthResponse, ApiError>({
-        queryKey: queryKeys.integrations.health(),
+export const useIntegrationHealth = (options?: UseQueryOptions<IntegrationHealthResponse, any>) => {
+    return useQuery<IntegrationHealthResponse, any>({
+        queryKey: ['integrations', 'health'], // Fallback query key
         queryFn: async () => {
             const response = await apiClient.get('/integrations/health');
             return response.data;
         },
-        ...CACHE_TIMES.SHORT, // Refresh often (e.g. 5 mins)
-        retry: RETRY_CONFIG.DEFAULT,
+        // ...CACHE_TIMES.SHORT, 
+        retry: 1,
         ...options,
     });
 };
+
+export const useIntegrations = useIntegrationHealth;

@@ -123,28 +123,41 @@ export class CacheService {
     }
 
     /**
-     * Clear all cache with pattern
+     * Delete all keys with pattern and return count
      */
-    static async clearPattern(pattern: string): Promise<void> {
-        const fullPattern = `Shipcrowd:cache:${pattern}`;
+    static async deletePattern(pattern: string): Promise<number> {
+        const fullPattern = `Shipcrowd:cache:${pattern}*`; // Add wildcard for Redis keys
+        let count = 0;
 
         try {
             if (this.redis && this.isRedisAvailable) {
                 const keys = await this.redis.keys(fullPattern);
                 if (keys.length > 0) {
-                    await this.redis.del(...keys);
+                    count = await this.redis.del(...keys);
                 }
+                return count;
             }
 
             // In-memory fallback
+            const prefix = `Shipcrowd:cache:${pattern}`;
             for (const key of this.memoryCache.keys()) {
-                if (key.startsWith(fullPattern.replace('*', ''))) {
+                if (key.startsWith(prefix)) {
                     this.memoryCache.delete(key);
+                    count++;
                 }
             }
+            return count;
         } catch (error: any) {
-            logger.error('Cache clear pattern error', { pattern, error: error.message });
+            logger.error('Cache delete pattern error', { pattern, error: error.message });
+            return 0;
         }
+    }
+
+    /**
+     * Clear all cache with pattern (void return for backward compatibility if needed)
+     */
+    static async clearPattern(pattern: string): Promise<void> {
+        await this.deletePattern(pattern);
     }
 
     /**

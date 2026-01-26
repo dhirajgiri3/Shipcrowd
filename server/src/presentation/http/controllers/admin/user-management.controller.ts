@@ -217,6 +217,180 @@ class UserManagementController {
             next(error);
         }
     }
+
+    /**
+     * POST /admin/users/:id/suspend
+     * Suspend a user account
+     */
+    async suspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+
+            // Only super_admin can suspend users
+            if (!isSuperAdmin) {
+                throw new ValidationError(
+                    'Super admin access required',
+                    ErrorCode.AUTHZ_FORBIDDEN
+                );
+            }
+
+            const { id: targetUserId } = req.params;
+            const { reason, duration } = req.body;
+
+            if (!reason || reason.trim().length < 10) {
+                throw new ValidationError('Suspension reason must be at least 10 characters');
+            }
+
+            const result = await UserManagementService.suspendUser({
+                targetUserId,
+                performedBy: userId,
+                reason: reason.trim(),
+                duration, // Optional: duration in days
+            });
+
+            logger.warn(`User suspended by super admin`, {
+                performedBy: userId,
+                targetUser: targetUserId,
+                reason,
+                duration,
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'User successfully suspended',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * POST /admin/users/:id/unsuspend
+     * Unsuspend a user account
+     */
+    async unsuspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+
+            // Only super_admin can unsuspend users
+            if (!isSuperAdmin) {
+                throw new ValidationError(
+                    'Super admin access required',
+                    ErrorCode.AUTHZ_FORBIDDEN
+                );
+            }
+
+            const { id: targetUserId } = req.params;
+            const { reason } = req.body;
+
+            const result = await UserManagementService.unsuspendUser({
+                targetUserId,
+                performedBy: userId,
+                reason: reason?.trim(),
+            });
+
+            logger.info(`User unsuspended by super admin`, {
+                performedBy: userId,
+                targetUser: targetUserId,
+                reason,
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'User successfully unsuspended',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * POST /admin/users/:id/ban
+     * Permanently ban a user account
+     */
+    async banUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+
+            // Only super_admin can ban users
+            if (!isSuperAdmin) {
+                throw new ValidationError(
+                    'Super admin access required',
+                    ErrorCode.AUTHZ_FORBIDDEN
+                );
+            }
+
+            const { id: targetUserId } = req.params;
+            const { reason } = req.body;
+
+            if (!reason || reason.trim().length < 10) {
+                throw new ValidationError('Ban reason must be at least 10 characters');
+            }
+
+            const result = await UserManagementService.banUser({
+                targetUserId,
+                performedBy: userId,
+                reason: reason.trim(),
+            });
+
+            logger.error(`User permanently banned by super admin`, {
+                performedBy: userId,
+                targetUser: targetUserId,
+                reason,
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'User successfully banned',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * POST /admin/users/:id/unban
+     * Unban a user account
+     */
+    async unbanUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { userId, isSuperAdmin } = guardChecks(req, { requireCompany: false });
+
+            // Only super_admin can unban users
+            if (!isSuperAdmin) {
+                throw new ValidationError(
+                    'Super admin access required',
+                    ErrorCode.AUTHZ_FORBIDDEN
+                );
+            }
+
+            const { id: targetUserId } = req.params;
+            const { reason } = req.body;
+
+            const result = await UserManagementService.unbanUser({
+                targetUserId,
+                performedBy: userId,
+                reason: reason?.trim(),
+            });
+
+            logger.info(`User unbanned by super admin`, {
+                performedBy: userId,
+                targetUser: targetUserId,
+                reason,
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'User successfully unbanned',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export default new UserManagementController();

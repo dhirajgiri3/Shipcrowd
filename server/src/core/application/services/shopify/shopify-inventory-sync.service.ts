@@ -14,6 +14,7 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
+import { number } from 'zod';
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
 import { ShopifySyncLog } from '../../../../infrastructure/database/mongoose/models';
@@ -417,15 +418,59 @@ export class ShopifyInventorySyncService {
       decreaseBy,
     });
 
-    // Get current inventory from Shipcrowd (would integrate with InventoryService)
-    // For now, we'll just push the decrease
-    // In production, you'd fetch current inventory and subtract decreaseBy
+    try {
+      // Fetch the store to get companyId
+      // We already have storeId, but we need companyId to query inventory
+      const store = await ShopifyStore.findById(storeId).select('companyId');
+      if (!store) {
+        logger.warn('Store not found during fulfillment sync', { storeId });
+        return;
+      }
 
-    // Placeholder: Get current inventory
-    const currentInventory = 0; // TODO: Integrate with InventoryService
-    const newQuantity = Math.max(0, currentInventory - decreaseBy);
+      // Aggregate inventory across all warehouses for this company and SKU
+      // TODO: In future, support mapping specific warehouses to specific Shopify locations
+      const inventories = await (await import('../../../../infrastructure/database/mongoose/models/index.js')).Inventory.find({
+        companyId: store.companyId,
+        sku: sku.toUpperCase() // Ensure case-insensitive match standard
+      });
 
-    await this.pushInventoryToShopify(storeId, sku, newQuantity);
+      if (inventories.length === 0) {
+        logger.warn('Inventory not found for SKU during Shopify sync', { sku });
+        // If no inventory record exists, push 0 to Shopify
+        await this.pushInventoryToShopify(storeId, sku, 0);
+        return;
+      }
+
+      // Sum available quantity across all warehouses
+      // available = onHand - reserved - damaged
+      const totalAvailable = inventories.reduce((sum: number, inv: any) => {
+        const available = inv.available || Math.max(0, inv.onHand - inv.reserved - inv.damaged);
+        return sum + available;
+      }, 0);
+
+      // If this method is called AFTER the local DB update (which decreased stock),
+      // then totalAvailable IS the current available stock.
+      // If we subtract decreaseBy again, we might double-count the deduction.
+      // Assuming syncOnFulfillment is triggered immediately AFTER local deduction.
+      // However, to be safe and consistent with the method name "syncOnFulfillment",
+      // we should just sync the *current* state.
+      // The original code calculated newQuantity = current - decreaseBy.
+      // If we assume the DB is ALREADY updated, we should just use totalAvailable.
+
+      logger.info('Pushing updated inventory to Shopify', {
+        sku,
+        totalAvailable,
+        decreaseBy // Logged for context but not subtracted if using current DB state
+      });
+
+      await this.pushInventoryToShopify(storeId, sku, totalAvailable);
+    } catch (error: any) {
+      logger.error('Failed to sync inventory to Shopify', {
+        sku,
+        storeId,
+        error: error.message,
+      });
+    }
   }
 
   /**
@@ -435,5 +480,3 @@ export class ShopifyInventorySyncService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
-
-export default ShopifyInventorySyncService;

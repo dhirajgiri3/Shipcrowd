@@ -424,6 +424,267 @@ class ManifestService {
             pages: Math.ceil(total / (filters.limit || 50)),
         };
     }
+
+    /**
+     * Update manifest (pickup details, notes)
+     * Can only update manifests with status 'open'
+     */
+    async updateManifest(
+        manifestId: string,
+        companyId: string,
+        updates: {
+            pickup?: {
+                scheduledDate?: Date;
+                timeSlot?: string;
+                contactPerson?: string;
+                contactPhone?: string;
+            };
+            notes?: string;
+        }
+    ) {
+        const manifest = await Manifest.findById(manifestId);
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        // Verify manifest belongs to the company
+        if (manifest.companyId.toString() !== companyId) {
+            throw new ValidationError('Access denied: Manifest does not belong to your company');
+        }
+
+        // Only allow updates if manifest is still open
+        if (manifest.status !== 'open') {
+            throw new ValidationError('Cannot update manifest: Status must be "open"');
+        }
+
+        // Update pickup details if provided
+        if (updates.pickup) {
+            if (updates.pickup.scheduledDate !== undefined) {
+                manifest.pickup.scheduledDate = updates.pickup.scheduledDate;
+            }
+            if (updates.pickup.timeSlot !== undefined) {
+                manifest.pickup.timeSlot = updates.pickup.timeSlot;
+            }
+            if (updates.pickup.contactPerson !== undefined) {
+                manifest.pickup.contactPerson = updates.pickup.contactPerson;
+            }
+            if (updates.pickup.contactPhone !== undefined) {
+                manifest.pickup.contactPhone = updates.pickup.contactPhone;
+            }
+        }
+
+        // Update notes if provided
+        if (updates.notes !== undefined) {
+            manifest.notes = updates.notes;
+        }
+
+        await manifest.save();
+
+        logger.info(`Manifest ${manifest.manifestNumber} updated`);
+
+        return manifest;
+    }
+
+    /**
+     * Delete manifest
+     * Can only delete manifests with status 'open'
+     */
+    async deleteManifest(manifestId: string, companyId: string) {
+        const manifest = await Manifest.findById(manifestId);
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        // Verify manifest belongs to the company
+        if (manifest.companyId.toString() !== companyId) {
+            throw new ValidationError('Access denied: Manifest does not belong to your company');
+        }
+
+        // Only allow deletion if manifest is still open
+        if (manifest.status !== 'open') {
+            throw new ValidationError('Cannot delete manifest: Only open manifests can be deleted');
+        }
+
+        await Manifest.deleteOne({ _id: manifestId });
+
+        logger.info(`Manifest ${manifest.manifestNumber} deleted`);
+
+        return true;
+    }
+
+    /**
+     * Add shipments to existing manifest
+     * Validates carrier consistency and recalculates summary
+     */
+    async addShipments(manifestId: string, companyId: string, shipmentIds: string[]) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const manifest = await Manifest.findById(manifestId).session(session);
+
+            if (!manifest) {
+                throw new NotFoundError('Manifest not found');
+            }
+
+            // Verify manifest belongs to the company
+            if (manifest.companyId.toString() !== companyId) {
+                throw new ValidationError('Access denied: Manifest does not belong to your company');
+            }
+
+            // Only allow adding shipments if manifest is still open
+            if (manifest.status !== 'open') {
+                throw new ValidationError('Cannot add shipments: Manifest status must be "open"');
+            }
+
+            // Fetch new shipments
+            const shipments = await Shipment.find({
+                _id: { $in: shipmentIds },
+            }).session(session);
+
+            if (shipments.length === 0) {
+                throw new NotFoundError('No valid shipments found');
+            }
+
+            if (shipments.length !== shipmentIds.length) {
+                throw new ValidationError('Some shipment IDs are invalid');
+            }
+
+            // Validate all new shipments belong to the same carrier as manifest
+            const invalidShipments = shipments.filter((s: any) => s.carrier !== manifest.carrier);
+            if (invalidShipments.length > 0) {
+                throw new ValidationError(
+                    `Cannot add shipments: ${invalidShipments.length} shipment(s) belong to different carrier. Manifest is for ${manifest.carrier}.`
+                );
+            }
+
+            // Check for duplicates
+            const existingShipmentIds = manifest.shipments.map((s) => s.shipmentId.toString());
+            const duplicates = shipmentIds.filter((id) => existingShipmentIds.includes(id));
+            if (duplicates.length > 0) {
+                throw new ValidationError(`${duplicates.length} shipment(s) already exist in this manifest`);
+            }
+
+            // Add new shipments
+            const newManifestShipments = shipments.map((s: any) => ({
+                shipmentId: s._id,
+                awb: s.awb,
+                weight: s.weights?.total || 0,
+                packages: s.no_of_boxes || 1,
+                codAmount: s.payment_method === 'cod' ? s.cod_amount || 0 : 0,
+            }));
+
+            manifest.shipments.push(...newManifestShipments);
+
+            // Recalculate summary
+            manifest.summary.totalShipments = manifest.shipments.length;
+            manifest.summary.totalWeight = manifest.shipments.reduce(
+                (sum, s) => sum + s.weight,
+                0
+            );
+            manifest.summary.totalPackages = manifest.shipments.reduce(
+                (sum, s) => sum + s.packages,
+                0
+            );
+            manifest.summary.totalCODAmount = manifest.shipments.reduce(
+                (sum, s) => sum + s.codAmount,
+                0
+            );
+
+            await manifest.save({ session });
+            await session.commitTransaction();
+
+            logger.info(
+                `${shipmentIds.length} shipment(s) added to manifest ${manifest.manifestNumber}`
+            );
+
+            return manifest;
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Error adding shipments to manifest:', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Remove shipments from existing manifest
+     * Recalculates summary and prevents removal if manifest is empty
+     */
+    async removeShipments(manifestId: string, companyId: string, shipmentIds: string[]) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const manifest = await Manifest.findById(manifestId).session(session);
+
+            if (!manifest) {
+                throw new NotFoundError('Manifest not found');
+            }
+
+            // Verify manifest belongs to the company
+            if (manifest.companyId.toString() !== companyId) {
+                throw new ValidationError('Access denied: Manifest does not belong to your company');
+            }
+
+            // Only allow removing shipments if manifest is still open
+            if (manifest.status !== 'open') {
+                throw new ValidationError('Cannot remove shipments: Manifest status must be "open"');
+            }
+
+            // Check if shipments exist in manifest
+            const existingShipmentIds = manifest.shipments.map((s) => s.shipmentId.toString());
+            const notFound = shipmentIds.filter((id) => !existingShipmentIds.includes(id));
+            if (notFound.length > 0) {
+                throw new ValidationError(`${notFound.length} shipment(s) not found in this manifest`);
+            }
+
+            // Prevent removing all shipments
+            if (shipmentIds.length >= manifest.shipments.length) {
+                throw new ValidationError(
+                    'Cannot remove all shipments. Delete the manifest instead.'
+                );
+            }
+
+            // Remove shipments
+            manifest.shipments = manifest.shipments.filter(
+                (s) => !shipmentIds.includes(s.shipmentId.toString())
+            );
+
+            // Recalculate summary
+            manifest.summary.totalShipments = manifest.shipments.length;
+            manifest.summary.totalWeight = manifest.shipments.reduce(
+                (sum, s) => sum + s.weight,
+                0
+            );
+            manifest.summary.totalPackages = manifest.shipments.reduce(
+                (sum, s) => sum + s.packages,
+                0
+            );
+            manifest.summary.totalCODAmount = manifest.shipments.reduce(
+                (sum, s) => sum + s.codAmount,
+                0
+            );
+
+            await manifest.save({ session });
+            await session.commitTransaction();
+
+            logger.info(
+                `${shipmentIds.length} shipment(s) removed from manifest ${manifest.manifestNumber}`
+            );
+
+            return manifest;
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Error removing shipments from manifest:', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
 }
 
 export default new ManifestService();

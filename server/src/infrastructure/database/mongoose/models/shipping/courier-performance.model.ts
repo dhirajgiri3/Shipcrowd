@@ -58,12 +58,16 @@ export interface ICourierPerformance extends Document {
         lastCalculated: Date;
     };
 
-    // Performance trends (last 30 days)
+    // Performance trends
     trends: {
         deliverySpeedTrend: 'improving' | 'declining' | 'stable';
         reliabilityTrend: 'improving' | 'declining' | 'stable';
         volumeTrend: 'increasing' | 'decreasing' | 'stable';
     };
+
+    // Methods
+    getRoutePerformance(originPincode: string, destinationPincode: string): any;
+    getCityPerformance(originCity: string, destinationCity: string): any;
 
     createdAt: Date;
     updatedAt: Date;
@@ -154,7 +158,7 @@ courierPerformanceSchema.index({ 'routeMetrics.originPincode': 1, 'routeMetrics.
 courierPerformanceSchema.index({ 'cityMetrics.originCity': 1, 'cityMetrics.destinationCity': 1 });
 
 // Methods
-courierPerformanceSchema.methods.getRoutePerformance = function(
+courierPerformanceSchema.methods.getRoutePerformance = function (
     originPincode: string,
     destinationPincode: string
 ) {
@@ -165,7 +169,7 @@ courierPerformanceSchema.methods.getRoutePerformance = function(
     );
 };
 
-courierPerformanceSchema.methods.getCityPerformance = function(
+courierPerformanceSchema.methods.getCityPerformance = function (
     originCity: string,
     destinationCity: string
 ) {
@@ -177,7 +181,7 @@ courierPerformanceSchema.methods.getCityPerformance = function(
 };
 
 // Static method to get or create performance record
-courierPerformanceSchema.statics.getOrCreate = async function(
+courierPerformanceSchema.statics.getOrCreate = async function (
     courierId: string,
     companyId: string
 ) {
@@ -210,7 +214,11 @@ courierPerformanceSchema.statics.getOrCreate = async function(
     return performance;
 };
 
-const CourierPerformance = mongoose.model<ICourierPerformance>(
+interface ICourierPerformanceModel extends mongoose.Model<ICourierPerformance> {
+    getOrCreate(courierId: string, companyId: string): Promise<ICourierPerformance>;
+}
+
+const CourierPerformance = mongoose.model<ICourierPerformance, ICourierPerformanceModel>(
     'CourierPerformance',
     courierPerformanceSchema
 );

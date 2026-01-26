@@ -24,6 +24,7 @@ import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
 import Link from 'next/link';
+import { TruckLoader } from '@/src/components/ui';
 
 const quickAmounts = [1000, 2000, 5000, 10000, 25000, 50000];
 
@@ -324,6 +325,14 @@ export function RechargeClient() {
                     </Card>
                 </div>
             </div>
+            {/* Truck Loader Overlay */}
+            {isLoading && (
+                <TruckLoader
+                    message="Securely redirecting..."
+                    subMessage="Contacting payment gateway"
+                    fullScreen={true}
+                />
+            )}
         </div>
     );
 }

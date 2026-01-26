@@ -4,6 +4,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { TableSkeleton } from '@/src/components/ui/data/Skeleton';
 
 // Since we cannot rely on shadcn's table being present, I will create a simple Tailwind Table implementation inside this file
 // or better, I will implement the logic directly if I don't use tanstack table, 
@@ -97,13 +98,15 @@ function DataTableComponent<T extends { id?: string | number; _id?: string }>({
                         </thead>
                         <tbody className="divide-y divide-[var(--border-subtle)]">
                             {isLoading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        {columns.map((_, j) => (
-                                            <td key={j} className="px-5 py-3"><div className="h-4 bg-[var(--bg-secondary)] rounded w-3/4"></div></td>
-                                        ))}
-                                    </tr>
-                                ))
+                                <tr>
+                                    <td colSpan={columns.length} className="p-0">
+                                        <TableSkeleton
+                                            rows={5}
+                                            columns={columns.length}
+                                            showHeader={false}
+                                        />
+                                    </td>
+                                </tr>
                             ) : paginatedData.length > 0 ? (
                                 paginatedData.map((row, idx) => (
                                     <tr

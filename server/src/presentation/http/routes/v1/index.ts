@@ -1,6 +1,7 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import authRoutes from './auth/auth.routes';
 import notificationRoutes from './communication/notification.routes';
+import notificationTemplateRoutes from './communication/notification-template.routes';
 import userRoutes from './identity/user.routes';
 import companyRoutes from './organization/company.routes';
 import whatsappRoutes from './communication/whatsapp.routes';
@@ -21,6 +22,7 @@ import analyticsRoutes from './system/analytics.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
 import carrierRoutes from './shipping/carrier.routes';
+import labelTemplateRoutes from './shipping/label-template.routes';
 // Webhook routes
 import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
 import shopifyWebhookRoutes from './webhooks/shopify.routes';
@@ -46,22 +48,19 @@ import fraudRoutes from './fraud/fraud.routes';
 import disputeRoutes from './logistics/dispute.routes';
 // Admin: User Management
 import userManagementRoutes from './admin/user-management.routes';
+// Admin: Impersonation
+import impersonationRoutes from './admin/impersonation.routes';
+// Admin: Feature Flags
+import featureFlagRoutes from './admin/feature-flag.routes';
+// System: Health Monitoring
+import healthRoutes from './system/health.routes';
 
 const router = express.Router();
-
-// Health check endpoint with version info
-router.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        version: '1.0.0',
-        uptime: process.uptime(),
-    });
-});
 
 // Register routes
 router.use('/auth', authRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/communication', notificationTemplateRoutes);
 router.use('/users', userRoutes);
 router.use('/companies', companyRoutes);
 router.use('/whatsapp', whatsappRoutes);
@@ -82,6 +81,7 @@ router.use('/analytics', analyticsRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
 router.use('/admin/carriers', carrierRoutes);
+router.use('/labels', labelTemplateRoutes);
 // Webhook routes (platform-specific, HMAC verified)
 router.use('/webhooks/velocity', velocityWebhookRoutes);
 router.use('/webhooks/shopify', shopifyWebhookRoutes);
@@ -97,6 +97,9 @@ router.use('/rto', rtoRoutes);
 // Week 9: Analytics Export
 import exportRoutes from './analytics/export.routes';
 router.use('/export', exportRoutes);
+// Scheduled Reports
+import scheduledReportRoutes from './analytics/scheduled-report.routes';
+router.use('/reports', scheduledReportRoutes);
 // Week 11: Weight Disputes & COD Remittance
 router.use('/disputes/weight', weightDisputesRoutes);
 
@@ -153,5 +156,14 @@ router.use('/support', supportRoutes);
 
 // Admin: User Management (Super Admin Only)
 router.use('/admin/users', userManagementRoutes);
+
+// Admin: Impersonation (Admin/Super Admin Only)
+router.use('/admin/impersonation', impersonationRoutes);
+
+// Admin: Feature Flags (Super Admin Only)
+router.use('/admin/feature-flags', featureFlagRoutes);
+
+// System: Health Monitoring (Public /health, Admin /health/*)
+router.use('/health', healthRoutes);
 
 export default router;

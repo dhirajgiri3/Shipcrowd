@@ -11,6 +11,11 @@ export interface AccessTokenPayload {
   companyId?: string;
   jti?: string; // JWT ID for revocation
   iat?: number; // Issued at timestamp
+  impersonation?: {
+    sessionId: string;
+    adminUserId: string;
+    sessionToken: string;
+  };
 }
 
 export interface RefreshTokenPayload {
@@ -101,7 +106,8 @@ export const isTokenBlacklisted = async (jti: string): Promise<boolean> => {
 export const generateAccessToken = (
   userId: string | Types.ObjectId,
   role: string,
-  companyId?: string | Types.ObjectId
+  companyId?: string | Types.ObjectId,
+  extraClaims?: Partial<AccessTokenPayload>
 ): string => {
   const jti = generateJwtId();
 
@@ -110,6 +116,7 @@ export const generateAccessToken = (
     role,
     companyId: companyId ? companyId.toString() : undefined,
     jti,
+    ...(extraClaims || {}),
   };
 
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, {

@@ -167,3 +167,163 @@ export const useDeleteOrder = (
         ...options,
     });
 };
+
+/**
+ * React Query mutation hook for cloning orders
+ * Creates a duplicate order with optional modifications
+ */
+export const useCloneOrder = (
+    options?: UseMutationOptions<
+        { success: boolean; clonedOrder: Order; originalOrderNumber: string },
+        ApiError,
+        { orderId: string; modifications?: any }
+    >
+) => {
+    const queryClient = useQueryClient();
+
+    return useMutation<
+        { success: boolean; clonedOrder: Order; originalOrderNumber: string },
+        ApiError,
+        { orderId: string; modifications?: any }
+    >({
+        mutationFn: async ({ orderId, modifications }) => {
+            const response = await orderApi.cloneOrder(orderId, modifications);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            // Invalidate related caches
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            showSuccessToast(`Order cloned successfully. New order: ${data.clonedOrder.orderNumber}`);
+        },
+        onError: (error) => {
+            handleApiError(error, 'Clone Order Failed');
+        },
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
+/**
+ * React Query mutation hook for splitting orders
+ * Splits a single order into multiple orders
+ */
+export const useSplitOrder = (
+    options?: UseMutationOptions<
+        {
+            success: boolean;
+            originalOrderNumber: string;
+            splitOrders: Array<{ orderNumber: string; id: string; products: any[]; totals: any }>;
+        },
+        ApiError,
+        {
+            orderId: string;
+            splits: Array<{
+                products: Array<{ sku?: string; name: string; quantity: number }>;
+                warehouseId?: string;
+                notes?: string;
+            }>;
+        }
+    >
+) => {
+    const queryClient = useQueryClient();
+
+    return useMutation<
+        {
+            success: boolean;
+            originalOrderNumber: string;
+            splitOrders: Array<{ orderNumber: string; id: string; products: any[]; totals: any }>;
+        },
+        ApiError,
+        {
+            orderId: string;
+            splits: Array<{
+                products: Array<{ sku?: string; name: string; quantity: number }>;
+                warehouseId?: string;
+                notes?: string;
+            }>;
+        }
+    >({
+        mutationFn: async ({ orderId, splits }) => {
+            const response = await orderApi.splitOrder(orderId, splits);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            // Invalidate related caches
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            showSuccessToast(
+                `Order split into ${data.splitOrders.length} orders: ${data.splitOrders.map((o) => o.orderNumber).join(', ')}`
+            );
+        },
+        onError: (error) => {
+            handleApiError(error, 'Split Order Failed');
+        },
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
+/**
+ * React Query mutation hook for merging orders
+ * Merges multiple orders into a single order
+ */
+export const useMergeOrders = (
+    options?: UseMutationOptions<
+        {
+            success: boolean;
+            mergedOrder: { orderNumber: string; id: string; products: any[]; totals: any };
+            cancelledOrders: string[];
+        },
+        ApiError,
+        {
+            orderIds: string[];
+            mergeOptions?: {
+                warehouseId?: string;
+                paymentMethod?: string;
+                notes?: string;
+            };
+        }
+    >
+) => {
+    const queryClient = useQueryClient();
+
+    return useMutation<
+        {
+            success: boolean;
+            mergedOrder: { orderNumber: string; id: string; products: any[]; totals: any };
+            cancelledOrders: string[];
+        },
+        ApiError,
+        {
+            orderIds: string[];
+            mergeOptions?: {
+                warehouseId?: string;
+                paymentMethod?: string;
+                notes?: string;
+            };
+        }
+    >({
+        mutationFn: async ({ orderIds, mergeOptions }) => {
+            const response = await orderApi.mergeOrders(orderIds, mergeOptions);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            // Invalidate related caches
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            // Remove cancelled orders from cache
+            data.cancelledOrders.forEach((orderId) => {
+                queryClient.removeQueries({ queryKey: queryKeys.orders.detail(orderId) });
+            });
+            showSuccessToast(
+                `${data.cancelledOrders.length} orders merged into ${data.mergedOrder.orderNumber}`
+            );
+        },
+        onError: (error) => {
+            handleApiError(error, 'Merge Orders Failed');
+        },
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};

@@ -5,7 +5,7 @@ import { determineUserTier } from './access-tier.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
 
-type UserRole = 'admin' | 'seller' | 'staff';
+type UserRole = 'super_admin' | 'admin' | 'seller' | 'staff';
 type TeamRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer' | 'warehouse_manager' | 'inventory_manager' | 'picker' | 'packer';
 
 interface AccessOptions {

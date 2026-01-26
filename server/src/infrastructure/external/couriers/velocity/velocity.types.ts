@@ -331,6 +331,39 @@ export interface VelocitySettlementResponse {
   failure_reason?: string;
 }
 
+// ==================== NDR ACTIONS ====================
+
+export interface VelocityReattemptRequest {
+  awb: string;
+  preferred_date?: string; // "YYYY-MM-DD"
+  notes?: string;
+}
+
+export interface VelocityReattemptResponse {
+  awb: string;
+  status: string;
+  message: string;
+}
+
+export interface VelocityAddressUpdateRequest {
+  awb: string;
+  delivery_address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+  phone?: string;
+}
+
+export interface VelocityAddressUpdateResponse {
+  awb: string;
+  status: string;
+  message: string;
+}
+
 // ==================== TOKEN STORAGE ====================
 
 export interface VelocityTokenData {

@@ -105,4 +105,43 @@ router.post(
     asyncHandler(orderController.bulkImportOrders)
 );
 
+/**
+ * @route POST /api/v1/orders/:orderId/clone
+ * @desc Clone an existing order with optional modifications
+ * @access Private (Production)
+ */
+router.post(
+    '/:orderId/clone',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.cloneOrder)
+);
+
+/**
+ * @route POST /api/v1/orders/:orderId/split
+ * @desc Split a single order into multiple orders
+ * @access Private (Production)
+ */
+router.post(
+    '/:orderId/split',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.splitOrder)
+);
+
+/**
+ * @route POST /api/v1/orders/merge
+ * @desc Merge multiple orders into a single order
+ * @access Private (Production)
+ */
+router.post(
+    '/merge',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.mergeOrders)
+);
+
 export default router;

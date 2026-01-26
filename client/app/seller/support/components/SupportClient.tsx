@@ -10,6 +10,7 @@ import {
     CardSkeleton,
     Loader
 } from '@/src/components/ui';
+import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     HelpCircle,
     MessageSquare,
@@ -63,6 +64,12 @@ export function SupportClient() {
         awbNumber: '',
     });
     const { addToast } = useToast();
+
+    // Loader state
+    const { isLoading: isSubmitLoading, showLoader, startLoading, stopLoading } = useLoader({
+        minDelay: 300,
+        minDisplay: 500
+    });
 
     const tickets = ticketsData?.tickets || [];
     const filteredTickets = tickets;
@@ -199,35 +206,35 @@ export function SupportClient() {
                         <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowNewTicket(false)}>Cancel</Button>
                             <Button
-                                disabled={createTicket.isPending || !ticketForm.subject || !ticketForm.category || !ticketForm.description}
+                                disabled={isSubmitLoading || !ticketForm.subject || !ticketForm.category || !ticketForm.description}
+                                isLoading={showLoader}
                                 onClick={async () => {
-                                    await createTicket.mutateAsync({
-                                        subject: ticketForm.subject,
-                                        category: ticketForm.category,
-                                        priority: ticketForm.priority,
-                                        description: ticketForm.description,
-                                    });
-                                    setShowNewTicket(false);
-                                    setTicketForm({
-                                        subject: '',
-                                        category: '',
-                                        priority: 'medium',
-                                        description: '',
-                                        awbNumber: '',
-                                    });
+                                    startLoading();
+                                    try {
+                                        await createTicket.mutateAsync({
+                                            subject: ticketForm.subject,
+                                            category: ticketForm.category,
+                                            priority: ticketForm.priority,
+                                            description: ticketForm.description,
+                                        });
+                                        setShowNewTicket(false);
+                                        setTicketForm({
+                                            subject: '',
+                                            category: '',
+                                            priority: 'medium',
+                                            description: '',
+                                            awbNumber: '',
+                                        });
+                                        addToast('Ticket created successfully', 'success');
+                                    } catch (error) {
+                                        console.error(error);
+                                    } finally {
+                                        stopLoading();
+                                    }
                                 }}
                             >
-                                {createTicket.isPending ? (
-                                    <>
-                                        <Loader variant="spinner" size="sm" className="mr-2 border-[var(--text-on-primary)] border-t-transparent" />
-                                        Submitting...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Send className="h-4 w-4 mr-2" />
-                                        Submit Ticket
-                                    </>
-                                )}
+                                <Send className="h-4 w-4 mr-2" />
+                                Submit Ticket
                             </Button>
                         </div>
                     </CardContent>

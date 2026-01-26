@@ -11,6 +11,7 @@ import {
     CardSkeleton,
     Loader
 } from '@/src/components/ui';
+import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     User,
     Building2,
@@ -33,6 +34,12 @@ export function ProfileClient() {
     const { data: companyData, isLoading: isLoadingCompany } = useCompany(profileData?.companyId || '');
     const updateProfile = useUpdateProfile();
     const updateCompany = useUpdateCompany();
+
+    // Loader state
+    const { isLoading: isSaveLoading, showLoader, startLoading, stopLoading } = useLoader({
+        minDelay: 300,
+        minDisplay: 500
+    });
 
     // Local State
     const [formData, setFormData] = useState({
@@ -125,6 +132,7 @@ export function ProfileClient() {
     const handleSave = async () => {
         if (!profileData || !companyData) return;
 
+        startLoading();
         try {
             // Update profile (name, phone, avatar)
             await updateProfile.mutateAsync({
@@ -148,9 +156,12 @@ export function ProfileClient() {
                     },
                 },
             });
+            addToast('Profile updated successfully', 'success');
         } catch (error) {
             // Error already handled by mutation hooks
             console.error('Profile update error:', error);
+        } finally {
+            stopLoading();
         }
     };
 
@@ -399,20 +410,12 @@ export function ProfileClient() {
             <div className="flex justify-end">
                 <Button
                     onClick={handleSave}
-                    disabled={updateProfile.isPending || updateCompany.isPending}
+                    isLoading={showLoader}
+                    disabled={isSaveLoading}
                     className="px-8"
                 >
-                    {(updateProfile.isPending || updateCompany.isPending) ? (
-                        <>
-                            <Loader variant="spinner" size="sm" className="mr-2 border-[var(--text-on-primary)] border-t-transparent" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Changes
-                        </>
-                    )}
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
                 </Button>
             </div>
         </div>

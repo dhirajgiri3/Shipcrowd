@@ -339,18 +339,30 @@ Need help? Reply to this message.
         try {
             const { ndrEvent } = context;
 
-            // TODO: Integrate with courier API to request reattempt
-            // For now, mark as pending for manual action
-            logger.info('Reattempt request queued', {
+            // Instantiate Velocity Client dynamically to avoid circular dependencies if any
+            // In a real DI system, this would be injected
+            const { VelocityShipfastProvider } = await import('../../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js');
+            const velocityClient = new VelocityShipfastProvider(new (await import('mongoose')).Types.ObjectId(context.companyId));
+
+            const result = await velocityClient.requestReattempt(
+                ndrEvent.awb,
+                actionConfig.preferredDate ? new Date(actionConfig.preferredDate) : undefined,
+                actionConfig.notes
+            );
+
+            logger.info('Courier reattempt requested', {
                 ndrEventId: ndrEvent._id,
                 awb: ndrEvent.awb,
+                success: result.success,
+                message: result.message
             });
 
             return {
-                success: true,
+                success: result.success,
                 actionType: 'request_reattempt',
-                result: 'pending',
-                metadata: { awb: ndrEvent.awb, requiresManualAction: true },
+                result: result.success ? 'success' : 'failed',
+                metadata: { awb: ndrEvent.awb, message: result.message, manualActionRequired: !result.success },
+                error: result.success ? undefined : result.message
             };
         } catch (error: any) {
             return {

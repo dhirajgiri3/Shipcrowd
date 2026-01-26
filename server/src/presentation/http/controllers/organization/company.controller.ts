@@ -415,7 +415,7 @@ export const assignRateCard = async (req: Request, res: Response, next: NextFunc
     }
 
     // Verify rate card exists
-    const RateCard = (await import('../../../../infrastructure/database/mongoose/models')).RateCard;
+    const RateCard = (await import('../../../../infrastructure/database/mongoose/models/index.js')).RateCard;
     const rateCard = await RateCard.findOne({
       _id: validation.data.rateCardId,
       isDeleted: false,

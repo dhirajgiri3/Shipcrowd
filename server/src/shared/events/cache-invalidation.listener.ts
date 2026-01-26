@@ -4,7 +4,7 @@
  * Listens to model events and invalidates relevant cache entries.
  */
 
-import cacheService from '../services/cache.service';
+import cacheService from '../../infrastructure/utilities/cache.service';
 import logger from '../logger/winston.logger';
 
 export interface CacheInvalidationEvent {
@@ -43,7 +43,7 @@ class CacheInvalidationListener {
     /**
      * Handle cache invalidation for a model event
      */
-    invalidate(event: CacheInvalidationEvent): void {
+    async invalidate(event: CacheInvalidationEvent): Promise<void> {
         const patterns = this.patterns.get(event.modelName);
 
         if (!patterns) {
@@ -52,10 +52,10 @@ class CacheInvalidationListener {
 
         let totalDeleted = 0;
 
-        patterns.forEach(pattern => {
+        patterns.forEach(async pattern => {
             // Invalidate company-specific cache entries
             const companyPattern = `${pattern}${event.companyId}`;
-            const deleted = cacheService.deletePattern(companyPattern);
+            const deleted = await cacheService.deletePattern(companyPattern);
             totalDeleted += deleted;
         });
 
@@ -67,7 +67,7 @@ class CacheInvalidationListener {
     /**
      * Invalidate all analytics cache for a company
      */
-    invalidateAll(companyId: string): void {
+    async invalidateAll(companyId: string): Promise<void> {
         const patterns = [
             `analytics:seller:${companyId}`,
             `analytics:orders:${companyId}`,
@@ -78,9 +78,9 @@ class CacheInvalidationListener {
         ];
 
         let totalDeleted = 0;
-        patterns.forEach(pattern => {
-            totalDeleted += cacheService.deletePattern(pattern);
-        });
+        for (const pattern of patterns) {
+            totalDeleted += await cacheService.deletePattern(pattern);
+        }
 
         if (totalDeleted > 0) {
             logger.debug(`Cache invalidation: Full invalidation for company ${companyId} - deleted ${totalDeleted} entries`);

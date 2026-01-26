@@ -99,176 +99,184 @@ export function Loader({
 }
 
 /** Truck Animation Loader - Branded loader for high-value moments */
-function TruckLoader({ size }: { size: LoaderSize }) {
+interface TruckLoaderProps {
+  size?: LoaderSize;
+  message?: string;
+  subMessage?: string;
+  fullScreen?: boolean;
+}
+
+function TruckLoader({ size = 'lg', message, subMessage, fullScreen = false }: TruckLoaderProps) {
   const sizeClass = sizeMap.truck[size];
 
-  return (
-    <div className={cn('loader-truck relative', sizeClass)}>
-      <div className="truck-wrapper w-full h-full flex flex-col items-center justify-end overflow-hidden">
-        {/* Truck Body with suspension animation */}
-        <div className="truck-body mb-1.5 animate-truck-suspension">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 198 93"
-            className="w-full h-auto"
-          >
-            {/* Truck Cabin (Driver Section) - PRIMARY BLUE BRAND COLOR */}
-            <path
-              strokeWidth="3"
-              stroke="var(--gray-900)"
-              fill="var(--primary-blue)"
-              d="M135 22.5H177.264C178.295 22.5 179.22 23.133 179.594 24.0939L192.33 56.8443C192.442 57.1332 192.5 57.4404 192.5 57.7504V89C192.5 90.3807 191.381 91.5 190 91.5H135C133.619 91.5 132.5 90.3807 132.5 89V25C132.5 23.6193 133.619 22.5 135 22.5Z"
-              className="dark:fill-[var(--primary-blue-deep)] dark:stroke-[var(--gray-400)]"
-            />
-            {/* Cabin Window - Darker blue for depth */}
-            <path
-              strokeWidth="3"
-              stroke="var(--gray-900)"
-              fill="var(--primary-blue-deep)"
-              d="M146 33.5H181.741C182.779 33.5 183.709 34.1415 184.078 35.112L190.538 52.112C191.16 53.748 189.951 55.5 188.201 55.5H146C144.619 55.5 143.5 54.3807 143.5 53V36C143.5 34.6193 144.619 33.5 146 33.5Z"
-              className="dark:fill-[var(--primary-blue-active)] dark:stroke-[var(--gray-400)]"
-            />
-            {/* Door handle - Accent detail */}
-            <path
-              strokeWidth="2"
-              stroke="var(--gray-900)"
-              fill="var(--gray-100)"
-              d="M150 65C150 65.39 149.763 65.8656 149.127 66.2893C148.499 66.7083 147.573 67 146.5 67C145.427 67 144.501 66.7083 143.873 66.2893C143.237 65.8656 143 65.39 143 65C143 64.61 143.237 64.1344 143.873 63.7107C144.501 63.2917 145.427 63 146.5 63C147.573 63 148.499 63.2917 149.127 63.7107C149.763 64.1344 150 64.61 150 65Z"
-              className="dark:fill-[var(--gray-600)] dark:stroke-[var(--gray-300)]"
-            />
-            {/* Headlight - Warm yellow (complementary to blue) */}
-            <rect
-              strokeWidth="2"
-              stroke="var(--gray-900)"
-              fill="#FCD34D"
-              rx="1"
-              height="7"
-              width="5"
-              y="63"
-              x="187"
-              className="dark:stroke-[var(--gray-400)] dark:fill-[#FBBF24]"
-            />
-            {/* Exhaust - Dark detail */}
-            <rect
-              strokeWidth="2"
-              stroke="var(--gray-900)"
-              fill="var(--gray-800)"
-              rx="1"
-              height="11"
-              width="4"
-              y="81"
-              x="193"
-              className="dark:fill-[var(--gray-400)] dark:stroke-[var(--gray-500)]"
-            />
-            {/* Main Cargo Container - Light gray for balance */}
-            <rect
-              strokeWidth="3"
-              stroke="var(--gray-900)"
-              fill="var(--gray-100)"
-              rx="2.5"
-              height="90"
-              width="121"
-              y="1.5"
-              x="6.5"
-              className="dark:fill-[var(--gray-800)] dark:stroke-[var(--gray-400)]"
-            />
-            {/* Shipcrowd Branding Text on Cargo */}
-            <text
-              x="67"
-              y="50"
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="800"
-              fill="var(--gray-800)"
-              className="dark:fill-[var(--gray-300)]"
-              style={{
-                fontFamily: 'var(--font-sans), system-ui, -apple-system, sans-serif',
-                letterSpacing: '1px',
-                textTransform: 'uppercase'
-              }}
+  const truckContent = (
+    <div className="flex flex-col items-center justify-center">
+      <div className={cn('loader-truck relative', sizeClass)}>
+        <div className="truck-wrapper w-full h-full flex flex-col items-center justify-end overflow-hidden">
+          {/* Truck Body with suspension animation */}
+          <div className="truck-body mb-1.5 animate-truck-suspension">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 198 93"
+              className="w-full h-auto"
             >
-              Shipcrowd
-            </text>
-            {/* Bumper - Matches cargo */}
-            <rect
-              strokeWidth="2"
-              stroke="var(--gray-900)"
-              fill="var(--gray-100)"
-              rx="2"
-              height="4"
-              width="6"
-              y="84"
-              x="1"
-              className="dark:fill-[var(--gray-800)] dark:stroke-[var(--gray-400)]"
-            />
-          </svg>
-        </div>
+              {/* Truck Cabin (Driver Section) - PRIMARY BLUE BRAND COLOR */}
+              <path
+                strokeWidth="3"
+                stroke="var(--gray-900)"
+                fill="var(--primary-blue)"
+                d="M135 22.5H177.264C178.295 22.5 179.22 23.133 179.594 24.0939L192.33 56.8443C192.442 57.1332 192.5 57.4404 192.5 57.7504V89C192.5 90.3807 191.381 91.5 190 91.5H135C133.619 91.5 132.5 90.3807 132.5 89V25C132.5 23.6193 133.619 22.5 135 22.5Z"
+                className="dark:fill-[var(--primary-blue-deep)] dark:stroke-[var(--gray-400)]"
+              />
+              {/* Cabin Window - Darker blue for depth */}
+              <path
+                strokeWidth="3"
+                stroke="var(--gray-900)"
+                fill="var(--primary-blue-deep)"
+                d="M146 33.5H181.741C182.779 33.5 183.709 34.1415 184.078 35.112L190.538 52.112C191.16 53.748 189.951 55.5 188.201 55.5H146C144.619 55.5 143.5 54.3807 143.5 53V36C143.5 34.6193 144.619 33.5 146 33.5Z"
+                className="dark:fill-[var(--primary-blue-active)] dark:stroke-[var(--gray-400)]"
+              />
+              {/* Door handle - Accent detail */}
+              <path
+                strokeWidth="2"
+                stroke="var(--gray-900)"
+                fill="var(--gray-100)"
+                d="M150 65C150 65.39 149.763 65.8656 149.127 66.2893C148.499 66.7083 147.573 67 146.5 67C145.427 67 144.501 66.7083 143.873 66.2893C143.237 65.8656 143 65.39 143 65C143 64.61 143.237 64.1344 143.873 63.7107C144.501 63.2917 145.427 63 146.5 63C147.573 63 148.499 63.2917 149.127 63.7107C149.763 64.1344 150 64.61 150 65Z"
+                className="dark:fill-[var(--gray-600)] dark:stroke-[var(--gray-300)]"
+              />
+              {/* Headlight - Warm yellow (complementary to blue) */}
+              <rect
+                strokeWidth="2"
+                stroke="var(--gray-900)"
+                fill="#FCD34D"
+                rx="1"
+                height="7"
+                width="5"
+                y="63"
+                x="187"
+                className="dark:stroke-[var(--gray-400)] dark:fill-[#FBBF24]"
+              />
+              {/* Exhaust - Dark detail */}
+              <rect
+                strokeWidth="2"
+                stroke="var(--gray-900)"
+                fill="var(--gray-800)"
+                rx="1"
+                height="11"
+                width="4"
+                y="81"
+                x="193"
+                className="dark:fill-[var(--gray-400)] dark:stroke-[var(--gray-500)]"
+              />
+              {/* Main Cargo Container - Light gray for balance */}
+              <rect
+                strokeWidth="3"
+                stroke="var(--gray-900)"
+                fill="var(--gray-100)"
+                rx="2.5"
+                height="90"
+                width="121"
+                y="1.5"
+                x="6.5"
+                className="dark:fill-[var(--gray-800)] dark:stroke-[var(--gray-400)]"
+              />
+              {/* Shipcrowd Branding Text on Cargo */}
+              <text
+                x="67"
+                y="50"
+                textAnchor="middle"
+                fontSize="11"
+                fontWeight="800"
+                fill="var(--gray-800)"
+                className="dark:fill-[var(--gray-300)]"
+                style={{
+                  fontFamily: 'var(--font-sans), system-ui, -apple-system, sans-serif',
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase'
+                }}
+              >
+                Shipcrowd
+              </text>
+              {/* Bumper - Matches cargo */}
+              <rect
+                strokeWidth="2"
+                stroke="var(--gray-900)"
+                fill="var(--gray-100)"
+                rx="2"
+                height="4"
+                width="6"
+                y="84"
+                x="1"
+                className="dark:fill-[var(--gray-800)] dark:stroke-[var(--gray-400)]"
+              />
+            </svg>
+          </div>
 
-        {/* Tires with rotation */}
-        <div className="truck-tires absolute bottom-0 flex items-center justify-between px-3.5 w-[65%]">
+          {/* Tires with rotation */}
+          <div className="truck-tires absolute bottom-0 flex items-center justify-between px-3.5 w-[65%]">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 30 30"
+              className="w-6 h-6 animate-truck-wheel"
+            >
+              <circle
+                strokeWidth="3"
+                stroke="var(--gray-900)"
+                fill="var(--gray-900)"
+                r="13.5"
+                cy="15"
+                cx="15"
+                className="dark:fill-[var(--gray-300)] dark:stroke-[var(--gray-400)]"
+              />
+              <circle
+                fill="var(--gray-200)"
+                r="7"
+                cy="15"
+                cx="15"
+                className="dark:fill-[var(--gray-600)]"
+              />
+            </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 30 30"
+              className="w-6 h-6 animate-truck-wheel"
+            >
+              <circle
+                strokeWidth="3"
+                stroke="var(--gray-900)"
+                fill="var(--gray-900)"
+                r="13.5"
+                cy="15"
+                cx="15"
+                className="dark:fill-[var(--gray-300)] dark:stroke-[var(--gray-400)]"
+              />
+              <circle
+                fill="var(--gray-200)"
+                r="7"
+                cy="15"
+                cx="15"
+                className="dark:fill-[var(--gray-600)]"
+              />
+            </svg>
+          </div>
+
+          {/* Road */}
+          <div className="road w-full h-0.5 bg-[var(--border-default)] relative" />
+
+          {/* Lamp post */}
           <svg
+            xmlSpace="preserve"
+            viewBox="0 0 453.459 453.459"
             xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 30 30"
-            className="w-6 h-6 animate-truck-wheel"
+            className="lamp-post absolute bottom-0 right-0 h-[90%] animate-truck-road"
+            fill="var(--gray-400)"
           >
-            <circle
-              strokeWidth="3"
-              stroke="var(--gray-900)"
-              fill="var(--gray-900)"
-              r="13.5"
-              cy="15"
-              cx="15"
-              className="dark:fill-[var(--gray-300)] dark:stroke-[var(--gray-400)]"
-            />
-            <circle
-              fill="var(--gray-200)"
-              r="7"
-              cy="15"
-              cx="15"
-              className="dark:fill-[var(--gray-600)]"
-            />
-          </svg>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 30 30"
-            className="w-6 h-6 animate-truck-wheel"
-          >
-            <circle
-              strokeWidth="3"
-              stroke="var(--gray-900)"
-              fill="var(--gray-900)"
-              r="13.5"
-              cy="15"
-              cx="15"
-              className="dark:fill-[var(--gray-300)] dark:stroke-[var(--gray-400)]"
-            />
-            <circle
-              fill="var(--gray-200)"
-              r="7"
-              cy="15"
-              cx="15"
-              className="dark:fill-[var(--gray-600)]"
-            />
-          </svg>
-        </div>
-
-        {/* Road */}
-        <div className="road w-full h-0.5 bg-[var(--border-default)] relative" />
-
-        {/* Lamp post */}
-        <svg
-          xmlSpace="preserve"
-          viewBox="0 0 453.459 453.459"
-          xmlns="http://www.w3.org/2000/svg"
-          className="lamp-post absolute bottom-0 right-0 h-[90%] animate-truck-road"
-          fill="var(--gray-400)"
-        >
-          <path
-            className="dark:fill-[var(--gray-500)]"
-            d="M252.882,0c-37.781,0-68.686,29.953-70.245,67.358h-6.917v8.954c-26.109,2.163-45.463,10.011-45.463,19.366h9.993
+            <path
+              className="dark:fill-[var(--gray-500)]"
+              d="M252.882,0c-37.781,0-68.686,29.953-70.245,67.358h-6.917v8.954c-26.109,2.163-45.463,10.011-45.463,19.366h9.993
 c-1.65,5.146-2.507,10.54-2.507,16.017c0,28.956,23.558,52.514,52.514,52.514c28.956,0,52.514-23.558,52.514-52.514
 c0-5.478-0.856-10.872-2.506-16.017h9.992c0-9.354-19.352-17.204-45.463-19.366v-8.954h-6.149C200.189,38.779,223.924,16,252.882,16
 c29.952,0,54.32,24.368,54.32,54.32c0,28.774-11.078,37.009-25.105,47.437c-17.444,12.968-37.216,27.667-37.216,78.884v113.914
@@ -277,11 +285,37 @@ v-11.202c18.625-19.715-4.794-87.527-8.227-115.459c2.029-1.683,3.322-4.223,3.322-
 V196.641c0-43.174,14.942-54.283,30.762-66.043c14.793-10.997,31.559-23.461,31.559-60.277C323.202,31.545,291.656,0,252.882,0z
 M232.77,111.694c0,23.442-19.071,42.514-42.514,42.514c-23.442,0-42.514-19.072-42.514-42.514c0-5.531,1.078-10.957,3.141-16.017
 h78.747C231.693,100.736,232.77,106.162,232.77,111.694z"
-          />
-        </svg>
-      </div>
-    </div >
+            />
+          </svg>
+        </div>
+      </div >
+
+      {message && (
+        <h3 className={cn(
+          "text-xl font-bold bg-gradient-to-r from-[var(--primary-blue)] to-[var(--primary-blue-deep)] bg-clip-text text-transparent mt-6 mb-2 text-center",
+          !fullScreen && "text-base mt-4"
+        )}>
+          {message}
+        </h3>
+      )}
+
+      {subMessage && (
+        <p className="text-[var(--text-secondary)] text-sm text-center max-w-sm">
+          {subMessage}
+        </p>
+      )}
+    </div>
   );
+
+  if (fullScreen) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-[var(--bg-primary)]/90 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+        {truckContent}
+      </div>
+    );
+  }
+
+  return truckContent;
 }
 
 /** Spinner Loader - Circular loading animation */

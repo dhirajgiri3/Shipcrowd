@@ -75,4 +75,57 @@ router.post(
     asyncHandler(userManagementController.impersonateUser)
 );
 
+/**
+ * @route   POST /api/v1/admin/users/:id/suspend
+ * @desc    Suspend a user account
+ * @access  Super Admin only
+ * @body    reason - Suspension reason (required, min 10 chars)
+ * @body    duration - Optional duration in days
+ */
+router.post(
+    '/:id/suspend',
+    authenticate,
+    requireAccess({ roles: ['super_admin'] }),
+    asyncHandler(userManagementController.suspendUser)
+);
+
+/**
+ * @route   POST /api/v1/admin/users/:id/unsuspend
+ * @desc    Unsuspend a user account
+ * @access  Super Admin only
+ * @body    reason - Optional reason for unsuspension
+ */
+router.post(
+    '/:id/unsuspend',
+    authenticate,
+    requireAccess({ roles: ['super_admin'] }),
+    asyncHandler(userManagementController.unsuspendUser)
+);
+
+/**
+ * @route   POST /api/v1/admin/users/:id/ban
+ * @desc    Permanently ban a user account
+ * @access  Super Admin only
+ * @body    reason - Ban reason (required, min 10 chars)
+ */
+router.post(
+    '/:id/ban',
+    authenticate,
+    requireAccess({ roles: ['super_admin'] }),
+    asyncHandler(userManagementController.banUser)
+);
+
+/**
+ * @route   POST /api/v1/admin/users/:id/unban
+ * @desc    Unban a user account
+ * @access  Super Admin only
+ * @body    reason - Optional reason for unbanning
+ */
+router.post(
+    '/:id/unban',
+    authenticate,
+    requireAccess({ roles: ['super_admin'] }),
+    asyncHandler(userManagementController.unbanUser)
+);
+
 export default router;

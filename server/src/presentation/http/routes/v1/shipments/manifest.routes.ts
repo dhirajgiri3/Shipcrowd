@@ -55,4 +55,36 @@ router.post(
     ManifestController.handoverManifest
 );
 
+// Update manifest (pickup details, notes)
+router.patch(
+    '/manifests/:id',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.updateManifest
+);
+
+// Delete manifest (only if status is 'open')
+router.delete(
+    '/manifests/:id',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.deleteManifest
+);
+
+// Add shipments to manifest
+router.post(
+    '/manifests/:id/add-shipments',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.addShipments
+);
+
+// Remove shipments from manifest
+router.post(
+    '/manifests/:id/remove-shipments',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.removeShipments
+);
+
 export default router;

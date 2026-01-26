@@ -11,6 +11,7 @@ import {
     CardSkeleton,
     Loader
 } from '@/src/components/ui';
+import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     MapPin,
     Plus,
@@ -38,6 +39,12 @@ export function PickupAddressesClient() {
     const createWarehouse = useCreateWarehouse();
     const deleteWarehouse = useDeleteWarehouse();
     const updateWarehouse = useUpdateWarehouse();
+
+    // Loader state management
+    const { isLoading: isSaveLoading, showLoader, startLoading, stopLoading } = useLoader({
+        minDelay: 300,
+        minDisplay: 500
+    });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -71,44 +78,49 @@ export function PickupAddressesClient() {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         // Basic validation
         if (!formData.name || !formData.contactPerson || !formData.phone || !formData.addressLine1 || !formData.city || !formData.state || !formData.pincode) {
             addToast('Please fill all required fields', 'error');
             return;
         }
 
-        createWarehouse.mutate({
-            name: formData.name,
-            contactInfo: {
-                name: formData.contactPerson,
-                phone: formData.phone,
-            },
-            address: {
-                line1: formData.addressLine1,
-                line2: formData.addressLine2,
-                city: formData.city,
-                state: formData.state,
-                country: 'India',
-                postalCode: formData.pincode,
-            },
-            isDefault: formData.isDefault
-        }, {
-            onSuccess: () => {
-                setShowAddForm(false);
-                setFormData({
-                    name: '',
-                    contactPerson: '',
-                    phone: '',
-                    addressLine1: '',
-                    addressLine2: '',
-                    city: '',
-                    state: '',
-                    pincode: '',
-                    isDefault: false
-                });
-            }
-        });
+        startLoading();
+        try {
+            await createWarehouse.mutateAsync({
+                name: formData.name,
+                contactInfo: {
+                    name: formData.contactPerson,
+                    phone: formData.phone,
+                },
+                address: {
+                    line1: formData.addressLine1,
+                    line2: formData.addressLine2,
+                    city: formData.city,
+                    state: formData.state,
+                    country: 'India',
+                    postalCode: formData.pincode,
+                },
+                isDefault: formData.isDefault
+            });
+
+            setShowAddForm(false);
+            setFormData({
+                name: '',
+                contactPerson: '',
+                phone: '',
+                addressLine1: '',
+                addressLine2: '',
+                city: '',
+                state: '',
+                pincode: '',
+                isDefault: false
+            });
+        } catch (error) {
+            console.error(error);
+        } finally {
+            stopLoading();
+        }
     };
 
     if (isLoading) {
@@ -259,15 +271,8 @@ export function PickupAddressesClient() {
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                            <Button onClick={handleSave} disabled={createWarehouse.isPending}>
-                                {createWarehouse.isPending ? (
-                                    <>
-                                        <Loader variant="spinner" size="sm" className="mr-2 border-[var(--text-on-primary)] border-t-transparent" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    'Save Address'
-                                )}
+                            <Button onClick={handleSave} isLoading={showLoader} disabled={isSaveLoading}>
+                                Save Address
                             </Button>
                         </div>
                     </CardContent>

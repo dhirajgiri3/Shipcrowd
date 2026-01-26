@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import CourierPerformance from '../../../../infrastructure/database/mongoose/models/shipping/courier-performance.model';
+import { Courier } from '../../../../infrastructure/database/mongoose/models';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import { DynamicPricingService } from './dynamic-pricing.service';
 import logger from '../../../../shared/logger/winston.logger';
@@ -107,14 +108,8 @@ export class SmartRateCalculatorService {
         performance: 15,
     };
 
-    // Available carriers (will be fetched from database in production)
-    private static AVAILABLE_CARRIERS = [
-        { id: 'velocity', name: 'Velocity Shipfast', serviceTypes: ['surface', 'express'] },
-        // Future carriers:
-        // { id: 'delhivery', name: 'Delhivery', serviceTypes: ['surface', 'express'] },
-        // { id: 'bluedart', name: 'Bluedart', serviceTypes: ['air', 'surface'] },
-        // { id: 'dtdc', name: 'DTDC', serviceTypes: ['surface'] },
-    ];
+    // Available carriers are dynamically fetched from the database
+    // private static AVAILABLE_CARRIERS = [];
 
     private constructor() {
         this.pricingService = new DynamicPricingService();
@@ -191,12 +186,18 @@ export class SmartRateCalculatorService {
      * Query all available couriers in parallel
      */
     private async fetchRawRates(input: SmartRateInput): Promise<CourierRateOption[]> {
-        const carriers = SmartRateCalculatorService.AVAILABLE_CARRIERS.filter((carrier) => {
+        // Fetch active couriers from DB
+        const couriers = await Courier.find({
+            isActive: true,
+            // Optional: Filter by region if implemented
+        }).lean();
+
+        const activeCouriers = couriers.filter((carrier) => {
             // Filter by preferences
-            if (input.preferredCarriers && !input.preferredCarriers.includes(carrier.id)) {
+            if (input.preferredCarriers && !input.preferredCarriers.includes(carrier.name)) {
                 return false;
             }
-            if (input.excludedCarriers && input.excludedCarriers.includes(carrier.id)) {
+            if (input.excludedCarriers && input.excludedCarriers.includes(carrier.name)) {
                 return false;
             }
             return true;
@@ -204,10 +205,10 @@ export class SmartRateCalculatorService {
 
         const ratePromises: Promise<CourierRateOption | null>[] = [];
 
-        for (const carrier of carriers) {
+        for (const carrier of activeCouriers) {
             for (const serviceType of carrier.serviceTypes) {
                 ratePromises.push(
-                    this.fetchCourierRate(carrier.id, carrier.name, serviceType, input)
+                    this.fetchCourierRate(carrier.name, carrier.displayName, serviceType, input)
                 );
             }
         }

@@ -356,12 +356,12 @@ export class CODRemittanceJob {
         tax?: number;
     }> {
         try {
-            // Fix: Cast imported module default to any to avoid "not constructable" TS error
-            const RazorpayPayoutProviderClass = (await import(
-                '../../../infrastructure/payment/razorpay/RazorpayPayoutProvider.js'
-            )).default as any;
+            // Dynamic import to avoid circular dependencies if any
+            const { RazorpayPayoutProvider } = await import(
+                '../../../infrastructure/payment/razorpay/razorpay-payout.provider.js'
+            );
 
-            const razorpayClient = new RazorpayPayoutProviderClass();
+            const razorpayClient = new RazorpayPayoutProvider();
             const payout = await razorpayClient.getPayoutStatus(razorpayPayoutId);
 
             return {

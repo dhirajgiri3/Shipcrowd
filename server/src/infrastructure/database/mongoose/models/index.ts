@@ -80,8 +80,12 @@ export { default as Zone } from './logistics/shipping/configuration/zone.model';
 export * from './logistics/shipping/configuration/zone.model';
 export { default as RateCard } from './logistics/shipping/configuration/rate-card.model';
 export * from './logistics/shipping/configuration/rate-card.model';
+export { default as Courier } from './shipping/courier.model';
+export * from './shipping/courier.model';
 export { default as CourierPerformance } from './shipping/courier-performance.model';
 export * from './shipping/courier-performance.model';
+export { default as LabelTemplate } from './shipping/label-template.model';
+export * from './shipping/label-template.model';
 export { default as RTOEvent } from './logistics/shipping/exceptions/rto-event.model';
 export * from './logistics/shipping/exceptions/rto-event.model';
 export { default as NDREvent } from './logistics/shipping/exceptions/ndr-event.model';
@@ -125,6 +129,10 @@ export * from './marketplaces/woocommerce/woocommerce-sync-log.model';
 export { default as WooCommerceProductMapping } from './marketplaces/woocommerce/woocommerce-product-mapping.model';
 export * from './marketplaces/woocommerce/woocommerce-product-mapping.model';
 
+// Communication
+export { default as NotificationTemplate } from './communication/notification-template.model';
+export * from './communication/notification-template.model';
+
 // System
 export { default as Integration } from './system/integrations/integration.model';
 export * from './system/integrations/integration.model';
@@ -134,8 +142,18 @@ export { default as WebhookDeadLetter } from './system/integrations/webhook-dead
 export * from './system/integrations/webhook-dead-letter.model';
 export { default as AuditLog } from './system/audit/audit-log.model';
 export * from './system/audit/audit-log.model';
+export { default as ScheduledReport } from './analytics/scheduled-report.model';
+export * from './analytics/scheduled-report.model';
 export { default as ReportConfig } from './system/reporting/report-config.model';
 export * from './system/reporting/report-config.model';
+
+// Admin
+export { default as ImpersonationSession } from './admin/impersonation-session.model';
+export * from './admin/impersonation-session.model';
+
+// System - Feature Flags
+export { default as FeatureFlag } from './system/feature-flag.model';
+export * from './system/feature-flag.model';
 
 // Onboarding & Gamification
 export { default as OnboardingProgress } from './onboarding/onboarding-progress.model';

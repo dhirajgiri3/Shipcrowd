@@ -197,6 +197,7 @@ function TrackPageContent() {
     return (mockData as Record<string, PublicTrackingResponse>)[key] || null;
   };
 
+  // Main tracking logic
   const handleTrack = async (e?: React.FormEvent, overrideNumber?: string) => {
     if (e) e.preventDefault();
     const numberToTrack = overrideNumber || trackingNumber;
@@ -209,14 +210,16 @@ function TrackPageContent() {
 
     updateURL(numberToTrack.trim());
 
-    const mockKeywords = ['DEMO', 'DELIVERED', 'TRANSIT', 'ROCKET'];
     const upperNumber = numberToTrack.trim().toUpperCase();
+    const mockKeywords = ['DEMO', 'DELIVERED', 'TRANSIT', 'ROCKET'];
 
+    // 1. Check for Demo Keywords
     if (mockKeywords.includes(upperNumber)) {
       setTimeout(() => {
         let mockShipment = getMockShipmentByKeyword(upperNumber);
 
         if (upperNumber === 'ROCKET') {
+          // Rocket specific mock logic (preserved)
           mockShipment = {
             trackingNumber: 'SPACE-X-042',
             carrier: 'Interstellar Logistics',
@@ -254,12 +257,34 @@ function TrackPageContent() {
       return;
     }
 
+    // 2. Real API Call
     try {
       const data = await trackingApi.trackShipment(numberToTrack.trim());
-      setShipment(data);
+
+      // Normalize status and update shipment
+      const normalizedShipment = {
+        ...data,
+        currentStatus: data.currentStatus // Ensure consistent casing if needed
+      };
+
+      setShipment(normalizedShipment);
       addToRecent(data.trackingNumber, data.currentStatus);
+
+      // Trigger celebration for real delivered shipments
+      if (normalizedShipment.currentStatus?.toUpperCase() === 'DELIVERED') {
+        // Re-trigger the useEffect dependency
+        // The useEffect handles the confetti based on `shipment.currentStatus`
+      }
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to find shipment');
+      console.error('Tracking Error:', err);
+      // Detailed error message
+      let message = 'Failed to find shipment. Please check the number and try again.';
+      if (err instanceof Error) {
+        // Check for specific API error messages if available
+        message = err.message;
+      }
+      setError(message);
     } finally {
       stopLoading();
     }
