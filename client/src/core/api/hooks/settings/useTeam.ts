@@ -1,30 +1,33 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
-import { showSuccessToast } from '@/src/lib/error';
-import { handleApiError } from '@/src/lib/error';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import type { TeamMember, InviteTeamMemberPayload, UpdateMemberRolePayload } from '@/src/types/api/settings';
 
 /**
  * Fetch team members for current company
  */
-export const useTeamMembers = () => {
-    return useQuery({
+export const useTeamMembers = (options?: UseQueryOptions<TeamMember[], ApiError>) => {
+    return useQuery<TeamMember[], ApiError>({
         queryKey: queryKeys.team.members(),
         queryFn: async () => {
             const response = await apiClient.get<{ data: { members: TeamMember[] } }>('/team/members');
             return response.data.data.members;
         },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Invite a new team member
  */
-export const useInviteTeamMember = () => {
+export const useInviteTeamMember = (options?: UseMutationOptions<any, ApiError, InviteTeamMemberPayload>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<any, ApiError, InviteTeamMemberPayload>({
         mutationFn: async (data: InviteTeamMemberPayload) => {
             const response = await apiClient.post('/team/invite', data);
             return response.data;
@@ -33,19 +36,19 @@ export const useInviteTeamMember = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.team.members() });
             showSuccessToast('Team member invited successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to invite team member');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Update team member role
  */
-export const useUpdateMemberRole = () => {
+export const useUpdateMemberRole = (options?: UseMutationOptions<any, ApiError, UpdateMemberRolePayload>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<any, ApiError, UpdateMemberRolePayload>({
         mutationFn: async ({ memberId, teamRole }: UpdateMemberRolePayload) => {
             const response = await apiClient.patch(`/team/members/${memberId}/role`, { teamRole });
             return response.data;
@@ -54,19 +57,19 @@ export const useUpdateMemberRole = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.team.members() });
             showSuccessToast('Member role updated successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to update member role');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Remove team member
  */
-export const useRemoveTeamMember = () => {
+export const useRemoveTeamMember = (options?: UseMutationOptions<any, ApiError, string>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<any, ApiError, string>({
         mutationFn: async (memberId: string) => {
             const response = await apiClient.delete(`/team/members/${memberId}`);
             return response.data;
@@ -75,8 +78,8 @@ export const useRemoveTeamMember = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.team.members() });
             showSuccessToast('Team member removed successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to remove team member');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };

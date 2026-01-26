@@ -1,12 +1,8 @@
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../client';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
-import {
-    useQuery,
-    useMutation,
-    useQueryClient,
-    UseQueryOptions,
-    UseMutationOptions,
-} from '@tanstack/react-query';
 
 // Profile interfaces
 export interface UserProfile {
@@ -60,12 +56,13 @@ export interface UpdateCompanyPayload {
  */
 export const useProfile = (options?: UseQueryOptions<UserProfile, ApiError>) => {
     return useQuery<UserProfile, ApiError>({
-        queryKey: ['profile'],
+        queryKey: queryKeys.settings.profile(),
         queryFn: async () => {
             const response = await apiClient.get('/users/profile');
             return response.data.user;
         },
-        staleTime: 60000,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
@@ -82,12 +79,11 @@ export const useUpdateProfile = (options?: UseMutationOptions<UserProfile, ApiEr
             return response.data.user;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['profile'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.profile() });
             showSuccessToast('Profile updated successfully');
         },
-        onError: (error) => {
-            handleApiError(error, 'Profile Update Failed');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
@@ -97,7 +93,7 @@ export const useUpdateProfile = (options?: UseMutationOptions<UserProfile, ApiEr
  */
 export const useCompany = (companyId: string, options?: UseQueryOptions<Company, ApiError>) => {
     return useQuery<Company, ApiError>({
-        queryKey: ['company', companyId],
+        queryKey: queryKeys.settings.company(companyId),
         queryFn: async () => {
             const response = await apiClient.get(`/companies/${companyId}`);
             return response.data.company;

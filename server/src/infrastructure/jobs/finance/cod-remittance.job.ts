@@ -193,16 +193,49 @@ export class CODRemittanceJob {
 
     /**
      * Fetch settlement from Velocity API (Real mode only)
-     * TODO: Implement when Velocity settlement API is ready
+     *
+     * NOTE:
+     * - This method is only called when FeatureFlagService.useRealVelocityAPI() === true
+     * - On any error, the caller will log and continue without crashing the worker
      */
-    private static async fetchVelocitySettlement(remittanceId: string): Promise<any> {
-        // TODO: Replace with actual Velocity API call
-        // Example implementation:
-        // const velocityClient = new VelocityAPIClient();
-        // const settlement = await velocityClient.getSettlement(remittanceId);
-        // return settlement;
+    private static async fetchVelocitySettlement(remittanceId: string): Promise<{
+        status: string;
+        settlementId?: string;
+        utr?: string;
+        settledAmount?: number;
+        settledAt?: Date;
+        bankDetails?: unknown;
+    }> {
+        try {
+            const { VelocityShipfastProvider } = await import(
+                '../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+            );
 
-        throw new Error('Velocity settlement API not yet implemented - use mock mode (set USE_REAL_VELOCITY_API=false)');
+            // Get company ID from remittance (need to fetch remittance to get companyId)
+            const remittance = await CODRemittance.findOne({ remittanceId }).select('companyId');
+            if (!remittance) {
+                throw new Error(`Remittance not found: ${remittanceId}`);
+            }
+
+            const velocityClient = new VelocityShipfastProvider(remittance.companyId);
+            const settlement = await velocityClient.getSettlementStatus(remittanceId);
+
+            return {
+                status: settlement.status,
+                settlementId: settlement.settlement_id,
+                utr: settlement.utr_number,
+                settledAmount: settlement.settled_amount,
+                settledAt: settlement.settled_at ? new Date(settlement.settled_at) : undefined,
+                bankDetails: settlement.bank_details
+            };
+        } catch (error: any) {
+            logger.error('Velocity settlement API call failed', {
+                remittanceId,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**
@@ -299,19 +332,48 @@ export class CODRemittanceJob {
 
     /**
      * Fetch payout status from Razorpay API (Real mode only)
-     * TODO: Implement when Razorpay payout status API is ready
+     *
+     * NOTE:
+     * - This method is only called when FeatureFlagService.useRealRazorpayAPI() === true
+     * - On any error, the caller will log and continue without crashing the worker
      */
-    private static async fetchRazorpayPayoutStatus(razorpayPayoutId: string): Promise<any> {
-        // TODO: Replace with actual Razorpay API call
-        // Example implementation:
-        // const razorpay = new Razorpay({
-        //     key_id: process.env.RAZORPAY_KEY_ID,
-        //     key_secret: process.env.RAZORPAY_KEY_SECRET
-        // });
-        // const payout = await razorpay.payouts.fetch(razorpayPayoutId);
-        // return payout;
+    private static async fetchRazorpayPayoutStatus(razorpayPayoutId: string): Promise<{
+        status: string;
+        utr?: string | null;
+        failure_reason?: string;
+        reversed_at?: Date | null;
+        amount?: number;
+        fees?: number;
+        tax?: number;
+    }> {
+        try {
+            const RazorpayPayoutProvider = (await import(
+                '../../../infrastructure/payment/razorpay/RazorpayPayoutProvider'
+            )).default;
 
-        throw new Error('Razorpay payout verification API not yet implemented - use mock mode (set USE_REAL_RAZORPAY_API=false)');
+            const razorpayClient = new RazorpayPayoutProvider();
+            const payout = await razorpayClient.getPayoutStatus(razorpayPayoutId);
+
+            return {
+                status: payout.status,
+                utr: payout.utr,
+                failure_reason: payout.failure_reason,
+                // Razorpay payout object may include these fields; we keep them optional
+                reversed_at: (payout as any).reversed_at
+                    ? new Date((payout as any).reversed_at)
+                    : null,
+                amount: (payout as any).amount,
+                fees: (payout as any).fees,
+                tax: (payout as any).tax
+            };
+        } catch (error: any) {
+            logger.error('Razorpay payout status API call failed', {
+                razorpayPayoutId,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**

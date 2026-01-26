@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import type {
     Courier,
     CourierPerformance,
@@ -16,22 +17,25 @@ import { showSuccessToast, handleApiError } from '@/src/lib/error';
 /**
  * Fetch single courier by ID
  */
-export const useCourier = (id: string | undefined) => {
-    return useQuery({
+export const useCourier = (id: string | undefined, options?: UseQueryOptions<Courier, ApiError>) => {
+    return useQuery<Courier, ApiError>({
         queryKey: queryKeys.couriers.detail(id!),
         queryFn: async () => {
             const response = await apiClient.get<CourierDetailResponse>(`/admin/couriers/${id}`);
             return response.data.data;
         },
         enabled: !!id,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Fetch courier performance metrics
  */
-export const useCourierPerformance = (id: string | undefined, filters?: PerformanceFilters) => {
-    return useQuery({
+export const useCourierPerformance = (id: string | undefined, filters?: PerformanceFilters, options?: UseQueryOptions<CourierPerformance, ApiError>) => {
+    return useQuery<CourierPerformance, ApiError>({
         queryKey: queryKeys.couriers.performance(id!, filters),
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -46,6 +50,9 @@ export const useCourierPerformance = (id: string | undefined, filters?: Performa
             return response.data.data;
         },
         enabled: !!id,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
@@ -54,10 +61,10 @@ export const useCourierPerformance = (id: string | undefined, filters?: Performa
 /**
  * Update courier details
  */
-export const useUpdateCourier = () => {
+export const useUpdateCourier = (options?: UseMutationOptions<Courier, ApiError, { id: string; data: UpdateCourierRequest }>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<Courier, ApiError, { id: string; data: UpdateCourierRequest }>({
         mutationFn: async ({ id, data }: { id: string; data: UpdateCourierRequest }) => {
             const response = await apiClient.put<CourierDetailResponse>(`/admin/couriers/${id}`, data);
             return response.data.data;
@@ -67,19 +74,19 @@ export const useUpdateCourier = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.couriers.detail(variables.id) });
             showSuccessToast('Courier updated successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to update courier');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Toggle courier active status
  */
-export const useToggleCourierStatus = () => {
+export const useToggleCourierStatus = (options?: UseMutationOptions<Courier, ApiError, string>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<Courier, ApiError, string>({
         mutationFn: async (id: string) => {
             const response = await apiClient.post<CourierDetailResponse>(
                 `/admin/couriers/${id}/toggle-status`
@@ -91,17 +98,17 @@ export const useToggleCourierStatus = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.couriers.detail(id) });
             showSuccessToast(`Courier ${data.isActive ? 'activated' : 'deactivated'} successfully`);
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to toggle courier status');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Test courier integration connection
  */
-export const useTestCourierIntegration = () => {
-    return useMutation({
+export const useTestCourierIntegration = (options?: UseMutationOptions<{ success: boolean; message: string }, ApiError, string>) => {
+    return useMutation<{ success: boolean; message: string }, ApiError, string>({
         mutationFn: async (id: string) => {
             const response = await apiClient.post<{ success: boolean; message: string }>(
                 `/admin/couriers/${id}/test-connection`
@@ -111,11 +118,10 @@ export const useTestCourierIntegration = () => {
         onSuccess: (data) => {
             if (data.success) {
                 showSuccessToast('Integration test successful');
-            } else {
             }
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to test integration');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.NO_RETRY,
+        ...options,
     });
 };

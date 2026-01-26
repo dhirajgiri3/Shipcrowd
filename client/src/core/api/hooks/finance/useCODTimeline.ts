@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5005/api/v1";
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 
 /**
  * COD Settlement Timeline Hook
@@ -53,19 +53,20 @@ export interface CODSettlementData {
     };
 }
 
-export function useCODTimeline() {
-    return useQuery({
-        queryKey: ["cod-timeline"],
+export function useCODTimeline(
+    options?: UseQueryOptions<CODTimelineResponse, ApiError>
+) {
+    return useQuery<CODTimelineResponse, ApiError>({
+        queryKey: queryKeys.cod.timeline(),
         queryFn: async () => {
-            const { data } = await axios.get<{ success: boolean; data: CODTimelineResponse }>(
-                `${API_BASE_URL}/finance/cod-remittance/timeline`,
-                { withCredentials: true }
+            const { data } = await apiClient.get<{ success: boolean; data: CODTimelineResponse }>(
+                '/finance/cod-remittance/timeline'
             );
             return data.data;
         },
-        // Cache for 5 minutes (settlements don't change frequently)
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 

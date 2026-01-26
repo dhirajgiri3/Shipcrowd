@@ -199,17 +199,67 @@ export default class ReturnService {
             throw new ValidationError(`Cannot schedule pickup. Current status: ${returnOrder.status}`);
         }
 
-        // 3. Call courier API to create reverse shipment
-        // TODO: Integrate with actual courier adapter
-        const mockAwb = `RET-AWB-${Date.now()}`;
-        const mockTrackingUrl = `https://track.example.com/${mockAwb}`;
+        // 3. Call courier API to create reverse shipment (no mock fallback here)
+        const shipment = await Shipment.findById(returnOrder.shipmentId);
+        if (!shipment) {
+            throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
+        }
+
+        // Only Velocity-backed shipments are supported for automated reverse pickup
+        const courierProvider = (shipment as any).carrier?.toLowerCase();
+        const isVelocity = courierProvider?.includes('velocity');
+
+        if (!isVelocity) {
+            throw new ValidationError(
+                `Automated reverse pickup is only supported for Velocity shipments. Current courier: ${courierProvider || 'unknown'}`
+            );
+        }
+
+        // Import Velocity adapter dynamically (same pattern as RTO service)
+        const { VelocityShipfastProvider } = await import(
+            '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+        );
+
+        const velocityAdapter = new VelocityShipfastProvider(
+            new mongoose.Types.ObjectId(returnOrder.companyId)
+        );
+
+        const pickupAddress = {
+            name: (shipment as any).customerDetails?.name || 'Customer',
+            phone: (shipment as any).customerDetails?.phone || '',
+            address: (shipment as any).customerDetails?.address?.line1 || '',
+            city: (shipment as any).customerDetails?.address?.city || '',
+            state: (shipment as any).customerDetails?.address?.state || '',
+            pincode: (shipment as any).customerDetails?.address?.postalCode || '',
+            country: (shipment as any).customerDetails?.address?.country || 'India',
+            email: (shipment as any).customerDetails?.email,
+        };
+
+        const packageDetails = {
+            weight: (shipment as any).packageDetails?.weight || 0.5,
+            length: (shipment as any).packageDetails?.dimensions?.length || 10,
+            width: (shipment as any).packageDetails?.dimensions?.width || 10,
+            height: (shipment as any).packageDetails?.dimensions?.height || 10,
+        };
+
+        const reverseShipmentResponse = await velocityAdapter.createReverseShipment(
+            (shipment as any).awb,
+            pickupAddress,
+            (shipment as any).warehouseId?.toString(),
+            packageDetails,
+            (shipment as any).orderId?.toString() || returnOrder.orderId?.toString() || '',
+            'RETURN - Customer Return Request'
+        );
+
+        const realAwb = reverseShipmentResponse.reverse_awb;
+        const trackingUrl = reverseShipmentResponse.label_url;
 
         // 4. Update return order
         returnOrder.pickup.status = 'scheduled';
         returnOrder.pickup.scheduledDate = data.scheduledDate;
         returnOrder.pickup.courierId = data.courierId;
-        returnOrder.pickup.awb = mockAwb;
-        returnOrder.pickup.trackingUrl = mockTrackingUrl;
+        returnOrder.pickup.awb = realAwb;
+        returnOrder.pickup.trackingUrl = trackingUrl;
         returnOrder.status = 'pickup_scheduled';
 
         // 5. Add timeline entry
@@ -220,7 +270,7 @@ export default class ReturnService {
             undefined,
             {
                 courierId: data.courierId,
-                awb: mockAwb,
+                awb: realAwb,
             }
         );
 
@@ -228,7 +278,7 @@ export default class ReturnService {
 
         logger.info('Pickup scheduled successfully', {
             returnId: returnOrder.returnId,
-            awb: mockAwb,
+            awb: realAwb,
         });
 
         // Send tracking link to customer

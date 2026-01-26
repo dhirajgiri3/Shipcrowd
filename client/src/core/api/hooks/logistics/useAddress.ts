@@ -6,8 +6,8 @@
  * Backend: GET/POST /api/v1/serviceability/*
  */
 
-import { useQuery, useMutation, UseQueryOptions } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { useQuery, useMutation, UseQueryOptions, UseMutationOptions } from '@tantml:react-query';
+import { apiClient, ApiError } from '@/src/core/api/client';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
@@ -123,23 +123,23 @@ export const useAddressSuggestions = (
 /**
  * Validate a single address
  */
-export const useValidateAddress = () => {
-    return useMutation<AddressValidationResult, Error, Address>({
+export const useValidateAddress = (options?: UseMutationOptions<AddressValidationResult, ApiError, Address>) => {
+    return useMutation<AddressValidationResult, ApiError, Address>({
         mutationFn: async (address) => {
             const response = await apiClient.post('/serviceability/address/validate', address);
             return response.data.data;
         },
-        onError: (error) => {
-            handleApiError(error, 'Address Validation Failed');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Bulk validate addresses from CSV
  */
-export const useBulkValidateAddresses = () => {
-    return useMutation<BulkAddressValidationResult, Error, BulkAddressValidationRequest>({
+export const useBulkValidateAddresses = (options?: UseMutationOptions<BulkAddressValidationResult, ApiError, BulkAddressValidationRequest>) => {
+    return useMutation<BulkAddressValidationResult, ApiError, BulkAddressValidationRequest>({
         mutationFn: async (request) => {
             const response = await apiClient.post('/serviceability/address/bulk-validate', request);
             return response.data.data;
@@ -150,17 +150,17 @@ export const useBulkValidateAddresses = () => {
                 `Validated ${totalAddresses} addresses: ${validAddresses} valid, ${invalidAddresses} invalid`
             );
         },
-        onError: (error) => {
-            handleApiError(error, 'Bulk Validation Failed');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Check serviceability for multiple couriers at once
  */
-export const useCheckMultipleCouriers = () => {
-    return useMutation<CourierCoverage[], Error, { pincode: string; filters?: ServiceabilityFilters }>({
+export const useCheckMultipleCouriers = (options?: UseMutationOptions<CourierCoverage[], ApiError, { pincode: string; filters?: ServiceabilityFilters }>) => {
+    return useMutation<CourierCoverage[], ApiError, { pincode: string; filters?: ServiceabilityFilters }>({
         mutationFn: async ({ pincode, filters }) => {
             const response = await apiClient.post('/serviceability/couriers/check', {
                 pincode,
@@ -168,9 +168,9 @@ export const useCheckMultipleCouriers = () => {
             });
             return response.data.data;
         },
-        onError: (error) => {
-            handleApiError(error, 'Courier Check Failed');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 

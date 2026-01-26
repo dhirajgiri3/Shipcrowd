@@ -44,16 +44,6 @@ export function usePincodeAutocomplete(pincode: string) {
                 return { success: false, error: 'Invalid pincode length' };
             }
 
-            // Mock data as fallback
-            const mockData: Record<string, Omit<PincodeData, 'pincode'>> = {
-                '400001': { city: 'Mumbai', state: 'Maharashtra', district: 'Mumbai City' },
-                '110001': { city: 'New Delhi', state: 'Delhi', district: 'Central Delhi' },
-                '560001': { city: 'Bangalore', state: 'Karnataka', district: 'Bangalore Urban' },
-                '700001': { city: 'Kolkata', state: 'West Bengal', district: 'Kolkata' },
-                '600001': { city: 'Chennai', state: 'Tamil Nadu', district: 'Chennai' },
-                '500001': { city: 'Hyderabad', state: 'Telangana', district: 'Hyderabad' },
-            };
-
             try {
                 // Try real API first (using same endpoint as onboarding)
                 const response = await apiClient.get(`/serviceability/pincode/${debouncedPincode}/info`);
@@ -76,19 +66,6 @@ export function usePincodeAutocomplete(pincode: string) {
                     };
                 }
 
-                // API returned no data - fall back to mock data
-                const mockResult = mockData[debouncedPincode];
-                if (mockResult) {
-                    console.warn(`Pincode API returned no data for ${debouncedPincode}, using mock data`);
-                    return {
-                        success: true,
-                        data: {
-                            pincode: debouncedPincode,
-                            ...mockResult,
-                        },
-                    };
-                }
-
                 // Neither API nor mock data has this pincode
                 return {
                     success: false,
@@ -100,19 +77,6 @@ export function usePincodeAutocomplete(pincode: string) {
                     return {
                         success: false,
                         error: 'Pincode not found',
-                    };
-                }
-
-                // For other errors (network, server, etc.), try mock data as fallback
-                const mockResult = mockData[debouncedPincode];
-                if (mockResult) {
-                    console.warn(`Pincode API error for ${debouncedPincode}, using mock data:`, err);
-                    return {
-                        success: true,
-                        data: {
-                            pincode: debouncedPincode,
-                            ...mockResult,
-                        },
                     };
                 }
 

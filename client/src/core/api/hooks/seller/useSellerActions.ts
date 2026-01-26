@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { UseQueryOptions } from '@tanstack/react-query';
 import { apiClient } from '../../client';
+import { ApiError } from '../../client';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { queryKeys } from '../../config/query-keys';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 export interface SellerAction {
     id: string;
@@ -23,8 +27,8 @@ export interface SellerActionsResponse {
  * Hook to fetch seller actionable items
  * Returns prioritized actions for the seller to take on the dashboard
  */
-export const useSellerActions = () => {
-    return useQuery<SellerActionsResponse>({
+export const useSellerActions = (options?: UseQueryOptions<SellerActionsResponse, ApiError>) => {
+    return useQuery<SellerActionsResponse, ApiError>({
         queryKey: queryKeys.sellerActions.list(),
         queryFn: async () => {
             try {
@@ -38,10 +42,10 @@ export const useSellerActions = () => {
                 throw error;
             }
         },
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        ...CACHE_TIMES.SHORT,
         refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes
-        retry: 1, // Reduce retries since we handle errors gracefully
-        gcTime: 10 * 60 * 1000, // Cache for 10 minutes
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 

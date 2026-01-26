@@ -43,6 +43,8 @@ import {
   VelocitySchedulePickupResponse,
   VelocityCancelReverseShipmentRequest,
   VelocityCancelReverseShipmentResponse,
+  VelocitySettlementRequest,
+  VelocitySettlementResponse,
   VelocityError,
   CANCELLABLE_STATUSES
 } from './velocity.types';
@@ -803,6 +805,50 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       // Return true to allow RTO cancellation to proceed
       return true;
     }
+  }
+
+  /**
+   * 10. Get Settlement Status (COD Remittance)
+   * Maps to: POST /custom/api/v1/settlement-status
+   *
+   * Checks settlement status for COD remittance from Velocity
+   */
+  async getSettlementStatus(remittanceId: string): Promise<VelocitySettlementResponse> {
+    const request: VelocitySettlementRequest = {
+      remittance_id: remittanceId,
+    };
+
+    // Apply rate limiting
+    await VelocityRateLimiters.serviceability.acquire(); // Reuse existing limiter
+
+    // Make API call with retry
+    const response = await retryWithBackoff<{ data: VelocitySettlementResponse }>(
+      async () => {
+        logger.info('Fetching Velocity settlement status', {
+          remittanceId,
+          companyId: this.companyId.toString(),
+        });
+
+        return await this.httpClient.post<VelocitySettlementResponse>(
+          '/custom/api/v1/settlement-status',
+          request
+        );
+      },
+      3,
+      1000,
+      'Velocity getSettlementStatus'
+    );
+
+    const settlement = response.data;
+
+    logger.info('Velocity settlement status fetched', {
+      remittanceId,
+      settlementId: settlement.settlement_id,
+      status: settlement.status,
+      utr: settlement.utr_number,
+    });
+
+    return settlement;
   }
 
   /**

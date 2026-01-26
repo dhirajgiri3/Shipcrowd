@@ -4,8 +4,12 @@
  * React hooks for super admin user management operations
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient } from '../../client';
+import { ApiError } from '../../client';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { queryKeys } from '../../config/query-keys';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 interface ApiResponse<T> {
     success: boolean;
@@ -65,8 +69,8 @@ export interface RoleChangeAudit {
 /**
  * Fetch paginated list of users
  */
-export function useUserList(filters: UserListFilters) {
-    return useQuery({
+export function useUserList(filters: UserListFilters, options?: UseQueryOptions<PaginatedResponse<UserListItem>, ApiError>) {
+    return useQuery<PaginatedResponse<UserListItem>, ApiError>({
         queryKey: ['admin', 'users', filters],
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -80,17 +84,19 @@ export function useUserList(filters: UserListFilters) {
             );
             return response.data.data;
         },
-        staleTime: 30000, // 30 seconds
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
 /**
  * Promote seller to admin
  */
-export function usePromoteUser() {
+export function usePromoteUser(options?: UseMutationOptions<ApiResponse<{ audit: RoleChangeAudit }>, ApiError, { userId: string; reason?: string }>) {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<ApiResponse<{ audit: RoleChangeAudit }>, ApiError, { userId: string; reason?: string }>({
         mutationFn: async ({ userId, reason }: { userId: string; reason?: string }) => {
             const response = await apiClient.post<ApiResponse<{ audit: RoleChangeAudit }>>(
                 `/admin/users/${userId}/promote`,
@@ -99,19 +105,23 @@ export function usePromoteUser() {
             return response.data;
         },
         onSuccess: () => {
-            // Invalidate user list to refresh
+            showSuccessToast('User promoted successfully');
             queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
         },
+        onError: (error) => {
+            handleApiError(error);
+        },
+        ...options,
     });
 }
 
 /**
  * Demote admin to seller
  */
-export function useDemoteUser() {
+export function useDemoteUser(options?: UseMutationOptions<ApiResponse<{ audit: RoleChangeAudit }>, ApiError, { userId: string; reason?: string }>) {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<ApiResponse<{ audit: RoleChangeAudit }>, ApiError, { userId: string; reason?: string }>({
         mutationFn: async ({ userId, reason }: { userId: string; reason?: string }) => {
             const response = await apiClient.post<ApiResponse<{ audit: RoleChangeAudit }>>(
                 `/admin/users/${userId}/demote`,
@@ -120,17 +130,21 @@ export function useDemoteUser() {
             return response.data;
         },
         onSuccess: () => {
-            // Invalidate user list to refresh
+            showSuccessToast('User demoted successfully');
             queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
         },
+        onError: (error) => {
+            handleApiError(error);
+        },
+        ...options,
     });
 }
 
 /**
  * Get detailed user information
  */
-export function useUserDetails(userId: string | null) {
-    return useQuery({
+export function useUserDetails(userId: string | null, options?: UseQueryOptions<any | null, ApiError>) {
+    return useQuery<any | null, ApiError>({
         queryKey: ['admin', 'users', userId],
         queryFn: async () => {
             if (!userId) return null;
@@ -140,5 +154,8 @@ export function useUserDetails(userId: string | null) {
             return response.data.data.user;
         },
         enabled: !!userId,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Package } from 'lucide-react';
+import { Package, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/src/features/auth';
 import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBanner';
 import { useLoader } from '@/src/hooks/utility/useLoader';
@@ -13,8 +13,6 @@ import {
     PullToRefresh,
     ScrollToTopButton
 } from '@/src/components/patterns';
-
-import { ChevronRight } from 'lucide-react';
 
 // Dashboard Components (Research-backed UX)
 import {
@@ -54,19 +52,9 @@ import { useSmartInsights } from '@/src/core/api/hooks/analytics/useSmartInsight
 import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsFAB';
 
 // Dashboard Utilities
-import { transformDashboardToKPIs, USE_MOCK } from '@/src/lib/dashboard/data-utils';
+import { transformDashboardToKPIs } from '@/src/lib/dashboard/data-utils';
 import { transformOrderTrendsToChart } from '@/src/lib/dashboard/order-trends';
 import { useDashboardDate } from '@/src/contexts/DashboardDateContext';
-
-// Mock Data (Fallback)
-import {
-    getPendingPickups,
-    getRTOOrders,
-    getTodaySnapshot,
-    getTopInsights,
-    getMockKPITrends,
-    mockOrderTrend30Days
-} from '@/src/lib/mockData/enhanced';
 
 // Phase 4: Keyboard Shortcuts
 import { useKeyboardShortcuts } from '@/src/hooks/useKeyboardShortcuts';
@@ -229,43 +217,41 @@ export function DashboardClient() {
     // ========== REAL API HOOKS ==========
 
     // Core Metrics - Dashboard (✅ now uses centralized date filter)
-    const { data: dashboardMetrics, isLoading: metricsLoading } = useDashboardMetrics({
+    const { data: dashboardMetrics, isLoading: metricsLoading, refetch: refetchMetrics } = useDashboardMetrics({
         startDate: dateParams.startDate,
         endDate: dateParams.endDate
     });
 
     // Wallet Balance (only if not using mock)
-    const { data: walletData, isLoading: walletLoading } = useWalletBalance({
-        enabled: !USE_MOCK
-    });
+    const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useWalletBalance();
 
     // Order Trends (30-day chart data)
-    const { data: orderTrendsData, isLoading: orderTrendsLoading } = useOrderTrends(30);
+    const { data: orderTrendsData, isLoading: orderTrendsLoading, refetch: refetchTrends } = useOrderTrends(30);
 
     // COD Stats (for CODStatusCard)
-    const { data: codStatsData, isLoading: codStatsLoading } = useCODStats();
+    const { data: codStatsData, isLoading: codStatsLoading, refetch: refetchCOD } = useCODStats();
 
     // Orders List (for urgent actions - pending pickups, RTO)
-    const { data: ordersListData, isLoading: ordersListLoading } = useOrdersList({
+    const { data: ordersListData, isLoading: ordersListLoading, refetch: refetchOrders } = useOrdersList({
         limit: 100,
         status: 'all'
     });
 
     // Phase 3: COD Timeline & Cash Flow Forecast APIs
-    const { data: codTimelineData, isLoading: codTimelineLoading } = useCODTimeline();
-    const { data: cashFlowData, isLoading: cashFlowLoading } = useCashFlowForecast();
+    const { data: codTimelineData, isLoading: codTimelineLoading, refetch: refetchTimeline } = useCODTimeline();
+    const { data: cashFlowData, isLoading: cashFlowLoading, refetch: refetchCashFlow } = useCashFlowForecast();
 
     // Phase 4: RTO Analytics API
-    const { data: rtoAnalyticsData, isLoading: rtoAnalyticsLoading } = useRTOAnalytics();
+    const { data: rtoAnalyticsData, isLoading: rtoAnalyticsLoading, refetch: refetchRTO } = useRTOAnalytics();
 
     // Phase 4: Profitability Analytics API
-    const { data: profitabilityData, isLoading: profitabilityLoading } = useProfitabilityAnalytics();
+    const { data: profitabilityData, isLoading: profitabilityLoading, refetch: refetchProfit } = useProfitabilityAnalytics();
 
     // Phase 4: Geographic Insights API
-    const { data: geographicData, isLoading: geographicLoading } = useGeographicInsights();
+    const { data: geographicData, isLoading: geographicLoading, refetch: refetchGeo } = useGeographicInsights();
 
     // Phase 5: Smart Insights API (100% Real Data)
-    const { data: smartInsightsData, isLoading: smartInsightsLoading } = useSmartInsights();
+    const { data: smartInsightsData, isLoading: smartInsightsLoading, refetch: refetchInsights } = useSmartInsights();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -275,19 +261,11 @@ export function DashboardClient() {
     // Simulate initial data loading (in production, this would be actual API calls)
     useEffect(() => {
         const loadDashboardData = async () => {
-            startLoading();
-
-            // If using real APIs, wait for them to load
-            if (!USE_MOCK) {
-                // Wait for critical data
-                const isLoadingData = metricsLoading || walletLoading;
-                if (!isLoadingData) {
-                    setIsDataReady(true);
-                    stopLoading();
-                }
+            // If critical metrics are still loading, start loader
+            if (metricsLoading || walletLoading) {
+                startLoading();
             } else {
-                // Mock data simulation
-                await new Promise(resolve => setTimeout(resolve, 600));
+                // Critical data loaded
                 setIsDataReady(true);
                 stopLoading();
             }
@@ -309,17 +287,13 @@ export function DashboardClient() {
     // 1. Urgent Actions Logic - Use real API data when available
 
     // Filter real orders by status or fall back to mock
-    const pendingPickups = USE_MOCK
-        ? getPendingPickups()
-        : (ordersListData?.data?.filter(order =>
-            order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
-        ) || getPendingPickups());
+    const pendingPickups = ordersListData?.data?.filter(order =>
+        order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
+    ) || [];
 
-    const rtoOrders = USE_MOCK
-        ? getRTOOrders()
-        : (ordersListData?.data?.filter(order =>
-            order.currentStatus?.toLowerCase().includes('rto')
-        ) || getRTOOrders());
+    const rtoOrders = ordersListData?.data?.filter(order =>
+        order.currentStatus?.toLowerCase().includes('rto')
+    ) || [];
 
     // Determine urgent actions based on REAL data
     const urgentActions = [
@@ -357,57 +331,61 @@ export function DashboardClient() {
 
     // 2. Snapshot Data Logic - Use real API or fallback to mock
 
-    const todayData = getTodaySnapshot(); // Mock data for fallback
-
     // Transform API data to KPI format
     const kpiTrendsFromAPI = dashboardMetrics ? transformDashboardToKPIs(
         dashboardMetrics,
         walletData?.balance
     ) : null;
 
-    // Use real data if available, otherwise use mock
-    const kpiTrendsRaw = USE_MOCK ? getMockKPITrends() : (kpiTrendsFromAPI || getMockKPITrends());
-
-    // Transform KPITrendData to match PerformanceBar's KPIData interface
-    const kpiTrends = {
+    // Use null/safe defaults if data not yet loaded
+    const kpiTrends = kpiTrendsFromAPI ? {
         revenue: {
-            value: kpiTrendsRaw.revenue.today,
-            sparkline: kpiTrendsRaw.revenue.sparkline,
-            delta: kpiTrendsRaw.revenue.delta,
-            trend: kpiTrendsRaw.revenue.trend
+            value: kpiTrendsFromAPI.revenue.today,
+            sparkline: kpiTrendsFromAPI.revenue.sparkline,
+            delta: kpiTrendsFromAPI.revenue.delta,
+            trend: kpiTrendsFromAPI.revenue.trend
         },
         profit: {
-            value: kpiTrendsRaw.profit.today,
-            sparkline: kpiTrendsRaw.profit.sparkline,
-            delta: kpiTrendsRaw.profit.delta,
-            trend: kpiTrendsRaw.profit.trend
+            value: kpiTrendsFromAPI.profit.today,
+            sparkline: kpiTrendsFromAPI.profit.sparkline,
+            delta: kpiTrendsFromAPI.profit.delta,
+            trend: kpiTrendsFromAPI.profit.trend
         },
         orders: {
-            value: kpiTrendsRaw.orders.today,
-            sparkline: kpiTrendsRaw.orders.sparkline,
-            delta: kpiTrendsRaw.orders.delta,
-            trend: kpiTrendsRaw.orders.trend
+            value: kpiTrendsFromAPI.orders.today,
+            sparkline: kpiTrendsFromAPI.orders.sparkline,
+            delta: kpiTrendsFromAPI.orders.delta,
+            trend: kpiTrendsFromAPI.orders.trend
         }
-    };
+    } : null; // PerformanceBar handles loading state if needed, or we use skeleton
 
     // Smart insights data - Use REAL API (Phase 5: 100% Real Data)
     const smartInsights = smartInsightsData || [];
 
     // Order Trend Chart Data - Transform API data or use mock
-    const orderTrendChartData = USE_MOCK
-        ? mockOrderTrend30Days
-        : (orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : null) || mockOrderTrend30Days;
+    const orderTrendChartData = (orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : []) || [];
 
     // 3. Refresh Handler
     const handleRefresh = async () => {
         startLoading();
 
-        // Simulate data fetching (in production, re-fetch all queries)
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Refetch all queries
+        await Promise.all([
+            refetchMetrics(),
+            refetchWallet(),
+            refetchTrends(),
+            refetchCOD(),
+            refetchOrders(),
+            refetchTimeline(),
+            refetchCashFlow(),
+            refetchRTO(),
+            refetchProfit(),
+            refetchGeo(),
+            refetchInsights()
+        ]);
 
         setCurrentTime(new Date());
         setIsDataReady(true);
-
         stopLoading();
     };
 
@@ -462,7 +440,7 @@ export function DashboardClient() {
                     const alerts: CriticalAlert[] = [];
 
                     // Wallet low balance alert (stable ID based on threshold)
-                    if (walletData?.balance && walletData.balance < 5000) {
+                    if (walletData?.balance !== undefined && walletData.balance < 5000) {
                         const severity: 'critical' | 'warning' = walletData.balance < 1000 ? 'critical' : 'warning';
                         // ✅ FIXED: Stable ID based on severity threshold
                         const walletAlertId = walletData.balance < 1000
@@ -563,31 +541,16 @@ export function DashboardClient() {
                 {/* TIER 1: PERFORMANCE BAR (Glanceable metrics with sparklines - answer "Is revenue up?" in <3s) */}
                 {showLoader ? (
                     <PerformanceBarSkeleton />
-                ) : isDataReady ? (
+                ) : kpiTrends ? (
                     <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
                     >
                         <PerformanceBar
-                            revenue={{
-                                value: dashboardMetrics?.totalRevenue || 0,
-                                sparkline: dashboardMetrics?.weeklyTrend?.map(d => d.revenue) || [],
-                                delta: dashboardMetrics?.deltas?.revenue || 0,
-                                trend: (dashboardMetrics?.deltas?.revenue || 0) >= 0 ? 'up' : 'down'
-                            }}
-                            profit={{
-                                value: dashboardMetrics?.totalProfit || 0,
-                                sparkline: dashboardMetrics?.weeklyTrend?.map(d => d.profit || 0) || [],
-                                delta: dashboardMetrics?.deltas?.profit || 0,
-                                trend: (dashboardMetrics?.deltas?.profit || 0) >= 0 ? 'up' : 'down'
-                            }}
-                            orders={{
-                                value: dashboardMetrics?.totalOrders || 0,
-                                sparkline: dashboardMetrics?.weeklyTrend?.map(d => d.orders) || [],
-                                delta: dashboardMetrics?.deltas?.orders || 0,
-                                trend: (dashboardMetrics?.deltas?.orders || 0) >= 0 ? 'up' : 'down'
-                            }}
+                            revenue={kpiTrends.revenue}
+                            profit={kpiTrends.profit}
+                            orders={kpiTrends.orders}
                             walletBalance={walletData?.balance || 0}
                             // Only show activeDays if viewing today/current period (streak is real-time)
                             activeDays={(() => {
@@ -672,7 +635,7 @@ export function DashboardClient() {
                     >
                         <CashFlowForecast
                             isUsingMock={!cashFlowData}
-                            data={cashFlowData ? transformCashFlowToComponent(cashFlowData) : undefined}
+                            data={cashFlowData ? transformCashFlowToComponent(cashFlowData, walletData?.balance || 0) : undefined}
                         />
                     </motion.section>
                 )}

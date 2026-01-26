@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import type {
     PlatformSettings,
     FeatureFlags,
@@ -19,23 +20,26 @@ import { showSuccessToast, handleApiError } from '@/src/lib/error';
 /**
  * Fetch platform settings
  */
-export const usePlatformSettings = () => {
-    return useQuery({
+export const usePlatformSettings = (options?: UseQueryOptions<PlatformSettings, ApiError>) => {
+    return useQuery<PlatformSettings, ApiError>({
         queryKey: queryKeys.settings.platform(),
         queryFn: async () => {
             const response = await apiClient.get<PlatformSettingsResponse>('/admin/settings/platform');
             return response.data.data;
         },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Update platform settings
  */
-export const useUpdatePlatformSettings = () => {
+export const useUpdatePlatformSettings = (options?: UseMutationOptions<PlatformSettings, ApiError, UpdatePlatformSettingsRequest>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<PlatformSettings, ApiError, UpdatePlatformSettingsRequest>({
         mutationFn: async (data: UpdatePlatformSettingsRequest) => {
             const response = await apiClient.put<PlatformSettingsResponse>(
                 '/admin/settings/platform',
@@ -47,14 +51,14 @@ export const useUpdatePlatformSettings = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.settings.platform() });
             showSuccessToast('Platform settings updated successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to update settings');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
-export const useTestIntegration = () => {
-    return useMutation({
+export const useTestIntegration = (options?: UseMutationOptions<TestIntegrationResponse, ApiError, TestIntegrationRequest>) => {
+    return useMutation<TestIntegrationResponse, ApiError, TestIntegrationRequest>({
         mutationFn: async (request: TestIntegrationRequest) => {
             const response = await apiClient.post<TestIntegrationResponse>(
                 '/admin/settings/test-integration',
@@ -65,12 +69,11 @@ export const useTestIntegration = () => {
         onSuccess: (data) => {
             if (data.success) {
                 showSuccessToast(data.message || 'Integration test successful');
-            } else {
             }
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to test integration');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.NO_RETRY,
+        ...options,
     });
 };
 
@@ -79,13 +82,16 @@ export const useTestIntegration = () => {
 /**
  * Fetch feature flags
  */
-export const useFeatureFlags = () => {
-    return useQuery({
+export const useFeatureFlags = (options?: UseQueryOptions<FeatureFlags, ApiError>) => {
+    return useQuery<FeatureFlags, ApiError>({
         queryKey: queryKeys.settings.featureFlags(),
         queryFn: async () => {
             const response = await apiClient.get<FeatureFlagsResponse>('/admin/settings/features');
             return response.data.data;
         },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 

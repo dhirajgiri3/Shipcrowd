@@ -1,5 +1,7 @@
-import { apiClient, ApiError } from '../../client';
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 
 export interface RateCard {
     _id: string;
@@ -48,12 +50,13 @@ export interface RateCalculationResponse {
  */
 export const useRateCards = (options?: UseQueryOptions<RateCard[], ApiError>) => {
     return useQuery<RateCard[], ApiError>({
-        queryKey: ['ratecards'],
+        queryKey: queryKeys.rateCards.all(),
         queryFn: async () => {
             const response = await apiClient.get('/ratecards');
             return response.data.rateCards;
         },
-        staleTime: 600000, // 10 minutes
+        ...CACHE_TIMES.LONG,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
@@ -63,13 +66,14 @@ export const useRateCards = (options?: UseQueryOptions<RateCard[], ApiError>) =>
  */
 export const useRateCard = (rateCardId: string, options?: UseQueryOptions<RateCard, ApiError>) => {
     return useQuery<RateCard, ApiError>({
-        queryKey: ['ratecards', rateCardId],
+        queryKey: queryKeys.rateCards.detail(rateCardId),
         queryFn: async () => {
             const response = await apiClient.get(`/ratecards/${rateCardId}`);
             return response.data.rateCard;
         },
         enabled: !!rateCardId,
-        staleTime: 600000,
+        ...CACHE_TIMES.LONG,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
@@ -79,13 +83,14 @@ export const useRateCard = (rateCardId: string, options?: UseQueryOptions<RateCa
  */
 export const useCalculateRate = (payload: RateCalculationPayload, options?: UseQueryOptions<RateCalculationResponse, ApiError>) => {
     return useQuery<RateCalculationResponse, ApiError>({
-        queryKey: ['ratecards', 'calculate', payload],
+        queryKey: queryKeys.rateCards.calculate(payload),
         queryFn: async () => {
             const response = await apiClient.post('/ratecards/calculate', payload);
             return response.data;
         },
         enabled: !!(payload.weight && payload.destinationPincode),
-        staleTime: 300000, // 5 minutes
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };

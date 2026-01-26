@@ -1,82 +1,105 @@
 /**
- * Fraud Detection API Hooks
+ * Fraud Detection API Hooks (ARCHIVED)
  * 
- * React Query hooks for fraud alerts, rules, and blocked entities.
+ * Feature currently disabled. Hooks return empty data.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useQuery, useMutation, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
-import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { showSuccessToast } from '@/src/lib/error';
 import type {
-    FraudResponse,
     PaginatedFraudResponse,
     FraudAlert,
     FraudStats,
     FraudAlertFilters,
     FraudRule,
-    CreateFraudRulePayload,
+    FraudResponse,
     BlockedEntity,
-    BlockEntityPayload,
     InvestigationAction,
 } from '@/src/types/api/security';
 
 // ==================== Fraud Alerts ====================
 
-export function useFraudAlerts(filters?: FraudAlertFilters) {
-    return useQuery({
+export function useFraudAlerts(filters?: FraudAlertFilters, options?: UseQueryOptions<PaginatedFraudResponse<FraudAlert[]>, ApiError>) {
+    return useQuery<PaginatedFraudResponse<FraudAlert[]>, ApiError>({
         queryKey: queryKeys.fraud.alerts(filters),
         queryFn: async () => {
-            const { data } = await apiClient.get<PaginatedFraudResponse<FraudAlert[]>>(
-                '/fraud/alerts',
-                { params: filters }
-            );
-            return data;
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0
+                }
+            };
         },
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        enabled: false,
+        ...options,
+        initialData: {
+            success: true,
+            data: [],
+            pagination: {
+                page: 1,
+                limit: 10,
+                total: 0
+            }
+        }
     });
 }
 
-export function useFraudAlert(alertId: string) {
-    return useQuery({
+export function useFraudAlert(alertId: string, options?: UseQueryOptions<FraudAlert, ApiError>) {
+    return useQuery<FraudAlert, ApiError>({
         queryKey: queryKeys.fraud.alert(alertId),
         queryFn: async () => {
-            const { data } = await apiClient.get<FraudResponse<FraudAlert>>(
-                `/fraud/alerts/${alertId}`
-            );
-            return data.data;
+            throw new Error('Fraud detection is disabled');
         },
-        enabled: !!alertId,
+        enabled: false,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
-export function useFraudStats() {
-    return useQuery({
+export function useFraudStats(options?: UseQueryOptions<FraudStats, ApiError>) {
+    return useQuery<FraudStats, ApiError>({
         queryKey: queryKeys.fraud.stats(),
         queryFn: async () => {
-            const { data } = await apiClient.get<FraudResponse<FraudStats>>('/fraud/stats');
-            return data.data;
+            return {
+                total: 0,
+                byStatus: { new: 0, investigating: 0, resolved: 0, false_positive: 0, confirmed_fraud: 0 },
+                byRiskLevel: { critical: 0, high: 0, medium: 0, low: 0 },
+                recentTrend: { period: '30d', count: 0, change: 0 },
+                topTypes: []
+            };
         },
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        enabled: false,
+        ...options,
+        initialData: {
+            total: 0,
+            byStatus: { new: 0, investigating: 0, resolved: 0, false_positive: 0, confirmed_fraud: 0 },
+            byRiskLevel: { critical: 0, high: 0, medium: 0, low: 0 },
+            recentTrend: { period: '30d', count: 0, change: 0 },
+            topTypes: []
+        }
     });
 }
 
-export function useInvestigateAlert() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (action: InvestigationAction) => {
-            const { data } = await apiClient.post(
-                `/fraud/alerts/${action.alertId}/investigate`,
-                action
-            );
-            return data;
+export function useInvestigateAlert(options?: UseMutationOptions<any, ApiError, InvestigationAction>) {
+    return useMutation<any, ApiError, InvestigationAction>({
+        mutationFn: async () => {
+            return { success: true, data: {} };
         },
-        onError: (error) => handleApiError(error, 'Failed to update investigation'),
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.alert(variables.alertId) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.alerts() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.stats() });
-            showSuccessToast('Investigation updated');
+        onSuccess: () => {
+            showSuccessToast('Fraud detection is disabled');
         },
+        ...options,
     });
 }
 
@@ -86,73 +109,50 @@ export function useFraudRules() {
     return useQuery({
         queryKey: queryKeys.fraud.rules(),
         queryFn: async () => {
-            const { data } = await apiClient.get<FraudResponse<FraudRule[]>>('/fraud/rules');
-            return data.data;
+            return [];
         },
+        enabled: false,
+        initialData: []
     });
 }
 
 export function useCreateFraudRule() {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (payload: CreateFraudRulePayload) => {
-            const { data } = await apiClient.post<FraudResponse<FraudRule>>(
-                '/fraud/rules',
-                payload
-            );
-            return data.data;
+        mutationFn: async () => {
+            return {} as FraudRule;
         },
-        onError: (error) => handleApiError(error, 'Failed to create fraud rule'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.rules() });
-            showSuccessToast('Fraud rule created');
+            showSuccessToast('Fraud detection is disabled');
         },
     });
 }
 
 export function useUpdateFraudRule() {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async ({ ruleId, payload }: { ruleId: string; payload: Partial<FraudRule> }) => {
-            const { data } = await apiClient.put(`/fraud/rules/${ruleId}`, payload);
-            return data;
+        mutationFn: async () => {
+            return {};
         },
-        onError: (error) => handleApiError(error, 'Failed to update fraud rule'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.rules() });
-            showSuccessToast('Fraud rule updated');
+            showSuccessToast('Fraud detection is disabled');
         },
     });
 }
 
 export function useDeleteFraudRule() {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (ruleId: string) => {
-            await apiClient.delete(`/fraud/rules/${ruleId}`);
+        mutationFn: async () => {
+            // no-op
         },
-        onError: (error) => handleApiError(error, 'Failed to delete fraud rule'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.rules() });
-            showSuccessToast('Fraud rule deleted');
+            showSuccessToast('Fraud detection is disabled');
         },
     });
 }
 
 export function useToggleFraudRule() {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async ({ ruleId, enabled }: { ruleId: string; enabled: boolean }) => {
-            const { data } = await apiClient.patch(`/fraud/rules/${ruleId}/toggle`, { enabled });
-            return data;
-        },
-        onError: (error) => handleApiError(error, 'Failed to toggle fraud rule'),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.rules() });
+        mutationFn: async () => {
+            return {};
         },
     });
 }
@@ -163,44 +163,31 @@ export function useBlockedEntities() {
     return useQuery({
         queryKey: queryKeys.fraud.blockedEntities(),
         queryFn: async () => {
-            const { data } = await apiClient.get<FraudResponse<BlockedEntity[]>>(
-                '/fraud/blocked-entities'
-            );
-            return data.data;
+            return [];
         },
+        enabled: false,
+        initialData: []
     });
 }
 
 export function useBlockEntity() {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (payload: BlockEntityPayload) => {
-            const { data } = await apiClient.post<FraudResponse<BlockedEntity>>(
-                '/fraud/blocked-entities',
-                payload
-            );
-            return data.data;
+        mutationFn: async () => {
+            return {} as BlockedEntity;
         },
-        onError: (error) => handleApiError(error, 'Failed to block entity'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.blockedEntities() });
-            showSuccessToast('Entity blocked successfully');
+            showSuccessToast('Fraud detection is disabled');
         },
     });
 }
 
 export function useUnblockEntity() {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (entityId: string) => {
-            await apiClient.delete(`/fraud/blocked-entities/${entityId}`);
+        mutationFn: async () => {
+            // no-op
         },
-        onError: (error) => handleApiError(error, 'Failed to unblock entity'),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.fraud.blockedEntities() });
-            showSuccessToast('Entity unblocked');
+            showSuccessToast('Fraud detection is disabled');
         },
     });
 }

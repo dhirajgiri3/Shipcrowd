@@ -308,6 +308,29 @@ export interface VelocityCancelReverseShipmentResponse {
   status: string;
 }
 
+// ==================== SETTLEMENT ====================
+
+export interface VelocitySettlementRequest {
+  remittance_id: string;
+  settlement_date?: string; // Optional: "YYYY-MM-DD"
+}
+
+export interface VelocitySettlementResponse {
+  settlement_id: string;
+  remittance_id: string;
+  status: 'pending' | 'settled' | 'failed' | 'processing';
+  settlement_date?: string;
+  settled_amount: number;
+  utr_number?: string;
+  settled_at?: string; // ISO timestamp
+  bank_details?: {
+    account_number?: string;
+    ifsc?: string;
+    bank_name?: string;
+  };
+  failure_reason?: string;
+}
+
 // ==================== TOKEN STORAGE ====================
 
 export interface VelocityTokenData {

@@ -6,8 +6,8 @@
  * Backend: GET/POST /api/v1/integrations/*
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '@/src/core/api/client';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
@@ -94,10 +94,10 @@ export const useSyncLogs = (
 /**
  * Create a new e-commerce integration
  */
-export const useCreateIntegration = () => {
+export const useCreateIntegration = (options?: UseMutationOptions<EcommerceIntegration, ApiError, CreateIntegrationPayload>) => {
     const queryClient = useQueryClient();
 
-    return useMutation<EcommerceIntegration, Error, CreateIntegrationPayload>({
+    return useMutation<EcommerceIntegration, ApiError, CreateIntegrationPayload>({
         mutationFn: async (payload) => {
             const response = await apiClient.post('/integrations', payload);
             return response.data.data;
@@ -106,19 +106,19 @@ export const useCreateIntegration = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             showSuccessToast('Integration connected successfully');
         },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Connect Integration');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Update integration settings or field mapping
  */
-export const useUpdateIntegration = () => {
+export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceIntegration, ApiError, UpdateIntegrationPayload>) => {
     const queryClient = useQueryClient();
 
-    return useMutation<EcommerceIntegration, Error, UpdateIntegrationPayload>({
+    return useMutation<EcommerceIntegration, ApiError, UpdateIntegrationPayload>({
         mutationFn: async ({ integrationId, ...payload }) => {
             const response = await apiClient.put(`/integrations/${integrationId}`, payload);
             return response.data.data;
@@ -128,9 +128,9 @@ export const useUpdateIntegration = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
             showSuccessToast('Integration updated successfully');
         },
-        onError: (error) => {
-            handleApiError(error, 'Failed to Update Integration');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 

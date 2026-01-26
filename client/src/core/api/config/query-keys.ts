@@ -101,146 +101,11 @@ export const queryKeys = {
   // ========================================================================
   shipments: {
     all: () => ['shipments'],
-    list: (params?: FilterParams) => ['shipments', 'list', params],
+    list: (filters?: FilterParams) => ['shipments', 'list', filters],
     detail: (id: string) => ['shipments', 'detail', id],
-    tracking: (trackingNumber: string) => ['shipments', 'tracking', trackingNumber],
-    label: (shipmentId: string) => ['shipments', shipmentId, 'label'],
-    manifest: (manifestId: string) => ['shipments', 'manifest', manifestId],
-    bulk: (ids: string[]) => ['shipments', 'bulk', ids.sort()],
-    create: () => ['shipments', 'create'],
-    ndr: (shipmentId: string) => ['shipments', shipmentId, 'ndr'],
-  },
-
-  // ========================================================================
-  // ANALYTICS DOMAIN
-  // ========================================================================
-  analytics: {
-    all: () => ['analytics'],
-    dashboard: (filters?: any) => ['analytics', 'dashboard', filters],
-    revenue: (period?: '7d' | '30d' | '90d' | '1y') =>
-      ['analytics', 'revenue', period || '30d'],
-    shipments: (period?: '7d' | '30d' | '90d') =>
-      ['analytics', 'shipments', period || '30d'],
-    courierPerformance: (period?: string) =>
-      ['analytics', 'courier-performance', period || '30d'],
-    sellerActions: () => ['analytics', 'seller-actions'],
-    recentCustomers: (limit?: number) =>
-      ['analytics', 'customers', 'recent', limit || 5],
-    topRoutes: (limit?: number) =>
-      ['analytics', 'routes', 'top', limit || 10],
-    trends: (metric: string, period?: string) =>
-      ['analytics', 'trends', metric, period || '30d'],
-    costs: (period?: string) =>
-      ['analytics', 'costs', period || '30d'],
-
-    // New advanced analytics keys
-    savedReports: () => ['analytics', 'reports', 'saved'],
-    report: (reportId: string) => ['analytics', 'reports', reportId],
-    sla: (filters?: any) => ['analytics', 'sla', filters],
-    slaByCourier: (courierId: string, filters?: any) => ['analytics', 'sla', 'courier', courierId, filters],
-    courierComparison: (filters?: any) => ['analytics', 'courier-comparison', filters],
-    cost: (filters?: any) => ['analytics', 'cost', filters],
-    costTrend: (filters?: any) => ['analytics', 'cost', 'trend', filters],
-    zones: (filters?: any) => ['analytics', 'zones', filters],
-    topCouriers: (limit?: number, filters?: any) => ['analytics', 'top-couriers', limit, filters],
-    trend: (metric: string, filters?: any) => ['analytics', 'trend', metric, filters],
-  },
-
-  // ========================================================================
-  // INTEGRATIONS DOMAIN
-  // ========================================================================
-  integrations: {
-    all: () => ['integrations'],
-    list: () => ['integrations', 'list'],
-    detail: (id: string) => ['integrations', 'detail', id],
-    syncing: () => ['integrations', 'syncing'],
-    health: (integrationId: string) => ['integrations', integrationId, 'health'],
-    sync: (integrationId: string) => ['integrations', integrationId, 'sync'],
-    shopify: {
-      all: () => ['integrations', 'shopify'],
-      detail: (storeId: string) => ['integrations', 'shopify', storeId],
-      health: (storeId: string) => ['integrations', 'shopify', storeId, 'health'],
-    },
-    woocommerce: {
-      all: () => ['integrations', 'woocommerce'],
-      detail: (storeId: string) => ['integrations', 'woocommerce', storeId],
-    },
-    amazon: {
-      all: () => ['integrations', 'amazon'],
-      detail: (storeId: string) => ['integrations', 'amazon', storeId],
-    },
-    flipkart: {
-      all: () => ['integrations', 'flipkart'],
-      detail: (storeId: string) => ['integrations', 'flipkart', storeId],
-    },
-  },
-
-  // ========================================================================
-  // WAREHOUSES DOMAIN
-  // ========================================================================
-  warehouses: {
-    all: () => ['warehouses'],
-    list: (params?: ListParams) => ['warehouses', 'list', params],
-    detail: (id: string) => ['warehouses', 'detail', id],
-    inventory: (warehouseId: string) => ['warehouses', warehouseId, 'inventory'],
-    create: () => ['warehouses', 'create'],
-  },
-
-  // ========================================================================
-  // RATE CARDS DOMAIN
-  // ========================================================================
-  rateCards: {
-    all: () => ['rate-cards'],
-    list: (params?: ListParams) => ['rate-cards', 'list', params],
-    detail: (id: string) => ['rate-cards', 'detail', id],
-    byCarrier: (carrierId: string) => ['rate-cards', 'carrier', carrierId],
-    comparison: (carrierIds: string[]) =>
-      ['rate-cards', 'comparison', carrierIds.sort()],
-    zones: () => ['rate-cards', 'zones'],
-  },
-
-  // ========================================================================
-  // FINANCE DOMAIN
-  // ========================================================================
-  finance: {
-    all: () => ['finance'],
-    overview: () => ['finance', 'overview'],
-    invoices: (params?: FilterParams) => ['finance', 'invoices', params],
-    invoice: (invoiceId: string) => ['finance', 'invoice', invoiceId],
-    settlements: (params?: FilterParams) => ['finance', 'settlements', params],
-    settlement: (settlementId: string) => ['finance', 'settlement', settlementId],
-    payouts: (params?: FilterParams) => ['finance', 'payouts', params],
-    payout: (payoutId: string) => ['finance', 'payout', payoutId],
-    gst: {
-      all: () => ['finance', 'gst'],
-      status: () => ['finance', 'gst', 'status'],
-      irn: (shipmentId: string) => ['finance', 'gst', 'irn', shipmentId],
-    },
-  },
-
-  // ========================================================================
-  // WALLET DOMAIN
-  // ========================================================================
-  wallet: {
-    all: () => ['wallet'],
-    balance: () => ['wallet', 'balance'],
-    transactions: (params?: FilterParams) => ['wallet', 'transactions', params],
-    history: (limit?: number) => ['wallet', 'history', limit || 50],
-    stats: (dateRange?: { start: string; end: string }) => ['wallet', 'stats', dateRange],
-    topup: () => ['wallet', 'topup'],
-    withdraw: () => ['wallet', 'withdraw'],
-    settings: () => ['wallet', 'settings'],
-  },
-
-  // ========================================================================
-  // COD MANAGEMENT DOMAIN
-  // ========================================================================
-  cod: {
-    all: () => ['cod'],
-    remittances: (params?: FilterParams) => ['cod', 'remittances', params],
-    remittance: (remittanceId: string) => ['cod', 'remittance', remittanceId],
-    orders: (params?: FilterParams) => ['cod', 'orders', params],
-    analytics: (period?: string) => ['cod', 'analytics', period || '30d'],
+    tracking: (awb: string) => ['shipments', 'tracking', awb],
+    byOrder: (orderId: string) => ['shipments', 'order', orderId],
+    stats: () => ['shipments', 'stats'],
   },
 
   // ========================================================================
@@ -248,41 +113,155 @@ export const queryKeys = {
   // ========================================================================
   returns: {
     all: () => ['returns'],
-    list: (params?: FilterParams) => ['returns', 'list', params],
+    list: (filters?: FilterParams) => ['returns', 'list', filters],
     detail: (id: string) => ['returns', 'detail', id],
-    qc: (returnId: string) => ['returns', returnId, 'qc'],
-    analytics: (period?: string) => ['returns', 'analytics', period || '30d'],
+    analytics: (dateFilter?: string) => ['returns', 'analytics', dateFilter],
+    stats: () => ['returns', 'stats'],
   },
 
   // ========================================================================
-  // WEIGHT DISPUTES DOMAIN
+  // DISPUTES DOMAIN
   // ========================================================================
   disputes: {
     all: () => ['disputes'],
-    list: (params?: FilterParams) => ['disputes', 'list', params],
+    list: (filters?: FilterParams) => ['disputes', 'list', filters],
     detail: (id: string) => ['disputes', 'detail', id],
-    metrics: (dateRange?: DateRangeParams) => ['disputes', 'metrics', dateRange],
-    analytics: (filters?: any) => ['disputes', 'analytics', filters],
-    weight: {
-      all: () => ['disputes', 'weight'],
-      list: (params?: FilterParams) => ['disputes', 'weight', 'list', params],
-      detail: (id: string) => ['disputes', 'weight', 'detail', id],
-    },
-    other: {
-      all: () => ['disputes', 'other'],
-      list: (params?: FilterParams) => ['disputes', 'other', 'list', params],
-    },
+    analytics: () => ['disputes', 'analytics'],
   },
 
   // ========================================================================
-  // KYC DOMAIN
+  // WALLET & FINANCE DOMAIN
   // ========================================================================
-  kyc: {
-    all: () => ['kyc'],
-    status: () => ['kyc', 'status'],
-    details: () => ['kyc', 'details'],
-    documents: () => ['kyc', 'documents'],
-    upload: () => ['kyc', 'upload'],
+  wallet: {
+    all: () => ['wallet'],
+    balance: () => ['wallet', 'balance'],
+    transactions: (filters?: FilterParams) => ['wallet', 'transactions', filters],
+    statement: (month: string) => ['wallet', 'statement', month],
+    stats: (dateRange?: DateRangeParams) => ['wallet', 'stats', dateRange],
+  },
+
+  finance: {
+    all: () => ['finance'],
+    availableBalance: () => ['finance', 'available-balance'],
+    cashFlowForecast: () => ['finance', 'cash-flow-forecast'],
+    insights: () => ['finance', 'insights'],
+  },
+
+  cod: {
+    all: () => ['cod'],
+    remittances: (filters?: FilterParams) => ['cod', 'remittances', filters],
+    remittance: (id: string) => ['cod', 'remittance', id],
+    eligible: (cutoffDate?: string) => ['cod', 'eligible', cutoffDate],
+    analytics: () => ['cod', 'analytics'],
+    timeline: () => ['cod', 'timeline'],
+  },
+
+  // ========================================================================
+  // COMMISSION DOMAIN
+  // ========================================================================
+  commission: {
+    all: () => ['commission'],
+    rules: (filters?: FilterParams) => ['commission', 'rules', filters],
+    rule: (id: string) => ['commission', 'rules', id],
+    payouts: (filters?: FilterParams) => ['commission', 'payouts', filters],
+    payout: (id: string) => ['commission', 'payouts', id],
+    salesReps: (filters?: FilterParams) => ['commission', 'sales-reps', filters],
+    salesRep: (id: string) => ['commission', 'sales-reps', id],
+  },
+
+  // ========================================================================
+  // WAREHOUSE OPS DOMAIN (INVENTORY / PACKING / PICKING)
+  // ========================================================================
+  warehouseOps: {
+    all: () => ['warehouse-ops'],
+    inventory: (filters?: FilterParams) => ['warehouse-ops', 'inventory', filters],
+    inventoryItem: (id: string) => ['warehouse-ops', 'inventory', id],
+    inventoryStats: (warehouseId: string) => ['warehouse-ops', 'inventory', 'stats', warehouseId],
+    packingStations: (filters?: FilterParams) => ['warehouse-ops', 'packing', 'stations', filters],
+    packingStation: (id: string) => ['warehouse-ops', 'packing', 'stations', id],
+    pickLists: (filters?: FilterParams) => ['warehouse-ops', 'picking', 'pick-lists', filters],
+    pickList: (id: string) => ['warehouse-ops', 'picking', 'pick-lists', id],
+    myPickLists: (filters?: FilterParams) => ['warehouse-ops', 'picking', 'my-pick-lists', filters],
+  },
+
+  // ========================================================================
+  // ADMIN OPERATIONS DOMAIN
+  // ========================================================================
+  adminOps: {
+    all: () => ['admin-ops'],
+    emailQueueStats: () => ['admin-ops', 'email-queue', 'stats'],
+    emailQueueFailed: () => ['admin-ops', 'email-queue', 'failed'],
+    emailQueueRecent: () => ['admin-ops', 'email-queue', 'recent'],
+  },
+
+
+
+  // ========================================================================
+  // WAREHOUSES DOMAIN
+  // ========================================================================
+  warehouses: {
+    all: () => ['warehouses'],
+    list: (params?: FilterParams) => ['warehouses', 'list', params],
+    detail: (id: string) => ['warehouses', 'detail', id],
+    inventory: (warehouseId: string, filters?: any) => ['warehouses', warehouseId, 'inventory', filters],
+    stats: (warehouseId: string) => ['warehouses', warehouseId, 'stats'],
+  },
+
+  // ========================================================================
+  // ANALYTICS DOMAIN
+  // ========================================================================
+  analytics: {
+    all: () => ['analytics'],
+    dashboard: (filters?: DateRangeParams) => ['analytics', 'dashboard', filters],
+    orders: (period: string) => ['analytics', 'orders', period],
+    shipments: (period: string) => ['analytics', 'shipments', period],
+    revenue: (period: string) => ['analytics', 'revenue', period],
+    profitability: (period: string) => ['analytics', 'profitability', period],
+    geographic: (filters?: DateRangeParams) => ['analytics', 'geographic', filters],
+    courier: (courierId: string, period?: string) => ['analytics', 'courier', courierId, period],
+    smart: (filters?: DateRangeParams) => ['analytics', 'smart-insights', filters],
+    savedReports: () => ['analytics', 'saved-reports'],
+    report: (reportId: string) => ['analytics', 'report', reportId],
+    sla: (filters?: any) => ['analytics', 'sla', filters],
+    cost: (filters?: any) => ['analytics', 'cost', filters],
+    courierComparison: (filters?: any) => ['analytics', 'courier-comparison', filters],
+  },
+
+  // ========================================================================
+  // INTEGRATIONS DOMAIN
+  // ========================================================================
+  integrations: {
+    all: () => ['integrations'],
+    health: () => ['integrations', 'health'],
+    list: () => ['integrations', 'list'],
+    detail: (id: string) => ['integrations', 'detail', id],
+    ecommerce: () => ['integrations', 'ecommerce'],
+    ecommerceList: (filters?: any) => ['integrations', 'ecommerce', 'list', filters],
+    syncStatus: (integrationId: string) => ['integrations', integrationId, 'sync'],
+    webhooks: () => ['integrations', 'webhooks'],
+  },
+
+  // ========================================================================
+  // ADMIN USERS DOMAIN
+  // ========================================================================
+  admin: {
+    all: () => ['admin'],
+    users: (filters?: FilterParams) => ['admin', 'users', filters],
+    user: (id: string) => ['admin', 'user', id],
+  },
+
+  // ========================================================================
+  // MANIFESTS DOMAIN
+  // ========================================================================
+  manifests: {
+    all: () => ['manifests'],
+    list: (filters?: any) => ['manifests', 'list', filters],
+    detail: (id: string) => ['manifests', 'detail', id],
+    stats: () => ['manifests', 'stats'],
+    byStatus: (status: string) => ['manifests', 'status', status],
+    byCourier: (courier: string) => ['manifests', 'courier', courier],
+    pendingReconciliation: () => ['manifests', 'pending-reconciliation'],
+    eligibleShipments: (courier?: string) => ['manifests', 'eligible-shipments', courier],
   },
 
   // ========================================================================
@@ -350,20 +329,6 @@ export const queryKeys = {
   },
 
   // ========================================================================
-  // MANIFESTS DOMAIN
-  // ========================================================================
-  manifests: {
-    all: () => ['manifests'],
-    list: (filters?: any) => ['manifests', 'list', filters],
-    detail: (id: string) => ['manifests', 'detail', id],
-    stats: () => ['manifests', 'stats'],
-    byStatus: (status: string) => ['manifests', 'status', status],
-    byCourier: (courier: string) => ['manifests', 'courier', courier],
-    pendingReconciliation: () => ['manifests', 'pending-reconciliation'],
-    eligibleShipments: (courier?: string) => ['manifests', 'eligible-shipments', courier],
-  },
-
-  // ========================================================================
   // ADMIN ACTIONS DOMAIN
   // ========================================================================
   adminActions: {
@@ -378,7 +343,6 @@ export const queryKeys = {
     all: () => ['seller', 'actions'],
     list: (params?: FilterParams) => ['seller', 'actions', 'list', params],
   },
-
 
   // ========================================================================
   // ECOMMERCE INTEGRATIONS DOMAIN
@@ -434,8 +398,28 @@ export const queryKeys = {
     member: (memberId: string) => ['team', 'member', memberId],
     invitations: () => ['team', 'invitations'],
   },
-};
 
+  // ========================================================================
+  // MARKETING DOMAIN
+  // ========================================================================
+  marketing: {
+    all: () => ['marketing'],
+    promoCodes: (filters?: any) => ['marketing', 'promo-codes', filters],
+    promoCode: (id: string) => ['marketing', 'promo-code', id],
+    validatePromo: (code: string) => ['marketing', 'validate', code],
+  },
+
+  // ========================================================================
+  // RTO (Return-To-Origin) DOMAIN
+  // ========================================================================
+  rto: {
+    all: () => ['rto'],
+    events: (filters?: any) => ['rto', 'events', filters],
+    pending: (filters?: any) => ['rto', 'pending', filters],
+    analytics: (filters?: any) => ['rto', 'analytics', filters],
+    detail: (id: string) => ['rto', 'detail', id],
+  },
+};
 
 // ============================================================================
 // Cache Invalidation Helpers

@@ -9,9 +9,12 @@
  * - Analytics and metrics
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient } from '@/src/core/api/client';
+import { ApiError } from '@/src/core/api/client';
+import { CACHE_TIMES, RETRY_CONFIG } from '@/src/core/api/config/cache.config';
 import { queryKeys } from '@/src/core/api/config/query-keys';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import type {
     NDRCase,
     NDRFilters,
@@ -28,8 +31,8 @@ import type {
 /**
  * Fetch NDR cases with filters
  */
-export function useNDRCases(filters?: NDRFilters) {
-    return useQuery({
+export function useNDRCases(filters?: NDRFilters, options?: UseQueryOptions<NDRListResponse, ApiError>) {
+    return useQuery<NDRListResponse, ApiError>({
         queryKey: queryKeys.ndr.list(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<NDRListResponse>('/api/ndr/cases', {
@@ -37,20 +40,26 @@ export function useNDRCases(filters?: NDRFilters) {
             });
             return data;
         },
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
 /**
  * Fetch single NDR case by ID
  */
-export function useNDRCase(caseId: string) {
-    return useQuery({
+export function useNDRCase(caseId: string, options?: UseQueryOptions<NDRCase, ApiError>) {
+    return useQuery<NDRCase, ApiError>({
         queryKey: queryKeys.ndr.detail(caseId),
         queryFn: async () => {
             const { data } = await apiClient.get<NDRCase>(`/api/ndr/cases/${caseId}`);
             return data;
         },
         enabled: !!caseId,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 

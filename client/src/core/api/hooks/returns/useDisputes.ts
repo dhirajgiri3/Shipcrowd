@@ -14,9 +14,12 @@
  * - POST   /api/v1/disputes/weight/:id/resolve
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient } from '../../client';
+import { ApiError } from '../../client';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { queryKeys } from '../../config/query-keys';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import type {
     WeightDispute,
     DisputeFilters,
@@ -41,9 +44,10 @@ interface DisputeAnalyticsFilters {
  * Get paginated list of weight disputes with filters
  */
 export function useWeightDisputes(
-    filters?: DisputeFilters
-): UseQueryResult<DisputeListResponse> {
-    return useQuery({
+    filters?: DisputeFilters,
+    options?: UseQueryOptions<DisputeListResponse, ApiError>
+): UseQueryResult<DisputeListResponse, ApiError> {
+    return useQuery<DisputeListResponse, ApiError>({
         queryKey: queryKeys.disputes.list(filters),
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -57,7 +61,9 @@ export function useWeightDisputes(
             const response = await apiClient.get(`/disputes/weight?${params.toString()}`);
             return response.data.data;
         },
-        staleTime: 30000, // 30 seconds
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -65,16 +71,19 @@ export function useWeightDisputes(
  * Get single dispute details with full timeline
  */
 export function useWeightDispute(
-    disputeId: string
-): UseQueryResult<WeightDispute> {
-    return useQuery({
+    disputeId: string,
+    options?: UseQueryOptions<WeightDispute, ApiError>
+): UseQueryResult<WeightDispute, ApiError> {
+    return useQuery<WeightDispute, ApiError>({
         queryKey: queryKeys.disputes.detail(disputeId),
         queryFn: async () => {
             const response = await apiClient.get(`/disputes/weight/${disputeId}`);
             return response.data.data.dispute;
         },
         enabled: !!disputeId,
-        staleTime: 60000, // 1 minute
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -82,9 +91,10 @@ export function useWeightDispute(
  * Get dispute metrics for dashboard
  */
 export function useDisputeMetrics(
-    dateRange?: { startDate?: string; endDate?: string }
-): UseQueryResult<DisputeMetrics> {
-    return useQuery({
+    dateRange?: { startDate?: string; endDate?: string },
+    options?: UseQueryOptions<DisputeMetrics, ApiError>
+): UseQueryResult<DisputeMetrics, ApiError> {
+    return useQuery<DisputeMetrics, ApiError>({
         queryKey: queryKeys.disputes.metrics(dateRange as any),
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -94,7 +104,9 @@ export function useDisputeMetrics(
             const response = await apiClient.get(`/disputes/weight/metrics?${params.toString()}`);
             return response.data.data.metrics;
         },
-        staleTime: 60000, // 1 minute
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -102,9 +114,10 @@ export function useDisputeMetrics(
  * Get comprehensive analytics (admin only)
  */
 export function useDisputeAnalytics(
-    filters?: DisputeAnalyticsFilters
-): UseQueryResult<DisputeAnalytics> {
-    return useQuery({
+    filters?: DisputeAnalyticsFilters,
+    options?: UseQueryOptions<DisputeAnalytics, ApiError>
+): UseQueryResult<DisputeAnalytics, ApiError> {
+    return useQuery<DisputeAnalytics, ApiError>({
         queryKey: queryKeys.disputes.analytics(filters as any),
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -116,7 +129,9 @@ export function useDisputeAnalytics(
             const response = await apiClient.get(`/disputes/weight/analytics?${params.toString()}`);
             return response.data.data;
         },
-        staleTime: 300000, // 5 minutes
+        ...CACHE_TIMES.LONG,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -125,14 +140,12 @@ export function useDisputeAnalytics(
 /**
  * Submit seller evidence for dispute
  */
-export function useSubmitEvidence(): UseMutationResult<
-    WeightDispute,
-    Error,
-    { disputeId: string; evidence: SubmitEvidencePayload }
-> {
+export function useSubmitEvidence(
+    options?: UseMutationOptions<WeightDispute, ApiError, { disputeId: string; evidence: SubmitEvidencePayload }>
+): UseMutationResult<WeightDispute, ApiError, { disputeId: string; evidence: SubmitEvidencePayload }> {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<WeightDispute, ApiError, { disputeId: string; evidence: SubmitEvidencePayload }>({
         mutationFn: async ({ disputeId, evidence }) => {
             const response = await apiClient.post(
                 `/disputes/weight/${disputeId}/submit`,
@@ -141,24 +154,26 @@ export function useSubmitEvidence(): UseMutationResult<
             return response.data.data.dispute;
         },
         onSuccess: (data, variables) => {
-            // Invalidate and refetch
+            showSuccessToast('Evidence submitted successfully');
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.detail(variables.disputeId) });
         },
+        onError: (error) => {
+            handleApiError(error);
+        },
+        ...options,
     });
 }
 
 /**
  * Resolve dispute (admin only)
  */
-export function useResolveDispute(): UseMutationResult<
-    WeightDispute,
-    Error,
-    { disputeId: string; resolution: ResolveDisputePayload }
-> {
+export function useResolveDispute(
+    options?: UseMutationOptions<WeightDispute, ApiError, { disputeId: string; resolution: ResolveDisputePayload }>
+): UseMutationResult<WeightDispute, ApiError, { disputeId: string; resolution: ResolveDisputePayload }> {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<WeightDispute, ApiError, { disputeId: string; resolution: ResolveDisputePayload }>({
         mutationFn: async ({ disputeId, resolution }) => {
             const response = await apiClient.post(
                 `/disputes/weight/${disputeId}/resolve`,
@@ -167,11 +182,15 @@ export function useResolveDispute(): UseMutationResult<
             return response.data.data.dispute;
         },
         onSuccess: (data, variables) => {
-            // Invalidate all dispute-related queries
+            showSuccessToast('Dispute resolved successfully');
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.detail(variables.disputeId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.metrics(undefined) });
             queryClient.invalidateQueries({ queryKey: queryKeys.disputes.analytics(undefined) });
         },
+        onError: (error) => {
+            handleApiError(error);
+        },
+        ...options,
     });
 }

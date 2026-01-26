@@ -5,9 +5,10 @@
  * Uses existing error-handler utilities and follows established patterns.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import type {
     AnalyticsResponse,
@@ -43,10 +44,13 @@ export interface AnalyticsData {
 /**
  * Legacy dashboard analytics (backward compatibility)
  */
-export const useAnalytics = (options: { period?: '7d' | '30d' | '90d' | '1y' } = {}) => {
-    const { period = '30d' } = options;
+export const useAnalytics = (
+    params: { period?: '7d' | '30d' | '90d' | '1y' } = {},
+    options?: UseQueryOptions<AnalyticsData, ApiError>
+) => {
+    const { period = '30d' } = params;
 
-    return useQuery<AnalyticsData>({
+    return useQuery<AnalyticsData, ApiError>({
         queryKey: queryKeys.analytics.dashboard(period as any),
         queryFn: async () => {
             const response = await apiClient.get('/analytics/dashboard/seller', {
@@ -54,16 +58,20 @@ export const useAnalytics = (options: { period?: '7d' | '30d' | '90d' | '1y' } =
             });
             return response.data.data as AnalyticsData;
         },
-        staleTime: 5 * 60 * 1000,
-        retry: 2,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Get comprehensive dashboard metrics
  */
-export function useDashboardMetrics(filters?: AnalyticsFilters) {
-    return useQuery({
+export function useDashboardMetrics(
+    filters?: AnalyticsFilters,
+    options?: UseQueryOptions<DashboardMetrics, ApiError>
+) {
+    return useQuery<DashboardMetrics, ApiError>({
         queryKey: queryKeys.analytics.dashboard(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<AnalyticsResponse<DashboardMetrics>>(
@@ -72,8 +80,10 @@ export function useDashboardMetrics(filters?: AnalyticsFilters) {
             );
             return data.data;
         },
-        staleTime: 5 * 60 * 1000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
         refetchInterval: 60 * 1000, // Refetch every minute
+        ...options,
     });
 }
 
@@ -82,8 +92,10 @@ export function useDashboardMetrics(filters?: AnalyticsFilters) {
 /**
  * Generate custom report
  */
-export function useGenerateReport() {
-    return useMutation({
+export function useGenerateReport(
+    options?: UseMutationOptions<ReportData, ApiError, ReportConfiguration>
+) {
+    return useMutation<ReportData, ApiError, ReportConfiguration>({
         mutationFn: async (config: ReportConfiguration) => {
             const { data } = await apiClient.post<AnalyticsResponse<ReportData>>(
                 '/analytics/reports/generate',
@@ -91,18 +103,21 @@ export function useGenerateReport() {
             );
             return data.data;
         },
-        onError: (error) => handleApiError(error, 'Failed to generate report'),
+        onError: (error) => handleApiError(error),
         onSuccess: () => showSuccessToast('Report generated successfully'),
+        ...options,
     });
 }
 
 /**
  * Save report configuration
  */
-export function useSaveReport() {
+export function useSaveReport(
+    options?: UseMutationOptions<SavedReport, ApiError, ReportConfiguration>
+) {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<SavedReport, ApiError, ReportConfiguration>({
         mutationFn: async (config: ReportConfiguration) => {
             const { data } = await apiClient.post<AnalyticsResponse<SavedReport>>(
                 '/analytics/reports/save',
@@ -110,19 +125,22 @@ export function useSaveReport() {
             );
             return data.data;
         },
-        onError: (error) => handleApiError(error, 'Failed to save report'),
+        onError: (error) => handleApiError(error),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.savedReports() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Report saved successfully');
         },
+        ...options,
     });
 }
 
 /**
  * Get saved reports
  */
-export function useSavedReports() {
-    return useQuery({
+export function useSavedReports(
+    options?: UseQueryOptions<SavedReport[], ApiError>
+) {
+    return useQuery<SavedReport[], ApiError>({
         queryKey: queryKeys.analytics.savedReports(),
         queryFn: async () => {
             const { data } = await apiClient.get<AnalyticsResponse<SavedReport[]>>(
@@ -130,25 +148,30 @@ export function useSavedReports() {
             );
             return data.data;
         },
-        staleTime: 5 * 60 * 1000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
 /**
  * Delete saved report
  */
-export function useDeleteReport() {
+export function useDeleteReport(
+    options?: UseMutationOptions<void, ApiError, string>
+) {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<void, ApiError, string>({
         mutationFn: async (reportId: string) => {
             await apiClient.delete(`/analytics/reports/${reportId}`);
         },
-        onError: (error) => handleApiError(error, 'Failed to delete report'),
+        onError: (error) => handleApiError(error),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.savedReports() });
-            showSuccessToast('Report deleted');
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
+            showSuccessToast('Report deleted successfully');
         },
+        ...options,
     });
 }
 
@@ -157,8 +180,11 @@ export function useDeleteReport() {
 /**
  * Get SLA performance metrics
  */
-export function useSLAPerformance(filters?: AnalyticsFilters) {
-    return useQuery({
+export function useSLAPerformance(
+    filters?: AnalyticsFilters,
+    options?: UseQueryOptions<SLAPerformance, ApiError>
+) {
+    return useQuery<SLAPerformance, ApiError>({
         queryKey: queryKeys.analytics.sla(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<AnalyticsResponse<SLAPerformance>>(
@@ -167,7 +193,9 @@ export function useSLAPerformance(filters?: AnalyticsFilters) {
             );
             return data.data;
         },
-        staleTime: 10 * 60 * 1000,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -176,8 +204,11 @@ export function useSLAPerformance(filters?: AnalyticsFilters) {
 /**
  * Get courier comparison metrics
  */
-export function useCourierComparison(filters?: AnalyticsFilters) {
-    return useQuery({
+export function useCourierComparison(
+    filters?: AnalyticsFilters,
+    options?: UseQueryOptions<CourierComparison, ApiError>
+) {
+    return useQuery<CourierComparison, ApiError>({
         queryKey: queryKeys.analytics.courierComparison(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<AnalyticsResponse<CourierComparison>>(
@@ -186,7 +217,9 @@ export function useCourierComparison(filters?: AnalyticsFilters) {
             );
             return data.data;
         },
-        staleTime: 15 * 60 * 1000,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -195,8 +228,11 @@ export function useCourierComparison(filters?: AnalyticsFilters) {
 /**
  * Get cost analysis
  */
-export function useCostAnalysis(filters?: AnalyticsFilters) {
-    return useQuery({
+export function useCostAnalysis(
+    filters?: AnalyticsFilters,
+    options?: UseQueryOptions<CostAnalysis, ApiError>
+) {
+    return useQuery<CostAnalysis, ApiError>({
         queryKey: queryKeys.analytics.cost(filters),
         queryFn: async () => {
             const { data } = await apiClient.get<AnalyticsResponse<CostAnalysis>>(
@@ -205,7 +241,9 @@ export function useCostAnalysis(filters?: AnalyticsFilters) {
             );
             return data.data;
         },
-        staleTime: 15 * 60 * 1000,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 }
 
@@ -214,8 +252,10 @@ export function useCostAnalysis(filters?: AnalyticsFilters) {
 /**
  * Export report to file
  */
-export function useExportReport() {
-    return useMutation({
+export function useExportReport(
+    options?: UseMutationOptions<ExportResponse, ApiError, ExportRequest>
+) {
+    return useMutation<ExportResponse, ApiError, ExportRequest>({
         mutationFn: async (request: ExportRequest) => {
             const { data } = await apiClient.post<AnalyticsResponse<ExportResponse>>(
                 '/analytics/export',
@@ -223,13 +263,14 @@ export function useExportReport() {
             );
             return data.data;
         },
-        onError: (error) => handleApiError(error, 'Failed to export report'),
+        onError: (error) => handleApiError(error),
         onSuccess: (data) => {
             showSuccessToast('Report exported successfully');
             if (data.downloadUrl) {
                 window.open(data.downloadUrl, '_blank');
             }
         },
+        ...options,
     });
 }
 

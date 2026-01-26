@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { orderApi } from '../../clients/orderApi';
 import { queryKeys } from '../../config/query-keys';
-import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../../config/cache.config';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { ApiError } from '../../client';
 import type {
@@ -68,10 +68,9 @@ export const useCreateOrder = (
             return response.data.order;
         },
         onSuccess: (order) => {
-            // Invalidate related caches using centralized patterns
-            INVALIDATION_PATTERNS.ORDER_MUTATIONS.CREATE().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            // Invalidate related caches
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast(`Order ${order.orderNumber} created successfully`);
         },
         onError: (error) => {
@@ -124,9 +123,8 @@ export const useUpdateOrder = (
         },
         onSuccess: (order, variables) => {
             // Invalidate related caches
-            INVALIDATION_PATTERNS.ORDER_MUTATIONS.UPDATE().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Order updated successfully');
         },
         onError: (error, variables, context) => {
@@ -155,10 +153,9 @@ export const useDeleteOrder = (
             await orderApi.deleteOrder(orderId);
         },
         onSuccess: (_, orderId) => {
-            // Invalidate related caches using centralized patterns
-            INVALIDATION_PATTERNS.ORDER_MUTATIONS.DELETE().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            // Invalidate related caches
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             // Remove specific order from cache
             queryClient.removeQueries({ queryKey: queryKeys.orders.detail(orderId) });
             showSuccessToast('Order deleted successfully');

@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import type {
     ShippingZone as Zone,
     CreateZoneRequest,
@@ -12,16 +13,15 @@ import type {
     ZoneDetailResponse,
     PincodeValidationResult,
 } from '@/src/types/api/logistics';
-import { showSuccessToast } from '@/src/lib/error';
-import { handleApiError } from '@/src/lib/error';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 
 // ==================== QUERIES ====================
 
 /**
  * Fetch list of zones with optional filters
  */
-export const useZones = (filters?: ZoneListFilters) => {
-    return useQuery({
+export const useZones = (filters?: ZoneListFilters, options?: UseQueryOptions<ZoneListResponse, ApiError>) => {
+    return useQuery<ZoneListResponse, ApiError>({
         queryKey: queryKeys.zones.list(filters),
         queryFn: async () => {
             const params = new URLSearchParams();
@@ -36,20 +36,26 @@ export const useZones = (filters?: ZoneListFilters) => {
             );
             return response.data;
         },
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Fetch single zone by ID
  */
-export const useZone = (id: string | undefined) => {
-    return useQuery({
+export const useZone = (id: string | undefined, options?: UseQueryOptions<Zone, ApiError>) => {
+    return useQuery<Zone, ApiError>({
         queryKey: queryKeys.zones.detail(id!),
         queryFn: async () => {
             const response = await apiClient.get<ZoneDetailResponse>(`/admin/zones/${id}`);
             return response.data.data;
         },
         enabled: !!id,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
@@ -58,10 +64,10 @@ export const useZone = (id: string | undefined) => {
 /**
  * Create new zone
  */
-export const useCreateZone = () => {
+export const useCreateZone = (options?: UseMutationOptions<Zone, ApiError, CreateZoneRequest>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<Zone, ApiError, CreateZoneRequest>({
         mutationFn: async (data: CreateZoneRequest) => {
             const response = await apiClient.post<ZoneDetailResponse>('/admin/zones', data);
             return response.data.data;
@@ -70,19 +76,19 @@ export const useCreateZone = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.all });
             showSuccessToast('Zone created successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to create zone');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Update existing zone
  */
-export const useUpdateZone = () => {
+export const useUpdateZone = (options?: UseMutationOptions<Zone, ApiError, { id: string; data: UpdateZoneRequest }>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<Zone, ApiError, { id: string; data: UpdateZoneRequest }>({
         mutationFn: async ({ id, data }: { id: string; data: UpdateZoneRequest }) => {
             const response = await apiClient.put<ZoneDetailResponse>(`/admin/zones/${id}`, data);
             return response.data.data;
@@ -92,19 +98,19 @@ export const useUpdateZone = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
             showSuccessToast('Zone updated successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to update zone');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Delete zone
  */
-export const useDeleteZone = () => {
+export const useDeleteZone = (options?: UseMutationOptions<void, ApiError, string>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<void, ApiError, string>({
         mutationFn: async (id: string) => {
             await apiClient.delete(`/admin/zones/${id}`);
         },
@@ -112,19 +118,19 @@ export const useDeleteZone = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.all });
             showSuccessToast('Zone deleted successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to delete zone');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Add pincodes to zone
  */
-export const useAddPincodesToZone = () => {
+export const useAddPincodesToZone = (options?: UseMutationOptions<PincodeValidationResult, ApiError, { id: string; data: AddPincodesToZoneRequest }>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<PincodeValidationResult, ApiError, { id: string; data: AddPincodesToZoneRequest }>({
         mutationFn: async ({ id, data }: { id: string; data: AddPincodesToZoneRequest }) => {
             const response = await apiClient.post<{ success: boolean; data: PincodeValidationResult }>(
                 `/admin/zones/${id}/pincodes`,
@@ -136,19 +142,19 @@ export const useAddPincodesToZone = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
             showSuccessToast('Pincodes added successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to add pincodes');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Remove pincodes from zone
  */
-export const useRemovePincodesFromZone = () => {
+export const useRemovePincodesFromZone = (options?: UseMutationOptions<void, ApiError, { id: string; data: RemovePincodesFromZoneRequest }>) => {
     const queryClient = useQueryClient();
 
-    return useMutation({
+    return useMutation<void, ApiError, { id: string; data: RemovePincodesFromZoneRequest }>({
         mutationFn: async ({ id, data }: { id: string; data: RemovePincodesFromZoneRequest }) => {
             await apiClient.request({
                 method: 'DELETE',
@@ -160,17 +166,17 @@ export const useRemovePincodesFromZone = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
             showSuccessToast('Pincodes removed successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to remove pincodes');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Validate pincodes for bulk upload
  */
-export const useValidatePincodes = () => {
-    return useMutation({
+export const useValidatePincodes = (options?: UseMutationOptions<PincodeValidationResult, ApiError, string[]>) => {
+    return useMutation<PincodeValidationResult, ApiError, string[]>({
         mutationFn: async (pincodes: string[]) => {
             const response = await apiClient.post<{ success: boolean; data: PincodeValidationResult }>(
                 '/admin/zones/validate-pincodes',
@@ -178,8 +184,8 @@ export const useValidatePincodes = () => {
             );
             return response.data.data;
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to validate pincodes');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };

@@ -476,22 +476,26 @@ export default class RTOService {
             return reverseShipmentResponse.reverse_awb;
 
         } catch (error) {
-            // Final fallback: Generate mock reverse AWB on any error
-            logger.error('Error creating reverse shipment, using mock fallback', {
+            // NO FALLBACK - Fail properly to surface configuration or integration issues
+            logger.error('Failed to create reverse shipment with courier', {
                 originalAwb: shipment.awb,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                companyId: shipment.companyId,
+                warehouseId: shipment.warehouseId,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
             });
 
-            const timestamp = Date.now().toString().slice(-6);
-            const reverseAwb = `RTO-${shipment.awb}-${timestamp}`;
-
-            logger.info('Mock reverse AWB generated', {
-                originalAwb: shipment.awb,
-                reverseAwb,
-                fallbackReason: 'API error or courier not supported'
-            });
-
-            return reverseAwb;
+            throw new AppError(
+                'Failed to create reverse shipment. Please verify courier configuration and Velocity API credentials.',
+                'RTO_REVERSE_SHIPMENT_FAILED',
+                500,
+                true,
+                {
+                    originalAwb: shipment.awb,
+                    companyId: shipment.companyId,
+                    warehouseId: shipment.warehouseId
+                }
+            );
         }
     }
 

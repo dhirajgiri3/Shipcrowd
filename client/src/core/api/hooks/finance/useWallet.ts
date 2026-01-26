@@ -9,7 +9,7 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { apiClient } from '@/src/core/api/client';
 import { queryKeys } from '../../config/query-keys';
-import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../../config/cache.config';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import {
     createOptimisticUpdateHandler,
     createOptimisticListUpdateHandler,
@@ -94,9 +94,8 @@ export const useRechargeWallet = () => {
             }),
         }),
         onSuccess: (data) => {
-            INVALIDATION_PATTERNS.WALLET_MUTATIONS.ADD_MONEY().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Wallet recharged successfully');
         },
         onError: (error) => {
@@ -126,9 +125,8 @@ export const useWithdrawWallet = () => {
             }),
         }),
         onSuccess: (data) => {
-            INVALIDATION_PATTERNS.WALLET_MUTATIONS.WITHDRAW().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Withdrawal initiated successfully');
         },
         onError: (error) => {
@@ -150,9 +148,8 @@ export const useTransferWallet = () => {
             return response.data.data;
         },
         onSuccess: (data) => {
-            INVALIDATION_PATTERNS.WALLET_MUTATIONS.TRANSFER().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Transfer completed successfully');
         },
         onError: (error) => {
@@ -166,14 +163,14 @@ export const useTransferWallet = () => {
  * Get wallet statistics
  */
 export const useWalletStats = (
-    dateRange?: { start: string; end: string },
+    dateRange?: { startDate?: string; endDate?: string },
     options?: Omit<UseQueryOptions<WalletStats>, 'queryKey' | 'queryFn'>
 ) => {
     return useQuery<WalletStats>({
         queryKey: queryKeys.wallet.stats(dateRange),
         queryFn: async () => {
             const response = await apiClient.get('/finance/wallet/stats', {
-                params: dateRange ? { startDate: dateRange.start, endDate: dateRange.end } : undefined,
+                params: dateRange,
             });
             return response.data.data;
         },

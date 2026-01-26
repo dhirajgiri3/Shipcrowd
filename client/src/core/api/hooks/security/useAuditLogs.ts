@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
-import { showSuccessToast } from '@/src/lib/error';
-import { handleApiError } from '@/src/lib/error';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import type { AuditLog } from '@/src/types/api/settings';
 
 interface AuditLogsQuery {
@@ -24,8 +24,8 @@ interface ExportAuditLogsRequest {
 /**
  * Fetch audit logs with pagination and filters
  */
-export const useAuditLogs = (query: AuditLogsQuery = {}) => {
-    return useQuery({
+export const useAuditLogs = (query: AuditLogsQuery = {}, options?: UseQueryOptions<{ logs: AuditLog[]; total: number }, ApiError>) => {
+    return useQuery<{ logs: AuditLog[]; total: number }, ApiError>({
         queryKey: queryKeys.settings.auditLogs(query),
         queryFn: async () => {
             const response = await apiClient.get<{ data: { logs: AuditLog[]; total: number } }>('/audit-logs', {
@@ -33,14 +33,17 @@ export const useAuditLogs = (query: AuditLogsQuery = {}) => {
             });
             return response.data.data;
         },
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
 /**
  * Export audit logs
  */
-export const useExportAuditLogs = () => {
-    return useMutation({
+export const useExportAuditLogs = (options?: UseMutationOptions<any, ApiError, ExportAuditLogsRequest>) => {
+    return useMutation<any, ApiError, ExportAuditLogsRequest>({
         mutationFn: async (request: ExportAuditLogsRequest) => {
             const response = await apiClient.post('/audit-logs/export', request, {
                 responseType: 'blob',
@@ -60,8 +63,8 @@ export const useExportAuditLogs = () => {
         onSuccess: () => {
             showSuccessToast('Audit logs exported successfully');
         },
-        onError: (error: any) => {
-            handleApiError(error, 'Failed to export audit logs');
-        },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.NO_RETRY,
+        ...options,
     });
 };

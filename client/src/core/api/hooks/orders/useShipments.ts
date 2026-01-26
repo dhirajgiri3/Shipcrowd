@@ -1,6 +1,6 @@
 import { apiClient, ApiError } from '../../client';
 import { queryKeys } from '../../config/query-keys';
-import { CACHE_TIMES, INVALIDATION_PATTERNS, RETRY_CONFIG } from '../../config/cache.config';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import {
     useQuery,
@@ -149,10 +149,9 @@ export const useCreateShipment = (options?: UseMutationOptions<CreateShipmentRes
             return response.data;
         },
         onSuccess: (data) => {
-            // Invalidate related caches using centralized patterns
-            INVALIDATION_PATTERNS.SHIPMENT_MUTATIONS.CREATE().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            // Invalidate related caches
+            queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast(`Shipment created with ${data.carrierSelection.selectedCarrier}`);
         },
         onError: (error) => {
@@ -207,9 +206,8 @@ export const useUpdateShipmentStatus = (
         },
         onSuccess: (data, { shipmentId }) => {
             // Invalidate related caches
-            INVALIDATION_PATTERNS.SHIPMENT_MUTATIONS.UPDATE().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Shipment status updated');
         },
         onError: (error, variables, context) => {
@@ -236,9 +234,8 @@ export const useDeleteShipment = (options?: UseMutationOptions<void, ApiError, s
         },
         onSuccess: (_, shipmentId) => {
             // Invalidate related caches
-            INVALIDATION_PATTERNS.SHIPMENT_MUTATIONS.CANCEL().forEach((pattern) => {
-                queryClient.invalidateQueries(pattern);
-            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.shipments.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             // Remove specific shipment from cache
             queryClient.removeQueries({ queryKey: queryKeys.shipments.detail(shipmentId) });
             showSuccessToast('Shipment deleted successfully');

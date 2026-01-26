@@ -1,12 +1,8 @@
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../client';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
-import {
-    useQuery,
-    useMutation,
-    useQueryClient,
-    UseQueryOptions,
-    UseMutationOptions,
-} from '@tanstack/react-query';
 
 // KYC Types
 export interface KYCDocument {
@@ -68,12 +64,13 @@ export const useAllKYCs = (
     options?: UseQueryOptions<KYCsResponse, ApiError>
 ) => {
     return useQuery<KYCsResponse, ApiError>({
-        queryKey: ['kycs', filters],
+        queryKey: queryKeys.kyc.list(filters),
         queryFn: async () => {
             const response = await apiClient.get('/kyc/all', { params: filters });
             return response.data;
         },
-        staleTime: 30000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
@@ -95,9 +92,11 @@ export const useVerifyKYC = (
             return response.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['kycs'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all() });
             showSuccessToast('KYC verified successfully');
         },
+        onError: (error) => handleApiError(error),
+        retry: RETRY_CONFIG.DEFAULT,
         onError: (error) => {
             handleApiError(error, 'KYC Verification Failed');
         },

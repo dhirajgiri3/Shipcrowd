@@ -1,5 +1,7 @@
-import { apiClient, ApiError } from '../../client';
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 
 export interface Integration {
     id: string;
@@ -19,37 +21,13 @@ export interface IntegrationsResponse {
  */
 export const useIntegrations = (options?: UseQueryOptions<IntegrationsResponse, ApiError>) => {
     return useQuery<IntegrationsResponse, ApiError>({
-        queryKey: ['integrations'],
-        // Mocking the API response for now as backend endpoint might not exist yet
+        queryKey: queryKeys.integrations.all(),
         queryFn: async () => {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            // Mock data matched to what was hardcoded
-            return {
-                integrations: [
-                    {
-                        id: 'int_1',
-                        name: 'Shopify Store',
-                        platform: 'shopify',
-                        status: 'active',
-                        lastSync: new Date(Date.now() - 1000 * 60 * 2).toISOString(), // 2 mins ago
-                    },
-                    {
-                        id: 'int_2',
-                        name: 'WooCommerce',
-                        platform: 'woocommerce',
-                        status: 'active',
-                        lastSync: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 mins ago
-                    }
-                ]
-            };
-
-            // TODO: Uncomment when backend is ready
-            // const response = await apiClient.get('/integrations');
-            // return response.data;
+            const response = await apiClient.get('/integrations');
+            return response.data.data;
         },
-        staleTime: 60000,
+        ...CACHE_TIMES.MEDIUM,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };

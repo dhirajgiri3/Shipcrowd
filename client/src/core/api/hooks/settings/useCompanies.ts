@@ -1,6 +1,8 @@
-import { apiClient, ApiError } from '../../client';
-import { handleApiError } from '@/src/lib/error';
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { apiClient, ApiError } from '../../client';
+import { queryKeys } from '../../config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { handleApiError } from '@/src/lib/error';
 import { Company } from './useProfile';
 
 export interface CompaniesResponse {
@@ -27,12 +29,13 @@ export const useCompanies = (
     options?: UseQueryOptions<CompaniesResponse, ApiError>
 ) => {
     return useQuery<CompaniesResponse, ApiError>({
-        queryKey: ['companies', filters],
+        queryKey: queryKeys.settings.companies(filters),
         queryFn: async () => {
             const response = await apiClient.get('/companies', { params: filters });
             return response.data;
         },
-        staleTime: 30000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
@@ -42,14 +45,15 @@ export const useCompanies = (
  */
 export const useCompanyStats = (companyId: string, options?: UseQueryOptions<any, ApiError>) => {
     return useQuery<any, ApiError>({
-        queryKey: ['company-stats', companyId],
+        queryKey: queryKeys.settings.companyStats(companyId),
         queryFn: async () => {
             // You can extend this to fetch orders/shipments count for the company
             const response = await apiClient.get(`/companies/${companyId}`);
             return response.data.company;
         },
         enabled: !!companyId,
-        staleTime: 30000,
+        ...CACHE_TIMES.SHORT,
+        retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
 };
