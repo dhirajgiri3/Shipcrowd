@@ -39,7 +39,7 @@ export function RatesClient() {
     const [calculatedRates, setCalculatedRates] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [compareMode, setCompareMode] = useState(true); // Multi-carrier by default
-    const { addToast} = useToast();
+    const { addToast } = useToast();
 
     const { mutate: calculateRate, isPending: isSingleCalculating } = useRateCalculation();
     const { mutate: compareRates, isPending: isComparing } = useMultiCarrierRates();
@@ -93,8 +93,7 @@ export function RatesClient() {
                 destinationPincode: formData.destinationPincode,
                 weight: parseFloat(formData.weight)
             }, {
-                onSuccess: (response) => {
-                    const rateData = response.data;
+                onSuccess: (rateData) => {
                     setCalculatedRates([{
                         courier: rateData.carrier,
                         rate: rateData.rate,

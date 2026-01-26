@@ -35,7 +35,7 @@ export const useTemplates = (
     options?: Omit<UseQueryOptions<CommunicationTemplate[]>, 'queryKey' | 'queryFn'>
 ) => {
     return useQuery<CommunicationTemplate[]>({
-        queryKey: queryKeys.communication.templates_list(filters?.type),
+        queryKey: queryKeys.communication.templates(filters),
         queryFn: async () => {
             const response = await apiClient.get('/communication/templates', { params: filters });
             return response.data.data;

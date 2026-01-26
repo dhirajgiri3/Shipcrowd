@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useRateCalculation } from '@/hooks/shipping/use-rate-calculation';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { useRateCalculation } from '@/src/hooks/shipping/use-rate-calculation';
+import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Label } from '@/src/components/ui/core/Label';
+import { Select } from '@/src/components/ui/form/Select';
 import { Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -71,33 +71,25 @@ export const RatesClient = () => {
                             <Label>Carrier</Label>
                             <Select
                                 value={calcData.carrier}
-                                onValueChange={(val) => setCalcData({ ...calcData, carrier: val })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Delhivery">Delhivery</SelectItem>
-                                    <SelectItem value="BlueDart">BlueDart</SelectItem>
-                                    <SelectItem value="EcomExpress">EcomExpress</SelectItem>
-                                    <SelectItem value="Xpressbees">Xpressbees</SelectItem>
-                                </SelectContent>
-                            </Select>
+                                onChange={(e) => setCalcData({ ...calcData, carrier: e.target.value })}
+                                options={[
+                                    { label: 'Delhivery', value: 'Delhivery' },
+                                    { label: 'BlueDart', value: 'BlueDart' },
+                                    { label: 'EcomExpress', value: 'EcomExpress' },
+                                    { label: 'Xpressbees', value: 'Xpressbees' },
+                                ]}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Service Type</Label>
                             <Select
                                 value={calcData.serviceType}
-                                onValueChange={(val) => setCalcData({ ...calcData, serviceType: val })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Standard">Standard</SelectItem>
-                                    <SelectItem value="Express">Express</SelectItem>
-                                </SelectContent>
-                            </Select>
+                                onChange={(e) => setCalcData({ ...calcData, serviceType: e.target.value })}
+                                options={[
+                                    { label: 'Standard', value: 'Standard' },
+                                    { label: 'Express', value: 'Express' },
+                                ]}
+                            />
                         </div>
                     </div>
 

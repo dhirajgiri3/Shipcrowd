@@ -148,7 +148,8 @@ export const queryKeys = {
     all: () => ['disputes'],
     list: (filters?: FilterParams) => ['disputes', 'list', filters],
     detail: (id: string) => ['disputes', 'detail', id],
-    analytics: () => ['disputes', 'analytics'],
+    analytics: (filters?: any) => ['disputes', 'analytics', filters],
+    metrics: (filters?: any) => ['disputes', 'metrics', filters],
   },
 
   // ========================================================================
@@ -246,6 +247,7 @@ export const queryKeys = {
     sla: (filters?: any) => ['analytics', 'sla', filters],
     cost: (filters?: any) => ['analytics', 'cost', filters],
     courierComparison: (filters?: any) => ['analytics', 'courier-comparison', filters],
+    recentCustomers: (limit: number) => ['analytics', 'recent-customers', limit],
   },
 
   // ========================================================================
@@ -423,6 +425,8 @@ export const queryKeys = {
     invoices: () => ['settings', 'invoices'] as const,
     marketing: () => ['settings', 'marketing'] as const,
 
+    companies: (filters?: any) => ['settings', 'companies', filters],
+    companyStats: (companyId: string) => ['settings', 'companies', 'stats', companyId],
   },
 
   // ========================================================================

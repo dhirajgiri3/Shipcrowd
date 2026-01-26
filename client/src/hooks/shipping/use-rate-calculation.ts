@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { apiClient } from '@/src/core'; // Assuming standard API client wrapper exists
+import { apiClient } from '@/src/lib/api-client';
 
 interface CalculateRateInput {
     originPincode: string;
@@ -16,25 +16,27 @@ interface RateBreakdown {
     tax: number;
 }
 
+export interface RateCalculationResult {
+    rate: number;
+    carrier: string;
+    serviceType: string;
+    weight: number;
+    zone: string;
+    rateCardName: string;
+    breakdown: RateBreakdown;
+}
+
 interface CalculateRateResponse {
     status: string;
-    data: {
-        rate: number;
-        carrier: string;
-        serviceType: string;
-        weight: number;
-        zone: string;
-        rateCardName: string;
-        breakdown: RateBreakdown;
-    };
+    data: RateCalculationResult;
     message: string;
 }
 
 export const useRateCalculation = () => {
-    return useMutation({
+    return useMutation<RateCalculationResult, Error, CalculateRateInput>({
         mutationFn: async (data: CalculateRateInput) => {
             const response = await apiClient.post<CalculateRateResponse>('/rate-cards/calculate', data);
-            return response.data;
+            return response.data.data;
         },
     });
 };

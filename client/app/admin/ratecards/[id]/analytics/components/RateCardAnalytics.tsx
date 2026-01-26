@@ -94,7 +94,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                         </div>
                         <div className="flex gap-2">
                             <Button
-                                variant={dateRange.start.getTime() === new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime() ? 'default' : 'outline'}
+                                variant={dateRange.start.getTime() === new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).getTime() ? 'primary' : 'outline'}
                                 size="sm"
                                 onClick={() => setDateRange({
                                     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -104,7 +104,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                                 Last 7 Days
                             </Button>
                             <Button
-                                variant={dateRange.start.getTime() === new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime() ? 'default' : 'outline'}
+                                variant={dateRange.start.getTime() === new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime() ? 'primary' : 'outline'}
                                 size="sm"
                                 onClick={() => setDateRange({
                                     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -114,7 +114,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                                 Last 30 Days
                             </Button>
                             <Button
-                                variant={dateRange.start.getTime() === new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).getTime() ? 'default' : 'outline'}
+                                variant={dateRange.start.getTime() === new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).getTime() ? 'primary' : 'outline'}
                                 size="sm"
                                 onClick={() => setDateRange({
                                     start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
@@ -128,21 +128,21 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                             <span className="text-sm font-medium">Granularity:</span>
                             <div className="flex gap-2">
                                 <Button
-                                    variant={granularity === 'day' ? 'default' : 'outline'}
+                                    variant={granularity === 'day' ? 'primary' : 'outline'}
                                     size="sm"
                                     onClick={() => setGranularity('day')}
                                 >
                                     Day
                                 </Button>
                                 <Button
-                                    variant={granularity === 'week' ? 'default' : 'outline'}
+                                    variant={granularity === 'week' ? 'primary' : 'outline'}
                                     size="sm"
                                     onClick={() => setGranularity('week')}
                                 >
                                     Week
                                 </Button>
                                 <Button
-                                    variant={granularity === 'month' ? 'default' : 'outline'}
+                                    variant={granularity === 'month' ? 'primary' : 'outline'}
                                     size="sm"
                                     onClick={() => setGranularity('month')}
                                 >
@@ -217,8 +217,8 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                     {timeSeries && timeSeries.length > 0 ? (
                         <div className="space-y-4">
                             <div className="h-64 flex items-end gap-2">
-                                {timeSeries.map((point, idx) => {
-                                    const maxRevenue = Math.max(...timeSeries.map(p => p.revenue));
+                                {timeSeries.map((point: any, idx: number) => {
+                                    const maxRevenue = Math.max(...timeSeries.map((p: any) => p.revenue));
                                     const heightPercent = (point.revenue / maxRevenue) * 100;
                                     return (
                                         <div key={idx} className="flex-1 flex flex-col items-center gap-2">
@@ -264,10 +264,10 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                         {stats?.zoneDistribution && Object.keys(stats.zoneDistribution).length > 0 ? (
                             <div className="space-y-3">
                                 {Object.entries(stats.zoneDistribution)
-                                    .sort(([, a], [, b]) => b - a)
+                                    .sort(([, a], [, b]) => (b as number) - (a as number))
                                     .map(([zone, count]) => {
-                                        const total = Object.values(stats.zoneDistribution).reduce((sum, val) => sum + val, 0);
-                                        const percentage = ((count / total) * 100).toFixed(1);
+                                        const total = Object.values(stats.zoneDistribution).reduce((sum: number, val: any) => sum + (val as number), 0);
+                                        const percentage = (((count as number) / total) * 100).toFixed(1);
                                         return (
                                             <div key={zone} className="space-y-1">
                                                 <div className="flex items-center justify-between text-sm">
@@ -275,7 +275,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                                                         {zone.toUpperCase()}
                                                     </span>
                                                     <span className="text-[var(--text-muted)]">
-                                                        {count} shipments ({percentage}%)
+                                                        {count as number} shipments ({percentage}%)
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -307,7 +307,7 @@ export function RateCardAnalytics({ rateCardId }: RateCardAnalyticsProps) {
                     <CardContent>
                         {stats?.topCarriers && stats.topCarriers.length > 0 ? (
                             <div className="space-y-3">
-                                {stats.topCarriers.slice(0, 5).map((carrier, idx) => (
+                                {stats.topCarriers.slice(0, 5).map((carrier: any, idx: number) => (
                                     <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-secondary)]">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="default" className="w-8 h-8 flex items-center justify-center">

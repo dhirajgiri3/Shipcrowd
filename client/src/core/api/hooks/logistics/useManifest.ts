@@ -97,7 +97,7 @@ interface PaginatedResult<T> {
 /**
  * List manifests with filters
  */
-export function useManifests(
+export function useShipmentManifests(
     filters?: ManifestListFilters,
     options?: UseQueryOptions<PaginatedResult<Manifest>, ApiError>
 ) {
@@ -119,7 +119,7 @@ export function useManifests(
 /**
  * Get manifest by ID
  */
-export function useManifest(
+export function useShipmentManifest(
     id: string,
     options?: UseQueryOptions<Manifest, ApiError>
 ) {
@@ -141,7 +141,7 @@ export function useManifest(
 /**
  * Create manifest
  */
-export function useCreateManifest(
+export function useCreateShipmentManifest(
     options?: UseMutationOptions<Manifest, ApiError, CreateManifestPayload>
 ) {
     const queryClient = useQueryClient();

@@ -6,7 +6,7 @@
  * Backend: GET/POST /api/v1/serviceability/*
  */
 
-import { useQuery, useMutation, UseQueryOptions, UseMutationOptions } from '@tantml:react-query';
+import { useQuery, useMutation, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '@/src/core/api/client';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';

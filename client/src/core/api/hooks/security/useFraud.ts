@@ -18,6 +18,7 @@ import type {
     FraudResponse,
     BlockedEntity,
     InvestigationAction,
+    BlockEntityPayload,
 } from '@/src/types/api/security';
 
 // ==================== Fraud Alerts ====================
@@ -171,8 +172,8 @@ export function useBlockedEntities() {
 }
 
 export function useBlockEntity() {
-    return useMutation({
-        mutationFn: async () => {
+    return useMutation<BlockedEntity, ApiError, BlockEntityPayload>({
+        mutationFn: async (payload: BlockEntityPayload) => {
             return {} as BlockedEntity;
         },
         onSuccess: () => {

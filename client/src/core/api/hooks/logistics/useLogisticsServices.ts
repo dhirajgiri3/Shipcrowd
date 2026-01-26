@@ -59,7 +59,7 @@ export interface PincodeValidationResponse {
  */
 export const usePincodeInfo = (pincode: string, options?: UseQueryOptions<PincodeInfo, ApiError>) => {
     return useQuery<PincodeInfo, ApiError>({
-        queryKey: queryKeys.logistics.pincodeInfo(pincode),
+        queryKey: queryKeys.address.cityState(pincode),
         queryFn: async () => {
             const response = await apiClient.get<{ data: PincodeInfo }>(
                 `/logistics/address/pincode/${pincode}/info`
@@ -125,7 +125,7 @@ export const useValidatePincode = (options?: UseMutationOptions<PincodeValidatio
  */
 export const useAddressSuggestions = (query: string, options?: UseQueryOptions<AddressSuggestion[], ApiError>) => {
     return useQuery<AddressSuggestion[], ApiError>({
-        queryKey: queryKeys.logistics.addressSuggestions(query),
+        queryKey: queryKeys.address.suggestions(query),
         queryFn: async () => {
             const response = await apiClient.get<{
                 data: { suggestions: AddressSuggestion[] };
