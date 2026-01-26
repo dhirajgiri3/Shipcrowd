@@ -46,7 +46,7 @@ export const usePromoCodes = (filters?: PromoCodeFilters, options?: UseQueryOpti
     return useQuery<PromoCodeResponse, ApiError>({
         queryKey: queryKeys.marketing.promoCodes(filters),
         queryFn: async () => {
-            const response = await apiClient.get<{ data: PromoCodeResponse }>('/marketing/promo-code', { params: filters });
+            const response = await apiClient.get<{ data: PromoCodeResponse }>('/promos', { params: filters });
             return response.data.data;
         },
         ...CACHE_TIMES.MEDIUM,
@@ -58,7 +58,7 @@ export const usePromoCodes = (filters?: PromoCodeFilters, options?: UseQueryOpti
 export const useValidatePromoCode = (options?: UseMutationOptions<ValidatePromoResponse, ApiError, ValidatePromoPayload>) => {
     return useMutation<ValidatePromoResponse, ApiError, ValidatePromoPayload>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post<{ data: ValidatePromoResponse }>('/marketing/promo-code/validate', payload);
+            const response = await apiClient.post<{ data: ValidatePromoResponse }>('/promos/validate', payload);
             return response.data.data;
         },
         onError: (error) => handleApiError(error, 'Validate Promo Failed'),
@@ -71,7 +71,7 @@ export const useCreatePromoCode = (options?: UseMutationOptions<PromoCode, ApiEr
     const queryClient = useQueryClient();
     return useMutation<PromoCode, ApiError, Partial<PromoCode>>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post<{ data: { promoCode: PromoCode } }>('/marketing/promo-code', payload);
+            const response = await apiClient.post<{ data: { promoCode: PromoCode } }>('/promos', payload);
             return response.data.data.promoCode;
         },
         onSuccess: () => {
@@ -88,7 +88,7 @@ export const useUpdatePromoCode = (options?: UseMutationOptions<PromoCode, ApiEr
     const queryClient = useQueryClient();
     return useMutation<PromoCode, ApiError, { id: string; payload: Partial<PromoCode> }>({
         mutationFn: async ({ id, payload }) => {
-            const response = await apiClient.patch<{ data: { promoCode: PromoCode } }>(`/marketing/promo-code/${id}`, payload);
+            const response = await apiClient.patch<{ data: { promoCode: PromoCode } }>(`/promos/${id}`, payload);
             return response.data.data.promoCode;
         },
         onSuccess: () => {
@@ -104,7 +104,7 @@ export const useUpdatePromoCode = (options?: UseMutationOptions<PromoCode, ApiEr
 export const useDeletePromoCode = (options?: UseMutationOptions<void, ApiError, string>) => {
     const queryClient = useQueryClient();
     return useMutation<void, ApiError, string>({
-        mutationFn: async (id) => { await apiClient.delete(`/marketing/promo-code/${id}`); },
+        mutationFn: async (id) => { await apiClient.delete(`/promos/${id}`); },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.marketing.all() });
             showSuccessToast('Promo code deleted successfully');

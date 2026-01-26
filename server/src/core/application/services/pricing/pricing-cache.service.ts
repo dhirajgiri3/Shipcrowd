@@ -57,39 +57,59 @@ export class PricingCacheService {
     }
 
     /**
-     * Cache RateCard
-     * Key format: ratecard:{companyId}:{carrier}:{serviceType}
+     * Cache RateCard by ID
+     * Key format: ratecard:id:{rateCardId}
      */
-    async cacheRateCard(
-        companyId: string,
-        carrier: string,
-        serviceType: string,
-        rateCard: any
-    ): Promise<void> {
-        const key = `ratecard:${companyId}:${carrier}:${serviceType}`;
+    async cacheRateCardById(rateCardId: string, rateCard: any): Promise<void> {
+        const key = `ratecard:id:${rateCardId}`;
         try {
             const redis = await this.getRedis();
             await redis.setex(key, this.TTL.RATECARD, JSON.stringify(rateCard));
         } catch (error) {
-            logger.warn('[PricingCache] Failed to cache ratecard:', error);
+            logger.warn('[PricingCache] Failed to cache ratecard by ID:', error);
         }
     }
 
     /**
-     * Get cached RateCard
+     * Get cached RateCard by ID
      */
-    async getRateCard(
-        companyId: string,
-        carrier: string,
-        serviceType: string
-    ): Promise<any | null> {
-        const key = `ratecard:${companyId}:${carrier}:${serviceType}`;
+    async getRateCardById(rateCardId: string): Promise<any | null> {
+        const key = `ratecard:id:${rateCardId}`;
         try {
             const redis = await this.getRedis();
             const cached = await redis.get(key);
             return cached ? JSON.parse(cached) : null;
         } catch (error) {
-            logger.warn('[PricingCache] Failed to get cached ratecard:', error);
+            logger.warn('[PricingCache] Failed to get cached ratecard by ID:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Cache Company Default RateCard
+     * Key format: ratecard:default:{companyId}
+     */
+    async cacheDefaultRateCard(companyId: string, rateCard: any): Promise<void> {
+        const key = `ratecard:default:${companyId}`;
+        try {
+            const redis = await this.getRedis();
+            await redis.setex(key, this.TTL.RATECARD, JSON.stringify(rateCard));
+        } catch (error) {
+            logger.warn('[PricingCache] Failed to cache default ratecard:', error);
+        }
+    }
+
+    /**
+     * Get cached Company Default RateCard
+     */
+    async getDefaultRateCard(companyId: string): Promise<any | null> {
+        const key = `ratecard:default:${companyId}`;
+        try {
+            const redis = await this.getRedis();
+            const cached = await redis.get(key);
+            return cached ? JSON.parse(cached) : null;
+        } catch (error) {
+            logger.warn('[PricingCache] Failed to get cached default ratecard:', error);
             return null;
         }
     }

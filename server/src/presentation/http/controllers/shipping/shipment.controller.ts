@@ -23,6 +23,7 @@ import {
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
 
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -90,12 +91,43 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
             }
         }
 
+        // Calculate pricing
+        // Determine Warehouse Pincode (Origin)
+        let fromPincode = '110001'; // Default
+        const effectiveWarehouseId = validation.data.warehouseId || order.warehouseId;
+
+        if (effectiveWarehouseId) {
+            const wh = await Warehouse.findById(effectiveWarehouseId);
+            if (wh?.address?.postalCode) {
+                fromPincode = wh.address.postalCode;
+            }
+        }
+
+        const toPincode = order.customerInfo.address.postalCode;
+
+        // Calculate weight from order products (matching Service logic)
+        const totalWeight = order.products.reduce((sum: number, p: any) => sum + (p.weight || 0.5) * p.quantity, 0);
+
+        const pricingDetails = await PricingOrchestratorService.calculateShipmentPricing({
+            companyId: auth.companyId,
+            fromPincode,
+            toPincode,
+            weight: totalWeight,
+            dimensions: { length: 20, width: 15, height: 10 }, // Default dimensions matching Service
+            paymentMode: order.paymentMethod === 'cod' ? 'cod' : 'prepaid',
+            orderValue: order.totals.total,
+            carrier: validation.data.carrierOverride,
+            serviceType: validation.data.serviceType,
+            // customerId: order.customerId?.toString() // Order model does not have customerId, skipping overrides for now
+        });
+
         // Create shipment via service
         const result = await ShipmentService.createShipment({
             order,
             companyId: new mongoose.Types.ObjectId(auth.companyId),
             userId: auth.userId,
-            payload: validation.data
+            payload: validation.data,
+            pricingDetails // Pass calculated pricing
         });
 
         await createAuditLog(auth.userId, auth.companyId, 'create', 'shipment', String(result.shipment._id), {

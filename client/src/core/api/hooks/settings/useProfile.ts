@@ -9,6 +9,8 @@ export interface UserProfile {
     _id: string;
     name: string;
     email: string;
+    companyId?: string;
+    createdAt?: string;
     phone?: string;
     avatar?: string;
     address?: string;
@@ -28,6 +30,7 @@ export interface UpdateProfilePayload {
 export interface Company {
     _id: string;
     name: string;
+    kycStatus?: 'pending' | 'verified' | 'rejected';
     address: {
         line1: string;
         line2?: string;
@@ -112,7 +115,7 @@ export const useUpdateCompany = (options?: UseMutationOptions<Company, ApiError,
 
     return useMutation<Company, ApiError, { companyId: string; data: UpdateCompanyPayload }>({
         mutationFn: async ({ companyId, data }) => {
-            const response = await apiClient.put(`/companies/${companyId}`, data);
+            const response = await apiClient.patch(`/companies/${companyId}`, data);
             return response.data.company;
         },
         onSuccess: (_, variables) => {

@@ -38,7 +38,7 @@ export function useFraudAlerts(filters?: FraudAlertFilters, options?: UseQueryOp
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
-        enabled: false,
+        enabled: false, // Feature Archived
         ...options,
         initialData: {
             success: true,
@@ -56,9 +56,9 @@ export function useFraudAlert(alertId: string, options?: UseQueryOptions<FraudAl
     return useQuery<FraudAlert, ApiError>({
         queryKey: queryKeys.fraud.alert(alertId),
         queryFn: async () => {
-            throw new Error('Fraud detection is disabled');
+            throw new Error('Fraud detection is archived/disabled');
         },
-        enabled: false,
+        enabled: false, // Feature Archived
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
@@ -79,7 +79,7 @@ export function useFraudStats(options?: UseQueryOptions<FraudStats, ApiError>) {
         },
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
-        enabled: false,
+        enabled: false, // Feature Archived
         ...options,
         initialData: {
             total: 0,

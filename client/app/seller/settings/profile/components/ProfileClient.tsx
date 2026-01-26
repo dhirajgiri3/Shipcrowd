@@ -1,11 +1,16 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
-import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
+import { useState, useRef, useEffect } from 'react';
+import {
+    Card, CardContent, CardHeader, CardTitle, CardDescription,
+    Button,
+    Input,
+    Badge,
+    PageHeaderSkeleton,
+    CardSkeleton,
+    Loader
+} from '@/src/components/ui';
 import {
     User,
     Building2,
@@ -16,54 +21,74 @@ import {
     Save,
     Shield,
     Globe,
-    Link2,
-    Trash2,
-    Upload,
-    CheckCircle
+    Trash2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-
-// Mock seller profile
-const mockProfile = {
-    companyName: 'Fashion Hub India',
-    displayName: 'Fashion Hub',
-    email: 'contact@fashionhub.in',
-    phone: '+91 98765 43210',
-    altPhone: '+91 87654 32109',
-    website: 'https://fashionhub.in',
-    gstin: '29AABCU9603R1ZM',
-    pan: 'AABCU9603R',
-    address: {
-        line1: '123, Industrial Area',
-        line2: 'Phase 2, Andheri East',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400093',
-    },
-    logo: null as string | null,
-    socialLinks: {
-        facebook: 'https://facebook.com/fashionhubindia',
-        instagram: 'https://instagram.com/fashionhubindia',
-        twitter: '',
-    },
-    kycStatus: 'verified',
-    joinedDate: '2024-02-15',
-};
+import { useProfile, useUpdateProfile, useCompany, useUpdateCompany } from '@/src/core/api/hooks/settings/useProfile';
 
 export function ProfileClient() {
-    const [profile, setProfile] = useState(mockProfile);
+    // API Hooks
+    const { data: profileData, isLoading: isLoadingProfile } = useProfile();
+    const { data: companyData, isLoading: isLoadingCompany } = useCompany(profileData?.companyId || '');
+    const updateProfile = useUpdateProfile();
+    const updateCompany = useUpdateCompany();
+
+    // Local State
+    const [formData, setFormData] = useState({
+        name: '',
+        displayName: '',
+        email: '',
+        phone: '',
+        altPhone: '',
+        website: '',
+        gstin: '',
+        pan: '',
+        address: {
+            line1: '',
+            line2: '',
+            city: '',
+            state: '',
+            pincode: '',
+        }
+    });
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
 
+    // Sync API data with form state
+    useEffect(() => {
+        if (profileData && companyData) {
+            setFormData({
+                name: companyData.name || '',
+                displayName: profileData.name || '',
+                email: profileData.email || '',
+                phone: profileData.phone || '',
+                altPhone: '', // Not available in current API
+                website: '', // Not available in current API
+                gstin: companyData.billingInfo?.gstin || '',
+                pan: companyData.billingInfo?.pan || '',
+                address: {
+                    line1: companyData.address?.line1 || '',
+                    line2: companyData.address?.line2 || '',
+                    city: companyData.address?.city || '',
+                    state: companyData.address?.state || '',
+                    pincode: companyData.address?.postalCode || '',
+                }
+            });
+
+            if (profileData.avatar) {
+                setLogoPreview(profileData.avatar);
+            }
+        }
+    }, [profileData, companyData]);
+
     const handleInputChange = (field: string, value: string) => {
-        setProfile(prev => ({ ...prev, [field]: value }));
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleAddressChange = (field: string, value: string) => {
-        setProfile(prev => ({
+        setFormData(prev => ({
             ...prev,
             address: { ...prev.address, [field]: value }
         }));
@@ -97,13 +122,50 @@ export function ProfileClient() {
         addToast('Logo removed', 'info');
     };
 
-    const handleSave = () => {
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            addToast('Profile updated successfully!', 'success');
-        }, 1000);
+    const handleSave = async () => {
+        if (!profileData || !companyData) return;
+
+        try {
+            // Update profile (name, phone, avatar)
+            await updateProfile.mutateAsync({
+                name: formData.displayName,
+                phone: formData.phone,
+                avatar: logoPreview || undefined,
+            });
+
+            // Update company details (name, address)
+            await updateCompany.mutateAsync({
+                companyId: companyData._id,
+                data: {
+                    name: formData.name,
+                    address: {
+                        line1: formData.address.line1,
+                        line2: formData.address.line2,
+                        city: formData.address.city,
+                        state: formData.address.state,
+                        country: 'India',
+                        postalCode: formData.address.pincode,
+                    },
+                },
+            });
+        } catch (error) {
+            // Error already handled by mutation hooks
+            console.error('Profile update error:', error);
+        }
     };
+
+    // Loading state
+    if (isLoadingProfile || isLoadingCompany) {
+        return (
+            <div className="space-y-6">
+                <PageHeaderSkeleton />
+                <div className="grid gap-6 lg:grid-cols-3">
+                    <CardSkeleton className="h-96" />
+                    <CardSkeleton className="lg:col-span-2 h-96" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -119,15 +181,17 @@ export function ProfileClient() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {profile.kycStatus === 'verified' && (
+                    {companyData?.kycStatus === 'verified' && (
                         <Badge variant="success" className="gap-1">
                             <Shield className="h-3 w-3" />
                             KYC Verified
                         </Badge>
                     )}
-                    <Badge variant="outline">
-                        Member since {new Date(profile.joinedDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
-                    </Badge>
+                    {profileData?.createdAt && (
+                        <Badge variant="outline">
+                            Member since {new Date(profileData.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                        </Badge>
+                    )}
                 </div>
             </div>
 
@@ -186,7 +250,7 @@ export function ProfileClient() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Display Name</label>
                                 <Input
-                                    value={profile.displayName}
+                                    value={formData.displayName}
                                     onChange={(e) => handleInputChange('displayName', e.target.value)}
                                     placeholder="Short display name"
                                 />
@@ -197,7 +261,7 @@ export function ProfileClient() {
                                     Website
                                 </label>
                                 <Input
-                                    value={profile.website}
+                                    value={formData.website}
                                     onChange={(e) => handleInputChange('website', e.target.value)}
                                     placeholder="https://example.com"
                                 />
@@ -219,8 +283,8 @@ export function ProfileClient() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Company Name</label>
                                 <Input
-                                    value={profile.companyName}
-                                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                                    value={formData.name}
+                                    onChange={(e) => handleInputChange('name', e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -230,9 +294,12 @@ export function ProfileClient() {
                                 </label>
                                 <Input
                                     type="email"
-                                    value={profile.email}
+                                    value={formData.email}
                                     onChange={(e) => handleInputChange('email', e.target.value)}
+                                    disabled
+                                    className="bg-[var(--bg-secondary)]"
                                 />
+                                <p className="text-xs text-[var(--text-muted)]">Email cannot be changed</p>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-1">
@@ -240,15 +307,18 @@ export function ProfileClient() {
                                     Primary Phone
                                 </label>
                                 <Input
-                                    value={profile.phone}
+                                    value={formData.phone}
                                     onChange={(e) => handleInputChange('phone', e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Alternate Phone</label>
                                 <Input
-                                    value={profile.altPhone}
+                                    value={formData.altPhone}
                                     onChange={(e) => handleInputChange('altPhone', e.target.value)}
+                                    placeholder="Not available in API"
+                                    disabled
+                                    className="bg-[var(--bg-secondary)]"
                                 />
                             </div>
                         </div>
@@ -257,7 +327,7 @@ export function ProfileClient() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">GSTIN</label>
                                 <Input
-                                    value={profile.gstin}
+                                    value={formData.gstin}
                                     onChange={(e) => handleInputChange('gstin', e.target.value)}
                                     disabled
                                     className="bg-[var(--bg-secondary)]"
@@ -267,7 +337,7 @@ export function ProfileClient() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">PAN</label>
                                 <Input
-                                    value={profile.pan}
+                                    value={formData.pan}
                                     onChange={(e) => handleInputChange('pan', e.target.value)}
                                     disabled
                                     className="bg-[var(--bg-secondary)]"
@@ -285,14 +355,14 @@ export function ProfileClient() {
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-[var(--text-primary)]">Address Line 1</label>
                                     <Input
-                                        value={profile.address.line1}
+                                        value={formData.address.line1}
                                         onChange={(e) => handleAddressChange('line1', e.target.value)}
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-[var(--text-primary)]">Address Line 2</label>
                                     <Input
-                                        value={profile.address.line2}
+                                        value={formData.address.line2}
                                         onChange={(e) => handleAddressChange('line2', e.target.value)}
                                     />
                                 </div>
@@ -300,21 +370,21 @@ export function ProfileClient() {
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-[var(--text-primary)]">City</label>
                                         <Input
-                                            value={profile.address.city}
+                                            value={formData.address.city}
                                             onChange={(e) => handleAddressChange('city', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-[var(--text-primary)]">State</label>
                                         <Input
-                                            value={profile.address.state}
+                                            value={formData.address.state}
                                             onChange={(e) => handleAddressChange('state', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-[var(--text-primary)]">PIN Code</label>
                                         <Input
-                                            value={profile.address.pincode}
+                                            value={formData.address.pincode}
                                             onChange={(e) => handleAddressChange('pincode', e.target.value)}
                                         />
                                     </div>
@@ -327,9 +397,22 @@ export function ProfileClient() {
 
             {/* Save Button */}
             <div className="flex justify-end">
-                <Button onClick={handleSave} isLoading={isLoading} className="px-8">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                <Button
+                    onClick={handleSave}
+                    disabled={updateProfile.isPending || updateCompany.isPending}
+                    className="px-8"
+                >
+                    {(updateProfile.isPending || updateCompany.isPending) ? (
+                        <>
+                            <Loader variant="spinner" size="sm" className="mr-2 border-[var(--text-on-primary)] border-t-transparent" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Changes
+                        </>
+                    )}
                 </Button>
             </div>
         </div>

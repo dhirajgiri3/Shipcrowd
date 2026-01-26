@@ -36,6 +36,8 @@ export { default as SalesRepresentative } from './crm/sales/sales-representative
 export * from './crm/sales/sales-representative.model';
 export { default as CallLog } from './crm/sales/call-log.model';
 export * from './crm/sales/call-log.model';
+export { default as SupportTicket } from './crm/support/support-ticket.model';
+export * from './crm/support/support-ticket.model';
 
 // Marketing
 export { default as Coupon } from './marketing/promotions/coupon.model';

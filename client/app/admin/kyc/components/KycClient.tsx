@@ -28,75 +28,14 @@ import {
     Calendar,
     ArrowUpRight
 } from 'lucide-react';
+import { useAllKYCs, useVerifyKYC, useRejectKYC, KYCDocument } from '@/src/core/api/hooks/security/useKYC';
 
-// --- MOCK DATA ---
-const mockKYCData = [
-    {
-        id: 'SLR-001',
-        name: 'TechGadgets Inc.',
-        owner: 'Rahul Sharma',
-        email: 'rahul@techgadgets.com',
-        status: 'verified',
-        submittedAt: '2024-11-15',
-        verifiedAt: '2024-11-17',
-        documents: ['Pan Card', 'GST Certificate', 'Bank Statement'],
-        riskScore: 'Low'
-    },
-    {
-        id: 'SLR-002',
-        name: 'Fashion Hub',
-        owner: 'Priya Patel',
-        email: 'priya@fashionhub.in',
-        status: 'pending',
-        submittedAt: '2024-12-10',
-        verifiedAt: null,
-        documents: ['Pan Card', 'GST Certificate'],
-        pendingDocs: ['Bank Statement'],
-        riskScore: 'Medium'
-    },
-    {
-        id: 'SLR-003',
-        name: 'HomeDecor Plus',
-        owner: 'Amit Singh',
-        email: 'amit@homedecorplus.com',
-        status: 'verified',
-        submittedAt: '2024-10-20',
-        verifiedAt: '2024-10-22',
-        documents: ['Pan Card', 'GST Certificate', 'Bank Statement', 'Address Proof'],
-        riskScore: 'Low'
-    },
-    {
-        id: 'SLR-004',
-        name: 'StartupStore',
-        owner: 'Kavita Reddy',
-        email: 'kavita@startupstore.in',
-        status: 'incomplete',
-        submittedAt: null,
-        verifiedAt: null,
-        documents: ['Pan Card'],
-        pendingDocs: ['GST Certificate', 'Bank Statement'],
-        riskScore: 'High'
-    },
-    {
-        id: 'SLR-005',
-        name: 'BookWorld',
-        owner: 'Vikram Iyer',
-        email: 'vikram@bookworld.com',
-        status: 'rejected',
-        submittedAt: '2024-12-05',
-        verifiedAt: null,
-        documents: ['Pan Card', 'GST Certificate'],
-        rejectionReason: 'GST certificate expired',
-        riskScore: 'High'
-    }
-];
 
 const statusFilters = [
     { id: 'all', label: 'All Requests' },
     { id: 'verified', label: 'Verified', color: 'bg-[var(--success)]' },
     { id: 'pending', label: 'Pending Review', color: 'bg-[var(--warning)]' },
     { id: 'rejected', label: 'Rejected', color: 'bg-[var(--error)]' },
-    { id: 'incomplete', label: 'Incomplete', color: 'bg-[var(--info)]' }
 ];
 
 // --- COMPONENTS ---
@@ -117,15 +56,17 @@ function StatsCard({ title, value, icon: Icon, color, trend }: any) {
                 )}>
                     <Icon className="w-6 h-6" />
                 </div>
-                <span className={cn(
-                    "text-xs font-bold px-2 py-1 rounded-full",
-                    color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
-                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                            color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                "bg-[var(--error-bg)] text-[var(--error)]"
-                )}>
-                    {trend}
-                </span>
+                {trend && (
+                    <span className={cn(
+                        "text-xs font-bold px-2 py-1 rounded-full",
+                        color === 'blue' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                            color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                color === 'amber' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
+                                    "bg-[var(--error-bg)] text-[var(--error)]"
+                    )}>
+                        {trend}
+                    </span>
+                )}
             </div>
             <div>
                 <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
@@ -142,19 +83,36 @@ export function KycClient() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const { addToast } = useToast();
 
+    // API Hooks
+    const { data, isLoading } = useAllKYCs({
+        status: activeFilter !== 'all' ? activeFilter as any : undefined,
+        limit: 50 // Fetch more for client-side filtering if needed, or rely on activeFilter
+    });
+    const verifyKYC = useVerifyKYC();
+    const rejectKYC = useRejectKYC();
+
     // Derived Data
-    const filteredData = mockKYCData.filter(item => {
-        const matchesFilter = activeFilter === 'all' || item.status === activeFilter;
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.email.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesFilter && matchesSearch;
+    const kycs = data?.kycs || [];
+
+    // Client-side search (since backend search might not be comprehensive for joined fields yet)
+    const filteredData = kycs.filter((item: any) => {
+        // Handle potentially missing populated fields gracefully
+        const name = item.userId?.name || item.name || 'Unknown User';
+        const email = item.userId?.email || item.email || '';
+        const company = item.companyId?.name || item.companyName || '';
+
+        const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            company.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchesSearch;
     });
 
     const stats = {
-        total: mockKYCData.length,
-        verified: mockKYCData.filter(k => k.status === 'verified').length,
-        pending: mockKYCData.filter(k => k.status === 'pending').length,
-        rejected: mockKYCData.filter(k => k.status === 'rejected').length
+        total: data?.pagination?.total || 0,
+        verified: kycs.filter(k => k.status === 'verified').length,
+        pending: kycs.filter(k => k.status === 'pending').length,
+        rejected: kycs.filter(k => k.status === 'rejected').length
     };
 
     // Actions
@@ -163,14 +121,39 @@ export function KycClient() {
         setIsDetailOpen(true);
     };
 
-    const handleApprove = () => {
-        addToast('KYC Approved Successfully', 'success');
-        setIsDetailOpen(false);
+    const handleApprove = async () => {
+        if (!selectedRequest) return;
+        try {
+            // Verify PAN by default or iterate through all docs
+            // For this UI, we treat it as "Approve KYC" which usually means verifying pending docs
+            await verifyKYC.mutateAsync({
+                kycId: selectedRequest._id,
+                documentType: 'pan' // Defaulting to PAN for now, ideal would be per-doc or full approval
+            });
+            // Also enable GST if present
+            if (selectedRequest.documents?.gstin) {
+                await verifyKYC.mutateAsync({
+                    kycId: selectedRequest._id,
+                    documentType: 'gstin'
+                });
+            }
+            setIsDetailOpen(false);
+        } catch (error) {
+            // Error handled by hook
+        }
     };
 
-    const handleReject = () => {
-        addToast('KYC Rejected', 'warning');
-        setIsDetailOpen(false);
+    const handleReject = async () => {
+        if (!selectedRequest) return;
+        try {
+            await rejectKYC.mutateAsync({
+                kycId: selectedRequest._id,
+                reason: 'Documents invalid or unclear' // Should capture this from input ideally
+            });
+            setIsDetailOpen(false);
+        } catch (error) {
+            // Error handled by hook
+        }
     };
 
     return (
@@ -195,10 +178,10 @@ export function KycClient() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard title="Total Requests" value={stats.total} icon={FileText} color="blue" trend="+12%" />
-                <StatsCard title="Verified" value={stats.verified} icon={CheckCircle2} color="emerald" trend="+8%" />
-                <StatsCard title="Pending Review" value={stats.pending} icon={Clock} color="amber" trend="5 Urgent" />
-                <StatsCard title="Rejected" value={stats.rejected} icon={XCircle} color="rose" trend="2 New" />
+                <StatsCard title="Total Requests" value={stats.total} icon={FileText} color="blue" />
+                <StatsCard title="Verified" value={stats.verified} icon={CheckCircle2} color="emerald" />
+                <StatsCard title="Pending Review" value={stats.pending} icon={Clock} color="amber" />
+                <StatsCard title="Rejected" value={stats.rejected} icon={XCircle} color="rose" />
             </div>
 
             {/* Main Content Area */}
@@ -242,59 +225,64 @@ export function KycClient() {
 
                     {/* List Cards */}
                     <div className="grid gap-3">
-                        <AnimatePresence>
-                            {filteredData.map((item) => (
-                                <motion.div
-                                    layout
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    key={item.id}
-                                    onClick={() => handleViewDetails(item)}
-                                    className="group relative p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md cursor-pointer transition-all"
-                                >
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                                                {item.name.substring(0, 2)}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-[var(--text-primary)]">{item.name}</h4>
-                                                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
-                                                    <span>{item.id}</span>
-                                                    <span>•</span>
-                                                    <span>{item.owner}</span>
+                        {isLoading ? (
+                            <div className="py-20 flex flex-col items-center justify-center">
+                                <div className="w-8 h-8 border-2 border-[var(--primary-blue-light)] border-t-[var(--primary-blue)] rounded-full animate-spin mb-4" />
+                                <p className="text-sm text-[var(--text-tertiary)]">Loading KYC requests...</p>
+                            </div>
+                        ) : filteredData.length === 0 ? (
+                            <div className="text-center py-10 text-[var(--text-muted)]">No KYC requests found</div>
+                        ) : (
+                            <AnimatePresence>
+                                {filteredData.map((item: any) => (
+                                    <motion.div
+                                        layout
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        key={item._id}
+                                        onClick={() => handleViewDetails(item)}
+                                        className="group relative p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-md cursor-pointer transition-all"
+                                    >
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
+                                                    {(item.userId?.name || item.name || 'KD').substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-[var(--text-primary)]">{item.userId?.name || item.name || 'Unknown User'}</h4>
+                                                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
+                                                        <span>{item._id.substring(0, 8)}...</span>
+                                                        <span>•</span>
+                                                        <span>{item.companyId?.name || item.companyName || 'No Company'}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex flex-col items-end">
-                                                <span className={cn(
-                                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize",
-                                                    item.status === 'verified' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                                        item.status === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                                            item.status === 'incomplete' ? "bg-[var(--info-bg)] text-[var(--info)]" :
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex flex-col items-end">
+                                                    <span className={cn(
+                                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize",
+                                                        item.status === 'verified' ? "bg-[var(--success-bg)] text-[var(--success)]" :
+                                                            item.status === 'pending' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
                                                                 "bg-[var(--error-bg)] text-[var(--error)]"
-                                                )}>
-                                                    {item.status === 'verified' && <CheckCircle2 className="w-3 h-3" />}
-                                                    {item.status === 'pending' && <Clock className="w-3 h-3" />}
-                                                    {item.status === 'incomplete' && <AlertTriangle className="w-3 h-3" />}
-                                                    {item.status === 'rejected' && <XCircle className="w-3 h-3" />}
-                                                    {item.status}
-                                                </span>
-                                                {item.submittedAt && (
-                                                    <span className="text-[10px] text-[var(--text-muted)] mt-1">
-                                                        Submitted {item.submittedAt}
+                                                    )}>
+                                                        {item.status === 'verified' && <CheckCircle2 className="w-3 h-3" />}
+                                                        {item.status === 'pending' && <Clock className="w-3 h-3" />}
+                                                        {item.status === 'rejected' && <XCircle className="w-3 h-3" />}
+                                                        {item.status}
                                                     </span>
-                                                )}
+                                                    <span className="text-[10px] text-[var(--text-muted)] mt-1">
+                                                        Updated {formatDate(item.updatedAt)}
+                                                    </span>
+                                                </div>
+                                                <ChevronDown className="-rotate-90 w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] transition-colors" />
                                             </div>
-                                            <ChevronDown className="-rotate-90 w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)] transition-colors" />
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        )}
                     </div>
                 </div>
 
@@ -313,40 +301,54 @@ export function KycClient() {
                         <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-[var(--primary-blue)] text-white flex items-center justify-center font-bold">
-                                    {selectedRequest.name.substring(0, 2)}
+                                    {(selectedRequest.userId?.name || 'KD').substring(0, 2)}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-[var(--text-primary)]">{selectedRequest.name}</h3>
-                                    <p className="text-xs text-[var(--text-muted)]">{selectedRequest.email}</p>
+                                    <h3 className="font-bold text-[var(--text-primary)]">{selectedRequest.userId?.name || 'Unknown User'}</h3>
+                                    <p className="text-xs text-[var(--text-muted)]">{selectedRequest.userId?.email || ''}</p>
                                 </div>
                             </div>
-                            <Badge variant={selectedRequest.riskScore === 'Low' ? 'success' : selectedRequest.riskScore === 'Medium' ? 'warning' : 'destructive'}>
-                                {selectedRequest.riskScore} Risk
-                            </Badge>
+                            <div className="text-xs font-bold px-2 py-1 rounded bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
+                                {selectedRequest.status.toUpperCase()}
+                            </div>
                         </div>
 
                         {/* Documents Grid */}
                         <div>
                             <h4 className="text-sm font-bold text-[var(--text-secondary)] mb-3">Submitted Documents</h4>
                             <div className="grid gap-2">
-                                {selectedRequest.documents.map((doc: string, i: number) => (
-                                    <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-[var(--info-bg)] text-[var(--info)]">
-                                                <FileText className="w-4 h-4" />
-                                            </div>
-                                            <span className="text-sm font-medium text-[var(--text-primary)]">{doc}</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                                <Eye className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
-                                            </Button>
-                                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                                <Download className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                                {/* PAN Card */}
+                                {selectedRequest.documents?.pan && (
+                                    <DocumentItem
+                                        label="PAN Card"
+                                        value={selectedRequest.documents.pan.number}
+                                        isVerified={selectedRequest.documents.pan.verified}
+                                    />
+                                )}
+                                {/* GSTIN */}
+                                {selectedRequest.documents?.gstin && (
+                                    <DocumentItem
+                                        label="GST Certificate"
+                                        value={selectedRequest.documents.gstin.number}
+                                        isVerified={selectedRequest.documents.gstin.verified}
+                                    />
+                                )}
+                                {/* Bank Account */}
+                                {selectedRequest.documents?.bankAccount && (
+                                    <DocumentItem
+                                        label="Bank Account"
+                                        value={selectedRequest.documents.bankAccount.accountNumber}
+                                        isVerified={selectedRequest.documents.bankAccount.verified}
+                                    />
+                                )}
+                                {/* Aadhaar */}
+                                {selectedRequest.documents?.aadhaar && (
+                                    <DocumentItem
+                                        label="Aadhaar Card"
+                                        value={selectedRequest.documents.aadhaar.number}
+                                        isVerified={selectedRequest.documents.aadhaar.verified}
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -356,12 +358,14 @@ export function KycClient() {
                                 variant="outline"
                                 className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)]"
                                 onClick={handleReject}
+                                disabled={rejectKYC.isPending}
                             >
                                 <XCircle className="w-4 h-4 mr-2" /> Reject
                             </Button>
                             <Button
                                 className="bg-[var(--success)] hover:bg-[var(--success)]/90 text-white"
                                 onClick={handleApprove}
+                                disabled={verifyKYC.isPending}
                             >
                                 <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
                             </Button>
@@ -371,4 +375,27 @@ export function KycClient() {
             </Modal>
         </div>
     );
+}
+
+function DocumentItem({ label, value, isVerified }: { label: string, value: string, isVerified: boolean }) {
+    return (
+        <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group">
+            <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[var(--info-bg)] text-[var(--info)]">
+                    <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                    <span className="text-sm font-medium text-[var(--text-primary)] block">{label}</span>
+                    <span className="text-xs text-[var(--text-muted)] font-mono">{value}</span>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                {isVerified ? (
+                    <Badge variant="success" size="sm">Verified</Badge>
+                ) : (
+                    <Badge variant="warning" size="sm">Pending</Badge>
+                )}
+            </div>
+        </div>
+    )
 }

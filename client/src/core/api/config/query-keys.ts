@@ -23,6 +23,8 @@
  * });
  */
 
+import { RateCalculationPayload } from "../hooks";
+
 // ============================================================================
 // Type Definitions
 // ============================================================================
@@ -64,6 +66,15 @@ export const queryKeys = {
   },
 
   // ========================================================================
+  // KYC DOMAIN
+  // ========================================================================
+  kyc: {
+    all: () => ['kyc'],
+    list: (params?: FilterParams) => ['kyc', 'list', params],
+    detail: (id: string) => ['kyc', 'detail', id],
+  },
+
+  // ========================================================================
   // ZONES DOMAIN
   // ========================================================================
   zones: {
@@ -81,6 +92,15 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.couriers.all(), 'detail', id] as const,
     performance: (id: string, filters?: any) => [...queryKeys.couriers.detail(id), 'performance', filters] as const,
     services: (id: string) => [...queryKeys.couriers.detail(id), 'services'] as const,
+  },
+
+  // ========================================================================
+  // RATE CARDS DOMAIN
+  // ========================================================================
+  rateCards: {
+    all: () => ['rateCards', 'all'],
+    detail: (id: string) => ['rateCards', 'detail', id],
+    calculate: (payload: any) => ['rateCards', 'calculate', JSON.stringify(payload)],
   },
 
   // ========================================================================
@@ -193,8 +213,6 @@ export const queryKeys = {
     emailQueueFailed: () => ['admin-ops', 'email-queue', 'failed'],
     emailQueueRecent: () => ['admin-ops', 'email-queue', 'recent'],
   },
-
-
 
   // ========================================================================
   // WAREHOUSES DOMAIN
@@ -387,6 +405,19 @@ export const queryKeys = {
     apiKeys: () => ['settings', 'api-keys'],
     platform: () => ['settings', 'platform'] as const,
     featureFlags: () => ['settings', 'features'] as const,
+    carriers: () => ['settings', 'carriers'] as const,
+    company: (companyid: string) => ['settings', 'company'] as const,
+    warehouses: () => ['settings', 'warehouses'] as const,
+    packingStations: () => ['settings', 'packing-stations'] as const,
+    pickLists: () => ['settings', 'pick-lists'] as const,
+    inventory: () => ['settings', 'inventory'] as const,
+    communication: () => ['settings', 'communication'] as const,
+    fraud: () => ['settings', 'fraud'] as const,
+    emailQueue: () => ['settings', 'email-queue'] as const,
+    whatsapp: () => ['settings', 'whatsapp'] as const,
+    invoices: () => ['settings', 'invoices'] as const,
+    marketing: () => ['settings', 'marketing'] as const,
+    
   },
 
   // ========================================================================
@@ -419,6 +450,8 @@ export const queryKeys = {
     analytics: (filters?: any) => ['rto', 'analytics', filters],
     detail: (id: string) => ['rto', 'detail', id],
   },
+
+
 };
 
 // ============================================================================

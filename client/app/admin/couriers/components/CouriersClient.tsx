@@ -1,134 +1,56 @@
 "use client";
 export const dynamic = "force-dynamic";
-
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import {
     Truck,
-    Plus,
     Search,
-    Edit2,
-    Trash2,
-    ToggleLeft,
-    ToggleRight,
-    Settings,
-    Package,
-    X,
-    CheckCircle,
+    RotateCw,
     AlertCircle,
-    Globe,
-    Zap
+    CheckCircle,
 } from 'lucide-react';
+import { useCarriers } from '@/src/core/api/hooks/logistics/useCarriers';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 import { cn } from '@/src/lib/utils';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-
-// Mock couriers data
-const mockCouriers = [
-    {
-        id: 'COUR-001',
-        name: 'Delhivery',
-        code: 'delhivery',
-        logo: 'DE',
-        status: 'active',
-        services: ['Surface', 'Express', 'Lite'],
-        zones: ['Pan India', 'Metro', 'Tier 2'],
-        apiIntegrated: true,
-        pickupEnabled: true,
-        codEnabled: true,
-        trackingEnabled: true,
-        totalShipments: 12450,
-        avgDeliveryTime: '4.2 days',
-        successRate: 94.5,
-    },
-    {
-        id: 'COUR-002',
-        name: 'Xpressbees',
-        code: 'xpressbees',
-        logo: 'XB',
-        status: 'active',
-        services: ['Surface', 'Express', 'Premium'],
-        zones: ['Pan India', 'Metro'],
-        apiIntegrated: true,
-        pickupEnabled: true,
-        codEnabled: true,
-        trackingEnabled: true,
-        totalShipments: 8920,
-        avgDeliveryTime: '3.8 days',
-        successRate: 92.8,
-    },
-    {
-        id: 'COUR-003',
-        name: 'DTDC',
-        code: 'dtdc',
-        logo: 'DT',
-        status: 'active',
-        services: ['Ground', 'Priority', 'Lite'],
-        zones: ['Pan India'],
-        apiIntegrated: true,
-        pickupEnabled: true,
-        codEnabled: true,
-        trackingEnabled: true,
-        totalShipments: 6340,
-        avgDeliveryTime: '5.1 days',
-        successRate: 89.2,
-    },
-    {
-        id: 'COUR-004',
-        name: 'Bluedart',
-        code: 'bluedart',
-        logo: 'BD',
-        status: 'active',
-        services: ['Air Express', 'Ground Express', 'Economy'],
-        zones: ['Pan India', 'Premium Cities'],
-        apiIntegrated: true,
-        pickupEnabled: true,
-        codEnabled: true,
-        trackingEnabled: true,
-        totalShipments: 4560,
-        avgDeliveryTime: '2.5 days',
-        successRate: 96.8,
-    },
-    {
-        id: 'COUR-005',
-        name: 'Ecom Express',
-        code: 'ecom',
-        logo: 'EC',
-        status: 'inactive',
-        services: ['Surface', 'Express'],
-        zones: ['Pan India'],
-        apiIntegrated: false,
-        pickupEnabled: false,
-        codEnabled: true,
-        trackingEnabled: true,
-        totalShipments: 0,
-        avgDeliveryTime: '-',
-        successRate: 0,
-    },
-];
 
 export function CouriersClient() {
     const [searchQuery, setSearchQuery] = useState('');
-    const [showAddForm, setShowAddForm] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
     const { addToast } = useToast();
 
-    const filteredCouriers = mockCouriers.filter(courier => {
-        const matchesSearch = courier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            courier.code.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || courier.status === selectedStatus;
+    // Integration: Fetch real carriers
+    const { data: carriers = [], isLoading, isError, error, refetch } = useCarriers();
+
+    // Handle error
+    if (isError) {
+        // We can check if error has a 'message' property or custom structure
+        // Assuming ApiError structure or generic Error
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+
+        return (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+                <AlertCircle className="h-10 w-10 text-[var(--error)] mb-2" />
+                <h3 className="text-lg font-medium text-[var(--text-primary)]">Failed to load carriers</h3>
+                <p className="text-[var(--text-secondary)] mb-4">{errorMessage}</p>
+                <Button onClick={() => refetch()} variant="outline">Retry</Button>
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return <Loader centered size="lg" message="Loading carriers..." />;
+    }
+
+    const filteredCouriers = carriers.filter(carrier => {
+        const matchesSearch = carrier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            carrier.code.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = selectedStatus === 'all' || carrier.status === selectedStatus;
         return matchesSearch && matchesStatus;
     });
-
-    const toggleCourierStatus = (courierId: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-        addToast(`Courier ${newStatus === 'active' ? 'activated' : 'deactivated'}!`, 'success');
-    };
-
-    const activeCouriers = mockCouriers.filter(c => c.status === 'active').length;
-    const totalShipments = mockCouriers.reduce((sum, c) => sum + c.totalShipments, 0);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -140,188 +62,69 @@ export function CouriersClient() {
                         Courier Partners
                     </h1>
                     <p className="text-sm mt-1 text-[var(--text-secondary)]">
-                        Manage courier integrations and services
+                        Manage your shipping partners and configurations
                     </p>
                 </div>
-                <Button onClick={() => setShowAddForm(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Courier
+                <Button variant="outline" onClick={() => {
+                    addToast('Syncing carriers...', 'info');
+                    refetch();
+                }}>
+                    <RotateCw className="h-4 w-4 mr-2" />
+                    Sync Partners
                 </Button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Total Couriers</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockCouriers.length}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
-                                <Truck className="h-5 w-5 text-[var(--primary-blue)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Active</p>
-                                <p className="text-2xl font-bold text-[var(--success)]">{activeCouriers}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
-                                <CheckCircle className="h-5 w-5 text-[var(--success)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Total Shipments</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{totalShipments.toLocaleString()}</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--info-bg)]">
-                                <Package className="h-5 w-5 text-[var(--info)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Avg. Delivery Rate</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">93.5%</p>
-                            </div>
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
-                                <Zap className="h-5 w-5 text-[var(--warning)]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Add Courier Form */}
-            {showAddForm && (
-                <Card className="border-[var(--primary-blue-soft)] bg-[var(--bg-primary)]">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="text-lg text-[var(--text-primary)]">Add New Courier Partner</CardTitle>
-                            <CardDescription className="text-[var(--text-secondary)]">Configure a new courier integration</CardDescription>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => setShowAddForm(false)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)]">Courier Name *</label>
-                                <Input placeholder="e.g., Delhivery" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)]">Courier Code *</label>
-                                <Input placeholder="e.g., delhivery" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)]">Status</label>
-                                <select className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-active)]">
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)]">API Key</label>
-                                <Input type="password" placeholder="API Key (if available)" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)]">API Secret</label>
-                                <Input type="password" placeholder="API Secret (if available)" />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" defaultChecked />
-                                <span className="text-sm text-[var(--text-primary)]">COD Enabled</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" defaultChecked />
-                                <span className="text-sm text-[var(--text-primary)]">Pickup Enabled</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" defaultChecked />
-                                <span className="text-sm text-[var(--text-primary)]">Tracking Enabled</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="rounded border-[var(--border-subtle)]" />
-                                <span className="text-sm text-[var(--text-primary)]">API Integrated</span>
-                            </label>
-                        </div>
-
-                        <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
-                            <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                            <Button onClick={() => {
-                                addToast('Courier added successfully!', 'success');
-                                setShowAddForm(false);
-                            }}>
-                                Add Courier
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                    <Input
-                        placeholder="Search couriers..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        icon={<Search className="h-4 w-4" />}
-                    />
-                </div>
-                <div className="flex gap-2">
-                    {(['all', 'active', 'inactive'] as const).map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setSelectedStatus(status)}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
-                                selectedStatus === status
-                                    ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
-                                    : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                            )}
-                        >
-                            {status}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="flex-1">
+                            <Input
+                                placeholder="Search couriers..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                icon={<Search className="h-4 w-4" />}
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            {(['all', 'active', 'inactive'] as const).map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setSelectedStatus(status)}
+                                    className={cn(
+                                        "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
+                                        selectedStatus === status
+                                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                                            : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                    )}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Couriers Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredCouriers.map((courier) => (
-                    <Card key={courier.id} className="hover:shadow-lg transition-all">
+                    <Card
+                        key={courier.id}
+                        className="hover:shadow-lg transition-all group cursor-pointer"
+                        onClick={() => addToast(`Viewing ${courier.name} details...`, 'info')}
+                    >
                         <CardContent className="p-5">
                             <div className="space-y-4">
-                                {/* Header */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
-                                            {courier.logo}
+                                        <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center font-bold text-[var(--text-secondary)]">
+                                            {/* Logo placeholder or image logic if available */}
+                                            {courier.name.slice(0, 2).toUpperCase()}
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-[var(--text-primary)]">{courier.name}</h3>
-                                            <code className="text-xs text-[var(--text-secondary)]">{courier.code}</code>
+                                            <p className="text-xs text-[var(--text-secondary)] capitalize">{courier.code}</p>
                                         </div>
                                     </div>
                                     <Badge variant={courier.status === 'active' ? 'success' : 'neutral'}>
@@ -329,92 +132,32 @@ export function CouriersClient() {
                                     </Badge>
                                 </div>
 
-                                {/* Services */}
-                                <div>
-                                    <p className="text-xs mb-2 text-[var(--text-secondary)]">Services</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {courier.services.map((service) => (
-                                            <Badge key={service} variant="outline" className="text-xs">
-                                                {service}
-                                            </Badge>
-                                        ))}
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="bg-[var(--bg-secondary)] p-3 rounded-lg">
+                                        <p className="text-xs text-[var(--text-muted)] mb-1">Services</p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {courier.services.map((s, idx) => (
+                                                <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0">{s}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="bg-[var(--bg-secondary)] p-3 rounded-lg">
+                                        <p className="text-xs text-[var(--text-muted)] mb-1">Features</p>
+                                        <div className="flex flex-col gap-1 text-xs">
+                                            {courier.codEnabled && <span className="flex items-center gap-1 text-[var(--success)]"><CheckCircle className="h-3 w-3" /> COD</span>}
+                                            {courier.trackingEnabled && <span className="flex items-center gap-1 text-[var(--info)]"><CheckCircle className="h-3 w-3" /> Tracking</span>}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Features */}
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div className="flex items-center gap-2">
-                                        {courier.apiIntegrated ? (
-                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
-                                        ) : (
-                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
-                                        )}
-                                        <span className={courier.apiIntegrated ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>API</span>
+                                <div className="pt-3 border-t border-[var(--border-subtle)] grid grid-cols-2 gap-4 text-xs">
+                                    <div>
+                                        <p className="text-[var(--text-muted)]">Max Weight</p>
+                                        <p className="font-medium text-[var(--text-primary)]">{courier.weightLimit || '-'} kg</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {courier.codEnabled ? (
-                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
-                                        ) : (
-                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
-                                        )}
-                                        <span className={courier.codEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>COD</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {courier.pickupEnabled ? (
-                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
-                                        ) : (
-                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
-                                        )}
-                                        <span className={courier.pickupEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>Pickup</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {courier.trackingEnabled ? (
-                                            <CheckCircle className="h-4 w-4 text-[var(--success)]" />
-                                        ) : (
-                                            <AlertCircle className="h-4 w-4 text-[var(--text-muted)]" />
-                                        )}
-                                        <span className={courier.trackingEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>Tracking</span>
-                                    </div>
-                                </div>
-
-                                {/* Stats */}
-                                {courier.status === 'active' && (
-                                    <div className="rounded-lg p-3 grid grid-cols-3 gap-2 text-center bg-[var(--bg-secondary)]">
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Shipments</p>
-                                            <p className="text-sm font-semibold text-[var(--text-primary)]">{courier.totalShipments.toLocaleString()}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Avg. TAT</p>
-                                            <p className="text-sm font-semibold text-[var(--text-primary)]">{courier.avgDeliveryTime}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Success</p>
-                                            <p className="text-sm font-semibold text-[var(--success)]">{courier.successRate}%</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Actions */}
-                                <div className="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => toggleCourierStatus(courier.id, courier.status)}
-                                    >
-                                        {courier.status === 'active' ? (
-                                            <><ToggleRight className="h-4 w-4 mr-1 text-[var(--success)]" /> Active</>
-                                        ) : (
-                                            <><ToggleLeft className="h-4 w-4 mr-1 text-[var(--text-muted)]" /> Inactive</>
-                                        )}
-                                    </Button>
-                                    <div className="flex gap-1">
-                                        <Button variant="ghost" size="sm" onClick={() => addToast('Opening settings...', 'info')}>
-                                            <Settings className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" onClick={() => addToast('Opening editor...', 'info')}>
-                                            <Edit2 className="h-4 w-4" />
-                                        </Button>
+                                    <div>
+                                        <p className="text-[var(--text-muted)]">COD Limit</p>
+                                        <p className="font-medium text-[var(--text-primary)]">₹{courier.codLimit ? courier.codLimit.toLocaleString() : '-'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -429,11 +172,7 @@ export function CouriersClient() {
                     <CardContent className="py-12 text-center">
                         <Truck className="h-12 w-12 mx-auto mb-4 text-[var(--text-muted)]" />
                         <h3 className="text-lg font-medium text-[var(--text-primary)]">No couriers found</h3>
-                        <p className="mt-1 text-[var(--text-secondary)]">Try adjusting your search or add a new courier</p>
-                        <Button className="mt-4" onClick={() => setShowAddForm(true)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Courier
-                        </Button>
+                        <p className="mt-1 text-[var(--text-secondary)]">Try adjusting your search criteria</p>
                     </CardContent>
                 </Card>
             )}

@@ -20,6 +20,7 @@ import shipmentRoutes from './shipping/shipment.routes';
 import analyticsRoutes from './system/analytics.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
+import carrierRoutes from './shipping/carrier.routes';
 // Webhook routes
 import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
 import shopifyWebhookRoutes from './webhooks/shopify.routes';
@@ -80,6 +81,7 @@ router.use('/shipments', shipmentRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
+router.use('/admin/carriers', carrierRoutes);
 // Webhook routes (platform-specific, HMAC verified)
 router.use('/webhooks/velocity', velocityWebhookRoutes);
 router.use('/webhooks/shopify', shopifyWebhookRoutes);
@@ -144,6 +146,10 @@ router.use('/fraud', fraudRoutes);
 
 // Phase 4: General Dispute Resolution System
 router.use('/disputes', disputeRoutes);
+
+// Phase 4: Support Tickets
+import supportRoutes from './support/support.routes';
+router.use('/support', supportRoutes);
 
 // Admin: User Management (Super Admin Only)
 router.use('/admin/users', userManagementRoutes);

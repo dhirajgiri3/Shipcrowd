@@ -2,10 +2,15 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
-import { Button } from '@/src/components/ui/core/Button';
-import { Input } from '@/src/components/ui/core/Input';
-import { Badge } from '@/src/components/ui/core/Badge';
+import {
+    Card, CardContent, CardHeader, CardTitle, CardDescription,
+    Button,
+    Input,
+    Badge,
+    Skeleton,
+    CardSkeleton,
+    Loader
+} from '@/src/components/ui';
 import {
     MapPin,
     Plus,
@@ -21,74 +26,103 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-
-// Mock pickup addresses
-const mockAddresses = [
-    {
-        id: '1',
-        name: 'Main Warehouse',
-        contactPerson: 'Rahul Sharma',
-        phone: '+91 98765 43210',
-        addressLine1: '123, Industrial Area, Phase 2',
-        addressLine2: 'Near Metro Station',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        isDefault: true,
-        isVerified: true,
-    },
-    {
-        id: '2',
-        name: 'Office Address',
-        contactPerson: 'Priya Singh',
-        phone: '+91 87654 32109',
-        addressLine1: '456, Tech Park, Tower B',
-        addressLine2: 'Whitefield',
-        city: 'Bangalore',
-        state: 'Karnataka',
-        pincode: '560066',
-        isDefault: false,
-        isVerified: true,
-    },
-    {
-        id: '3',
-        name: 'Secondary Warehouse',
-        contactPerson: 'Amit Kumar',
-        phone: '+91 76543 21098',
-        addressLine1: '789, Sector 18',
-        addressLine2: 'Near DLF Mall',
-        city: 'Noida',
-        state: 'Uttar Pradesh',
-        pincode: '201301',
-        isDefault: false,
-        isVerified: false,
-    },
-];
+import { useWarehouses, useCreateWarehouse, useDeleteWarehouse, useUpdateWarehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
 
 export function PickupAddressesClient() {
-    const [addresses, setAddresses] = useState(mockAddresses);
     const [showAddForm, setShowAddForm] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { addToast } = useToast();
 
+    // Queries
+    const { data: addresses = [], isLoading } = useWarehouses();
+    const createWarehouse = useCreateWarehouse();
+    const deleteWarehouse = useDeleteWarehouse();
+    const updateWarehouse = useUpdateWarehouse();
+
+    // Form State
+    const [formData, setFormData] = useState({
+        name: '',
+        contactPerson: '',
+        phone: '',
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        state: '',
+        pincode: '',
+        isDefault: false
+    });
+
     const filteredAddresses = addresses.filter(addr =>
         addr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        addr.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        addr.pincode.includes(searchQuery)
+        addr.address.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        addr.address.postalCode.includes(searchQuery)
     );
 
     const setAsDefault = (id: string) => {
-        setAddresses(prev => prev.map(addr => ({
-            ...addr,
-            isDefault: addr.id === id
-        })));
-        addToast('Default address updated!', 'success');
+        updateWarehouse.mutate({
+            warehouseId: id,
+            data: { isDefault: true }
+        });
     };
 
-    const deleteAddress = (id: string) => {
-        setAddresses(prev => prev.filter(addr => addr.id !== id));
-        addToast('Address deleted successfully!', 'success');
+    const handleDelete = (id: string) => {
+        if (confirm('Are you sure you want to delete this address?')) {
+            deleteWarehouse.mutate(id);
+        }
     };
+
+    const handleSave = () => {
+        // Basic validation
+        if (!formData.name || !formData.contactPerson || !formData.phone || !formData.addressLine1 || !formData.city || !formData.state || !formData.pincode) {
+            addToast('Please fill all required fields', 'error');
+            return;
+        }
+
+        createWarehouse.mutate({
+            name: formData.name,
+            contactInfo: {
+                name: formData.contactPerson,
+                phone: formData.phone,
+            },
+            address: {
+                line1: formData.addressLine1,
+                line2: formData.addressLine2,
+                city: formData.city,
+                state: formData.state,
+                country: 'India',
+                postalCode: formData.pincode,
+            },
+            isDefault: formData.isDefault
+        }, {
+            onSuccess: () => {
+                setShowAddForm(false);
+                setFormData({
+                    name: '',
+                    contactPerson: '',
+                    phone: '',
+                    addressLine1: '',
+                    addressLine2: '',
+                    city: '',
+                    state: '',
+                    pincode: '',
+                    isDefault: false
+                });
+            }
+        });
+    };
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-8 w-48" />
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[1, 2, 3].map(i => (
+                        <CardSkeleton key={i} className="h-48" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -141,56 +175,99 @@ export function PickupAddressesClient() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Address Name *</label>
-                                <Input placeholder="e.g., Main Warehouse" />
+                                <Input
+                                    placeholder="e.g., Main Warehouse"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Contact Person *</label>
-                                <Input placeholder="Full name" />
+                                <Input
+                                    placeholder="Full name"
+                                    value={formData.contactPerson}
+                                    onChange={e => setFormData({ ...formData, contactPerson: e.target.value })}
+                                />
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--text-primary)]">Phone Number *</label>
-                            <Input placeholder="+91 98765 43210" />
+                            <Input
+                                placeholder="+91 98765 43210"
+                                value={formData.phone}
+                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--text-primary)]">Address Line 1 *</label>
-                            <Input placeholder="Building, Street, Area" />
+                            <Input
+                                placeholder="Building, Street, Area"
+                                value={formData.addressLine1}
+                                onChange={e => setFormData({ ...formData, addressLine1: e.target.value })}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--text-primary)]">Address Line 2</label>
-                            <Input placeholder="Landmark (Optional)" />
+                            <Input
+                                placeholder="Landmark (Optional)"
+                                value={formData.addressLine2}
+                                onChange={e => setFormData({ ...formData, addressLine2: e.target.value })}
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">City *</label>
-                                <Input placeholder="City" />
+                                <Input
+                                    placeholder="City"
+                                    value={formData.city}
+                                    onChange={e => setFormData({ ...formData, city: e.target.value })}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">State *</label>
-                                <Input placeholder="State" />
+                                <Input
+                                    placeholder="State"
+                                    value={formData.state}
+                                    onChange={e => setFormData({ ...formData, state: e.target.value })}
+                                />
                             </div>
                             <div className="space-y-2 col-span-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Pincode *</label>
-                                <Input placeholder="6-digit pincode" maxLength={6} />
+                                <Input
+                                    placeholder="6-digit pincode"
+                                    maxLength={6}
+                                    value={formData.pincode}
+                                    onChange={e => setFormData({ ...formData, pincode: e.target.value })}
+                                />
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 pt-2">
-                            <input type="checkbox" id="setDefault" className="h-4 w-4 rounded border-[var(--border-subtle)] text-[var(--primary-blue)]" />
+                            <input
+                                type="checkbox"
+                                id="setDefault"
+                                className="h-4 w-4 rounded border-[var(--border-subtle)] text-[var(--primary-blue)]"
+                                checked={formData.isDefault}
+                                onChange={e => setFormData({ ...formData, isDefault: e.target.checked })}
+                            />
                             <label htmlFor="setDefault" className="text-sm text-[var(--text-secondary)]">Set as default pickup address</label>
                         </div>
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                            <Button onClick={() => {
-                                addToast('Address added successfully!', 'success');
-                                setShowAddForm(false);
-                            }}>
-                                Save Address
+                            <Button onClick={handleSave} disabled={createWarehouse.isPending}>
+                                {createWarehouse.isPending ? (
+                                    <>
+                                        <Loader variant="spinner" size="sm" className="mr-2 border-[var(--text-on-primary)] border-t-transparent" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Address'
+                                )}
                             </Button>
                         </div>
                     </CardContent>
@@ -200,7 +277,7 @@ export function PickupAddressesClient() {
             {/* Address Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredAddresses.map((address) => (
-                    <Card key={address.id} className={cn(
+                    <Card key={address._id} className={cn(
                         "relative overflow-hidden transition-all hover:shadow-md",
                         address.isDefault && "ring-2 ring-[var(--primary-blue)] ring-offset-2"
                     )}>
@@ -221,14 +298,10 @@ export function PickupAddressesClient() {
                                         <div>
                                             <h3 className="font-semibold text-[var(--text-primary)]">{address.name}</h3>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                {address.isVerified ? (
-                                                    <Badge variant="success" className="text-xs gap-1">
-                                                        <CheckCircle className="h-3 w-3" />
-                                                        Verified
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="warning" className="text-xs">Pending Verification</Badge>
-                                                )}
+                                                <Badge variant={address.isActive ? "success" : "warning"} className="text-xs gap-1">
+                                                    <CheckCircle className="h-3 w-3" />
+                                                    {address.isActive ? "Active" : "Inactive"}
+                                                </Badge>
                                             </div>
                                         </div>
                                     </div>
@@ -238,20 +311,20 @@ export function PickupAddressesClient() {
                                 <div className="space-y-2 text-sm">
                                     <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                                         <User className="h-4 w-4 text-[var(--text-muted)]" />
-                                        {address.contactPerson}
+                                        {address.contactInfo.name}
                                     </div>
                                     <div className="flex items-center gap-2 text-[var(--text-secondary)]">
                                         <Phone className="h-4 w-4 text-[var(--text-muted)]" />
-                                        {address.phone}
+                                        {address.contactInfo.phone}
                                     </div>
                                 </div>
 
                                 {/* Address */}
                                 <div className="text-sm text-[var(--text-secondary)] bg-[var(--bg-secondary)] rounded-lg p-3">
-                                    <p>{address.addressLine1}</p>
-                                    {address.addressLine2 && <p>{address.addressLine2}</p>}
+                                    <p>{address.address.line1}</p>
+                                    {address.address.line2 && <p>{address.address.line2}</p>}
                                     <p className="font-medium text-[var(--text-primary)] mt-1">
-                                        {address.city}, {address.state} - {address.pincode}
+                                        {address.address.city}, {address.address.state} - {address.address.postalCode}
                                     </p>
                                 </div>
 
@@ -266,14 +339,14 @@ export function PickupAddressesClient() {
                                             variant="ghost"
                                             size="sm"
                                             className="text-[var(--error)] hover:text-[var(--error-dark)] hover:bg-[var(--error-bg)]"
-                                            onClick={() => deleteAddress(address.id)}
+                                            onClick={() => handleDelete(address._id)}
                                         >
                                             <Trash2 className="h-4 w-4 mr-1" />
                                             Delete
                                         </Button>
                                     </div>
                                     {!address.isDefault && (
-                                        <Button variant="outline" size="sm" onClick={() => setAsDefault(address.id)}>
+                                        <Button variant="outline" size="sm" onClick={() => setAsDefault(address._id)}>
                                             Set Default
                                         </Button>
                                     )}

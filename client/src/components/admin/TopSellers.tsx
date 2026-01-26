@@ -16,16 +16,7 @@ interface TopSellersProps {
 }
 
 export function TopSellers({ data = [] }: TopSellersProps) {
-    // Mock data fallback if no real data is provided
-    const displayData = data.length > 0 ? data : [
-        { companyId: 'm1', companyName: 'Fashion Hub India', totalOrders: 1245, totalRevenue: 4500000, pendingOrders: 45, deliveredOrders: 1200 },
-        { companyId: 'm2', companyName: 'TechGadgets Pro', totalOrders: 980, totalRevenue: 8500000, pendingOrders: 12, deliveredOrders: 968 },
-        { companyId: 'm3', companyName: 'Organic Essentials', totalOrders: 850, totalRevenue: 1200000, pendingOrders: 85, deliveredOrders: 765 },
-        { companyId: 'm4', companyName: 'Home Decor Plus', totalOrders: 620, totalRevenue: 2100000, pendingOrders: 20, deliveredOrders: 600 },
-        { companyId: 'm5', companyName: 'Urban Style', totalOrders: 540, totalRevenue: 980000, pendingOrders: 15, deliveredOrders: 525 }
-    ];
-
-    if (!displayData.length) {
+    if (!data.length) {
         return (
             <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-3xl overflow-hidden flex flex-col h-[400px] shadow-sm animate-fade-in stagger-6 p-6 flex items-center justify-center text-[var(--text-muted)]">
                 No seller data available
@@ -47,7 +38,7 @@ export function TopSellers({ data = [] }: TopSellersProps) {
                     </div>
                 </div>
                 <Link
-                    href="/admin/sellers"
+                    href="/admin/users?role=seller"
                     className="flex items-center gap-1 text-xs font-bold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] bg-[var(--primary-blue-soft)] hover:bg-[var(--primary-blue-soft)]/80 px-3 py-1.5 rounded-lg transition-all duration-200 group"
                 >
                     View All
@@ -58,9 +49,10 @@ export function TopSellers({ data = [] }: TopSellersProps) {
             {/* List */}
             <div className="flex-1 overflow-auto p-2">
                 <div className="space-y-1">
-                    {displayData.map((seller, index) => {
+                    {data.map((seller, index) => {
                         const rank = index + 1;
                         // Calculate success rate as a proxy for growth/health
+                        // Fallback to 0/100 if data missing to avoid weird UI, or just hide
                         const successRate = seller.totalOrders > 0
                             ? Math.round((seller.deliveredOrders / seller.totalOrders) * 100)
                             : 0;
@@ -103,14 +95,19 @@ export function TopSellers({ data = [] }: TopSellersProps) {
 
                                 {/* Metrics */}
                                 <div className="text-right hidden sm:block">
-                                    <p className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(seller.totalRevenue)}</p>
-                                    <div className={cn(
-                                        "flex items-center justify-end gap-1 text-[10px] font-bold",
-                                        successRate >= 80 ? "text-[var(--success)]" : "text-[var(--warning)]"
-                                    )}>
-                                        {successRate >= 80 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                                        {successRate}% SR
-                                    </div>
+                                    {/* Hide revenue if 0 to avoid showing misleading data */}
+                                    {seller.totalRevenue > 0 && (
+                                        <p className="font-bold text-[var(--text-primary)] text-sm">{formatCurrency(seller.totalRevenue)}</p>
+                                    )}
+                                    {seller.totalOrders > 0 && seller.deliveredOrders > 0 && (
+                                        <div className={cn(
+                                            "flex items-center justify-end gap-1 text-[10px] font-bold",
+                                            successRate >= 80 ? "text-[var(--success)]" : "text-[var(--warning)]"
+                                        )}>
+                                            {successRate >= 80 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                            {successRate}% SR
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Production optimizations
   reactStrictMode: true,
+  output: "standalone",
 
   // Compiler optimizations
   compiler: {

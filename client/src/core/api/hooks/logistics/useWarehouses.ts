@@ -190,18 +190,37 @@ export const useUpdateWarehouse = (options?: UseMutationOptions<any, ApiError, {
 /**
  * Delete warehouse
  */
-export const useDeleteWarehouse = (options?: UseMutationOptions<void, ApiError, string>) => {
+export const useDeleteWarehouse = (options?: UseMutationOptions<void, ApiError, string, { previousWarehouses?: Warehouse[] }>) => {
     const queryClient = useQueryClient();
 
-    return useMutation<void, ApiError, string>({
-        mutationFn: async (warehouseId) => {
-            await apiClient.delete(`/warehouses/${warehouseId}`);
+    return useMutation<void, ApiError, string, { previousWarehouses?: Warehouse[] }>({
+        mutationFn: async (id) => {
+            await apiClient.delete(`/warehouses/${id}`);
+        },
+        onMutate: async (deletedId) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.warehouses.all() });
+            const previousWarehouses = queryClient.getQueryData<Warehouse[]>(queryKeys.warehouses.all());
+
+            if (previousWarehouses) {
+                queryClient.setQueryData<Warehouse[]>(
+                    queryKeys.warehouses.all(),
+                    previousWarehouses.filter(w => w._id !== deletedId)
+                );
+            }
+            return { previousWarehouses };
+        },
+        onError: (err, newTodo, context) => {
+            if (context?.previousWarehouses) {
+                queryClient.setQueryData(queryKeys.warehouses.all(), context.previousWarehouses);
+            }
+            handleApiError(err, 'Failed to delete warehouse');
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all() });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.warehouses.all() });
-            showSuccessToast('Warehouse deleted successfully');
+            showSuccessToast('Pickup address deleted successfully');
         },
-        onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });

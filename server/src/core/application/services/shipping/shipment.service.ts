@@ -247,6 +247,7 @@ export class ShipmentService {
             carrierOverride?: string;
             instructions?: string;
         };
+        pricingDetails?: any; // Added pricing details
     }): Promise<{
         shipment: any;
         carrierSelection: {
@@ -262,7 +263,7 @@ export class ShipmentService {
         try {
             session.startTransaction();
 
-            const { order, companyId, userId, payload } = args;
+            const { order, companyId, userId, payload, pricingDetails } = args;
 
             // Generate tracking number
             const trackingNumber = await this.getUniqueTrackingNumber();
@@ -379,6 +380,7 @@ export class ShipmentService {
                     shippingCost: selectedOption.rate,
                     currency: 'INR',
                 },
+                pricingDetails, // Store pricing breakdown
                 currentStatus: 'created',
                 estimatedDelivery,
             });

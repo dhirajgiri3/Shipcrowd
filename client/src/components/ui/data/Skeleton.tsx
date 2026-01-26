@@ -31,9 +31,9 @@ export function Skeleton({ className, shimmer = true, delay = 0 }: SkeletonProps
 }
 
 // Skeleton for metric/stat cards
-export function CardSkeleton() {
+export function CardSkeleton({ className }: { className?: string }) {
     return (
-        <div className="bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-5">
+        <div className={cn("bg-[--card-background] border border-[--color-gray-200] rounded-[--radius-xl] p-5", className)}>
             <div className="flex items-center justify-between mb-4">
                 <Skeleton className="h-10 w-10 rounded-[--radius-lg]" />
                 <Skeleton className="h-6 w-16 rounded-[--radius-full]" />

@@ -15,6 +15,25 @@ import { showSuccessToast, handleApiError } from '@/src/lib/error';
 // ==================== QUERIES ====================
 
 /**
+ * Fetch all couriers
+ */
+export const useCouriers = (options?: UseQueryOptions<Courier[], ApiError>) => {
+    return useQuery<Courier[], ApiError>({
+        queryKey: queryKeys.couriers.all(),
+        queryFn: async () => {
+            const response = await apiClient.get<CourierDetailResponse>('/admin/couriers');
+            // Assuming response.data.data is an array of couriers
+            // If the endpoint is paginated, we might need to adjust this
+            return response.data.data as unknown as Courier[];
+        },
+        ...CACHE_TIMES.LONG,
+        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
+    });
+};
+
+
+/**
  * Fetch single courier by ID
  */
 export const useCourier = (id: string | undefined, options?: UseQueryOptions<Courier, ApiError>) => {

@@ -59,6 +59,21 @@ export interface IShipment extends Document {
     shippingCost: number;
     currency: string;
   };
+  pricingDetails?: {
+    rateCardId: mongoose.Types.ObjectId;
+    rateCardName: string;
+    baseRate: number;
+    weightCharge: number;
+    zoneCharge: number;
+    zone: string;
+    customerDiscount: number;
+    subtotal: number;
+    codCharge: number;
+    gstAmount: number;
+    totalPrice: number;
+    calculatedAt: Date;
+    calculationMethod: 'ratecard' | 'fallback' | 'override';
+  };
   statusHistory: Array<{
     status: string;
     timestamp: Date;
@@ -256,6 +271,27 @@ const ShipmentSchema = new Schema<IShipment>(
       currency: {
         type: String,
         default: 'INR',
+      },
+    },
+    pricingDetails: {
+      rateCardId: {
+        type: Schema.Types.ObjectId,
+        ref: 'RateCard',
+      },
+      rateCardName: String,
+      baseRate: Number,
+      weightCharge: Number,
+      zoneCharge: Number,
+      zone: String,
+      customerDiscount: Number,
+      subtotal: Number,
+      codCharge: Number,
+      gstAmount: Number,
+      totalPrice: Number,
+      calculatedAt: Date,
+      calculationMethod: {
+        type: String,
+        enum: ['ratecard', 'fallback', 'override'],
       },
     },
     statusHistory: {

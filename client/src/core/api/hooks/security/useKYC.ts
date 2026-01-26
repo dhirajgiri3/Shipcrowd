@@ -95,7 +95,6 @@ export const useVerifyKYC = (
             queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all() });
             showSuccessToast('KYC verified successfully');
         },
-        onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,
         onError: (error) => {
             handleApiError(error, 'KYC Verification Failed');

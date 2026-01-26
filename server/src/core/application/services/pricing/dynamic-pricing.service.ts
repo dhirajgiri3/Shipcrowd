@@ -27,6 +27,8 @@ export interface CalculatePricingInput {
     orderValue?: number; // for COD charge calculation
     carrier?: string; // default: 'velocity'
     serviceType?: string; // default: 'standard'
+    rateCardId?: string; // Optional: specific rate card to use
+    customerId?: string; // Optional: for customer-specific discounts
 }
 
 export interface PricingBreakdown {
@@ -47,6 +49,11 @@ export interface PricingBreakdown {
         carrierRate: number;
         zoneMultiplier: number;
         cached: boolean;
+        breakdown?: {
+            baseCharge: number;
+            weightCharge: number;
+            zoneCharge: number;
+        }
     };
 }
 
@@ -77,8 +84,7 @@ export class DynamicPricingService {
         // Step 2: Get RateCard (with cache)
         const rateCard = await this.getRateCardWithCache(
             input.companyId,
-            carrier,
-            serviceType
+            input.rateCardId
         );
 
         if (!rateCard) {
@@ -86,19 +92,33 @@ export class DynamicPricingService {
         }
 
         // Step 3: Calculate base shipping cost
-        const shippingCost = this.calculateShippingCost(
+        const costBreakdown = this.calculateShippingCost(
             rateCard,
             zone.zone,
             input.weight
         );
 
-        // Step 4: Calculate COD charges
+        // Step 4: Calculate Customer Discount
+        let discount = 0;
+        if (input.customerId) {
+            discount = this.calculateCustomerDiscount(
+                rateCard,
+                input.customerId,
+                costBreakdown.total,
+                carrier,
+                serviceType
+            );
+        }
+
+        const shippingCost = costBreakdown.total - discount;
+
+        // Step 5: Calculate COD charges
         const codCharge =
             input.paymentMode === 'cod' && input.orderValue
                 ? this.codService.calculateCODCharge(input.orderValue, rateCard)
                 : 0;
 
-        // Step 5: Calculate GST (on shipping + COD)
+        // Step 6: Calculate GST (on shipping + COD)
         const taxableAmount = shippingCost + codCharge;
         const gst = await this.calculateGST(
             taxableAmount,
@@ -106,7 +126,7 @@ export class DynamicPricingService {
             input.toPincode
         );
 
-        // Step 6: Calculate total
+        // Step 7: Calculate total
         const total = taxableAmount + gst.total;
 
         return {
@@ -119,7 +139,7 @@ export class DynamicPricingService {
                 igst: gst.igst,
                 total: gst.total,
             },
-            discount: 0,
+            discount,
             total,
             metadata: {
                 zone: zone.zone,
@@ -127,6 +147,11 @@ export class DynamicPricingService {
                 carrierRate: shippingCost,
                 zoneMultiplier: rateCard.zoneMultipliers?.[zone.zone] || 1.0,
                 cached: false, // Will be set by cache methods
+                breakdown: {
+                    baseCharge: costBreakdown.base,
+                    weightCharge: costBreakdown.weight,
+                    zoneCharge: costBreakdown.zone
+                }
             },
         };
     }
@@ -156,37 +181,55 @@ export class DynamicPricingService {
     }
 
     /**
-     * Get RateCard with Redis caching
+     * Get RateCard with caching (Simplified & Optimized)
+     * Strategy:
+     * 1. If ID provided -> Fetch by ID (Cache key: ratecard:id:{id})
+     * 2. If no ID -> Fetch Company Default (Cache key: ratecard:default:{companyId})
      */
     private async getRateCardWithCache(
         companyId: string,
-        carrier: string,
-        serviceType: string
+        rateCardId?: string
     ): Promise<any> {
-        // Try cache first
-        const cachedRateCard = await this.cacheService.getRateCard(
-            companyId,
-            carrier,
-            serviceType
-        );
-        if (cachedRateCard) {
-            logger.debug('[DynamicPricing] RateCard cache HIT');
-            return cachedRateCard;
+        // Strategy 1: Fetch by Specific ID
+        if (rateCardId) {
+            const cached = await this.cacheService.getRateCardById(rateCardId);
+            if (cached) {
+                logger.debug(`[DynamicPricing] RateCard ID cache HIT: ${rateCardId}`);
+                return cached;
+            }
+
+            logger.debug(`[DynamicPricing] RateCard ID cache MISS: ${rateCardId}`);
+            const rateCard = await RateCard.findOne({
+                _id: rateCardId,
+                companyId,
+                status: 'active',
+            }).lean();
+
+            if (rateCard) {
+                await this.cacheService.cacheRateCardById(rateCardId, rateCard);
+            }
+            return rateCard;
         }
 
-        // Cache miss - query database
-        logger.debug('[DynamicPricing] RateCard cache MISS');
+        // Strategy 2: Fetch Company Default
+        const cachedDefault = await this.cacheService.getDefaultRateCard(companyId);
+        if (cachedDefault) {
+            logger.debug(`[DynamicPricing] RateCard DEFAULT cache HIT: ${companyId}`);
+            return cachedDefault;
+        }
+
+        logger.debug(`[DynamicPricing] RateCard DEFAULT cache MISS: ${companyId}`);
+        // Fetch the active rate card. If multiple exist, usually the most recent logic applies.
+        // Ideally schema enforces one active, or we pick one.
         const rateCard = await RateCard.findOne({
             companyId,
             status: 'active',
-        }).lean();
+            isDeleted: false
+        }).sort({ updatedAt: -1 }).lean();
 
-        if (!rateCard) {
-            return null;
+        if (rateCard) {
+            await this.cacheService.cacheDefaultRateCard(companyId, rateCard);
         }
-
-        // Cache for future requests
-        await this.cacheService.cacheRateCard(companyId, carrier, serviceType, rateCard);
 
         return rateCard;
     }
@@ -198,7 +241,7 @@ export class DynamicPricingService {
         rateCard: any,
         zone: string,
         weight: number
-    ): number {
+    ): { total: number; base: number; weight: number; zone: number } {
         // Find matching base rate for weight
         const baseRateEntry = rateCard.baseRates?.find(
             (rate: any) => weight >= rate.minWeight && weight <= rate.maxWeight
@@ -215,19 +258,64 @@ export class DynamicPricingService {
 
             const baseRate = maxWeightRate.basePrice;
             const additionalWeight = weight - maxWeightRate.maxWeight;
-            const additionalCharge = additionalWeight * (rateCard.weightRules?.[0]?.pricePerKg || 18);
+            const weightCharge = additionalWeight * (rateCard.weightRules?.[0]?.pricePerKg || 18);
 
-            const rawRate = baseRate + additionalCharge;
+            const rawRate = baseRate + weightCharge;
             const zoneMultiplier = rateCard.zoneMultipliers?.[zone] || 1.0;
+            const zoneCharge = (rawRate * zoneMultiplier) - rawRate; // Implicit zone charge via multiplier
 
-            return Math.round(rawRate * zoneMultiplier * 100) / 100;
+            return {
+                total: Math.round(rawRate * zoneMultiplier * 100) / 100,
+                base: baseRate,
+                weight: weightCharge,
+                zone: Math.round(zoneCharge * 100) / 100
+            };
         }
 
         // Apply zone multiplier
         const baseRate = baseRateEntry.basePrice;
         const zoneMultiplier = rateCard.zoneMultipliers?.[zone] || 1.0;
+        const total = Math.round(baseRate * zoneMultiplier * 100) / 100;
+        const zoneCharge = total - baseRate;
 
-        return Math.round(baseRate * zoneMultiplier * 100) / 100;
+        return {
+            total,
+            base: baseRate,
+            weight: 0,
+            zone: Math.round(zoneCharge * 100) / 100
+        };
+    }
+
+    private calculateCustomerDiscount(
+        rateCard: any,
+        customerId: string,
+        amount: number,
+        carrier: string,
+        serviceType: string
+    ): number {
+        if (!rateCard.customerOverrides || rateCard.customerOverrides.length === 0) {
+            return 0;
+        }
+
+        // Find matching override (specific customer + carrier/service match)
+        const override = rateCard.customerOverrides.find((o: any) => {
+            const customerMatch = o.customerId && o.customerId.toString() === customerId;
+            // Strict match on carrier if provided in override
+            const carrierMatch = !o.carrier || o.carrier === carrier;
+            const serviceMatch = !o.serviceType || o.serviceType === serviceType;
+            return customerMatch && carrierMatch && serviceMatch;
+        });
+
+        if (!override) return 0;
+
+        let discount = 0;
+        if (override.discountPercentage) {
+            discount = (amount * override.discountPercentage) / 100;
+        } else if (override.flatDiscount) {
+            discount = override.flatDiscount;
+        }
+
+        return Math.round(discount * 100) / 100;
     }
 
     /**

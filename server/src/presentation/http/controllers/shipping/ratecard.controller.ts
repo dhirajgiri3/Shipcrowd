@@ -13,6 +13,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
 
 // Validation schemas
 const weightRuleSchema = z.object({
@@ -306,71 +307,33 @@ export const calculateRate = async (req: Request, res: Response, next: NextFunct
             throw new ValidationError('Validation failed', errors);
         }
 
-        const rateCard = await RateCard.findOne({
+        // Delegate to Pricing Orchestrator
+        // Note: Dimensions and orderValue are defaulted for the calculator if not provided
+        // ideally schema should allow optional or we use defaults suitable for estimation
+        const pricingResult = await PricingOrchestratorService.calculateShipmentPricing({
             companyId,
-            status: 'active',
-            isDeleted: false,
-        }).populate('zoneRules.zoneId', 'name postalCodes').lean();
-
-        if (!rateCard) {
-            throw new NotFoundError('No active rate card found', ErrorCode.RES_RATECARD_NOT_FOUND);
-        }
-
-        const weight = validation.data.weight;
-        const carrier = validation.data.carrier || 'Delhivery';
-        const serviceType = validation.data.serviceType;
-
-        const baseRate = rateCard.baseRates.find(
-            r =>
-                r.carrier.toLowerCase() === carrier.toLowerCase() &&
-                r.serviceType.toLowerCase() === serviceType &&
-                weight >= r.minWeight &&
-                weight <= r.maxWeight
-        );
-
-        let calculatedRate = baseRate?.basePrice || 50;
-
-        const weightRule = rateCard.weightRules.find(
-            r => weight >= r.minWeight && weight <= r.maxWeight
-        );
-
-        if (weightRule) {
-            calculatedRate += weight * weightRule.pricePerKg;
-        }
-
-        let zoneName = 'Unknown';
-        if (validation.data.destinationPincode && rateCard.zoneRules) {
-            const zone = await Zone.findOne({
-                companyId,
-                postalCodes: { $regex: `^${validation.data.destinationPincode.slice(0, 3)}` },
-                isDeleted: false,
-            }).lean();
-
-            if (zone) {
-                zoneName = zone.name;
-                const zoneId = (zone._id as mongoose.Types.ObjectId).toString();
-                const zoneRule = rateCard.zoneRules.find(
-                    r => r.zoneId.toString() === zoneId &&
-                        r.carrier.toLowerCase() === carrier.toLowerCase()
-                );
-
-                if (zoneRule) {
-                    calculatedRate += zoneRule.additionalPrice;
-                }
-            }
-        }
+            fromPincode: validation.data.originPincode || '110001', // Default origin if not supplied (though calculator usually supplies it)
+            toPincode: validation.data.destinationPincode || '',
+            weight: validation.data.weight,
+            dimensions: { length: 10, width: 10, height: 10 }, // Default dimensions for estimation
+            paymentMode: 'prepaid', // Default to prepaid for estimation
+            orderValue: 1000, // Default value for estimation (affects COD mostly)
+            carrier: validation.data.carrier,
+            serviceType: validation.data.serviceType,
+        });
 
         sendSuccess(res, {
-            rate: Math.round(calculatedRate * 100) / 100,
-            carrier,
-            serviceType,
-            weight,
-            zone: zoneName,
-            rateCardName: rateCard.name,
+            rate: pricingResult.totalPrice,
+            carrier: validation.data.carrier || 'Default',
+            serviceType: validation.data.serviceType,
+            weight: validation.data.weight,
+            zone: pricingResult.zone,
+            rateCardName: pricingResult.rateCardName,
             breakdown: {
-                base: baseRate?.basePrice || 50,
-                weightCharge: weightRule ? weight * weightRule.pricePerKg : 0,
-                zoneCharge: calculatedRate - (baseRate?.basePrice || 50) - (weightRule ? weight * weightRule.pricePerKg : 0),
+                base: pricingResult.baseRate,
+                weightCharge: pricingResult.weightCharge,
+                zoneCharge: pricingResult.zoneCharge,
+                tax: pricingResult.gstAmount
             },
         }, 'Rate calculated successfully');
     } catch (error) {
