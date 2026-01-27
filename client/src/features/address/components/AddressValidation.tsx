@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCityStateFromPincode, usePincodeServiceability } from '@/src/core/api/hooks/logistics/useAddress';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/http';
 import { MapPin, Search, AlertCircle, Check, Loader2, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';

@@ -263,8 +263,8 @@ export function NDRClient() {
                                     key={tab.id}
                                     onClick={() => setStatusFilter(tab.id)}
                                     className={`px-4 py-2 rounded-xl font-medium transition-all ${statusFilter === tab.id
-                                            ? 'bg-[var(--primary-blue)] text-white shadow-sm'
-                                            : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                                        ? 'bg-[var(--primary-blue)] text-white shadow-sm'
+                                        : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                                         }`}
                                 >
                                     {tab.label} <span className="ml-1.5 opacity-75">({tab.count})</span>

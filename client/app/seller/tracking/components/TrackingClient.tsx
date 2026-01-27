@@ -16,73 +16,29 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// Mock Tracking Data
-const mockTrackingData = {
-    awb: 'DL987654321IN',
-    status: 'In Transit',
-    estimatedDelivery: 'Dec 14, 2024',
-    origin: 'Mumbai, MH',
-    destination: 'New Delhi, DL',
-    courier: 'Delhivery',
-    history: [
-        {
-            status: 'Out for Delivery',
-            location: 'New Delhi, DL',
-            timestamp: 'Dec 14, 09:30 AM',
-            completed: false,
-            current: true,
-            icon: Truck
-        },
-        {
-            status: 'Arrived at Destination Hub',
-            location: 'New Delhi, DL',
-            timestamp: 'Dec 13, 08:45 PM',
-            completed: true,
-            current: false,
-            icon: MapPin
-        },
-        {
-            status: 'In Transit',
-            location: 'Jaipur, RJ',
-            timestamp: 'Dec 12, 11:20 AM',
-            completed: true,
-            current: false,
-            icon: Truck
-        },
-        {
-            status: 'Picked Up',
-            location: 'Mumbai, MH',
-            timestamp: 'Dec 11, 04:15 PM',
-            completed: true,
-            current: false,
-            icon: Package
-        },
-        {
-            status: 'Order Placed',
-            location: 'Online',
-            timestamp: 'Dec 11, 10:00 AM',
-            completed: true,
-            current: false,
-            icon: Calendar
-        }
-    ]
-};
+import { useSellerTracking } from '@/src/core/api/hooks/seller/useSellerTracking';
+import { NormalizedTrackingData } from '@/src/core/api/clients/trackingApi';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 
 export function TrackingClient() {
     const [search, setSearch] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
-    const [result, setResult] = useState<typeof mockTrackingData | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const { addToast } = useToast();
+
+    // Use the hook to fetch data when searchTerm is set
+    const { useTrackShipment } = useSellerTracking();
+    const { data: result, isLoading: isSearching, error, isError } = useTrackShipment(searchTerm, !!searchTerm);
 
     const handleSearch = () => {
-        if (!search.trim()) return;
-        setIsSearching(true);
-        // Simulate API call
-        setTimeout(() => {
-            setResult(mockTrackingData);
-            setIsSearching(false);
-        }, 1500);
+        if (!search.trim()) {
+            addToast('Please enter an AWB number', 'warning');
+            return;
+        }
+        setSearchTerm(search.trim());
     };
+
+    // Simplify the tracking result display logic
+    // We'll use the 'result' from the hook directly
 
     return (
         <div className="min-h-screen pb-20 space-y-8">
@@ -149,6 +105,15 @@ export function TrackingClient() {
                     </motion.div>
                 </div>
             </div>
+
+            {/* Error State */}
+            {isError && (
+                <div className="p-8 rounded-[var(--radius-3xl)] bg-red-50 border border-red-200 text-center text-red-700">
+                    <AlertCircle className="w-10 h-10 mx-auto mb-2 text-red-500" />
+                    <h3 className="text-lg font-bold">Tracking Failed</h3>
+                    <p className="mt-1">{(error as any)?.response?.data?.message || 'Could not fetch tracking information. Please check the AWB number.'}</p>
+                </div>
+            )}
 
             {/* Results Section */}
             <AnimatePresence mode="wait">
@@ -275,7 +240,7 @@ export function TrackingClient() {
                     </motion.div>
                 ) : (
                     /* Search Placeholder / Empty State */
-                    !isSearching && (
+                    !isSearching && !isError && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

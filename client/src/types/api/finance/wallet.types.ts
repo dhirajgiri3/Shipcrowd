@@ -88,8 +88,18 @@ export interface WalletStats {
 
 export interface RechargeWalletPayload {
     amount: number;
-    paymentId?: string;
+    paymentId?: string; // Razorpay Payment ID
+    orderId?: string;   // Razorpay Order ID
+    signature?: string; // Razorpay Signature
 }
+
+export interface RechargeInitResponse {
+    orderId: string;
+    amount: number;
+    currency: string;
+    key: string; // Razorpay Key ID
+}
+
 
 export interface RechargeWalletResponse {
     transactionId: string;

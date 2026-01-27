@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/http';
 import { queryKeys } from '@/src/core/api/config/query-keys';
 
 export interface OrderTrendData {

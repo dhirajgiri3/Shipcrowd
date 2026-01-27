@@ -7,7 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import {

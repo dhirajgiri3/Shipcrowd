@@ -20,114 +20,39 @@ import {
     XCircle,
     Plus,
     X,
-    Calendar
+    Calendar,
+    Loader2
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, formatCurrency } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/lib/utils';
+import { useAdminBillingOverview, useAdminTransactions } from '@/src/core/api/hooks/admin/useAdminBilling';
+import { useDebouncedValue } from '@/src/hooks/data';
+import type { BillingTransaction } from '@/src/core/api/clients/billingApi';
 
-// Mock recharges data (Admin view of all seller recharges)
-const mockRecharges = [
-    {
-        id: 'RCH-001',
-        sellerId: 'SLR-123',
-        sellerName: 'Fashion Hub India',
-        amount: 25000,
-        paymentMethod: 'UPI',
-        transactionId: 'PAY_123456789',
-        status: 'success',
-        date: '2024-12-11 14:32',
-        couponUsed: 'NEWUSER50',
-        discount: 500,
-    },
-    {
-        id: 'RCH-002',
-        sellerId: 'SLR-456',
-        sellerName: 'ElectroMart',
-        amount: 50000,
-        paymentMethod: 'Net Banking',
-        transactionId: 'PAY_987654321',
-        status: 'success',
-        date: '2024-12-11 11:15',
-        couponUsed: null,
-        discount: 0,
-    },
-    {
-        id: 'RCH-003',
-        sellerId: 'SLR-789',
-        sellerName: 'HomeDecor Plus',
-        amount: 10000,
-        paymentMethod: 'Credit Card',
-        transactionId: 'PAY_555666777',
-        status: 'pending',
-        date: '2024-12-11 09:45',
-        couponUsed: null,
-        discount: 0,
-    },
-    {
-        id: 'RCH-004',
-        sellerId: 'SLR-234',
-        sellerName: 'Gadget Galaxy',
-        amount: 15000,
-        paymentMethod: 'UPI',
-        transactionId: 'PAY_111222333',
-        status: 'failed',
-        date: '2024-12-10 18:22',
-        couponUsed: 'FLAT200',
-        discount: 200,
-    },
-    {
-        id: 'RCH-005',
-        sellerId: 'SLR-567',
-        sellerName: 'BookWorm Store',
-        amount: 5000,
-        paymentMethod: 'Debit Card',
-        transactionId: 'PAY_444555666',
-        status: 'success',
-        date: '2024-12-10 15:08',
-        couponUsed: null,
-        discount: 0,
-    },
-];
 
-// Mock billing entries
-const mockBillingEntries = [
-    {
-        id: 'BIL-001',
-        sellerId: 'SLR-123',
-        sellerName: 'Fashion Hub India',
-        type: 'manual_credit',
-        amount: 5000,
-        reason: 'Compensation for delayed COD',
-        addedBy: 'Admin',
-        date: '2024-12-10',
-    },
-    {
-        id: 'BIL-002',
-        sellerId: 'SLR-456',
-        sellerName: 'ElectroMart',
-        type: 'manual_debit',
-        amount: -1500,
-        reason: 'Weight discrepancy adjustment',
-        addedBy: 'Admin',
-        date: '2024-12-09',
-    },
-];
+
 
 export function BillingClient() {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebouncedValue(searchQuery, 500);
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'success' | 'pending' | 'failed'>('all');
     const [activeTab, setActiveTab] = useState<'recharges' | 'manual'>('recharges');
     const [showAddManual, setShowAddManual] = useState(false);
     const { addToast } = useToast();
 
-    const filteredRecharges = mockRecharges.filter(recharge => {
-        const matchesSearch = recharge.sellerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            recharge.transactionId.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || recharge.status === selectedStatus;
-        return matchesSearch && matchesStatus;
+    // API Hooks
+    const { data: overviewStats } = useAdminBillingOverview();
+
+    // Transactions Query
+    const { data: transactionsData, isLoading } = useAdminTransactions({
+        search: debouncedSearch,
+        status: selectedStatus === 'all' ? undefined : selectedStatus,
+        type: activeTab === 'manual' ? 'adjustment' : 'recharge', // Basic mapping, adjust as needed
     });
 
+    const transactions = transactionsData?.transactions || [];
+
+    // Helper for badges
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'success':
@@ -141,9 +66,6 @@ export function BillingClient() {
         }
     };
 
-    const totalRecharges = mockRecharges.filter(r => r.status === 'success').reduce((sum, r) => sum + r.amount, 0);
-    const pendingRecharges = mockRecharges.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.amount, 0);
-    const failedRecharges = mockRecharges.filter(r => r.status === 'failed').length;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -176,8 +98,10 @@ export function BillingClient() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Total Recharges (Today)</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalRecharges)}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Total Revenue</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">
+                                    {formatCurrency(overviewStats?.totalRevenue || 0)}
+                                </p>
                             </div>
                             <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
                                 <IndianRupee className="h-5 w-5 text-[var(--success)]" />
@@ -189,8 +113,10 @@ export function BillingClient() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Pending</p>
-                                <p className="text-2xl font-bold text-[var(--warning)]">{formatCurrency(pendingRecharges)}</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Pending Recharges</p>
+                                <p className="text-2xl font-bold text-[var(--warning)]">
+                                    {formatCurrency(overviewStats?.pendingRecharges || 0)}
+                                </p>
                             </div>
                             <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
                                 <Clock className="h-5 w-5 text-[var(--warning)]" />
@@ -203,7 +129,9 @@ export function BillingClient() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-secondary)]">Failed Transactions</p>
-                                <p className="text-2xl font-bold text-[var(--error)]">{failedRecharges}</p>
+                                <p className="text-2xl font-bold text-[var(--error)]">
+                                    {overviewStats?.failedTransactions || 0}
+                                </p>
                             </div>
                             <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--error-bg)]">
                                 <AlertCircle className="h-5 w-5 text-[var(--error)]" />
@@ -215,9 +143,9 @@ export function BillingClient() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Unique Sellers</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Active Wallets</p>
                                 <p className="text-2xl font-bold text-[var(--text-primary)]">
-                                    {new Set(mockRecharges.map(r => r.sellerId)).size}
+                                    {overviewStats?.activeWallets || 0}
                                 </p>
                             </div>
                             <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
@@ -340,58 +268,62 @@ export function BillingClient() {
                     {/* Recharges Table */}
                     <Card>
                         <CardContent className="p-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
-                                        <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Payment</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Coupon</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredRecharges.map((recharge) => (
-                                            <tr key={recharge.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                <td className="p-4">
-                                                    <p className="font-medium text-[var(--text-primary)]">{recharge.sellerName}</p>
-                                                    <p className="text-xs text-[var(--text-muted)]">{recharge.sellerId}</p>
-                                                </td>
-                                                <td className="p-4">
-                                                    <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(recharge.amount)}</p>
-                                                    {recharge.discount > 0 && (
-                                                        <p className="text-xs text-[var(--success)]">-{formatCurrency(recharge.discount)} discount</p>
-                                                    )}
-                                                </td>
-                                                <td className="p-4">
-                                                    <p className="text-sm text-[var(--text-primary)]">{recharge.paymentMethod}</p>
-                                                    <p className="text-xs text-[var(--text-muted)] font-mono">{recharge.transactionId}</p>
-                                                </td>
-                                                <td className="p-4">
-                                                    {recharge.couponUsed ? (
-                                                        <code className="px-2 py-0.5 bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] rounded text-xs">
-                                                            {recharge.couponUsed}
-                                                        </code>
-                                                    ) : (
-                                                        <span className="text-gray-400">-</span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                                                        <Calendar className="h-3.5 w-3.5" />
-                                                        {recharge.date}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    {getStatusBadge(recharge.status)}
-                                                </td>
+                            {isLoading ? (
+                                <div className="flex items-center justify-center p-12">
+                                    <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                                            <tr>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Type</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Reference</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {transactions.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="p-8 text-center text-[var(--text-muted)]">
+                                                        No transactions found
+                                                    </td>
+                                                </tr>
+                                            ) : transactions.map((tx) => (
+                                                <tr key={tx._id} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                                                    <td className="p-4">
+                                                        <p className="font-medium text-[var(--text-primary)]">{tx.companyName}</p>
+                                                        <p className="text-xs text-[var(--text-muted)]">Start: {formatCurrency(tx.balanceBefore)}</p>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <p className={cn("font-semibold", tx.type === 'credit' ? "text-[var(--success)]" : "text-[var(--text-primary)]")}>
+                                                            {tx.type === 'credit' ? '+' : '-'}{formatCurrency(tx.amount)}
+                                                        </p>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <p className="text-sm text-[var(--text-primary)] capitalize">{tx.category.replace('_', ' ')}</p>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <code className="text-xs font-mono bg-[var(--bg-secondary)] px-1 py-0.5 rounded">{tx.referenceId || '-'}</code>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                                                            <Calendar className="h-3.5 w-3.5" />
+                                                            {new Date(tx.createdAt).toLocaleDateString()}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {getStatusBadge(tx.status)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </>
@@ -401,56 +333,63 @@ export function BillingClient() {
             {activeTab === 'manual' && (
                 <Card>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
-                                    <tr>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Entry ID</th>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Type</th>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Reason</th>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Added By</th>
-                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {mockBillingEntries.map((entry) => (
-                                        <tr key={entry.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                            <td className="p-4">
-                                                <code className="text-xs font-mono">{entry.id}</code>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="font-medium text-[var(--text-primary)]">{entry.sellerName}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">{entry.sellerId}</p>
-                                            </td>
-                                            <td className="p-4">
-                                                <Badge variant={entry.type === 'manual_credit' ? 'success' : 'warning'}>
-                                                    {entry.type === 'manual_credit' ? 'Credit' : 'Debit'}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-4">
-                                                <span className={cn(
-                                                    "font-semibold",
-                                                    entry.amount > 0 ? "text-[var(--success)]" : "text-[var(--error)]"
-                                                )}>
-                                                    {entry.amount > 0 ? '+' : ''}{formatCurrency(entry.amount)}
-                                                </span>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="text-sm text-gray-600 max-w-xs truncate">{entry.reason}</p>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="text-sm text-gray-600">{entry.addedBy}</p>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="text-sm text-gray-600">{entry.date}</p>
-                                            </td>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center p-12">
+                                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                                        <tr>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">ID</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Type</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Description</th>
+                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {transactions.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="p-8 text-center text-[var(--text-muted)]">
+                                                    No manual entries found
+                                                </td>
+                                            </tr>
+                                        ) : transactions.map((entry) => (
+                                            <tr key={entry._id} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                                                <td className="p-4">
+                                                    <code className="text-xs font-mono">{entry._id.substring(0, 8)}...</code>
+                                                </td>
+                                                <td className="p-4">
+                                                    <p className="font-medium text-[var(--text-primary)]">{entry.companyName}</p>
+                                                </td>
+                                                <td className="p-4">
+                                                    <Badge variant={entry.type === 'credit' ? 'success' : 'warning'}>
+                                                        {entry.type === 'credit' ? 'Credit' : 'Debit'}
+                                                    </Badge>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={cn(
+                                                        "font-semibold",
+                                                        entry.type === 'credit' ? "text-[var(--success)]" : "text-[var(--error)]"
+                                                    )}>
+                                                        {entry.type === 'credit' ? '+' : '-'}{formatCurrency(entry.amount)}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <p className="text-sm text-gray-600 max-w-xs truncate">{entry.description}</p>
+                                                </td>
+                                                <td className="p-4">
+                                                    <p className="text-sm text-gray-600">{new Date(entry.createdAt).toLocaleDateString()}</p>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}

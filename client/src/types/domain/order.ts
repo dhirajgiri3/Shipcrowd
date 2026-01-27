@@ -204,6 +204,52 @@ export interface OrderListParams {
   endDate?: string;
   warehouseId?: string;
   search?: string; // Search by order number or customer name/phone
+  // Admin-specific filters
+  sellerId?: string; // Filter by seller (admin only)
+  paymentMode?: 'COD' | 'Prepaid';
+  courierPartner?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Courier Rate for shipping
+ */
+export interface CourierRate {
+  courierId: string;
+  courierName: string;
+  serviceType: string;
+  rate: number;
+  estimatedDeliveryDays: number;
+  zone?: string;
+  rating?: { average: number; totalReviews: number };
+}
+
+/**
+ * Ship order request
+ */
+export interface ShipOrderRequest {
+  orderId: string;
+  courierId: string;
+  serviceType: string;
+  pickupSchedule?: {
+    date: string;
+    timeSlot: 'morning' | 'afternoon' | 'evening';
+  };
+  specialInstructions?: string;
+}
+
+/**
+ * Bulk ship orders request (admin only)
+ */
+export interface BulkShipOrdersRequest {
+  orderIds: string[];
+  courierId: string;
+  serviceType: string;
+  pickupSchedule?: {
+    date: string;
+    timeSlot: 'morning' | 'afternoon' | 'evening';
+  };
 }
 
 

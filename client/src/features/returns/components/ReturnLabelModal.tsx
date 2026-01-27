@@ -14,7 +14,7 @@
 import React, { useState } from 'react';
 import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/http';
 import type { ReturnRequest } from '@/src/types/api/returns';
 
 interface ReturnLabelModalProps {

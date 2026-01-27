@@ -1,6 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import { BillingSettings } from './BillingSettings';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
@@ -199,8 +200,13 @@ export function SettingsClient() {
                         </Card>
                     )}
 
+                    {/* Billing Tab */}
+                    {activeTab === 'billing' && (
+                        <BillingSettings />
+                    )}
+
                     {/* Placeholder for other tabs */}
-                    {!['profile', 'company', 'security', 'account'].includes(activeTab) && (
+                    {!['profile', 'company', 'security', 'account', 'billing'].includes(activeTab) && (
                         <Card>
                             <CardContent className="py-12 flex flex-col items-center justify-center text-center">
                                 <div className="h-12 w-12 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center mb-4">

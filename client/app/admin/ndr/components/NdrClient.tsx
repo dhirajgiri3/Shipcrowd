@@ -37,87 +37,36 @@ import {
     X
 } from 'lucide-react';
 
-// --- MOCK DATA ---
-const mockAdminNDRs = [
-    {
-        id: 'NDR-ADM-881',
-        seller: 'TechGadgets Inc.',
-        awb: 'DL987654321IN',
-        customer: 'Rahul Sharma',
-        reason: 'Customer not available',
-        status: 'action_required',
-        courier: 'Delhivery',
-        attempts: 2,
-        lastAttempt: '2024-12-22'
-    },
-    {
-        id: 'NDR-ADM-882',
-        seller: 'Fashion Hub',
-        awb: 'XB554433221IN',
-        customer: 'Priya Singh',
-        reason: 'Address incomplete',
-        status: 'pending_seller',
-        courier: 'Xpressbees',
-        attempts: 1,
-        lastAttempt: '2024-12-23'
-    },
-    {
-        id: 'NDR-ADM-883',
-        seller: 'HomeDecor',
-        awb: 'BD112233445IN',
-        customer: 'Amit Kumar',
-        reason: 'Refused delivery',
-        status: 'rto_initiated',
-        courier: 'Bluedart',
-        attempts: 3,
-        lastAttempt: '2024-12-21'
-    },
-    {
-        id: 'NDR-ADM-884',
-        seller: 'TechGadgets Inc.',
-        awb: 'DL998877665IN',
-        customer: 'Sneha Gupta',
-        reason: 'Customer requested reschedule',
-        status: 'reattempt_scheduled',
-        courier: 'Delhivery',
-        attempts: 1,
-        lastAttempt: '2024-12-23'
-    },
-    {
-        id: 'NDR-ADM-885',
-        seller: 'BookWorld',
-        awb: 'DT123456789IN',
-        customer: 'Vikram Malhotra',
-        reason: 'Door locked',
-        status: 'action_required',
-        courier: 'DTDC',
-        attempts: 2,
-        lastAttempt: '2024-12-22'
-    }
-];
+import { useAdminNDRList, useNdrFunnel } from '@/src/core/api/hooks/admin/useAdminNDR';
+import { useDebouncedValue } from '@/src/hooks/data';
+import { Loader2 } from 'lucide-react';
 
-const funnelData = [
-    { name: 'Total Attempted', value: 1250, fill: '#3B82F6' },
-    { name: 'NDR Raised', value: 180, fill: '#F59E0B' },
-    { name: 'Delivered (Reattempt)', value: 120, fill: '#10B981' },
-    { name: 'RTO', value: 60, fill: '#EF4444' },
-];
+// Status mapping helper
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'action_required': return 'bg-[var(--error-bg)] text-[var(--error)]';
+        case 'pending_seller': return 'bg-[var(--warning-bg)] text-[var(--warning)]';
+        default: return 'bg-[var(--info-bg)] text-[var(--info)]';
+    }
+};
 
 export function NdrClient() {
     const [activeTab, setActiveTab] = useState('all');
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 500);
     const { addToast } = useToast();
 
-    // Derived Data
-    const filteredData = mockAdminNDRs.filter(item => {
-        const matchesTab = activeTab === 'all' ||
-            (activeTab === 'action' && item.status === 'action_required') ||
-            (activeTab === 'pending' && item.status === 'pending_seller') ||
-            (activeTab === 'rto' && item.status === 'rto_initiated');
-        const matchesSearch = item.awb.toLowerCase().includes(search.toLowerCase()) ||
-            item.seller.toLowerCase().includes(search.toLowerCase());
-        return matchesTab && matchesSearch;
+    // API Hooks
+    const { data: ndrResponse, isLoading: isLoadingList } = useAdminNDRList({
+        status: activeTab === 'all' ? undefined : activeTab,
+        search: debouncedSearch
     });
+
+    const { data: funnelDataResponse, isLoading: isLoadingFunnel } = useNdrFunnel();
+
+    const ndrList = ndrResponse?.data || [];
+    const funnelData = funnelDataResponse || [];
+    const stats = ndrResponse?.stats || { resolutionRate: 0 };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -240,72 +189,77 @@ export function NdrClient() {
 
                 {/* Cards Grid */}
                 <div className="grid gap-4">
-                    <AnimatePresence>
-                        {filteredData.map((ndr, i) => (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                                key={ndr.id}
-                                className="group p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-lg transition-all"
-                            >
-                                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                    {isLoadingList ? (
+                        <div className="flex justify-center p-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                        </div>
+                    ) : (
+                        <AnimatePresence>
+                            {ndrList.map((ndr, i) => (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.05 }}
+                                    key={ndr.id}
+                                    className="group p-5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary-blue)]/50 hover:shadow-lg transition-all"
+                                >
+                                    <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
 
-                                    {/* Left: Info */}
-                                    <div className="flex items-center gap-4 w-full lg:w-auto">
-                                        <div className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg",
-                                            ndr.status === 'action_required' ? "bg-[var(--error-bg)] text-[var(--error)]" :
-                                                ndr.status === 'pending_seller' ? "bg-[var(--warning-bg)] text-[var(--warning)]" :
-                                                    "bg-[var(--info-bg)] text-[var(--info)]"
-                                        )}>
-                                            {ndr.attempts}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h4 className="font-bold text-[var(--text-primary)]">{ndr.awb}</h4>
-                                                <Badge variant="outline" className="text-[10px] h-5">{ndr.courier}</Badge>
+                                        {/* Left: Info */}
+                                        <div className="flex items-center gap-4 w-full lg:w-auto">
+                                            <div className={cn(
+                                                "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg",
+                                                getStatusColor(ndr.status)
+                                            )}>
+                                                {ndr.attempts}
                                             </div>
-                                            <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-                                                <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {ndr.seller}</span>
-                                                <span>•</span>
-                                                <span>{ndr.customer}</span>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h4 className="font-bold text-[var(--text-primary)]">{ndr.awb}</h4>
+                                                    {/* @ts-ignore */}
+                                                    <Badge variant="outline" className="text-[10px] h-5">{ndr.courier}</Badge>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+                                                    <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {ndr.sellerName}</span>
+                                                    <span>•</span>
+                                                    <span>{ndr.customerName}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Middle: Reason */}
-                                    <div className="flex-1 w-full lg:w-auto text-center lg:text-left">
-                                        <div className="inline-block px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                                            <p className="text-sm font-medium text-[var(--text-secondary)]">
-                                                <span className="text-[var(--text-muted)] mr-2">Reason:</span>
-                                                {ndr.reason}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Right: Status & Action */}
-                                    <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
-                                        <div className="text-right hidden sm:block">
-                                            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wide">Last Attempt</p>
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">{ndr.lastAttempt}</p>
+                                        {/* Middle: Reason */}
+                                        <div className="flex-1 w-full lg:w-auto text-center lg:text-left">
+                                            <div className="inline-block px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                                                <p className="text-sm font-medium text-[var(--text-secondary)]">
+                                                    <span className="text-[var(--text-muted)] mr-2">Reason:</span>
+                                                    {ndr.reason}
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        {ndr.status === 'action_required' ? (
-                                            <Button size="sm" className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white min-w-[120px]">
-                                                Fix Now
-                                            </Button>
-                                        ) : (
-                                            <Badge variant="secondary" className="px-3 py-1.5 min-w-[120px] justify-center">
-                                                {ndr.status.replace('_', ' ')}
-                                            </Badge>
-                                        )}
-                                    </div>
+                                        {/* Right: Status & Action */}
+                                        <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
+                                            <div className="text-right hidden sm:block">
+                                                <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wide">Last Attempt</p>
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">{new Date(ndr.lastAttemptDate).toLocaleDateString()}</p>
+                                            </div>
 
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                                            {ndr.status === 'action_required' ? (
+                                                <Button size="sm" className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white min-w-[120px]">
+                                                    Fix Now
+                                                </Button>
+                                            ) : (
+                                                <Badge variant="secondary" className="px-3 py-1.5 min-w-[120px] justify-center">
+                                                    {ndr.status.replace('_', ' ')}
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    )}
                 </div>
 
             </div>

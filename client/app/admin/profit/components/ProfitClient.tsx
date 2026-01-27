@@ -11,105 +11,59 @@ import {
     Upload,
     Download,
     FileSpreadsheet,
-    Calendar,
     TrendingUp,
-    TrendingDown,
     CheckCircle,
-    AlertTriangle,
-    Clock,
-    Filter,
     Search,
-    RefreshCw
+    Loader2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
-
-// Mock profit data
-const mockProfitData = [
-    {
-        id: 'PRF-001',
-        date: '2024-12-11',
-        sellerId: 'SEL-001',
-        sellerName: 'TechGadgets Inc.',
-        shipments: 45,
-        shippingCost: 12500,
-        charged: 15200,
-        profit: 2700,
-        margin: 17.7,
-    },
-    {
-        id: 'PRF-002',
-        date: '2024-12-11',
-        sellerId: 'SEL-002',
-        sellerName: 'Fashion Hub',
-        shipments: 32,
-        shippingCost: 8900,
-        charged: 10800,
-        profit: 1900,
-        margin: 17.6,
-    },
-    {
-        id: 'PRF-003',
-        date: '2024-12-10',
-        sellerId: 'SEL-001',
-        sellerName: 'TechGadgets Inc.',
-        shipments: 52,
-        shippingCost: 14200,
-        charged: 17500,
-        profit: 3300,
-        margin: 18.9,
-    },
-    {
-        id: 'PRF-004',
-        date: '2024-12-10',
-        sellerId: 'SEL-003',
-        sellerName: 'HomeDecor Plus',
-        shipments: 28,
-        shippingCost: 7600,
-        charged: 8200,
-        profit: 600,
-        margin: 7.3,
-    },
-    {
-        id: 'PRF-005',
-        date: '2024-12-09',
-        sellerId: 'SEL-002',
-        sellerName: 'Fashion Hub',
-        shipments: 38,
-        shippingCost: 10200,
-        charged: 11800,
-        profit: 1600,
-        margin: 13.6,
-    },
-];
-
-const mockImportHistory = [
-    { id: 'IMP-001', date: '2024-12-10', filename: 'profit_dec_week1.xlsx', records: 156, status: 'success' },
-    { id: 'IMP-002', date: '2024-12-05', filename: 'profit_nov_week4.xlsx', records: 142, status: 'success' },
-    { id: 'IMP-003', date: '2024-11-28', filename: 'profit_nov_week3.xlsx', records: 128, status: 'partial', errors: 3 },
-];
+import {
+    useProfitData,
+    useImportProfitData,
+    useImportHistory,
+    useExportProfitData
+} from '@/src/core/api/hooks/admin/useAdminProfit';
+import { useDebouncedValue } from '@/src/hooks/data';
 
 export function ProfitClient() {
     const [activeTab, setActiveTab] = useState<'overview' | 'import' | 'export'>('overview');
+
+    // Filters
     const [searchQuery, setSearchQuery] = useState('');
-    const [dateFrom, setDateFrom] = useState('2024-12-01');
-    const [dateTo, setDateTo] = useState('2024-12-11');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const debouncedSearch = useDebouncedValue(searchQuery, 500);
+
+    // File Upload
     const [isDragging, setIsDragging] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
 
-    const filteredData = mockProfitData.filter(item =>
-        item.sellerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.sellerId.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // API Hooks
+    const { data: profitResponse, isLoading: isLoadingProfit } = useProfitData({
+        search: debouncedSearch,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined
+    });
 
-    const totalProfit = filteredData.reduce((sum, p) => sum + p.profit, 0);
-    const totalShipments = filteredData.reduce((sum, p) => sum + p.shipments, 0);
-    const totalCharged = filteredData.reduce((sum, p) => sum + p.charged, 0);
-    const avgMargin = filteredData.length > 0 ? (filteredData.reduce((sum, p) => sum + p.margin, 0) / filteredData.length).toFixed(1) : 0;
+    const { data: importHistory } = useImportHistory();
 
+    const { mutate: importData, isPending: isImporting } = useImportProfitData();
+    const { mutate: exportData, isPending: isExporting } = useExportProfitData();
+
+    // Derived Data
+    const profitData = profitResponse?.data || [];
+    const stats = profitResponse?.stats || {
+        totalProfit: 0,
+        totalCharged: 0,
+        totalShipments: 0,
+        avgMargin: 0
+    };
+
+    // Handlers
     const handleFileUpload = (file: File) => {
         setUploadedFile(file);
         addToast(`File "${file.name}" ready to import`, 'success');
@@ -127,17 +81,40 @@ export function ProfitClient() {
     };
 
     const handleImport = () => {
-        if (uploadedFile) {
-            addToast('Importing profit data...', 'info');
-            setTimeout(() => {
+        if (!uploadedFile) return;
+
+        importData(uploadedFile, {
+            onSuccess: () => {
                 addToast('Profit data imported successfully!', 'success');
                 setUploadedFile(null);
-            }, 1500);
-        }
+            },
+            onError: () => {
+                addToast('Failed to import data', 'error');
+            }
+        });
     };
 
     const handleExport = (format: 'csv' | 'xlsx') => {
-        addToast(`Exporting profit report as ${format.toUpperCase()}...`, 'info');
+        exportData({
+            search: debouncedSearch,
+            dateFrom: dateFrom || undefined,
+            dateTo: dateTo || undefined,
+            format
+        }, {
+            onSuccess: (blob) => {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `profit_report_${new Date().toISOString()}.${format}`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                addToast(`Profit report downloaded as ${format.toUpperCase()}`, 'success');
+            },
+            onError: () => {
+                addToast('Failed to export report', 'error');
+            }
+        });
     };
 
     return (
@@ -183,7 +160,7 @@ export function ProfitClient() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-[var(--text-secondary)]">Total Profit</p>
-                                        <p className="text-2xl font-bold text-[var(--success)]">{formatCurrency(totalProfit)}</p>
+                                        <p className="text-2xl font-bold text-[var(--success)]">{formatCurrency(stats.totalProfit)}</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--success-bg)]">
                                         <TrendingUp className="h-5 w-5 text-[var(--success)]" />
@@ -196,7 +173,7 @@ export function ProfitClient() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-[var(--text-secondary)]">Total Charged</p>
-                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(totalCharged)}</p>
+                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(stats.totalCharged)}</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--primary-blue-soft)]">
                                         <IndianRupee className="h-5 w-5 text-[var(--primary-blue)]" />
@@ -209,7 +186,7 @@ export function ProfitClient() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-[var(--text-secondary)]">Shipments</p>
-                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{totalShipments}</p>
+                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.totalShipments}</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--info-bg)]">
                                         <FileSpreadsheet className="h-5 w-5 text-[var(--info)]" />
@@ -222,7 +199,7 @@ export function ProfitClient() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-[var(--text-secondary)]">Avg Margin</p>
-                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{avgMargin}%</p>
+                                        <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.avgMargin}%</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-[var(--warning-bg)]">
                                         <TrendingUp className="h-5 w-5 text-[var(--warning)]" />
@@ -262,41 +239,55 @@ export function ProfitClient() {
                     {/* Data Table */}
                     <Card>
                         <CardContent className="p-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
-                                        <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Cost</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charged</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Profit</th>
-                                            <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Margin</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredData.map((row) => (
-                                            <tr key={row.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                <td className="p-4 text-sm text-[var(--text-primary)]">{row.date}</td>
-                                                <td className="p-4">
-                                                    <p className="text-sm font-medium text-[var(--text-primary)]">{row.sellerName}</p>
-                                                    <code className="text-xs text-[var(--text-muted)]">{row.sellerId}</code>
-                                                </td>
-                                                <td className="p-4 text-right text-sm text-[var(--text-primary)]">{row.shipments}</td>
-                                                <td className="p-4 text-right text-sm text-[var(--text-secondary)]">{formatCurrency(row.shippingCost)}</td>
-                                                <td className="p-4 text-right text-sm text-[var(--text-primary)]">{formatCurrency(row.charged)}</td>
-                                                <td className="p-4 text-right text-sm font-semibold text-[var(--success)]">{formatCurrency(row.profit)}</td>
-                                                <td className="p-4 text-right">
-                                                    <Badge variant={row.margin >= 15 ? 'success' : row.margin >= 10 ? 'warning' : 'neutral'}>
-                                                        {row.margin}%
-                                                    </Badge>
-                                                </td>
+                            {isLoadingProfit ? (
+                                <div className="flex items-center justify-center p-8">
+                                    <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
+                                            <tr>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
+                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Shipments</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Cost</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charged</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Profit</th>
+                                                <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Margin</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {profitData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={7} className="p-8 text-center text-[var(--text-muted)]">
+                                                        No profit records found
+                                                    </td>
+                                                </tr>
+                                            ) : profitData.map((row) => (
+                                                <tr key={row.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                                                    <td className="p-4 text-sm text-[var(--text-primary)]">
+                                                        {new Date(row.date).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <p className="text-sm font-medium text-[var(--text-primary)]">{row.sellerName}</p>
+                                                        <code className="text-xs text-[var(--text-muted)]">{row.sellerId}</code>
+                                                    </td>
+                                                    <td className="p-4 text-right text-sm text-[var(--text-primary)]">{row.shipments}</td>
+                                                    <td className="p-4 text-right text-sm text-[var(--text-secondary)]">{formatCurrency(row.shippingCost)}</td>
+                                                    <td className="p-4 text-right text-sm text-[var(--text-primary)]">{formatCurrency(row.charged)}</td>
+                                                    <td className="p-4 text-right text-sm font-semibold text-[var(--success)]">{formatCurrency(row.profit)}</td>
+                                                    <td className="p-4 text-right">
+                                                        <Badge variant={row.margin >= 15 ? 'success' : row.margin >= 10 ? 'warning' : 'neutral'}>
+                                                            {row.margin}%
+                                                        </Badge>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </>
@@ -349,9 +340,10 @@ export function ProfitClient() {
                                 className="hidden"
                                 onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                             />
-                            <Button className="w-full" disabled={!uploadedFile} onClick={handleImport}>
+                            <Button className="w-full" disabled={!uploadedFile || isImporting} onClick={handleImport}>
+                                {isImporting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                 <Upload className="h-4 w-4 mr-2" />
-                                Import Data
+                                {isImporting ? 'Importing...' : 'Import Data'}
                             </Button>
                         </CardContent>
                     </Card>
@@ -362,11 +354,13 @@ export function ProfitClient() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {mockImportHistory.map((item) => (
+                                {importHistory?.map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-secondary)]">
                                         <div>
                                             <p className="font-medium text-[var(--text-primary)]">{item.filename}</p>
-                                            <p className="text-xs text-[var(--text-secondary)]">{item.date} • {item.records} records</p>
+                                            <p className="text-xs text-[var(--text-secondary)]">
+                                                {new Date(item.date).toLocaleDateString()} • {item.records} records
+                                            </p>
                                         </div>
                                         <Badge variant={item.status === 'success' ? 'success' : 'warning'}>
                                             {item.status === 'success' ? 'Success' : `${item.errors} errors`}
@@ -399,22 +393,30 @@ export function ProfitClient() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Seller (Optional)</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)]">
-                                    <option value="">All Sellers</option>
-                                    <option value="SEL-001">TechGadgets Inc.</option>
-                                    <option value="SEL-002">Fashion Hub</option>
-                                    <option value="SEL-003">HomeDecor Plus</option>
-                                </select>
+                                <label className="text-sm font-medium text-gray-700">Search</label>
+                                <Input
+                                    placeholder="Seller Name or ID"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
                             </div>
                         </div>
                         <div className="flex gap-4">
-                            <Button variant="outline" className="flex-1" onClick={() => handleExport('csv')}>
-                                <Download className="h-4 w-4 mr-2" />
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => handleExport('csv')}
+                                disabled={isExporting}
+                            >
+                                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                                 Export as CSV
                             </Button>
-                            <Button className="flex-1" onClick={() => handleExport('xlsx')}>
-                                <Download className="h-4 w-4 mr-2" />
+                            <Button
+                                className="flex-1"
+                                onClick={() => handleExport('xlsx')}
+                                disabled={isExporting}
+                            >
+                                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                                 Export as Excel
                             </Button>
                         </div>

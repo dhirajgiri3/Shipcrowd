@@ -3,7 +3,7 @@
  * Handles company creation and management
  */
 
-import { apiClient } from '../client';
+import { apiClient } from '../http';
 
 // Types
 export interface CompanyAddress {
@@ -79,7 +79,15 @@ class CompanyApiService {
         return response.data;
     }
 
-    async getAllCompanies(params?: { page?: number; limit?: number; search?: string }) {
+    async getAllCompanies(params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        status?: string;
+        kycStatus?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }) {
         const response = await apiClient.get('/companies', { params });
         return response.data;
     }

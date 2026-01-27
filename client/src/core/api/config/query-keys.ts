@@ -104,6 +104,13 @@ export const queryKeys = {
   },
 
   // ========================================================================
+  // RATES DOMAIN (SELLER CALCULATOR)
+  // ========================================================================
+  rates: {
+    calculate: (payload: any) => ['rates', 'calculate', payload],
+  },
+
+  // ========================================================================
   // ORDERS DOMAIN
   // ========================================================================
   orders: {
@@ -265,12 +272,47 @@ export const queryKeys = {
   },
 
   // ========================================================================
-  // ADMIN USERS DOMAIN
+  // ADMIN OPERATIONS DOMAIN
   // ========================================================================
   admin: {
     all: () => ['admin'],
+    // Admin Users
     users: (filters?: FilterParams) => ['admin', 'users', filters],
     user: (id: string) => ['admin', 'user', id],
+    // Admin Orders
+    orders: {
+      all: () => ['admin', 'orders'],
+      list: (filters?: FilterParams) => ['admin', 'orders', 'list', filters],
+      detail: (id: string) => ['admin', 'orders', 'detail', id],
+      stats: () => ['admin', 'orders', 'stats'],
+    },
+    // Admin Sellers
+    sellers: {
+      all: () => ['admin', 'sellers'],
+      list: (filters?: FilterParams) => ['admin', 'sellers', 'list', filters],
+      detail: (id: string) => ['admin', 'sellers', 'detail', id],
+      stats: (id: string) => ['admin', 'sellers', 'stats', id],
+    },
+    // Admin Billing
+    billing: {
+      all: () => ['admin', 'billing'],
+      overview: () => ['admin', 'billing', 'overview'],
+      transactions: (filters?: FilterParams) => ['admin', 'billing', 'transactions', filters],
+      recharges: (filters?: FilterParams) => ['admin', 'billing', 'recharges', filters],
+      manualEntries: () => ['admin', 'billing', 'manual-entries'],
+    },
+    // Admin Profit
+    profit: {
+      all: () => ['admin', 'profit'],
+      data: (filters?: FilterParams) => ['admin', 'profit', 'data', filters],
+      stats: (filters?: FilterParams) => ['admin', 'profit', 'stats', filters],
+      history: () => ['admin', 'profit', 'history'],
+    },
+    // Admin Financials
+    financials: {
+      overview: () => ['admin', 'financials', 'overview'],
+      transactions: (filters?: FilterParams) => ['admin', 'financials', 'transactions', filters],
+    },
   },
 
   // ========================================================================
@@ -427,6 +469,7 @@ export const queryKeys = {
 
     companies: (filters?: any) => ['settings', 'companies', filters],
     companyStats: (companyId: string) => ['settings', 'companies', 'stats', companyId],
+    bankAccounts: () => ['settings', 'bank-accounts'],
   },
 
   // ========================================================================
@@ -447,6 +490,16 @@ export const queryKeys = {
     promoCodes: (filters?: any) => ['marketing', 'promo-codes', filters],
     promoCode: (id: string) => ['marketing', 'promo-code', id],
     validatePromo: (code: string) => ['marketing', 'validate', code],
+  },
+
+  // ========================================================================
+  // WEIGHT DISCREPANCIES DOMAIN
+  // ========================================================================
+  weightDiscrepancy: {
+    all: () => ['weight-discrepancy'],
+    list: (filters?: any) => ['weight-discrepancy', 'list', filters],
+    detail: (id: string) => ['weight-discrepancy', 'detail', id],
+    stats: () => ['weight-discrepancy', 'stats'],
   },
 
   // ========================================================================

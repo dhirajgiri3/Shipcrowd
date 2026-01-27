@@ -15,7 +15,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
 import { Input } from '@/src/components/ui';
-import { useDebounce } from '@/src/hooks/utility/useDebounce';
+import { useDebouncedValue } from '@/src/hooks/data';
 import { useOnClickOutside } from '@/src/hooks/utility/useOnClickOutside';
 import { useAddressSuggestions } from '@/src/core/api/hooks/logistics/useAddress';
 import type { Address } from '@/src/types/api/logistics';
@@ -45,7 +45,7 @@ export function AddressAutocomplete({
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Debounce search query
-    const debouncedQuery = useDebounce(value, 300);
+    const debouncedQuery = useDebouncedValue(value, 300);
 
     // Fetch suggestions
     const { data: suggestions = [], isLoading, isError } = useAddressSuggestions(debouncedQuery, {

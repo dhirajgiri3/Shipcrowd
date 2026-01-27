@@ -10,7 +10,7 @@
  * - Retry logic
  */
 
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api/http';
 import type { AxiosProgressEvent } from 'axios';
 
 // Maximum file sizes

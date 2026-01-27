@@ -3,7 +3,7 @@
  * All order endpoints with proper type safety
  */
 
-import { apiClient } from '../client';
+import { apiClient } from '../http';
 import type {
   Order,
   CreateOrderRequest,
@@ -13,6 +13,9 @@ import type {
   UpdateOrderResponse,
   DeleteOrderResponse,
   OrderListParams,
+  CourierRate,
+  ShipOrderRequest,
+  BulkShipOrdersRequest,
 } from '@/src/types/domain/order';
 
 /**
@@ -243,6 +246,71 @@ class OrderApiService {
       orderIds,
       mergeOptions,
     });
+    return response.data;
+  }
+
+  // ============================================================================
+  // SHIPPING & COURIER METHODS (Seller + Admin)
+  // ============================================================================
+
+  /**
+   * Get courier rates for shipping
+   * GET /api/v1/orders/courier-rates
+   */
+  async getCourierRates(params: {
+    fromPincode: string;
+    toPincode: string;
+    weight: number;
+    paymentMode?: 'COD' | 'Prepaid';
+  }): Promise<{ success: boolean; data: CourierRate[] }> {
+    const response = await apiClient.get('/orders/courier-rates', { params });
+    return response.data;
+  }
+
+  /**
+   * Ship an order
+   * POST /api/v1/orders/:id/ship
+   */
+  async shipOrder(data: ShipOrderRequest): Promise<{
+    success: boolean;
+    data: {
+      shipmentId: string;
+      awbNumber: string;
+      courierName: string;
+      labelUrl: string;
+    };
+    message: string;
+  }> {
+    const { orderId, ...payload } = data;
+    const response = await apiClient.post(`/orders/${orderId}/ship`, payload);
+    return response.data;
+  }
+
+  // ============================================================================
+  // ADMIN-ONLY METHODS
+  // ============================================================================
+
+  /**
+   * Get all orders across sellers (Admin only)
+   * GET /api/v1/admin/orders
+   */
+  async getAdminOrders(params?: OrderListParams): Promise<GetOrdersResponse> {
+    const response = await apiClient.get<GetOrdersResponse>('/admin/orders', { params });
+    return response.data;
+  }
+
+  /**
+   * Bulk ship multiple orders (Admin only)
+   * POST /api/v1/admin/orders/bulk-ship
+   */
+  async bulkShipOrders(data: BulkShipOrdersRequest): Promise<{
+    success: boolean;
+    data: {
+      successful: Array<{ orderId: string; awbNumber: string }>;
+      failed: Array<{ orderId: string; reason: string }>;
+    };
+  }> {
+    const response = await apiClient.post('/admin/orders/bulk-ship', data);
     return response.data;
   }
 }

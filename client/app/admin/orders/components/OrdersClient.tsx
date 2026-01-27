@@ -29,112 +29,13 @@ import {
     LayoutDashboard,
     Filter,
     MoreHorizontal,
-    Box
+    Box,
+    Loader2
 } from 'lucide-react';
+import { useAdminOrders, useGetCourierRates, useShipOrder, useBulkShipOrders } from '@/src/core/api/hooks/admin';
+import type { Order as ApiOrder, CourierRate } from '@/src/types/domain/order';
 
-// --- MOCK DATA ---
-const mockOrders = [
-    {
-        id: 'ORD-2024-001',
-        customer: { name: 'Rajesh Kumar', phone: '+91 98765 43210', city: 'Mumbai' },
-        items: 3,
-        productName: 'Wireless Earbuds Pro',
-        amount: 2450,
-        paymentMode: 'Prepaid',
-        paymentStatus: 'paid',
-        fulfillmentStatus: 'new',
-        store: 'Shopify',
-        seller: 'TechGadgets Inc.',
-        warehouse: 'Mumbai WH',
-        createdAt: '2024-12-11T10:30:00',
-    },
-    {
-        id: 'ORD-2024-002',
-        customer: { name: 'Priya Sharma', phone: '+91 87654 32109', city: 'Delhi' },
-        items: 1,
-        productName: 'Smart Watch Series 5',
-        amount: 899,
-        paymentMode: 'COD',
-        paymentStatus: 'pending',
-        fulfillmentStatus: 'new',
-        store: 'WooCommerce',
-        seller: 'Fashion Hub',
-        warehouse: 'Delhi WH',
-        createdAt: '2024-12-11T09:15:00',
-    },
-    {
-        id: 'ORD-2024-003',
-        customer: { name: 'Amit Patel', phone: '+91 76543 21098', city: 'Bangalore' },
-        items: 2,
-        productName: 'Bluetooth Speaker',
-        amount: 1599,
-        paymentMode: 'Prepaid',
-        paymentStatus: 'paid',
-        fulfillmentStatus: 'ready',
-        store: 'Shopify',
-        seller: 'SoundWorks',
-        warehouse: 'Bangalore WH',
-        createdAt: '2024-12-11T08:45:00',
-    },
-    {
-        id: 'ORD-2024-004',
-        customer: { name: 'Sneha Reddy', phone: '+91 65432 10987', city: 'Pune' },
-        items: 5,
-        productName: 'Phone Case Bundle',
-        amount: 4299,
-        paymentMode: 'COD',
-        paymentStatus: 'pending',
-        fulfillmentStatus: 'shipped',
-        store: 'Shopify',
-        seller: 'AccessoryKing',
-        warehouse: 'Mumbai WH',
-        awbNumber: 'AWB123456789',
-        courier: 'Delhivery',
-        createdAt: '2024-12-10T14:20:00',
-    },
-    {
-        id: 'ORD-2024-005',
-        customer: { name: 'Vikram Singh', phone: '+91 54321 09876', city: 'Noida' },
-        items: 1,
-        productName: 'Laptop Stand Pro',
-        amount: 3499,
-        paymentMode: 'Prepaid',
-        paymentStatus: 'paid',
-        fulfillmentStatus: 'delivered',
-        store: 'WooCommerce',
-        seller: 'OfficeEssentials',
-        warehouse: 'Delhi WH',
-        awbNumber: 'AWB987654321',
-        courier: 'Xpressbees',
-        createdAt: '2024-12-08T11:00:00',
-        deliveredAt: '2024-12-10T16:30:00',
-    },
-    {
-        id: 'ORD-2024-006',
-        customer: { name: 'Kavita Iyer', phone: '+91 43210 98765', city: 'Chennai' },
-        items: 2,
-        productName: 'USB-C Hub',
-        amount: 1899,
-        paymentMode: 'COD',
-        paymentStatus: 'pending',
-        fulfillmentStatus: 'rto',
-        store: 'Shopify',
-        seller: 'TechGadgets Inc.',
-        warehouse: 'Chennai WH',
-        awbNumber: 'AWB456789123',
-        courier: 'DTDC',
-        createdAt: '2024-12-05T09:30:00',
-        rtoReason: 'Customer not available',
-    },
-];
-
-// Mock courier rates
-const courierRates = [
-    { name: 'Delhivery', rate: 58, eta: '3-4 days', rating: 4.5 },
-    { name: 'Xpressbees', rate: 52, eta: '4-5 days', rating: 4.2 },
-    { name: 'DTDC', rate: 65, eta: '3-4 days', rating: 4.0 },
-    { name: 'Ecom Express', rate: 61, eta: '4-5 days', rating: 4.3 },
-];
+// Removed mock data - using real APIs
 
 const statusConfig = [
     { id: 'new', label: 'New Orders', icon: Clock, color: 'text-[var(--warning)]', bg: 'bg-[var(--warning-bg)]', border: 'border-[var(--warning)]/20' },
@@ -144,71 +45,97 @@ const statusConfig = [
     { id: 'rto', label: 'RTO / NDR', icon: RotateCcw, color: 'text-[var(--error)]', bg: 'bg-[var(--error-bg)]', border: 'border-[var(--error)]/20' },
 ];
 
-type Order = typeof mockOrders[0];
-
 export function OrdersClient() {
     const [activeTab, setActiveTab] = useState('new');
     const [search, setSearch] = useState('');
     const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
     const [isShipModalOpen, setIsShipModalOpen] = useState(false);
-    const [selectedOrderForShip, setSelectedOrderForShip] = useState<Order | null>(null);
+    const [selectedOrderForShip, setSelectedOrderForShip] = useState<ApiOrder | null>(null);
     const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
+    const [courierRates, setCourierRates] = useState<CourierRate[]>([]);
     const { addToast } = useToast();
 
+    // API Hooks
+    const { data: ordersData, isLoading, refetch } = useAdminOrders({
+        status: activeTab,
+        search: search || undefined,
+        limit: 50
+    });
+    const getCourierRatesMutation = useGetCourierRates();
+    const shipOrderMutation = useShipOrder();
+    const bulkShipMutation = useBulkShipOrders();
+
+    const orders = ordersData?.data || [];
+
     const tabCounts = useMemo(() => ({
-        new: mockOrders.filter(o => o.fulfillmentStatus === 'new').length,
-        ready: mockOrders.filter(o => o.fulfillmentStatus === 'ready').length,
-        shipped: mockOrders.filter(o => o.fulfillmentStatus === 'shipped').length,
-        delivered: mockOrders.filter(o => o.fulfillmentStatus === 'delivered').length,
-        rto: mockOrders.filter(o => o.fulfillmentStatus === 'rto').length,
-    }), []);
+        new: orders.filter(o => o.currentStatus === 'new').length,
+        ready: orders.filter(o => o.currentStatus === 'ready').length,
+        shipped: orders.filter(o => o.currentStatus === 'shipped').length,
+        delivered: orders.filter(o => o.currentStatus === 'delivered').length,
+        rto: orders.filter(o => o.currentStatus === 'rto').length,
+    }), [orders]);
 
     const filteredOrders = useMemo(() => {
-        return mockOrders.filter(order => {
-            const matchesTab = order.fulfillmentStatus === activeTab;
-            const matchesSearch =
-                order.id.toLowerCase().includes(search.toLowerCase()) ||
-                order.customer.name.toLowerCase().includes(search.toLowerCase()) ||
-                order.seller.toLowerCase().includes(search.toLowerCase()) ||
-                order.productName.toLowerCase().includes(search.toLowerCase());
-            return matchesTab && matchesSearch;
-        });
-    }, [activeTab, search]);
+        return orders.filter(order => order.currentStatus === activeTab);
+    }, [activeTab, orders]);
 
-    const handleShipNow = (order: Order) => {
+    const handleShipNow = async (order: ApiOrder) => {
         setSelectedOrderForShip(order);
         setSelectedCourier(null);
+        setCourierRates([]);
         setIsShipModalOpen(true);
+
+        // Fetch courier rates
+        try {
+            const result = await getCourierRatesMutation.mutateAsync({
+                fromPincode: order.customerInfo.address.postalCode,
+                toPincode: order.customerInfo.address.postalCode,
+                weight: 500, // Default weight, should come from order
+                paymentMode: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid'
+            });
+            setCourierRates(result.data);
+        } catch (error) {
+            console.error('Failed to fetch courier rates:', error);
+        }
     };
 
-    const handleCreateShipment = () => {
-        if (!selectedCourier) {
+    const handleCreateShipment = async () => {
+        if (!selectedCourier || !selectedOrderForShip) {
             addToast('Please select a courier', 'warning');
             return;
         }
-        addToast(`Shipment created with ${selectedCourier}! AWB generated.`, 'success');
+
+        await shipOrderMutation.mutateAsync({
+            orderId: selectedOrderForShip._id,
+            courierId: selectedCourier,
+            serviceType: 'Surface'
+        });
+
         setIsShipModalOpen(false);
         setSelectedOrderForShip(null);
         setSelectedCourier(null);
+        refetch();
     };
 
-    const handleBulkShip = () => {
+    const handleBulkShip = async () => {
         if (selectedOrders.length === 0) {
             addToast('Please select orders to ship', 'warning');
             return;
         }
+
+        // For now, just show info. Real implementation needs courier selection modal
         addToast(`Creating shipments for ${selectedOrders.length} orders...`, 'info');
     };
 
     const columns = [
         {
             header: 'Order Details',
-            accessorKey: 'id' as const,
-            cell: (row: Order) => (
+            accessorKey: 'orderNumber' as const,
+            cell: (row: ApiOrder) => (
                 <div className="group cursor-pointer">
                     <div className="flex items-center gap-2">
-                        <p className="font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{row.id}</p>
-                        <Badge variant="neutral" className="px-1.5 py-0 text-[10px] h-5">{row.store}</Badge>
+                        <p className="font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{row.orderNumber}</p>
+                        <Badge variant="neutral" className="px-1.5 py-0 text-[10px] h-5">{row.source}</Badge>
                     </div>
                     <p className="text-xs text-[var(--text-muted)] mt-0.5">{formatDate(row.createdAt)}</p>
                 </div>
@@ -216,14 +143,14 @@ export function OrdersClient() {
         },
         {
             header: 'Merchant',
-            accessorKey: 'seller' as const,
-            cell: (row: Order) => (
+            accessorKey: 'companyId' as const,
+            cell: (row: ApiOrder) => (
                 <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border-subtle)]">
                         <Building2 className="h-4 w-4 text-[var(--text-secondary)]" />
                     </div>
                     <div>
-                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.seller}</p>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.companyId}</p>
                         <p className="text-xs text-[var(--text-muted)]">Verified Seller</p>
                     </div>
                 </div>
@@ -231,50 +158,50 @@ export function OrdersClient() {
         },
         {
             header: 'Customer',
-            accessorKey: 'customer' as const,
-            cell: (row: Order) => (
+            accessorKey: 'customerInfo' as const,
+            cell: (row: ApiOrder) => (
                 <div>
-                    <p className="font-medium text-[var(--text-primary)]">{row.customer.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{row.customer.city}</p>
+                    <p className="font-medium text-[var(--text-primary)]">{row.customerInfo.name}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{row.customerInfo.address.city}</p>
                 </div>
             )
         },
         {
             header: 'Product Info',
-            accessorKey: 'productName' as const,
-            cell: (row: Order) => (
+            accessorKey: 'products' as const,
+            cell: (row: ApiOrder) => (
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 bg-[var(--bg-tertiary)] rounded-lg flex items-center justify-center border border-[var(--border-subtle)]">
                         <ShoppingBag className="h-4 w-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
-                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.productName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Cty: {row.items}</p>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">{row.products[0]?.name || 'Products'}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Qty: {row.products.reduce((sum, p) => sum + p.quantity, 0)}</p>
                     </div>
                 </div>
             )
         },
         {
             header: 'Amount',
-            accessorKey: 'amount' as const,
-            cell: (row: Order) => (
+            accessorKey: 'totals' as const,
+            cell: (row: ApiOrder) => (
                 <div>
-                    <p className="font-bold text-[var(--text-primary)]">{formatCurrency(row.amount)}</p>
+                    <p className="font-bold text-[var(--text-primary)]">{formatCurrency(row.totals.total)}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                         <span className={cn(
                             "w-1.5 h-1.5 rounded-full",
-                            row.paymentMode === 'COD' ? "bg-[var(--warning)]" : "bg-[var(--success)]"
+                            row.paymentMethod === 'cod' ? "bg-[var(--warning)]" : "bg-[var(--success)]"
                         )} />
-                        <span className="text-xs text-[var(--text-secondary)]">{row.paymentMode}</span>
+                        <span className="text-xs text-[var(--text-secondary)]">{row.paymentMethod?.toUpperCase()}</span>
                     </div>
                 </div>
             )
         },
         {
             header: 'Action',
-            accessorKey: 'id' as const,
+            accessorKey: '_id' as const,
             width: 'w-32',
-            cell: (row: Order) => {
+            cell: (row: ApiOrder) => {
                 if (activeTab === 'new' || activeTab === 'ready') {
                     return (
                         <div className="flex items-center gap-2">
@@ -299,7 +226,7 @@ export function OrdersClient() {
                         <div className="text-sm">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <span className="font-mono text-xs font-medium text-[var(--primary-blue)] px-1.5 py-0.5 bg-[var(--primary-blue-soft)] rounded">
-                                    {row.awbNumber}
+                                    {row.shippingDetails?.trackingNumber || 'N/A'}
                                 </span>
                             </div>
                         </div>
@@ -458,7 +385,18 @@ export function OrdersClient() {
                 {/* Table */}
                 <div className="relative min-h-[400px]">
                     <AnimatePresence mode="wait">
-                        {filteredOrders.length === 0 ? (
+                        {isLoading ? (
+                            <motion.div
+                                key="loading"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 flex flex-col items-center justify-center p-8"
+                            >
+                                <Loader2 className="h-10 w-10 animate-spin text-[var(--primary-blue)] mb-4" />
+                                <p className="text-sm text-[var(--text-muted)]">Loading orders...</p>
+                            </motion.div>
+                        ) : filteredOrders.length === 0 ? (
                             <motion.div
                                 key="empty"
                                 initial={{ opacity: 0 }}
@@ -511,27 +449,27 @@ export function OrdersClient() {
                             <div className="flex items-center justify-between mb-4 pb-4 border-b border-[var(--border-subtle)]">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <p className="font-bold text-lg text-[var(--text-primary)]">{selectedOrderForShip.id}</p>
+                                        <p className="font-bold text-lg text-[var(--text-primary)]">{selectedOrderForShip.orderNumber}</p>
                                         <Badge variant="outline" className="text-[10px] uppercase tracking-wide bg-[var(--bg-primary)]">
-                                            {selectedOrderForShip.paymentMode}
+                                            {selectedOrderForShip.paymentMethod}
                                         </Badge>
                                     </div>
-                                    <p className="text-sm text-[var(--text-muted)] mt-0.5">{selectedOrderForShip.seller}</p>
+                                    <p className="text-sm text-[var(--text-muted)] mt-0.5">{selectedOrderForShip.companyId}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-bold text-xl text-[var(--text-primary)]">{formatCurrency(selectedOrderForShip.amount)}</p>
+                                    <p className="font-bold text-xl text-[var(--text-primary)]">{formatCurrency(selectedOrderForShip.totals.total)}</p>
                                     <p className="text-xs text-[var(--text-muted)]">Total Value</p>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-6 text-sm">
                                 <div>
                                     <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider mb-1">Customer</p>
-                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.customer.name}</p>
-                                    <p className="text-[var(--text-muted)]">{selectedOrderForShip.customer.city}</p>
+                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.customerInfo.name}</p>
+                                    <p className="text-[var(--text-muted)]">{selectedOrderForShip.customerInfo.address.city}</p>
                                 </div>
                                 <div>
                                     <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider mb-1">Shipping From</p>
-                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.warehouse}</p>
+                                    <p className="font-medium text-[var(--text-primary)]">{selectedOrderForShip.warehouseId || 'Default'}</p>
                                 </div>
                             </div>
                         </div>
@@ -542,41 +480,55 @@ export function OrdersClient() {
                                 <Truck className="h-4 w-4 text-[var(--primary-blue)]" />
                                 Select Courier Partner
                             </p>
-                            <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
-                                {courierRates.map((courier) => (
-                                    <button
-                                        key={courier.name}
-                                        onClick={() => setSelectedCourier(courier.name)}
-                                        className={cn(
-                                            "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left relative overflow-hidden group",
-                                            selectedCourier === courier.name
-                                                ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] ring-1 ring-[var(--primary-blue)]"
-                                                : "border-[var(--border-default)] hover:border-[var(--border-strong)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-4 relative z-10">
-                                            <div className={cn(
-                                                "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                                                selectedCourier === courier.name ? "bg-white text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
-                                            )}>
-                                                <Truck className="h-5 w-5" />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-[var(--text-primary)]">{courier.name}</p>
-                                                <p className="text-xs text-[var(--text-muted)] mt-0.5">ETA: {courier.eta} • <span className="text-[var(--warning)]">★ {courier.rating}</span></p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right relative z-10">
-                                            <p className="font-bold text-lg text-[var(--text-primary)]">{formatCurrency(courier.rate)}</p>
-                                            {courier.rate === Math.min(...courierRates.map(c => c.rate)) && (
-                                                <Badge variant="success" className="text-[10px] ml-auto mt-1 flex w-fit">
-                                                    Best Price
-                                                </Badge>
+                            {getCourierRatesMutation.isPending ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin text-[var(--primary-blue)]" />
+                                    <span className="ml-2 text-sm text-[var(--text-muted)]">Loading courier rates...</span>
+                                </div>
+                            ) : courierRates.length === 0 ? (
+                                <div className="text-center py-8 text-sm text-[var(--text-muted)]">
+                                    No courier rates available
+                                </div>
+                            ) : (
+                                <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                                    {courierRates.map((courier) => (
+                                        <button
+                                            key={courier.courierId}
+                                            onClick={() => setSelectedCourier(courier.courierId)}
+                                            className={cn(
+                                                "w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left relative overflow-hidden group",
+                                                selectedCourier === courier.courierId
+                                                    ? "border-[var(--primary-blue)] bg-[var(--primary-blue-soft)] ring-1 ring-[var(--primary-blue)]"
+                                                    : "border-[var(--border-default)] hover:border-[var(--border-strong)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]"
                                             )}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                                        >
+                                            <div className="flex items-center gap-4 relative z-10">
+                                                <div className={cn(
+                                                    "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
+                                                    selectedCourier === courier.courierId ? "bg-white text-[var(--primary-blue)]" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                                                )}>
+                                                    <Truck className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-[var(--text-primary)]">{courier.courierName}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                                        ETA: {courier.estimatedDeliveryDays} days
+                                                        {courier.rating && <span className="text-[var(--warning)]"> • ★ {courier.rating.average}</span>}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right relative z-10">
+                                                <p className="font-bold text-lg text-[var(--text-primary)]">{formatCurrency(courier.rate)}</p>
+                                                {courier.rate === Math.min(...courierRates.map(c => c.rate)) && (
+                                                    <Badge variant="success" className="text-[10px] ml-auto mt-1 flex w-fit">
+                                                        Best Price
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Actions */}

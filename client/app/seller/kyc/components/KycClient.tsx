@@ -24,7 +24,7 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-// import { kycApi, KYCData } from "@/src/core/api";
+import { kycApi } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
 import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/lib/utils';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
@@ -86,38 +86,46 @@ export function KycClient() {
 
     // Fetch existing KYC on mount
     useEffect(() => {
-        // const fetchKYC = async () => {
-        //     // KYC fetching disabled for demo
-        // try {
-        // // const response = await kycApi.getKYC();
-        // // if (response.kyc) {
-        // // setExistingKYC(response.kyc);
-        // // Pre-fill form if KYC exists
-        // // const docs = response.kyc.documents || [];
-        // const panDoc = docs.find(d => d.type === 'pan');
-        // const bankDoc = docs.find(d => d.type === 'bank_account');
-        // const gstinDoc = docs.find(d => d.type === 'gstin');
+        const fetchKYC = async () => {
+            if (!user) return;
 
-        // if (panDoc?.status === 'verified') {
-        // setPanVerification({ verified: true, loading: false });
-        // }
-        // if (bankDoc?.status === 'verified') {
-        // setBankVerification({ verified: true, loading: false });
-        // }
-        // if (gstinDoc?.status === 'verified') {
-        // setGstinVerification({ verified: true, loading: false });
-        // }
-        // }
-        // } catch (err) {
-        // // No existing KYC, that's fine
-        // } finally {
-        // setIsLoading(false);
-        // }
-        // };
+            try {
+                const response = await kycApi.getKYC();
+                if (response.kyc) {
+                    setExistingKYC(response.kyc);
+                    // Pre-fill form if KYC exists
+                    const docs = response.kyc.documents || [];
+                    const panDoc = docs.find(d => d.type === 'pan');
+                    const bankDoc = docs.find(d => d.type === 'bank_account');
+                    const gstinDoc = docs.find(d => d.type === 'gstin');
+
+                    if (panDoc?.status === 'verified') {
+                        setPanVerification({ verified: true, loading: false, data: { name: 'Verified User' } }); // Data might need to be fetched or stored differently if not in doc
+                        setFormData(prev => ({ ...prev, pan: panDoc.number }));
+                    }
+                    if (bankDoc?.status === 'verified') {
+                        setBankVerification({ verified: true, loading: false });
+                        setFormData(prev => ({ ...prev, accountNumber: bankDoc.number, confirmAccountNumber: bankDoc.number }));
+                    }
+                    if (gstinDoc?.status === 'verified') {
+                        setGstinVerification({ verified: true, loading: false });
+                        setFormData(prev => ({ ...prev, gstin: gstinDoc.number }));
+                    }
+
+                    if (response.kyc.agreementAccepted) {
+                        setFormData(prev => ({ ...prev, agreementAccepted: true, confirmationAccepted: true }));
+                    }
+                }
+            } catch (err) {
+                // No existing KYC, that's fine
+                console.error("Error fetching KYC:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
         if (!authLoading && user) {
-            // KYC API is not yet integrated - just set loading to false
-            setIsLoading(false);
+            fetchKYC();
         } else if (!authLoading && !user) {
             router.push('/login');
         }
@@ -128,7 +136,7 @@ export function KycClient() {
         setError(null);
     };
 
-    // PAN Verification - Disabled for demo
+    // PAN Verification
     const verifyPAN = useCallback(async () => {
         if (!isValidPAN(formData.pan) || formData.pan.length !== 10) {
             setPanVerification({ verified: false, loading: false, error: 'Invalid PAN format' });
@@ -137,27 +145,49 @@ export function KycClient() {
 
         setPanVerification({ verified: false, loading: true });
 
-        // Simulate verification delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Stub: Show as verified for demo
-        setPanVerification({
-            verified: true,
-            loading: false,
-            data: { name: 'Demo User' }
-        });
-        showSuccessToast('PAN verified successfully! (Demo mode)');
+        try {
+            const response = await kycApi.verifyPAN({ panNumber: formData.pan });
+            if (response.verified) {
+                setPanVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                showSuccessToast('PAN verified successfully!');
+            } else {
+                setPanVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'PAN verification failed'
+                });
+            }
+        } catch (err: any) {
+            setPanVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
     }, [formData.pan]);
 
-    // IFSC Lookup - Disabled for demo
+    // IFSC Lookup
     const lookupIFSC = useCallback(async () => {
         if (!isValidIFSC(formData.ifscCode) || formData.ifscCode.length !== 11) {
             setIfscData(null);
             return;
         }
 
-        // Stub: Show mock bank data for demo
-        setIfscData({ bank: 'Demo Bank', branch: 'Main Branch' });
+        try {
+            const response = await kycApi.verifyIFSC(formData.ifscCode);
+            if (response.success && response.data) {
+                setIfscData({ bank: response.data.bank, branch: response.data.branch });
+            } else {
+                setIfscData(null);
+            }
+        } catch (err) {
+            console.error("IFSC Lookup failed", err);
+            setIfscData(null);
+        }
     }, [formData.ifscCode]);
 
     // Bank Verification
@@ -175,13 +205,25 @@ export function KycClient() {
         setBankVerification({ verified: false, loading: true });
 
         try {
-            // KYC API temporarily disabled
-            // const response = await kycApi.verifyBankAccount({...});
-            setBankVerification({
-                verified: false,
-                loading: false,
-                error: 'Bank verification is temporarily disabled for demo mode'
+            const response = await kycApi.verifyBankAccount({
+                accountNumber: formData.accountNumber,
+                ifscCode: formData.ifscCode
             });
+
+            if (response.verified) {
+                setBankVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                showSuccessToast('Bank account verified successfully!');
+            } else {
+                setBankVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'Bank verification failed'
+                });
+            }
         } catch (err: any) {
             setBankVerification({
                 verified: false,
@@ -191,7 +233,7 @@ export function KycClient() {
         }
     }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode]);
 
-    // GSTIN Verification - Disabled for demo
+    // GSTIN Verification
     const verifyGSTIN = useCallback(async () => {
         if (!formData.gstin) return; // GSTIN is optional
 
@@ -202,16 +244,29 @@ export function KycClient() {
 
         setGstinVerification({ verified: false, loading: true });
 
-        // Simulate verification delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Stub: Show as verified for demo
-        setGstinVerification({
-            verified: true,
-            loading: false,
-            data: { businessName: 'Demo Business Pvt Ltd' }
-        });
-        showSuccessToast('GSTIN verified! (Demo mode)');
+        try {
+            const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
+            if (response.verified) {
+                setGstinVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                showSuccessToast('GSTIN verified!');
+            } else {
+                setGstinVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'GSTIN verification failed'
+                });
+            }
+        } catch (err: any) {
+            setGstinVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
     }, [formData.gstin]);
 
     // Step validation
@@ -272,19 +327,31 @@ export function KycClient() {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
     };
 
-    // Submit KYC - Disabled for demo
+    // Submit KYC
     const handleSubmit = async () => {
         if (!validateCurrentStep()) return;
 
         setIsSubmitting(true);
         setError(null);
 
-        // Simulate submission delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            await kycApi.submitKYC({
+                panNumber: formData.pan,
+                bankDetails: {
+                    accountNumber: formData.accountNumber,
+                    ifscCode: formData.ifscCode,
+                    bankName: ifscData?.bank
+                },
+                gstin: formData.gstin || undefined
+            });
 
-        showSuccessToast('KYC submitted successfully! (Demo mode)');
-        router.push('/seller');
-        setIsSubmitting(false);
+            showSuccessToast('KYC submitted successfully!');
+            router.push('/seller');
+        } catch (err: any) {
+            setError(err.message || 'Failed to submit KYC');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Render verification badge - Updated design

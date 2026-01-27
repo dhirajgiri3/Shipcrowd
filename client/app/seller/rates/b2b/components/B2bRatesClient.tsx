@@ -24,46 +24,8 @@ import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { formatCurrency } from '@/src/lib/utils';
 import { TruckLoader } from '@/src/components/ui';
-
-// Mock B2B rate results
-const mockB2BRates = [
-    {
-        courier: 'Delhivery',
-        service: 'B2B Surface',
-        baseRate: 250,
-        perKg: 15,
-        total: 670,
-        eta: '5-7 days',
-        features: ['Bulk Handling', 'POD Included']
-    },
-    {
-        courier: 'Bluedart',
-        service: 'B2B Air',
-        baseRate: 350,
-        perKg: 22,
-        total: 966,
-        eta: '2-3 days',
-        features: ['Priority Handling', 'Insurance Included']
-    },
-    {
-        courier: 'DTDC',
-        service: 'B2B Economy',
-        baseRate: 180,
-        perKg: 12,
-        total: 516,
-        eta: '7-10 days',
-        features: ['Bulk Discount']
-    },
-    {
-        courier: 'Xpressbees',
-        service: 'B2B Standard',
-        baseRate: 220,
-        perKg: 14,
-        total: 612,
-        eta: '4-6 days',
-        features: ['GST Invoice', 'Tracking']
-    },
-];
+import { useCalculateRates } from '@/src/core/api/hooks/seller/useSellerRates';
+import { RateCalculationPayload, CourierRate } from '@/src/core/api/clients/ratesApi';
 
 export function B2bRatesClient() {
     const [fromPincode, setFromPincode] = useState('');
@@ -75,8 +37,10 @@ export function B2bRatesClient() {
     const [shipmentType, setShipmentType] = useState<'single' | 'bulk'>('single');
     const [quantity, setQuantity] = useState('1');
     const [showResults, setShowResults] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [calculatedRates, setCalculatedRates] = useState<CourierRate[]>([]);
+
     const { addToast } = useToast();
+    const { mutate: calculateRates, isPending: isLoading } = useCalculateRates();
 
     const calculateVolumetricWeight = () => {
         const l = Number(length) || 0;
@@ -90,15 +54,32 @@ export function B2bRatesClient() {
             addToast('Please fill in all required fields', 'warning');
             return;
         }
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            setShowResults(true);
-        }, 1000);
+
+        const payload: RateCalculationPayload = {
+            originPincode: fromPincode,
+            destinationPincode: toPincode,
+            weight: Number(weight),
+            length: Number(length),
+            width: Number(width),
+            height: Number(height),
+            isB2B: true,
+            quantity: shipmentType === 'bulk' ? Number(quantity) : 1
+        };
+
+        calculateRates(payload, {
+            onSuccess: (data) => {
+                setCalculatedRates(data.rates);
+                setShowResults(true);
+                addToast('Rates calculated successfully', 'success');
+            },
+            onError: (error: any) => {
+                addToast(error?.response?.data?.message || 'Failed to calculate rates', 'error');
+            }
+        });
     };
 
-    const handleBookNow = (courier: string) => {
-        addToast(`Redirecting to book with ${courier}...`, 'info');
+    const handleBookNow = (courierName: string) => {
+        addToast(`Redirecting to book with ${courierName}...`, 'info');
     };
 
     const volumetricWeight = calculateVolumetricWeight();
@@ -186,6 +167,7 @@ export function B2bRatesClient() {
                                         placeholder="e.g., 400001"
                                         value={fromPincode}
                                         onChange={(e) => setFromPincode(e.target.value)}
+                                        maxLength={6}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -194,6 +176,7 @@ export function B2bRatesClient() {
                                         placeholder="e.g., 110001"
                                         value={toPincode}
                                         onChange={(e) => setToPincode(e.target.value)}
+                                        maxLength={6}
                                     />
                                 </div>
                             </div>
@@ -264,9 +247,9 @@ export function B2bRatesClient() {
                         </CardContent>
                     </Card>
 
-                    <Button className="w-full h-12" onClick={handleCalculate} isLoading={isLoading}>
+                    <Button className="w-full h-12" onClick={handleCalculate} isLoading={isLoading} disabled={isLoading}>
                         <Calculator className="h-4 w-4 mr-2" />
-                        Calculate Rates
+                        {isLoading ? 'Calculating Best Rates...' : 'Calculate B2B Rates'}
                     </Button>
                 </div>
 
@@ -306,7 +289,7 @@ export function B2bRatesClient() {
                             {shipmentType === 'bulk' && (
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
                                     <p className="font-medium text-[var(--warning)]">Bulk Discount Applied</p>
-                                    <p className="text-[var(--warning)] text-xs mt-1">10% off on 10+ units</p>
+                                    <p className="text-[var(--warning)] text-xs mt-1">10% off on 10+ units if applicable</p>
                                 </div>
                             )}
                         </CardContent>
@@ -327,69 +310,77 @@ export function B2bRatesClient() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {mockB2BRates.map((rate, index) => (
-                                <div
-                                    key={index}
-                                    className={cn(
-                                        "p-4 rounded-xl border transition-all",
-                                        index === 0
-                                            ? "border-[var(--success)] bg-[var(--success-bg)]/50"
-                                            : "border-gray-200 hover:border-gray-300"
-                                    )}
-                                >
-                                    {index === 0 && (
-                                        <Badge variant="success" className="mb-3">
-                                            <Zap className="h-3 w-3 mr-1" />
-                                            Best Value
-                                        </Badge>
-                                    )}
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div>
-                                            <h4 className="font-semibold text-[var(--text-primary)]">{rate.courier}</h4>
-                                            <p className="text-sm text-[var(--text-muted)]">{rate.service}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rate.total)}</p>
-                                            <p className="text-xs text-[var(--text-muted)]">+ GST</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 mb-3 text-sm text-[var(--text-muted)]">
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-3.5 w-3.5" />
-                                            {rate.eta}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <IndianRupee className="h-3.5 w-3.5" />
-                                            ₹{rate.perKg}/kg after base
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1 mb-4">
-                                        {rate.features.map((f, i) => (
-                                            <Badge key={i} variant="outline" className="text-xs">
-                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                {f}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                    <Button
-                                        className="w-full"
-                                        variant={index === 0 ? 'primary' : 'outline'}
-                                        onClick={() => handleBookNow(rate.courier)}
+                        {calculatedRates.length === 0 ? (
+                            <div className="text-center py-8 text-[var(--text-muted)]">
+                                No rates found for this route. Please try checking pincodes.
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {calculatedRates.map((rate, index) => (
+                                    <div
+                                        key={index}
+                                        className={cn(
+                                            "p-4 rounded-xl border transition-all",
+                                            rate.recommended
+                                                ? "border-[var(--success)] bg-[var(--success-bg)]/50"
+                                                : "border-gray-200 hover:border-gray-300"
+                                        )}
                                     >
-                                        Book Now
-                                        <ArrowRight className="h-4 w-4 ml-2" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
+                                        {rate.recommended && (
+                                            <Badge variant="success" className="mb-3">
+                                                <Zap className="h-3 w-3 mr-1" />
+                                                Best Value
+                                            </Badge>
+                                        )}
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div>
+                                                <h4 className="font-semibold text-[var(--text-primary)]">{rate.courierName}</h4>
+                                                <p className="text-sm text-[var(--text-muted)]">{rate.serviceType}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCurrency(rate.rate)}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">+ GST ({formatCurrency(rate.breakdown.tax)})</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 mb-3 text-sm text-[var(--text-muted)]">
+                                            <span className="flex items-center gap-1">
+                                                <Clock className="h-3.5 w-3.5" />
+                                                {rate.eta.text}
+                                            </span>
+                                            {rate.breakdown.handlingCharge ? (
+                                                <span className="flex items-center gap-1">
+                                                    <IndianRupee className="h-3.5 w-3.5" />
+                                                    Handling: {formatCurrency(rate.breakdown.handlingCharge)}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <div className="flex flex-wrap gap-1 mb-4">
+                                            {rate.features?.map((f, i) => (
+                                                <Badge key={i} variant="outline" className="text-xs">
+                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                    {f}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                        <Button
+                                            className="w-full"
+                                            variant={rate.recommended ? 'primary' : 'outline'}
+                                            onClick={() => handleBookNow(rate.courierName)}
+                                        >
+                                            Book Now
+                                            <ArrowRight className="h-4 w-4 ml-2" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}
             {/* Truck Loader Overlay */}
             {isLoading && (
                 <TruckLoader
-                    message="Fetching best rates..."
+                    message="Fetching best B2B rates..."
                     subMessage="Analyzing carrier network"
                     fullScreen={true}
                 />
