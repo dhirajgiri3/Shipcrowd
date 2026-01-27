@@ -38,4 +38,37 @@ router.get(
     asyncHandler(supportController.getTicketById)
 );
 
+/**
+ * @route PUT /support/tickets/:id
+ * @desc Update ticket details (status, priority, assignment)
+ * @access Private
+ */
+router.put(
+    '/tickets/:id',
+    authenticate,
+    asyncHandler(supportController.updateTicket)
+);
+
+/**
+ * @route POST /support/tickets/:id/notes
+ * @desc Add note or reply to ticket
+ * @access Private
+ */
+router.post(
+    '/tickets/:id/notes',
+    authenticate,
+    asyncHandler(supportController.addNote)
+);
+
+/**
+ * @route GET /support/metrics
+ * @desc Get SLA metrics for dashboard
+ * @access Private
+ */
+router.get(
+    '/metrics',
+    authenticate,
+    asyncHandler(supportController.getMetrics)
+);
+
 export default router;

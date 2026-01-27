@@ -18,6 +18,5 @@ export * from './analytics';
 export { useAnalyticsDisplay as useAnalyticsParams } from './analytics';
 
 // Utility hooks
-export * from './utility/useCountUp';
 export * from './utility/useLoader';
 export * from './utility/useProgress';

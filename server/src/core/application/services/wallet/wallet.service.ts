@@ -247,7 +247,9 @@ export default class WalletService {
 
             const currentBalance = company.wallet?.balance || 0;
             const balanceChange = type === 'debit' ? -amount : amount;
-            const newBalance = currentBalance + balanceChange;
+            // Precision Fix: Round to 2 decimal places to avoid floating point errors
+            const rawNewBalance = currentBalance + balanceChange;
+            const newBalance = Math.round(rawNewBalance * 100) / 100;
 
             // Validate balance for debits (INSIDE transaction to prevent TOCTOU)
             if (type === 'debit' && newBalance < 0) {

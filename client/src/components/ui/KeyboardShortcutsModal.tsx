@@ -9,7 +9,6 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Keyboard } from 'lucide-react';
-import type { KeyboardShortcut } from '@/src/hooks/useKeyboardShortcuts';
 
 interface KeyboardShortcutsModalProps {
     isOpen: boolean;

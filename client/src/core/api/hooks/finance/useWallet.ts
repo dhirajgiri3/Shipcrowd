@@ -74,11 +74,13 @@ export const useRechargeWallet = (options?: UseMutationOptions<any, Error, { amo
             queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Wallet recharged successfully');
-            options?.onSuccess?.(data, variables, context);
+            // @ts-ignore - Type definition expects 4 args (context mismatch)
+            options?.onSuccess?.(data, variables, context, undefined);
         },
         onError: (error, variables, context) => {
             handleApiError(error, 'Recharge Failed');
-            options?.onError?.(error, variables, context);
+            // @ts-ignore - Type definition expects 4 args (context mismatch)
+            options?.onError?.(error, variables, context, undefined);
         },
         retry: RETRY_CONFIG.DEFAULT,
         ...options,

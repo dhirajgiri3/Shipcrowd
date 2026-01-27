@@ -154,6 +154,10 @@ router.use('/disputes', disputeRoutes);
 import supportRoutes from './support/support.routes';
 router.use('/support', supportRoutes);
 
+// Phase 2: Sales Representatives
+import salesRepRoutes from '../crm/sales-rep.routes';
+router.use('/crm/sales-reps', salesRepRoutes);
+
 // Admin: User Management (Super Admin Only)
 router.use('/admin/users', userManagementRoutes);
 
