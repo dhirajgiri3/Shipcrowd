@@ -22,12 +22,12 @@ import type {
  * Order API Service
  * Handles all order-related API calls
  */
-class OrderApiService {
+export const orderApi = {
   /**
    * Create a new order
    * POST /api/v1/orders
    */
-  async createOrder(data: CreateOrderRequest): Promise<CreateOrderResponse> {
+  createOrder: async (data: CreateOrderRequest): Promise<CreateOrderResponse> => {
     const response = await apiClient.post<CreateOrderResponse>('/orders', {
       customerInfo: {
         name: data.customerInfo.name,
@@ -50,10 +50,10 @@ class OrderApiService {
         weight: p.weight ? Number(p.weight) : undefined,
         dimensions: p.dimensions
           ? {
-              length: Number(p.dimensions.length),
-              width: Number(p.dimensions.width),
-              height: Number(p.dimensions.height),
-            }
+            length: Number(p.dimensions.length),
+            width: Number(p.dimensions.width),
+            height: Number(p.dimensions.height),
+          }
           : undefined,
       })),
       paymentMethod: data.paymentMethod || 'cod',
@@ -64,34 +64,34 @@ class OrderApiService {
     });
 
     return response.data;
-  }
+  },
 
   /**
    * Get list of orders
    * GET /api/v1/orders
    */
-  async getOrders(params?: OrderListParams): Promise<GetOrdersResponse> {
+  getOrders: async (params?: OrderListParams): Promise<GetOrdersResponse> => {
     const response = await apiClient.get<GetOrdersResponse>('/orders', { params });
     return response.data;
-  }
+  },
 
   /**
    * Get single order by ID
    * GET /api/v1/orders/:id
    */
-  async getOrder(orderId: string): Promise<GetOrderResponse> {
+  getOrder: async (orderId: string): Promise<GetOrderResponse> => {
     const response = await apiClient.get<GetOrderResponse>(`/orders/${orderId}`);
     return response.data;
-  }
+  },
 
   /**
    * Update an order
    * PATCH /api/v1/orders/:id
    */
-  async updateOrder(
+  updateOrder: async (
     orderId: string,
     data: Partial<CreateOrderRequest>
-  ): Promise<UpdateOrderResponse> {
+  ): Promise<UpdateOrderResponse> => {
     const payload: any = {};
 
     // Only include fields that are provided
@@ -120,10 +120,10 @@ class OrderApiService {
         weight: p.weight ? Number(p.weight) : undefined,
         dimensions: p.dimensions
           ? {
-              length: Number(p.dimensions.length),
-              width: Number(p.dimensions.width),
-              height: Number(p.dimensions.height),
-            }
+            length: Number(p.dimensions.length),
+            width: Number(p.dimensions.width),
+            height: Number(p.dimensions.height),
+          }
           : undefined,
       }));
     }
@@ -150,22 +150,22 @@ class OrderApiService {
 
     const response = await apiClient.patch<UpdateOrderResponse>(`/orders/${orderId}`, payload);
     return response.data;
-  }
+  },
 
   /**
    * Delete an order
    * DELETE /api/v1/orders/:id
    */
-  async deleteOrder(orderId: string): Promise<DeleteOrderResponse> {
+  deleteOrder: async (orderId: string): Promise<DeleteOrderResponse> => {
     const response = await apiClient.delete<DeleteOrderResponse>(`/orders/${orderId}`);
     return response.data;
-  }
+  },
 
   /**
    * Clone an existing order with optional modifications
    * POST /api/v1/orders/:id/clone
    */
-  async cloneOrder(
+  cloneOrder: async (
     orderId: string,
     modifications?: {
       customerInfo?: any;
@@ -181,18 +181,18 @@ class OrderApiService {
       clonedOrder: Order;
       originalOrderNumber: string;
     };
-  }> {
+  }> => {
     const response = await apiClient.post(`/orders/${orderId}/clone`, {
       modifications,
     });
     return response.data;
-  }
+  },
 
   /**
    * Split a single order into multiple orders
    * POST /api/v1/orders/:id/split
    */
-  async splitOrder(
+  splitOrder: async (
     orderId: string,
     splits: Array<{
       products: Array<{ sku?: string; name: string; quantity: number }>;
@@ -211,18 +211,18 @@ class OrderApiService {
         totals: any;
       }>;
     };
-  }> {
+  }> => {
     const response = await apiClient.post(`/orders/${orderId}/split`, {
       splits,
     });
     return response.data;
-  }
+  },
 
   /**
    * Merge multiple orders into a single order
    * POST /api/v1/orders/merge
    */
-  async mergeOrders(
+  mergeOrders: async (
     orderIds: string[],
     mergeOptions?: {
       warehouseId?: string;
@@ -241,13 +241,13 @@ class OrderApiService {
       };
       cancelledOrders: string[];
     };
-  }> {
+  }> => {
     const response = await apiClient.post('/orders/merge', {
       orderIds,
       mergeOptions,
     });
     return response.data;
-  }
+  },
 
   // ============================================================================
   // SHIPPING & COURIER METHODS (Seller + Admin)
@@ -257,21 +257,21 @@ class OrderApiService {
    * Get courier rates for shipping
    * GET /api/v1/orders/courier-rates
    */
-  async getCourierRates(params: {
+  getCourierRates: async (params: {
     fromPincode: string;
     toPincode: string;
     weight: number;
     paymentMode?: 'COD' | 'Prepaid';
-  }): Promise<{ success: boolean; data: CourierRate[] }> {
+  }): Promise<{ success: boolean; data: CourierRate[] }> => {
     const response = await apiClient.get('/orders/courier-rates', { params });
     return response.data;
-  }
+  },
 
   /**
    * Ship an order
    * POST /api/v1/orders/:id/ship
    */
-  async shipOrder(data: ShipOrderRequest): Promise<{
+  shipOrder: async (data: ShipOrderRequest): Promise<{
     success: boolean;
     data: {
       shipmentId: string;
@@ -280,11 +280,35 @@ class OrderApiService {
       labelUrl: string;
     };
     message: string;
-  }> {
+  }> => {
     const { orderId, ...payload } = data;
     const response = await apiClient.post(`/orders/${orderId}/ship`, payload);
     return response.data;
-  }
+  },
+
+  /**
+   * Bulk import orders from CSV file
+   * POST /api/v1/orders/bulk
+   */
+  bulkImportOrders: async (file: File): Promise<{
+    success: boolean;
+    data: {
+      created: Array<{ orderNumber: string; id: string }>;
+      errors: Array<{ row: number; error: string }>;
+      imported: number;
+      failed: number;
+    };
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post('/orders/bulk', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 
   // ============================================================================
   // ADMIN-ONLY METHODS
@@ -294,30 +318,25 @@ class OrderApiService {
    * Get all orders across sellers (Admin only)
    * GET /api/v1/admin/orders
    */
-  async getAdminOrders(params?: OrderListParams): Promise<GetOrdersResponse> {
+  getAdminOrders: async (params?: OrderListParams): Promise<GetOrdersResponse> => {
     const response = await apiClient.get<GetOrdersResponse>('/admin/orders', { params });
     return response.data;
-  }
+  },
 
   /**
    * Bulk ship multiple orders (Admin only)
    * POST /api/v1/admin/orders/bulk-ship
    */
-  async bulkShipOrders(data: BulkShipOrdersRequest): Promise<{
+  bulkShipOrders: async (data: BulkShipOrdersRequest): Promise<{
     success: boolean;
     data: {
       successful: Array<{ orderId: string; awbNumber: string }>;
       failed: Array<{ orderId: string; reason: string }>;
     };
-  }> {
+  }> => {
     const response = await apiClient.post('/admin/orders/bulk-ship', data);
     return response.data;
-  }
-}
-
-/**
- * Singleton instance
- */
-export const orderApi = new OrderApiService();
+  },
+};
 
 export default orderApi;

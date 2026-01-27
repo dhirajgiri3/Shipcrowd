@@ -316,9 +316,28 @@ export class OrderService extends CachedService {
     }): Promise<{ success: boolean; order?: any; error?: string }> {
         const { row, rowIndex, companyId, session } = args;
 
+        // Normalize keys (aliases)
+        const normalizedRow = {
+            customer_name: row.customer_name || row.customer,
+            customer_phone: row.customer_phone || row.phone,
+            address_line1: row.address_line1 || row.address,
+            address_line2: row.address_line2,
+            city: row.city,
+            state: row.state,
+            postal_code: row.postal_code || row.pincode,
+            country: row.country,
+            product_name: row.product_name || row.product,
+            sku: row.sku,
+            quantity: row.quantity,
+            price: row.price,
+            weight: row.weight,
+            payment_method: row.payment_method || row.payment_mode || 'prepaid',
+            payment_status: row.payment_status
+        };
+
         try {
             const requiredFields = ['customer_name', 'customer_phone', 'address_line1', 'city', 'state', 'postal_code', 'product_name', 'quantity', 'price'];
-            const missingFields = requiredFields.filter(f => !row[f]);
+            const missingFields = requiredFields.filter(f => !normalizedRow[f as keyof typeof normalizedRow]);
 
             if (missingFields.length > 0) {
                 return {
@@ -335,35 +354,35 @@ export class OrderService extends CachedService {
                 };
             }
 
-            const quantity = parseInt(row.quantity, 10);
-            const price = parseFloat(row.price);
+            const quantity = parseInt(String(normalizedRow.quantity), 10);
+            const price = parseFloat(String(normalizedRow.price));
             const subtotal = quantity * price;
 
             const order = new Order({
                 orderNumber,
                 companyId,
                 customerInfo: {
-                    name: row.customer_name,
-                    email: row.customer_email || undefined,
-                    phone: row.customer_phone,
+                    name: normalizedRow.customer_name,
+                    email: row.customer_email || row.email || undefined,
+                    phone: normalizedRow.customer_phone,
                     address: {
-                        line1: row.address_line1,
-                        line2: row.address_line2 || '',
-                        city: row.city,
-                        state: row.state,
-                        country: row.country || 'India',
-                        postalCode: row.postal_code,
+                        line1: normalizedRow.address_line1,
+                        line2: normalizedRow.address_line2 || '',
+                        city: normalizedRow.city,
+                        state: normalizedRow.state,
+                        country: normalizedRow.country || 'India',
+                        postalCode: normalizedRow.postal_code,
                     },
                 },
                 products: [{
-                    name: row.product_name,
-                    sku: row.sku || '',
+                    name: normalizedRow.product_name,
+                    sku: normalizedRow.sku || '',
                     quantity,
                     price,
-                    weight: row.weight ? parseFloat(row.weight) : undefined,
+                    weight: normalizedRow.weight ? parseFloat(String(normalizedRow.weight)) : undefined,
                 }],
-                paymentMethod: row.payment_method === 'cod' ? 'cod' : 'prepaid',
-                paymentStatus: row.payment_method === 'cod' ? 'pending' : 'paid',
+                paymentMethod: normalizedRow.payment_method === 'cod' ? 'cod' : 'prepaid',
+                paymentStatus: normalizedRow.payment_status || (normalizedRow.payment_method === 'cod' ? 'pending' : 'paid'),
                 source: 'manual',
                 currentStatus: 'pending',
                 totals: { subtotal, tax: 0, shipping: 0, discount: 0, total: subtotal },
@@ -421,7 +440,7 @@ export class OrderService extends CachedService {
             }
 
             if (created.length === 0 && errors.length > 0) {
-                await session.abortTransaction();
+                // Throwing here triggers catch block which handles abort
                 throw new ValidationError('No orders imported', ErrorCode.VAL_INVALID_INPUT);
             }
 

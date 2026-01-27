@@ -11,6 +11,7 @@ import {
     addToFailedQueue,
     processQueue,
 } from './auth';
+import { ERROR_MESSAGES } from '../../error/messages';
 
 /**
  * Normalized API error format
@@ -357,7 +358,7 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
         if (error.code === 'ECONNABORTED') {
             return {
                 code: 'TIMEOUT',
-                message: 'Request timed out. Please check your connection and try again.',
+                message: ERROR_MESSAGES.TIMEOUT,
             };
         }
 
@@ -365,7 +366,7 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
         if (error.code === 'ERR_NETWORK' || !error.response) {
             return {
                 code: 'NETWORK_ERROR',
-                message: 'Unable to connect to server. Please check your internet connection.',
+                message: ERROR_MESSAGES.NETWORK_ERROR,
             };
         }
 
@@ -377,18 +378,20 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
         if (status === 429) {
             return {
                 code: 'RATE_LIMIT',
-                message: 'Too many requests. Please wait a moment and try again.',
+                message: ERROR_MESSAGES.HTTP_429,
             };
         }
 
         // Generic HTTP error messages fallback
         const statusMessages: Record<number, string> = {
-            400: 'Invalid request. Please check your input.',
-            401: 'You are not authorized. Please log in.',
-            403: 'You do not have permission to perform this action.',
-            404: 'The requested resource was not found.',
-            500: 'Server error. Please try again later.',
-            503: 'Service temporarily unavailable. Please try again later.',
+            400: ERROR_MESSAGES.HTTP_400,
+            401: ERROR_MESSAGES.HTTP_401,
+            403: ERROR_MESSAGES.HTTP_403,
+            404: ERROR_MESSAGES.HTTP_404,
+            500: ERROR_MESSAGES.HTTP_500,
+            502: ERROR_MESSAGES.HTTP_502,
+            503: ERROR_MESSAGES.HTTP_503,
+            504: ERROR_MESSAGES.HTTP_504,
         };
 
         // Extract message from various common API error formats
@@ -399,7 +402,7 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
             data?.message ||         // Fallback to top-level message
             (typeof data?.error === 'string' ? data.error : null) ||
             statusMessages[status || 500] ||
-            'An unexpected error occurred.';
+            ERROR_MESSAGES.DEFAULT;
 
         // Extract error code with same priority
         const code =
@@ -426,7 +429,7 @@ export const normalizeError = (error: AxiosError | any): ApiError => {
     // Fallback for unknown error types
     return {
         code: 'UNKNOWN_ERROR',
-        message: 'An unexpected error occurred.',
+        message: ERROR_MESSAGES.DEFAULT,
     };
 };
 

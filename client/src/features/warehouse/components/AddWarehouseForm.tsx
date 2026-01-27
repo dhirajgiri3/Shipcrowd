@@ -6,7 +6,6 @@ import { Building2, MapPin, User } from 'lucide-react';
 import { Button } from '@/src/components/ui/core/Button';
 import { FormField } from '@/src/components/ui/form/FormField';
 
-import { Label } from '@/src/components/ui/core/Label';
 import { CreateWarehousePayload } from '@/src/core/api/hooks/logistics/useWarehouses';
 import { isValidPhoneWithCountryCode, normalizePhoneToE164 } from '@/src/lib/utils/validators';
 

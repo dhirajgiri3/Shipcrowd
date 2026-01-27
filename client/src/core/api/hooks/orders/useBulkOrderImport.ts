@@ -1,45 +1,47 @@
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../http';
+import { ApiError } from '../../http';
+import { orderApi } from '../../clients/orderApi';
 import { queryKeys } from '../../config/query-keys';
 import { RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
-export interface BulkImportResult {
-    successCount?: number;
-    failedCount?: number;
-    errors?: Array<{ row?: number; message: string }>;
-    batchId?: string;
+export interface BulkImportResponse {
+    success: boolean;
+    data: {
+        created: Array<{ orderNumber: string; id: string }>;
+        errors: Array<{ row: number; error: string }>;
+        imported: number;
+        failed: number;
+    };
 }
 
 export function useBulkOrderImport(
-    options?: UseMutationOptions<BulkImportResult, ApiError, { file: File }>
+    options?: UseMutationOptions<BulkImportResponse, ApiError, File>
 ) {
     const queryClient = useQueryClient();
 
-    return useMutation<BulkImportResult, ApiError, { file: File }>({
-        mutationFn: async ({ file }) => {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const { data } = await apiClient.post<{ success: boolean; data: BulkImportResult }>(
-                '/orders/bulk',
-                formData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                }
-            );
-
-            return data.data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
-            showSuccessToast('Bulk import started');
-        },
-        onError: (error) => handleApiError(error),
-        retry: RETRY_CONFIG.DEFAULT,
+    return useMutation<BulkImportResponse, ApiError, File>({
+        mutationFn: (file) => orderApi.bulkImportOrders(file),
         ...options,
+        onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all() });
+
+            if (data.success) {
+                showSuccessToast(`Imported ${data.data.imported || 0} orders successfully`);
+            }
+
+            // Call user defined onSuccess if exists
+            // Using 'as any' to bypass potential type mismatch in v5 definitions where onSuccess might have different signature in types
+            if (options?.onSuccess) {
+                (options.onSuccess as any)(data, variables, context);
+            }
+        },
+        onError: (error, variables, context) => {
+            handleApiError(error, 'Bulk Import Failed');
+            if (options?.onError) {
+                (options.onError as any)(error, variables, context);
+            }
+        },
+        retry: RETRY_CONFIG.DEFAULT,
     });
 }
-

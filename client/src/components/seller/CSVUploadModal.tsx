@@ -18,6 +18,8 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from "@/src/lib/utils";
+import { orderApi } from '@/src/core/api/clients/orderApi';
+import { useBulkOrderImport } from '@/src/core/api/hooks/orders/useBulkOrderImport';
 
 interface CSVUploadModalProps {
     isOpen: boolean;
@@ -111,6 +113,29 @@ export function CSVUploadModal({ isOpen, onClose }: CSVUploadModalProps) {
         maxFiles: 1,
     });
 
+    const importMutation = useBulkOrderImport({
+        onSuccess: (result) => {
+            if (result.success) {
+                const imported = result.data.imported || 0;
+                const failed = result.data.failed || 0;
+
+                addToast(`Successfully created ${imported} orders`, 'success');
+                if (failed > 0) {
+                    addToast(`${failed} rows failed to import`, 'warning');
+                }
+                setParsedData([]);
+                onClose();
+            } else {
+                addToast('Bulk upload failed (API returned failure)', 'error');
+            }
+            setUploading(false);
+        },
+        onError: (error) => {
+            // Toast handled by hook
+            setUploading(false);
+        }
+    });
+
     const handleUpload = async () => {
         const validRows = parsedData.filter((r) => r.isValid);
 
@@ -121,42 +146,37 @@ export function CSVUploadModal({ isOpen, onClose }: CSVUploadModalProps) {
 
         setUploading(true);
         try {
-            // Simulate upload - replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Convert CSV rows to File object for multipart/form-data
+            const csvContent = [
+                'customer_name,phone,email,address,address_line2,city,state,pincode,product,sku,quantity,weight,price,payment_mode',
+                ...validRows.map(r =>
+                    [
+                        r.data.customer_name,
+                        r.data.phone,
+                        r.data.email || '',
+                        r.data.address,
+                        r.data.address_line2 || '',
+                        r.data.city,
+                        r.data.state || '',
+                        r.data.pincode,
+                        r.data.product,
+                        r.data.sku || '',
+                        r.data.quantity || '1',
+                        r.data.weight,
+                        r.data.price,
+                        r.data.payment_mode,
+                    ].join(',')
+                ),
+            ].join('\n');
 
-            const orders = validRows.map((r) => ({
-                customerInfo: {
-                    name: r.data.customer_name,
-                    phone: r.data.phone,
-                    email: r.data.email || '',
-                    address: {
-                        line1: r.data.address,
-                        line2: r.data.address_line2 || '',
-                        city: r.data.city,
-                        state: r.data.state || '',
-                        country: 'India',
-                        postalCode: r.data.pincode,
-                    },
-                },
-                products: [{
-                    name: r.data.product,
-                    sku: r.data.sku || '',
-                    quantity: parseInt(r.data.quantity) || 1,
-                    weight: parseFloat(r.data.weight),
-                    price: parseFloat(r.data.price),
-                }],
-                paymentMethod: r.data.payment_mode.toLowerCase(),
-            }));
+            const csvFile = new File([csvContent], 'bulk-orders.csv', { type: 'text/csv' });
 
-            // TODO: Replace with actual API call
-            // await apiClient.post('/orders/bulk', { orders });
+            // Use mutation hook
+            importMutation.mutate(csvFile);
 
-            addToast(`Successfully created ${validRows.length} orders`, 'success');
-            setParsedData([]);
-            onClose();
-        } catch (error) {
-            addToast('Bulk upload failed', 'error');
-        } finally {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Bulk upload failed';
+            addToast(errorMessage, 'error');
             setUploading(false);
         }
     };

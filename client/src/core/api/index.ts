@@ -17,7 +17,7 @@ export { consentApi } from './clients/consentApi';
 export { orderApi } from './clients/orderApi';
 export { recoveryApi } from './clients/recoveryApi';
 export { sessionApi } from './clients/sessionApi';
-export { trackingApi } from './clients/trackingApi';
+export { shipmentApi } from './clients/shipmentApi';
 
 // React Query Configuration
 export * from './config';

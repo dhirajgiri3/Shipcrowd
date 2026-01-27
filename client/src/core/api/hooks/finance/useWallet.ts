@@ -3,30 +3,22 @@
  * 
  * React Query hooks for wallet balance, transactions, and recharge operations
  * Includes optimistic updates for immediate UI feedback
- * Backend: GET/POST /api/v1/finance/wallet/*
+ * Uses centralized walletApi client
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/http';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { walletApi } from '@/src/core/api/clients/walletApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
-import {
-    createOptimisticUpdateHandler,
-    createOptimisticListUpdateHandler,
-    optimisticListUpdate,
-} from '../../lib/optimistic-updates';
+import { createOptimisticUpdateHandler } from '../../lib/optimistic-updates';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 // ==================== Import Centralized Types ====================
 import type {
     WalletBalance,
-    WalletTransaction,
     WalletTransactionResponse,
     WalletStats,
     TransactionFilters,
-    RechargeWalletPayload,
-    WithdrawWalletPayload,
-    TransferWalletPayload,
 } from '@/src/types/api/finance';
 
 // ==================== Hooks ====================
@@ -37,10 +29,7 @@ import type {
 export const useWalletBalance = (options?: Omit<UseQueryOptions<WalletBalance>, 'queryKey' | 'queryFn'>) => {
     return useQuery<WalletBalance>({
         queryKey: queryKeys.wallet.balance(),
-        queryFn: async () => {
-            const response = await apiClient.get('/finance/wallet/balance');
-            return response.data.data;
-        },
+        queryFn: () => walletApi.getBalance(),
         ...CACHE_TIMES.SHORT,
         retry: RETRY_CONFIG.DEFAULT,
         refetchOnWindowFocus: true,
@@ -57,12 +46,7 @@ export const useWalletTransactions = (
 ) => {
     return useQuery<WalletTransactionResponse>({
         queryKey: queryKeys.wallet.transactions(filters),
-        queryFn: async () => {
-            const response = await apiClient.get('/finance/wallet/transactions', {
-                params: filters,
-            });
-            return response.data.data;
-        },
+        queryFn: () => walletApi.getTransactions(filters),
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
         placeholderData: (previousData) => previousData,
@@ -72,90 +56,32 @@ export const useWalletTransactions = (
 
 /**
  * Recharge wallet with optimistic update
- * Features:
- * - Optimistically increases balance immediately
- * - Adds transaction to list
- * - Rolls back on error
  */
-export const useRechargeWallet = () => {
+export const useRechargeWallet = (options?: UseMutationOptions<any, Error, { amount: number; paymentId?: string }>) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: { amount: number; paymentId?: string }) => {
-            const response = await apiClient.post('/finance/wallet/recharge', data);
-            return response.data.data;
-        },
+        mutationFn: (data: { amount: number; paymentId?: string }) => walletApi.rechargeWallet(data),
         ...createOptimisticUpdateHandler({
             queryClient,
             queryKey: queryKeys.wallet.balance(),
             updateFn: (oldData: WalletBalance) => ({
                 ...oldData,
-                balance: oldData.balance,
+                balance: oldData.balance, // Optimistic update could add amount here if desired
             }),
         }),
-        onSuccess: (data) => {
+        onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
             showSuccessToast('Wallet recharged successfully');
+            options?.onSuccess?.(data, variables, context);
         },
-        onError: (error) => {
+        onError: (error, variables, context) => {
             handleApiError(error, 'Recharge Failed');
+            options?.onError?.(error, variables, context);
         },
         retry: RETRY_CONFIG.DEFAULT,
-    });
-};
-
-/**
- * Withdraw from wallet with optimistic update
- */
-export const useWithdrawWallet = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (data: { amount: number; bankAccountId: string }) => {
-            const response = await apiClient.post('/finance/wallet/withdraw', data);
-            return response.data.data;
-        },
-        ...createOptimisticUpdateHandler({
-            queryClient,
-            queryKey: queryKeys.wallet.balance(),
-            updateFn: (oldData: WalletBalance) => ({
-                ...oldData,
-                balance: Math.max(0, oldData.balance),
-            }),
-        }),
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast('Withdrawal initiated successfully');
-        },
-        onError: (error) => {
-            handleApiError(error, 'Withdrawal Failed');
-        },
-        retry: RETRY_CONFIG.DEFAULT,
-    });
-};
-
-/**
- * Transfer between sub-wallets with optimistic update
- */
-export const useTransferWallet = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (data: { fromType: string; toType: string; amount: number }) => {
-            const response = await apiClient.post('/finance/wallet/transfer', data);
-            return response.data.data;
-        },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all() });
-            showSuccessToast('Transfer completed successfully');
-        },
-        onError: (error) => {
-            handleApiError(error, 'Transfer Failed');
-        },
-        retry: RETRY_CONFIG.DEFAULT,
+        ...options,
     });
 };
 
@@ -168,12 +94,7 @@ export const useWalletStats = (
 ) => {
     return useQuery<WalletStats>({
         queryKey: queryKeys.wallet.stats(dateRange),
-        queryFn: async () => {
-            const response = await apiClient.get('/finance/wallet/stats', {
-                params: dateRange,
-            });
-            return response.data.data;
-        },
+        queryFn: () => walletApi.getStats(dateRange),
         ...CACHE_TIMES.LONG,
         retry: RETRY_CONFIG.DEFAULT,
         ...options,

@@ -5,6 +5,8 @@ import { AuthProvider } from "@/src/features/auth";
 import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
 import { Toaster } from "@/src/components/ui/feedback/Toaster";
 import { ErrorBoundary } from '@/src/components/shared/ErrorBoundary';
+import { GlobalErrorProvider } from "@/src/core/providers/GlobalErrorProvider";
+import { NetworkStatusProvider } from "@/src/core/providers/NetworkStatusProvider";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION
@@ -148,11 +150,15 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <QueryProviders>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </QueryProviders>
+          <GlobalErrorProvider>
+            <NetworkStatusProvider>
+              <QueryProviders>
+                <AuthProvider>
+                  {children}
+                </AuthProvider>
+              </QueryProviders>
+            </NetworkStatusProvider>
+          </GlobalErrorProvider>
         </ErrorBoundary>
         <Toaster position="top-right" richColors />
       </body>
