@@ -92,7 +92,6 @@ const BlacklistSchema = new Schema<IBlacklist>(
         // Expiration
         expiresAt: {
             type: Date,
-            index: true,
         },
         isPermanent: {
             type: Boolean,

@@ -33,8 +33,7 @@ const MigrationLockSchema = new Schema<IMigrationLock>({
     },
     expiresAt: {
         type: Date,
-        required: true,
-        index: true
+        required: true
     },
     status: {
         type: String,

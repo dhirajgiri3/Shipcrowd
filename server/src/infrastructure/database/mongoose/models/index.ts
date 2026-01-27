@@ -34,8 +34,8 @@ export { default as Lead } from './crm/leads/lead.model';
 export * from './crm/leads/lead.model';
 export { default as SalesRepresentative } from './crm/sales/sales-representative.model';
 export * from './crm/sales/sales-representative.model';
-export { default as CallLog } from './crm/sales/call-log.model';
-export * from './crm/sales/call-log.model';
+export { default as CallLog } from './crm/communication/call-log.model';
+export * from './crm/communication/call-log.model';
 export { default as SupportTicket } from './crm/support/support-ticket.model';
 export * from './crm/support/support-ticket.model';
 

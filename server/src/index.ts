@@ -13,6 +13,7 @@ import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
+import { initializeCRMListeners } from './core/application/listeners/crm/index';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
 import CacheService from './infrastructure/utilities/cache.service';
 import { initializeRateLimitRedis } from './shared/config/rateLimit.config';
@@ -75,6 +76,10 @@ const startServer = async (): Promise<void> => {
         // Initialize Commission System Event Handlers
         initializeCommissionEventHandlers();
         logger.info('Commission event handlers initialized');
+
+        // Initialize CRM Event Handlers (NDR, etc.)
+        initializeCRMListeners();
+        logger.info('CRM event handlers initialized');
 
         // Start listening
         app.listen(PORT, () => {

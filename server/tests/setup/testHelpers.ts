@@ -54,13 +54,18 @@ beforeEach(async () => {
  */
 export const generateAuthToken = (
     userId: string,
-    role: 'seller' | 'admin' | 'user' = 'seller'
+    role: 'seller' | 'admin' | 'user' | 'staff' | 'super_admin' = 'seller'
 ): string => {
-    const secret = process.env.JWT_SECRET || 'test_jwt_secret';
+    const secret = process.env.ACCESS_TOKEN_SECRET || 'access_token_secret';
+    // Match the payload structure from jwt.ts (generateAccessToken)
     return jwt.sign(
         { userId, role },
         secret,
-        { expiresIn: '1h' }
+        {
+            expiresIn: '1h',
+            audience: 'Shipcrowd-api',
+            issuer: 'Shipcrowd-auth'
+        }
     );
 };
 

@@ -30,6 +30,9 @@ export interface ILead extends Document {
     nextFollowUp?: Date;
     lastContactedAt?: Date;
     metadata?: Record<string, unknown>;
+    territory?: string;
+    score: number;
+    relatedSupportTicketId?: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -121,6 +124,18 @@ const LeadSchema = new Schema<ILead, ILeadModel>(
         },
         metadata: {
             type: Schema.Types.Mixed,
+        },
+        territory: {
+            type: String,
+            trim: true,
+        },
+        score: {
+            type: Number,
+            default: 0,
+        },
+        relatedSupportTicketId: {
+            type: Schema.Types.ObjectId,
+            ref: 'SupportTicket',
         },
     },
     {

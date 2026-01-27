@@ -49,7 +49,7 @@ const courierSchema = new Schema<ICourier>(
 
 // Indexes
 courierSchema.index({ isActive: 1 });
-courierSchema.index({ name: 1 });
+// courierSchema.index({ name: 1 }); // Already indexed by unique: true
 
 const Courier = mongoose.model<ICourier>('Courier', courierSchema);
 

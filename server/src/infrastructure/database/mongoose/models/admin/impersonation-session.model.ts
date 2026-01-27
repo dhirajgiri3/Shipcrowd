@@ -57,7 +57,6 @@ const ImpersonationSessionSchema = new Schema<IImpersonationSession>(
         startedAt: {
             type: Date,
             default: Date.now,
-            index: true,
         },
         endedAt: {
             type: Date,

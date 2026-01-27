@@ -34,7 +34,6 @@ const RoleSchema = new Schema<IRole>(
             type: String,
             required: true,
             trim: true,
-            index: true,
         },
         scope: {
             type: String,
@@ -162,7 +161,7 @@ async function detectCycle(
 /**
  * Pre-save hook: Prevent cycle creation (RUNS BEFORE effectivePermissions)
  */
-RoleSchema.pre('save', async function(next) {
+RoleSchema.pre('save', async function (next) {
     if (!this.isModified('inherits')) return next();
 
     try {
@@ -243,7 +242,7 @@ RoleSchema.pre('save', function (next) {
 /**
  * Prevent deleting system roles (pre('deleteOne'))
  */
-RoleSchema.pre('deleteOne', { document: true, query: false }, function(next) {
+RoleSchema.pre('deleteOne', { document: true, query: false }, function (next) {
     if (this.isSystem) {
         return next(new Error('Cannot delete system role. Use deprecation instead.'));
     }
@@ -253,7 +252,7 @@ RoleSchema.pre('deleteOne', { document: true, query: false }, function(next) {
 /**
  * Prevent bulk updates on system roles via updateOne/updateMany
  */
-RoleSchema.pre('updateOne', async function(next) {
+RoleSchema.pre('updateOne', async function (next) {
     try {
         const update = this.getUpdate() as any;
         const role = await mongoose.model('Role').findOne(this.getQuery()).lean() as any;
@@ -277,7 +276,7 @@ RoleSchema.pre('updateOne', async function(next) {
 /**
  * Prevent updates on system roles via findOneAndUpdate
  */
-RoleSchema.pre('findOneAndUpdate', async function(next) {
+RoleSchema.pre('findOneAndUpdate', async function (next) {
     try {
         const update = this.getUpdate() as any;
         const role = await mongoose.model('Role').findOne(this.getQuery()).lean() as any;

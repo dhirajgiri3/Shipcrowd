@@ -15,6 +15,7 @@ import emailRoutes from './communication/email.routes';
 import profileRoutes from './identity/profile.routes';
 import recoveryRoutes from './auth/recovery.routes';
 import consentRoutes from './identity/consent.routes';
+import bankAccountRoutes from './identity/bank-account.routes';
 // New routes for 3-Day MVP
 import orderRoutes from './shipping/order.routes';
 import shipmentRoutes from './shipping/shipment.routes';
@@ -22,6 +23,7 @@ import analyticsRoutes from './system/analytics.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
 import carrierRoutes from './shipping/carrier.routes';
+import courierRoutes from './shipping/courier.routes';
 import labelTemplateRoutes from './shipping/label-template.routes';
 // Webhook routes
 import velocityWebhookRoutes from './webhooks/velocity.webhook.routes';
@@ -74,13 +76,17 @@ router.use('/email', emailRoutes);
 router.use('/profile', profileRoutes);
 router.use('/recovery', recoveryRoutes);
 router.use('/consent', consentRoutes);
+router.use('/seller/bank-accounts', bankAccountRoutes); // New route for Bank Accounts
 // New routes for 3-Day MVP
 router.use('/orders', orderRoutes);
 router.use('/shipments', shipmentRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/admin/profit', analyticsRoutes); // Alias for legacy/frontend paths
+router.use('/admin/intelligence', analyticsRoutes); // Alias for legacy/frontend paths
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
 router.use('/admin/carriers', carrierRoutes);
+router.use('/courier', courierRoutes);
 router.use('/labels', labelTemplateRoutes);
 // Webhook routes (platform-specific, HMAC verified)
 router.use('/webhooks/velocity', velocityWebhookRoutes);
@@ -93,6 +99,7 @@ router.use('/warehouse', warehouseWorkflowRoutes);
 router.use('/integrations', integrationsRoutes);
 // Week 8: NDR/RTO Automation
 router.use('/ndr', ndrRoutes);
+router.use('/admin/ndr', ndrRoutes); // Alias for frontend compatibility
 router.use('/rto', rtoRoutes);
 // Week 9: Analytics Export
 import exportRoutes from './analytics/export.routes';
@@ -102,6 +109,7 @@ import scheduledReportRoutes from './analytics/scheduled-report.routes';
 router.use('/reports', scheduledReportRoutes);
 // Week 11: Weight Disputes & COD Remittance
 router.use('/disputes/weight', weightDisputesRoutes);
+router.use('/weight-discrepancies', weightDisputesRoutes); // Alias for frontend compatibility
 
 // Week 11: Advanced Onboarding UX
 import onboardingRoutes from './onboarding/onboarding.routes';
@@ -124,6 +132,14 @@ router.use('/finance/cod-remittance', codRemittanceRoutes);
 // Phase 4: Wallet System API
 import walletRoutes from './finance/wallet.routes';
 router.use('/finance/wallet', walletRoutes);
+
+// Phase 3: Financials Wrapper (Adapter)
+import financialsRoutes from './finance/financials.routes';
+router.use('/finance/financials', financialsRoutes);
+
+// Phase 3: Billing Wrapper (Adapter)
+import billingRoutes from './finance/billing.routes';
+router.use('/finance/billing', billingRoutes);
 
 // Week 8: Invoice System
 import invoiceRoutes from './finance/invoice.routes';
@@ -158,6 +174,18 @@ router.use('/support', supportRoutes);
 import salesRepRoutes from '../crm/sales-rep.routes';
 router.use('/crm/sales-reps', salesRepRoutes);
 
+// Phase 3: Call Logs
+import callLogRoutes from './crm/call-log.routes';
+router.use('/crm/call-logs', callLogRoutes);
+
+// Phase 4: Leads
+import leadRoutes from './crm/leads.routes';
+router.use('/crm/leads', leadRoutes);
+
+// Phase 5: CRM Disputes
+import crmDisputeRoutes from './crm/disputes.routes';
+router.use('/crm/disputes', crmDisputeRoutes);
+
 // Admin: User Management (Super Admin Only)
 router.use('/admin/users', userManagementRoutes);
 
@@ -169,5 +197,9 @@ router.use('/admin/feature-flags', featureFlagRoutes);
 
 // System: Health Monitoring (Public /health, Admin /health/*)
 router.use('/health', healthRoutes);
+
+// Phase 4: Seller Health Metrics
+import sellerHealthRoutes from './system/seller-health.routes';
+router.use('/admin/seller-health', sellerHealthRoutes);
 
 export default router;

@@ -27,7 +27,15 @@ export type AppEvent =
     | 'commission.rejected'
     | 'payout.initiated'
     | 'payout.completed'
-    | 'payout.failed';
+    | 'payout.failed'
+    | 'ndr.created'
+    | 'ndr.updated'
+    | 'ticket.created'
+    | 'ticket.assigned'
+    | 'ticket.status_changed'
+    | 'ticket.escalated'
+    | 'dispute.created'
+    | 'dispute.resolved';
 
 // Event payload types
 export interface OrderEventPayload {
@@ -51,7 +59,32 @@ export interface CommissionEventPayload {
     amount: number;
 }
 
-export type EventPayload = OrderEventPayload | RTOEventPayload | CommissionEventPayload;
+export interface NDREventPayload {
+    ndrId: string;
+    companyId: string;
+    shipmentId: string;
+    reason?: string;
+}
+
+export interface TicketEventPayload {
+    ticketId: string;
+    ticketNumber?: string;
+    companyId: string;
+    status?: string;
+    assignedTo?: string;
+    priority?: string;
+    category?: string;
+}
+
+export interface DisputeEventPayload {
+    disputeId: string;
+    companyId: string;
+    type?: string;
+    status?: string;
+    relatedTicketId?: string;
+}
+
+export type EventPayload = OrderEventPayload | RTOEventPayload | CommissionEventPayload | NDREventPayload | TicketEventPayload | DisputeEventPayload;
 
 class ApplicationEventBus extends EventEmitter {
     constructor() {

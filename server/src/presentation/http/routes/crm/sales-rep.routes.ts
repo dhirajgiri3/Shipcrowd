@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import controller from '@/presentation/http/controllers/crm/sales-rep.controller';
-import { authenticate } from '@/presentation/http/middleware/auth/auth.middleware';
-import { requirePermission } from '@/presentation/http/middleware/auth/rbac.middleware';
+import { authenticate } from '@/presentation/http/middleware/auth/auth';
+import { requirePermission } from '@/presentation/http/middleware/auth/require-permission.middleware';
 
 const router = Router();
 
