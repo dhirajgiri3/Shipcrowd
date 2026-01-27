@@ -34,7 +34,7 @@ export function AnalyticsClient() {
         const end = new Date();
         const start = new Date();
 
-        switch(dateRange) {
+        switch (dateRange) {
             case '7d':
                 start.setDate(start.getDate() - 7);
                 break;
@@ -87,33 +87,33 @@ export function AnalyticsClient() {
                             <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
                         </div>
                     ) : (
-                    <AreaChart data={deliveryPerformanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.1} />
-                                <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                        <Tooltip
-                            contentStyle={{
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-subtle)',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                backgroundColor: 'var(--bg-popover)',
-                                padding: '12px',
-                                color: 'var(--text-primary)'
-                            }}
-                            labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
-                            itemStyle={{ color: 'var(--text-primary)', fontSize: '14px' }}
-                        />
-                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                        <Area type="monotone" dataKey="delivered" stroke="var(--primary-blue)" fillOpacity={1} fill="url(#colorDelivered)" name="Delivered" />
-                        <Area type="monotone" dataKey="ndr" stroke="var(--warning)" fill="none" name="NDR" />
-                        <Area type="monotone" dataKey="rto" stroke="var(--error)" fill="none" name="RTO" />
-                    </AreaChart>
+                        <AreaChart data={deliveryPerformanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                            <Tooltip
+                                contentStyle={{
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-subtle)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                    backgroundColor: 'var(--bg-popover)',
+                                    padding: '12px',
+                                    color: 'var(--text-primary)'
+                                }}
+                                labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                itemStyle={{ color: 'var(--text-primary)', fontSize: '14px' }}
+                            />
+                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                            <Area type="monotone" dataKey="delivered" stroke="var(--primary-blue)" fillOpacity={1} fill="url(#colorDelivered)" name="Delivered" />
+                            <Area type="monotone" dataKey="ndr" stroke="var(--warning)" fill="none" name="NDR" />
+                            <Area type="monotone" dataKey="rto" stroke="var(--error)" fill="none" name="RTO" />
+                        </AreaChart>
                     )}
                 </ChartCard>
 
@@ -123,35 +123,35 @@ export function AnalyticsClient() {
                             <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
                         </div>
                     ) : (
-                    <PieChart>
-                        <Pie
-                            data={zoneDistribution}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={80}
-                            outerRadius={110}
-                            fill="#8884d8"
-                            paddingAngle={5}
-                            dataKey="value"
-                        >
-                            {zoneDistribution.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            contentStyle={{
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-subtle)',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                backgroundColor: 'var(--bg-popover)',
-                                padding: '12px',
-                                color: 'var(--text-primary)'
-                            }}
-                            labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
-                            itemStyle={{ color: 'var(--text-primary)', fontSize: '14px' }}
-                        />
-                        <Legend layout="vertical" verticalAlign="middle" align="right" />
-                    </PieChart>
+                        <PieChart>
+                            <Pie
+                                data={zoneDistribution as any[]}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={80}
+                                outerRadius={110}
+                                fill="#8884d8"
+                                paddingAngle={5}
+                                dataKey="value"
+                            >
+                                {zoneDistribution.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                contentStyle={{
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-subtle)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                    backgroundColor: 'var(--bg-popover)',
+                                    padding: '12px',
+                                    color: 'var(--text-primary)'
+                                }}
+                                labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                itemStyle={{ color: 'var(--text-primary)', fontSize: '14px' }}
+                            />
+                            <Legend layout="vertical" verticalAlign="middle" align="right" />
+                        </PieChart>
                     )}
                 </ChartCard>
             </div>

@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
-import { useDebouncedValue as useDebounce } from '@/src/hooks/data/useDebouncedValue';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
 import {
     Search,
@@ -50,7 +50,7 @@ const trendData = [
 export function OrdersClient() {
     const isMobile = useIsMobile();
     const [search, setSearch] = useState('');
-    const debouncedSearch = useDebounce(search, 300);
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [activeTab, setActiveTab] = useState('all');
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');

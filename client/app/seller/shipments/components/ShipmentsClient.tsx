@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import { useDebounce } from '@/src/hooks/utility/useDebounce';
+import { useDebouncedValue } from '@/src/hooks/data';
 import { motion } from 'framer-motion';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
@@ -9,7 +9,7 @@ import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
 import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
-import { getCourierLogo } from '@/src/constants';
+import { getCourierLogo, isUsingMockData } from '@/src/constants';
 import {
     Search,
     Eye,
@@ -29,7 +29,7 @@ import { useShipments, useGenerateBulkLabels } from '@/src/core/api/hooks/orders
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
-    const debouncedSearch = useDebounce(search, 300);
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);

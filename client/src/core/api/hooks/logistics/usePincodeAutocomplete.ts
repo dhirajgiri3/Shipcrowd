@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { apiClient } from '../../client';
+import { apiClient } from '../../http';
 
 interface PincodeData {
     pincode: string;

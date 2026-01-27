@@ -1,5 +1,5 @@
 import { useMutation, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../client';
+import { apiClient, ApiError } from '../../http';
 import { RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError } from '@/src/lib/error';
 

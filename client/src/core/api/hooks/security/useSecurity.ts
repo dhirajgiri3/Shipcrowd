@@ -5,7 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../client';
+import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import type { SecurityFraudAlert as FraudAlert, SecurityFraudRule as FraudRule, UpdateFraudRulePayload, ResolveAlertPayload } from '@/src/types/security';
@@ -16,7 +16,7 @@ import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 export function useFraudAlerts(status?: string, options?: UseQueryOptions<FraudAlert[], ApiError>) {
     return useQuery<FraudAlert[], ApiError>({
-        queryKey: queryKeys.fraud.alerts(status),
+        queryKey: queryKeys.fraud.alerts(status as any),
         queryFn: async () => {
             return []; // Feature archived
         },

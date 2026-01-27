@@ -59,7 +59,7 @@ export function ShipmentsClient() {
 
     const getStatusCount = (id: string) => {
         if (id === 'all') return shipmentsData.length;
-        return shipmentsData.filter((s: Shipment) => s.status === id).length;
+        return shipmentsData.filter((s: any) => s.status === id).length;
     };
 
     // Columns
@@ -243,7 +243,7 @@ export function ShipmentsClient() {
                 <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden shadow-sm">
                     <DataTable
                         columns={columns}
-                        data={filteredData}
+                        data={filteredData as any[]}
                         onRowClick={(row) => setSelectedShipment(row)}
                     />
                 </div>

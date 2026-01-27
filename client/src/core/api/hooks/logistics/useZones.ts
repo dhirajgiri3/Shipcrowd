@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../client';
+import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import type {
@@ -73,7 +73,7 @@ export const useCreateZone = (options?: UseMutationOptions<Zone, ApiError, Creat
             return response.data.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.zones.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
             showSuccessToast('Zone created successfully');
         },
         onError: (error) => handleApiError(error),
@@ -94,7 +94,7 @@ export const useUpdateZone = (options?: UseMutationOptions<Zone, ApiError, { id:
             return response.data.data;
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.zones.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.zones.detail(variables.id) });
             showSuccessToast('Zone updated successfully');
         },
@@ -115,7 +115,7 @@ export const useDeleteZone = (options?: UseMutationOptions<void, ApiError, strin
             await apiClient.delete(`/admin/zones/${id}`);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.zones.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
             showSuccessToast('Zone deleted successfully');
         },
         onError: (error) => handleApiError(error),

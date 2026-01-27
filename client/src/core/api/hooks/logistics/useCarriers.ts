@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../client';
+import { apiClient, ApiError } from '../../http';
 
 export interface Carrier {
     id: string;

@@ -36,46 +36,80 @@ export interface NormalizedTrackingEvent {
     timestamp: string;
     completed: boolean;
     current: boolean;
+    description?: string;
+}
+
+export interface RecipientInfo {
+    name?: string;
+    city: string;
+    state: string;
 }
 
 export interface NormalizedTrackingData {
     awb: string;
-    status: string;
+    trackingNumber: string;
+    currentStatus: string;
+    status: string; // Keep for backward compatibility if needed, mirror currentStatus
+    createdAt?: string;
     estimatedDelivery: string;
+    actualDelivery?: string;
     origin: string;
     destination: string;
-    courier: string;
-    history: NormalizedTrackingEvent[];
+    recipient: RecipientInfo;
+    carrier: string;
+    courier: string; // Alias for backward compatibility
+    serviceType: string;
+    timeline: NormalizedTrackingEvent[];
+    history: NormalizedTrackingEvent[]; // Alias for backward compatibility
 }
+
+export type PublicTrackingResponse = NormalizedTrackingData;
 
 
 export const trackingApi = {
     /**
      * Get tracking information by AWB or Order ID
      */
-    getTrackingInfo: async (awb: string): Promise<NormalizedTrackingData> => {
+    trackShipment: async (awb: string): Promise<NormalizedTrackingData> => {
         // Assuming the backend endpoint is /shipments/track/{awb}
         const response = await apiClient.get<any>(`/shipments/track/${awb}`);
 
         const data = response.data?.data || response.data;
 
         // Mapping logic (adjust according to actual API response structure)
-        const history = (data.activities || []).map((activity: any, index: number) => ({
+        const timeline = (data.activities || []).map((activity: any, index: number) => ({
             status: activity.status || activity.activity,
             location: activity.location,
             timestamp: activity.date || activity.timestamp,
+            description: activity.description,
             completed: true, // simplified
             current: index === 0 // assuming sorted desc
         }));
 
         return {
             awb: data.awb || awb,
+            trackingNumber: data.awb || awb,
+            currentStatus: data.current_status || 'Unknown',
             status: data.current_status || 'Unknown',
             estimatedDelivery: data.expected_date || 'N/A',
+            actualDelivery: data.delivered_date,
             origin: data.origin || 'N/A',
             destination: data.destination || 'N/A',
+            recipient: {
+                name: data.consignee_name,
+                city: data.destination, // Approximation if city not separate
+                state: ''
+            },
+            carrier: data.courier_name || 'N/A',
             courier: data.courier_name || 'N/A',
-            history: history
+            serviceType: data.service_type || 'Standard',
+            timeline: timeline,
+            history: timeline
         };
+    },
+
+    // Alias for backward compatibility if used elsewhere
+    getTrackingInfo: async (awb: string): Promise<NormalizedTrackingData> => {
+        return trackingApi.trackShipment(awb);
     }
 };

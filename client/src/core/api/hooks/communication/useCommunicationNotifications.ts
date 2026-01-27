@@ -6,7 +6,7 @@
  */
 
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../client';
+import { apiClient, ApiError } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 

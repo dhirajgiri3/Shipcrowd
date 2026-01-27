@@ -1,11 +1,9 @@
-/**
- * Application Constants
- * 
- * Centralized exports for all app-wide constants
- */
-
-// Carrier/Courier definitions
+export * from './geography';
 export * from './carriers';
 
-// Geography constants (Indian states, etc.)
-export * from './geography';
+export const isUsingMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+
+export const getCourierLogo = (courierName: string) => {
+    // Placeholder function based on usage in ShipmentsClient
+    return `/assets/couriers/${courierName.toLowerCase()}.png`;
+};

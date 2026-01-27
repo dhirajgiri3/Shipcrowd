@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../../client';
+import { apiClient } from '../../http';
 import { queryKeys } from '../../config/query-keys';
 
 export interface AvailableBalance {

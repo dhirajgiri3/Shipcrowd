@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { useDebounce } from '@/src/hooks/utility/useDebounce';
+import { useDebouncedValue } from '@/src/hooks/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
@@ -109,7 +109,7 @@ const statusFilters = [
 
 export function ReturnsClient() {
     const [searchQuery, setSearchQuery] = useState('');
-    const debouncedSearch = useDebounce(searchQuery, 300);
+    const debouncedSearch = useDebouncedValue(searchQuery, 300);
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [selectedCourier, setSelectedCourier] = useState('All Couriers');
     const { addToast } = useToast();

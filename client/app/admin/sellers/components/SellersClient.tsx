@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { useAdminSellers, useAdminCompanyAction, useAdminCompanyStats } from '@/src/core/api/hooks/admin/useAdminSellers';
 import { useDebouncedValue } from '@/src/hooks/data';
-import type { Company } from '@/src/core/api/clients/companyApi';
+import type { Company } from '@/src/core/api';
 
 const statusTabs = [
     { id: 'all', label: 'All Sellers' },

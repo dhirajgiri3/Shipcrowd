@@ -194,7 +194,7 @@ function TrackPageContent() {
     };
 
     const key = keyword.toUpperCase();
-    return (mockData as Record<string, PublicTrackingResponse>)[key] || null;
+    return (mockData as any)[key] || null;
   };
 
   // Main tracking logic
@@ -228,10 +228,20 @@ function TrackPageContent() {
             estimatedDelivery: new Date().toISOString(),
             createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
             recipient: { city: 'Low Earth Orbit', state: 'Space' },
+            origin: 'Cape Canaveral',
+            destination: 'ISS',
+            awb: 'SPACE-X-042',
+            status: 'IN_TRANSIT',
+            courier: 'Interstellar Logistics',
+            history: [
+              { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true },
+              { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!', completed: true, current: false },
+              { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.', completed: true, current: false },
+            ],
             timeline: [
-              { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!' },
-              { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!' },
-              { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.' },
+              { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true },
+              { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!', completed: true, current: false },
+              { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.', completed: true, current: false },
             ],
           };
 

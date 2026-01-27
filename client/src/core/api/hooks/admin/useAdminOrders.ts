@@ -8,7 +8,7 @@ import { orderApi } from '../../clients/orderApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
-import { ApiError } from '../../client';
+import { ApiError } from '../../http';
 import type { GetOrdersResponse, OrderListParams, CourierRate, ShipOrderRequest, BulkShipOrdersRequest } from '@/src/types/domain/order';
 
 /**

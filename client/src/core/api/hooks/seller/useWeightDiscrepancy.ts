@@ -14,7 +14,7 @@ import { ApiError } from '../../http';
  */
 export const useWeightDiscrepancies = (filters?: WeightDiscrepancyFilter) => {
     return useQuery({
-        queryKey: queryKeys.weightDiscrepancy.list(filters),
+        queryKey: queryKeys.weightDiscrepancy.list(filters as any),
         queryFn: async () => await weightApi.getDiscrepancies(filters),
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,

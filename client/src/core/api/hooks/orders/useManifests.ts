@@ -36,7 +36,7 @@ export const useManifests = (
     options?: Omit<UseQueryOptions<ManifestListResponse>, 'queryKey' | 'queryFn'>
 ) => {
     return useQuery<ManifestListResponse>({
-        queryKey: queryKeys.manifests.list(filters),
+        queryKey: queryKeys.manifests.list(filters as any),
         queryFn: async () => {
             const response = await apiClient.get('/manifests', { params: filters });
             return response.data.data;

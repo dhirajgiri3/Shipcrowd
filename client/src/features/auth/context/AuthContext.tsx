@@ -2,9 +2,8 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
-import { authApi } from '@/src/core/api/https/authApi';
-import { sessionApi, type Session } from '@/src/core/api/https/sessionApi';
-import { companyApi } from '@/src/core/api/https/companyApi';
+import { authApi, sessionApi, companyApi } from '@/src/core/api';
+import type { Session } from '@/src/core/api/clients/sessionApi';
 import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked, normalizeError } from '@/src/core/api/http';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 

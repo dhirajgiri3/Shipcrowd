@@ -6,7 +6,7 @@
  */
 
 // API Client
-export * from './client';
+export * from './http';
 
 // API Clients (endpoints)
 export { authApi } from './clients/authApi';

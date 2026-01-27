@@ -59,7 +59,7 @@ export function FinancialsClient() {
 
     const balance = balanceData?.balance || 0;
     const transactions = transactionsData?.transactions || [];
-    const insights = null; // Will be implemented in future phase
+    const insights: any = null; // Will be implemented in future phase
     const weeklyChange = 0;
 
     return (
