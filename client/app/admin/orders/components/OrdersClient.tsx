@@ -85,12 +85,18 @@ export function OrdersClient() {
         setCourierRates([]);
         setIsShipModalOpen(true);
 
+        // Calculate total weight from order products
+        const totalWeight = order.products.reduce((sum, product) => {
+            const productWeight = product.weight || 0;
+            return sum + (productWeight * product.quantity);
+        }, 0);
+
         // Fetch courier rates
         try {
             const result = await getCourierRatesMutation.mutateAsync({
                 fromPincode: order.customerInfo.address.postalCode,
                 toPincode: order.customerInfo.address.postalCode,
-                weight: 500, // Default weight, should come from order
+                weight: totalWeight || 500, // Use calculated weight or default to 500g if not available
                 paymentMode: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid'
             });
             setCourierRates(result.data);

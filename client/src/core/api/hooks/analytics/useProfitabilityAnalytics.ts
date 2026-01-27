@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5005/api/v1";
+import { apiClient } from "../../http";
 
 /**
  * Profitability Analytics Hook
@@ -42,14 +40,14 @@ export function useProfitabilityAnalytics() {
     return useQuery({
         queryKey: ["profitability-analytics"],
         queryFn: async () => {
-            const { data } = await axios.get<{ success: boolean; data: ProfitabilityData }>(
-                `${API_BASE_URL}/analytics/profitability`,
-                { withCredentials: true }
+            const { data } = await apiClient.get<{ success: boolean; data: ProfitabilityData }>(
+                '/analytics/profitability'
             );
             return data.data;
         },
         // Cache for 5 minutes
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
+        retry: false,
     });
 }

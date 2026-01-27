@@ -7,13 +7,11 @@ import { Button } from '@/src/components/ui/core/Button';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Modal } from '@/src/components/ui/feedback/Modal';
 import { useToast } from '@/src/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/lib/utils';
+import { cn } from '@/src/lib/utils';
 import {
     Search,
     Building2,
     Users,
-    Package,
-    IndianRupee,
     Clock,
     CheckCircle2,
     Download,
@@ -66,9 +64,7 @@ export function SellersClient() {
         total: statsData?.total || 0,
         active: statsData?.active || 0,
         pending: statsData?.byStatus?.pending_verification || 0,
-        // TODO: Get real aggregated revenue/volume stats if available in API
-        monthlyVolume: 0,
-        totalRevenue: 0
+        suspended: statsData?.byStatus?.suspended || 0,
     }), [statsData]);
 
     // Handlers
@@ -194,9 +190,9 @@ export function SellersClient() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                     { label: 'Total Sellers', value: stats.total, icon: Users, color: 'blue' },
+                    { label: 'Active Sellers', value: stats.active, icon: CheckCircle2, color: 'emerald' },
                     { label: 'Pending Approval', value: stats.pending, icon: Clock, color: 'amber' },
-                    { label: 'Monthly Volume', value: stats.monthlyVolume.toLocaleString(), icon: Package, color: 'violet' },
-                    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: IndianRupee, color: 'emerald' },
+                    { label: 'Suspended', value: stats.suspended, icon: Ban, color: 'red' },
                 ].map((stat, i) => (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}

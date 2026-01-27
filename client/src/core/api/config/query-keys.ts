@@ -39,12 +39,115 @@ export interface ListParams {
 export interface FilterParams extends ListParams {
   status?: string;
   search?: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, string | number | boolean>;
 }
 
 export interface DateRangeParams {
   startDate?: string;
   endDate?: string;
+}
+
+// Domain-specific filter types
+export interface ZoneFilters extends FilterParams {
+  country?: string;
+  state?: string;
+  active?: boolean;
+}
+
+export interface CourierFilters extends FilterParams {
+  serviceType?: string;
+  active?: boolean;
+  rating?: number;
+}
+
+export interface CourierPerformanceFilters extends DateRangeParams {
+  serviceType?: string;
+  zone?: string;
+}
+
+export interface RateCalculationParams {
+  originPincode: string;
+  destinationPincode: string;
+  weight: number;
+  carrier?: string;
+  serviceType?: string;
+}
+
+export interface DisputeFilters extends FilterParams {
+  type?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  dateRange?: DateRangeParams;
+}
+
+export interface WarehouseInventoryFilters extends FilterParams {
+  sku?: string;
+  lowStock?: boolean;
+  category?: string;
+}
+
+export interface AnalyticsFilters extends DateRangeParams {
+  companyId?: string;
+  warehouseId?: string;
+  courierId?: string;
+}
+
+export interface IntegrationFilters extends FilterParams {
+  platform?: 'shopify' | 'woocommerce' | 'amazon' | 'flipkart';
+  isActive?: boolean;
+}
+
+export interface ManifestFilters extends FilterParams {
+  status?: 'pending' | 'generated' | 'handed_over' | 'closed';
+  courier?: string;
+  dateRange?: DateRangeParams;
+}
+
+export interface CommunicationRuleFilters extends FilterParams {
+  channel?: 'email' | 'sms' | 'whatsapp';
+  category?: string;
+  isActive?: boolean;
+}
+
+export interface SyncHistoryParams extends ListParams {
+  status?: 'success' | 'failed' | 'pending';
+  dateRange?: DateRangeParams;
+}
+
+export interface FraudAlertFilters extends FilterParams {
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  resolved?: boolean;
+  dateRange?: DateRangeParams;
+}
+
+export interface AuditLogFilters extends FilterParams {
+  action?: string;
+  userId?: string;
+  resource?: string;
+  dateRange?: DateRangeParams;
+}
+
+export interface CompanyFilters extends FilterParams {
+  tier?: string;
+  active?: boolean;
+  kycStatus?: 'pending' | 'approved' | 'rejected';
+}
+
+export interface PromoCodeFilters extends FilterParams {
+  active?: boolean;
+  type?: 'percentage' | 'fixed';
+  expired?: boolean;
+}
+
+export interface WeightDiscrepancyFilters extends FilterParams {
+  status?: 'pending' | 'resolved' | 'disputed';
+  dateRange?: DateRangeParams;
+  severity?: 'minor' | 'major';
+}
+
+export interface RtoFilters extends FilterParams {
+  reason?: string;
+  courier?: string;
+  dateRange?: DateRangeParams;
 }
 
 // ============================================================================
@@ -78,9 +181,9 @@ export const queryKeys = {
   // ZONES DOMAIN
   // ========================================================================
   zones: {
-    all: ['zones'] as const,
-    list: (filters?: any) => [...queryKeys.zones.all, 'list', filters] as const,
-    detail: (id: string) => [...queryKeys.zones.all, 'detail', id] as const,
+    all: () => ['zones'],
+    list: (filters?: ZoneFilters) => [...queryKeys.zones.all(), 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.zones.all(), 'detail', id] as const,
   },
 
   // ========================================================================
@@ -88,9 +191,9 @@ export const queryKeys = {
   // ========================================================================
   couriers: {
     all: () => ['couriers'] as const,
-    list: (filters?: any) => [...queryKeys.couriers.all(), 'list', filters] as const,
+    list: (filters?: CourierFilters) => [...queryKeys.couriers.all(), 'list', filters] as const,
     detail: (id: string) => [...queryKeys.couriers.all(), 'detail', id] as const,
-    performance: (id: string, filters?: any) => [...queryKeys.couriers.detail(id), 'performance', filters] as const,
+    performance: (id: string, filters?: CourierPerformanceFilters) => [...queryKeys.couriers.detail(id), 'performance', filters] as const,
     services: (id: string) => [...queryKeys.couriers.detail(id), 'services'] as const,
   },
 
@@ -100,14 +203,14 @@ export const queryKeys = {
   rateCards: {
     all: () => ['rateCards', 'all'],
     detail: (id: string) => ['rateCards', 'detail', id],
-    calculate: (payload: any) => ['rateCards', 'calculate', JSON.stringify(payload)],
+    calculate: (payload: RateCalculationParams) => ['rateCards', 'calculate', JSON.stringify(payload)],
   },
 
   // ========================================================================
   // RATES DOMAIN (SELLER CALCULATOR)
   // ========================================================================
   rates: {
-    calculate: (payload: any) => ['rates', 'calculate', payload],
+    calculate: (payload: RateCalculationParams) => ['rates', 'calculate', payload],
   },
 
   // ========================================================================
@@ -155,8 +258,8 @@ export const queryKeys = {
     all: () => ['disputes'],
     list: (filters?: FilterParams) => ['disputes', 'list', filters],
     detail: (id: string) => ['disputes', 'detail', id],
-    analytics: (filters?: any) => ['disputes', 'analytics', filters],
-    metrics: (filters?: any) => ['disputes', 'metrics', filters],
+    analytics: (filters?: DisputeFilters) => ['disputes', 'analytics', filters],
+    metrics: (filters?: DisputeFilters) => ['disputes', 'metrics', filters],
   },
 
   // ========================================================================
@@ -232,7 +335,7 @@ export const queryKeys = {
     all: () => ['warehouses'],
     list: (params?: FilterParams) => ['warehouses', 'list', params],
     detail: (id: string) => ['warehouses', 'detail', id],
-    inventory: (warehouseId: string, filters?: any) => ['warehouses', warehouseId, 'inventory', filters],
+    inventory: (warehouseId: string, filters?: WarehouseInventoryFilters) => ['warehouses', warehouseId, 'inventory', filters],
     stats: (warehouseId: string) => ['warehouses', warehouseId, 'stats'],
   },
 
@@ -251,9 +354,9 @@ export const queryKeys = {
     smart: (filters?: DateRangeParams) => ['analytics', 'smart-insights', filters],
     savedReports: () => ['analytics', 'saved-reports'],
     report: (reportId: string) => ['analytics', 'report', reportId],
-    sla: (filters?: any) => ['analytics', 'sla', filters],
-    cost: (filters?: any) => ['analytics', 'cost', filters],
-    courierComparison: (filters?: any) => ['analytics', 'courier-comparison', filters],
+    sla: (filters?: AnalyticsFilters) => ['analytics', 'sla', filters],
+    cost: (filters?: AnalyticsFilters) => ['analytics', 'cost', filters],
+    courierComparison: (filters?: AnalyticsFilters) => ['analytics', 'courier-comparison', filters],
     recentCustomers: (limit: number) => ['analytics', 'recent-customers', limit],
   },
 
@@ -266,7 +369,7 @@ export const queryKeys = {
     list: () => ['integrations', 'list'],
     detail: (id: string) => ['integrations', 'detail', id],
     ecommerce: () => ['integrations', 'ecommerce'],
-    ecommerceList: (filters?: any) => ['integrations', 'ecommerce', 'list', filters],
+    ecommerceList: (filters?: IntegrationFilters) => ['integrations', 'ecommerce', 'list', filters],
     syncStatus: (integrationId: string) => ['integrations', integrationId, 'sync'],
     webhooks: () => ['integrations', 'webhooks'],
   },
@@ -299,6 +402,7 @@ export const queryKeys = {
       overview: () => ['admin', 'billing', 'overview'],
       transactions: (filters?: FilterParams) => ['admin', 'billing', 'transactions', filters],
       recharges: (filters?: FilterParams) => ['admin', 'billing', 'recharges', filters],
+      pendingRecharges: () => ['admin', 'billing', 'recharges', 'pending'],
       manualEntries: () => ['admin', 'billing', 'manual-entries'],
     },
     // Admin Profit
@@ -320,7 +424,7 @@ export const queryKeys = {
   // ========================================================================
   manifests: {
     all: () => ['manifests'],
-    list: (filters?: any) => ['manifests', 'list', filters],
+    list: (filters?: ManifestFilters) => ['manifests', 'list', filters],
     detail: (id: string) => ['manifests', 'detail', id],
     stats: () => ['manifests', 'stats'],
     byStatus: (status: string) => ['manifests', 'status', status],
@@ -351,6 +455,7 @@ export const queryKeys = {
     detail: (id: string) => ['ndr', 'cases', 'detail', id],
     metrics: () => ['ndr', 'metrics'],
     analytics: (filters?: DateRangeParams) => ['ndr', 'analytics', filters],
+    funnel: (filters?: FilterParams) => ['ndr', 'funnel', filters],
     settings: () => ['ndr', 'settings'],
   },
 
@@ -365,7 +470,7 @@ export const queryKeys = {
     defaultTemplate: (category: string, channel: string) => ['communication', 'templates', 'default', category, channel],
     templateStats: () => ['communication', 'templates', 'stats'],
     rules: () => ['communication', 'rules'],
-    rules_list: (filters?: any) => ['communication', 'rules', 'list', filters],
+    rules_list: (filters?: CommunicationRuleFilters) => ['communication', 'rules', 'list', filters],
     rule: (id: string) => ['communication', 'rule', id],
     history: (params?: FilterParams) => ['communication', 'history', params],
     campaigns: (params?: FilterParams) => ['communication', 'campaigns', params],
@@ -418,9 +523,9 @@ export const queryKeys = {
     all: () => ['ecommerce'],
     integrations: () => ['ecommerce', 'integrations'],
     integration: (id: string) => ['ecommerce', 'integration', id],
-    integrationsList: (filters?: any) => ['ecommerce', 'integrations', 'list', filters],
+    integrationsList: (filters?: IntegrationFilters) => ['ecommerce', 'integrations', 'list', filters],
     syncLogs: (integrationId: string) => ['ecommerce', 'sync-logs', integrationId],
-    syncHistory: (integrationId: string, params?: any) => ['ecommerce', 'sync-history', integrationId, params],
+    syncHistory: (integrationId: string, params?: SyncHistoryParams) => ['ecommerce', 'sync-history', integrationId, params],
     testConnection: (type: string) => ['ecommerce', 'test-connection', type],
   },
 
@@ -429,7 +534,7 @@ export const queryKeys = {
   // ========================================================================
   fraud: {
     all: () => ['fraud'],
-    alerts: (filters?: any) => ['fraud', 'alerts', filters],
+    alerts: (filters?: FraudAlertFilters) => ['fraud', 'alerts', filters],
     alert: (id: string) => ['fraud', 'alert', id],
     stats: () => ['fraud', 'stats'],
     rules: () => ['fraud', 'rules'],
@@ -447,7 +552,7 @@ export const queryKeys = {
     webhooks: () => ['settings', 'webhooks'],
     webhookLogs: (webhookId: string) => ['settings', 'webhooks', webhookId, 'logs'],
     teamMembers: () => ['settings', 'team'],
-    auditLogs: (filters?: any) => ['settings', 'audit-logs', filters],
+    auditLogs: (filters?: AuditLogFilters) => ['settings', 'audit-logs', filters],
     subscription: () => ['settings', 'subscription'],
     plans: () => ['settings', 'plans'],
     billing: () => ['settings', 'billing'],
@@ -467,7 +572,7 @@ export const queryKeys = {
     invoices: () => ['settings', 'invoices'] as const,
     marketing: () => ['settings', 'marketing'] as const,
 
-    companies: (filters?: any) => ['settings', 'companies', filters],
+    companies: (filters?: CompanyFilters) => ['settings', 'companies', filters],
     companyStats: (companyId: string) => ['settings', 'companies', 'stats', companyId],
     bankAccounts: () => ['settings', 'bank-accounts'],
   },
@@ -487,7 +592,7 @@ export const queryKeys = {
   // ========================================================================
   marketing: {
     all: () => ['marketing'],
-    promoCodes: (filters?: any) => ['marketing', 'promo-codes', filters],
+    promoCodes: (filters?: PromoCodeFilters) => ['marketing', 'promo-codes', filters],
     promoCode: (id: string) => ['marketing', 'promo-code', id],
     validatePromo: (code: string) => ['marketing', 'validate', code],
   },
@@ -497,7 +602,7 @@ export const queryKeys = {
   // ========================================================================
   weightDiscrepancy: {
     all: () => ['weight-discrepancy'],
-    list: (filters?: any) => ['weight-discrepancy', 'list', filters],
+    list: (filters?: WeightDiscrepancyFilters) => ['weight-discrepancy', 'list', filters],
     detail: (id: string) => ['weight-discrepancy', 'detail', id],
     stats: () => ['weight-discrepancy', 'stats'],
   },
@@ -507,9 +612,9 @@ export const queryKeys = {
   // ========================================================================
   rto: {
     all: () => ['rto'],
-    events: (filters?: any) => ['rto', 'events', filters],
-    pending: (filters?: any) => ['rto', 'pending', filters],
-    analytics: (filters?: any) => ['rto', 'analytics', filters],
+    events: (filters?: RtoFilters) => ['rto', 'events', filters],
+    pending: (filters?: RtoFilters) => ['rto', 'pending', filters],
+    analytics: (filters?: RtoFilters) => ['rto', 'analytics', filters],
     detail: (id: string) => ['rto', 'detail', id],
   },
 

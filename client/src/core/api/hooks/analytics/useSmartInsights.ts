@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5005/api/v1";
+import { apiClient } from "../../http";
 
 /**
  * Smart Insights Hook - Phase 5: 100% Real Data
@@ -51,9 +49,8 @@ export function useSmartInsights() {
     return useQuery({
         queryKey: ["smart-insights"],
         queryFn: async () => {
-            const { data } = await axios.get<{ success: boolean; data: SmartInsight[] }>(
-                `${API_BASE_URL}/analytics/insights`,
-                { withCredentials: true }
+            const { data } = await apiClient.get<{ success: boolean; data: SmartInsight[] }>(
+                '/analytics/insights'
             );
             return data.data;
         },
@@ -61,5 +58,6 @@ export function useSmartInsights() {
         // and business patterns don't change frequently
         staleTime: 60 * 60 * 1000,
         gcTime: 2 * 60 * 60 * 1000,
+        retry: false, // Don't retry if feature not ready
     });
 }

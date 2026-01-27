@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5005/api/v1";
+import { apiClient } from "../../http";
 
 /**
  * RTO Analytics Hook
@@ -26,6 +24,7 @@ interface RTOByReason {
     label: string;
     percentage: number;
     count: number;
+    // ...
 }
 
 interface RTORecommendation {
@@ -54,14 +53,14 @@ export function useRTOAnalytics() {
     return useQuery({
         queryKey: ["rto-analytics"],
         queryFn: async () => {
-            const { data } = await axios.get<{ success: boolean; data: RTOAnalyticsData }>(
-                `${API_BASE_URL}/analytics/rto`,
-                { withCredentials: true }
+            const { data } = await apiClient.get<{ success: boolean; data: RTOAnalyticsData }>(
+                '/analytics/rto'
             );
             return data.data;
         },
         // Cache for 5 minutes (RTO data doesn't change rapidly)
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
+        retry: false,
     });
 }

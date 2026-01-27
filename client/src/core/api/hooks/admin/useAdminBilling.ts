@@ -37,7 +37,7 @@ export const useAdminTransactions = (filters?: TransactionFilters) => {
  */
 export const useAdminPendingRecharges = () => {
     return useQuery({
-        queryKey: ['admin', 'billing', 'recharges', 'pending'], // TODO: Add to query-keys
+        queryKey: queryKeys.admin.billing.pendingRecharges(),
         queryFn: async () => await billingApi.getPendingRecharges(),
         ...CACHE_TIMES.SHORT,
         refetchInterval: 30000, // Poll every 30s

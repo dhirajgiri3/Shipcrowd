@@ -24,58 +24,60 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { mockNDRCases, mockNDRMetrics } from '@/src/lib/mockData/enhanced';
-import { useNDRCases, useNDRMetrics } from '@/src/core/api/hooks/returns/useNDR';
+import { useNDRCases, useNDRMetrics, useTakeNDRAction } from '@/src/core/api/hooks/returns/useNDR';
+import { NDRCase, NDRStatus } from '@/src/types/api/orders';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 
 export function NDRClient() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [riskFilter, setRiskFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<NDRStatus | 'all'>('all');
 
-    // --- REAL API INTEGRATION ---
-    // WARNING: Backend endpoint mismatch detected!
-    // - Frontend hook calls: /api/ndr/cases (doesn't exist)
-    // - Backend has: /ndr/events (different endpoint)
-    // - Mock data structure != Real API NDRCase type structure
-    // TODO: Either fix hook to call /ndr/events OR create /api/ndr/cases endpoint
-    // TODO: Align mock data structure with real NDRCase type
+    const { addToast } = useToast();
+    const { mutate: takeAction, isPending: isActionPending } = useTakeNDRAction();
+
     const {
         data: ndrCasesResponse,
         isLoading: casesLoading,
         error: casesError
     } = useNDRCases({
-        status: statusFilter !== 'all' ? (statusFilter as any) : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
         search: searchTerm || undefined,
     });
 
     const {
-        data: metricsResponse,
+        data: metrics,
         isLoading: metricsLoading
     } = useNDRMetrics();
 
-    // Use real data if available, otherwise fallback to mock
-    // Note: Mock data has different structure (awb, rtoRisk, etc.) vs real API (ndrId, shipmentId, etc.)
-    // Using 'as any[]' because mock structure doesn't match real NDRCase type
-    const cases: any[] = (ndrCasesResponse?.cases as any[]) || mockNDRCases;
-    const metrics: any = metricsResponse || mockNDRMetrics;
-    const isUsingMockData = !ndrCasesResponse?.cases;
+    const cases = ndrCasesResponse?.cases || [];
 
-    // Filter cases
-    const filteredCases = cases.filter((c: any) => {
-        const matchesSearch = c.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.awb?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (typeof c.orderId === 'string' ? c.orderId : c.orderId?.orderNumber || '')?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-        const matchesRisk = riskFilter === 'all' || c.rtoRisk === riskFilter;
-        return matchesSearch && matchesStatus && matchesRisk;
-    });
+    const handleReattempt = (caseId: string) => {
+        takeAction({
+            caseId,
+            payload: { action: 'reattempt_delivery' }
+        }, {
+            onSuccess: () => addToast('Reattempt request sent successfully', 'success'),
+            onError: (err) => addToast(err.message || 'Failed to request reattempt', 'error')
+        });
+    };
+
+    const handleRTO = (caseId: string) => {
+        takeAction({
+            caseId,
+            payload: { action: 'return_to_origin' }
+        }, {
+            onSuccess: () => addToast('RTO initiated successfully', 'success'),
+            onError: (err) => addToast(err.message || 'Failed to initiate RTO', 'error')
+        });
+    };
 
     const statusTabs = [
-        { id: 'all', label: 'All Cases', count: cases.length },
-        { id: 'open', label: 'Open', count: cases.filter((c: any) => c.status === 'open').length },
-        { id: 'in_progress', label: 'In Progress', count: cases.filter((c: any) => c.status === 'in_progress').length },
-        { id: 'customer_action', label: 'Awaiting Customer', count: cases.filter((c: any) => c.status === 'customer_action').length },
-        { id: 'escalated', label: 'Escalated', count: cases.filter((c: any) => c.status === 'escalated').length }
+        { id: 'all', label: 'All Cases', count: metrics?.total || 0 },
+        { id: 'action_required', label: 'Action Required', count: metrics?.open || 0 },
+        { id: 'reattempt_scheduled', label: 'Reattempt', count: 0 }, // Metric missing in type
+        { id: 'resolved', label: 'Resolved', count: metrics?.resolved || 0 },
+        { id: 'converted_to_rto', label: 'RTO', count: metrics?.convertedToRTO || 0 }
     ];
 
     const getStatusColor = (status: string) => {
@@ -91,29 +93,33 @@ export function NDRClient() {
         return colors[status] || colors.open;
     };
 
-    const getRiskBadge = (risk: string) => {
-        const badges = {
-            low: { color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400', label: 'Low Risk' },
-            medium: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400', label: 'Medium Risk' },
-            high: { color: 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400', label: 'High Risk' }
-        };
-        return badges[risk as keyof typeof badges] || badges.low;
-    };
-
     const getReasonLabel = (reason: string) => {
         const labels: Record<string, string> = {
             address_incomplete: 'Incomplete Address',
             address_incorrect: 'Incorrect Address',
             consignee_unavailable: 'Customer Unavailable',
-            refused_to_accept: 'Delivery Refused',
-            customer_requested_reschedule: 'Reschedule Request',
-            payment_issue: 'Payment Issue',
-            consignee_shifted: 'Customer Relocated',
-            out_of_delivery_area: 'Out of Area',
+            consignee_refused: 'Delivery Refused',
+            payment_issue_cod: 'Payment Issue',
             other: 'Other'
         };
         return labels[reason] || reason;
     };
+
+    if (casesLoading || metricsLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader />
+            </div>
+        );
+    }
+
+    if (casesError) {
+        return (
+            <div className="min-h-screen flex items-center justify-center text-red-500">
+                Error loading NDR cases: {casesError.message}
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[var(--bg-secondary)]">
@@ -132,11 +138,6 @@ export function NDRClient() {
                                 </div>
                                 NDR Management
                             </h1>
-                            {isUsingMockData && (
-                                <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                    ⚠️ Mock Data (API endpoint mismatch)
-                                </span>
-                            )}
                         </div>
                         <p className="text-[var(--text-secondary)] mt-2">
                             Manage non-delivery reports and customer communications
@@ -239,21 +240,6 @@ export function NDRClient() {
                                     />
                                 </div>
                             </div>
-
-                            {/* Risk Filter */}
-                            <div className="flex items-center gap-2">
-                                <Filter className="w-5 h-5 text-[var(--text-tertiary)]" />
-                                <select
-                                    value={riskFilter}
-                                    onChange={(e) => setRiskFilter(e.target.value)}
-                                    className="px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-blue)] focus:border-transparent transition-all"
-                                >
-                                    <option value="all">All Risk Levels</option>
-                                    <option value="high">High Risk</option>
-                                    <option value="medium">Medium Risk</option>
-                                    <option value="low">Low Risk</option>
-                                </select>
-                            </div>
                         </div>
 
                         {/* Status Tabs */}
@@ -261,13 +247,13 @@ export function NDRClient() {
                             {statusTabs.map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setStatusFilter(tab.id)}
+                                    onClick={() => setStatusFilter(tab.id as NDRStatus | 'all')}
                                     className={`px-4 py-2 rounded-xl font-medium transition-all ${statusFilter === tab.id
                                         ? 'bg-[var(--primary-blue)] text-white shadow-sm'
                                         : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                                         }`}
                                 >
-                                    {tab.label} <span className="ml-1.5 opacity-75">({tab.count})</span>
+                                    {tab.label}
                                 </button>
                             ))}
                         </div>
@@ -293,92 +279,105 @@ export function NDRClient() {
                                         Status
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                                        Risk
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-default)] bg-[var(--bg-primary)]">
-                                {filteredCases.map((ndrCase: any, index: number) => (
-                                    <motion.tr
-                                        key={ndrCase.id || ndrCase._id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                        className="hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-[var(--text-primary)]">{ndrCase.id}</span>
-                                                    {ndrCase.slaBreached && (
-                                                        <Badge variant="error" className="text-xs">
-                                                            SLA Breach
-                                                        </Badge>
-                                                    )}
+                                {cases.map((ndrCase: NDRCase, index: number) => {
+                                    const shipmentId = typeof ndrCase.shipmentId === 'string' ? ndrCase.shipmentId : ndrCase.shipmentId?.trackingNumber;
+                                    const orderId = typeof ndrCase.orderId === 'string' ? ndrCase.orderId : ndrCase.orderId?.orderNumber;
+
+                                    return (
+                                        <motion.tr
+                                            key={ndrCase._id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            className="hover:bg-[var(--bg-hover)] transition-colors"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold text-[var(--text-primary)]">{ndrCase.ndrId}</span>
+                                                        {ndrCase.slaBreach && (
+                                                            <Badge variant="error" className="text-xs">
+                                                                SLA Breach
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-sm text-[var(--text-secondary)]">
+                                                        AWB: {shipmentId}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
+                                                        <span className="flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            {ndrCase.daysSinceReported}d ago
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Package className="w-3 h-3" />
+                                                            {ndrCase.currentAttempt?.attemptNumber || 0} attempts
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="text-sm text-[var(--text-secondary)]">
-                                                    AWB: {ndrCase.awb}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <p className="font-medium text-[var(--text-primary)]">{ndrCase.customerName}</p>
+                                                    <p className="text-sm text-[var(--text-secondary)]">{ndrCase.customerPhone}</p>
+                                                    <div className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
+                                                        {ndrCase.deliveryAddress && (
+                                                            <>
+                                                                <MapPin className="w-3 h-3" />
+                                                                <span className="truncate max-w-[150px]" title={ndrCase.deliveryAddress}>
+                                                                    {ndrCase.deliveryAddress}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
-                                                    <span className="flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" />
-                                                        {ndrCase.daysSinceNDR}d ago
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <Package className="w-3 h-3" />
-                                                        {ndrCase.attempts} attempts
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1">
-                                                <p className="font-medium text-[var(--text-primary)]">{ndrCase.customerName}</p>
-                                                <p className="text-sm text-[var(--text-secondary)]">{ndrCase.customerPhone}</p>
-                                                <div className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
-                                                    <MapPin className="w-3 h-3" />
-                                                    {ndrCase.address.city}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <p className="text-sm text-[var(--text-primary)] font-medium">
-                                                {getReasonLabel(ndrCase.reason)}
-                                            </p>
-                                            {ndrCase.lastCommunicationChannel && (
-                                                <div className="flex items-center gap-1 mt-1 text-xs text-[var(--text-secondary)]">
-                                                    {ndrCase.lastCommunicationChannel === 'whatsapp' && <MessageSquare className="w-3 h-3" />}
-                                                    {ndrCase.lastCommunicationChannel === 'call' && <Phone className="w-3 h-3" />}
-                                                    {ndrCase.lastCommunicationChannel === 'email' && <Mail className="w-3 h-3" />}
-                                                    {ndrCase.customerCommunications} communications
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <Badge className={getStatusColor(ndrCase.status)}>
-                                                {ndrCase.status.replace(/_/g, ' ')}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <Badge className={getRiskBadge(ndrCase.rtoRisk).color}>
-                                                {getRiskBadge(ndrCase.rtoRisk).label}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
-                                                <MoreVertical className="w-5 h-5 text-[var(--text-tertiary)]" />
-                                            </button>
-                                        </td>
-                                    </motion.tr>
-                                ))}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm text-[var(--text-primary)] font-medium">
+                                                    {getReasonLabel(ndrCase.primaryReason)}
+                                                </p>
+                                                {/* Optionally show last communication info if available */}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <Badge className={getStatusColor(ndrCase.status)}>
+                                                    {ndrCase.status.replace(/_/g, ' ')}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {ndrCase.status === 'open' || ndrCase.status === 'in_progress' ? (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleReattempt(ndrCase._id)}
+                                                            disabled={isActionPending}
+                                                            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50"
+                                                        >
+                                                            Reattempt
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRTO(ndrCase._id)}
+                                                            disabled={isActionPending}
+                                                            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50"
+                                                        >
+                                                            RTO
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-[var(--text-tertiary)]">No actions</span>
+                                                )}
+                                            </td>
+                                        </motion.tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
 
-                    {filteredCases.length === 0 && (
+                    {cases.length === 0 && (
                         <div className="text-center py-12 bg-[var(--bg-primary)]">
                             <div className="w-16 h-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mx-auto mb-4">
                                 <Package className="w-8 h-8 text-[var(--text-tertiary)]" />

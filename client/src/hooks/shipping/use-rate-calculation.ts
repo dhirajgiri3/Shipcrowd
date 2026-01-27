@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { apiClient } from '@/src/lib/api-client';
+import { apiClient } from '@/src/core/api/http';
 
 interface CalculateRateInput {
     originPincode: string;

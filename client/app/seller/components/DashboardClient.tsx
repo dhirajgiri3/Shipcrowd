@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Package, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/src/features/auth';
-import { DashboardSetupBanner } from '../dashboard/components/DashboardSetupBanner';
+import { DashboardSetupBanner } from '@/src/components/seller/dashboard/DashboardSetupBanner';
 import { useLoader } from '@/src/hooks/utility/useLoader';
 import { Loader, TruckLoader } from '@/src/components/ui';
 import {

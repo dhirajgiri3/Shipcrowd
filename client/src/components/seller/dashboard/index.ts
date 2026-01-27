@@ -25,3 +25,6 @@ export { DeltaSinceLastVisit } from './DeltaSinceLastVisit';
 
 // Skeleton Loaders (organized in /skeletons subfolder)
 export { PerformanceBarSkeleton, OrderTrendChartSkeleton, UrgentActionsBarSkeleton } from './skeletons';
+
+// Setup
+export { DashboardSetupBanner } from './DashboardSetupBanner';

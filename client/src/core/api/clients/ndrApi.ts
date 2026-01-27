@@ -21,6 +21,7 @@ export interface NdrItem {
     sellerId: string;
     sellerName: string;
     customerName: string;
+    courier: string;
     status: 'action_required' | 'pending_seller' | 'rto_initiated' | 'delivered' | 'rto_delivered';
     reason: string;
     attempts: number;

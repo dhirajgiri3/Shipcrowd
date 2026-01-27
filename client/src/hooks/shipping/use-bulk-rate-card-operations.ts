@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/src/lib/api-client';
+import { apiClient } from '@/src/core/api/http';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 
 interface BulkUpdateInput {

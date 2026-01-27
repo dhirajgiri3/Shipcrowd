@@ -66,7 +66,7 @@ export function NdrClient() {
 
     const ndrList = ndrResponse?.data || [];
     const funnelData = funnelDataResponse || [];
-    const stats = ndrResponse?.stats || { resolutionRate: 0 };
+    const stats = ndrResponse?.stats || { resolutionRate: 0, actionRequired: 0, total: 0, pendingSeller: 0, rtoInitiated: 0 };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -85,7 +85,7 @@ export function NdrClient() {
                     <DateRangePicker />
                     <Button variant="outline" className="border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error-bg)] hover:text-[var(--error)]">
                         <AlertTriangle className="h-4 w-4 mr-2" />
-                        View High Risk (45)
+                        View High Risk ({stats.actionRequired})
                     </Button>
                 </div>
             </div>
@@ -98,7 +98,7 @@ export function NdrClient() {
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-[var(--text-primary)]">NDR Resolution Funnel</h3>
                         <Badge variant="success" className="bg-emerald-500/10 text-emerald-500 border-0">
-                            66% Resolution Rate
+                            {(stats.resolutionRate * 100).toFixed(0)}% Resolution Rate
                         </Badge>
                     </div>
                     <div className="h-[250px] w-full">
@@ -216,7 +216,6 @@ export function NdrClient() {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <h4 className="font-bold text-[var(--text-primary)]">{ndr.awb}</h4>
-                                                    {/* @ts-ignore */}
                                                     <Badge variant="outline" className="text-[10px] h-5">{ndr.courier}</Badge>
                                                 </div>
                                                 <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">

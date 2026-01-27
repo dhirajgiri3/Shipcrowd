@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/src/lib/api-client';
+import { apiClient } from '@/src/core/api/http';
 
 export interface RateCardUsageStats {
     totalShipments: number;
