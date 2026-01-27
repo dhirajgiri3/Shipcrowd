@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from '../../client';
+import { apiClient, ApiError } from '../../http';
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 
 export interface Settlement {
@@ -27,37 +27,8 @@ export const useSettlements = (options?: UseQueryOptions<SettlementsResponse, Ap
         queryKey: ['settlements'],
         // Mocking the API response for now
         queryFn: async () => {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 600));
-
-            // Mock data based on UI requirements
-            return {
-                settlements: [
-                    {
-                        id: 'set_1',
-                        date: '2025-12-15',
-                        amount: 45230,
-                        ordersCount: 52,
-                        status: 'scheduled',
-                    },
-                    {
-                        id: 'set_2',
-                        date: '2025-12-18',
-                        amount: 32100,
-                        ordersCount: 38,
-                        status: 'processing',
-                    }
-                ],
-                summary: {
-                    totalSettled: 1250000,
-                    pendingSettlement: 77330,
-                    nextSettlementDate: '2025-12-20'
-                }
-            };
-
-            // TODO: Uncomment when backend is ready
-            // const response = await apiClient.get('/finance/settlements');
-            // return response.data;
+            const response = await apiClient.get('/finance/settlements');
+            return response.data;
         },
         staleTime: 300000, // 5 mins
         ...options,

@@ -8,7 +8,6 @@ import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Input } from '@/src/components/ui/core/Input';
 import { useWarehouses } from '@/src/core/api/hooks/logistics/useWarehouses';
-import { MOCK_INVENTORY, MOCK_WAREHOUSES } from '@/src/lib/mockData/mockData';
 import {
     Warehouse,
     MapPin,
@@ -30,12 +29,11 @@ export function WarehousesClient() {
     const [search, setSearch] = useState('');
     const { addToast } = useToast();
 
-    // Fetch warehouses from API (with mock fallback)
+    // Fetch warehouses from API
     const { data: warehousesResponse, isLoading, error } = useWarehouses();
 
-    // Use real data if available, otherwise fallback to mock
-    const warehouses = warehousesResponse && warehousesResponse.length > 0 ? warehousesResponse : MOCK_WAREHOUSES;
-    const isUsingMockData = !warehousesResponse || warehousesResponse.length === 0;
+    // Use real data from API
+    const warehouses = warehousesResponse || [];
 
     // Stats - Using real data
     const stats = {
@@ -287,7 +285,7 @@ export function WarehousesClient() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-subtle)]">
-                            {MOCK_INVENTORY.map((item, idx) => (
+                            {[].map((item: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-[var(--bg-secondary)]/50 transition-colors">
                                     <td className="px-6 py-4 font-mono text-xs text-[var(--text-muted)]">{item.sku}</td>
                                     <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{item.name}</td>

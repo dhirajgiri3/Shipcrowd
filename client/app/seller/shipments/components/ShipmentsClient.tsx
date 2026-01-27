@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import { useDebounce } from '@/src/hooks/utility/useDebounce';
 import { motion } from 'framer-motion';
-import { MOCK_SHIPMENTS } from '@/src/lib/mockData/mockData';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
@@ -53,29 +52,11 @@ export function ShipmentsClient() {
 
     const generateBulkLabels = useGenerateBulkLabels();
 
-    // Use real data if available, otherwise fallback to mock
-    const shipmentsData: any[] = shipmentsResponse?.shipments || MOCK_SHIPMENTS;
-    const isUsingMockData = !shipmentsResponse?.shipments;
+    // Use real data from API
+    const shipmentsData: any[] = shipmentsResponse?.shipments || [];
 
-    // Derived Data (for mock data client-side filtering)
-    const filteredData = useMemo(() => {
-        // If using real API, filtering is done server-side
-        if (!isUsingMockData) {
-            return shipmentsData;
-        }
-
-        // Client-side filtering for mock data only
-        return shipmentsData.filter((item: any) => {
-            const matchesSearch =
-                item.awb?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                item.trackingNumber?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                item.customer?.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                item.orderNumber?.toLowerCase().includes(debouncedSearch.toLowerCase());
-
-            const matchesStatus = statusFilter === 'all' || item.status === statusFilter || item.currentStatus === statusFilter;
-            return matchesSearch && matchesStatus;
-        });
-    }, [shipmentsData, debouncedSearch, statusFilter, isUsingMockData]);
+    // Filtering is done server-side via API
+    const filteredData = shipmentsData;
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {

@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MOCK_SHIPMENTS } from '@/src/lib/mockData/mockData';
 import { DataTable } from '@/src/components/ui/data/DataTable';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
@@ -31,6 +30,7 @@ import {
     Calendar
 } from 'lucide-react';
 import { Shipment } from '@/src/types/domain/admin';
+import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
@@ -38,18 +38,14 @@ export function ShipmentsClient() {
     const [statusFilter, setStatusFilter] = useState('all');
     const { addToast } = useToast();
 
-    // Derived Data
-    const filteredData = useMemo(() => {
-        return MOCK_SHIPMENTS.filter(item => {
-            const matchesSearch =
-                item.awb.toLowerCase().includes(search.toLowerCase()) ||
-                item.customer.name.toLowerCase().includes(search.toLowerCase()) ||
-                item.orderNumber.toLowerCase().includes(search.toLowerCase());
+    // Fetch shipments from API
+    const { data: shipmentsResponse, isLoading } = useShipments({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: search || undefined
+    });
 
-            const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
-            return matchesSearch && matchesStatus;
-        });
-    }, [search, statusFilter]);
+    const shipmentsData = shipmentsResponse?.shipments || [];
+    const filteredData = shipmentsData;
 
     // Status Cards Data
     const statusGrid = [
@@ -62,8 +58,8 @@ export function ShipmentsClient() {
     ];
 
     const getStatusCount = (id: string) => {
-        if (id === 'all') return MOCK_SHIPMENTS.length;
-        return MOCK_SHIPMENTS.filter(s => s.status === id).length;
+        if (id === 'all') return shipmentsData.length;
+        return shipmentsData.filter((s: Shipment) => s.status === id).length;
     };
 
     // Columns

@@ -9,8 +9,8 @@
 
 import type { DashboardMetrics } from '@/src/types/api/analytics/analytics.types';
 
-// Read from env - false means always try real API first
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+// Mock data support removed in Phase 4
+const USE_MOCK = false;
 
 type FreshnessLevel = 'real_time' | 'cached' | 'stale' | 'mock';
 

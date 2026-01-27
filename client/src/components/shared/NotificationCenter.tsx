@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Bell,
@@ -11,134 +11,63 @@ import {
     TrendingUp,
     Package,
     DollarSign,
-    Clock
+    Clock,
+    Loader2
 } from "lucide-react";
 import { Badge } from '@/src/components/ui/core/Badge';
 import { Button } from '@/src/components/ui/core/Button';
 import { cn } from "@/src/lib/utils";
-
-interface Notification {
-    id: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    title: string;
-    message: string;
-    timestamp: Date;
-    read: boolean;
-    actionLabel?: string;
-    actionUrl?: string;
-}
-
-// Mock notification generator
-const generateMockNotifications = (): Notification[] => [
-    {
-        id: '1',
-        type: 'warning',
-        title: 'High RTO Rate Detected',
-        message: 'Fashion Trends Ltd has 28% RTO rate this month - intervention recommended',
-        timestamp: new Date(Date.now() - 5 * 60000),
-        read: false,
-        actionLabel: 'View Details',
-        actionUrl: '/admin/sellers/S001',
-    },
-    {
-        id: '2',
-        type: 'success',
-        title: 'Revenue Milestone',
-        message: 'Platform crossed ₹10L revenue today!',
-        timestamp: new Date(Date.now() - 15 * 60000),
-        read: false,
-    },
-    {
-        id: '3',
-        type: 'info',
-        title: 'New Seller Onboarded',
-        message: 'TechGear Pro completed KYC verification',
-        timestamp: new Date(Date.now() - 30 * 60000),
-        read: true,
-    },
-    {
-        id: '4',
-        type: 'error',
-        title: 'Payment Gateway Issue',
-        message: '3 COD settlements failed - check gateway',
-        timestamp: new Date(Date.now() - 45 * 60000),
-        read: false,
-        actionLabel: 'Check Now',
-        actionUrl: '/admin/settlements',
-    },
-];
+import { useNotifications, useMarkNotificationRead, useMarkAllRead, useDeleteNotification } from '@/src/core/api/hooks/useNotifications';
 
 const iconMap = {
-    info: Info,
-    success: CheckCircle2,
-    warning: AlertTriangle,
-    error: AlertTriangle,
+    order: Package,
+    shipment: TrendingUp,
+    payment: DollarSign,
+    system: Info,
+    alert: AlertTriangle,
 };
 
-const colorMap = {
-    info: {
+const priorityColorMap = {
+    low: {
+        bg: 'bg-gray-50 dark:bg-gray-950/30',
+        icon: 'text-gray-600 dark:text-gray-400',
+    },
+    medium: {
         bg: 'bg-blue-50 dark:bg-blue-950/30',
-        border: 'border-blue-200 dark:border-blue-800/50',
-        text: 'text-blue-700 dark:text-blue-300',
         icon: 'text-blue-600 dark:text-blue-400',
     },
-    success: {
-        bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-        border: 'border-emerald-200 dark:border-emerald-800/50',
-        text: 'text-emerald-700 dark:text-emerald-300',
-        icon: 'text-emerald-600 dark:text-emerald-400',
-    },
-    warning: {
+    high: {
         bg: 'bg-amber-50 dark:bg-amber-950/30',
-        border: 'border-amber-200 dark:border-amber-800/50',
-        text: 'text-amber-700 dark:text-amber-300',
         icon: 'text-amber-600 dark:text-amber-400',
     },
-    error: {
+    urgent: {
         bg: 'bg-rose-50 dark:bg-rose-950/30',
-        border: 'border-rose-200 dark:border-rose-800/50',
-        text: 'text-rose-700 dark:text-rose-300',
         icon: 'text-rose-600 dark:text-rose-400',
     },
 };
 
 export function NotificationCenter() {
     const [isOpen, setIsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
 
-    useEffect(() => {
-        setNotifications(generateMockNotifications());
+    // API Hooks
+    const { data: notificationsData, isLoading } = useNotifications();
+    const { mutate: markRead } = useMarkNotificationRead();
+    const { mutate: markAllRead } = useMarkAllRead();
+    const { mutate: deleteNotif } = useDeleteNotification();
 
-        // Simulate new notifications coming in
-        const interval = setInterval(() => {
-            const newNotif: Notification = {
-                id: Date.now().toString(),
-                type: ['info', 'success', 'warning'][Math.floor(Math.random() * 3)] as any,
-                title: 'New Event',
-                message: 'Something happened on the platform',
-                timestamp: new Date(),
-                read: false,
-            };
-            setNotifications(prev => [newNotif, ...prev].slice(0, 10));
-        }, 60000); // Every minute
-
-        return () => clearInterval(interval);
-    }, []);
-
+    const notifications = notificationsData?.notifications || [];
     const unreadCount = notifications.filter(n => !n.read).length;
 
     const markAsRead = (id: string) => {
-        setNotifications(prev =>
-            prev.map(n => n.id === id ? { ...n, read: true } : n)
-        );
+        markRead(id);
     };
 
     const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        markAllRead();
     };
 
     const deleteNotification = (id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        deleteNotif(id);
     };
 
     const formatTimestamp = (date: Date) => {
@@ -217,15 +146,20 @@ export function NotificationCenter() {
 
                             {/* Notifications List */}
                             <div className="max-h-[400px] overflow-y-auto">
-                                {notifications.length === 0 ? (
+                                {isLoading ? (
+                                    <div className="p-8 text-center">
+                                        <Loader2 className="h-8 w-8 mx-auto mb-3 text-[var(--primary-blue)] animate-spin" />
+                                        <p className="text-sm text-[var(--text-secondary)]">Loading notifications...</p>
+                                    </div>
+                                ) : notifications.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <Bell className="h-12 w-12 mx-auto mb-3 text-[var(--text-muted)] opacity-30" />
                                         <p className="text-sm text-[var(--text-secondary)]">No notifications</p>
                                     </div>
                                 ) : (
                                     notifications.map((notif, index) => {
-                                        const Icon = iconMap[notif.type];
-                                        const colors = colorMap[notif.type];
+                                        const Icon = iconMap[notif.type] || Info;
+                                        const colors = priorityColorMap[notif.priority];
 
                                         return (
                                             <motion.div
@@ -264,7 +198,7 @@ export function NotificationCenter() {
                                                         </p>
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-xs text-[var(--text-muted)]">
-                                                                {formatTimestamp(notif.timestamp)}
+                                                                {formatTimestamp(new Date(notif.createdAt))}
                                                             </span>
                                                             {notif.actionLabel && (
                                                                 <button className="text-xs text-[var(--primary-blue)] hover:opacity-80">

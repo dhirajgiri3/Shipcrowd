@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/core/Button';
 import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
 import { formatCurrency, cn } from '@/src/lib/utils';
 import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
-import { useDebounce } from '@/src/hooks/utility/useDebounce';
+import { useDebouncedValue as useDebounce } from '@/src/hooks/data/useDebouncedValue';
 import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
 import {
     Search,
@@ -31,7 +31,6 @@ import {
     LazyBar as Bar,
     LazyResponsiveContainer as ResponsiveContainer
 } from '@/src/components/features/charts/LazyCharts';
-import { generateMockOrders } from '@/src/lib/mockData/orders';
 import { SmartFilterChips, FilterPreset } from '@/src/components/seller/orders/SmartFilterChips';
 import { ResponsiveOrderList } from '@/src/components/seller/orders/ResponsiveOrderList';
 import { useIsMobile } from '@/src/hooks/ux';
@@ -83,43 +82,23 @@ export function OrdersClient() {
         search: debouncedSearch || undefined,
     });
 
-    // Fallback to mock data if API fails (development only)
-    const MOCK_ORDERS_DATA = useMemo(() => {
-        return generateMockOrders();
-    }, []);
-
-    // Use real data if available, otherwise fallback to mock
+    // Use real data from API
     // Note: Backend sends { success, data: Order[], pagination } via sendPaginated()
     // So we access response.data directly (not response.data.orders)
-    const ordersData: Order[] = ordersResponse?.data || MOCK_ORDERS_DATA;
-    const isUsingMockData = !ordersResponse?.data;
+    const ordersData: Order[] = ordersResponse?.data || [];
 
     const refetch = async () => {
         setIsRefreshing(true);
         await refetchOrders();
-        setTimeout(() => setIsRefreshing(false), 500);
+        setIsRefreshing(false);
     };
 
     // Filter Data with Smart Filters (client-side filtering for mock, server-side for real API)
     const filteredOrders = useMemo(() => {
-        // If using real API, filtering is done server-side
-        if (!isUsingMockData) {
-            return ordersData;
-        }
-
-        // Client-side filtering for mock data only
         let filtered = ordersData;
 
-        // Search filter
-        if (debouncedSearch) {
-            const lowerSearch = debouncedSearch.toLowerCase();
-            filtered = filtered.filter(o =>
-                o.orderNumber.toLowerCase().includes(lowerSearch) ||
-                o.customerInfo.name.toLowerCase().includes(lowerSearch)
-            );
-        }
-
         // Smart filter (takes precedence over tab filter)
+        // Note: Ideally this should be handled by the backend API
         if (smartFilter !== 'all') {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -128,7 +107,6 @@ export function OrdersClient() {
 
             switch (smartFilter) {
                 case 'needs_attention':
-                    // Updated to match actual statuses that might need attention
                     filtered = filtered.filter(o =>
                         ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
                     );
@@ -152,24 +130,24 @@ export function OrdersClient() {
                     });
                     break;
                 case 'zone_b':
-                    // Assuming Zone B based on state (example logic)
                     filtered = filtered.filter(o => {
                         const state = o.customerInfo?.address?.state;
                         return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
                     });
                     break;
             }
-        } else if (activeTab !== 'all') {
-            // Tab filter (only if smart filter is 'all')
-            if (activeTab === 'unshipped') {
-                filtered = filtered.filter(o => ['pending', 'processing', 'pickup_pending'].includes(o.currentStatus));
-            } else {
-                filtered = filtered.filter(o => o.currentStatus === activeTab);
-            }
+        }
+        // Tab filter is handled by API status param, so we don't need to filter again here unless it's 'unshipped' grouping
+        else if (activeTab === 'unshipped') {
+            // API might return all 'unshipped' statuses if we passed a specific param, 
+            // but if we passed 'unshipped' as status, the backend should handle it.
+            // If the backend treats 'unshipped' as a status alias, we are good.
+            // If not, we might need to filter here. Assuming backend handles it for now or we filter just in case.
+            filtered = filtered.filter(o => ['pending', 'processing', 'pickup_pending'].includes(o.currentStatus));
         }
 
         return filtered;
-    }, [debouncedSearch, activeTab, smartFilter, ordersData]);
+    }, [activeTab, smartFilter, ordersData]);
 
     const orders = filteredOrders.slice((page - 1) * limit, page * limit);
     const pagination = {
@@ -228,7 +206,7 @@ export function OrdersClient() {
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await refetch();
-        setTimeout(() => setIsRefreshing(false), 500);
+        setIsRefreshing(false);
     };
 
     // --- Columns Definition ---
@@ -359,11 +337,7 @@ export function OrdersClient() {
                 <div>
                     <div className="flex items-center gap-3">
                         <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
-                        {isUsingMockData && (
-                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                ⚠️ Mock Data
-                            </span>
-                        )}
+
                     </div>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Manage your orders and fulfillments</p>
                 </div>

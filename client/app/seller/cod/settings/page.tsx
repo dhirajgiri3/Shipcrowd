@@ -134,9 +134,6 @@ export default function CODSettingsPage() {
             // TODO: Call API to save schedule
             // await schedulePayoutMutation.mutateAsync(schedule);
 
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
         } catch (error) {

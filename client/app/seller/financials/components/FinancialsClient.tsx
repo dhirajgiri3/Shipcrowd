@@ -13,9 +13,6 @@ import {
 import type { PaymentMethod } from '@/src/components/seller/wallet';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
-import { mockTransactions } from '@/src/lib/mockData/enhanced';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 
 // Mock insights data
 const MOCK_INSIGHTS = {
@@ -38,18 +35,12 @@ export function FinancialsClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
     const { addToast } = useToast();
 
-    const { data: balanceData, isLoading: balanceLoading } = useWalletBalance({ enabled: !USE_MOCK });
-    const { data: transactionsData } = useWalletTransactions({ limit: 20 }, { enabled: !USE_MOCK });
+    const { data: balanceData, isLoading: balanceLoading } = useWalletBalance();
+    const { data: transactionsData } = useWalletTransactions({ limit: 20 });
     const rechargeWallet = useRechargeWallet();
 
     const handleRechargeSubmit = async (amount: number, _method: PaymentMethod) => {
         try {
-            if (USE_MOCK) {
-                addToast(`Mock: Added ₹${amount.toLocaleString('en-IN')} to wallet`, 'success');
-                setIsAddMoneyOpen(false);
-                return;
-            }
-
             const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
             await rechargeWallet.mutateAsync({ amount, paymentId });
             setIsAddMoneyOpen(false);
@@ -58,7 +49,7 @@ export function FinancialsClient() {
         }
     };
 
-    if (!USE_MOCK && balanceLoading) {
+    if (balanceLoading) {
         return (
             <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
                 <p className="text-[var(--text-secondary)]">Loading...</p>
@@ -66,10 +57,10 @@ export function FinancialsClient() {
         );
     }
 
-    const balance = USE_MOCK ? 45820 : (balanceData?.balance || 0);
-    const transactions = USE_MOCK ? mockTransactions.slice(0, 20) : (transactionsData?.transactions || []);
-    const insights = USE_MOCK ? MOCK_INSIGHTS : null;
-    const weeklyChange = USE_MOCK ? -12 : 0;
+    const balance = balanceData?.balance || 0;
+    const transactions = transactionsData?.transactions || [];
+    const insights = null; // Will be implemented in future phase
+    const weeklyChange = 0;
 
     return (
         <div className="min-h-screen bg-[var(--bg-primary)]">

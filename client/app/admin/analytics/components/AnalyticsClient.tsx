@@ -1,6 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
 import { Select } from '@/src/components/ui/form/Select';
 import { Button } from '@/src/components/ui/core/Button';
@@ -20,35 +21,52 @@ import {
     LazyPie as Pie,
     LazyCell as Cell
 } from '@/src/components/features/charts/LazyCharts';
-import { Download, Calendar } from 'lucide-react';
-
-const deliveryPerformanceData = [
-    { date: '1 Dec', delivered: 120, rto: 5, ndr: 12 },
-    { date: '2 Dec', delivered: 132, rto: 4, ndr: 10 },
-    { date: '3 Dec', delivered: 101, rto: 8, ndr: 15 },
-    { date: '4 Dec', delivered: 145, rto: 6, ndr: 8 },
-    { date: '5 Dec', delivered: 160, rto: 7, ndr: 11 },
-    { date: '6 Dec', delivered: 152, rto: 5, ndr: 14 },
-    { date: '7 Dec', delivered: 170, rto: 6, ndr: 9 },
-];
-
-const zoneDistribution = [
-    { name: 'North', value: 400 },
-    { name: 'South', value: 300 },
-    { name: 'West', value: 300 },
-    { name: 'East', value: 200 },
-    { name: 'North-East', value: 100 },
-];
+import { Download, Loader2 } from 'lucide-react';
+import { useDeliveryPerformance, useZoneDistribution } from '@/src/core/api/hooks/admin/useAdminAnalytics';
 
 const COLORS = ['var(--primary-blue)', '#4338CA', 'var(--success)', 'var(--warning)', 'var(--error)'];
 
 export function AnalyticsClient() {
+    const [dateRange, setDateRange] = useState('7d');
+
+    // Calculate date range
+    const { startDate, endDate } = useMemo(() => {
+        const end = new Date();
+        const start = new Date();
+
+        switch(dateRange) {
+            case '7d':
+                start.setDate(start.getDate() - 7);
+                break;
+            case '30d':
+                start.setDate(start.getDate() - 30);
+                break;
+            case 'month':
+                start.setDate(1);
+                break;
+        }
+
+        return {
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0]
+        };
+    }, [dateRange]);
+
+    // API Hooks
+    const { data: deliveryData, isLoading: isLoadingDelivery } = useDeliveryPerformance({ startDate, endDate });
+    const { data: zoneData, isLoading: isLoadingZones } = useZoneDistribution();
+
+    const deliveryPerformanceData = deliveryData?.data || [];
+    const zoneDistribution = zoneData?.data || [];
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold text-[var(--text-primary)]">Analytics & Reports</h2>
                 <div className="flex items-center gap-2">
                     <Select
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value)}
                         options={[
                             { label: 'Last 7 Days', value: '7d' },
                             { label: 'Last 30 Days', value: '30d' },
@@ -64,6 +82,11 @@ export function AnalyticsClient() {
 
             <div className="grid gap-6 lg:grid-cols-2">
                 <ChartCard title="Delivery Performance Trend" height={350}>
+                    {isLoadingDelivery ? (
+                        <div className="flex items-center justify-center h-full">
+                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                        </div>
+                    ) : (
                     <AreaChart data={deliveryPerformanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
@@ -91,9 +114,15 @@ export function AnalyticsClient() {
                         <Area type="monotone" dataKey="ndr" stroke="var(--warning)" fill="none" name="NDR" />
                         <Area type="monotone" dataKey="rto" stroke="var(--error)" fill="none" name="RTO" />
                     </AreaChart>
+                    )}
                 </ChartCard>
 
                 <ChartCard title="Zone-wise Distribution" height={350}>
+                    {isLoadingZones ? (
+                        <div className="flex items-center justify-center h-full">
+                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                        </div>
+                    ) : (
                     <PieChart>
                         <Pie
                             data={zoneDistribution}
@@ -123,6 +152,7 @@ export function AnalyticsClient() {
                         />
                         <Legend layout="vertical" verticalAlign="middle" align="right" />
                     </PieChart>
+                    )}
                 </ChartCard>
             </div>
 

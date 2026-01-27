@@ -11,9 +11,11 @@ import {
     Package,
     ChevronDown,
     ChevronUp,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 import { formatCurrency } from '@/src/lib/dashboard/data-utils';
+import { useProfitabilityAnalytics, type ProfitabilityData } from '@/src/core/api/hooks/analytics';
 
 /**
  * Profitability Card
@@ -22,68 +24,9 @@ import { formatCurrency } from '@/src/lib/dashboard/data-utils';
  * Breaks down costs: shipping, COD charges, platform fees, GST, RTO costs
  */
 
-interface ProfitabilityData {
-    summary: {
-        totalRevenue: number;
-        totalCosts: number;
-        netProfit: number;
-        profitMargin: number;
-    };
-    breakdown: {
-        shippingCosts: number;
-        codCharges: number;
-        platformFees: number;
-        gst: number;
-        rtoCosts: number;
-        otherCosts?: number;
-    };
-    averagePerOrder: {
-        revenue: number;
-        profit: number;
-        margin: number;
-    };
-    comparison?: {
-        previousPeriod: {
-            margin: number;
-            change: number;
-        };
-    };
-}
-
 interface ProfitabilityCardProps {
-    data?: ProfitabilityData;
-    isLoading?: boolean;
-    isUsingMock?: boolean;
     onViewDetails?: () => void;
 }
-
-// Mock data
-const MOCK_PROFITABILITY_DATA: ProfitabilityData = {
-    summary: {
-        totalRevenue: 125000,
-        totalCosts: 52000,
-        netProfit: 73000,
-        profitMargin: 58.4
-    },
-    breakdown: {
-        shippingCosts: 32000,
-        codCharges: 8500,
-        platformFees: 6250,
-        gst: 0, // GST is usually passed to customer
-        rtoCosts: 5250
-    },
-    averagePerOrder: {
-        revenue: 625,
-        profit: 365,
-        margin: 58.4
-    },
-    comparison: {
-        previousPeriod: {
-            margin: 55.2,
-            change: 3.2
-        }
-    }
-};
 
 const CostBreakdownItem = memo(function CostBreakdownItem({
     label,
@@ -119,13 +62,38 @@ const CostBreakdownItem = memo(function CostBreakdownItem({
 });
 
 const ProfitabilityCard = memo(function ProfitabilityCard({
-    data,
-    isLoading = false,
-    isUsingMock = false,
     onViewDetails
 }: ProfitabilityCardProps) {
     const [showBreakdown, setShowBreakdown] = useState(false);
-    const profitData = data || MOCK_PROFITABILITY_DATA;
+
+    // API Hooks
+    const { data: profitData, isLoading, error } = useProfitabilityAnalytics();
+
+    if (isLoading) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !profitData) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertCircle className="h-12 w-12 text-[var(--text-muted)] opacity-30 mb-4" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                        Unable to load profitability data
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                        Please try again later or contact support if the issue persists.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const isImproving = (profitData.comparison?.previousPeriod.change ?? 0) > 0;
     const isHealthyMargin = profitData.summary.profitMargin >= 40;
@@ -133,17 +101,6 @@ const ProfitabilityCard = memo(function ProfitabilityCard({
     // Calculate percentages for breakdown
     const totalCosts = profitData.summary.totalCosts;
     const getPercentage = (amount: number) => totalCosts > 0 ? (amount / totalCosts) * 100 : 0;
-
-    if (isLoading) {
-        return (
-            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-[var(--bg-tertiary)] rounded w-40" />
-                    <div className="h-32 bg-[var(--bg-tertiary)] rounded-xl" />
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden">
@@ -163,12 +120,6 @@ const ProfitabilityCard = memo(function ProfitabilityCard({
                             </p>
                         </div>
                     </div>
-
-                    {isUsingMock && (
-                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--warning-bg)] text-[var(--warning)] rounded-md">
-                            Sample Data
-                        </span>
-                    )}
                 </div>
             </div>
 

@@ -12,8 +12,5 @@ export * from './error';
 // Performance utilities
 export * from './performance';
 
-// Mock data (for development/testing)
-export * from './mockData';
-
 // General utilities
 export * from './utils';

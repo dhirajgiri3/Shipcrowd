@@ -12,9 +12,11 @@ import {
     Phone,
     XCircle,
     Lightbulb,
-    ArrowRight
+    ArrowRight,
+    Loader2
 } from 'lucide-react';
 import { formatCurrency } from '@/src/lib/dashboard/data-utils';
+import { useRTOAnalytics, type RTOAnalyticsData } from '@/src/core/api/hooks/analytics';
 
 /**
  * RTO Analytics Component
@@ -23,96 +25,9 @@ import { formatCurrency } from '@/src/lib/dashboard/data-utils';
  * Provides actionable recommendations to reduce RTO.
  */
 
-interface RTOByCourier {
-    courier: string;
-    rate: number;
-    count: number;
-    total: number;
-}
-
-interface RTOByReason {
-    reason: string;
-    label: string;
-    percentage: number;
-    count: number;
-}
-
-interface RTORecommendation {
-    type: string;
-    message: string;
-    impact?: string;
-}
-
-interface RTOAnalyticsData {
-    summary: {
-        currentRate: number;
-        previousRate: number;
-        change: number;
-        industryAverage: number;
-        totalRTO: number;
-        totalOrders: number;
-        estimatedLoss: number;
-    };
-    trend: {
-        month: string;
-        rate: number;
-    }[];
-    byCourier: RTOByCourier[];
-    byReason: RTOByReason[];
-    recommendations: RTORecommendation[];
-}
-
 interface RTOAnalyticsProps {
-    data?: RTOAnalyticsData;
-    isLoading?: boolean;
-    isUsingMock?: boolean;
     onViewDetails?: () => void;
 }
-
-// Mock data
-const MOCK_RTO_DATA: RTOAnalyticsData = {
-    summary: {
-        currentRate: 8.2,
-        previousRate: 9.7,
-        change: -1.5,
-        industryAverage: 10.5,
-        totalRTO: 62,
-        totalOrders: 756,
-        estimatedLoss: 48500
-    },
-    trend: [
-        { month: '2025-08', rate: 12.0 },
-        { month: '2025-09', rate: 10.0 },
-        { month: '2025-10', rate: 9.5 },
-        { month: '2025-11', rate: 8.8 },
-        { month: '2025-12', rate: 8.5 },
-        { month: '2026-01', rate: 8.2 }
-    ],
-    byCourier: [
-        { courier: 'Delhivery', rate: 6.5, count: 18, total: 276 },
-        { courier: 'BlueDart', rate: 8.2, count: 12, total: 146 },
-        { courier: 'Ecom Express', rate: 12.8, count: 9, total: 70 },
-        { courier: 'DTDC', rate: 9.1, count: 8, total: 88 }
-    ],
-    byReason: [
-        { reason: 'customer_unavailable', label: 'Customer Unavailable', percentage: 45, count: 28 },
-        { reason: 'customer_refused', label: 'Customer Refused', percentage: 32, count: 20 },
-        { reason: 'incorrect_address', label: 'Incorrect Address', percentage: 15, count: 9 },
-        { reason: 'other', label: 'Other', percentage: 8, count: 5 }
-    ],
-    recommendations: [
-        {
-            type: 'courier_switch',
-            message: 'Switch Tier 3 city orders from Ecom Express to Delhivery',
-            impact: 'Save ₹12,000/month in RTO losses'
-        },
-        {
-            type: 'verification',
-            message: 'Enable IVR confirmation for COD orders above ₹1,000',
-            impact: 'Reduce customer unavailable by 25%'
-        }
-    ]
-};
 
 const getReasonIcon = (reason: string) => {
     switch (reason) {
@@ -128,12 +43,36 @@ const getReasonIcon = (reason: string) => {
 };
 
 const RTOAnalytics = memo(function RTOAnalytics({
-    data,
-    isLoading = false,
-    isUsingMock = false,
     onViewDetails
 }: RTOAnalyticsProps) {
-    const rtoData = data || MOCK_RTO_DATA;
+    // API Hooks
+    const { data: rtoData, isLoading, error } = useRTOAnalytics();
+
+    if (isLoading) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !rtoData) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertTriangle className="h-12 w-12 text-[var(--text-muted)] opacity-30 mb-4" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                        Unable to load RTO analytics
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                        Please try again later or contact support if the issue persists.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const isImproving = rtoData.summary.change < 0;
     const isBetterThanAverage = rtoData.summary.currentRate < rtoData.summary.industryAverage;
@@ -142,21 +81,6 @@ const RTOAnalytics = memo(function RTOAnalytics({
     const sortedCouriers = [...rtoData.byCourier].sort((a, b) => a.rate - b.rate);
     const bestCourier = sortedCouriers[0];
     const worstCourier = sortedCouriers[sortedCouriers.length - 1];
-
-    if (isLoading) {
-        return (
-            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-[var(--bg-tertiary)] rounded w-40" />
-                    <div className="grid grid-cols-3 gap-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="h-24 bg-[var(--bg-tertiary)] rounded-xl" />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden">
@@ -182,11 +106,6 @@ const RTOAnalytics = memo(function RTOAnalytics({
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {isUsingMock && (
-                            <span className="px-2 py-1 text-[10px] font-medium bg-[var(--warning-bg)] text-[var(--warning)] rounded-md">
-                                Sample Data
-                            </span>
-                        )}
                         {onViewDetails && (
                             <button
                                 onClick={onViewDetails}

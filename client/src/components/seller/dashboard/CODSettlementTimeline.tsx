@@ -10,9 +10,11 @@ import {
     Calendar,
     Building2,
     TrendingUp,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 import { formatCurrency } from '@/src/lib/dashboard/data-utils';
+import { useCODTimeline, transformCODTimelineToComponent } from '@/src/core/api/hooks/finance';
 
 /**
  * COD Settlement Timeline
@@ -49,46 +51,7 @@ interface CODSettlementData {
     };
 }
 
-interface CODSettlementTimelineProps {
-    data?: CODSettlementData;
-    isLoading?: boolean;
-    isUsingMock?: boolean;
-}
-
-// Mock data for fallback
-const MOCK_COD_DATA: CODSettlementData = {
-    collected: {
-        amount: 52000,
-        count: 68
-    },
-    inProcess: {
-        amount: 38000,
-        count: 42,
-        expectedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    scheduled: [
-        {
-            amount: 45000,
-            date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-            courier: 'Delhivery',
-            method: 'NEFT'
-        },
-        {
-            amount: 28000,
-            date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            courier: 'BlueDart',
-            method: 'IMPS'
-        }
-    ],
-    settled: {
-        thisMonth: 125000,
-        count: 156,
-        lastSettlement: {
-            date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            amount: 38500
-        }
-    }
-};
+interface CODSettlementTimelineProps {}
 
 const StageCard = memo(function StageCard({
     icon: Icon,
@@ -142,12 +105,38 @@ const StageCard = memo(function StageCard({
     );
 });
 
-const CODSettlementTimeline = memo(function CODSettlementTimeline({
-    data,
-    isLoading = false,
-    isUsingMock = false
-}: CODSettlementTimelineProps) {
-    const codData = data || MOCK_COD_DATA;
+const CODSettlementTimeline = memo(function CODSettlementTimeline({}: CODSettlementTimelineProps) {
+    // API Hooks
+    const { data: timelineData, isLoading, error } = useCODTimeline();
+
+    // Transform API data to component format
+    const codData = timelineData ? transformCODTimelineToComponent(timelineData) : null;
+
+    if (isLoading) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !codData) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertCircle className="h-12 w-12 text-[var(--text-muted)] opacity-30 mb-4" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                        Unable to load COD settlement timeline
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                        Please try again later or contact support if the issue persists.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     // Calculate next settlement
     const nextSettlement = codData.scheduled[0];
@@ -159,21 +148,6 @@ const CODSettlementTimeline = memo(function CODSettlementTimeline({
     // Total pending amount
     const totalPending = codData.collected.amount + codData.inProcess.amount +
         codData.scheduled.reduce((sum, s) => sum + s.amount, 0);
-
-    if (isLoading) {
-        return (
-            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-[var(--bg-tertiary)] rounded w-48" />
-                    <div className="grid grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className="h-32 bg-[var(--bg-tertiary)] rounded-xl" />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden">
@@ -193,18 +167,11 @@ const CODSettlementTimeline = memo(function CODSettlementTimeline({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {isUsingMock && (
-                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--warning-bg)] text-[var(--warning)] rounded-md">
-                            Sample Data
-                        </span>
-                    )}
-                    <div className="text-right">
-                        <p className="text-xs text-[var(--text-muted)]">Total Pending</p>
-                        <p className="text-lg font-bold text-[var(--text-primary)]">
-                            {formatCurrency(totalPending)}
-                        </p>
-                    </div>
+                <div className="text-right">
+                    <p className="text-xs text-[var(--text-muted)]">Total Pending</p>
+                    <p className="text-lg font-bold text-[var(--text-primary)]">
+                        {formatCurrency(totalPending)}
+                    </p>
                 </div>
             </div>
 

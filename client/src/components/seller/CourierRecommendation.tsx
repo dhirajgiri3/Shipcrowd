@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
     Truck,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Badge } from '@/src/components/ui/core/Badge';
 import { cn } from "@/src/lib/utils";
+import { useCourierRecommendations } from '@/src/core/api/hooks/useCourierRecommendation';
 
 interface CourierOption {
     id: string;
@@ -37,62 +38,6 @@ interface CourierRecommendationProps {
     selectedCourierId?: string;
 }
 
-// Mock courier recommendation logic
-const getCourierRecommendations = (
-    pickupPincode: string,
-    deliveryPincode: string,
-    weight: number,
-    paymentMode: 'cod' | 'prepaid'
-): CourierOption[] => {
-    // Mock data - replace with actual API call
-    return [
-        {
-            id: 'delhivery',
-            name: 'Delhivery',
-            estimatedDelivery: '3-4 days',
-            price: paymentMode === 'cod' ? 65 : 55,
-            rating: 4.2,
-            onTimeRate: 89,
-            recommended: true,
-            features: ['Fastest delivery', 'Best coverage', 'COD available'],
-            riskLevel: 'low',
-        },
-        {
-            id: 'xpressbees',
-            name: 'Xpressbees',
-            estimatedDelivery: '4-5 days',
-            price: paymentMode === 'cod' ? 62 : 52,
-            rating: 4.0,
-            onTimeRate: 85,
-            recommended: false,
-            features: ['Cost effective', 'Good for metros', 'COD available'],
-            riskLevel: 'low',
-        },
-        {
-            id: 'dtdc',
-            name: 'DTDC',
-            estimatedDelivery: '4-6 days',
-            price: paymentMode === 'cod' ? 70 : 60,
-            rating: 3.8,
-            onTimeRate: 78,
-            recommended: false,
-            features: ['Wide network', 'Budget friendly'],
-            riskLevel: 'medium',
-        },
-        {
-            id: 'bluedart',
-            name: 'Blue Dart',
-            estimatedDelivery: '2-3 days',
-            price: paymentMode === 'cod' ? 95 : 85,
-            rating: 4.5,
-            onTimeRate: 94,
-            recommended: false,
-            features: ['Premium service', 'Fastest', 'Express delivery'],
-            riskLevel: 'low',
-        },
-    ];
-};
-
 export function CourierRecommendation({
     pickupPincode,
     deliveryPincode,
@@ -101,24 +46,21 @@ export function CourierRecommendation({
     onSelect,
     selectedCourierId,
 }: CourierRecommendationProps) {
-    const [couriers, setCouriers] = useState<CourierOption[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        setLoading(true);
-
-        // Simulate API call delay
-        setTimeout(() => {
-            const recommendations = getCourierRecommendations(
-                pickupPincode,
-                deliveryPincode,
-                weight,
-                paymentMode
-            );
-            setCouriers(recommendations);
-            setLoading(false);
-        }, 800);
+    // Build request parameters
+    const request = useMemo(() => {
+        if (!pickupPincode || !deliveryPincode || !weight) return null;
+        return {
+            pickupPincode,
+            deliveryPincode,
+            weight,
+            paymentMode,
+        };
     }, [pickupPincode, deliveryPincode, weight, paymentMode]);
+
+    // Fetch recommendations
+    const { data, isLoading: loading, error } = useCourierRecommendations(request);
+
+    const couriers = data?.recommendations || [];
 
     if (loading) {
         return (
@@ -136,6 +78,42 @@ export function CourierRecommendation({
                         style={{ animationDelay: `${i * 100}ms` }}
                     />
                 ))}
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50">
+                <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 mt-0.5 shrink-0" />
+                    <div>
+                        <h3 className="font-semibold text-rose-700 dark:text-rose-300">
+                            Failed to load courier recommendations
+                        </h3>
+                        <p className="text-sm text-rose-600 dark:text-rose-400 mt-1">
+                            Please check your pickup and delivery pincodes and try again.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (couriers.length === 0) {
+        return (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
+                <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div>
+                        <h3 className="font-semibold text-amber-700 dark:text-amber-300">
+                            No couriers available
+                        </h3>
+                        <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                            No courier services available for this route. Please check the pincodes.
+                        </p>
+                    </div>
+                </div>
             </div>
         );
     }

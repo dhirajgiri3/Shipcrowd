@@ -583,10 +583,7 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 }}
                     >
-                        <CODSettlementTimeline
-                            isUsingMock={!codTimelineData}
-                            data={codTimelineData ? transformCODTimelineToComponent(codTimelineData) : undefined}
-                        />
+                        <CODSettlementTimeline />
                     </motion.section>
                 )}
 
@@ -599,10 +596,7 @@ export function DashboardClient() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <RTOAnalytics
-                            isUsingMock={!rtoAnalyticsData}
-                            data={rtoAnalyticsData}
-                        />
+                        <RTOAnalytics />
                     </motion.section>
                 )}
 
@@ -613,8 +607,6 @@ export function DashboardClient() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <ProfitabilityCard
-                            isUsingMock={!profitabilityData}
-                            data={profitabilityData}
                             onViewDetails={() => router.push('/seller/analytics/profitability')}
                         />
                     </motion.section>
@@ -639,10 +631,7 @@ export function DashboardClient() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <CashFlowForecast
-                            isUsingMock={!cashFlowData}
-                            data={cashFlowData ? transformCashFlowToComponent(cashFlowData, walletData?.balance || 0) : undefined}
-                        />
+                        <CashFlowForecast />
                     </motion.section>
                 )}
 

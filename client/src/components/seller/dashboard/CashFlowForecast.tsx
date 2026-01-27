@@ -11,9 +11,11 @@ import {
     AlertTriangle,
     ChevronDown,
     ChevronUp,
-    Calendar
+    Calendar,
+    Loader2
 } from 'lucide-react';
 import { formatCurrency } from '@/src/lib/dashboard/data-utils';
+import { useCashFlowForecast, useWalletBalance, transformCashFlowToComponent } from '@/src/core/api/hooks/finance';
 
 /**
  * Cash Flow Forecast (7-Day)
@@ -52,83 +54,8 @@ interface CashFlowForecastData {
 }
 
 interface CashFlowForecastProps {
-    data?: CashFlowForecastData;
-    isLoading?: boolean;
-    isUsingMock?: boolean;
     onRechargeClick?: () => void;
 }
-
-// Generate mock 7-day forecast
-function generateMockForecast(): CashFlowForecastData {
-    const currentBalance = 17000;
-    const forecast: CashFlowDay[] = [];
-    let runningBalance = currentBalance;
-
-    const today = new Date();
-
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() + i);
-
-        // Simulate varying inflows/outflows
-        const inflows: CashFlowDay['inflows'] = [];
-        const outflows: CashFlowDay['outflows'] = [];
-
-        // COD settlements on specific days
-        if (i === 0) {
-            inflows.push({ type: 'cod_settlement', amount: 45000, source: 'Delhivery' });
-        }
-        if (i === 3) {
-            inflows.push({ type: 'cod_settlement', amount: 28000, source: 'BlueDart' });
-        }
-        if (i === 5) {
-            inflows.push({ type: 'cod_settlement', amount: 32000, source: 'Ecom Express' });
-        }
-
-        // Daily shipping costs
-        const dailyShipping = 5000 + Math.floor(Math.random() * 3000);
-        outflows.push({ type: 'shipping_costs', amount: dailyShipping, estimated: i > 0 });
-
-        // Occasional fees
-        if (i === 2) {
-            outflows.push({ type: 'fees', amount: 1500 });
-        }
-
-        const totalInflow = inflows.reduce((sum, i) => sum + i.amount, 0);
-        const totalOutflow = outflows.reduce((sum, o) => sum + o.amount, 0);
-        const netChange = totalInflow - totalOutflow;
-        runningBalance += netChange;
-
-        forecast.push({
-            date: date.toISOString(),
-            inflows,
-            outflows,
-            netChange,
-            endingBalance: runningBalance
-        });
-    }
-
-    // Find low balance alerts
-    const alerts: CashFlowAlert[] = [];
-    forecast.forEach(day => {
-        if (day.endingBalance < 5000) {
-            alerts.push({
-                type: 'low_balance',
-                date: day.date,
-                message: `Balance will drop below ₹5,000 on ${new Date(day.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}. Consider recharging.`
-            });
-        }
-    });
-
-    return {
-        currentBalance,
-        forecast,
-        projectedBalance: runningBalance,
-        alerts
-    };
-}
-
-const MOCK_DATA = generateMockForecast();
 
 const DayRow = memo(function DayRow({
     day,
@@ -259,14 +186,48 @@ const DayRow = memo(function DayRow({
 });
 
 const CashFlowForecast = memo(function CashFlowForecast({
-    data,
-    isLoading = false,
-    isUsingMock = false,
     onRechargeClick
 }: CashFlowForecastProps) {
     const [expandedDay, setExpandedDay] = useState<number | null>(null);
-    const cashFlowData = data || MOCK_DATA;
 
+    // API Hooks
+    const { data: forecastData, isLoading: isForecastLoading, error: forecastError } = useCashFlowForecast();
+    const { data: balanceData, isLoading: isBalanceLoading } = useWalletBalance();
+
+    // Transform API data to component format
+    const cashFlowData = forecastData && balanceData
+        ? transformCashFlowToComponent(forecastData, balanceData.balance)
+        : null;
+
+    const isLoading = isForecastLoading || isBalanceLoading;
+
+    if (isLoading) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                </div>
+            </div>
+        );
+    }
+
+    if (forecastError || !cashFlowData) {
+        return (
+            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertTriangle className="h-12 w-12 text-[var(--text-muted)] opacity-30 mb-4" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                        Unable to load cash flow forecast
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                        Please try again later or contact support if the issue persists.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // Calculate totals after null check
     const totalInflows = cashFlowData.forecast.reduce(
         (sum, day) => sum + day.inflows.reduce((s, i) => s + i.amount, 0),
         0
@@ -276,17 +237,6 @@ const CashFlowForecast = memo(function CashFlowForecast({
         0
     );
     const netChange = cashFlowData.projectedBalance - cashFlowData.currentBalance;
-
-    if (isLoading) {
-        return (
-            <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
-                <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-[var(--bg-tertiary)] rounded w-48" />
-                    <div className="h-40 bg-[var(--bg-tertiary)] rounded-xl" />
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden">
@@ -307,18 +257,11 @@ const CashFlowForecast = memo(function CashFlowForecast({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        {isUsingMock && (
-                            <span className="px-2 py-1 text-[10px] font-medium bg-[var(--warning-bg)] text-[var(--warning)] rounded-md">
-                                Sample Data
-                            </span>
-                        )}
-                        <div className="text-right">
-                            <p className="text-xs text-[var(--text-muted)]">Current Balance</p>
-                            <p className="text-lg font-bold text-[var(--text-primary)]">
-                                {formatCurrency(cashFlowData.currentBalance)}
-                            </p>
-                        </div>
+                    <div className="text-right">
+                        <p className="text-xs text-[var(--text-muted)]">Current Balance</p>
+                        <p className="text-lg font-bold text-[var(--text-primary)]">
+                            {formatCurrency(cashFlowData.currentBalance)}
+                        </p>
                     </div>
                 </div>
             </div>
