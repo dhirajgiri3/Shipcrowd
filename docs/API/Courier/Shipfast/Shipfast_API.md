@@ -1,84 +1,105 @@
-Shipfast API - Detailed Collection
+# Shipfast API - Detailed Collection
+
 Complete Shipfast API collection with field tables, response examples, error codes, and curl snippets for all endpoints.
 
-Base URL: https://shazam.velocity.in/
+**Base URL**: `https://shazam.velocity.in/`
 
-Error Codes:
+## Error Codes
 
-400: Validation error
-422: Waybill operation failed
-422: Cancellation failed
-401: Authorisation failed
-Best practises:
+| Code | Description |
+| :--- | :--- |
+| 400 | Validation error |
+| 422 | Waybill operation failed |
+| 422 | Cancellation failed |
+| 401 | Authorisation failed |
 
-POST
-Authentication - Get Token
+## Best Practices
 
-https://shazam.velocity.in/custom/api/v1/auth-token
+---
 
-Purpose
+## Authentication - Get Token
+
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/auth-token`
+
+### Purpose
 Obtain API token for Authorization header in subsequent requests.
 
-Request Fields
-Field	Type	Required	Description	Example
-username	string	Yes	Mobile number with country code	+91xxxxxxxxx
-password	string	Yes	Account password	yourpassword
-Notes
-Use Authorization: {{token}} in all secured endpoints.
+### Request Fields
 
-Token will be valid for 24 Hrs
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| username | string | Yes | Mobile number with country code | +91xxxxxxxxx |
+| password | string | Yes | Account password | yourpassword |
 
-HEADERS
-Content-Type
-application/json
+### Notes
+- Use `Authorization: {{token}}` in all secured endpoints.
+- Token will be valid for 24 Hrs.
 
-Body
-raw
+### Headers
+- `Content-Type`: `application/json`
+
+### Body
+```json
 {
   "username": "+919866340090",
   "password": "Velocity@123"
 }
+```
 
+### Curl Command
+```bash
 curl --location '/custom/api/v1/auth-token' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "username": "+919866340090",
   "password": "Velocity@123"
 }'
+```
 
+### Response
+```json
 {
   "token": "bbqRkOXw0xWLuYj9ubnDwg",
   "expires_at": "2025-09-17T10:11:40"
 }
+```
 
-POST
-Serviceability API
-https://shazam.velocity.in/custom/api/v1/serviceability
-Purpose
+---
+
+## Serviceability API
+
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/serviceability`
+
+### Purpose
 Check if a lane supports pickup & delivery under given payment mode and shipment type.
 
-Request Fields
-Field	Type	Required	Description	Example
-from	string	Yes	Pickup pincode	560068
-to	string	Yes	Destination pincode	560068
-payment_mode	enum	Yes	cod or prepaid	cod
-shipment_type	enum	Yes	forward or return	forward
-HEADERS
-Content-Type
-application/json
+### Request Fields
 
-Authorization
-DO190JE4z8qD4S7ly6hx9Q
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| from | string | Yes | Pickup pincode | 560068 |
+| to | string | Yes | Destination pincode | 560068 |
+| payment_mode | enum | Yes | cod or prepaid | cod |
+| shipment_type | enum | Yes | forward or return | forward |
 
-Body
-raw
+### Headers
+- `Content-Type`: `application/json`
+- `Authorization`: `DO190JE4z8qD4S7ly6hx9Q`
+
+### Body
+```json
 {
   "from": "560068",
   "to": "560068",
   "payment_mode": "cod",
   "shipment_type": "forward"
 }
+```
 
+### Curl Command
+```bash
 curl --location 'https://shazam.velocity.in/custom/api/v1/serviceability' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: DO190JE4z8qD4S7ly6hx9Q' \
@@ -88,7 +109,10 @@ curl --location 'https://shazam.velocity.in/custom/api/v1/serviceability' \
   "payment_mode": "cod",
   "shipment_type": "forward"
 }'
+```
 
+### Response
+```json
 {
   "result": {
     "serviceability_results": [
@@ -141,66 +165,77 @@ curl --location 'https://shazam.velocity.in/custom/api/v1/serviceability' \
   },
   "status": "SUCCESS"
 }
+```
 
-POST
-Forward Shipment - Create Order
-https://shazam.velocity.in/custom/api/v1/forward-order-orchestration
-Forward Shipment - Field-Level Table
-Order, Channel & Carrier
-Field	Type	Required	Description	Example
-order_id	string	Yes	Unique per order	ORDER-49
-order_date	string	Yes	YYYY-MM-DD HH:mm	2018-05-08 12:23
-channel_id	string	Optional	Source/channel ID	27202
-carrier_id	string	Optional	carrier_id fetched from serviceability API	CARO0ZZQH1H6U
-Billing & Shipping
-View More
-Field	Type	Required	Description	Example
-billing_customer_name	string	Yes	First name	Saurabh
-billing_last_name	string	Optional	Last name	Jindal
-billing_address	string	Yes	Address line 1	Incubex, Velocity
-billing_city	string	Yes	City	Bangalore
-billing_pincode	string	Yes	6-digit PIN	560102
-billing_state	string	Yes	State	Karnataka
-billing_country	string	Yes	Country	India
-billing_email	string	Optional	Email	saurabh+123891@velocity.in
-billing_phone	string	Yes	Phone	8860697807
-shipping_is_billing	boolean	Optional	True if shipping same as billing	true
-print_label	boolean	Yes	Auto-generate label	true
-Items & Payment
-Field	Type	Required	Description	Example
-order_items[]	array	Yes	List of items	see JSON
-payment_method	enum	Yes	COD or PREPAID	COD
-sub_total	number	Yes	Order subtotal	990
-cod_collectible	number	Yes	Required if payment_method is COD, pass 0 in case of PREPAID	990
-Dimensions & Warehouse
-Field	Type	Required	Description	Example
-length	number	Yes	cm	100
-breadth	number	Yes	cm	50
-height	number	Yes	cm	10
-weight	number	Yes	kg	0.5
-pickup_location	string	Yes	Pickup Location Name	Lucknow Warehouse
-warehouse_id	string	Yes	Pickup warehouse Id in Shipfast Portal	WHYYB5
-Vendor Details(Pickup Location details)
-Field	Type	Required	Description	Example
-email	string	Optional	Vendor email	abcdd@abcdd.com
-phone	string	Optional	Vendor phone	9879879879
-name	string	Optional	Vendor name	Coco Cookie
-address	string	Optional	Address	Street 1
-city	string	Optional	City	delhi
-state	string	Optional	State	new delhi
-country	string	Optional	Country	india
-pin_code	string	Optional	PIN	110077
-pickup_location	string	Optional	Pickup label	HomeNew
-HEADERS
-Content-Type
-application/json
+---
 
-Authorization
-bbqRkOXw0xWLuYj9ubnDwg
+## Forward Shipment - Create Order
 
-Body
-raw
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/forward-order-orchestration`
 
+### Request Fields
+
+#### Order, Channel & Carrier
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| order_id | string | Yes | Unique per order | ORDER-49 |
+| order_date | string | Yes | YYYY-MM-DD HH:mm | 2018-05-08 12:23 |
+| channel_id | string | Optional | Source/channel ID | 27202 |
+| carrier_id | string | Optional | carrier_id fetched from serviceability API | CARO0ZZQH1H6U |
+
+#### Billing & Shipping
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| billing_customer_name | string | Yes | First name | Saurabh |
+| billing_last_name | string | Optional | Last name | Jindal |
+| billing_address | string | Yes | Address line 1 | Incubex, Velocity |
+| billing_city | string | Yes | City | Bangalore |
+| billing_pincode | string | Yes | 6-digit PIN | 560102 |
+| billing_state | string | Yes | State | Karnataka |
+| billing_country | string | Yes | Country | India |
+| billing_email | string | Optional | Email | saurabh+123891@velocity.in |
+| billing_phone | string | Yes | Phone | 8860697807 |
+| shipping_is_billing | boolean | Optional | True if shipping same as billing | true |
+| print_label | boolean | Yes | Auto-generate label | true |
+
+#### Items & Payment
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| order_items[] | array | Yes | List of items | see JSON |
+| payment_method | enum | Yes | COD or PREPAID | COD |
+| sub_total | number | Yes | Order subtotal | 990 |
+| cod_collectible | number | Yes | Required if payment_method is COD, pass 0 in case of PREPAID | 990 |
+
+#### Dimensions & Warehouse
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| length | number | Yes | cm | 100 |
+| breadth | number | Yes | cm | 50 |
+| height | number | Yes | cm | 10 |
+| weight | number | Yes | kg | 0.5 |
+| pickup_location | string | Yes | Pickup Location Name | Lucknow Warehouse |
+| warehouse_id | string | Yes | Pickup warehouse Id in Shipfast Portal | WHYYB5 |
+
+#### Vendor Details (Pickup Location details)
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| email | string | Optional | Vendor email | abcdd@abcdd.com |
+| phone | string | Optional | Vendor phone | 9879879879 |
+| name | string | Optional | Vendor name | Coco Cookie |
+| address | string | Optional | Address | Street 1 |
+| city | string | Optional | City | delhi |
+| state | string | Optional | State | new delhi |
+| country | string | Optional | Country | india |
+| pin_code | string | Optional | PIN | 110077 |
+| pickup_location | string | Optional | Pickup label | HomeNew |
+
+### Headers
+- `Content-Type`: `application/json`
+- `Authorization`: `bbqRkOXw0xWLuYj9ubnDwg`
+
+### Body
+```json
 {
   "order_id": "ORDER-4345t9",
   "order_date": "2018-05-08 12:23",
@@ -227,7 +262,11 @@ raw
   "pickup_location": "HomeNew",
   "warehouse_id": "WHZWUN",
   "vendor_details": {"email": "abcdd@abcdd.com","phone": "9879879879","name": "Coco Cookie","address": "Street 1","address_2": "","city": "delhi","state": "new delhi","country": "india","pin_code": "110077","pickup_location": "HomeNew"}}
+}
+```
 
+### Curl Command
+```bash
 curl --location 'https://shazam.velocity.in/custom/api/v1/forward-order-orchestration' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: DO190JE4z8qD4S7ly6hx9Q' \
@@ -258,8 +297,11 @@ curl --location 'https://shazam.velocity.in/custom/api/v1/forward-order-orchestr
   "pickup_location": "HomeNew",
   "warehouse_id": "WHZWUN",
   "vendor_details": {"email": "abcdd@abcdd.com","phone": "9879879879","name": "Coco Cookie","address": "Street 1","address_2": "","city": "delhi","state": "new delhi","country": "india","pin_code": "110077","pickup_location": "HomeNew"}}
-'
+}'
+```
 
+### Response
+```json
 {
   "status": 1,
   "payload": {
@@ -300,72 +342,80 @@ curl --location 'https://shazam.velocity.in/custom/api/v1/forward-order-orchestr
     }
   }
 }
+```
 
-POST
-Reverse Shipment - Create Order
-https://shazam.velocity.in/custom/api/v1/reverse-order-orchestration
-Reverse Shipment - Field-Level Table
-Order, Channel & Carrier
+---
 
-Field	Type	Required	Description	Example
-order_id	string	Yes	Unique per return	ORDER-49
-order_date	string	Yes	YYYY-MM-DD HH:mm	2018-05-08 12:23
-channel_id	string	Optional	Source/channel ID	27202
-carrier_id	string	Optional	carrier_id fetched from serviceability API	CARO0ZZQH1H6U
-Pickup Address (Customer)
+## Reverse Shipment - Create Order
 
-View More
-Field	Type	Required	Description	Example
-pickup_customer_name	string	Yes	First name	Saurabh
-pickup_last_name	string	Optional	Last name	Jindal
-company_name	string	Optional	Company name	iorn pvt ltd
-pickup_address	string	Yes	Address line 1	Incubex, Velocity
-pickup_address_2	string	Optional	Address line 2	
-pickup_city	string	Yes	City	Bangalore
-pickup_state	string	Yes	State	Karnataka
-pickup_country	string	Yes	Country	India
-pickup_pincode	string	Yes	PIN code	560102
-pickup_email	string	Optional	Email	saurabh+123891@velocity.in
-pickup_phone	string	Yes	Phone	8860697807
-pickup_isd_code	string	Optional	Country code	91
-Shipping Address (Destination / Warehouse)
-View More
-Field	Type	Required	Description	Example
-shipping_customer_name	string	Yes	Name	Jax
-shipping_last_name	string	Optional	Last name	Doe
-shipping_address	string	Yes	Address line 1	Castle
-shipping_address_2	string	Optional	Address line 2	Bridge
-shipping_city	string	Yes	City	Delhi
-shipping_state	string	Yes	State	New Delhi
-shipping_country	string	Yes	Country	India
-shipping_pincode	string	Yes	PIN	110015
-shipping_email	string	Optional	Email	kumar.abhishek@shiprocket.com
-shipping_isd_code	string	Optional	Country code	91
-shipping_phone	string	Yes	Phone	8888888888
-Items & Payment
-Field	Type	Required	Description	Example
-order_items[]	array	Yes	List of items	See JSON
-payment_method	enum	Yes	Usually PREPAID for returns	PREPAID
-total_discount	number/string	Optional	Discount total	0
-sub_total	number	Yes	Item value	400
-Dimensions & Warehouse
-Field	Type	Required	Description	Example
-length	number	Yes	cm	3
-breadth	number	Yes	cm	1
-height	number	Yes	cm	1
-weight	number	Yes	kg	0.3
-warehouse_id	string	Yes	Destination warehouse	WHYYB5
-request_pickup	boolean	Optional	Auto pickup scheduling	true
-HEADERS
-Content-Type
-application/json
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/reverse-order-orchestration`
 
-Authorization
-bbqRkOXw0xWLuYj9ubnDwg
+### Request Fields
 
-Body
-raw
+#### Order, Channel & Carrier
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| order_id | string | Yes | Unique per return | ORDER-49 |
+| order_date | string | Yes | YYYY-MM-DD HH:mm | 2018-05-08 12:23 |
+| channel_id | string | Optional | Source/channel ID | 27202 |
+| carrier_id | string | Optional | carrier_id fetched from serviceability API | CARO0ZZQH1H6U |
 
+#### Pickup Address (Customer)
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| pickup_customer_name | string | Yes | First name | Saurabh |
+| pickup_last_name | string | Optional | Last name | Jindal |
+| company_name | string | Optional | Company name | iorn pvt ltd |
+| pickup_address | string | Yes | Address line 1 | Incubex, Velocity |
+| pickup_address_2 | string | Optional | Address line 2 | |
+| pickup_city | string | Yes | City | Bangalore |
+| pickup_state | string | Yes | State | Karnataka |
+| pickup_country | string | Yes | Country | India |
+| pickup_pincode | string | Yes | PIN code | 560102 |
+| pickup_email | string | Optional | Email | saurabh+123891@velocity.in |
+| pickup_phone | string | Yes | Phone | 8860697807 |
+| pickup_isd_code | string | Optional | Country code | 91 |
+
+#### Shipping Address (Destination / Warehouse)
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| shipping_customer_name | string | Yes | Name | Jax |
+| shipping_last_name | string | Optional | Last name | Doe |
+| shipping_address | string | Yes | Address line 1 | Castle |
+| shipping_address_2 | string | Optional | Address line 2 | Bridge |
+| shipping_city | string | Yes | City | Delhi |
+| shipping_state | string | Yes | State | New Delhi |
+| shipping_country | string | Yes | Country | India |
+| shipping_pincode | string | Yes | PIN | 110015 |
+| shipping_email | string | Optional | Email | kumar.abhishek@shiprocket.com |
+| shipping_isd_code | string | Optional | Country code | 91 |
+| shipping_phone | string | Yes | Phone | 8888888888 |
+
+#### Items & Payment
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| order_items[] | array | Yes | List of items | See JSON |
+| payment_method | enum | Yes | Usually PREPAID for returns | PREPAID |
+| total_discount | number/string | Optional | Discount total | 0 |
+| sub_total | number | Yes | Item value | 400 |
+
+#### Dimensions & Warehouse
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| length | number | Yes | cm | 3 |
+| breadth | number | Yes | cm | 1 |
+| height | number | Yes | cm | 1 |
+| weight | number | Yes | kg | 0.3 |
+| warehouse_id | string | Yes | Destination warehouse | WHYYB5 |
+| request_pickup | boolean | Optional | Auto pickup scheduling | true |
+
+### Headers
+- `Content-Type`: `application/json`
+- `Authorization`: `bbqRkOXw0xWLuYj9ubnDwg`
+
+### Body
+```json
 {
   "order_id": "RET-12345157",
   "order_date": "2022-02-16",
@@ -404,7 +454,10 @@ raw
   "weight": 0.3,
   "request_pickup": true
 }
+```
 
+### Curl Command
+```bash
 curl --location 'https://shazam.velocity.in/custom/api/v1/reverse-order-orchestration' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: oEKN6oibwqhFWhSnBDBJUQ' \
@@ -447,7 +500,10 @@ curl --location 'https://shazam.velocity.in/custom/api/v1/reverse-order-orchestr
   "weight": 0.3,
   "request_pickup": true
 }'
+```
 
+### Response
+```json
 {
   "status": 1,
   "payload": {
@@ -479,63 +535,85 @@ curl --location 'https://shazam.velocity.in/custom/api/v1/reverse-order-orchestr
     }
   }
 }
+```
 
-POST
-Cancel Order
-https://shazam.velocity.in/custom/api/v1/cancel-order
-Cancel Order
-Field	Type	Required	Description	Example
-awbs[]	array	Yes	List of AWBs to cancel (Max 50)	["84161310011340"]
-HEADERS
-Content-Type
-application/json
+---
 
-Authorization
-bbqRkOXw0xWLuYj9ubnDwg
+## Cancel Order
 
-Body
-raw
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/cancel-order`
+
+### Request Fields
+
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| awbs[] | array | Yes | List of AWBs to cancel (Max 50) | `["84161310011340"]` |
+
+### Headers
+- `Content-Type`: `application/json`
+- `Authorization`: `bbqRkOXw0xWLuYj9ubnDwg`
+
+### Body
+```json
 {
   "awbs": ["84161310011340"]
 }
+```
 
+### Curl Command
+```bash
 curl --location '/custom/api/v1/cancel-order' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: bbqRkOXw0xWLuYj9ubnDwg' \
 --data '{
   "awbs": ["39879810176282"]
 }'
+```
 
+### Response
+```json
 {
   "message": "Bulk Shipment cancellation is in progress. Please wait for some time."
 }
+```
 
-POST
-Order Tracking
-https://shazam.velocity.in/custom/api/v1/order-tracking
-Order Tracking
-Field	Type	Required	Description	Example
-awbs[]	array	Yes	List of AWBs to track	["84161310011340"]
-HEADERS
-Content-Type
-application/json
+---
 
-Authorization
-bbqRkOXw0xWLuYj9ubnDwg
+## Order Tracking
 
-Body
-raw
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/order-tracking`
+
+### Request Fields
+
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| awbs[] | array | Yes | List of AWBs to track | `["84161310011340"]` |
+
+### Headers
+- `Content-Type`: `application/json`
+- `Authorization`: `bbqRkOXw0xWLuYj9ubnDwg`
+
+### Body
+```json
 {
   "awbs": ["PD6786164"]
 }
+```
 
+### Curl Command
+```bash
 curl --location '/custom/api/v1/order-tracking' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: bbqRkOXw0xWLuYj9ubnDwg' \
 --data '{
   "awbs": ["PD6786164"]
 }'
+```
 
+### Response
+```json
 {
   "result": {
     "PD6786164": {
@@ -588,32 +666,35 @@ curl --location '/custom/api/v1/order-tracking' \
     }
   }
 }
+```
 
-POST
-Create Warehouse
-https://shazam.velocity.in/custom/api/v1/warehouse
-Create Warehouse
-View More
-Field	Type	Required	Description	Example
-name	string	Yes	Warehouse display name	Demo Warehouse
-phone_number	string	Yes	Contact number	8860606061
-email	string	Optional	Operational email	shipfast-clickpost@velocity.in
-contact_person	string	Optional	Warehouse POC	Raghuraj
-address_attributes.street_address	string	Yes	Street address	Incubex HSR Layout ...
-address_attributes.zip	string	Yes	PIN	560102
-address_attributes.city	string	Yes	City	Bangalore
-address_attributes.state	string	Yes	State	Karnataka
-address_attributes.country	string	Yes	Country	India
-HEADERS
-Content-Type
-application/json
+---
 
-Authorization
-bbqRkOXw0xWLuYj9ubnDwg
+## Create Warehouse
 
-Body
-raw
+**Method**: `POST`
+**URL**: `https://shazam.velocity.in/custom/api/v1/warehouse`
 
+### Request Fields
+
+| Field | Type | Required | Description | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| name | string | Yes | Warehouse display name | Demo Warehouse |
+| phone_number | string | Yes | Contact number | 8860606061 |
+| email | string | Optional | Operational email | shipfast-clickpost@velocity.in |
+| contact_person | string | Optional | Warehouse POC | Raghuraj |
+| address_attributes.street_address | string | Yes | Street address | Incubex HSR Layout ... |
+| address_attributes.zip | string | Yes | PIN | 560102 |
+| address_attributes.city | string | Yes | City | Bangalore |
+| address_attributes.state | string | Yes | State | Karnataka |
+| address_attributes.country | string | Yes | Country | India |
+
+### Headers
+- `Content-Type`: `application/json`
+- `Authorization`: `bbqRkOXw0xWLuYj9ubnDwg`
+
+### Body
+```json
 {
   "name": "Demo Warehouse",
   "phone_number": "8860606061",
@@ -627,7 +708,10 @@ raw
     "country": "India"
   }
 }
+```
 
+### Curl Command
+```bash
 curl --location '/custom/api/v1/warehouse' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: bbqRkOXw0xWLuYj9ubnDwg' \
@@ -643,11 +727,15 @@ curl --location '/custom/api/v1/warehouse' \
     "state": "Karnataka",
     "country": "India"
   }
-}'
+}
+```
 
+### Response
+```json
 {
   "status": "SUCCESS",
   "payload": {
     "warehouse_id": "WH66DU"
   }
 }
+```

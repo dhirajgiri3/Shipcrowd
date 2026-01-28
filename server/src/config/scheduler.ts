@@ -3,6 +3,7 @@ import logger from '../shared/logger/winston.logger';
 import { processScheduledDeletions } from '../infrastructure/jobs/system/maintenance/account-deletion.job';
 import WeightDisputeJob from '../infrastructure/jobs/disputes/weight-dispute.job';
 import CODRemittanceJob from '../infrastructure/jobs/finance/cod-remittance.job';
+import { startAutoRechargeScheduler } from '../infrastructure/schedulers/auto-recharge.scheduler';
 
 /**
  * Initialize all scheduled jobs
@@ -72,6 +73,9 @@ export const initializeScheduler = (): void => {
       }
     });
     codPayoutJob.start();
+
+    // Auto-Recharge (Every 5 minutes or configured)
+    startAutoRechargeScheduler();
 
     logger.info('Scheduler initialized successfully');
   } catch (error) {

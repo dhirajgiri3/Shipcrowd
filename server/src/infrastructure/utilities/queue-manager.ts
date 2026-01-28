@@ -1,6 +1,8 @@
 import { Queue, Worker, QueueEvents, Job } from 'bullmq';
 import { RedisManager } from '../redis/redis.manager'; // Updated import
 import logger from '../../shared/logger/winston.logger';
+import JobFailureLog from '../database/mongoose/models/system/job-failure-log.model';
+
 
 /**
  * QueueManager
@@ -244,8 +246,36 @@ export class QueueManager {
       logger.debug('Job completed', { queue: name, jobId, returnvalue });
     });
 
-    events.on('failed', ({ jobId, failedReason }) => {
+    events.on('failed', async ({ jobId, failedReason }) => {
       logger.error('Job failed', { queue: name, jobId, failedReason });
+
+      // ✅ Archive failure to database
+      try {
+        const job = await queue.getJob(jobId);
+        if (job) {
+          // Only log if it has exhausted attempts or is a permanent failure
+          // Note: 'failed' event fires on every attempt failure. 
+          // We check if attemptsMade >= opts.attempts to determine if it's the "final" failure
+          const maxAttempts = job.opts.attempts || 1;
+
+          if (job.attemptsMade >= maxAttempts) {
+            await JobFailureLog.create({
+              jobId,
+              queueName: name,
+              jobName: job.name,
+              data: job.data,
+              error: failedReason,
+              stackTrace: job.stacktrace ? job.stacktrace.join('\n') : undefined,
+              attemptsMade: job.attemptsMade,
+              failedAt: new Date(),
+              status: 'open'
+            });
+            logger.info('Job failure archived to DB', { jobId, queue: name });
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to archive job failure', { jobId, error: err });
+      }
     });
 
     events.on('progress', ({ jobId, data }) => {

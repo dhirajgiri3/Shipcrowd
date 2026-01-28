@@ -84,6 +84,51 @@ export const addBankAccount = async (
             ifscCode: validation.data.ifscCode,
         };
 
+        // ✅ P0 FIX: Sync with Razorpay Fund Account (idempotent)
+        try {
+            // Only create if not already exists
+            if (!company.financial?.razorpayFundAccountId) {
+                const { RazorpayPayoutProvider } = await import('../../../../infrastructure/payment/razorpay/razorpay-payout.provider.js');
+                const razorpayProvider = new RazorpayPayoutProvider();
+
+                const fundAccount = await razorpayProvider.createFundAccount(
+                    {
+                        accountNumber: validation.data.accountNumber,
+                        ifscCode: validation.data.ifscCode,
+                        accountHolderName: validation.data.accountHolderName || company.name,
+                    },
+                    company._id.toString()
+                );
+
+                // Store Razorpay references
+                company.financial = {
+                    razorpayContactId: fundAccount.contact_id,
+                    razorpayFundAccountId: fundAccount.id,
+                    lastPayoutAt: company.financial?.lastPayoutAt,
+                    totalPayoutsReceived: company.financial?.totalPayoutsReceived || 0,
+                };
+
+                logger.info('Razorpay fund account created and synced', {
+                    companyId: company._id,
+                    fundAccountId: fundAccount.id,
+                });
+            } else {
+                logger.info('Razorpay fund account already exists, skipping creation', {
+                    companyId: company._id,
+                    fundAccountId: company.financial.razorpayFundAccountId,
+                });
+            }
+        } catch (razorpayError: any) {
+            // Log error but don't block bank account save
+            // This allows manual retry or async processing
+            logger.error('Failed to create Razorpay fund account', {
+                companyId: company._id,
+                error: razorpayError.message,
+                stack: razorpayError.stack,
+            });
+            // TODO: Queue for retry or alert admin
+        }
+
         await company.save();
 
         sendSuccess(res, {
@@ -91,7 +136,8 @@ export const addBankAccount = async (
                 _id: 'primary',
                 ...validation.data,
                 isDefault: true,
-                isVerified: false // New accounts might need verification
+                isVerified: false, // New accounts might need verification
+                razorpayFundAccountId: company.financial?.razorpayFundAccountId,
             }
         }, 'Bank account added successfully');
 

@@ -43,7 +43,7 @@ export const onDisputeCreated = async (payload: any): Promise<void> => {
         recipientEmail: (dispute.customerId as any).email,
         companyId,
         variables: {
-          disputeId: dispute._id.toString(),
+          disputeId: (dispute as any)._id.toString(),
           type: dispute.type,
           priority: dispute.priority,
           description: dispute.description.substring(0, 100),
@@ -88,7 +88,7 @@ export const onDisputeResolved = async (payload: any): Promise<void> => {
         recipientEmail: (dispute.customerId as any).email,
         companyId,
         variables: {
-          disputeId: dispute._id.toString(),
+          disputeId: (dispute as any)._id.toString(),
           resolution: dispute.resolution || 'pending',
           refundAmount: dispute.refundAmount ? `₹${dispute.refundAmount}` : '₹0',
           notes: dispute.resolutionNotes?.substring(0, 200) || 'No additional notes',

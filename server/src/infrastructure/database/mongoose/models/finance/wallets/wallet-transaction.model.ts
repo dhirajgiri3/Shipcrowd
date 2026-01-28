@@ -28,7 +28,7 @@ export interface IWalletTransaction extends Document {
     reason: TransactionReason;
     description: string;
     reference?: {
-        type: 'rto_event' | 'shipment' | 'payment' | 'order' | 'manual';
+        type: 'rto_event' | 'shipment' | 'payment' | 'order' | 'manual' | 'auto';
         id?: mongoose.Types.ObjectId;
         externalId?: string;
     };
@@ -109,7 +109,7 @@ const WalletTransactionSchema = new Schema<IWalletTransaction>(
         reference: {
             type: {
                 type: String,
-                enum: ['rto_event', 'shipment', 'payment', 'order', 'manual'],
+                enum: ['rto_event', 'shipment', 'payment', 'order', 'manual', 'auto'],
             },
             id: {
                 type: Schema.Types.ObjectId,

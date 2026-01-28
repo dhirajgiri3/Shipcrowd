@@ -57,6 +57,30 @@ export interface ICompany extends Document {
     currency: string;
     lastUpdated?: Date;
     lowBalanceThreshold: number;
+    autoRecharge?: {
+      enabled: boolean;
+      threshold: number;
+      amount: number;
+      paymentMethodId?: string;
+      lastAttempt?: Date;
+      lastSuccess?: Date;
+      lastFailure?: {
+        timestamp: Date;
+        reason: string;
+        retryCount: number;
+        nextRetryAt: Date;
+      };
+      dailyLimit?: number;
+      monthlyLimit?: number;
+    };
+  };
+
+  // ✅ P0 FIX: Razorpay Fund Account Integration
+  financial?: {
+    razorpayContactId?: string;
+    razorpayFundAccountId?: string;
+    lastPayoutAt?: Date;
+    totalPayoutsReceived?: number;
   };
 
   profileStatus: 'incomplete' | 'complete';
@@ -193,6 +217,42 @@ const CompanySchema = new Schema<ICompany>(
       lowBalanceThreshold: {
         type: Number,
         default: 500,
+      },
+      autoRecharge: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        threshold: {
+          type: Number,
+          default: 1000,
+        },
+        amount: {
+          type: Number,
+          default: 5000,
+        },
+        paymentMethodId: String, // Saved card/UPI mandate
+        lastAttempt: Date,
+        lastSuccess: Date,
+        lastFailure: {
+          timestamp: Date,
+          reason: String,
+          retryCount: { type: Number, default: 0 },
+          nextRetryAt: Date,
+        },
+        dailyLimit: { type: Number, default: 100000 }, // ₹1 lakh default
+        monthlyLimit: { type: Number, default: 500000 }, // ₹5 lakh default
+      },
+    },
+
+    // ✅ P0 FIX: Razorpay Fund Account Integration for COD Settlements
+    financial: {
+      razorpayContactId: String,
+      razorpayFundAccountId: String,
+      lastPayoutAt: Date,
+      totalPayoutsReceived: {
+        type: Number,
+        default: 0,
       },
     },
 

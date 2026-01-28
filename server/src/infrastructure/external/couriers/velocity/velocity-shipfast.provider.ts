@@ -170,24 +170,28 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     // Map data to Velocity format
-    const velocityRequest = VelocityMapper.mapToForwardOrder(
-      data,
-      warehouse.name,
-      velocityWarehouseId,
-      {
-        email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
-        phone: warehouse.contactInfo.phone,
-        contactName: warehouse.contactInfo.name,
-        address: {
-          line1: warehouse.address.line1,
-          line2: warehouse.address.line2,
-          city: warehouse.address.city,
-          state: warehouse.address.state,
-          postalCode: warehouse.address.postalCode,
-          country: warehouse.address.country
+    const velocityRequest = {
+      ...VelocityMapper.mapToForwardOrder(
+        data,
+        warehouse.name,
+        velocityWarehouseId,
+        {
+          email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
+          phone: warehouse.contactInfo.phone,
+          contactName: warehouse.contactInfo.name,
+          address: {
+            line1: warehouse.address.line1,
+            line2: warehouse.address.line2,
+            city: warehouse.address.city,
+            state: warehouse.address.state,
+            postalCode: warehouse.address.postalCode,
+            country: warehouse.address.country
+          }
         }
-      }
-    );
+      ),
+      // ✅ Add idempotency key if provided
+      idempotency_key: data.idempotencyKey
+    };
 
     // Apply rate limiting
     await VelocityRateLimiters.forwardOrder.acquire();
@@ -197,7 +201,8 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       async () => {
         logger.info('Creating Velocity shipment', {
           orderId: data.orderNumber,
-          companyId: this.companyId.toString()
+          companyId: this.companyId.toString(),
+          idempotencyKey: data.idempotencyKey
         });
 
         return await this.httpClient.post<VelocityShipmentResponse>(

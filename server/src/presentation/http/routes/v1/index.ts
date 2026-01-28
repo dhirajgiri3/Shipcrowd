@@ -87,6 +87,7 @@ import exportRoutes from './analytics/export.routes';
 import scheduledReportRoutes from './analytics/scheduled-report.routes';
 import auditRoutes from './system/audit.routes';
 import healthRoutes from './system/health.routes';
+import jobRoutes from './system/job.routes';
 import sellerHealthRoutes from './system/seller-health.routes';
 
 // ============================================================================
@@ -186,6 +187,7 @@ router.use('/export', exportRoutes);
 router.use('/reports', scheduledReportRoutes);
 router.use('/audit', auditRoutes);
 router.use('/health', healthRoutes);
+router.use('/system', jobRoutes);
 router.use('/admin/seller-health', sellerHealthRoutes);
 
 // 9. Admin

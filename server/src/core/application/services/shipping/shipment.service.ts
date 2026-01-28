@@ -450,7 +450,13 @@ export class ShipmentService {
                     };
 
                     // Call Velocity createShipment with proper data structure
-                    const velocityResponse = await velocityProvider.createShipment(velocityShipmentData as any);
+                    // ✅ Generate idempotency key to prevent duplicates on retry
+                    const idempotencyKey = `${companyId}-${(shipment as any)._id}`;
+
+                    const velocityResponse = await velocityProvider.createShipment({
+                        ...velocityShipmentData,
+                        idempotencyKey
+                    });
 
                     // Update shipment with AWB and label from Velocity response
                     if (velocityResponse.trackingNumber) {
@@ -886,7 +892,14 @@ export class ShipmentService {
             });
 
             const provider = await CourierFactory.getProvider(shipment.carrier, shipment.companyId);
-            const velocityResponse = await provider.createShipment(velocityShipmentData as any);
+
+            // ✅ Use shipment ID as idempotency key for deterministic retries
+            const idempotencyKey = `${shipment.companyId}-${shipment._id}`;
+
+            const velocityResponse = await provider.createShipment({
+                ...velocityShipmentData,
+                idempotencyKey
+            });
 
             if (velocityResponse.trackingNumber) {
                 // ✅ Use transaction to ensure atomicity between shipment and order updates

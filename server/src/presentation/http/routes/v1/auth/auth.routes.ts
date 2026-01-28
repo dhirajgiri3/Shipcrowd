@@ -140,28 +140,28 @@ router.get('/me', authenticate, authController.getMe);
  * @desc Logout a user
  * @access Public (but requires authentication to log audit)
  */
-router.post('/logout', authenticate, authController.logout);
+router.post('/logout', authenticate, csrfProtection, authController.logout);
 
 /**
  * @route POST /auth/set-password
  * @desc Set password for OAuth users (enables email/password login)
  * @access Private
  */
-router.post('/set-password', authenticate, setPasswordRateLimiter, authController.setPassword);
+router.post('/set-password', authenticate, setPasswordRateLimiter, csrfProtection, authController.setPassword);
 
 /**
  * @route POST /auth/change-password
  * @desc Change password for authenticated user (requires current password)
  * @access Private
  */
-router.post('/change-password', authenticate, authController.changePassword);
+router.post('/change-password', authenticate, csrfProtection, authController.changePassword);
 
 /**
  * @route POST /auth/change-email
  * @desc Request email change (sends verification to new email)
  * @access Private
  */
-router.post('/change-email', authenticate, authController.changeEmail);
+router.post('/change-email', authenticate, csrfProtection, authController.changeEmail);
 
 /**
  * @route POST /auth/verify-email-change

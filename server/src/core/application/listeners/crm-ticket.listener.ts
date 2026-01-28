@@ -213,7 +213,7 @@ export const checkAndEscalateStalledTickets = async (companyId: string): Promise
 
       // Emit escalation event
       eventBus.emitEvent('ticket.escalated', {
-        ticketId: ticket._id.toString(),
+        ticketId: (ticket as any)._id.toString(),
         ticketNumber: ticket.ticketId,
         companyId: ticket.companyId.toString(),
         status: ticket.status,
@@ -256,7 +256,7 @@ export const checkAndCreateDisputes = async (companyId: string): Promise<void> =
 
         // Create dispute
         const dispute = await disputeService.createDisputeFromTicket(
-          ticket._id.toString(),
+          (ticket as any)._id.toString(),
           'quality-issue', // Default type for auto-escalation
           `Auto-created from unresolved support ticket after 48 hours`,
           ticket.companyId.toString()
@@ -264,10 +264,10 @@ export const checkAndCreateDisputes = async (companyId: string): Promise<void> =
 
         // Emit dispute created event
         eventBus.emitEvent('dispute.created', {
-          disputeId: dispute._id.toString(),
+          disputeId: (dispute as any)._id.toString(),
           companyId: ticket.companyId.toString(),
           type: dispute.type,
-          relatedTicketId: ticket._id.toString(),
+          relatedTicketId: (ticket as any)._id.toString(),
         });
 
         logger.info(`Auto-dispute created from ticket: ${ticket.ticketId}`);

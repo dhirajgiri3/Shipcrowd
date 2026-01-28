@@ -13,6 +13,7 @@ import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier-sync.job';
+import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping/manifest-pickup-retry.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
@@ -74,6 +75,10 @@ const startServer = async (): Promise<void> => {
         // Initialize Carrier Sync Retry Job
         await CarrierSyncJob.initialize();
         logger.info('Carrier sync retry job initialized');
+
+        // Initialize Manifest Pickup Retry Job
+        await ManifestPickupRetryJob.initialize();
+        logger.info('Manifest pickup retry job initialized');
 
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();

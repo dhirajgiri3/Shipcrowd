@@ -29,6 +29,7 @@ export interface CourierShipmentData {
     orderNumber: string;
     paymentMode: 'prepaid' | 'cod';
     codAmount?: number;
+    idempotencyKey?: string;
 }
 
 export interface CourierShipmentResponse {

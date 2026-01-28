@@ -6,6 +6,7 @@ import { sendSuccess } from '../../../../shared/utils/responseHelper';
 
 /**
  * Verify Razorpay webhook signature
+ * ✅ P0 FIX: Use timing-safe comparison to prevent timing attacks
  */
 function verifyRazorpaySignature(payload: any, signature: string, secret: string): boolean {
     const expectedSignature = crypto
@@ -13,7 +14,18 @@ function verifyRazorpaySignature(payload: any, signature: string, secret: string
         .update(JSON.stringify(payload))
         .digest('hex');
 
-    return expectedSignature === signature;
+    // ✅ CRITICAL: Use timing-safe comparison to prevent timing attacks
+    // Reference: OWASP - Timing Attack Prevention
+    try {
+        return crypto.timingSafeEqual(
+            Buffer.from(signature, 'utf8'),
+            Buffer.from(expectedSignature, 'utf8')
+        );
+    } catch (error) {
+        // timingSafeEqual throws if buffer lengths differ
+        logger.error('Webhook signature verification failed', { error });
+        return false;
+    }
 }
 
 /**
