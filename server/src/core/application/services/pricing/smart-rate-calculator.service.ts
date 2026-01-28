@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import CourierPerformance from '../../../../infrastructure/database/mongoose/models/shipping/courier-performance.model';
 import { Courier } from '../../../../infrastructure/database/mongoose/models';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';

@@ -15,18 +15,18 @@ import {
     Building,
     AlertCircle
 } from 'lucide-react';
-import { useSellerCod } from '@/src/core/api/hooks/seller/useSellerCod';
+import { useBankAccounts, useAddBankAccount, useDeleteBankAccount, useSetDefaultBankAccount } from '@/src/core/api/hooks/seller/useBankAccounts';
 
 export function BillingSettings() {
     const [isAdding, setIsAdding] = useState(false);
     const [form, setForm] = useState({
+        bankName: '',
         accountNumber: '',
         ifscCode: '',
         accountHolderName: ''
     });
 
     const { addToast } = useToast();
-    const { useBankAccounts, useAddBankAccount, useDeleteBankAccount, useSetDefaultBankAccount } = useSellerCod();
 
     // Hooks
     const { data: accounts, isLoading, isError } = useBankAccounts();
@@ -35,7 +35,7 @@ export function BillingSettings() {
     const setDefaultMutation = useSetDefaultBankAccount();
 
     const handleAddAccount = () => {
-        if (!form.accountNumber || !form.ifscCode || !form.accountHolderName) {
+        if (!form.bankName || !form.accountNumber || !form.ifscCode || !form.accountHolderName) {
             addToast('Please fill all fields', 'warning');
             return;
         }
@@ -44,7 +44,7 @@ export function BillingSettings() {
             onSuccess: () => {
                 addToast('Bank account added successfully', 'success');
                 setIsAdding(false);
-                setForm({ accountNumber: '', ifscCode: '', accountHolderName: '' });
+                setForm({ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' });
             },
             onError: (error: any) => {
                 addToast(error?.response?.data?.message || 'Failed to add bank account', 'error');
@@ -85,7 +85,7 @@ export function BillingSettings() {
         );
     }
 
-    const bankAccounts = accounts || [];
+    const bankAccounts = accounts?.accounts || [];
 
     return (
         <Card>
@@ -110,6 +110,14 @@ export function BillingSettings() {
                             <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Bank Name</label>
+                                <Input
+                                    value={form.bankName}
+                                    onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                                    placeholder="Enter bank name"
+                                />
+                            </div>
                             <div>
                                 <label className="text-sm font-medium text-[var(--text-primary)] block mb-1.5">Account Holder Name</label>
                                 <Input
@@ -158,10 +166,10 @@ export function BillingSettings() {
                     ) : (
                         bankAccounts.map((account) => (
                             <div
-                                key={account.id}
+                                key={account._id}
                                 className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border transition-all ${account.isDefault
-                                        ? 'bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/30'
-                                        : 'bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-primary)]'
+                                    ? 'bg-[var(--primary-blue-soft)] border-[var(--primary-blue)]/30'
+                                    : 'bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-[var(--border-primary)]'
                                     }`}
                             >
                                 <div className="flex items-start gap-4 mb-4 sm:mb-0">
@@ -192,7 +200,7 @@ export function BillingSettings() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleSetDefault(account.id)}
+                                            onClick={() => handleSetDefault(account._id)}
                                             isLoading={setDefaultMutation.isPending}
                                             className="text-[var(--text-muted)] hover:text-[var(--primary-blue)]"
                                         >
@@ -202,7 +210,7 @@ export function BillingSettings() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleDelete(account.id)}
+                                        onClick={() => handleDelete(account._id)}
                                         isLoading={deleteAccountMutation.isPending}
                                         className="text-[var(--error)] hover:bg-[var(--error-bg)]"
                                     >

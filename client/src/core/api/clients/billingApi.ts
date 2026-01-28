@@ -37,7 +37,7 @@ export const billingApi = {
      * Get billing overview stats
      */
     getOverview: async (): Promise<BillingStats> => {
-        const response = await apiClient.get('/admin/billing/overview');
+        const response = await apiClient.get('/finance/billing/overview');
         return response.data;
     },
 
@@ -45,7 +45,7 @@ export const billingApi = {
      * Get all transactions with filters
      */
     getAllTransactions: async (params?: TransactionFilters): Promise<{ transactions: BillingTransaction[]; total: number; pages: number }> => {
-        const response = await apiClient.get('/admin/billing/transactions', { params });
+        const response = await apiClient.get('/finance/billing/transactions', { params });
         return response.data;
     },
 
@@ -53,7 +53,7 @@ export const billingApi = {
      * Get pending recharge requests
      */
     getPendingRecharges: async (): Promise<BillingTransaction[]> => {
-        const response = await apiClient.get('/admin/billing/recharges/pending');
+        const response = await apiClient.get('/finance/billing/recharges/pending');
         return response.data;
     },
 

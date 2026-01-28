@@ -104,17 +104,14 @@ const DisputeSchema = new Schema<IDispute, IDisputeModel>(
     },
     relatedOrderId: {
       type: String,
-      index: true,
     },
     relatedSupportTicketId: {
       type: Schema.Types.ObjectId,
       ref: 'SupportTicket',
-      index: true,
     },
     relatedShipmentId: {
       type: Schema.Types.ObjectId,
       ref: 'Shipment',
-      index: true,
     },
     customerId: {
       type: Schema.Types.ObjectId,
@@ -306,6 +303,6 @@ DisputeSchema.statics.getStalledDisputes = async function (
 };
 
 // Create and export the model
-const Dispute = (mongoose.models.CRMDispute as mongoose.Model<IDispute>) || mongoose.model<IDispute, IDisputeModel>('CRMDispute', DisputeSchema);
+const Dispute = (mongoose.models.CRMDispute as IDisputeModel) || mongoose.model<IDispute, IDisputeModel>('CRMDispute', DisputeSchema);
 
 export default Dispute;

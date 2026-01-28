@@ -1,26 +1,20 @@
-/**
- * Keyboard Shortcuts Modal (Phase 4: Premium Polish)
- * 
- * Shows all available keyboard shortcuts
- * Triggered by pressing "?"
- */
-
-'use client';
+"use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Keyboard } from 'lucide-react';
+import { X, Keyboard, Command } from 'lucide-react';
+import type { ShortcutItem } from '@/src/hooks/utility/useKeyboardShortcuts';
 
 interface KeyboardShortcutsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    shortcuts: KeyboardShortcut[];
+    shortcuts: ShortcutItem[];
 }
 
 export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts }: KeyboardShortcutsModalProps) {
-    // Group shortcuts by category
-    const navigationShortcuts = shortcuts.filter((s) => s.category === 'navigation');
-    const actionShortcuts = shortcuts.filter((s) => s.category === 'actions');
-    const helpShortcuts = shortcuts.filter((s) => s.category === 'help');
+    // Group shortcuts by group
+    const navigationShortcuts = shortcuts.filter((s) => s.group === 'Navigation');
+    const actionShortcuts = shortcuts.filter((s) => s.group === 'Actions');
+    const generalShortcuts = shortcuts.filter((s) => s.group === 'General');
 
     return (
         <AnimatePresence>
@@ -32,90 +26,55 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts }: KeyboardS
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
                     />
 
                     {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl"
+                        initial={{ opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
+                        animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
+                        transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                        className="fixed left-1/2 top-1/2 z-[101] w-full max-w-2xl px-4"
                     >
-                        <div className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-2xl shadow-2xl p-6 max-h-[80vh] overflow-y-auto">
+                        <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-[var(--radius-2xl)] shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
                             {/* Header */}
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-[var(--primary-blue-soft)]">
-                                        <Keyboard className="w-5 h-5 text-[var(--primary-blue)]" />
+                            <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-secondary)]/50">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 rounded-[var(--radius-xl)] bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] shadow-sm">
+                                        <Keyboard className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                                        <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
                                             Keyboard Shortcuts
                                         </h2>
-                                        <p className="text-sm text-[var(--text-secondary)]">
-                                            Navigate faster with keyboard shortcuts
+                                        <p className="text-sm text-[var(--text-secondary)] font-medium">
+                                            Supercharge your workflow
                                         </p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={onClose}
-                                    className="p-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
-                                    aria-label="Close"
+                                    className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                                 >
-                                    <X className="w-5 h-5 text-[var(--text-muted)]" />
+                                    <X className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            {/* Shortcuts Grid */}
-                            <div className="space-y-6">
-                                {/* Navigation */}
-                                {navigationShortcuts.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">
-                                            Navigation
-                                        </h3>
-                                        <div className="space-y-2">
-                                            {navigationShortcuts.map((shortcut) => (
-                                                <ShortcutRow key={shortcut.key} shortcut={shortcut} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Actions */}
-                                {actionShortcuts.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">
-                                            Actions
-                                        </h3>
-                                        <div className="space-y-2">
-                                            {actionShortcuts.map((shortcut) => (
-                                                <ShortcutRow key={shortcut.key} shortcut={shortcut} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Help */}
-                                {helpShortcuts.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">
-                                            Help
-                                        </h3>
-                                        <div className="space-y-2">
-                                            {helpShortcuts.map((shortcut) => (
-                                                <ShortcutRow key={shortcut.key} shortcut={shortcut} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                            {/* Content */}
+                            <div className="p-6 overflow-y-auto scrollbar-premium flex-1">
+                                <div className="grid gap-8">
+                                    <ShortcutGroup title="Navigation" shortcuts={navigationShortcuts} />
+                                    <ShortcutGroup title="Actions" shortcuts={actionShortcuts} />
+                                    <ShortcutGroup title="General" shortcuts={generalShortcuts} />
+                                </div>
                             </div>
 
                             {/* Footer */}
-                            <div className="mt-6 pt-6 border-t border-[var(--border-subtle)]">
-                                <p className="text-xs text-[var(--text-muted)] text-center">
-                                    Press <kbd className="px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-mono text-xs">?</kbd> anytime to show this dialog
+                            <div className="p-4 bg-[var(--bg-secondary)]/30 border-t border-[var(--border-subtle)] flex justify-center">
+                                <p className="text-xs font-medium text-[var(--text-tertiary)] flex items-center gap-2">
+                                    <Command className="w-3 h-3" />
+                                    Press <Kbd>?</Kbd> anywhere to toggle this menu
                                 </p>
                             </div>
                         </div>
@@ -126,13 +85,38 @@ export function KeyboardShortcutsModal({ isOpen, onClose, shortcuts }: KeyboardS
     );
 }
 
-function ShortcutRow({ shortcut }: { shortcut: KeyboardShortcut }) {
+function ShortcutGroup({ title, shortcuts }: { title: string, shortcuts: ShortcutItem[] }) {
+    if (shortcuts.length === 0) return null;
     return (
-        <div className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors">
-            <span className="text-sm text-[var(--text-primary)]">{shortcut.description}</span>
-            <kbd className="px-3 py-1.5 rounded-md bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-mono text-sm font-semibold shadow-sm">
-                {shortcut.key === '?' ? 'Shift + /' : shortcut.key.toUpperCase()}
-            </kbd>
+        <div>
+            <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 px-2">
+                {title}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {shortcuts.map((shortcut) => (
+                    <div
+                        key={shortcut.key}
+                        className="group flex items-center justify-between p-3 rounded-[var(--radius-lg)] hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]"
+                    >
+                        <span className="text-sm font-medium text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">
+                            {shortcut.description}
+                        </span>
+                        <div className="flex gap-1">
+                            {shortcut.key.split(' ').map((k, i) => (
+                                <Kbd key={i}>{k}</Kbd>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
+    );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+    return (
+        <kbd className="min-w-[24px] h-6 px-1.5 flex items-center justify-center rounded-[6px] bg-[var(--bg-tertiary)] border border-[var(--border-strong)] text-[11px] font-bold text-[var(--text-secondary)] font-mono shadow-[0_1px_0_var(--border-strong)]">
+            {children}
+        </kbd>
     );
 }

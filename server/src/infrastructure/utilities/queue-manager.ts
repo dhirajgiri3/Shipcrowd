@@ -193,6 +193,28 @@ export class QueueManager {
       },
     });
 
+    // Create Carrier Sync queue
+    await this.createQueue({
+      name: 'carrier-sync',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 30000 }, // 30s initial delay
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
+    // Create Manifest Pickup Retry queue
+    await this.createQueue({
+      name: 'manifest-pickup-retry',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 60000 }, // 1 minute initial delay
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });

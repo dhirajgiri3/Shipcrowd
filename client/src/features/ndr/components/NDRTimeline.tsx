@@ -10,7 +10,6 @@
 
 'use client';
 
-import React from 'react';
 import type { NDRAttempt, AutomatedAction } from '@/src/types/api/orders';
 import { formatDate } from '@/src/lib/utils';
 

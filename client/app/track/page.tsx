@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, X, History, Box } from 'lucide-react';
-import { trackingApi, PublicTrackingResponse } from '@/src/core/api/clients/trackingApi';
+import { shipmentApi, NormalizedTrackingData } from '@/src/core/api/clients/shipmentApi';
 import confetti from 'canvas-confetti';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -48,7 +48,7 @@ function TrackPageContent() {
   const router = useRouter();
 
   const [trackingNumber, setTrackingNumber] = useState('');
-  const [shipment, setShipment] = useState<PublicTrackingResponse | null>(null);
+  const [shipment, setShipment] = useState<NormalizedTrackingData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
@@ -140,7 +140,7 @@ function TrackPageContent() {
   };
 
   // Mock data helper
-  const getMockShipmentByKeyword = (keyword: string): PublicTrackingResponse | null => {
+  const getMockShipmentByKeyword = (keyword: string): NormalizedTrackingData | null => {
     const mockData = {
       DEMO: {
         trackingNumber: 'SHP-2025-0001',
@@ -269,7 +269,7 @@ function TrackPageContent() {
 
     // 2. Real API Call
     try {
-      const data = await trackingApi.trackShipment(numberToTrack.trim());
+      const data = await shipmentApi.trackShipment(numberToTrack.trim());
 
       // Normalize status and update shipment
       const normalizedShipment = {

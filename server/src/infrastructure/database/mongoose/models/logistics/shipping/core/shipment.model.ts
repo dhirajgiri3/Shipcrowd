@@ -94,6 +94,9 @@ export interface IShipment extends Document {
     carrierServiceType?: string;
     carrierAccount?: string;
     manifestId?: string;
+    providerShipmentId?: string;
+    retryCount?: number; // Tracks carrier sync retry attempts
+    lastRetryAttempt?: Date; // Timestamp of last retry attempt
   };
   ndrDetails?: {
     ndrReason?: string;
@@ -353,6 +356,12 @@ const ShipmentSchema = new Schema<IShipment>(
       carrierServiceType: String,
       carrierAccount: String,
       manifestId: String,
+      providerShipmentId: String,
+      retryCount: {
+        type: Number,
+        default: 0,
+      },
+      lastRetryAttempt: Date,
     },
     ndrDetails: {
       ndrReason: String,

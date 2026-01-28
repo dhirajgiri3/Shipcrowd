@@ -1,5 +1,6 @@
 import { useMutation, UseMutationOptions } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../http';
+import { ratesApi } from '../../clients/ratesApi';
 import { RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError } from '@/src/lib/error';
 
@@ -11,83 +12,9 @@ import { handleApiError } from '@/src/lib/error';
  */
 
 // Types
-export interface SmartRateInput {
-    originPincode: string;
-    destinationPincode: string;
-    weight: number;
-    dimensions?: {
-        length: number;
-        width: number;
-        height: number;
-    };
-    paymentMode: 'prepaid' | 'cod';
-    orderValue: number;
-    preferredCarriers?: string[];
-    excludedCarriers?: string[];
-    scoringWeights?: {
-        price: number;       // 0-100, default: 40
-        speed: number;       // 0-100, default: 30
-        reliability: number; // 0-100, default: 15
-        performance: number; // 0-100, default: 15
-    };
-}
-
-export interface CourierRateOption {
-    courierId: string;
-    courierName: string;
-    serviceType: string;
-
-    // Pricing
-    baseRate: number;
-    weightCharge: number;
-    zoneCharge: number;
-    codCharge: number;
-    gstAmount: number;
-    totalAmount: number;
-
-    // Delivery
-    estimatedDeliveryDays: number;
-    estimatedDeliveryDate: string;
-    zone: string;
-
-    // Performance
-    pickupSuccessRate: number;
-    deliverySuccessRate: number;
-    rtoRate: number;
-    onTimeDeliveryRate: number;
-    rating: number;
-
-    // Scoring
-    scores: {
-        priceScore: number;
-        speedScore: number;
-        reliabilityScore: number;
-        performanceScore: number;
-        overallScore: number;
-    };
-
-    // Tags
-    tags: Array<'CHEAPEST' | 'FASTEST' | 'BEST_RATED' | 'RECOMMENDED'>;
-
-    // Status
-    serviceable: boolean;
-    failureReason?: string;
-}
-
-export interface SmartRateResponse {
-    recommendation: string;
-    totalOptions: number;
-    rates: CourierRateOption[];
-    metadata: {
-        calculatedAt: string;
-        scoringWeights: {
-            price: number;
-            speed: number;
-            reliability: number;
-            performance: number;
-        };
-    };
-}
+// Types
+import { SmartRateInput, CourierRateOption, SmartRateResponse } from '../../clients/ratesApi';
+export type { SmartRateInput, CourierRateOption, SmartRateResponse };
 
 /**
  * Hook: Calculate Smart Rates
@@ -113,12 +40,7 @@ export function useSmartRateCalculator(
                 }
             }
 
-            const { data } = await apiClient.post<{
-                success: boolean;
-                data: SmartRateResponse;
-            }>('/ratecards/smart-calculate', input);
-
-            return data.data;
+            return ratesApi.smartCalculate(input);
         },
         onError: (error) => handleApiError(error),
         retry: RETRY_CONFIG.DEFAULT,

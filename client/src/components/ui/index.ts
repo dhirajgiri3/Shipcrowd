@@ -93,3 +93,4 @@ export { PageHeader } from './layout/PageHeader';
 // ============================================
 export { RadialProgress } from './utility/RadialProgress';
 export { LoadingButton } from './utility/LoadingButton';
+export { KeyboardShortcutsModal } from './KeyboardShortcutsModal';

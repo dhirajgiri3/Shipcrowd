@@ -36,6 +36,7 @@ export interface CourierShipmentResponse {
     labelUrl?: string;
     estimatedDelivery?: Date;
     cost?: number;
+    providerShipmentId?: string; // Generic ID for provider's internal shipment record
 }
 
 export interface CourierTrackingResponse {
@@ -105,6 +106,11 @@ export interface ICourierAdapter {
      * Check service availability for a pincode
      */
     checkServiceability(pincode: string): Promise<boolean>;
+
+    /**
+     * Schedule a pickup
+     */
+    schedulePickup?(data: any): Promise<any>;
 }
 
 /**

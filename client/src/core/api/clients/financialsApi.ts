@@ -46,7 +46,7 @@ class FinancialsApiService {
      * Get financial overview stats
      */
     async getOverview(): Promise<FinancialOverview> {
-        const response = await apiClient.get('/admin/financials/overview');
+        const response = await apiClient.get('/finance/financials/overview');
         return response.data;
     }
 
@@ -54,7 +54,7 @@ class FinancialsApiService {
      * Get recent transactions with filters
      */
     async getTransactions(filters?: FinancialsFilters): Promise<TransactionsResponse> {
-        const response = await apiClient.get('/admin/financials/transactions', { params: filters });
+        const response = await apiClient.get('/finance/financials/transactions', { params: filters });
         return response.data;
     }
 }

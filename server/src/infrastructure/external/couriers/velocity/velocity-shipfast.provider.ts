@@ -224,7 +224,8 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       trackingNumber: shipment.awb,
       labelUrl: shipment.label_url,
       estimatedDelivery: undefined, // Not provided in response
-      cost: undefined // Not provided in response
+      cost: undefined, // Not provided in response
+      providerShipmentId: shipment.shipment_id
     };
   }
 
@@ -658,45 +659,29 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
   }
 
   /**
-   * 8. Schedule Pickup for Reverse Shipment
-   * Maps to: POST /custom/api/v1/schedule-pickup (MOCK FALLBACK INCLUDED)
-   *
-   * Schedules a pickup for reverse/RTO shipments at customer location.
+   * 8. Schedule Pickup for Shipment (using Forward Order Shipment)
+   * Maps to: POST /custom/api/v1/forward-order-shipment
    */
-  async schedulePickup(
-    awb: string,
-    pickupDate: Date,
-    timeSlot: 'morning' | 'afternoon' | 'evening',
-    pickupAddress?: {
-      address: string;
-      pincode: string;
-      phone: string;
+  async schedulePickup(data: { providerShipmentId: string }): Promise<any> {
+    if (!data.providerShipmentId) {
+      logger.warn('Cannot schedule pickup: Missing providerShipmentId');
+      return { status: 'failed', message: 'Missing providerShipmentId' };
     }
-  ): Promise<VelocitySchedulePickupResponse> {
-    const request: VelocitySchedulePickupRequest = {
-      awb,
-      pickup_date: pickupDate.toISOString().split('T')[0], // YYYY-MM-DD
-      pickup_time_slot: timeSlot,
-      pickup_address: pickupAddress?.address,
-      pickup_pincode: pickupAddress?.pincode,
-      pickup_phone: pickupAddress?.phone
+
+    const request = {
+      shipment_id: data.providerShipmentId
     };
 
-    // Apply rate limiting
+    // Apply rate limiting (reuse schedulePickup limiter or creating new one if needed, using schedulePickup for now)
     await VelocityRateLimiters.schedulePickup.acquire();
 
     try {
-      // Attempt real API call
-      const response = await retryWithBackoff<{ data: VelocitySchedulePickupResponse }>(
-        async () => {
-          logger.info('Scheduling Velocity pickup', {
-            awb,
-            pickupDate: request.pickup_date,
-            timeSlot
-          });
+      logger.info('Scheduling pickup via Forward Order Shipment', { shipmentId: data.providerShipmentId });
 
-          return await this.httpClient.post<VelocitySchedulePickupResponse>(
-            '/custom/api/v1/schedule-pickup',
+      const response = await retryWithBackoff<{ data: any }>(
+        async () => {
+          return await this.httpClient.post(
+            '/custom/api/v1/forward-order-shipment',
             request
           );
         },
@@ -705,39 +690,19 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         'Velocity schedulePickup'
       );
 
-      const pickup = response.data;
-
       logger.info('Velocity pickup scheduled successfully', {
-        awb,
-        pickupId: pickup.pickup_id,
-        status: pickup.status
+        shipmentId: data.providerShipmentId,
+        response: response.data
       });
 
-      return pickup;
+      return response.data;
     } catch (error) {
-      // FALLBACK: Generate mock pickup confirmation
-      logger.warn('Velocity schedule pickup API failed, using mock fallback', {
-        awb,
-        pickupDate: request.pickup_date,
+      logger.error('Failed to schedule pickup', {
+        shipmentId: data.providerShipmentId,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-
-      const mockResponse: VelocitySchedulePickupResponse = {
-        awb,
-        pickup_id: `PKP-${Date.now().toString().slice(-8)}`,
-        scheduled_date: request.pickup_date,
-        time_slot: timeSlot,
-        status: 'scheduled',
-        message: 'Pickup scheduled successfully (Mock)'
-      };
-
-      logger.info('Mock pickup scheduled', {
-        awb,
-        pickupId: mockResponse.pickup_id,
-        fallbackMode: true
-      });
-
-      return mockResponse;
+      // Allow throwing to indicate failure
+      throw error;
     }
   }
 

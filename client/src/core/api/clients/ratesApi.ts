@@ -65,6 +65,72 @@ export interface ServiceabilityResponse {
     couriers?: string[]; // List of serviceable couriers
 }
 
+export interface SmartRateInput {
+    originPincode: string;
+    destinationPincode: string;
+    weight: number;
+    dimensions?: {
+        length: number;
+        width: number;
+        height: number;
+    };
+    paymentMode: 'prepaid' | 'cod';
+    orderValue: number;
+    preferredCarriers?: string[];
+    excludedCarriers?: string[];
+    scoringWeights?: {
+        price: number;
+        speed: number;
+        reliability: number;
+        performance: number;
+    };
+}
+
+export interface CourierRateOption {
+    courierId: string;
+    courierName: string;
+    serviceType: string;
+    baseRate: number;
+    weightCharge: number;
+    zoneCharge: number;
+    codCharge: number;
+    gstAmount: number;
+    totalAmount: number;
+    estimatedDeliveryDays: number;
+    estimatedDeliveryDate: string;
+    zone: string;
+    pickupSuccessRate: number;
+    deliverySuccessRate: number;
+    rtoRate: number;
+    onTimeDeliveryRate: number;
+    rating: number;
+    scores: {
+        priceScore: number;
+        speedScore: number;
+        reliabilityScore: number;
+        performanceScore: number;
+        overallScore: number;
+    };
+    tags: Array<'CHEAPEST' | 'FASTEST' | 'BEST_RATED' | 'RECOMMENDED'>;
+    serviceable: boolean;
+    failureReason?: string;
+}
+
+export interface SmartRateResponse {
+    recommendation: string;
+    totalOptions: number;
+    rates: CourierRateOption[];
+    metadata: {
+        calculatedAt: string;
+        scoringWeights: {
+            price: number;
+            speed: number;
+            reliability: number;
+            performance: number;
+        };
+    };
+}
+
 class RatesApiService {
     /**
      * Calculate Rates provided shipment details
@@ -82,6 +148,14 @@ class RatesApiService {
     async checkServiceability(pincode: string): Promise<ServiceabilityResponse> {
         const response = await apiClient.get<ServiceabilityResponse>(`/rates/serviceability/${pincode}`);
         return response.data;
+    }
+
+    /**
+     * Calculate Smart Rates with AI scoring
+     */
+    async smartCalculate(payload: SmartRateInput): Promise<SmartRateResponse> {
+        const response = await apiClient.post<{ success: boolean; data: SmartRateResponse }>('/ratecards/smart-calculate', payload);
+        return response.data.data;
     }
 }
 

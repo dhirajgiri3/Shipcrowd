@@ -6,4 +6,4 @@ export { WalletBalanceCard } from './WalletBalanceCard';
 export { WalletTransactionList } from './WalletTransactionList';
 export { WalletStatsWidget } from './WalletStatsWidget';
 export { AddMoneyModal } from './AddMoneyModal';
-export { WithdrawMoneyModal } from './WithdrawMoneyModal';
+

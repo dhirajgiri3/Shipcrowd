@@ -9,7 +9,7 @@ import { Package, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/src/features/auth';
 import { DashboardSetupBanner } from '@/src/components/seller/dashboard/DashboardSetupBanner';
 import { useLoader } from '@/src/hooks/utility/useLoader';
-import { Loader, TruckLoader } from '@/src/components/ui';
+import { TruckLoader } from '@/src/components/ui';
 import {
     PullToRefresh,
     ScrollToTopButton
@@ -58,8 +58,8 @@ import { transformOrderTrendsToChart } from '@/src/lib/dashboard/order-trends';
 import { useDashboardDate } from '@/src/contexts/DashboardDateContext';
 
 // Phase 4: Keyboard Shortcuts
-import { useKeyboardShortcuts } from '@/src/hooks/useKeyboardShortcuts';
-import { KeyboardShortcutsModal } from '@/src/components/ui/KeyboardShortcutsModal';
+import { useKeyboardShortcuts } from '@/src/hooks';
+import { KeyboardShortcutsModal } from '@/src/components/ui';
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {

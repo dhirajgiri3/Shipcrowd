@@ -11,6 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "allowJs": true,
+    "jsx": "react",
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -18,10 +19,6 @@
       ]
     },
     "isolatedModules": true,
-    "types": [
-      "node",
-      "jest"
-    ],
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"

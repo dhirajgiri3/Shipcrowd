@@ -7,8 +7,9 @@ import { generateTrackingNumber, validateStatusTransition } from '../../../../sh
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { CourierFactory } from '../courier/courier.factory';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 
 /**
@@ -456,7 +457,9 @@ export class ShipmentService {
                         shipment.carrierDetails = {
                             ...shipment.carrierDetails,
                             carrierTrackingNumber: velocityResponse.trackingNumber,
-                            carrierServiceType: 'velocity-shipfast'
+                            carrierServiceType: 'velocity-shipfast',
+                            providerShipmentId: velocityResponse.providerShipmentId,
+                            retryCount: 0, // Reset retry count on success
                         };
 
                         // Add label to documents if provided
@@ -493,16 +496,26 @@ export class ShipmentService {
                         error: velocityError.message || velocityError
                     });
 
-                    // Update shipment status to indicate carrier sync is pending
+                    // Mark shipment as awaiting_carrier_sync for explicit retry handling
+                    shipment.currentStatus = 'awaiting_carrier_sync';
+                    shipment.carrierDetails = {
+                        ...shipment.carrierDetails,
+                        retryCount: 0,
+                    };
                     shipment.statusHistory.push({
-                        status: 'created',
+                        status: 'awaiting_carrier_sync',
                         timestamp: new Date(),
-                        description: 'Carrier API sync pending - will retry'
+                        description: 'Carrier API sync pending - will retry via background job'
                     });
                     await shipment.save({ session });
 
-                    // TODO: Add to retry queue for background processing
-                    // await CarrierSyncQueue.add({ shipmentId: shipment._id });
+                    // Add to retry queue for background processing
+                    await QueueManager.addJob('carrier-sync', 'sync-shipment', {
+                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString()
+                    }, {
+                        attempts: 5,
+                        backoff: { type: 'exponential', delay: 30000 }
+                    });
                 }
             }
 
@@ -760,5 +773,223 @@ export class ShipmentService {
             };
         }
         return { canDelete: true };
+    }
+
+    /**
+     * Retry carrier creation for a shipment
+     * Used by CarrierSyncJob to retry failed carrier API calls
+     *
+     * Guards against:
+     * - Retrying non-retryable shipments
+     * - Exceeding max retry attempts
+     * - Invalid warehouse states
+     * - Data inconsistency between shipment and order
+     */
+    static async retryShipmentCreation(shipmentId: string): Promise<boolean> {
+        const shipment = await Shipment.findById(shipmentId);
+        if (!shipment) {
+            logger.warn('Shipment not found for retry', { shipmentId });
+            throw new NotFoundError('Shipment not found');
+        }
+
+        // ✅ Guard Clause #1: Check if shipment is in retryable state
+        const retryableStatuses = ['created', 'awaiting_carrier_sync'];
+        if (!retryableStatuses.includes(shipment.currentStatus)) {
+            logger.info('Shipment not in retryable state, skipping', {
+                shipmentId,
+                currentStatus: shipment.currentStatus
+            });
+            return false; // Not an error, just not retryable
+        }
+
+        // ✅ Guard Clause #2: Check if already synced with carrier
+        if (shipment.carrierDetails?.carrierTrackingNumber) {
+            logger.info('Shipment already has carrier tracking number, skipping retry', {
+                shipmentId,
+                awb: shipment.carrierDetails.carrierTrackingNumber
+            });
+            return true; // Success - already synced
+        }
+
+        // ✅ Guard Clause #3: Check max retry attempts
+        const retryCount = shipment.carrierDetails?.retryCount || 0;
+        const MAX_RETRIES = 5;
+        if (retryCount >= MAX_RETRIES) {
+            logger.error('Max retry attempts exceeded for shipment', {
+                shipmentId,
+                retryCount,
+                maxRetries: MAX_RETRIES
+            });
+            // ⚠️ TODO: Alert admin or escalate to manual intervention queue
+            return false; // Failed - max retries reached
+        }
+
+        // Fetch order for validation
+        const order = await Order.findById(shipment.orderId);
+        if (!order) {
+            logger.error('Order not found for shipment retry', { shipmentId, orderId: shipment.orderId });
+            throw new NotFoundError('Order not found');
+        }
+
+        // ✅ Guard Clause #4: Validate warehouse exists
+        const warehouseId = shipment.pickupDetails?.warehouseId;
+        let warehouse = null;
+        if (warehouseId) {
+            warehouse = await Warehouse.findById(warehouseId).lean();
+            if (!warehouse) {
+                logger.error('Warehouse not found for shipment retry', { shipmentId, warehouseId });
+                // Can't retry without warehouse - mark as failed
+                return false;
+            }
+        }
+
+        // Reconstruct shipment data from saved fields
+        const velocityShipmentData = {
+            origin: {
+                name: warehouse?.name || 'Shipcrowd Warehouse',
+                phone: warehouse?.contactInfo?.phone || '',
+                address: warehouse?.address?.line1 || '',
+                city: warehouse?.address?.city || '',
+                state: warehouse?.address?.state || '',
+                pincode: (warehouse?.address?.postalCode as string) || '110001',
+                country: 'India'
+            },
+            destination: {
+                name: shipment.deliveryDetails.recipientName,
+                phone: shipment.deliveryDetails.recipientPhone,
+                email: shipment.deliveryDetails.recipientEmail,
+                address: shipment.deliveryDetails.address.line1 + (shipment.deliveryDetails.address.line2 ? ', ' + shipment.deliveryDetails.address.line2 : ''),
+                city: shipment.deliveryDetails.address.city,
+                state: shipment.deliveryDetails.address.state,
+                pincode: shipment.deliveryDetails.address.postalCode,
+                country: shipment.deliveryDetails.address.country || 'India'
+            },
+            package: {
+                weight: shipment.packageDetails.weight,
+                length: shipment.packageDetails.dimensions.length,
+                width: shipment.packageDetails.dimensions.width,
+                height: shipment.packageDetails.dimensions.height,
+                description: 'Product',
+                declaredValue: shipment.packageDetails.declaredValue
+            },
+            orderNumber: order.orderNumber,
+            paymentMode: shipment.paymentDetails.type as 'prepaid' | 'cod',
+            codAmount: shipment.paymentDetails.type === 'cod' ? shipment.paymentDetails.codAmount || 0 : 0,
+            warehouseId: warehouseId?.toString()
+        };
+
+        try {
+            logger.info('Retrying shipment creation with provider', {
+                shipmentId,
+                carrier: shipment.carrier,
+                retryAttempt: retryCount + 1
+            });
+
+            const provider = await CourierFactory.getProvider(shipment.carrier, shipment.companyId);
+            const velocityResponse = await provider.createShipment(velocityShipmentData as any);
+
+            if (velocityResponse.trackingNumber) {
+                // ✅ Use transaction to ensure atomicity between shipment and order updates
+                const session = await mongoose.startSession();
+                session.startTransaction();
+
+                try {
+                    // Update shipment with carrier details
+                    shipment.carrierDetails = {
+                        ...shipment.carrierDetails,
+                        carrierTrackingNumber: velocityResponse.trackingNumber,
+                        carrierServiceType: 'velocity-shipfast',
+                        providerShipmentId: velocityResponse.providerShipmentId,
+                        retryCount: 0, // Reset on success
+                        lastRetryAttempt: new Date(),
+                    };
+
+                    if (velocityResponse.labelUrl) {
+                        shipment.documents.push({
+                            type: 'label',
+                            url: velocityResponse.labelUrl,
+                            createdAt: new Date()
+                        });
+                    }
+
+                    shipment.currentStatus = 'pending_pickup';
+                    shipment.statusHistory.push({
+                        status: 'pending_pickup',
+                        timestamp: new Date(),
+                        description: `Carrier AWB assigned via retry (Attempt ${retryCount + 1}): ${velocityResponse.trackingNumber}`
+                    });
+
+                    await shipment.save({ session });
+
+                    // Update order status in same transaction
+                    const updatedOrder = await Order.findByIdAndUpdate(
+                        shipment.orderId,
+                        {
+                            currentStatus: 'shipped',
+                            $push: {
+                                statusHistory: {
+                                    status: 'shipped',
+                                    timestamp: new Date(),
+                                    comment: `Shipment synced with carrier via retry (AWB: ${velocityResponse.trackingNumber})`
+                                }
+                            }
+                        },
+                        { session, new: true }
+                    );
+
+                    if (!updatedOrder) {
+                        throw new Error('Failed to update order status');
+                    }
+
+                    await session.commitTransaction();
+
+                    logger.info('Shipment creation retry successful', {
+                        shipmentId,
+                        awb: velocityResponse.trackingNumber,
+                        retryAttempt: retryCount + 1
+                    });
+                    return true;
+                } catch (txError) {
+                    await session.abortTransaction();
+                    logger.error('Transaction failed during retry', {
+                        shipmentId,
+                        error: txError instanceof Error ? txError.message : 'Unknown error'
+                    });
+                    throw txError;
+                } finally {
+                    session.endSession();
+                }
+            }
+        } catch (error: any) {
+            // Increment retry count and update last attempt time
+            const newRetryCount = retryCount + 1;
+            shipment.carrierDetails = {
+                ...shipment.carrierDetails,
+                retryCount: newRetryCount,
+                lastRetryAttempt: new Date(),
+            };
+            await shipment.save();
+
+            logger.error('Shipment creation retry failed', {
+                shipmentId,
+                retryAttempt: newRetryCount,
+                maxRetries: MAX_RETRIES,
+                error: error.message || error
+            });
+
+            // If max retries exceeded, log for manual intervention
+            if (newRetryCount >= MAX_RETRIES) {
+                logger.error('ALERT: Shipment exceeded max retry attempts', {
+                    shipmentId,
+                    orderId: (order._id as mongoose.Types.ObjectId).toString(),
+                    carrier: shipment.carrier
+                    // TODO: Send alert to admin dashboard
+                });
+            }
+
+            throw error; // BullMQ will retry this job
+        }
+
+        return false; // Unexpected path
     }
 }

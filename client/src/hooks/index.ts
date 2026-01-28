@@ -20,3 +20,4 @@ export { useAnalyticsDisplay as useAnalyticsParams } from './analytics';
 // Utility hooks
 export * from './utility/useLoader';
 export * from './utility/useProgress';
+export * from './utility/useKeyboardShortcuts';

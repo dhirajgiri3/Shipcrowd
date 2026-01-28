@@ -1,128 +1,77 @@
+
 import { Request, Response, NextFunction } from 'express';
 import { Order, Shipment } from '../../../../infrastructure/database/mongoose/models';
-import { guardChecks } from '../../../../shared/helpers/controller.helpers';
+import Dispute from '../../../../infrastructure/database/mongoose/models/crm/disputes/dispute.model';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
-import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
+import logger from '../../../../shared/logger/winston.logger';
 
 /**
  * Seller Health Controller
- * Aggregates performance metrics for the seller dashboard/health score
+ * Aggregates metrics to show seller performance Scorecard
  */
-export const getSellerHealth = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-): Promise<void> => {
+export const getSellerHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const auth = guardChecks(req);
-        const companyObjectId = new mongoose.Types.ObjectId(auth.companyId);
+        const companyId = req.user?.companyId;
 
-        // Date range: Last 30 days by default
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30);
+        if (!companyId) {
+            sendSuccess(res, { healthScore: 0, metrics: {} }, 'No company ID found');
+            return;
+        }
 
-        // Parallel aggregation for performance
-        const [orderMetrics, shipmentMetrics] = await Promise.all([
-            // 1. Order Metrics (Revenue, Volume, Growth)
-            Order.aggregate([
-                {
-                    $match: {
-                        companyId: companyObjectId,
-                        isDeleted: false,
-                        createdAt: { $gte: startDate }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        revenue: { $sum: '$totals.total' },
-                        orderVolume: { $sum: 1 }
-                    }
-                }
-            ]),
+        const cid = new mongoose.Types.ObjectId(companyId);
 
-            // 2. Shipment Metrics (RTO, NDR, Delivery Time)
-            Shipment.aggregate([
-                {
-                    $match: {
-                        companyId: companyObjectId,
-                        isDeleted: false,
-                        createdAt: { $gte: startDate }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        totalShipments: { $sum: 1 },
-                        rtoCount: {
-                            $sum: {
-                                $cond: [{ $in: ['$currentStatus', ['rto', 'rto_initiated', 'rto_delivered']] }, 1, 0]
-                            }
-                        },
-                        ndrCount: {
-                            $sum: {
-                                $cond: [{ $gt: [{ $size: { $ifNull: ['$ndrDetails', []] } }, 0] }, 1, 0]
-                            }
-                        },
-                        // Calculate average delivery time for delivered items
-                        totalDeliveryTime: {
-                            $sum: {
-                                $cond: [
-                                    { $and: [{ $eq: ['$currentStatus', 'delivered'] }, { $ifNull: ['$actualDelivery', false] }] },
-                                    { $subtract: ['$actualDelivery', '$createdAt'] },
-                                    0
-                                ]
-                            }
-                        },
-                        deliveredCount: {
-                            $sum: {
-                                $cond: [{ $eq: ['$currentStatus', 'delivered'] }, 1, 0]
-                            }
-                        }
-                    }
-                }
-            ])
-        ]);
+        // 1. Total Orders & Fulfillment Rate
+        const totalOrders = await Order.countDocuments({ company: cid });
+        const fulfilledOrders = await Order.countDocuments({ company: cid, status: 'fulfilled' });
 
-        const orders = orderMetrics[0] || { revenue: 0, orderVolume: 0 };
-        const shipments = shipmentMetrics[0] || { totalShipments: 0, rtoCount: 0, ndrCount: 0, totalDeliveryTime: 0, deliveredCount: 0 };
+        // 2. NDR Ratio (RTO / Total Shipments)
+        const totalShipments = await Shipment.countDocuments({ company: cid });
+        const rtoShipments = await Shipment.countDocuments({ company: cid, status: 'rto' }); // Check status enum
 
-        // Calculate RTO Rate
-        const rtoRate = shipments.totalShipments > 0
-            ? (shipments.rtoCount / shipments.totalShipments) * 100
-            : 0;
+        // 3. Dispute Rate
+        const totalDisputes = await Dispute.countDocuments({ company: cid });
+        const unresolvedDisputes = await Dispute.countDocuments({
+            company: cid,
+            status: { $in: ['open', 'investigation', 'decision'] }
+        });
 
-        // Calculate NDR Rate
-        const ndrRate = shipments.totalShipments > 0
-            ? (shipments.ndrCount / shipments.totalShipments) * 100
-            : 0;
+        // 4. Calculate Health Score (Simple Algorithm)
+        // Base 100
+        // -5 per 1% RTO > 10%
+        // -10 per unresolved dispute > 5
 
-        // Calculate Avg Delivery Time (Days)
-        const avgDeliveryTime = shipments.deliveredCount > 0
-            ? (shipments.totalDeliveryTime / shipments.deliveredCount) / (1000 * 60 * 60 * 24)
-            : 0;
+        let score = 100;
 
-        // Mock Customer Satisfaction (CSAT) for now, or implement logic based on feedback if available
-        const customerSatisfaction = 4.5;
+        // RTO Penalty
+        const rtoRate = totalShipments > 0 ? (rtoShipments / totalShipments) * 100 : 0;
+        if (rtoRate > 10) {
+            score -= (rtoRate - 10) * 2;
+        }
 
-        // Mock Growth metrics for now (requires comparing with previous period)
-        const revenueGrowth = 10; // 10% growth
-        const volumeGrowth = 5;   // 5% growth
+        // Dispute Penalty
+        if (unresolvedDisputes > 5) {
+            score -= (unresolvedDisputes - 5) * 5;
+        }
 
-        sendSuccess(res, {
-            revenue: orders.revenue,
-            revenueGrowth,
-            orderVolume: orders.orderVolume,
-            volumeGrowth,
-            rtoRate: parseFloat(rtoRate.toFixed(2)),
-            ndrRate: parseFloat(ndrRate.toFixed(2)),
-            avgDeliveryTime: parseFloat(avgDeliveryTime.toFixed(1)),
-            customerSatisfaction
-        }, 'Seller health metrics retrieved successfully');
+        score = Math.max(0, Math.min(100, Math.round(score)));
 
+        const healthData = {
+            score,
+            status: score > 80 ? 'Excellent' : score > 50 ? 'Average' : 'Critical',
+            metrics: {
+                fulfillmentRate: totalOrders > 0 ? ((fulfilledOrders / totalOrders) * 100).toFixed(2) : '0.00',
+                rtoRate: rtoRate.toFixed(2),
+                disputeRate: totalOrders > 0 ? ((totalDisputes / totalOrders) * 100).toFixed(2) : '0.00',
+                openDisputes: unresolvedDisputes,
+                totalOrders,
+                totalShipments
+            }
+        };
+
+        sendSuccess(res, healthData, 'Seller health metrics retrieved successfully');
     } catch (error) {
-        logger.error('Error fetching seller health:', error);
+        logger.error('Error calculating seller health:', error);
         next(error);
     }
 };

@@ -102,7 +102,7 @@ export interface NormalizedTrackingData {
     history: NormalizedTrackingEvent[]; // Alias for backward compatibility
 }
 
-export type PublicTrackingResponse = NormalizedTrackingData;
+
 
 export const shipmentApi = {
     /**

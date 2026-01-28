@@ -849,33 +849,33 @@ export default class RTOService {
                 shipment.companyId as mongoose.Types.ObjectId
             );
 
-            const pickupResponse = await velocityAdapter.schedulePickup(
-                rtoEvent.reverseAwb || '',
-                pickupDate,
-                timeSlot,
-                pickupAddress
-            );
+            // const pickupResponse = await velocityAdapter.schedulePickup(
+            //     rtoEvent.reverseAwb || '',
+            //     pickupDate,
+            //     timeSlot,
+            //     pickupAddress
+            // );
 
-            // Update RTO event metadata
-            if (!rtoEvent.metadata) {
-                rtoEvent.metadata = {};
-            }
-            rtoEvent.metadata.pickupScheduled = true;
-            rtoEvent.metadata.pickupId = pickupResponse.pickup_id;
-            rtoEvent.metadata.pickupDate = pickupResponse.scheduled_date;
-            rtoEvent.metadata.pickupTimeSlot = pickupResponse.time_slot;
-            await rtoEvent.save();
+            // // Update RTO event metadata
+            // if (!rtoEvent.metadata) {
+            //     rtoEvent.metadata = {};
+            // }
+            // rtoEvent.metadata.pickupScheduled = true;
+            // rtoEvent.metadata.pickupId = pickupResponse.pickup_id;
+            // rtoEvent.metadata.pickupDate = pickupResponse.scheduled_date;
+            // rtoEvent.metadata.pickupTimeSlot = pickupResponse.time_slot;
+            // await rtoEvent.save();
 
-            logger.info('Reverse pickup scheduled successfully', {
-                rtoEventId,
-                pickupId: pickupResponse.pickup_id,
-                pickupDate: pickupResponse.scheduled_date
-            });
+            // logger.info('Reverse pickup scheduled successfully', {
+            //     rtoEventId,
+            //     pickupId: pickupResponse.pickup_id,
+            //     pickupDate: pickupResponse.scheduled_date
+            // });
 
             return {
-                success: true,
-                pickupId: pickupResponse.pickup_id,
-                message: pickupResponse.message
+                success: false,
+                // pickupId: pickupResponse.pickup_id,
+                message: 'Pickup scheduling not yet implemented for RTO (Phase 5)'
             };
 
         } catch (error) {

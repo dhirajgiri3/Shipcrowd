@@ -12,6 +12,7 @@ import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-r
 import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.job';
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
+import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier-sync.job';
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
@@ -69,6 +70,10 @@ const startServer = async (): Promise<void> => {
         // Initialize General Dispute SLA Management Job
         DisputeSLAJob.initialize();
         logger.info('Dispute SLA management job initialized');
+
+        // Initialize Carrier Sync Retry Job
+        await CarrierSyncJob.initialize();
+        logger.info('Carrier sync retry job initialized');
 
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();

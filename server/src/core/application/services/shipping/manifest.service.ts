@@ -5,6 +5,8 @@ import ManifestCounter from '../../../../infrastructure/database/mongoose/models
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import { CourierFactory } from '../courier/courier.factory';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 
 /**
  * Manifest Service
@@ -323,6 +325,9 @@ class ManifestService {
 
     /**
      * Close manifest and schedule pickup
+     *
+     * Attempts to schedule pickups with carriers. Failed pickups are queued for retry
+     * rather than silently failing, ensuring operational visibility.
      */
     async closeManifest(manifestId: string, userId: string) {
         const manifest = await Manifest.findById(manifestId);
@@ -335,15 +340,130 @@ class ManifestService {
             throw new ValidationError('Manifest is already closed or handed over');
         }
 
-        // TODO: Call carrier API to schedule pickup
-        // For now, just update status
+        // Track pickup scheduling results for audit
+        const pickupResults = {
+            successful: 0,
+            failed: 0,
+            failedShipments: [] as Array<{ shipmentId: string; trackingNumber: string; error: string }>
+        };
+
+        // Call carrier API to schedule pickup if supported
+        try {
+            const shipments = await Shipment.find({
+                _id: { $in: manifest.shipments.map(s => s.shipmentId) }
+            });
+
+            // Group by carrier
+            const carrierShipments = new Map<string, typeof shipments>();
+            for (const shipment of shipments) {
+                const carrier = shipment.carrier;
+                if (!carrierShipments.has(carrier)) {
+                    carrierShipments.set(carrier, []);
+                }
+                carrierShipments.get(carrier)!.push(shipment);
+            }
+
+            // Schedule pickup for each carrier's shipments
+            for (const [carrier, carrierBatch] of carrierShipments) {
+                try {
+                    const provider = await CourierFactory.getProvider(carrier, manifest.companyId);
+
+                    if (provider.schedulePickup) {
+                        logger.info(`Scheduling pickups for manifest ${manifest.manifestNumber} (${carrier})`, {
+                            shipmentCount: carrierBatch.length
+                        });
+
+                        // Process serially to avoid rate limits
+                        for (const shipment of carrierBatch) {
+                            if (shipment.carrierDetails?.providerShipmentId) {
+                                try {
+                                    await provider.schedulePickup({
+                                        providerShipmentId: shipment.carrierDetails.providerShipmentId
+                                    });
+
+                                    pickupResults.successful++;
+                                    logger.info(`Pickup scheduled successfully`, {
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        trackingNumber: shipment.trackingNumber
+                                    });
+                                } catch (pickupError: any) {
+                                    const errorMsg = pickupError.message || 'Unknown error';
+
+                                    logger.error(`Failed to schedule pickup for shipment ${shipment.trackingNumber}`, {
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        error: errorMsg
+                                    });
+
+                                    pickupResults.failed++;
+                                    pickupResults.failedShipments.push({
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        trackingNumber: shipment.trackingNumber,
+                                        error: errorMsg
+                                    });
+
+                                    // ✅ Queue failed pickup for retry (instead of silencing it)
+                                    try {
+                                        await QueueManager.addJob(
+                                            'manifest-pickup-retry',
+                                            'schedule-pickup',
+                                            {
+                                                manifestId,
+                                                shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                                carrier,
+                                                providerShipmentId: shipment.carrierDetails.providerShipmentId
+                                            },
+                                            {
+                                                attempts: 3,
+                                                backoff: { type: 'exponential', delay: 60000 } // 1 minute initial delay
+                                            }
+                                        );
+
+                                        logger.info(`Queued pickup retry for shipment`, {
+                                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                            trackingNumber: shipment.trackingNumber
+                                        });
+                                    } catch (queueError) {
+                                        logger.error(`Failed to queue pickup retry`, {
+                                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                            error: queueError instanceof Error ? queueError.message : 'Unknown error'
+                                        });
+                                    }
+                                }
+                            } else {
+                                logger.warn(`Shipment missing providerShipmentId, cannot schedule pickup`, {
+                                    shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                    trackingNumber: shipment.trackingNumber
+                                });
+                            }
+                        }
+                    } else {
+                        logger.info(`Provider does not support pickup scheduling`, { carrier });
+                    }
+                } catch (providerError) {
+                    logger.warn(`Could not get provider '${carrier}' for manifest pickup scheduling`, {
+                        error: providerError instanceof Error ? providerError.message : 'Unknown error'
+                    });
+                }
+            }
+        } catch (error) {
+            logger.error(`Error processing carrier pickup for manifest ${manifestId}:`, error);
+            // Don't throw - allow manifest to close even if pickup scheduling had errors
+        }
+
+        // Mark manifest as closed
         manifest.status = 'closed';
         manifest.closedAt = new Date();
         manifest.closedBy = new mongoose.Types.ObjectId(userId);
 
+        // ✅ Store pickup scheduling results in manifest notes for audit trail
+        const resultsNote = `Pickup scheduling results: ${pickupResults.successful} successful, ${pickupResults.failed} failed`;
+        manifest.notes = (manifest.notes ? manifest.notes + '\n' : '') + resultsNote;
+
         await manifest.save();
 
-        logger.info(`Manifest ${manifest.manifestNumber} closed by user ${userId}`);
+        logger.info(`Manifest ${manifest.manifestNumber} closed by user ${userId}`, {
+            pickupResults
+        });
 
         return manifest;
     }

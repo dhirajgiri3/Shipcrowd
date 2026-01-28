@@ -10,7 +10,7 @@
  * All interactive UI (filters, search, table) is in components/NDRClient.tsx
  */
 
-import { NDRClient } from './components/NdrClient';
+import { NDRClient } from '@/src/features/ndr';
 
 export default function NDRPage() {
     // TODO: Fetch NDR data from API server-side

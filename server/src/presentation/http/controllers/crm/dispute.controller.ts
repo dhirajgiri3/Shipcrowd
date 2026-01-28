@@ -212,7 +212,7 @@ export const completeInvestigation = async (
     const dispute = await disputeService.completeInvestigation(
       id,
       validation.data.completionNotes,
-      req.user.id
+      req.user._id
     );
 
     sendSuccess(res, dispute, 'Investigation completed successfully');
@@ -246,7 +246,7 @@ export const resolve = async (req: Request, res: Response, next: NextFunction): 
       validation.data.resolution,
       validation.data.refundAmount || 0,
       validation.data.notes,
-      req.user.id
+      req.user._id
     );
 
     sendSuccess(res, dispute, 'Dispute resolved successfully');
@@ -279,7 +279,7 @@ export const addEvidence = async (req: Request, res: Response, next: NextFunctio
       id,
       validation.data.type,
       validation.data.url,
-      req.user.id
+      req.user._id
     );
 
     sendSuccess(res, dispute, 'Evidence added successfully');
