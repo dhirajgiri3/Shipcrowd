@@ -233,8 +233,7 @@ RateCardSchema.pre('save', function (next) {
   }
 });
 
-// Create the RateCard schema (validation added above)
-// ... existing options ...
+
 // Validate on Update operations as well
 RateCardSchema.pre(['findOneAndUpdate', 'updateOne'], function (next) {
   const update = this.getUpdate() as any;

@@ -185,6 +185,37 @@ class WeightDisputeDetectionService {
                 // await this.notificationService.sendWeightDisputeAlert(shipment.companyId, dispute);
 
                 await session.commitTransaction();
+
+                // Week 11 Feature: Auto-Resolve if Discrepancy <= 5% (Tolerance)
+                // Even if financial impact triggered the dispute, if the % is small, we auto-accept/resolve it.
+                if (discrepancy.percentage <= 5) {
+                    try {
+                        const { default: WeightDisputeResolutionService } = await import('./weight-dispute-resolution.service.js');
+
+                        logger.info('Auto-resolving dispute within 5% tolerance', { disputeId: dispute.disputeId });
+
+                        await WeightDisputeResolutionService.resolveDispute(
+                            String(dispute._id),
+                            'system',
+                            {
+                                outcome: 'Shipcrowd_favor', // We accept carrier weight -> Seller pays
+                                deductionAmount: financialImpact.difference,
+                                reasonCode: 'AUTO_ACCEPT_TOLERANCE',
+                                notes: `Auto-accepted carrier weight (Diff: ${discrepancy.percentage.toFixed(2)}% <= 5%)`
+                            }
+                        );
+
+                        // Return updated status if needed, or just the original dispute
+                        dispute.status = 'auto_resolved';
+                    } catch (resolveError) {
+                        logger.error('Failed to auto-resolve tolerance dispute', {
+                            disputeId: dispute.disputeId,
+                            error: resolveError
+                        });
+                        // Don't throw, let the dispute remain pending for manual review
+                    }
+                }
+
                 return dispute;
             } else {
                 // No dispute needed, just update shipment with verified weight

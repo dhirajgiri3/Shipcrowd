@@ -52,10 +52,41 @@ export default class RiskGuardService {
         // 3. Check COD Threshold
         if (input.paymentMode === 'cod' && settings.maxCodAmount && input.orderValue > settings.maxCodAmount) {
             reasons.push(`COD Value ₹${input.orderValue} exceeds limit of ₹${settings.maxCodAmount}`);
-            // We can FLAG or BLOCK based on policy. Usually high COD is just flagged or blocked.
-            // Let's return BLOCKED for strictness as per "Guard" concept, or FLAGGED if configured.
-            // For now, let's BLOCK to prevent loss.
             status = 'BLOCKED';
+        }
+
+        // 4. Check History (RTO Rate) - Only for COD
+        if (input.paymentMode === 'cod' && status !== 'BLOCKED') {
+            const { Shipment } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+
+            // Performance optimization: Limit history check to last 50 orders or last 6 months
+            const history = await Shipment.find({
+                'deliveryDetails.recipientPhone': input.customerPhone,
+                companyId: input.companyId
+            })
+                .select('currentStatus')
+                .sort({ createdAt: -1 })
+                .limit(50)
+                .lean();
+
+            if (history.length >= 5) { // Only check if enough history exists
+                const total = history.length;
+                const rtoCount = history.filter((s: any) =>
+                    s.currentStatus === 'rto' ||
+                    s.currentStatus === 'rto_initiated' ||
+                    s.currentStatus === 'rto_delivered'
+                ).length;
+
+                const rtoRate = (rtoCount / total) * 100;
+
+                // Configurable threshold (hardcoded 30% for now, ideally in settings.risk.maxRtoPercent)
+                const maxRtoPercent = 30;
+
+                if (rtoRate > maxRtoPercent) {
+                    reasons.push(`High RTO Risk: ${rtoRate.toFixed(1)}% RTO rate on last ${total} orders.`);
+                    status = 'BLOCKED';
+                }
+            }
         }
 
         return { status, reasons };

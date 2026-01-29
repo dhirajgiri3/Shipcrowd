@@ -21,8 +21,10 @@ import {
     CheckCircle2,
     Calendar,
     ChevronDown,
-    MoreHorizontal
+    MoreHorizontal,
+    FileText
 } from 'lucide-react';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { Order } from '@/src/types/domain/order';
 import {
     LazyAreaChart as AreaChart,
@@ -57,6 +59,7 @@ export function OrdersClient() {
     const [smartFilter, setSmartFilter] = useState<FilterPreset>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
+    const { addToast } = useToast();
     const limit = 20;
 
     // Reset page on search change
@@ -350,6 +353,14 @@ export function OrdersClient() {
                         className={cn("h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm", isRefreshing && "animate-spin")}
                     >
                         <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Manifest feature coming soon', 'info')}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Bulk Manifest
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Label feature coming soon', 'info')}>
+                        <Package className="w-4 h-4 mr-2" />
+                        Bulk Label
                     </Button>
                     <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
                         <Download className="w-4 h-4 mr-2" />

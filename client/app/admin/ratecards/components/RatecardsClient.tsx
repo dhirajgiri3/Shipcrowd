@@ -21,7 +21,8 @@ import {
     Power,
     PowerOff,
     TrendingUp,
-    TrendingDown
+    TrendingDown,
+    Upload
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
@@ -29,6 +30,7 @@ import Link from 'next/link';
 import { useRateCards } from '@/src/core/api/hooks/logistics/useRateCards';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
+import { UploadRateCardModal } from './UploadRateCardModal';
 
 const categories = ['all', 'lite', 'basic', 'advanced', 'pro', 'enterprise'];
 const couriers = ['All Couriers', 'Delhivery', 'Xpressbees', 'DTDC', 'Bluedart', 'Ecom Express'];
@@ -38,10 +40,11 @@ export function RatecardsClient() {
     const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
     const [selectedCards, setSelectedCards] = useState<string[]>([]);
     const [showBulkActions, setShowBulkActions] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const { addToast } = useToast();
 
     // Integration: Fetch real rate cards
-    const { data: rateCards = [], isLoading, isError, error } = useRateCards();
+    const { data: rateCards = [], isLoading, isError, error, refetch } = useRateCards();
 
     // Bulk operations hooks
     const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateRateCards();
@@ -170,6 +173,13 @@ export function RatecardsClient() {
                     >
                         <Download className="h-4 w-4 mr-2" />
                         {isExporting ? 'Exporting...' : 'Export CSV'}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowImportModal(true)}
+                    >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import CSV
                     </Button>
                     <Button
                         variant="outline"
@@ -427,6 +437,12 @@ export function RatecardsClient() {
                     </CardContent>
                 </Card>
             )}
+
+            <UploadRateCardModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onSuccess={() => refetch()}
+            />
         </div>
     );
 }

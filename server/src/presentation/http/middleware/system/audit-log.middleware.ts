@@ -36,7 +36,7 @@ export const createAuditLog = async (
       resourceId,
       details,
       ipAddress: req?.ip,
-      userAgent: req?.headers['user-agent'],
+      userAgent: req?.headers?.['user-agent'],
       timestamp: new Date(),
     });
 

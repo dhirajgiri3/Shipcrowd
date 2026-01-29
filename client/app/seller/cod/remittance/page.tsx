@@ -23,7 +23,7 @@ import {
     Info
 } from 'lucide-react';
 import { useCODStats } from '@/src/core/api/hooks';
-import { CODRemittanceTable, RequestPayoutModal } from '@/src/features/cod';
+import { CODRemittanceTable, RequestPayoutModal, UploadMISModal } from '@/src/features/cod';
 import { formatCurrency, formatCompactCurrency } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/core/Button';
 import { Card, CardContent } from '@/src/components/ui/core/Card';
@@ -32,6 +32,7 @@ export default function CODRemittancePage() {
     const router = useRouter();
     const { data: stats, isLoading: statsLoading } = useCODStats();
     const [showPayoutModal, setShowPayoutModal] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
 
     return (
         <div className="min-h-screen space-y-6 pb-10">
@@ -51,6 +52,14 @@ export default function CODRemittancePage() {
                         </p>
                     </div>
                     <div className="flex gap-3">
+                        <Button
+                            onClick={() => setShowUploadModal(true)}
+                            variant="outline"
+                            className="bg-[var(--bg-primary)]"
+                        >
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            Upload MIS
+                        </Button>
                         <Button
                             onClick={() => router.push('/seller/cod/settings')}
                             variant="outline"
@@ -235,6 +244,11 @@ export default function CODRemittancePage() {
             <RequestPayoutModal
                 isOpen={showPayoutModal}
                 onClose={() => setShowPayoutModal(false)}
+            />
+            {/* Upload MIS Modal */}
+            <UploadMISModal
+                isOpen={showUploadModal}
+                onClose={() => setShowUploadModal(false)}
             />
         </div>
     );

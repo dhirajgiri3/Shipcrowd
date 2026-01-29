@@ -47,10 +47,10 @@ async function verifyBulkOperations() {
                     contactPhone: '9999999999'
                 },
                 trackingNumber: `BULK-${i}-${Date.now()}`,
-                carrier,
-                serviceType: 'surface',
+                carrier, // Already set dynamically
+                serviceType: 'surface', // Added required field
                 status: 'ready_to_ship',
-                currentStatus: 'ready_to_ship', // Required by schema default? No, default is 'created', but index uses it.
+                currentStatus: 'ready_to_ship', // Required by Controller
                 packageDetails: {
                     weight: 0.5,
                     dimensions: { length: 10, width: 10, height: 10 },
@@ -68,7 +68,7 @@ async function verifyBulkOperations() {
                     shippingCost: 50,
                     currency: 'INR'
                 },
-                orderId: new mongoose.Types.ObjectId(),
+                orderId: new mongoose.Types.ObjectId(), // Fixed: Must be ObjectId
                 weights: {
                     declared: { value: 0.5, unit: 'kg' },
                     verified: false

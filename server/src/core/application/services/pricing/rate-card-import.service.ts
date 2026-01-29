@@ -141,7 +141,7 @@ export default class RateCardImportService {
                             });
                         } else {
                             // Log warning but don't fail entire batch
-                            // errors.push(`Zone '${row.zone}' not found for card '${rateCardName}'`);
+                            errors.push(`Zone '${row.zone}' not found for card '${rateCardName}'`);
                         }
                     }
 
@@ -202,7 +202,7 @@ export default class RateCardImportService {
 
     private static async parseExcel(buffer: Buffer): Promise<RateCardImportRow[]> {
         const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(buffer);
+        await workbook.xlsx.load(buffer as any);
         const worksheet = workbook.getWorksheet(1);
         const rows: RateCardImportRow[] = [];
 

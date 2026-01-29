@@ -98,6 +98,56 @@ async function verifyRiskGuard() {
             console.error('❌ FAIL: Wrongly blocked clean order!', res3);
         }
 
+
+        // TEST 4: History Check (High RTO)
+        console.log('\n🧪 TEST 4: Customer History Check (RTO > 30%)');
+        const { Shipment } = await import(modelsPath);
+        const badCustomerPhone = '9988776655';
+
+        // Seed 10 orders: 6 Delivered, 4 RTO (40% RTO Rate)
+        const historyOrders = [];
+        for (let i = 0; i < 6; i++) historyOrders.push({ status: 'delivered' });
+        for (let i = 0; i < 4; i++) historyOrders.push({ status: 'rto' }); // 4 RTOs
+
+        await Shipment.deleteMany({ 'deliveryDetails.recipientPhone': badCustomerPhone });
+
+        // Minimal seed
+        /* eslint-disable @typescript-eslint/no-unused-vars */
+        for (const ord of historyOrders) {
+            await Shipment.create({
+                companyId,
+                orderId: new mongoose.Types.ObjectId(),
+                trackingNumber: `HIST-${Math.random().toString(36).substring(7)}`,
+                carrier: 'test',
+                serviceType: 'standard',
+                currentStatus: ord.status,
+                deliveryDetails: {
+                    recipientPhone: badCustomerPhone,
+                    recipientName: 'Risk Test',
+                    address: { line1: 'Test', city: 'Test', state: 'Test', postalCode: '110001', country: 'India' }
+                },
+                packageDetails: { weight: 1, dimensions: { length: 1, width: 1, height: 1 }, packageType: 'box', declaredValue: 500 },
+                weights: { declared: { value: 1, unit: 'kg' }, verified: false },
+                paymentDetails: { type: 'cod', shippingCost: 100 }
+            });
+        }
+        /* eslint-enable @typescript-eslint/no-unused-vars */
+
+        const res4 = await service.evaluateOrder({
+            companyId: companyId.toString(),
+            customerPhone: badCustomerPhone,
+            destinationPincode: '110001',
+            paymentMode: 'cod',
+            orderValue: 500
+        });
+
+        if (res4.status === 'BLOCKED' && res4.reasons[0].includes('High RTO Risk')) {
+            console.log('✅ PASS: Blocked High RTO Customer (40% Rate)');
+            console.log(`   Reason: ${res4.reasons[0]}`);
+        } else {
+            console.error('❌ FAIL: Did not block High RTO Customer!', res4);
+        }
+
         // Cleanup
         await Company.deleteMany({ _id: companyId });
         await BlacklistItem.deleteMany({ value: '9999999999' });

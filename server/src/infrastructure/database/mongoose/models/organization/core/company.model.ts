@@ -55,6 +55,12 @@ export interface ICompany extends Document {
       maxCodAmount?: number;
       blockBlacklisted?: boolean;
     };
+    webhook?: {
+      url?: string;
+      secret?: string;
+      enabled?: boolean;
+      events?: string[];
+    };
   };
   wallet: {
     balance: number;
@@ -209,6 +215,13 @@ const CompanySchema = new Schema<ICompany>(
       risk: {
         maxCodAmount: { type: Number, default: 5000 },
         blockBlacklisted: { type: Boolean, default: true }
+      },
+      // ✅ PHASE 3: Outbound Webhooks
+      webhook: {
+        url: String, // Endpoint to send POST requests
+        secret: String, // HMAC secret for signature verification
+        enabled: { type: Boolean, default: false },
+        events: [{ type: String }] // List of subscribed events (e.g., 'shipment.status_update')
       }
     },
     wallet: {

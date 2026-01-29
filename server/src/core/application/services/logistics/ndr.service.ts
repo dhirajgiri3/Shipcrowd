@@ -82,13 +82,39 @@ export default class NDRService {
             if (action.autoExecute && action.delayMinutes === 0) {
                 logger.info(`Executing Action: ${action.actionType} for NDR ${event.awb}`);
 
-                // MOCK ACTION EXECUTION
-                // In real implementation, this calls NotificationService or CourierService
+                let result = 'success';
+                let metadata = {};
+
+                // Execute Action based on Type
+                if (action.actionType === 'send_whatsapp') {
+                    try {
+                        const { default: WhatsappService } = await import('../communication/whatsapp.service.js');
+                        // Fetch customer details from shipment
+                        const shipment = await Shipment.findById(event.shipment).select('deliveryDetails.recipientPhone deliveryDetails.recipientName');
+
+                        if (shipment) {
+                            await WhatsappService.sendNDRWhatsApp(
+                                shipment.deliveryDetails.recipientPhone,
+                                shipment.deliveryDetails.recipientName,
+                                event.order ? event.order.toString() : 'N/A',
+                                event.awb,
+                                event.ndrReason
+                            );
+                            logger.info(`NDR WhatsApp Sent to ${shipment.deliveryDetails.recipientPhone}`);
+                        }
+                    } catch (err: any) {
+                        logger.error('Failed to send NDR WhatsApp', err);
+                        result = 'failed';
+                        metadata = { error: err.message };
+                    }
+                }
+
                 await event.addResolutionAction({
                     action: action.description || action.actionType,
                     actionType: action.actionType,
                     takenBy: 'SYSTEM',
-                    result: 'success',
+                    result: result,
+                    metadata: metadata,
                     takenAt: new Date()
                 });
             }

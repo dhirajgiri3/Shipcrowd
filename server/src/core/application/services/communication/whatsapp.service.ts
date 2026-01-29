@@ -210,9 +210,39 @@ export const sendDeliveryConfirmationWhatsApp = async (
   }
 };
 
+/**
+ * Send NDR (Non-Delivery Report) notification via WhatsApp
+ */
+export const sendNDRWhatsApp = async (
+  phoneNumber: string,
+  customerName: string,
+  orderId: string,
+  awb: string,
+  reason: string
+): Promise<boolean> => {
+  try {
+    const templateName = 'NDR_ALERT';
+
+    // Variables: 1: Name, 2: OrderID, 3: Reason, 4: AWB, 5: Action Link (Placeholder)
+    const variables = {
+      '1': customerName,
+      '2': orderId,
+      '3': reason,
+      '4': awb,
+      '5': `https://shipcrowd.com/resolve/${awb}` // Placeholder resolution link
+    };
+
+    return await sendWhatsAppMessage(phoneNumber, templateName, variables);
+  } catch (error) {
+    logger.error('Error sending NDR WhatsApp message:', error);
+    return false;
+  }
+};
+
 export default {
   sendWhatsAppMessage,
   sendShipmentStatusWhatsApp,
   sendWelcomeWhatsApp,
-  sendDeliveryConfirmationWhatsApp
+  sendDeliveryConfirmationWhatsApp,
+  sendNDRWhatsApp
 };

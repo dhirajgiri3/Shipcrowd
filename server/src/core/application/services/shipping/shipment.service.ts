@@ -12,6 +12,7 @@ import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, ValidationError, DatabaseError, AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import WalletService from '../wallet/wallet.service';
+import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -775,6 +776,21 @@ export class ShipmentService {
 
                 return shipment;
             });
+
+            // ✅ PHASE 3: Outbound Webhook Trigger
+            if (updatedShipment) {
+                // Determine event name based on status
+                const eventName = updatedShipment.currentStatus === 'ndr'
+                    ? 'shipment.ndr'
+                    : 'shipment.status_updated';
+
+                // Fire and forget (don't block response)
+                WebhookDispatcherService.dispatch(
+                    updatedShipment.companyId.toString(),
+                    eventName,
+                    updatedShipment.toObject()
+                );
+            }
 
             return {
                 success: true,

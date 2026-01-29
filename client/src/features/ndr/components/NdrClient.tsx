@@ -352,6 +352,15 @@ export function NDRClient() {
                                                 {ndrCase.status === 'open' || ndrCase.status === 'in_progress' ? (
                                                     <div className="flex gap-2">
                                                         <button
+                                                            onClick={() => {
+                                                                const message = `Hi ${ndrCase.customerName}, we are trying to deliver your package (AWB: ${typeof ndrCase.shipmentId === 'string' ? ndrCase.shipmentId : ndrCase.shipmentId?.trackingNumber}). Please tell us when you are available.`;
+                                                                window.open(`https://wa.me/${ndrCase.customerPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                                                            }}
+                                                            className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                                                        >
+                                                            WhatsApp
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleReattempt(ndrCase._id)}
                                                             disabled={isActionPending}
                                                             className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50"

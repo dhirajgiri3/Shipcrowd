@@ -94,4 +94,18 @@ router.post(
     codRemittanceController.schedulePayout
 );
 
+// Multer setup
+import multer from 'multer';
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
+// Upload MIS file for reconciliation
+router.post(
+    '/upload-mis',
+    upload.single('file'),
+    codRemittanceController.uploadMIS
+);
+
 export default router;

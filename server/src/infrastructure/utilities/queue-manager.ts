@@ -217,6 +217,17 @@ export class QueueManager {
       },
     });
 
+    // Create Outbound Webhook queue
+    await this.createQueue({
+      name: 'outbound-webhooks',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 30000 }, // 30s initial retry delay
+        removeOnComplete: 500,
+        removeOnFail: 500,
+      },
+    });
+
     logger.info('Queue Manager initialized', {
       queues: Array.from(this.queues.keys()),
     });

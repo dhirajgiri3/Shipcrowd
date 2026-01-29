@@ -1,22 +1,12 @@
-import RateCard from '../../../../infrastructure/database/mongoose/models/logistics/shipping/configuration/rate-card.model';
+import { RateCard, Zone } from '../../../../infrastructure/database/mongoose/models';
 import PincodeLookupService from '../logistics/pincode-lookup.service';
 import GSTService from '../finance/gst.service';
 import { getCODChargeService } from './cod-charge.service';
 import { getPricingCache } from './pricing-cache.service';
 import logger from '../../../../shared/logger/winston.logger';
+import mongoose from 'mongoose';
 
-/**
- * Dynamic Pricing Service
- * 
- * Purpose: Calculate accurate shipping costs using:
- * - PincodeLookupService → Zone calculation (A-E)
- * - RateCard → Database rates (not hardcoded)
- * - CODChargeService → 2% or ₹30 minimum
- * - GSTService → CGST/SGST/IGST (18%)
- * - PricingCache → Redis caching for performance
- * 
- * This is the NEW implementation that replaces hardcoded rates.
- */
+// ... (Interfaces remain same) ...
 
 export interface CalculatePricingInput {
     companyId: string;
@@ -59,6 +49,7 @@ export interface PricingBreakdown {
 }
 
 export class DynamicPricingService {
+
     private pincodeService: typeof PincodeLookupService;
     private gstService: typeof GSTService;
     private codService: ReturnType<typeof getCODChargeService>;
@@ -82,6 +73,13 @@ export class DynamicPricingService {
         const zone = await this.getZoneWithCache(input.fromPincode, input.toPincode);
         logger.info(`[DynamicPricing] Zone: ${zone.zone}`);
 
+        // Step 1.5: Resolve Zone Code (string) to Zone ID (ObjectId) for RateCard lookup
+        // Ideally cached, but fast enough via index
+        const zoneDoc = await Zone.findOne({
+            companyId: input.companyId,
+            standardZoneCode: zone.zone
+        }).select('_id').lean();
+
         // Step 2: Get RateCard (with cache)
         const rateCard = await this.getRateCardWithCache(
             input.companyId,
@@ -96,8 +94,10 @@ export class DynamicPricingService {
         const costBreakdown = this.calculateShippingCost(
             rateCard,
             zone.zone,
+            zoneDoc?._id?.toString(), // Pass ID if found
             input.weight
         );
+
 
         // Step 4: Calculate Customer Discount
         let discount = 0;
@@ -131,7 +131,7 @@ export class DynamicPricingService {
         const total = taxableAmount + gst.total;
 
         return {
-            subtotal: 0, // Will be set by caller with product prices
+            subtotal: 0,
             shipping: shippingCost,
             codCharge,
             tax: {
@@ -147,7 +147,7 @@ export class DynamicPricingService {
                 rateCardId: rateCard._id?.toString(),
                 carrierRate: shippingCost,
                 zoneMultiplier: rateCard.zoneMultipliers?.[zone.zone] || 1.0,
-                cached: false, // Will be set by cache methods
+                cached: false,
                 breakdown: {
                     baseCharge: costBreakdown.base,
                     weightCharge: costBreakdown.weight,
@@ -157,9 +157,10 @@ export class DynamicPricingService {
         };
     }
 
+
     /**
-     * Get zone with Redis caching
-     */
+    * Get zone with Redis caching
+    */
     private async getZoneWithCache(
         fromPincode: string,
         toPincode: string
@@ -183,9 +184,6 @@ export class DynamicPricingService {
 
     /**
      * Get RateCard with caching (Simplified & Optimized)
-     * Strategy:
-     * 1. If ID provided -> Fetch by ID (Cache key: ratecard:id:{id})
-     * 2. If no ID -> Fetch Company Default (Cache key: ratecard:default:{companyId})
      */
     private async getRateCardWithCache(
         companyId: string,
@@ -220,8 +218,6 @@ export class DynamicPricingService {
         }
 
         logger.debug(`[DynamicPricing] RateCard DEFAULT cache MISS: ${companyId}`);
-        // Fetch the active rate card. If multiple exist, usually the most recent logic applies.
-        // Ideally schema enforces one active, or we pick one.
         const rateCard = await RateCard.findOne({
             companyId,
             status: 'active',
@@ -240,49 +236,65 @@ export class DynamicPricingService {
      */
     private calculateShippingCost(
         rateCard: any,
-        zone: string,
+        zoneCode: string,
+        zoneId: string | undefined, // Added zoneId
         weight: number
     ): { total: number; base: number; weight: number; zone: number } {
-        // Find matching base rate for weight
+        // 1. Calculate Base Charge
+        let baseRate = 0;
+        let weightCharge = 0;
+        let additionalWeight = 0;
+
         const baseRateEntry = rateCard.baseRates?.find(
             (rate: any) => weight >= rate.minWeight && weight <= rate.maxWeight
         );
 
-        if (!baseRateEntry) {
+        if (baseRateEntry) {
+            baseRate = baseRateEntry.basePrice;
+        } else {
             // Fallback: use highest weight slab
             const maxWeightRate = rateCard.baseRates?.reduce((max: any, rate: any) =>
                 rate.maxWeight > max.maxWeight ? rate : max
             );
-            if (!maxWeightRate) {
-                throw new Error('No base rate found in RateCard');
-            }
 
-            const baseRate = maxWeightRate.basePrice;
-            const additionalWeight = weight - maxWeightRate.maxWeight;
-            const weightCharge = additionalWeight * (rateCard.weightRules?.[0]?.pricePerKg || 18);
+            if (!maxWeightRate) throw new Error('No base rate found in RateCard');
 
-            const rawRate = baseRate + weightCharge;
-            const zoneMultiplier = rateCard.zoneMultipliers?.[zone] || 1.0;
-            const zoneCharge = (rawRate * zoneMultiplier) - rawRate; // Implicit zone charge via multiplier
+            baseRate = maxWeightRate.basePrice;
+            additionalWeight = weight - maxWeightRate.maxWeight;
 
-            return {
-                total: Math.round(rawRate * zoneMultiplier * 100) / 100,
-                base: baseRate,
-                weight: weightCharge,
-                zone: Math.round(zoneCharge * 100) / 100
-            };
+            // Determine price per kg. If rule exists for current carrier/service? 
+            // Simplified: grab generic rule or specific.
+            const weightRule = rateCard.weightRules?.[0]; // Ideally match carrier
+            const pricePerKg = weightRule?.pricePerKg || 20;
+
+            weightCharge = additionalWeight * pricePerKg;
         }
 
-        // Apply zone multiplier
-        const baseRate = baseRateEntry.basePrice;
-        const zoneMultiplier = rateCard.zoneMultipliers?.[zone] || 1.0;
-        const total = Math.round(baseRate * zoneMultiplier * 100) / 100;
-        const zoneCharge = total - baseRate;
+        const rawRate = baseRate + weightCharge;
+
+        // 2. Calculate Zone Charge (Multipliers XOR Additives)
+        // Prefer Additive Rule if exists (More specific)
+        let zoneCharge = 0;
+
+        // Check for specific Zone Rule (Additive)
+        const zoneRule = zoneId && rateCard.zoneRules?.find(
+            (r: any) => r.zoneId.toString() === zoneId
+        );
+
+        if (zoneRule) {
+            zoneCharge = zoneRule.additionalPrice;
+        } else {
+            // Fallback to Multiplier
+            const zoneMultiplier = rateCard.zoneMultipliers?.[zoneCode] || 1.0;
+            zoneCharge = (rawRate * zoneMultiplier) - rawRate;
+        }
+
+        const total = Math.round((rawRate + zoneCharge) * 100) / 100;
 
         return {
             total,
             base: baseRate,
-            weight: 0,
+            weight: weightCharge,
             zone: Math.round(zoneCharge * 100) / 100
         };
     }
