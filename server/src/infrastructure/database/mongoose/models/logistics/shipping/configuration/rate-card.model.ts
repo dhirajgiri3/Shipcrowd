@@ -210,6 +210,44 @@ const RateCardSchema = new Schema<IRateCard>(
   }
 );
 
+// Validation helper
+const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number }>): boolean => {
+  if (!rules || rules.length <= 1) return true;
+  // Sort by minWeight
+  const sorted = [...rules].sort((a, b) => a.minWeight - b.minWeight);
+  for (let i = 1; i < sorted.length; i++) {
+    // If current min < previous max, it overlaps
+    // e.g. [0-2], [1.5-3] -> 1.5 < 2 -> Fail
+    if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
+      return false;
+    }
+  }
+  return true;
+};
+
+RateCardSchema.pre('save', function (next) {
+  if (this.weightRules && !validateWeightSlabs(this.weightRules)) {
+    next(new Error('Weight slabs cannot overlap'));
+  } else {
+    next();
+  }
+});
+
+// Create the RateCard schema (validation added above)
+// ... existing options ...
+// Validate on Update operations as well
+RateCardSchema.pre(['findOneAndUpdate', 'updateOne'], function (next) {
+  const update = this.getUpdate() as any;
+  // Check if weightRules are being modified (direct set or via $set)
+  const weightRules = update.weightRules || (update.$set && update.$set.weightRules);
+
+  if (weightRules && !validateWeightSlabs(weightRules)) {
+    next(new Error('Weight slabs cannot overlap'));
+  } else {
+    next();
+  }
+});
+
 // Create indexes
 // name index is already created by unique: true
 RateCardSchema.index({ companyId: 1 });

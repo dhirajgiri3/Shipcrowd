@@ -28,6 +28,7 @@ export interface SmartRateInput {
     // Optional filters
     preferredCarriers?: string[]; // If set, only these carriers will be considered
     excludedCarriers?: string[]; // Carriers to exclude
+    shipmentType?: 'forward' | 'return'; // Default: 'forward'
 
     // Scoring weights (sum must equal 100)
     scoringWeights?: {
@@ -129,6 +130,7 @@ export class SmartRateCalculatorService {
             logger.info('[SmartRateCalculator] Starting calculation', {
                 companyId: input.companyId,
                 route: `${input.originPincode} -> ${input.destinationPincode}`,
+                type: input.shipmentType || 'forward'
             });
 
             // Step 1: Fetch raw rates (parallel)
@@ -252,6 +254,7 @@ export class SmartRateCalculatorService {
                 carrier: courierId,
                 serviceType: serviceType,
                 rateCardId: company.settings.defaultRateCardId.toString(),
+                shipmentType: input.shipmentType || 'forward'
             });
 
             // Get performance metrics
@@ -313,14 +316,39 @@ export class SmartRateCalculatorService {
         rates: CourierRateOption[],
         input: SmartRateInput
     ): Promise<CourierRateOption[]> {
-        // For now, return all (serviceability checks happen in VelocityProvider)
-        // In production, check:
-        // - Pincode serviceability
-        // - Weight limits
-        // - COD availability
-        // - Volumetric weight restrictions
+        // Dynamic import to avoid circular dependency issues
+        const { CourierFactory } = await import('../courier/courier.factory');
+        const mongoose = await import('mongoose');
 
-        return rates.filter((rate) => rate.serviceable);
+        const results = await Promise.all(rates.map(async (rate) => {
+            try {
+                // If already marked unserviceable by pricing (e.g. no rate card), skip
+                if (!rate.serviceable) return rate;
+
+                const provider = await CourierFactory.getProvider(
+                    rate.courierId,
+                    new mongoose.default.Types.ObjectId(input.companyId)
+                );
+
+                const checkType = input.shipmentType === 'return' ? 'pickup' : 'delivery';
+                const pincodeToCheck = input.shipmentType === 'return' ? input.originPincode : input.destinationPincode;
+
+                const isServiceable = await provider.checkServiceability(pincodeToCheck, checkType);
+
+                if (!isServiceable) {
+                    rate.serviceable = false;
+                    rate.failureReason = `Not serviceable for ${checkType} at ${pincodeToCheck}`;
+                }
+            } catch (err) {
+                logger.warn(`[SmartRateCalculator] Serviceability check failed for ${rate.courierId}`, { error: err });
+                // If strict, mark unserviceable. For now, we assume if API fails, we can't ship.
+                rate.serviceable = false;
+                rate.failureReason = 'Serviceability check failed';
+            }
+            return rate;
+        }));
+
+        return results.filter((rate) => rate.serviceable);
     }
 
     /**
@@ -331,14 +359,43 @@ export class SmartRateCalculatorService {
         rates: CourierRateOption[],
         input: SmartRateInput
     ): Promise<CourierRateOption[]> {
-        // For now, no additional filtering
-        // In production, check:
-        // - Company courier preferences/priority
-        // - Admin-level courier blocks
-        // - Commodity-specific restrictions
-        // - Route-specific preferences
+        const { RoutingRule } = await import('../../../../infrastructure/database/mongoose/models');
 
-        return rates;
+        // Fetch active rules from DB
+        const rules = await RoutingRule.find({
+            companyId: input.companyId,
+            isActive: true
+        }).sort({ updatedAt: -1 });
+
+        let blockedCarriers: string[] = [];
+        let preferredCarriers: string[] = [];
+
+        for (const rule of rules) {
+            // Check constraints
+            if (rule.conditions.minWeight && input.weight < rule.conditions.minWeight) continue;
+            if (rule.conditions.maxWeight && input.weight > rule.conditions.maxWeight) continue;
+            if (rule.conditions.paymentMode !== 'any' && rule.conditions.paymentMode !== input.paymentMode) continue;
+
+            // Apply Actions
+            if (rule.actions.blockedCarriers) blockedCarriers.push(...rule.actions.blockedCarriers);
+            if (rule.actions.preferredCarriers) preferredCarriers.push(...rule.actions.preferredCarriers);
+        }
+
+        // Apply Blocks
+        let filteredRates = rates.filter(r => !blockedCarriers.includes(r.courierName.toLowerCase()));
+
+        // Apply Preferences (Boost score later or tag them)
+        // For now, we will mark them as preferred in metadata or handle in scoring
+        // Let's add a temporary 'bonus' to preferred carriers in the scoring phase if needed, 
+        // or just flag them.
+        // Actually, let's just tag them here for the scoring function to pick up.
+        filteredRates.forEach(r => {
+            if (preferredCarriers.includes(r.courierName.toLowerCase())) {
+                r.tags.push('RECOMMENDED'); // Provisional tag, final logic in scoring
+            }
+        });
+
+        return filteredRates;
     }
 
     /**

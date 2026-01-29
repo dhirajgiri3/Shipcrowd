@@ -108,10 +108,10 @@ class ManifestService {
             // Calculate summary
             const summary = {
                 totalShipments: shipments.length,
-                totalWeight: shipments.reduce((sum, s: any) => sum + (s.weights?.total || 0), 0),
-                totalPackages: shipments.reduce((sum, s: any) => sum + (s.no_of_boxes || 1), 0),
+                totalWeight: shipments.reduce((sum, s: any) => sum + (s.packageDetails?.weight || 0), 0),
+                totalPackages: shipments.reduce((sum, s: any) => sum + (s.packageDetails?.packageCount || 1), 0),
                 totalCODAmount: shipments.reduce(
-                    (sum, s: any) => sum + (s.payment_method === 'cod' ? s.cod_amount || 0 : 0),
+                    (sum, s: any) => sum + (s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0),
                     0
                 ),
             };
@@ -119,10 +119,10 @@ class ManifestService {
             // Prepare shipment data
             const manifestShipments = shipments.map((s: any) => ({
                 shipmentId: s._id,
-                awb: s.awb,
-                weight: s.weights?.total || 0,
-                packages: s.no_of_boxes || 1,
-                codAmount: s.payment_method === 'cod' ? s.cod_amount || 0 : 0,
+                awb: s.trackingNumber, // Mapped from trackingNumber
+                weight: s.packageDetails?.weight || 0,
+                packages: s.packageDetails?.packageCount || 1,
+                codAmount: s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0,
             }));
 
             // Create manifest

@@ -53,26 +53,31 @@ function generateRechargeTransaction(
 function generateShippingDebitTransaction(
     shipment: any,
     balanceBefore: number
-): any {
+): { transaction: any, transactionId: mongoose.Types.ObjectId } {
     const shippingCost = shipment.paymentDetails?.shippingCost || 100;
+    const transactionId = new mongoose.Types.ObjectId();
 
     return {
-        company: shipment.companyId,
-        type: 'debit',
-        amount: shippingCost,
-        balanceBefore,
-        balanceAfter: balanceBefore - shippingCost,
-        reason: 'shipping_cost',
-        description: `Shipping charge for AWB: ${shipment.trackingNumber}`,
-        reference: {
-            type: 'shipment',
-            id: shipment._id,
-            externalId: shipment.trackingNumber,
+        transaction: {
+            _id: transactionId,
+            company: shipment.companyId,
+            type: 'debit',
+            amount: shippingCost,
+            balanceBefore,
+            balanceAfter: balanceBefore - shippingCost,
+            reason: 'shipping_cost',
+            description: `Shipping charge for AWB: ${shipment.trackingNumber}`,
+            reference: {
+                type: 'shipment',
+                id: shipment._id,
+                externalId: shipment.trackingNumber,
+            },
+            createdBy: 'system',
+            status: 'completed',
+            createdAt: addHours(shipment.createdAt, randomInt(1, 4)),
+            updatedAt: addHours(shipment.createdAt, randomInt(1, 4)),
         },
-        createdBy: 'system',
-        status: 'completed',
-        createdAt: addHours(shipment.createdAt, randomInt(1, 4)),
-        updatedAt: addHours(shipment.createdAt, randomInt(1, 4)),
+        transactionId
     };
 }
 
@@ -180,6 +185,7 @@ export async function seedWalletTransactions(): Promise<void> {
         }
 
         const transactions: any[] = [];
+        const shipmentUpdates: any[] = []; // Collect shipment updates to link transactions
         const companyBalances = new Map<string, number>();
 
         // Initialize company balances with their current wallet balance
@@ -284,9 +290,18 @@ export async function seedWalletTransactions(): Promise<void> {
                             }
                         }
 
-                        transaction = generateShippingDebitTransaction(event.data, currentBalance);
+                        const shippingTxResult = generateShippingDebitTransaction(event.data, currentBalance);
+                        transaction = shippingTxResult.transaction;
                         currentBalance = transaction.balanceAfter;
                         transactions.push(transaction);
+
+                        // Link transaction to shipment
+                        shipmentUpdates.push({
+                            updateOne: {
+                                filter: { _id: event.data._id },
+                                update: { walletTransactionId: shippingTxResult.transactionId }
+                            }
+                        });
                         break;
 
                     case 'cod_remittance':
@@ -332,6 +347,17 @@ export async function seedWalletTransactions(): Promise<void> {
             const batch = transactions.slice(i, i + batchSize);
             await WalletTransaction.insertMany(batch);
             logger.progress(Math.min(i + batchSize, transactions.length), transactions.length, 'Transactions inserted');
+        }
+
+        // Update shipments with walletTransactionId
+        if (shipmentUpdates.length > 0) {
+            logger.step(11.1, `Linking ${shipmentUpdates.length} shipments to wallet transactions`);
+            const updateBatchSize = 1000;
+            for (let i = 0; i < shipmentUpdates.length; i += updateBatchSize) {
+                const batch = shipmentUpdates.slice(i, i + updateBatchSize);
+                await Shipment.bulkWrite(batch);
+            }
+            logger.success('Shipments linked successfully');
         }
 
         // Update company balances

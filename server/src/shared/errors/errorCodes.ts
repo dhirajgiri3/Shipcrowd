@@ -60,6 +60,7 @@ export enum ErrorCode {
     BIZ_WALLET_TRANSACTION_FAILED = 'BIZ_WALLET_TRANSACTION_FAILED',
     BIZ_COD_REMITTANCE_FAILED = 'BIZ_COD_REMITTANCE_FAILED',
     BIZ_PAYOUT_FAILED = 'BIZ_PAYOUT_FAILED',
+    BIZ_RISK_CHECK_FAILED = 'BIZ_RISK_CHECK_FAILED',
 
     // Concurrency errors (BIZ_)
     BIZ_VERSION_CONFLICT = 'BIZ_VERSION_CONFLICT',
@@ -168,6 +169,7 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.BIZ_WALLET_TRANSACTION_FAILED]: 500,
     [ErrorCode.BIZ_COD_REMITTANCE_FAILED]: 500,
     [ErrorCode.BIZ_PAYOUT_FAILED]: 500,
+    [ErrorCode.BIZ_RISK_CHECK_FAILED]: 400,
 
     // Concurrency errors (409)
     [ErrorCode.BIZ_VERSION_CONFLICT]: 409,

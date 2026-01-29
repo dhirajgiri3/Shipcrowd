@@ -196,8 +196,8 @@ describe('Velocity Shipfast Integration', () => {
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/warehouse'),
         expect.objectContaining({
-          warehouse_name: 'Test Warehouse',
-          contact_phone: '9876543210'
+          name: 'Test Warehouse',
+          phone_number: '9876543210'
         }),
         expect.any(Object)
       );
@@ -345,11 +345,13 @@ describe('Velocity Shipfast Integration', () => {
       expect(result.labelUrl).toBe('https://labels.velocity.in/AWB123.pdf');
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/forward-order'),
+        expect.stringContaining('/forward-order-orchestration'),
         expect.objectContaining({
-          order_id: 'ORD-12345',
-          payment_method: 'PREPAID',
-          warehouse_id: 'WHVEL123'
+          payload: expect.objectContaining({
+            order_id: 'ORD-12345',
+            payment_mode: 'prepaid',
+            warehouse_id: 'WHVEL123'
+          })
         }),
         expect.any(Object)
       );
@@ -384,10 +386,12 @@ describe('Velocity Shipfast Integration', () => {
       expect(result.trackingNumber).toBe('SHPHYB987654321');
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/forward-order'),
+        expect.stringContaining('/forward-order-orchestration'),
         expect.objectContaining({
-          payment_method: 'COD',
-          cod_amount: 1500
+          payload: expect.objectContaining({
+            payment_mode: 'cod',
+            cod_collectible: 1500
+          })
         }),
         expect.any(Object)
       );

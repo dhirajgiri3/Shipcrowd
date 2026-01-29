@@ -70,6 +70,14 @@ export interface ICODRemittance extends Document {
         };
 
         netAmount: number; // codAmount - deductions.total
+
+        // Reconciliation Data
+        reconciliation?: {
+            status: 'pending' | 'matched' | 'mismatch' | 'not_found_in_file' | 'manual_override';
+            courierAmount?: number;
+            diffAmount?: number;
+            remarks?: string;
+        };
     }>;
 
     // Financial Summary
@@ -253,6 +261,17 @@ const CODRemittanceSchema = new Schema<ICODRemittance>(
                         type: Number,
                         required: true,
                     },
+                    // ✅ NEW: Reconciliation Data (Phase 1)
+                    reconciliation: {
+                        status: {
+                            type: String,
+                            enum: ['pending', 'matched', 'mismatch', 'not_found_in_file', 'manual_override'],
+                            default: 'pending'
+                        },
+                        courierAmount: Number, // Amount reported by Velocity
+                        diffAmount: Number,    // dbAmount - courierAmount
+                        remarks: String
+                    }
                 },
             ],
             validate: [

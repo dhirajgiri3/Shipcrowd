@@ -11,6 +11,7 @@ import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, ValidationError, DatabaseError, AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import WalletService from '../wallet/wallet.service';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -339,7 +340,7 @@ export class ShipmentService {
                     companyId: companyId.toString(),
                     totalWeight,
                     originPincode,
-                    destinationPincode: order.deliveryAddress.pincode,
+                    destinationPincode: order.customerInfo.address.postalCode,
                     serviceType,
                     paymentMode: order.paymentMode,
                     orderValue: order.orderTotal,
@@ -348,6 +349,31 @@ export class ShipmentService {
                 selectedOption = selection.selectedOption;
                 carrierResult = selection.carrierResult;
             }
+
+            // ========================================================================
+            // WALLET INTEGRATION: Check balance and deduct shipping cost
+            // ========================================================================
+            const shippingCost = selectedOption.rate;
+
+            // Step 1: Check if wallet has sufficient balance
+            const hasBalance = await WalletService.hasMinimumBalance(
+                companyId.toString(),
+                shippingCost
+            );
+
+            if (!hasBalance) {
+                throw new AppError(
+                    `Insufficient wallet balance. Required: ₹${shippingCost.toFixed(2)}. Please recharge your wallet.`,
+                    ErrorCode.BIZ_INSUFFICIENT_BALANCE,
+                    400
+                );
+            }
+
+            logger.info('Wallet balance check passed', {
+                companyId: companyId.toString(),
+                requiredAmount: shippingCost,
+                orderId: order._id.toString()
+            });
 
             // Calculate estimated delivery
             const estimatedDelivery = new Date();
@@ -381,12 +407,46 @@ export class ShipmentService {
                     shippingCost: selectedOption.rate,
                     currency: 'INR',
                 },
+                weights: {
+                    declared: {
+                        value: totalWeight,
+                        unit: 'kg'
+                    },
+                    verified: false
+                },
                 pricingDetails, // Store pricing breakdown
                 currentStatus: 'created',
                 estimatedDelivery,
             });
 
             await shipment.save({ session });
+
+            // Step 2: Deduct shipping cost from wallet (AFTER shipment saved, BEFORE carrier API)
+            const walletResult = await WalletService.handleShippingCost(
+                companyId.toString(),
+                (shipment._id as mongoose.Types.ObjectId).toString(),
+                shippingCost,
+                trackingNumber
+            );
+
+            if (!walletResult.success) {
+                throw new AppError(
+                    walletResult.error || 'Wallet deduction failed',
+                    ErrorCode.BIZ_WALLET_TRANSACTION_FAILED,
+                    400
+                );
+            }
+
+            // Store wallet transaction reference in shipment
+            (shipment as any).walletTransactionId = new mongoose.Types.ObjectId(walletResult.transactionId);
+            await shipment.save({ session });
+
+            logger.info('Wallet debited for shipment', {
+                shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                amount: shippingCost,
+                transactionId: walletResult.transactionId,
+                newBalance: walletResult.newBalance
+            });
 
             // ========================================================================
             // PHASE 1B: Call Velocity API to create shipment and get AWB/label

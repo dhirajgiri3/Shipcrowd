@@ -51,6 +51,10 @@ export interface ICompany extends Document {
     autoGenerateInvoice?: boolean;
     currency?: string;
     timezone?: string;
+    risk?: {
+      maxCodAmount?: number;
+      blockBlacklisted?: boolean;
+    };
   };
   wallet: {
     balance: number;
@@ -202,6 +206,10 @@ const CompanySchema = new Schema<ICompany>(
         type: String,
         default: 'Asia/Kolkata',
       },
+      risk: {
+        maxCodAmount: { type: Number, default: 5000 },
+        blockBlacklisted: { type: Boolean, default: true }
+      }
     },
     wallet: {
       balance: {

@@ -56,6 +56,11 @@ export const CARRIERS = {
         logo: '/logos/shadowfax.png',
         id: 'shadowfax',
     },
+    VELOCITY: {
+        name: 'Velocity',
+        logo: '/logos/velocity.png',
+        id: 'velocity',
+    },
 } as const;
 
 export const CARRIER_LIST = Object.values(CARRIERS);
@@ -81,6 +86,7 @@ export const COURIER_LOGOS: Record<string, string> = {
     'Shadowfax': CARRIERS.SHADOWFAX.logo,
     'IndiaPost': CARRIERS.INDIA_POST.logo,
     'India Post': CARRIERS.INDIA_POST.logo,
+    'Velocity': CARRIERS.VELOCITY.logo,
 };
 
 /**

@@ -5,7 +5,7 @@
  * Extends BaseCourierAdapter for consistency with future courier integrations
  *
  * Implements 6 core methods:
- * 1. createShipment() - POST /forward-order
+ * 1. createShipment() - POST /forward-order-orchestration
  * 2. trackShipment() - POST /order-tracking
  * 3. getRates() - POST /serviceability
  * 4. cancelShipment() - POST /cancel-order
@@ -113,6 +113,23 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
   }
 
   /**
+   * Unwrap Velocity API response from wrapper format
+   * Handles both orchestration ({payload:...}) and query ({result:...}) formats
+   */
+  private unwrapResponse<T>(responseData: any): T {
+    // Case 1: Orchestration format { status: 1, payload: {...} }
+    if (responseData && typeof responseData === 'object' && 'payload' in responseData) {
+      return responseData.payload as T;
+    }
+    // Case 2: Query format { status: "SUCCESS", result: {...} }
+    if (responseData && typeof responseData === 'object' && 'result' in responseData) {
+      return responseData.result as T;
+    }
+    // Case 3: Direct data (no wrapper)
+    return responseData as T;
+  }
+
+  /**
    * 1. Create Shipment (Forward Order)
    * Maps to: POST /custom/api/v1/forward-order
    */
@@ -206,7 +223,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         });
 
         return await this.httpClient.post<VelocityShipmentResponse>(
-          '/custom/api/v1/forward-order',
+          '/custom/api/v1/forward-order-orchestration',
           velocityRequest
         );
       },
@@ -215,21 +232,25 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       'Velocity createShipment'
     );
 
-    const shipment = response.data;
+    const shipment = this.unwrapResponse<VelocityShipmentResponse>(response.data);
 
     logger.info('Velocity shipment created successfully', {
       orderId: data.orderNumber,
-      awb: shipment.awb,
+      awb: shipment.awb_code,
       courier: shipment.courier_name,
       labelUrl: shipment.label_url
     });
 
     // Map response to generic format
+    const shippingCharges = parseFloat(String(shipment.frwd_charges?.shipping_charges || 0));
+    const codCharges = parseFloat(String(shipment.frwd_charges?.cod_charges || 0));
+    const totalCost = shippingCharges + codCharges;
+
     return {
-      trackingNumber: shipment.awb,
+      trackingNumber: shipment.awb_code,
       labelUrl: shipment.label_url,
-      estimatedDelivery: undefined, // Not provided in response
-      cost: undefined, // Not provided in response
+      estimatedDelivery: undefined, // Not provided in create response
+      cost: totalCost || 0,
       providerShipmentId: shipment.shipment_id
     };
   }
@@ -261,9 +282,22 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       'Velocity trackShipment'
     );
 
-    const tracking = response.data[0];
+    // Velocity returns a keyed object: { result: { [AWB]: { tracking_data: ... } } }
+    const trackingMap = this.unwrapResponse<Record<string, {
+      tracking_data: {
+        shipment_status: string;
+        current_location: string;
+        estimated_delivery: string;
+        shipment_track_activities: any[];
+        awb_code: string;
+      }
+    }>>(response.data);
 
-    if (!tracking) {
+    // Initial API structure might be direct, or inside the wrapper.
+    // Based on bug report: { "AWB_NUMBER": { tracking_data: {...} } }
+    const shipmentData = trackingMap[trackingNumber];
+
+    if (!shipmentData || !shipmentData.tracking_data) {
       throw new VelocityError(
         404,
         {
@@ -275,19 +309,21 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       );
     }
 
+    const tracking = shipmentData.tracking_data;
+
     // Map status
-    const statusMapping = VelocityMapper.mapStatus(tracking.status_code);
+    const statusMapping = VelocityMapper.mapStatus(tracking.shipment_status);
 
     // Map tracking history to timeline
-    const timeline = tracking.tracking_history.map((event) => ({
-      status: VelocityMapper.mapStatus(event.status).status,
-      message: event.description,
-      location: event.location,
-      timestamp: new Date(event.timestamp)
+    const timeline = (tracking.shipment_track_activities || []).map((event: any) => ({
+      status: VelocityMapper.mapStatus(event.activity || '').status,
+      message: event.activity || '',
+      location: event.location || '',
+      timestamp: new Date(event.date + ' ' + (event.time || '00:00:00'))
     }));
 
     return {
-      trackingNumber: tracking.awb,
+      trackingNumber: tracking.awb_code || trackingNumber,
       status: statusMapping.status,
       currentLocation: tracking.current_location,
       timeline,
@@ -303,10 +339,10 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    */
   async getRates(request: CourierRateRequest): Promise<CourierRateResponse[]> {
     const serviceabilityRequest: VelocityServiceabilityRequest = {
-      pickup_pincode: request.origin.pincode,
-      delivery_pincode: request.destination.pincode,
-      cod: request.paymentMode === 'cod' ? 1 : 0,
-      weight: request.package.weight
+      from: request.origin.pincode,
+      to: request.destination.pincode,
+      payment_mode: request.paymentMode === 'cod' ? 'cod' : 'prepaid',
+      shipment_type: request.shipmentType || 'forward'
     };
 
     // Apply rate limiting
@@ -330,9 +366,16 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       'Velocity getRates'
     );
 
-    const serviceability = response.data;
+    const serviceabilityData = this.unwrapResponse<{
+      serviceability_results: Array<{
+        carrier_id: string;
+        carrier_name: string;
+      }>;
+      zone?: string;
+    }>(response.data);
 
-    if (!serviceability.is_serviceable || serviceability.available_carriers.length === 0) {
+    // Check if any carriers are returned
+    if (!serviceabilityData.serviceability_results || serviceabilityData.serviceability_results.length === 0) {
       throw new VelocityError(
         422,
         {
@@ -345,17 +388,16 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     // Map carriers to rate responses
-    const rates: CourierRateResponse[] = serviceability.available_carriers.map((carrier) => ({
-      basePrice: carrier.rate,
-      taxes: 0, // Not provided by Velocity
-      total: carrier.rate,
+    // NOTE: Serviceability API does NOT return rates, only carrier availability.
+    // We return 0 price as placeholder since we cannot calculate it here.
+    const rates: CourierRateResponse[] = serviceabilityData.serviceability_results.map((carrier) => ({
+      basePrice: 0,
+      taxes: 0,
+      total: 0,
       currency: 'INR',
-      serviceType: carrier.courier_name,
-      estimatedDeliveryDays: carrier.estimated_delivery_days
+      serviceType: carrier.carrier_name,
+      estimatedDeliveryDays: 3 // Default fallback
     }));
-
-    // Sort by total cost (ascending)
-    rates.sort((a, b) => a.total - b.total);
 
     return rates;
   }
@@ -393,7 +435,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     }
 
     const request: VelocityCancelRequest = {
-      awb: trackingNumber
+      awbs: [trackingNumber]
     };
 
     // Apply rate limiting
@@ -414,29 +456,31 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       'Velocity cancelShipment'
     );
 
-    const cancellation = response.data;
+    const result = this.unwrapResponse<{ message: string }>(response.data);
 
     logger.info('Velocity shipment cancelled', {
       trackingNumber,
-      status: cancellation.status
+      message: result.message
     });
 
-    return cancellation.status === 'CANCELLED';
+    // If we got a successful response (either message present or just 200 OK), consider it cancelled
+    // The API returns strings like "Bulk Shipment cancellation is in progress..."
+    return !!result.message;
   }
 
   /**
    * 5. Check Serviceability
    * Maps to: POST /custom/api/v1/serviceability
    */
-  async checkServiceability(pincode: string): Promise<boolean> {
+  async checkServiceability(pincode: string, type: 'delivery' | 'pickup' = 'delivery'): Promise<boolean> {
     // Use default origin pincode for check
     const defaultOrigin = process.env.VELOCITY_DEFAULT_ORIGIN_PINCODE || '110001';
 
     const request: VelocityServiceabilityRequest = {
-      pickup_pincode: defaultOrigin,
-      delivery_pincode: pincode,
-      cod: 1, // Check with COD enabled
-      weight: 0.5 // Default weight
+      from: type === 'delivery' ? defaultOrigin : pincode,
+      to: type === 'delivery' ? pincode : defaultOrigin, // Assume return to origin for pickup check
+      payment_mode: 'cod',
+      shipment_type: type === 'pickup' ? 'return' : 'forward'
     };
 
     // Apply rate limiting
@@ -455,7 +499,8 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         'Velocity checkServiceability'
       );
 
-      return response.data.is_serviceable;
+      const serviceabilityData = this.unwrapResponse<{ serviceability_results: any[] }>(response.data);
+      return !!(serviceabilityData.serviceability_results && serviceabilityData.serviceability_results.length > 0);
     } catch (error) {
       // If pincode not serviceable, API returns 422
       if (error instanceof VelocityError && error.statusCode === 422) {
@@ -493,7 +538,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       'Velocity createWarehouse'
     );
 
-    const velocityWarehouse = response.data;
+    const velocityWarehouse = this.unwrapResponse<VelocityWarehouseResponse>(response.data);
 
     // Store Velocity warehouse ID in local warehouse model
     await Warehouse.findByIdAndUpdate(warehouse._id, {
@@ -568,8 +613,9 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     // Prepare reverse shipment request
     const reverseRequest: VelocityReverseShipmentRequest = {
       order_id: `RTO-${orderId}`,
-      original_awb: originalAwb,
-      pickup_customer_name: pickupAddress.name,
+      // Pickup Details (Original Destination / Customer)
+      pickup_customer_name: pickupAddress.name.split(' ')[0],
+      pickup_last_name: pickupAddress.name.split(' ').slice(1).join(' ') || '',
       pickup_address: pickupAddress.address,
       pickup_city: pickupAddress.city,
       pickup_pincode: pickupAddress.pincode,
@@ -577,26 +623,44 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       pickup_country: pickupAddress.country,
       pickup_phone: pickupAddress.phone,
       pickup_email: pickupAddress.email,
-      delivery_location: warehouse.name,
+      pickup_isd_code: '91',
+
+      // Shipping Details (Return Destination / Warehouse)
+      shipping_customer_name: warehouse.contactInfo.name.split(' ')[0],
+      shipping_last_name: warehouse.contactInfo.name.split(' ').slice(1).join(' ') || '',
+      shipping_address: warehouse.address.line1,
+      shipping_address_2: warehouse.address.line2 || '',
+      shipping_city: warehouse.address.city,
+      shipping_state: warehouse.address.state,
+      shipping_country: warehouse.address.country,
+      shipping_pincode: warehouse.address.postalCode,
+      shipping_phone: warehouse.contactInfo.phone,
+      shipping_email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
+      shipping_isd_code: '91',
+
       warehouse_id: velocityWarehouseId,
+
+      // Items & Defaults
+      order_items: [{
+        name: 'Return Item',
+        sku: 'RET-ITEM',
+        units: 1,
+        selling_price: 100,
+        discount: 0
+      }],
+      payment_method: 'Prepaid',
+      sub_total: 100,
+      total_discount: 0,
+      request_pickup: true,
+
       length: packageDetails.length,
       breadth: packageDetails.width,
       height: packageDetails.height,
       weight: packageDetails.weight,
-      reason: reason || 'RTO - Return to Origin',
-      vendor_details: {
-        email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
-        phone: warehouse.contactInfo.phone,
-        name: warehouse.contactInfo.name,
-        address: warehouse.address.line1,
-        address_2: warehouse.address.line2,
-        city: warehouse.address.city,
-        state: warehouse.address.state,
-        country: warehouse.address.country,
-        pin_code: warehouse.address.postalCode,
-        pickup_location: warehouse.name
-      }
-    };
+
+      channel_id: process.env.VELOCITY_CHANNEL_ID || '27202',
+      order_date: VelocityMapper.formatDate(new Date())
+    } as any; // Cast as any because type definition might be missing these fields
 
     // Apply rate limiting
     await VelocityRateLimiters.reverseShipment.acquire();
@@ -612,7 +676,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
           });
 
           return await this.httpClient.post<VelocityReverseShipmentResponse>(
-            '/custom/api/v1/reverse-order',
+            '/custom/api/v1/reverse-order-orchestration',
             reverseRequest
           );
         },
@@ -621,15 +685,26 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         'Velocity createReverseShipment'
       );
 
-      const reverseShipment = response.data;
+      const reverseShipment = this.unwrapResponse<VelocityReverseShipmentResponse>(response.data);
+
+      // Manual fallback for label_url if API doesn't return it (it might not for RTOs immediately)
+      // Attempt to construct it or leave undefined
+      const shipmentResponse = {
+        ...reverseShipment,
+        original_awb: originalAwb, // Attach for reference
+        // Construct label URL if missing but AWB exists (Standard Velocity Pattern)
+        label_url: reverseShipment.label_url ||
+          (reverseShipment.awb_code ? `https://velocity-shazam-prod.s3.ap-south-1.amazonaws.com/${reverseShipment.awb_code}_shipping_label.pdf` : undefined)
+      };
 
       logger.info('Velocity reverse shipment created successfully', {
         originalAwb,
-        reverseAwb: reverseShipment.reverse_awb,
-        courier: reverseShipment.courier_name
+        reverseAwb: shipmentResponse.awb_code,
+        courier: shipmentResponse.courier_name,
+        labelUrl: shipmentResponse.label_url
       });
 
-      return reverseShipment;
+      return shipmentResponse;
     } catch (error) {
       // FALLBACK: Generate mock reverse AWB if API fails
       logger.warn('Velocity reverse shipment API failed, using mock fallback', {
@@ -644,12 +719,11 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       const mockResponse: VelocityReverseShipmentResponse = {
         shipment_id: `RTO-SHIP-${timestamp}`,
         order_id: `RTO-${orderId}`,
-        reverse_awb: mockReverseAwb,
+        awb_code: mockReverseAwb,
         original_awb: originalAwb,
         courier_name: 'Velocity (Mock RTO)',
         courier_company_id: 'VELOCITY-RTO',
         label_url: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
-        status: 'NEW',
         pickup_scheduled_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       };
 

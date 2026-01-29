@@ -94,6 +94,7 @@ function generateCompanyData(
         status: selectWeightedFromObject(SEED_CONFIG.companyStatus),
         isActive: true,
         isDeleted: false,
+        isDemoData: true,
     };
 }
 
@@ -170,6 +171,7 @@ export async function seedCompanies(): Promise<void> {
                 status: 'approved',
                 isActive: true,
                 isDeleted: false,
+                isDemoData: true,
             };
 
             const adminCompany = await Company.create(adminCompanyData);

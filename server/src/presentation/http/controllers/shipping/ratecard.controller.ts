@@ -13,6 +13,7 @@ import {
 } from '../../../../shared/utils/responseHelper';
 import { AuthenticationError, ValidationError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import RateCardImportService from '../../../../core/application/services/pricing/rate-card-import.service';
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
 import RateCardAnalyticsService from '../../../../core/application/services/analytics/rate-card-analytics.service';
 import SmartRateCalculatorService from '../../../../core/application/services/pricing/smart-rate-calculator.service';
@@ -51,6 +52,7 @@ const createRateCardSchema = z.object({
         startDate: z.string().transform(str => new Date(str)),
         endDate: z.string().transform(str => new Date(str)).optional(),
     }),
+    zoneMultipliers: z.record(z.number()).optional(),
     status: z.enum(['draft', 'active', 'inactive']).default('draft'),
 });
 
@@ -703,6 +705,7 @@ export const bulkUpdateRateCards = async (req: Request, res: Response, next: Nex
             },
             req
         );
+
         sendSuccess(res, { updatedCount }, `Successfully updated ${updatedCount} rate cards`);
     } catch (error) {
         logger.error('Error in bulk update:', error);
@@ -710,8 +713,42 @@ export const bulkUpdateRateCards = async (req: Request, res: Response, next: Nex
     }
 };
 
+export const importRateCards = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        if (!req.file) {
+            throw new ValidationError('CSV or Excel file is required');
+        }
+
+        // Use static import for type safety (logic moved to top)
+        // const { default: RateCardImportService } = await import(...) // Dynamic removed
+
+        const result = await RateCardImportService.importRateCards(
+            companyId,
+            req.file.buffer,
+            req.file.mimetype,
+            req.user._id,
+            req
+        );
+
+        sendSuccess(res, result, `Imported: ${result.created} new, ${result.updated} updated. ${result.errors.length} errors.`);
+    } catch (error) {
+        logger.error('Error importing rate cards:', error);
+        next(error);
+    }
+};
+
 /**
  * Smart Rate Calculator Endpoint
+// ... existing code ...
  * Uses AI-powered recommendation engine with weighted scoring
  */
 export const calculateSmartRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -784,4 +821,5 @@ export default {
     getRateCardRevenueSeries,
     exportRateCards,
     bulkUpdateRateCards,
+    importRateCards,
 };

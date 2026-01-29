@@ -17,6 +17,7 @@ export interface VelocityAuthRequest {
 
 export interface VelocityAuthResponse {
   token: string;
+  expires_at: string;
 }
 
 // ==================== FORWARD ORDER ====================
@@ -59,7 +60,7 @@ export interface VelocityForwardOrderRequest {
   shipping_is_billing: boolean;
   print_label: boolean;
   order_items: VelocityOrderItem[];
-  payment_method: 'COD' | 'PREPAID';
+  payment_method: 'COD' | 'Prepaid';      // COD is uppercase, Prepaid is title case per API
   sub_total: number;
   length: number;                         // cm
   breadth: number;                        // cm
@@ -69,17 +70,32 @@ export interface VelocityForwardOrderRequest {
   pickup_location: string;
   warehouse_id: string;
   vendor_details?: VelocityVendorDetails;
+  idempotency_key?: string;               // Optional idempotency key
 }
 
 export interface VelocityShipmentResponse {
   shipment_id: string;
   order_id: string;
-  awb: string;
+  awb_code: string;
   courier_name: string;
   courier_company_id: string;
   label_url: string;
   manifest_url?: string;
   status: string;
+  frwd_charges?: {
+    shipping_charges: string;
+    cod_charges: string;
+  };
+  rto_charges?: {
+    rto_charges: string;
+  };
+  applied_weight?: string;
+  zone?: string;
+  order_created: boolean;
+  awb_generated: boolean;
+  label_generated: boolean;
+  pickup_generated: boolean;
+  cod: boolean;
 }
 
 // ==================== TRACKING ====================
@@ -104,15 +120,23 @@ export interface VelocityTrackingResponse {
   current_location: string;
   estimated_delivery: string;
   tracking_history: VelocityTrackingEvent[];
+  tracking_url?: string;
+  delivered_date?: string;
+  applied_weight?: number;
+  charges_breakdown?: {
+    freight_charge?: number;
+    cod_charge?: number;
+    total_charge?: number;
+  };
 }
 
 // ==================== SERVICEABILITY ====================
 
 export interface VelocityServiceabilityRequest {
-  pickup_pincode: string;
-  delivery_pincode: string;
-  cod: 0 | 1;                            // 1 = COD, 0 = Prepaid
-  weight: number;                         // kg
+  from: string;
+  to: string;
+  payment_mode: 'cod' | 'prepaid';
+  shipment_type: 'forward' | 'return';
 }
 
 export interface VelocityCarrierOption {
@@ -133,7 +157,7 @@ export interface VelocityServiceabilityResponse {
 // ==================== CANCELLATION ====================
 
 export interface VelocityCancelRequest {
-  awb: string;
+  awbs: string[];                         // Changed from single awb string to array
 }
 
 export interface VelocityCancelResponse {
@@ -146,19 +170,16 @@ export interface VelocityCancelResponse {
 
 export interface VelocityWarehouseRequest {
   name: string;
-  phone: string;
+  contact_person: string;                 // Required
+  phone_number: string;                   // Was 'phone'
   email: string;
-  address: string;
-  address_2?: string;
-  city: string;
-  state: string;
-  country: string;
-  pin_code: string;
-  return_address: string;
-  return_city: string;
-  return_state: string;
-  return_country: string;
-  return_pin_code: string;
+  address_attributes: {
+    street_address: string;
+    city: string;
+    state: string;
+    country: string;
+    zip: string;
+  };
 }
 
 export interface VelocityWarehouseResponse {
@@ -244,37 +265,70 @@ export interface VelocityConfig {
 
 export interface VelocityReverseShipmentRequest {
   order_id: string;
-  original_awb: string;
+  order_date: string;                     // "YYYY-MM-DD"
+  channel_id?: string;
+
+  // Pickup Details (Customer)
   pickup_customer_name: string;
-  pickup_last_name?: string;
+  pickup_last_name: string;
+  company_name?: string;
   pickup_address: string;
+  pickup_address_2?: string;
   pickup_city: string;
-  pickup_pincode: string;
   pickup_state: string;
   pickup_country: string;
+  pickup_pincode: string;
   pickup_email?: string;
   pickup_phone: string;
-  delivery_location: string;              // Warehouse name (return destination)
+  pickup_isd_code?: string;
+
+  // Shipping Details (Warehouse/Destination)
+  shipping_customer_name: string;
+  shipping_last_name: string;
+  shipping_address: string;
+  shipping_address_2?: string;
+  shipping_city: string;
+  shipping_state: string;
+  shipping_country: string;
+  shipping_pincode: number | string;
+  shipping_email?: string;
+  shipping_phone: string;
+  shipping_isd_code?: string;
+
   warehouse_id: string;                   // Return warehouse ID
+
+  order_items: any[];                     // Array of items
+  payment_method: 'Prepaid' | 'COD';      // Usually Prepaid
+  total_discount?: string | number;
+  sub_total: number;
+
   length: number;                         // cm
   breadth: number;                        // cm
   height: number;                         // cm
   weight: number;                         // kg
-  reason?: string;                        // RTO reason
-  vendor_details?: VelocityVendorDetails;
+  request_pickup: boolean;
 }
 
 export interface VelocityReverseShipmentResponse {
   shipment_id: string;
   order_id: string;
-  reverse_awb: string;
-  original_awb: string;
+  awb_code: string;                       // API returns awb_code
+  original_awb?: string;                  // Not returned by API, we might attach it manually if needed
   courier_name: string;
   courier_company_id: string;
-  label_url: string;
+  label_url?: string;                     // Matches forward shipment
   manifest_url?: string;
-  status: string;
-  pickup_scheduled_date?: string;
+  status?: string;                        // Might be missing in direct payload
+  pickup_scheduled_date?: string | null;
+  pickup_generated?: number;
+  awb_generated?: number;
+  order_created?: number;
+  is_return?: number;
+  charges?: {
+    reverse_charges?: string;
+    qc?: string;
+    platform_fee?: number;
+  };
 }
 
 export interface VelocitySchedulePickupRequest {

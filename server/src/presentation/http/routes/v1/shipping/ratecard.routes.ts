@@ -80,6 +80,20 @@ router.get('/export', authenticate, asyncHandler(ratecardController.exportRateCa
  * @desc Bulk update rate cards (activate/deactivate/adjust prices)
  * @access Private
  */
+// Configure multer for memory storage
+import multer from 'multer';
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
+/**
+ * @route POST /api/v1/ratecards/import
+ * @desc Import rate cards from CSV/Excel
+ * @access Private
+ */
+router.post('/import', authenticate, csrfProtection, upload.single('file'), asyncHandler(ratecardController.importRateCards));
+
 router.post('/bulk-update', authenticate, csrfProtection, asyncHandler(ratecardController.bulkUpdateRateCards));
 
 export default router;

@@ -67,6 +67,7 @@ export interface CourierRateRequest {
         height: number;
     };
     paymentMode: 'prepaid' | 'cod';
+    shipmentType?: 'forward' | 'return';
 }
 
 export interface CourierRateResponse {
@@ -105,8 +106,9 @@ export interface ICourierAdapter {
 
     /**
      * Check service availability for a pincode
+     * @param type 'delivery' (default) or 'pickup'
      */
-    checkServiceability(pincode: string): Promise<boolean>;
+    checkServiceability(pincode: string, type?: 'delivery' | 'pickup'): Promise<boolean>;
 
     /**
      * Schedule a pickup
@@ -128,7 +130,7 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
     abstract trackShipment(trackingNumber: string): Promise<CourierTrackingResponse>;
     abstract getRates(request: CourierRateRequest): Promise<CourierRateResponse[]>;
     abstract cancelShipment(trackingNumber: string): Promise<boolean>;
-    abstract checkServiceability(pincode: string): Promise<boolean>;
+    abstract checkServiceability(pincode: string, type?: 'delivery' | 'pickup'): Promise<boolean>;
 
     /**
      * Common HTTP request method

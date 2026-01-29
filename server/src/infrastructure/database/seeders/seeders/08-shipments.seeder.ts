@@ -280,6 +280,7 @@ function generateShipmentData(order: any, warehouse: any): any {
             rtoShippingCost: Math.round((order.shippingDetails?.shippingCost || 100) * 1.3),
         } : undefined,
         isDeleted: false,
+        isDemoData: true,
         createdAt: order.createdAt,
         updatedAt: actualDelivery || new Date(),
     };

@@ -36,6 +36,33 @@ export class VelocityWebhookService implements WebhookEventHandler {
     try {
       const { awb, order_id, status, status_code, current_location, description } = payload.shipment_data;
 
+      // Idempotency: Check if we already processed this exact webhook
+      const webhookId = payload.webhook_id || `${awb}-${status_code}-${payload.timestamp}`;
+      const cacheKey = `webhook:velocity:${webhookId}`;
+
+      try {
+        // Try Redis first (if available), fall back to in-memory Set if needed
+        // Note: Dynamic import to avoid circular dependency issues during initialization
+        const { CacheService } = await import('@/infrastructure/utilities/cache.service.js');
+        const alreadyProcessed = await CacheService.get(cacheKey);
+
+        if (alreadyProcessed) {
+          logger.info('Duplicate webhook detected, skipping', { webhookId, awb });
+          return {
+            success: true,
+            awb,
+            orderId: order_id,
+            statusUpdated: false,
+            timestamp: new Date()
+          };
+        }
+        // Mark as processed (TTL: 24 hours)
+        await CacheService.set(cacheKey, '1', 86400);
+      } catch (cacheError) {
+        // Cache unavailable - proceed without dedup (log warning)
+        logger.warn('Webhook dedup cache unavailable, proceeding', { webhookId });
+      }
+
       logger.info('Processing Velocity status update webhook', {
         awb,
         orderId: order_id,
@@ -85,38 +112,68 @@ export class VelocityWebhookService implements WebhookEventHandler {
         };
       }
 
-      // Add status to history
-      shipment.statusHistory.push({
-        status: internalStatus,
-        timestamp: new Date(payload.timestamp || Date.now()),
-        location: current_location || payload.tracking_event?.location,
-        description: description || payload.tracking_event?.description,
-        updatedBy: undefined // Webhook update, no user
-      });
+      // Wrap in transaction for data integrity
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-      // Update current status
-      shipment.currentStatus = internalStatus;
+      try {
+        // Add status to history
+        shipment.statusHistory.push({
+          status: internalStatus,
+          timestamp: new Date(payload.timestamp || Date.now()),
+          location: current_location || payload.tracking_event?.location,
+          description: description || payload.tracking_event?.description,
+          updatedBy: undefined // Webhook update, no user
+        });
 
-      // Handle special status updates
-      if (internalStatus === 'delivered') {
-        shipment.actualDelivery = new Date();
-      }
+        // Update current status
+        shipment.currentStatus = internalStatus;
 
-      if (internalStatus === 'ndr') {
-        if (!shipment.ndrDetails) {
-          shipment.ndrDetails = {
-            ndrAttempts: 0,
-            ndrStatus: 'pending'
-          };
+        // Handle special status updates
+        if (internalStatus === 'delivered') {
+          shipment.actualDelivery = new Date();
         }
-        shipment.ndrDetails.ndrReason = description;
-        shipment.ndrDetails.ndrDate = new Date();
-        shipment.ndrDetails.ndrAttempts = (shipment.ndrDetails.ndrAttempts || 0) + 1;
-        shipment.ndrDetails.ndrStatus = 'pending';
-      }
 
-      // Save shipment
-      await shipment.save();
+        if (internalStatus === 'ndr') {
+          if (!shipment.ndrDetails) {
+            shipment.ndrDetails = {
+              ndrAttempts: 0,
+              ndrStatus: 'pending'
+            };
+          }
+          shipment.ndrDetails.ndrReason = description;
+          shipment.ndrDetails.ndrDate = new Date();
+          shipment.ndrDetails.ndrAttempts = (shipment.ndrDetails.ndrAttempts || 0) + 1;
+          shipment.ndrDetails.ndrStatus = 'pending';
+
+          // Trigger NDR Automation (Phase 3)
+          try {
+            // Dynamic import to avoid circular dependency
+            const { default: NDRServiceClass } = await import('../logistics/ndr.service.js') as any;
+            const ndrService = new NDRServiceClass();
+            await ndrService.processNDREvent(shipment, {
+              awb: awb,
+              courierStatus: status,
+              remarks: description,
+              timestamp: new Date(payload.timestamp || Date.now()),
+              courierCode: 'velocity'
+            });
+          } catch (ndrError) {
+            console.error('NDR AUTOMATION ERROR:', ndrError);
+            logger.error('Failed to trigger NDR Automation', { error: ndrError });
+            // Don't fail the webhook processing itself
+          }
+        }
+
+        // Save shipment with session
+        await shipment.save({ session });
+        await session.commitTransaction();
+      } catch (txError) {
+        await session.abortTransaction();
+        throw txError;
+      } finally {
+        session.endSession();
+      }
 
       logger.info('Shipment status updated successfully', {
         awb,
@@ -152,11 +209,16 @@ export class VelocityWebhookService implements WebhookEventHandler {
               String(shipment._id),
               internalStatus
             ),
-          ]).catch((error) => {
-            logger.warn('E-commerce fulfillment auto-sync encountered errors', {
-              shipmentId: shipment._id,
-              status: internalStatus,
-              error: error.message,
+          ]).then((results) => {
+            const platforms = ['Shopify', 'WooCommerce', 'Amazon', 'Flipkart'];
+            results.forEach((result, index) => {
+              if (result.status === 'rejected') {
+                logger.warn(`${platforms[index]} fulfillment sync failed`, {
+                  shipmentId: String(shipment._id),
+                  status: internalStatus,
+                  error: result.reason?.message || result.reason
+                });
+              }
             });
           });
 

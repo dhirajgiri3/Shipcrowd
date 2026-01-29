@@ -204,8 +204,9 @@ class WeightDisputeDetectionService {
             await session.abortTransaction();
             logger.error('Error in weight discrepancy detection (transaction rolled back)', {
                 shipmentId,
-                error: error instanceof Error ? error.message : error,
+                error: error,
             });
+            console.error('FULL DISPUTE ERROR:', error);
             throw error;
         } finally {
             session.endSession();
@@ -382,10 +383,12 @@ class WeightDisputeDetectionService {
         carrierData: CarrierScanData,
         session: mongoose.ClientSession
     ): Promise<void> {
-        shipment.weights = {
-            declared: shipment.weights?.declared || {
-                value: shipment.packageDetails.weight,
-                unit: 'kg',
+        const declaredValue = shipment.packageDetails?.weight || 0;
+
+        shipment.set('weights', {
+            declared: {
+                value: declaredValue,
+                unit: 'kg'
             },
             actual: {
                 value: this.convertToKg(actualWeight),
@@ -394,7 +397,7 @@ class WeightDisputeDetectionService {
                 scannedBy: carrierData.carrierName,
             },
             verified: true,
-        };
+        });
 
         shipment.weightDispute = {
             exists: true,

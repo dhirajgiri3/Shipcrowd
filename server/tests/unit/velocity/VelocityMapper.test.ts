@@ -243,7 +243,7 @@ describe('VelocityMapper', () => {
         'WHTEST123'
       );
 
-      expect(result.payment_method).toBe('PREPAID');
+      expect(result.payment_method).toBe('Prepaid');
       expect(result.cod_collectible).toBeUndefined();
     });
 
@@ -364,19 +364,20 @@ describe('VelocityMapper', () => {
       const result = VelocityMapper.mapToWarehouseRequest(mockWarehouse);
 
       expect(result.name).toBe('Test Warehouse');
-      expect(result.phone).toBe('9876543210');
+      expect(result.contact_person).toBe('Warehouse Manager');
+      expect(result.phone_number).toBe('9876543210');
       expect(result.email).toBe('warehouse@test.com');
-      expect(result.address).toBe('123 Main St');
-      expect(result.city).toBe('Delhi');
-      expect(result.state).toBe('Delhi');
-      expect(result.pin_code).toBe('110001');
-      expect(result.country).toBe('India');
+      expect(result.address_attributes.street_address).toContain('123 Main St');
+      expect(result.address_attributes.city).toBe('Delhi');
+      expect(result.address_attributes.state).toBe('Delhi');
+      expect(result.address_attributes.zip).toBe('110001');
+      expect(result.address_attributes.country).toBe('India');
     });
 
     it('should normalize warehouse phone number', () => {
       const result = VelocityMapper.mapToWarehouseRequest(mockWarehouse);
-      expect(result.phone).toBe('9876543210');
-      expect(result.phone).not.toContain('+91');
+      expect(result.phone_number).toBe('9876543210');
+      expect(result.phone_number).not.toContain('+91');
     });
 
     it('should use default email if not provided', () => {

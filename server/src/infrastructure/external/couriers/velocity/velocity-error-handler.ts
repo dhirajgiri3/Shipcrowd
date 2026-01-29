@@ -9,7 +9,6 @@
  * @see docs/Development/Backend/Integrations/VELOCITY_SHIPFAST_INTEGRATION.md Section 6-7
  */
 
-import { AxiosError } from 'axios';
 import { VelocityError, VelocityErrorType, VelocityAPIError } from './velocity.types';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -290,7 +289,7 @@ export class RateLimiter {
  * Rate limiters for different Velocity endpoints
  */
 export const VelocityRateLimiters = {
-  authentication: new RateLimiter(10, 10),      // 10 requests/hour
+  authentication: new RateLimiter(10, 10),      // 10 requests/min
   forwardOrder: new RateLimiter(100, 100),      // 100 requests/min
   tracking: new RateLimiter(100, 100),          // 100 requests/min
   cancellation: new RateLimiter(50, 50),        // 50 requests/min

@@ -13,7 +13,9 @@ import {
 import {
     createShipmentSchema,
     updateShipmentStatusSchema,
+    recommendCourierSchema
 } from '../../../../shared/validation/schemas';
+import SmartRateCalculator from '../../../../core/application/services/pricing/smart-rate-calculator.service';
 import {
     sendSuccess,
     sendPaginated,
@@ -24,6 +26,7 @@ import { ShipmentService } from '../../../../core/application/services/shipping/
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
+import { auth } from '../../middleware';
 
 export const createShipment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -58,6 +61,27 @@ export const createShipment = async (req: Request, res: Response, next: NextFunc
         const hasActive = await ShipmentService.hasActiveShipment(order._id as mongoose.Types.ObjectId);
         if (hasActive) {
             throw new ConflictError('An active shipment already exists for this order', ErrorCode.BIZ_SHIPMENT_EXISTS);
+        }
+
+        // RISK GUARD CHECK (Phase 2)
+        const RiskGuardServiceClass = (await import('../../../../core/application/services/risk/risk-guard.service.js') as any).default;
+        const riskGuard = new RiskGuardServiceClass();
+
+        const riskResult = await riskGuard.evaluateOrder({
+            companyId: auth.companyId,
+            customerPhone: order.customerInfo.phone,
+            customerEmail: order.customerInfo.email,
+            destinationPincode: order.customerInfo.address.postalCode,
+            paymentMode: order.paymentMethod === 'cod' ? 'cod' : 'prepaid',
+            orderValue: order.totals.total
+        });
+
+        if (riskResult.status === 'BLOCKED') {
+            throw new AppError(
+                `Order Blocked by Risk Guard: ${riskResult.reasons.join(', ')}`,
+                ErrorCode.BIZ_RISK_CHECK_FAILED, // Assuming this code exists or will map to 400
+                400
+            );
         }
 
         // VALIDATE ADDRESSES (Phase 2 Requirement)
@@ -419,6 +443,37 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
     }
 };
 
+export const recommendCourier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const validation = recommendCourierSchema.safeParse(req.body);
+        if (!validation.success) {
+            const errors = validation.error.errors.map(err => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', errors);
+        }
+
+        const { pickupPincode, deliveryPincode, weight, declaredValue, paymentMode } = validation.data;
+
+        const recommendations = await SmartRateCalculator.calculateSmartRates({
+            companyId: auth.companyId,
+            originPincode: pickupPincode,
+            destinationPincode: deliveryPincode,
+            weight: weight,
+            paymentMode: paymentMode,
+            orderValue: declaredValue || 0
+        });
+
+        sendSuccess(res, { recommendations: recommendations.rates }, 'Courier recommendations retrieved');
+    } catch (error) {
+        logger.error('Error getting recommendations:', error);
+        next(error);
+    }
+};
+
 export default {
     createShipment,
     getShipments,
@@ -427,4 +482,5 @@ export default {
     updateShipmentStatus,
     deleteShipment,
     trackShipmentPublic,
+    recommendCourier
 };

@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticate } from '../../../middleware';
 import { requireAccess } from '../../../middleware/auth/unified-access';
-import { verifyVelocityWebhookSignature } from '../../../middleware/webhooks/velocity-signature.middleware';
+import { verifyVelocityWebhookSignature } from '../../../middleware/webhooks/velocity-webhook-auth.middleware';
 import * as codRemittanceController from '../../../controllers/finance/cod-remittance.controller';
 
 const router = express.Router();

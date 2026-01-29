@@ -94,8 +94,26 @@ export function CreateRatecardClient() {
             return;
         }
 
-        // Transform to API format
+        // Calculate Multipliers based on Zone A Baseline
+        const basePrice = parseFloat(formData.basicZoneA) || 0;
+        const multipliers: Record<string, number> = { zoneA: 1.0 };
+
+        if (basePrice > 0) {
+            multipliers.zoneB = parseFloat((parseFloat(formData.basicZoneB) / basePrice).toFixed(2));
+            multipliers.zoneC = parseFloat((parseFloat(formData.basicZoneC) / basePrice).toFixed(2));
+            multipliers.zoneD = parseFloat((parseFloat(formData.basicZoneD) / basePrice).toFixed(2));
+            multipliers.zoneE = parseFloat((parseFloat(formData.basicZoneE) / basePrice).toFixed(2));
+        }
+
+        // Calculate Price Per Kg for Additional Weight
+        // UI asks for "Price per X gm". Backend expects "Price per 1 Kg".
+        const addWeightGm = parseFloat(formData.additionalWeight) || 500;
+        const addPriceA = parseFloat(formData.additionalZoneA) || 0;
+        const pricePerKg = addPriceA > 0 ? (addPriceA / addWeightGm) * 1000 : 0;
+
+        // Transform to API format (Model-compliant)
         const payload = {
+            name: `${selectedCourierData?.name} ${formData.courierServiceId} ${formData.rateCardCategory} ${Date.now()}`, // Auto-generate name
             courierProviderId: formData.courierProviderId,
             courierServiceId: formData.courierServiceId,
             rateCardCategory: formData.rateCardCategory,
@@ -108,24 +126,33 @@ export function CreateRatecardClient() {
             minWeight: formData.minWeight ? parseFloat(formData.minWeight) : undefined,
             maxWeight: formData.maxWeight ? parseFloat(formData.maxWeight) : undefined,
             status: formData.status as 'active' | 'inactive',
-            baseWeight: parseFloat(formData.basicWeight),
-            baseRates: [
-                { zone: 'zoneA', price: parseFloat(formData.basicZoneA) || 0 },
-                { zone: 'zoneB', price: parseFloat(formData.basicZoneB) || 0 },
-                { zone: 'zoneC', price: parseFloat(formData.basicZoneC) || 0 },
-                { zone: 'zoneD', price: parseFloat(formData.basicZoneD) || 0 },
-                { zone: 'zoneE', price: parseFloat(formData.basicZoneE) || 0 },
-            ].filter(r => r.price > 0),
-            additionalWeight: parseFloat(formData.additionalWeight),
-            additionalRates: [
-                { zone: 'zoneA', price: parseFloat(formData.additionalZoneA) || 0 },
-                { zone: 'zoneB', price: parseFloat(formData.additionalZoneB) || 0 },
-                { zone: 'zoneC', price: parseFloat(formData.additionalZoneC) || 0 },
-                { zone: 'zoneD', price: parseFloat(formData.additionalZoneD) || 0 },
-                { zone: 'zoneE', price: parseFloat(formData.additionalZoneE) || 0 },
-            ].filter(r => r.price > 0),
+
+            // Backend Model Structure
+            baseRates: [{
+                carrier: formData.courierProviderId, // or name
+                serviceType: formData.courierServiceId,
+                basePrice: basePrice,
+                minWeight: 0,
+                maxWeight: parseFloat(formData.basicWeight) / 1000 // Convert gm to kg
+            }],
+
+            weightRules: [{
+                minWeight: parseFloat(formData.basicWeight) / 1000,
+                maxWeight: 1000, // Upper limit
+                pricePerKg: pricePerKg,
+                carrier: formData.courierProviderId,
+                serviceType: formData.courierServiceId
+            }],
+
+            zoneMultipliers: multipliers,
+
             codPercentage: parseFloat(formData.codPercentage),
             codMinimumCharge: parseFloat(formData.codMinimumCharge),
+
+            // Required Dates
+            effectiveDates: {
+                startDate: new Date().toISOString()
+            }
         };
 
         createRateCard(payload, {

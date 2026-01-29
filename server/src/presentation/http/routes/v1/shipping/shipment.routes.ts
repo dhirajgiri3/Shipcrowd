@@ -6,6 +6,7 @@ import shipmentController from '../../../controllers/shipping/shipment.controlle
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import labelRoutes from '../shipments/label.routes';
 import manifestRoutes from '../shipments/manifest.routes';
+import bulkRoutes from '../shipments/bulk.routes';
 
 const router = express.Router();
 
@@ -14,6 +15,9 @@ router.use(labelRoutes);
 
 // Mount manifest routes
 router.use(manifestRoutes);
+
+// Mount bulk routes
+router.use('/bulk', bulkRoutes);
 
 /**
  * @route POST /api/v1/shipments

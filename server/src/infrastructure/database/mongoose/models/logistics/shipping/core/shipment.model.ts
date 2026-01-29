@@ -150,6 +150,9 @@ export interface IShipment extends Document {
     remittedAmount?: number; // Net amount after deductions
   };
 
+  // Wallet Transaction Reference
+  walletTransactionId?: mongoose.Types.ObjectId;
+
   isDeleted: boolean;
   isDemoData?: boolean;
   createdAt: Date;
@@ -440,6 +443,11 @@ const ShipmentSchema = new Schema<IShipment>(
       remittanceId: String,
       remittedAt: Date,
       remittedAmount: Number,
+    },
+    walletTransactionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'WalletTransaction',
+      index: true,
     },
     isDeleted: {
       type: Boolean,

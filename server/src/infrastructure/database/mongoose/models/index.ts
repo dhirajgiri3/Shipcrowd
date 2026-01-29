@@ -46,6 +46,10 @@ export * from './marketing/promotions/coupon.model';
 // Finance
 export { default as Payout } from './finance/payouts/payout.model';
 export * from './finance/payouts/payout.model';
+export { default as CODRemittance } from './finance/payouts/cod-remittance.model';
+export * from './finance/payouts/cod-remittance.model';
+export { default as Invoice } from './finance/billing/invoice.model';
+export * from './finance/billing/invoice.model';
 export { default as WalletTransaction } from './finance/wallets/wallet-transaction.model';
 export * from './finance/wallets/wallet-transaction.model';
 export { default as CommissionRule } from './finance/commission/commission-rule.model';
@@ -76,10 +80,16 @@ export * from './logistics/warehouse/activities/pick-list.model';
 // Logistics - Shipping
 export { default as Shipment } from './logistics/shipping/core/shipment.model';
 export * from './logistics/shipping/core/shipment.model';
+export { default as Manifest } from './logistics/shipping/manifest.model';
+export * from './logistics/shipping/manifest.model';
+export { default as ManifestCounter } from './logistics/shipping/manifest-counter.model';
+export * from './logistics/shipping/manifest-counter.model';
 export { default as Zone } from './logistics/shipping/configuration/zone.model';
 export * from './logistics/shipping/configuration/zone.model';
 export { default as RateCard } from './logistics/shipping/configuration/rate-card.model';
 export * from './logistics/shipping/configuration/rate-card.model';
+export { default as RoutingRule } from './logistics/shipping/configuration/routing-rule.model';
+export * from './logistics/shipping/configuration/routing-rule.model';
 export { default as Courier } from './shipping/courier.model';
 export * from './shipping/courier.model';
 export { default as CourierPerformance } from './shipping/courier-performance.model';
@@ -128,6 +138,10 @@ export { default as WooCommerceSyncLog } from './marketplaces/woocommerce/woocom
 export * from './marketplaces/woocommerce/woocommerce-sync-log.model';
 export { default as WooCommerceProductMapping } from './marketplaces/woocommerce/woocommerce-product-mapping.model';
 export * from './marketplaces/woocommerce/woocommerce-product-mapping.model';
+
+// Risk Engine
+export { default as BlacklistItem } from './risk/blacklist-item.model';
+export * from './risk/blacklist-item.model';
 
 // Communication
 export { default as NotificationTemplate } from './communication/notification-template.model';

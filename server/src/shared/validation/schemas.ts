@@ -206,7 +206,18 @@ export const calculateRateSchema = z.object({
     serviceType: serviceTypeSchema.default('standard'),
 });
 
+
 export type CalculateRateInput = z.infer<typeof calculateRateSchema>;
+
+export const recommendCourierSchema = z.object({
+    pickupPincode: z.string().min(6, 'Invalid pickup pincode'),
+    deliveryPincode: z.string().min(6, 'Invalid delivery pincode'),
+    weight: z.number().min(0.001, 'Weight must be greater than 0'),
+    declaredValue: z.number().min(0).optional(),
+    paymentMode: z.enum(['cod', 'prepaid']).default('prepaid'),
+});
+
+export type RecommendCourierInput = z.infer<typeof recommendCourierSchema>;
 
 // ============================================================================
 // Zone Schemas

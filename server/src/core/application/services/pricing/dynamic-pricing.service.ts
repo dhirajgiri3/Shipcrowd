@@ -29,6 +29,7 @@ export interface CalculatePricingInput {
     serviceType?: string; // default: 'standard'
     rateCardId?: string; // Optional: specific rate card to use
     customerId?: string; // Optional: for customer-specific discounts
+    shipmentType?: 'forward' | 'return'; // default: 'forward'
 }
 
 export interface PricingBreakdown {

@@ -1,6 +1,8 @@
 import axios from 'axios';
+import mongoose from 'mongoose';
 import { ICarrierLabelAdapter, LabelResponse } from '../../../../core/domain/interfaces/carrier-label.interface';
 import logger from '../../../../shared/logger/winston.logger';
+import { VelocityAuth } from './velocity.auth';
 
 /**
  * Velocity Label Adapter
@@ -11,12 +13,10 @@ import logger from '../../../../shared/logger/winston.logger';
  */
 
 class VelocityLabelAdapter implements ICarrierLabelAdapter {
-    private apiKey: string;
     private baseURL: string;
 
     constructor() {
-        this.apiKey = process.env.VELOCITY_API_KEY || '';
-        this.baseURL = process.env.VELOCITY_BASE_URL || 'https://api.velocitycourier.com';
+        this.baseURL = process.env.VELOCITY_BASE_URL || 'https://shazam.velocity.in';
     }
 
     async generateLabel(shipment: any): Promise<LabelResponse> {
@@ -26,11 +26,26 @@ class VelocityLabelAdapter implements ICarrierLabelAdapter {
             let labelUrl = shipment.label_url;
 
             if (!labelUrl) {
+                // If we don't have label_url, we need to fetch it.
+                // We need authentication, which requires companyId to look up credentials.
+                // Shipment object MUST have companyId.
+
+                if (!shipment.companyId) {
+                    throw new Error('Cannot fetch Velocity label: Missing companyId in shipment data');
+                }
+
+                const auth = new VelocityAuth(shipment.companyId as mongoose.Types.ObjectId, this.baseURL);
+                const token = await auth.getValidToken();
+
+                // Endpoint is hypothetical validation needed, but sticking to shazam.velocity.in base
+                // Assuming standard path pattern or using a known path if available
+                // User provided: /api/v2/shipments/{awb}/label -> corrected to use base url
+
                 const response = await axios.get(
-                    `${this.baseURL}/api/v2/shipments/${shipment.awb}/label`,
+                    `${this.baseURL}/custom/api/v1/shipment/label/${shipment.awb}`,
                     {
                         headers: {
-                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Authorization': token, // Velocity uses raw token, not Bearer? Verified in provider it uses raw token.
                             'Content-Type': 'application/json',
                         },
                     }
