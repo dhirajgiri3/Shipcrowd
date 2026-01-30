@@ -41,7 +41,7 @@ import orderRoutes from './shipping/order.routes';
 import shipmentRoutes from './shipping/shipment.routes';
 import ratecardRoutes from './shipping/ratecard.routes';
 import zoneRoutes from './shipping/zone.routes';
-import carrierRoutes from './shipping/carrier.routes';
+
 import courierRoutes from './shipping/courier.routes';
 import labelTemplateRoutes from './shipping/label-template.routes';
 import addressRoutes from './logistics/address.routes';
@@ -143,7 +143,7 @@ router.use('/admin/orders', orderRoutes); // Alias for frontend admin/orders cal
 router.use('/shipments', shipmentRoutes);
 router.use('/ratecards', ratecardRoutes);
 router.use('/zones', zoneRoutes);
-router.use('/admin/carriers', carrierRoutes);
+router.use('/admin/carriers', courierRoutes); // Backward compatibility
 router.use('/courier', courierRoutes);
 router.use('/labels', labelTemplateRoutes);
 router.use('/logistics/address', addressRoutes);
