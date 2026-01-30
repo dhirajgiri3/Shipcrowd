@@ -17,7 +17,8 @@ export class PricingMetricsService {
         pricing_mismatch_count: 0,
         ratecard_import_errors: 0,
         cache_hits: 0,
-        cache_misses: 0
+        cache_misses: 0,
+        pricing_fallback_used: 0
     };
 
     private constructor() {
@@ -77,6 +78,16 @@ export class PricingMetricsService {
     }
 
     /**
+     * Increment fallback usage counter
+     */
+    incrementFallbackUsed(type: 'generic_rate' | 'carrier_default' | 'zone_default' | 'weight_generic'): void {
+        if (!this.metrics.pricing_fallback_used) {
+            this.metrics.pricing_fallback_used = 0;
+        }
+        this.metrics.pricing_fallback_used++;
+    }
+
+    /**
      * Log current metrics state
      */
     logMetrics(): void {
@@ -92,6 +103,7 @@ export class PricingMetricsService {
             avgLatencyMs: avgLatency,
             mismatches: this.metrics.pricing_mismatch_count,
             importErrors: this.metrics.ratecard_import_errors,
+            fallbacks: this.metrics.pricing_fallback_used || 0,
             cacheHitRatio: hitRatio
         });
     }

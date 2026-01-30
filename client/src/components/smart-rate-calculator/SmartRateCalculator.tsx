@@ -301,6 +301,32 @@ export function SmartRateCalculator() {
                                                     <p className="text-sm text-[var(--text-secondary)] capitalize">
                                                         {rate.serviceType}
                                                     </p>
+                                                    {/* Pricing Resolution Badge */}
+                                                    {rate.pricingResolution && (
+                                                        <div className="mt-1">
+                                                            {(() => {
+                                                                const res = rate.pricingResolution;
+                                                                let variant: 'success' | 'warning' | 'neutral' = 'neutral';
+                                                                let label = 'Generic Rule';
+                                                                let icon = null;
+
+                                                                if (res.matchType === 'EXACT') {
+                                                                    variant = 'success';
+                                                                    label = 'Exact Rate';
+                                                                } else if (res.matchType === 'CARRIER_DEFAULT') {
+                                                                    variant = 'warning';
+                                                                    label = 'Carrier Default';
+                                                                }
+
+                                                                return (
+                                                                    <Badge variant={variant} className="text-[10px] h-5 px-1.5 font-normal">
+                                                                        {label}
+                                                                    </Badge>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    )}
+
                                                 </div>
                                             </div>
 

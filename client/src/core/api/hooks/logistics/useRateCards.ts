@@ -9,18 +9,26 @@ export interface RateCard {
     companyId: string;
     status: 'draft' | 'active' | 'inactive' | 'expired';
     baseRates: Array<{
-        carrier: string;
-        serviceType: string;
+        carrier?: string;
+        serviceType?: string;
         baseRate: number;
+        minWeight: number;
+        maxWeight: number;
     }>;
     weightRules: Array<{
         minWeight: number;
         maxWeight: number;
         ratePerKg: number;
+        carrier?: string;
+        serviceType?: string;
     }>;
     zoneRules: Array<{
-        zone: string;
-        multiplier: number;
+        zoneId?: string; // Changed from zone string to zoneId often used
+        zone?: string;
+        multiplier?: number;
+        additionalPrice?: number;
+        carrier?: string;
+        serviceType?: string;
     }>;
     createdAt: string;
     updatedAt: string;
@@ -39,6 +47,14 @@ export interface RateCalculationPayload {
     originPincode?: string;
     carrier?: string;
     serviceType?: string;
+    strict?: boolean;
+}
+
+export interface PricingResolution {
+    matchedLevel: 'EXACT' | 'CARRIER_DEFAULT' | 'GENERIC';
+    matchedCarrier?: string;
+    matchedServiceType?: string;
+    rateCardId?: string;
 }
 
 export interface RateCalculationResponse {
@@ -50,6 +66,7 @@ export interface RateCalculationResponse {
         weightCharge: number;
         zoneCharge: number;
         total: number;
+        resolution?: PricingResolution;
     };
 }
 

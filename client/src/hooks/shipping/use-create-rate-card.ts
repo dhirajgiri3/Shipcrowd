@@ -7,25 +7,9 @@ interface ZoneRate {
     price: number;
 }
 
-interface CreateRateCardInput {
-    courierProviderId: string;
-    courierServiceId: string;
-    rateCardCategory: string;
-    shipmentType: 'forward' | 'reverse';
-    gst: number;
-    minimumFare: number;
-    minimumFareCalculatedOn: 'freight' | 'freight_overhead';
-    zoneBType: 'state' | 'region';
-    isWeightConstraint: boolean;
-    minWeight?: number;
-    maxWeight?: number;
-    status: 'active' | 'inactive';
-    baseWeight: number; // in grams
-    baseRates: ZoneRate[];
-    additionalWeight: number; // in grams
-    additionalRates: ZoneRate[];
-    codPercentage: number;
-    codMinimumCharge: number;
+// Flexible input to match the complex component payload
+export interface CreateRateCardInput {
+    [key: string]: any;
 }
 
 export const useCreateRateCard = () => {

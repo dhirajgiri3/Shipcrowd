@@ -380,7 +380,10 @@ export function RatecardsClient() {
                                         {card.zoneRules && card.zoneRules.length > 0 ? (
                                             card.zoneRules.slice(0, 5).map((rule, idx) => (
                                                 <div key={idx} className="bg-[var(--bg-primary)] px-2 py-1 rounded text-xs border border-[var(--border-subtle)]">
-                                                    <span className="font-semibold text-[var(--text-primary)]">{rule.zone}:</span> {rule.multiplier}x
+                                                    <span className="font-semibold text-[var(--text-primary)]">
+                                                        {rule.zone || rule.zoneId}:
+                                                    </span> {rule.multiplier}x
+                                                    {rule.carrier ? <span className="opacity-75 text-[10px] ml-1">({rule.carrier})</span> : ''}
                                                 </div>
                                             ))
                                         ) : (
@@ -394,10 +397,27 @@ export function RatecardsClient() {
                                     <p className="text-xs font-medium text-[var(--text-muted)]">Base Rates</p>
                                     <div className="flex flex-wrap gap-2">
                                         {card.baseRates && card.baseRates.map((rate, idx) => (
-                                            <Badge key={idx} variant="outline" className="text-xs">
-                                                {rate.carrier} - {rate.serviceType}: ₹{rate.baseRate}
+                                            <Badge key={idx} variant={rate.carrier ? "outline" : "secondary"} className="text-xs">
+                                                {rate.carrier && rate.serviceType
+                                                    ? `${rate.carrier} - ${rate.serviceType}`
+                                                    : 'Generic Base Rate'}: ₹{rate.baseRate}
                                             </Badge>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Weight Rules Summary */}
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-[var(--text-muted)]">Weight Rules</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Badge variant="outline" className="text-xs">
+                                            Total: {card.weightRules?.length || 0}
+                                        </Badge>
+                                        {card.weightRules?.some(r => !r.carrier) && (
+                                            <Badge variant="secondary" className="text-xs">
+                                                Generic: {card.weightRules?.filter(r => !r.carrier).length}
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
 

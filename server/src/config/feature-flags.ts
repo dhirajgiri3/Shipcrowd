@@ -11,6 +11,7 @@ export interface FeatureFlags {
         newAddressSchema: boolean;
         lowercaseEnums: boolean;
         cascadeDelete: boolean;
+        rateCardV2: boolean;
     };
 }
 
@@ -27,6 +28,9 @@ export const featureFlags: FeatureFlags = {
 
         // Cascade delete hooks
         cascadeDelete: process.env.FEATURE_CASCADE_DELETE === 'true',
+
+        // Multi-Courier Pricing Engine (V2)
+        rateCardV2: process.env.FEATURE_RATECARD_V2 === 'true',
     }
 };
 

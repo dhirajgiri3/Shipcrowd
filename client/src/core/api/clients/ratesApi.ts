@@ -17,6 +17,7 @@ export interface RateCalculationPayload {
     orderValue?: number;
     isB2B?: boolean;
     quantity?: number; // For B2B bulk
+    strict?: boolean;
 }
 
 export interface RateBreakdown {
@@ -28,6 +29,13 @@ export interface RateBreakdown {
     docketCharge?: number; // B2B specific
     handlingCharge?: number; // B2B specific
     tax: number;
+}
+
+export interface PricingResolution {
+    matchedRefId: string;
+    matchType: 'EXACT' | 'CARRIER_DEFAULT' | 'GENERIC';
+    matchedCarrier: string; // Changed from appliedCarrier to match backend
+    matchedServiceType: string; // Changed from appliedService to match backend
 }
 
 export interface CourierRate {
@@ -46,6 +54,7 @@ export interface CourierRate {
     rating?: number;
     recommended?: boolean;
     features?: string[];
+    pricingResolution?: PricingResolution;
 }
 
 export interface RateResponse {
@@ -84,6 +93,7 @@ export interface SmartRateInput {
         reliability: number;
         performance: number;
     };
+    strict?: boolean;
 }
 
 export interface CourierRateOption {
@@ -114,6 +124,7 @@ export interface CourierRateOption {
     tags: Array<'CHEAPEST' | 'FASTEST' | 'BEST_RATED' | 'RECOMMENDED'>;
     serviceable: boolean;
     failureReason?: string;
+    pricingResolution?: PricingResolution;
 }
 
 export interface SmartRateResponse {

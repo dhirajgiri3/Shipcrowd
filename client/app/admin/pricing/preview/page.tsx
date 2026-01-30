@@ -45,7 +45,8 @@ export default function PricePreviewPage() {
         paymentMode: 'prepaid',
         orderValue: '1000',
         carrier: '',
-        serviceType: ''
+        serviceType: '',
+        strict: false
     });
 
     // Fetch Companies
@@ -82,7 +83,8 @@ export default function PricePreviewPage() {
                 paymentMode: formData.paymentMode as any,
                 orderValue: Number(formData.orderValue),
                 carrier: formData.carrier || undefined,
-                serviceType: formData.serviceType || undefined
+                serviceType: formData.serviceType || undefined,
+                strict: formData.strict
             };
 
             const response = await apiClient.post('/price/preview', payload);
@@ -210,8 +212,8 @@ export default function PricePreviewPage() {
                                             key={mode}
                                             onClick={() => setFormData({ ...formData, paymentMode: mode })}
                                             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formData.paymentMode === mode
-                                                    ? 'bg-white shadow-sm text-[var(--text-primary)]'
-                                                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                                                ? 'bg-white shadow-sm text-[var(--text-primary)]'
+                                                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                                 }`}
                                         >
                                             {mode.toUpperCase()}
@@ -239,6 +241,18 @@ export default function PricePreviewPage() {
                                         onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
                                         className="text-xs bg-[var(--bg-elevated)]"
                                     />
+                                </div>
+                                <div className="mt-3 flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="strictMode"
+                                        className="rounded border-[var(--border-default)] text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"
+                                        checked={formData.strict}
+                                        onChange={(e) => setFormData({ ...formData, strict: e.target.checked })}
+                                    />
+                                    <Label htmlFor="strictMode" className="text-xs font-medium text-[var(--text-secondary)]">
+                                        Strict Mode (Fail if specific carrier rule missing)
+                                    </Label>
                                 </div>
                             </div>
 
@@ -308,9 +322,32 @@ export default function PricePreviewPage() {
                                         <Info className="h-4 w-4 text-[var(--text-muted)]" />
                                         Rate Breakdown
                                     </h3>
-                                    <Badge variant="outline" className="bg-white">
-                                        {result.pricingProvider || 'Internal'}
-                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                        {result.metadata?.resolution ? (
+                                            (() => {
+                                                const res = result.metadata.resolution;
+                                                let variant: 'success' | 'warning' | 'neutral' = 'neutral';
+                                                let label = 'Generic Rule';
+
+                                                if (res.matchedLevel === 'EXACT') {
+                                                    variant = 'success';
+                                                    label = `Exact Match: ${res.matchedCarrier}/${res.matchedServiceType}`;
+                                                } else if (res.matchedLevel === 'CARRIER_DEFAULT') {
+                                                    variant = 'warning';
+                                                    label = `Carrier Default: ${res.matchedCarrier}`;
+                                                }
+
+                                                return (
+                                                    <Badge variant={variant} className="text-xs">
+                                                        {label}
+                                                    </Badge>
+                                                );
+                                            })()
+                                        ) : null}
+                                        <Badge variant="outline" className="bg-white">
+                                            {result.pricingProvider || 'Internal'}
+                                        </Badge>
+                                    </div>
                                 </div>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-[var(--border-subtle)]">

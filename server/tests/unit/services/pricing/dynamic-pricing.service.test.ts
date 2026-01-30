@@ -220,5 +220,65 @@ describe('DynamicPricingService', () => {
             expect(result.subtotal).toBe(100);
             expect(result.total).toBe(118);
         });
+
+        describe('Multi-Courier Waterfall Logic', () => {
+            const multiCourierCard = {
+                ...mockRateCard,
+                baseRates: [
+                    { minWeight: 0, maxWeight: 5, basePrice: 50, carrier: 'velocity', serviceType: 'standard' },
+                    { minWeight: 0, maxWeight: 5, basePrice: 100, carrier: 'bluedart', serviceType: 'express' },
+                    { minWeight: 0, maxWeight: 5, basePrice: 80, carrier: 'delhivery', serviceType: 'surface' },
+                    { minWeight: 0, maxWeight: 5, basePrice: 60, carrier: 'delhivery' }, // Carrier Default
+                    { minWeight: 0, maxWeight: 5, basePrice: 200 } // Generic
+                ],
+                weightRules: [
+                    { minWeight: 0, maxWeight: 100, pricePerKg: 10, carrier: 'velocity' },
+                    { minWeight: 0, maxWeight: 100, pricePerKg: 20 } // Generic
+                ],
+                zoneRules: [],
+                zoneMultipliers: {}
+            };
+
+            beforeEach(() => {
+                (RateCard.findOne as jest.Mock).mockReturnValue({
+                    sort: jest.fn().mockReturnThis(),
+                    lean: jest.fn().mockResolvedValue(multiCourierCard)
+                });
+            });
+
+            it('should match exact carrier and service', async () => {
+                const result = await service.calculatePricing({ ...defaultInput, carrier: 'bluedart', serviceType: 'express' });
+                expect(result.metadata.breakdown?.baseCharge).toBe(100);
+            });
+
+            it('should fallback to carrier default if specific service not found', async () => {
+                const result = await service.calculatePricing({ ...defaultInput, carrier: 'delhivery', serviceType: 'express-air' });
+                // Should match 'delhivery' (basePrice 60)
+                expect(result.metadata.breakdown?.baseCharge).toBe(60);
+            });
+
+            it('should fallback to generic if carrier not found', async () => {
+                const result = await service.calculatePricing({ ...defaultInput, carrier: 'xpressbees', serviceType: 'standard' });
+                // Should match generic (basePrice 200)
+                expect(result.metadata.breakdown?.baseCharge).toBe(200);
+            });
+
+            it('should use carrier specific weight rule', async () => {
+                const result = await service.calculatePricing({ ...defaultInput, carrier: 'velocity', serviceType: 'standard', weight: 6 });
+                // Base 50 (0-5kg). Extra 1kg.
+                // Velocity weight rule pricePerKg is 10.
+                // Total Base = 50 + 10 = 60.
+                expect(result.metadata.breakdown?.baseCharge).toBe(50);
+                expect(result.metadata.breakdown?.weightCharge).toBe(10);
+            });
+
+            it('should fallback to generic weight rule', async () => {
+                const result = await service.calculatePricing({ ...defaultInput, carrier: 'bluedart', serviceType: 'express', weight: 6 });
+                // Base 100. Extra 1kg.
+                // Generic weight rule is 20.
+                // Total = 120.
+                expect(result.metadata.breakdown?.weightCharge).toBe(20);
+            });
+        });
     });
 });

@@ -99,12 +99,29 @@ const smartRateCalculateSchema = z.object({
     }, { message: 'Scoring weights must sum to 100' }),
 });
 
-const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number }>): boolean => {
-    if (rules.length <= 1) return true;
-    const sorted = [...rules].sort((a, b) => a.minWeight - b.minWeight);
-    for (let i = 1; i < sorted.length; i++) {
-        if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
-            return false;
+const validateWeightSlabs = (rules: Array<{ minWeight: number; maxWeight: number; carrier?: string; serviceType?: string }>): boolean => {
+    if (!rules || rules.length <= 1) return true;
+
+    const groups = new Map<string, typeof rules>();
+    const normalize = (s?: string) => (s || '').trim().toLowerCase();
+
+    // Group slabs by carrier + serviceType
+    for (const rule of rules) {
+        const carrier = normalize(rule.carrier) || 'any';
+        const service = normalize(rule.serviceType) || 'any';
+        const key = `${carrier}:${service}`;
+
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(rule);
+    }
+
+    // Validate each group independently
+    for (const [key, groupRules] of groups) {
+        const sorted = [...groupRules].sort((a, b) => a.minWeight - b.minWeight);
+        for (let i = 1; i < sorted.length; i++) {
+            if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
+                return false;
+            }
         }
     }
     return true;
@@ -131,7 +148,11 @@ export const createRateCard = async (req: Request, res: Response, next: NextFunc
         }
 
         if (validation.data.weightRules && !validateWeightSlabs(validation.data.weightRules)) {
-            throw new ValidationError('Weight slabs cannot overlap');
+            throw new ValidationError('Weight Rules slabs cannot overlap within the same carrier/service type');
+        }
+
+        if (validation.data.baseRates && !validateWeightSlabs(validation.data.baseRates)) {
+            throw new ValidationError('Base Rate slabs cannot overlap within the same carrier/service type');
         }
 
         const existingCard = await RateCard.findOne({
@@ -268,7 +289,11 @@ export const updateRateCard = async (req: Request, res: Response, next: NextFunc
         }
 
         if (validation.data.weightRules && !validateWeightSlabs(validation.data.weightRules)) {
-            throw new ValidationError('Weight slabs cannot overlap');
+            throw new ValidationError('Weight Rules slabs cannot overlap within the same carrier/service type');
+        }
+
+        if (validation.data.baseRates && !validateWeightSlabs(validation.data.baseRates)) {
+            throw new ValidationError('Base Rate slabs cannot overlap within the same carrier/service type');
         }
 
         const rateCard = await RateCard.findOne({
