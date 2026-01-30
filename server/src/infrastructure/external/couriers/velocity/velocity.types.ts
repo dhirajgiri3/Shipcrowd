@@ -135,7 +135,7 @@ export interface VelocityTrackingResponse {
 export interface VelocityServiceabilityRequest {
   from: string;
   to: string;
-  payment_mode: 'cod' | 'prepaid';
+  payment_mode: 'cod' | 'prepaid' | 'COD' | 'Prepaid';
   shipment_type: 'forward' | 'return';
 }
 

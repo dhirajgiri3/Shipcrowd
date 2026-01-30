@@ -23,6 +23,7 @@ export interface CarrierData {
     metroCoverage: boolean;
     tier2Coverage: boolean;
     tier3Coverage: boolean;
+    isIntegrated: boolean; // Flag to indicate if API integration exists
 }
 
 export const CARRIERS: Record<CarrierName, CarrierData> = {
@@ -39,6 +40,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         metroCoverage: true,
         tier2Coverage: true,
         tier3Coverage: true,
+        isIntegrated: false,
     },
     bluedart: {
         name: 'bluedart',
@@ -53,6 +55,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         metroCoverage: true,
         tier2Coverage: true,
         tier3Coverage: false,
+        isIntegrated: false,
     },
     ecom_express: {
         name: 'ecom_express',
@@ -67,6 +70,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         metroCoverage: true,
         tier2Coverage: true,
         tier3Coverage: true,
+        isIntegrated: false,
     },
     dtdc: {
         name: 'dtdc',
@@ -81,6 +85,7 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         metroCoverage: true,
         tier2Coverage: true,
         tier3Coverage: true,
+        isIntegrated: false,
     },
     xpressbees: {
         name: 'xpressbees',
@@ -95,7 +100,23 @@ export const CARRIERS: Record<CarrierName, CarrierData> = {
         metroCoverage: true,
         tier2Coverage: true,
         tier3Coverage: true,
+        isIntegrated: false,
     },
+    velocity: {
+        name: 'velocity',
+        displayName: 'Velocity',
+        trackingPrefix: 'VEL',
+        trackingLength: 12,
+        serviceTypes: ['Standard', 'Express', 'Surface', 'Same Day'],
+        expressService: 'Express',
+        pickupCutoffTime: '18:00',
+        codLimit: 100000,
+        weightLimit: 50,
+        metroCoverage: true,
+        tier2Coverage: true,
+        tier3Coverage: true,
+        isIntegrated: true,
+    }
 };
 
 /**
@@ -184,6 +205,9 @@ export function getBestCarrier(
     cityTier: 'metro' | 'tier2' | 'tier3' = 'metro'
 ): CarrierName {
     const eligibleCarriers = Object.values(CARRIERS).filter((carrier) => {
+        // Must be integrated
+        if (!carrier.isIntegrated) return false;
+
         // Check COD limit
         if (codAmount > 0 && codAmount > carrier.codLimit) return false;
 
@@ -198,7 +222,8 @@ export function getBestCarrier(
     });
 
     if (eligibleCarriers.length === 0) {
-        return 'delhivery'; // Fallback
+        // Fallback to Velocity (as it's the only one integrated)
+        return 'velocity';
     }
 
     return selectRandom(eligibleCarriers).name;
@@ -231,6 +256,7 @@ export function calculateShippingCost(
         ecom_express: 0.95,
         dtdc: 0.9,
         xpressbees: 0.85, // Budget carrier
+        velocity: 0.95, // Balanced
     };
 
     const multiplier = carrierMultipliers[carrierName];
@@ -255,6 +281,7 @@ export function generateCarrierWarehouseId(carrierName: CarrierName): string {
         ecom_express: 'ECM',
         dtdc: 'DTC',
         xpressbees: 'XPB',
+        velocity: 'VEL',
     };
 
     return `${prefixes[carrierName]}${randomInt(100000, 999999)}`;

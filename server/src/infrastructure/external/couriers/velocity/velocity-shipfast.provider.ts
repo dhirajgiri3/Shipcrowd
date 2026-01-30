@@ -343,7 +343,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     const serviceabilityRequest: VelocityServiceabilityRequest = {
       from: request.origin.pincode,
       to: request.destination.pincode,
-      payment_mode: request.paymentMode === 'cod' ? 'cod' : 'prepaid',
+      payment_mode: request.paymentMode === 'cod' ? 'COD' : 'Prepaid',
       shipment_type: request.shipmentType || 'forward'
     };
 
@@ -481,7 +481,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
     const request: VelocityServiceabilityRequest = {
       from: type === 'delivery' ? defaultOrigin : pincode,
       to: type === 'delivery' ? pincode : defaultOrigin, // Assume return to origin for pickup check
-      payment_mode: 'cod',
+      payment_mode: 'COD',
       shipment_type: type === 'pickup' ? 'return' : 'forward'
     };
 
@@ -503,7 +503,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
 
       const serviceabilityData = this.unwrapResponse<{ serviceability_results: any[] }>(response.data);
       return !!(serviceabilityData.serviceability_results && serviceabilityData.serviceability_results.length > 0);
-    } catch (error) {
+    } catch (error: any) {
       // If pincode not serviceable, API returns 422
       if (error instanceof VelocityError && error.statusCode === 422) {
         return false;
@@ -641,7 +641,7 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       weight: packageDetails.weight,
 
       channel_id: process.env.VELOCITY_CHANNEL_ID || '27202',
-      order_date: VelocityMapper.formatDate(new Date())
+      order_date: VelocityMapper.formatDate(new Date()).split(' ')[0] // Format: YYYY-MM-DD
     } as any; // Cast as any because type definition might be missing these fields
 
     // Apply rate limiting

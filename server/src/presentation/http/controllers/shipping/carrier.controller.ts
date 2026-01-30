@@ -14,10 +14,10 @@ export class CarrierController {
             name: carrier.displayName,
             code: carrier.name,
             logo: carrier.trackingPrefix.substring(0, 2), // Placeholder logic for logo
-            status: 'active', // Default to active as they are in the system
+            status: carrier.isIntegrated ? 'active' : 'inactive',
             services: carrier.serviceTypes,
             zones: ['Pan India'], // Default
-            apiIntegrated: true, // They have adapters
+            apiIntegrated: carrier.isIntegrated,
             pickupEnabled: true,
             codEnabled: true,
             trackingEnabled: true,
@@ -49,10 +49,10 @@ export class CarrierController {
                 name: carrier.displayName,
                 code: carrier.name,
                 logo: carrier.trackingPrefix.substring(0, 2),
-                status: 'active',
+                status: carrier.isIntegrated ? 'active' : 'inactive',
                 services: carrier.serviceTypes,
                 zones: ['Pan India'],
-                apiIntegrated: true,
+                apiIntegrated: carrier.isIntegrated,
                 pickupEnabled: true,
                 codEnabled: true,
                 trackingEnabled: true,

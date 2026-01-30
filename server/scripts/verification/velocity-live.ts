@@ -4,7 +4,18 @@ import * as dotenv from 'dotenv';
 import path from 'path';
 
 // Load env vars
-dotenv.config({ path: path.join(process.cwd(), '.env') });
+// Load env vars
+const envPath = process.cwd().endsWith('server')
+    ? path.join(process.cwd(), '.env')
+    : path.join(process.cwd(), 'server', '.env');
+
+dotenv.config({ path: envPath });
+
+// Ensure Encryption Key is set for test
+if (!process.env.ENCRYPTION_KEY) {
+    console.warn('⚠️ ENCRYPTION_KEY not found in .env, using mock key for testing');
+    process.env.ENCRYPTION_KEY = '0000000000000000000000000000000000000000000000000000000000000000'; // 64 chars hex
+}
 
 // Import Models and Provider
 // Using relative paths to avoid alias issues in simple script execution
@@ -183,9 +194,9 @@ async function main() {
         // 9. Create Reverse Shipment (RTO)
         console.log('\n↩️ Testing Reverse Shipment (RTO)...');
         try {
-            const reverseShipment = await provider.createReverseShipment(
-                shipment.trackingNumber, // original AWB
-                {
+            const reverseShipment = await provider.createReverseShipment({
+                originalAwb: shipment.trackingNumber, // original AWB
+                pickupAddress: {
                     name: 'Rahul Sharma',
                     phone: '8860697807',
                     address: '123 MG Road Bandra West',
@@ -195,20 +206,20 @@ async function main() {
                     country: 'India',
                     email: 'rahul.sharma@gmail.com'
                 },
-                warehouse._id as string, // Return to same warehouse
-                {
+                returnWarehouseId: warehouse._id as string, // Return to same warehouse
+                package: {
                     weight: 0.5,
                     length: 10,
                     width: 10,
                     height: 10
                 },
                 orderId,
-                'Customer changed mind'
-            );
+                reason: 'Customer changed mind'
+            });
             console.log('✅ Reverse Shipment Created!');
-            console.log('   Reverse AWB:', reverseShipment.awb_code);
-            console.log('   Courier:', reverseShipment.courier_name);
-            console.log('   Label:', reverseShipment.label_url);
+            console.log('   Reverse AWB:', reverseShipment.trackingNumber);
+            console.log('   Courier:', reverseShipment.courierName);
+            console.log('   Label:', reverseShipment.labelUrl);
         } catch (e: any) {
             console.log('❌ Reverse Shipment Failed:', e.message);
             if (e.response) console.log('   Response parts:', JSON.stringify(e.response.data));

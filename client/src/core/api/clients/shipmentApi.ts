@@ -132,33 +132,39 @@ export const shipmentApi = {
 
         const data = response.data?.data || response.data;
 
-        // Mapping logic (adjust according to actual API response structure)
-        const timeline = (data.activities || []).map((activity: any, index: number) => ({
-            status: activity.status || activity.activity,
-            location: activity.location,
-            timestamp: activity.date || activity.timestamp,
-            description: activity.description,
-            completed: true, // simplified
-            current: index === 0 // assuming sorted desc
-        }));
+        // Check if backend already returned a normalized timeline
+        let timeline = [];
+        if (data.timeline && Array.isArray(data.timeline)) {
+            timeline = data.timeline;
+        } else {
+            // Fallback Mapping logic (only if backend returns raw data, which it shouldn't for internal API)
+            timeline = (data.activities || []).map((activity: any, index: number) => ({
+                status: activity.status || activity.activity,
+                location: activity.location,
+                timestamp: activity.date || activity.timestamp,
+                description: activity.description,
+                completed: true,
+                current: index === 0
+            }));
+        }
 
         return {
-            awb: data.awb || awb,
-            trackingNumber: data.awb || awb,
-            currentStatus: data.current_status || 'Unknown',
-            status: data.current_status || 'Unknown',
-            estimatedDelivery: data.expected_date || 'N/A',
-            actualDelivery: data.delivered_date,
+            awb: data.trackingNumber || data.awb || awb, // Backend returns trackingNumber
+            trackingNumber: data.trackingNumber || data.awb || awb,
+            currentStatus: data.currentStatus || data.current_status || 'Unknown',
+            status: data.currentStatus || data.current_status || 'Unknown',
+            estimatedDelivery: data.estimatedDelivery || data.expected_date || 'N/A',
+            actualDelivery: data.actualDelivery || data.delivered_date,
             origin: data.origin || 'N/A',
             destination: data.destination || 'N/A',
             recipient: {
-                name: data.consignee_name,
-                city: data.destination, // Approximation if city not separate
-                state: ''
+                name: data.recipient?.name || data.consignee_name,
+                city: data.recipient?.city || data.destination,
+                state: data.recipient?.state || ''
             },
-            carrier: data.courier_name || 'N/A',
-            courier: data.courier_name || 'N/A',
-            serviceType: data.service_type || 'Standard',
+            carrier: data.carrier || data.courier_name || 'N/A',
+            courier: data.carrier || data.courier_name || 'N/A',
+            serviceType: data.serviceType || data.service_type || 'Standard',
             timeline: timeline,
             history: timeline
         };

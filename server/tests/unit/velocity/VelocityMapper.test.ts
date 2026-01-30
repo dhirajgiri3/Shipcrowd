@@ -244,7 +244,7 @@ describe('VelocityMapper', () => {
       );
 
       expect(result.payment_method).toBe('Prepaid');
-      expect(result.cod_collectible).toBeUndefined();
+      expect(result.cod_collectible).toBe(0);
     });
 
     it('should normalize phone numbers', () => {

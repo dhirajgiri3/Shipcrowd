@@ -75,6 +75,8 @@ curl --location '/custom/api/v1/auth-token' \
 ### Purpose
 Check if a lane supports pickup & delivery under given payment mode and shipment type.
 
+Important finding: The API expects "Prepaid" (title case), not "PREPAID" (uppercase). The API docs show "COD" but the actual API expects "Prepaid" or "COD". This is something to note for the provider implementation.
+
 ### Request Fields
 
 | Field | Type | Required | Description | Example |
