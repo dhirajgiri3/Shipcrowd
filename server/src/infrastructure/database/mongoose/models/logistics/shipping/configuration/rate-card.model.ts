@@ -52,8 +52,9 @@ export interface IRateCard extends Document {
     endDate?: Date;
   };
   status: 'draft' | 'active' | 'inactive' | 'expired';
-  version: number;
+  version: string;
   previousVersionId?: mongoose.Types.ObjectId;
+  isLocked: boolean; // Prevents accidental overwrites
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -224,12 +225,16 @@ const RateCardSchema = new Schema<IRateCard>(
       default: 'draft',
     },
     version: {
-      type: Number,
-      default: 1,
+      type: String,
+      default: 'v1',
     },
     previousVersionId: {
       type: Schema.Types.ObjectId,
       ref: 'RateCard',
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
     },
     isDeleted: {
       type: Boolean,

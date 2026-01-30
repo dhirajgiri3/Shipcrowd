@@ -254,7 +254,9 @@ export class SmartRateCalculatorService {
                 carrier: courierId,
                 serviceType: serviceType,
                 rateCardId: company.settings.defaultRateCardId.toString(),
-                shipmentType: input.shipmentType || 'forward'
+                shipmentType: input.shipmentType || 'forward',
+                // Future: pass externalZone here if we fetch it from carrier API first
+                // externalZone: ... 
             });
 
             // Get performance metrics
@@ -391,7 +393,9 @@ export class SmartRateCalculatorService {
         // Actually, let's just tag them here for the scoring function to pick up.
         filteredRates.forEach(r => {
             if (preferredCarriers.includes(r.courierName.toLowerCase())) {
-                r.tags.push('RECOMMENDED'); // Provisional tag, final logic in scoring
+                r.tags.push('RECOMMENDED');
+                // Apply score multiplier metadata (to be used in scoring)
+                (r as any).scoreMultiplier = 1.2; // 20% boost
             }
         });
 
@@ -438,6 +442,13 @@ export class SmartRateCalculatorService {
                 (reliabilityScore * weights.reliability) / 100 +
                 (performanceScore * weights.performance) / 100;
 
+            // Apply Multiplier (e.g. from Routing Rules)
+            const multiplier = (rate as any).scoreMultiplier || 1.0;
+            // Cap multiplier to avoid distortion (e.g. max 2.0 as per plan)
+            const cappedMultiplier = Math.min(multiplier, 2.0);
+
+            const finalScore = overallScore * cappedMultiplier;
+
             return {
                 ...rate,
                 scores: {
@@ -445,7 +456,7 @@ export class SmartRateCalculatorService {
                     speedScore: Math.round(speedScore),
                     reliabilityScore: Math.round(reliabilityScore),
                     performanceScore: Math.round(performanceScore),
-                    overallScore: Math.round(overallScore * 100) / 100,
+                    overallScore: Math.round(finalScore * 100) / 100,
                 },
             };
         });

@@ -4,9 +4,7 @@ import GSTService from '../finance/gst.service';
 import { getCODChargeService } from './cod-charge.service';
 import { getPricingCache } from './pricing-cache.service';
 import logger from '../../../../shared/logger/winston.logger';
-import mongoose from 'mongoose';
-
-// ... (Interfaces remain same) ...
+import PricingMetricsService from '../metrics/pricing-metrics.service';
 
 export interface CalculatePricingInput {
     companyId: string;
@@ -40,6 +38,7 @@ export interface PricingBreakdown {
         zone: string;
         zoneSource: 'internal' | 'external_velocity' | 'courier_override';
         rateCardId?: string;
+        pricingVersion?: string;
         carrierRate: number;
         zoneMultiplier: number;
         cached: boolean;
@@ -73,176 +72,184 @@ export class DynamicPricingService {
      * Calculate complete pricing breakdown
      */
     async calculatePricing(input: CalculatePricingInput): Promise<PricingBreakdown> {
-        const carrier = input.carrier || 'velocity';
-        const serviceType = input.serviceType || 'standard';
+        const startTime = Date.now();
+        PricingMetricsService.incrementRequestCount({ companyId: input.companyId });
 
-        // Step 1: Get zone (with cache or external override)
-        const { zone: zoneCode, isSameCity, isSameState, source } = await this.getZoneWithCache(
-            input.fromPincode,
-            input.toPincode,
-            input.externalZone
-        );
-        logger.info(`[DynamicPricing] Zone: ${zoneCode} (Source: ${source})`);
+        try {
+            const carrier = input.carrier || 'velocity';
+            const serviceType = input.serviceType || 'standard';
 
-        // Step 1.5: Resolve Zone Code (string) to Zone ID (ObjectId) for RateCard lookup
-        // Ideally cached, but fast enough via index
-        const zoneDoc = await Zone.findOne({
-            companyId: input.companyId,
-            standardZoneCode: zoneCode
-        }).select('_id').lean();
-
-        // Step 2: Get RateCard (with cache)
-        const rateCard = await this.getRateCardWithCache(
-            input.companyId,
-            input.rateCardId
-        );
-
-        if (!rateCard) {
-            throw new Error(`RateCard not found for company ${input.companyId}`);
-        }
-
-        // Step 3: Calculate base shipping cost
-        const costBreakdown = this.calculateShippingCost(
-            rateCard,
-            zoneCode,
-            zoneDoc?._id?.toString(), // Pass ID if found
-            input.weight
-        );
-
-
-        // Step 4: Calculate Customer Discount
-        let discount = 0;
-        if (input.customerId) {
-            discount = this.calculateCustomerDiscount(
-                rateCard,
-                input.customerId,
-                costBreakdown.total,
-                carrier,
-                serviceType
+            // Step 1: Get zone (with cache or external override)
+            const { zone: zoneCode, isSameCity, isSameState, source } = await this.getZoneWithCache(
+                input.fromPincode,
+                input.toPincode,
+                input.externalZone
             );
-        }
+            logger.info(`[DynamicPricing] Zone: ${zoneCode} (Source: ${source})`);
 
-        const baseShippingCost = costBreakdown.total - discount;
+            // Step 1.5: Resolve Zone Code (string) to Zone ID (ObjectId) for RateCard lookup
+            // Ideally cached, but fast enough via index
+            const zoneDoc = await Zone.findOne({
+                companyId: input.companyId,
+                standardZoneCode: zoneCode
+            }).select('_id').lean();
 
-        // Step 5: Surcharges (Fuel, Remote Area)
-        // Fuel Charge
-        // Guardrail: Validate base enum
-        const validFuelBases = ['freight', 'freight_cod'];
-        const fuelBaseMode = validFuelBases.includes(rateCard.fuelSurchargeBase || '')
-            ? rateCard.fuelSurchargeBase
-            : 'freight'; // Default safety
+            // Step 2: Get RateCard (with cache)
+            const rateCard = await this.getRateCardWithCache(
+                input.companyId,
+                input.rateCardId
+            );
 
-        const fuelBase = fuelBaseMode === 'freight_cod'
-            ? (baseShippingCost + (input.paymentMode === 'cod' ? (input.orderValue || 0) : 0))
-            : baseShippingCost;
+            if (!rateCard) {
+                throw new Error(`RateCard not found for company ${input.companyId}`);
+            }
 
-        // Let's re-order: Calculate COD charge first, then Fuel if needed.
+            // Step 3: Calculate base shipping cost
+            const costBreakdown = this.calculateShippingCost(
+                rateCard,
+                zoneCode,
+                zoneDoc?._id?.toString(), // Pass ID if found
+                input.weight
+            );
 
-        // Step 5: Calculate COD charges (New Slab Logic or Legacy Service)
-        let codCharge = 0;
-        if (input.paymentMode === 'cod' && input.orderValue) {
-            if (rateCard.codSurcharges && rateCard.codSurcharges.length > 0) {
-                // New Slab Logic
-                const slab = rateCard.codSurcharges.find(
-                    (s: any) => input.orderValue! >= s.min && input.orderValue! <= s.max
+
+            // Step 4: Calculate Customer Discount
+            let discount = 0;
+            if (input.customerId) {
+                discount = this.calculateCustomerDiscount(
+                    rateCard,
+                    input.customerId,
+                    costBreakdown.total,
+                    carrier,
+                    serviceType
                 );
-                if (slab) {
-                    codCharge = slab.type === 'percentage'
-                        ? (input.orderValue * slab.value) / 100
-                        : slab.value;
+            }
+
+            const baseShippingCost = costBreakdown.total - discount;
+
+            // Step 5: Surcharges (Fuel, Remote Area)
+            // Fuel Charge
+            // Guardrail: Validate base enum
+            const validFuelBases = ['freight', 'freight_cod'];
+            const fuelBaseMode = validFuelBases.includes(rateCard.fuelSurchargeBase || '')
+                ? rateCard.fuelSurchargeBase
+                : 'freight'; // Default safety
+
+            const fuelBase = fuelBaseMode === 'freight_cod'
+                ? (baseShippingCost + (input.paymentMode === 'cod' ? (input.orderValue || 0) : 0))
+                : baseShippingCost;
+
+            // Let's re-order: Calculate COD charge first, then Fuel if needed.
+
+            // Step 5: Calculate COD charges (New Slab Logic or Legacy Service)
+            let codCharge = 0;
+            if (input.paymentMode === 'cod' && input.orderValue) {
+                if (rateCard.codSurcharges && rateCard.codSurcharges.length > 0) {
+                    // New Slab Logic
+                    const slab = rateCard.codSurcharges.find(
+                        (s: any) => input.orderValue! >= s.min && input.orderValue! <= s.max
+                    );
+                    if (slab) {
+                        codCharge = slab.type === 'percentage'
+                            ? (input.orderValue * slab.value) / 100
+                            : slab.value;
+                    } else {
+                        // Fallback to max slab or legacy?
+                        // Use legacy if no slab matches (safer)
+                        codCharge = this.codService.calculateCODCharge(input.orderValue, rateCard);
+                    }
                 } else {
-                    // Fallback to max slab or legacy?
-                    // Use legacy if no slab matches (safer)
+                    // Legacy Service
                     codCharge = this.codService.calculateCODCharge(input.orderValue, rateCard);
                 }
-            } else {
-                // Legacy Service
-                codCharge = this.codService.calculateCODCharge(input.orderValue, rateCard);
             }
+
+            // Step 6: Surcharges (Fuel, Remote Area)
+            // Fuel Charge
+            // Logic: Fuel % is typically on (Freight + COD Charge) or just Freight. 
+            // We use the new fuelSurchargeBase field.
+            let fuelCharge = 0;
+            if (rateCard.fuelSurcharge) {
+                const fuelBasis = rateCard.fuelSurchargeBase === 'freight_cod'
+                    ? (baseShippingCost + codCharge)
+                    : baseShippingCost;
+                fuelCharge = (fuelBasis * rateCard.fuelSurcharge) / 100;
+            }
+
+            // Remote Area Surcharge
+            let remoteAreaCharge = 0;
+
+            // Logic: Apply if enabled in RateCard AND (explicitly flagged in input OR matches a remote list)
+            // For now, we trust the input flag 'isRemoteArea' if passed (feature for future inputs)
+            // OR we can check if the pincode is in a specific remote list if we had one. 
+            // Since we don't have a global remote list yet, we'll rely on an explicit input flag 
+            // that we will add to CalculatePricingInput to make this functional.
+
+            // Extended Input Check
+            const isRemoteLocation = input.isRemoteLocation || false;
+
+            if (rateCard.remoteAreaEnabled && isRemoteLocation) {
+                remoteAreaCharge = rateCard.remoteAreaSurcharge || 0;
+            }
+
+            // Step 7: Subtotal & Minimum Call
+            let subTotal = baseShippingCost + codCharge + fuelCharge + remoteAreaCharge;
+
+            // Apply Minimum Call
+            if (rateCard.minimumCall && subTotal < rateCard.minimumCall) {
+                subTotal = rateCard.minimumCall;
+                // Adjust shipping cost to match min call? Or keep distinct?
+                // Usually we just bump the total.
+                // Let's adjust "shipping" component to absorb the difference for breakdown.
+                // But 'total' return is strict.
+            }
+
+            // Step 6: Calculate GST (on shipping + COD)
+            const taxableAmount = subTotal;
+            const gst = await this.calculateGST(
+                taxableAmount,
+                input.fromPincode,
+                input.toPincode
+            );
+
+            // Step 7: Calculate total
+            const total = taxableAmount + gst.total;
+
+            // Return Breakdown
+            return {
+                subtotal: baseShippingCost, // Raw freight
+                shipping: baseShippingCost,
+                codCharge,
+                tax: {
+                    cgst: gst.cgst,
+                    sgst: gst.sgst,
+                    igst: gst.igst,
+                    total: gst.total,
+                },
+                discount,
+                total,
+                metadata: {
+                    zone: zoneCode,
+                    zoneSource: source,
+                    rateCardId: rateCard._id?.toString(),
+                    pricingVersion: (rateCard as any).version || 'v1', // Determinism
+                    carrierRate: baseShippingCost,
+                    zoneMultiplier: rateCard.zoneMultipliers?.[zoneCode] || 1.0,
+                    cached: false,
+                    breakdown: {
+                        baseCharge: costBreakdown.base,
+                        weightCharge: costBreakdown.weight,
+                        zoneCharge: costBreakdown.zone,
+                        fuelCharge: Math.round(fuelCharge * 100) / 100,
+                        remoteAreaCharge: remoteAreaCharge,
+                        fuelSurchargeBase: fuelBaseMode
+                    }
+                },
+                pricingProvider: source === 'external_velocity' ? 'velocity' : 'internal'
+            };
+        } finally {
+            PricingMetricsService.observeLatency(Date.now() - startTime);
         }
-
-        // Step 6: Surcharges (Fuel, Remote Area)
-        // Fuel Charge
-        // Logic: Fuel % is typically on (Freight + COD Charge) or just Freight. 
-        // We use the new fuelSurchargeBase field.
-        let fuelCharge = 0;
-        if (rateCard.fuelSurcharge) {
-            const fuelBasis = rateCard.fuelSurchargeBase === 'freight_cod'
-                ? (baseShippingCost + codCharge)
-                : baseShippingCost;
-            fuelCharge = (fuelBasis * rateCard.fuelSurcharge) / 100;
-        }
-
-        // Remote Area Surcharge
-        let remoteAreaCharge = 0;
-
-        // Logic: Apply if enabled in RateCard AND (explicitly flagged in input OR matches a remote list)
-        // For now, we trust the input flag 'isRemoteArea' if passed (feature for future inputs)
-        // OR we can check if the pincode is in a specific remote list if we had one. 
-        // Since we don't have a global remote list yet, we'll rely on an explicit input flag 
-        // that we will add to CalculatePricingInput to make this functional.
-
-        // Extended Input Check
-        const isRemoteLocation = input.isRemoteLocation || false;
-
-        if (rateCard.remoteAreaEnabled && isRemoteLocation) {
-            remoteAreaCharge = rateCard.remoteAreaSurcharge || 0;
-        }
-
-        // Step 7: Subtotal & Minimum Call
-        let subTotal = baseShippingCost + codCharge + fuelCharge + remoteAreaCharge;
-
-        // Apply Minimum Call
-        if (rateCard.minimumCall && subTotal < rateCard.minimumCall) {
-            subTotal = rateCard.minimumCall;
-            // Adjust shipping cost to match min call? Or keep distinct?
-            // Usually we just bump the total.
-            // Let's adjust "shipping" component to absorb the difference for breakdown.
-            // But 'total' return is strict.
-        }
-
-        // Step 6: Calculate GST (on shipping + COD)
-        const taxableAmount = subTotal;
-        const gst = await this.calculateGST(
-            taxableAmount,
-            input.fromPincode,
-            input.toPincode
-        );
-
-        // Step 7: Calculate total
-        const total = taxableAmount + gst.total;
-
-        // Return Breakdown
-        return {
-            subtotal: baseShippingCost, // Raw freight
-            shipping: baseShippingCost,
-            codCharge,
-            tax: {
-                cgst: gst.cgst,
-                sgst: gst.sgst,
-                igst: gst.igst,
-                total: gst.total,
-            },
-            discount,
-            total,
-            metadata: {
-                zone: zoneCode,
-                zoneSource: source,
-                rateCardId: rateCard._id?.toString(),
-                carrierRate: baseShippingCost,
-                zoneMultiplier: rateCard.zoneMultipliers?.[zoneCode] || 1.0,
-                cached: false,
-                breakdown: {
-                    baseCharge: costBreakdown.base,
-                    weightCharge: costBreakdown.weight,
-                    zoneCharge: costBreakdown.zone,
-                    fuelCharge: Math.round(fuelCharge * 100) / 100,
-                    remoteAreaCharge: remoteAreaCharge,
-                    fuelSurchargeBase: fuelBaseMode
-                }
-            },
-            pricingProvider: source === 'external_velocity' ? 'velocity' : 'internal'
-        };
     }
 
 
@@ -345,7 +352,7 @@ export class DynamicPricingService {
         }).sort({ updatedAt: -1 }).lean();
 
         if (rateCard) {
-            await this.cacheService.cacheDefaultRateCard(companyId, rateCard);
+            await this.cacheService.cacheDefaultRateCard(companyId, (rateCard as any).version || 'v1', rateCard);
         }
 
         return rateCard;

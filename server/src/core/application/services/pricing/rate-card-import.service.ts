@@ -31,7 +31,8 @@ export default class RateCardImportService {
         fileBuffer: Buffer,
         mimetype: string,
         userId: string,
-        req: any // Request object for audit log
+        req: any, // Request object for audit log
+        options: { dryRun?: boolean; } = {}
     ): Promise<{ created: number; updated: number; errors: any[] }> {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -76,6 +77,11 @@ export default class RateCardImportService {
                         companyId: new mongoose.Types.ObjectId(companyId),
                         isDeleted: false
                     }).session(session);
+
+                    if (rateCard && rateCard.isLocked) {
+                        errors.push(`Rate Card '${rateCardName}' is locked and cannot be updated via bulk import.`);
+                        continue;
+                    }
 
                     const isNew = !rateCard;
 
@@ -153,6 +159,14 @@ export default class RateCardImportService {
 
                     if (cardRows[0].status) rateCard!.status = cardRows[0].status as any;
 
+
+                    // Validate Weight Slabs
+                    const validationErrors = this.validateWeightSlabs(newBaseRates);
+                    if (validationErrors.length > 0) {
+                        errors.push(...validationErrors.map(e => `[${rateCardName}] ${e}`));
+                        continue; // Skip saving this card
+                    }
+
                     await rateCard!.save({ session });
 
                     // Audit Log
@@ -171,8 +185,13 @@ export default class RateCardImportService {
                 }
             }
 
-            await session.commitTransaction();
-            logger.info(`Bulk Rate Card Import Complete: ${createdCount} created, ${updatedCount} updated`);
+            if (options.dryRun) {
+                await session.abortTransaction();
+                logger.info(`Bulk Rate Card Import DRY RUN: ${createdCount} created, ${updatedCount} updated (simulated)`);
+            } else {
+                await session.commitTransaction();
+                logger.info(`Bulk Rate Card Import Complete: ${createdCount} created, ${updatedCount} updated`);
+            }
 
             return { created: createdCount, updated: updatedCount, errors };
 
@@ -257,5 +276,28 @@ export default class RateCardImportService {
             startDate: findVal(['start', 'effective']),
             endDate: findVal(['end', 'expiry'])
         };
+    }
+    private static validateWeightSlabs(baseRates: any[]): string[] {
+        const errors: string[] = [];
+        const groups = new Map<string, any[]>();
+
+        // Group by carrier + service
+        for (const rate of baseRates) {
+            const key = `${rate.carrier}:${rate.serviceType}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(rate);
+        }
+
+        // Validate each group
+        for (const [key, rates] of groups) {
+            const sorted = rates.sort((a, b) => a.minWeight - b.minWeight);
+            for (let i = 1; i < sorted.length; i++) {
+                if (sorted[i].minWeight < sorted[i - 1].maxWeight) {
+                    errors.push(`Overlapping weight slabs for ${key}: [${sorted[i - 1].minWeight}-${sorted[i - 1].maxWeight}] overlaps with [${sorted[i].minWeight}-${sorted[i].maxWeight}]`);
+                }
+            }
+        }
+
+        return errors;
     }
 }

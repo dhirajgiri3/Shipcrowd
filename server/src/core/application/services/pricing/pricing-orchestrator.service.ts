@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { DynamicPricingService } from './dynamic-pricing.service';
+import PricingAudit from '../../../../infrastructure/database/mongoose/models/finance/pricing-audit.model';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Pricing Orchestrator Service
@@ -84,6 +86,11 @@ export class PricingOrchestratorService {
         customerId: input.customerId
       });
 
+      // Async Audit Logging (Fire-and-Forget)
+      this.logPricingAudit(input, pricingResult).catch(err =>
+        logger.error('[PricingOrchestrator] Audit log failed', err)
+      );
+
       return {
         rateCardId: new mongoose.Types.ObjectId(pricingResult.metadata.rateCardId),
         rateCardName: pricingResult.metadata.rateCardId ? 'Rate Card' : 'Fallback', // Ideally fetch name if needed, or update DynamicPricingService to return it
@@ -131,6 +138,42 @@ export class PricingOrchestratorService {
       calculatedAt: new Date(),
       calculationMethod: 'fallback'
     };
+  }
+
+  /**
+   * Log pricing request/response to audit table
+   * Fire-and-forget method
+   */
+  private async logPricingAudit(input: PricingInput, result: any): Promise<void> {
+    try {
+      await PricingAudit.create({
+        requestId: uuidv4(),
+        companyId: input.companyId,
+        input: {
+          fromPincode: input.fromPincode,
+          toPincode: input.toPincode,
+          weight: input.weight,
+          paymentMode: input.paymentMode,
+          orderValue: input.orderValue,
+          carrier: input.carrier,
+          serviceType: input.serviceType
+        },
+        resolvedZone: result.metadata.zone,
+        zoneSource: result.metadata.zoneSource,
+        rateCardId: result.metadata.rateCardId,
+        breakdown: result.metadata.breakdown,
+        price: result.total,
+        pricingVersion: result.metadata.pricingVersion,
+        metadata: {
+          cached: result.metadata.cached,
+          platform: 'web', // Context if available
+          pricingProvider: result.pricingProvider
+        }
+      });
+    } catch (error) {
+      // Silent fail or just log error, don't throw
+      logger.warn('[PricingOrchestrator] Failed to save audit log', error);
+    }
   }
 }
 

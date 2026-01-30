@@ -179,7 +179,6 @@ export const getRateCards = async (req: Request, res: Response, next: NextFuncti
         if (!req.user) {
             throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
         }
-
         const companyId = req.user.companyId;
         if (!companyId) {
             throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
@@ -747,7 +746,7 @@ export const importRateCards = async (req: Request, res: Response, next: NextFun
 
 /**
  * Smart Rate Calculator Endpoint
-
+ 
  * Uses AI-powered recommendation engine with weighted scoring
  */
 export const calculateSmartRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -808,6 +807,54 @@ export const calculateSmartRates = async (req: Request, res: Response, next: Nex
     }
 };
 
+/**
+ * Preview pricing for a shipment (Admin tool)
+ */
+export const previewPrice = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const {
+            fromPincode,
+            toPincode,
+            weight,
+            paymentMode,
+            orderValue,
+            carrier,
+            serviceType,
+            dimensions
+        } = req.body;
+
+        // Validate inputs
+        if (!fromPincode || !toPincode || !weight) {
+            throw new ValidationError('Missing required fields: fromPincode, toPincode, weight');
+        }
+
+        const pricingResult = await PricingOrchestratorService.calculateShipmentPricing({
+            companyId,
+            fromPincode,
+            toPincode,
+            weight: Number(weight),
+            paymentMode: paymentMode || 'prepaid',
+            orderValue: Number(orderValue) || 0,
+            carrier,
+            serviceType,
+            dimensions: dimensions || { length: 1, width: 1, height: 1 } // Default if missing
+        });
+
+        sendSuccess(res, pricingResult, 'Pricing calculated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     createRateCard,
     getRateCards,
@@ -821,4 +868,5 @@ export default {
     exportRateCards,
     bulkUpdateRateCards,
     importRateCards,
+    previewPrice
 };
