@@ -24,6 +24,13 @@ export interface RateCard {
     }>;
     createdAt: string;
     updatedAt: string;
+    // V2 Fields
+    version?: string;
+    fuelSurcharge?: number;
+    fuelSurchargeBase?: 'freight' | 'total';
+    minimumCall?: number;
+    isLocked?: boolean;
+    codSurcharges?: any[];
 }
 
 export interface RateCalculationPayload {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { CreditCard, Check, Info } from 'lucide-react';
+import { CreditCard, Check, Info, Lock, Zap, Tag } from 'lucide-react';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/src/core';
@@ -15,6 +15,11 @@ interface RateCard {
     status: 'active' | 'inactive' | 'draft';
     baseRates: any[];
     createdAt: string;
+    // V2 Fields
+    version?: string;
+    fuelSurcharge?: number;
+    minimumCall?: number;
+    isLocked?: boolean;
 }
 
 interface RateCardSettingsProps {
@@ -136,6 +141,28 @@ export function RateCardSettings({ companyId, currentRateCardId }: RateCardSetti
                                             <p className="text-xs text-gray-500 mt-1">
                                                 {rateCard.baseRates?.length || 0} base rates configured
                                             </p>
+                                            <div className="flex gap-2 mt-2">
+                                                {rateCard.version && (
+                                                    <Badge variant="outline" className="text-xs text-gray-500 flex items-center gap-1">
+                                                        <Tag className="h-3 w-3" /> {rateCard.version}
+                                                    </Badge>
+                                                )}
+                                                {rateCard.fuelSurcharge ? (
+                                                    <Badge variant="warning" className="text-xs flex items-center gap-1">
+                                                        <Zap className="h-3 w-3" /> Fuel: {rateCard.fuelSurcharge}%
+                                                    </Badge>
+                                                ) : null}
+                                                {rateCard.minimumCall ? (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        Min: ₹{rateCard.minimumCall}
+                                                    </Badge>
+                                                ) : null}
+                                                {rateCard.isLocked && (
+                                                    <Badge variant="destructive" className="text-xs flex items-center gap-1">
+                                                        <Lock className="h-3 w-3" /> Locked
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex items-center">
                                             {selectedRateCardId === rateCard._id && (

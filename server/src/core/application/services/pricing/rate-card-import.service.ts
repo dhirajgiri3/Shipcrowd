@@ -7,6 +7,7 @@ import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 import { createAuditLog } from '../../../../presentation/http/middleware/system/audit-log.middleware';
+import PricingMetricsService from '../metrics/pricing-metrics.service';
 
 interface RateCardImportRow {
     name: string;
@@ -32,7 +33,7 @@ export default class RateCardImportService {
         mimetype: string,
         userId: string,
         req: any, // Request object for audit log
-        options: { dryRun?: boolean; } = {}
+        options: { dryRun?: boolean; overrides?: any; } = {}
     ): Promise<{ created: number; updated: number; errors: any[] }> {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -95,15 +96,26 @@ export default class RateCardImportService {
                             effectiveDates: {
                                 startDate: cardRows[0].startDate ? new Date(cardRows[0].startDate) : new Date(),
                                 endDate: cardRows[0].endDate ? new Date(cardRows[0].endDate) : undefined
-                            }
+                            },
+                            // V2 Fields (Defaults or Overrides)
+                            fuelSurcharge: options.overrides?.fuelSurcharge || 0,
+                            fuelSurchargeBase: options.overrides?.fuelSurchargeBase || 'freight',
+                            minimumCall: options.overrides?.minimumCall || 0,
+                            version: options.overrides?.version || 'v1',
+                            isLocked: options.overrides?.isLocked || false,
+                            codSurcharges: []
                         });
                         createdCount++;
                     } else {
-                        updatedCount++;
-                        // If updating, we might want to clear existing rules or append?
-                        // For bulk import, REPLACING rules for that specific carrier/service might be safer, 
-                        // but complex. 
                         // Simplification: We will upsert BaseRates and ZoneRules.
+                        // Apply overrides on update too? Yes, usually desired if passed.
+                        if (options.overrides) {
+                            if (options.overrides.fuelSurcharge !== undefined) rateCard!.fuelSurcharge = options.overrides.fuelSurcharge;
+                            if (options.overrides.fuelSurchargeBase) rateCard!.fuelSurchargeBase = options.overrides.fuelSurchargeBase;
+                            if (options.overrides.minimumCall !== undefined) rateCard!.minimumCall = options.overrides.minimumCall;
+                            if (options.overrides.version) rateCard!.version = options.overrides.version;
+                            if (options.overrides.isLocked !== undefined) rateCard!.isLocked = options.overrides.isLocked;
+                        }
                     }
 
                     // Process Rows into Sub-Documents
@@ -163,6 +175,7 @@ export default class RateCardImportService {
                     // Validate Weight Slabs
                     const validationErrors = this.validateWeightSlabs(newBaseRates);
                     if (validationErrors.length > 0) {
+                        PricingMetricsService.incrementImportError();
                         errors.push(...validationErrors.map(e => `[${rateCardName}] ${e}`));
                         continue; // Skip saving this card
                     }
@@ -181,6 +194,7 @@ export default class RateCardImportService {
                     );
 
                 } catch (err: any) {
+                    PricingMetricsService.incrementImportError();
                     errors.push({ name: rateCardName, error: err.message });
                 }
             }
@@ -191,6 +205,11 @@ export default class RateCardImportService {
             } else {
                 await session.commitTransaction();
                 logger.info(`Bulk Rate Card Import Complete: ${createdCount} created, ${updatedCount} updated`);
+
+                // Invalidate Cache to ensure immediate propagation
+                const cacheService = (await import('./pricing-cache.service.js')).getPricingCache();
+                await cacheService.invalidateRateCard(companyId);
+                logger.info(`Invalidated Pricing Cache for Company ${companyId}`);
             }
 
             return { created: createdCount, updated: updatedCount, errors };

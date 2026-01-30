@@ -728,13 +728,29 @@ export const importRateCards = async (req: Request, res: Response, next: NextFun
         }
 
 
+        let overrides = {};
+        if (req.body.metadata) {
+            try {
+                const parsed = JSON.parse(req.body.metadata);
+                overrides = {
+                    fuelSurcharge: parsed.fuelSurcharge ? Number(parsed.fuelSurcharge) : undefined,
+                    fuelSurchargeBase: parsed.fuelSurchargeBase,
+                    minimumCall: parsed.minimumCall ? Number(parsed.minimumCall) : undefined,
+                    version: parsed.version,
+                    isLocked: parsed.isLocked === true || parsed.isLocked === 'true'
+                };
+            } catch (e) {
+                logger.warn('Failed to parse rate card import metadata', e);
+            }
+        }
 
         const result = await RateCardImportService.importRateCards(
             companyId,
             req.file.buffer,
             req.file.mimetype,
             req.user._id,
-            req
+            req,
+            { overrides }
         );
 
         sendSuccess(res, result, `Imported: ${result.created} new, ${result.updated} updated. ${result.errors.length} errors.`);

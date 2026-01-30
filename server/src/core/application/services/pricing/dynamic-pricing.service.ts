@@ -217,8 +217,8 @@ export class DynamicPricingService {
 
             // Return Breakdown
             return {
-                subtotal: baseShippingCost, // Raw freight
-                shipping: baseShippingCost,
+                subtotal: taxableAmount, // Adjusted for MinCall
+                shipping: baseShippingCost, // Keep raw breakdown separate? Or adjust?
                 codCharge,
                 tax: {
                     cgst: gst.cgst,

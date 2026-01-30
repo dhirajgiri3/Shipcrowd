@@ -8,9 +8,13 @@ import {
     FileSpreadsheet,
     X,
     Check,
-    Loader2
+    Loader2,
+    Settings2,
+    Lock,
+    Zap
 } from "lucide-react";
 import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { cn } from "@/src/lib/utils";
 import axios from 'axios';
@@ -25,6 +29,13 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCa
     const { addToast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
+
+    // V2 Fields
+    const [version, setVersion] = useState('v1');
+    const [fuelSurcharge, setFuelSurcharge] = useState<string>('0');
+    const [minCall, setMinCall] = useState<string>('0');
+    const [isLocked, setIsLocked] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
@@ -51,6 +62,16 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCa
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
+
+        // Append Metadata
+        const metadata = {
+            version,
+            fuelSurcharge: Number(fuelSurcharge),
+            minimumCall: Number(minCall),
+            isLocked,
+            fuelSurchargeBase: 'freight' // Default for now
+        };
+        formData.append('metadata', JSON.stringify(metadata));
 
         try {
             await axios.post('/api/v1/ratecards/import', formData, {
@@ -168,6 +189,87 @@ export function UploadRateCardModal({ isOpen, onClose, onSuccess }: UploadRateCa
                                         </Button>
                                     </div>
                                 )}
+
+                                {/* Advanced Settings Toggle */}
+                                <div>
+                                    <button
+                                        onClick={() => setShowAdvanced(!showAdvanced)}
+                                        className="flex items-center gap-2 text-sm text-[var(--primary-blue)] font-medium hover:underline"
+                                    >
+                                        <Settings2 className="h-4 w-4" />
+                                        {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options (Fuel, MinCall)'}
+                                    </button>
+                                </div>
+
+                                <AnimatePresence>
+                                    {showAdvanced && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="space-y-4 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
+                                                            Version Tag
+                                                        </label>
+                                                        <Input
+                                                            type="text"
+                                                            value={version}
+                                                            onChange={(e) => setVersion(e.target.value)}
+                                                            placeholder="e.g. v2"
+                                                            size="sm"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
+                                                            Min Call Charge (₹)
+                                                        </label>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            value={minCall}
+                                                            onChange={(e) => setMinCall(e.target.value)}
+                                                            size="sm"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
+                                                            Fuel Surcharge (%)
+                                                        </label>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            value={fuelSurcharge}
+                                                            onChange={(e) => setFuelSurcharge(e.target.value)}
+                                                            icon={<Zap className="h-4 w-4 text-orange-500" />}
+                                                            size="sm"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center pt-6">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isLocked}
+                                                                onChange={(e) => setIsLocked(e.target.checked)}
+                                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-1">
+                                                                <Lock className="h-3 w-3" /> Lock Rate Card
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 {/* Actions */}
                                 <div className="flex gap-3">

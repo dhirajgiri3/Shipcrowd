@@ -22,7 +22,10 @@ import {
     PowerOff,
     TrendingUp,
     TrendingDown,
-    Upload
+    Upload,
+    Tag,
+    Zap,
+    Lock
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
@@ -362,6 +365,12 @@ export function RatecardsClient() {
                                     <Badge variant={card.status === 'active' ? 'success' : 'neutral'}>
                                         {card.status}
                                     </Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-1 -mb-1">
+                                    {card.version && <Badge variant="outline" className="text-xs py-0 h-5 border-blue-200 text-blue-700"><Tag className="h-3 w-3 mr-1" /> {card.version}</Badge>}
+                                    {card.fuelSurcharge ? <Badge variant="warning" className="text-xs py-0 h-5"><Zap className="h-3 w-3 mr-1" /> Fuel: {card.fuelSurcharge}%</Badge> : null}
+                                    {card.minimumCall ? <Badge variant="secondary" className="text-xs py-0 h-5">Min: ₹{card.minimumCall}</Badge> : null}
+                                    {card.isLocked && <Badge variant="destructive" className="text-xs py-0 h-5"><Lock className="h-3 w-3 mr-1" /> Locked</Badge>}
                                 </div>
 
                                 {/* Zone Rules Summary */}

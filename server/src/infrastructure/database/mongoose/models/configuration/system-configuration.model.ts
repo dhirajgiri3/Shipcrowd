@@ -57,7 +57,6 @@ const SystemConfigurationSchema = new Schema<ISystemConfiguration>(
 );
 
 // Indexes
-SystemConfigurationSchema.index({ key: 1 });
 SystemConfigurationSchema.index({ isActive: 1 });
 
 const SystemConfiguration = mongoose.model<ISystemConfiguration>('SystemConfiguration', SystemConfigurationSchema);

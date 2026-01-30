@@ -202,7 +202,7 @@ async function verifyZoneImprovements() {
         // Final: 200 + GST
 
         console.log('Breakdown:', JSON.stringify(surchargePrice.metadata.breakdown, null, 2));
-        console.log(`Calculated Subtotal (Pre-GST): ${surchargePrice.subtotal + surchargePrice.codCharge + (surchargePrice.metadata.breakdown?.fuelCharge || 0)}`);
+        console.log(`Calculated Subtotal (Pre-GST): ${surchargePrice.subtotal}`);
 
         // Let's verify components
         const fuelMatches = surchargePrice.metadata.breakdown?.fuelCharge === 20;
@@ -282,7 +282,7 @@ async function verifyZoneImprovements() {
 
         const remotePrice = await pricingService.calculatePricing({
             companyId: COMPANY_ID.toString(),
-            rateCardId: rcRemote._id.toString(),
+            rateCardId: (rcRemote as any)._id.toString(),
             fromPincode: DELHI_PIN,
             toPincode: DELHI_PIN,
             weight: 0.5,
