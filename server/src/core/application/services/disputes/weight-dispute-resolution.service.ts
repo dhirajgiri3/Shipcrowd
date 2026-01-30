@@ -110,7 +110,7 @@ interface DisputeResolutionDTO {
     notes: string;
 }
 
-class WeightDisputeResolutionService {
+export class WeightDisputeResolutionService {
     /**
      * Seller submits response/evidence to dispute
      * 

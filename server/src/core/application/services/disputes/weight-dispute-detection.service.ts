@@ -190,11 +190,11 @@ class WeightDisputeDetectionService {
                 // Even if financial impact triggered the dispute, if the % is small, we auto-accept/resolve it.
                 if (discrepancy.percentage <= 5) {
                     try {
-                        const { default: WeightDisputeResolutionService } = await import('./weight-dispute-resolution.service.js');
+                        const { default: resolutionService } = await import('./weight-dispute-resolution.service.js');
 
                         logger.info('Auto-resolving dispute within 5% tolerance', { disputeId: dispute.disputeId });
 
-                        await WeightDisputeResolutionService.resolveDispute(
+                        await (resolutionService as any).resolveDispute(
                             String(dispute._id),
                             'system',
                             {

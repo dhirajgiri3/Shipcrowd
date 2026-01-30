@@ -23,7 +23,9 @@ import {
   CourierShipmentResponse,
   CourierTrackingResponse,
   CourierRateRequest,
-  CourierRateResponse
+  CourierRateResponse,
+  CourierReverseShipmentData,
+  CourierReverseShipmentResponse
 } from '../base/courier.adapter';
 import Warehouse from '../../../database/mongoose/models/logistics/warehouse/structure/warehouse.model';
 import {
@@ -564,28 +566,8 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
    * This method includes a mock fallback that generates simulated reverse AWB.
    * When Velocity API is ready, the real API will be called first.
    */
-  async createReverseShipment(
-    originalAwb: string,
-    pickupAddress: {
-      name: string;
-      phone: string;
-      address: string;
-      city: string;
-      state: string;
-      pincode: string;
-      country: string;
-      email?: string;
-    },
-    returnWarehouseId: string,
-    packageDetails: {
-      weight: number;
-      length: number;
-      width: number;
-      height: number;
-    },
-    orderId: string,
-    reason?: string
-  ): Promise<VelocityReverseShipmentResponse> {
+  async createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse> {
+    const { originalAwb, pickupAddress, returnWarehouseId, package: packageDetails, orderId, reason } = data;
     // Get warehouse details for return destination
     const warehouse = await Warehouse.findById(returnWarehouseId);
     if (!warehouse) {
@@ -704,7 +686,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
         labelUrl: shipmentResponse.label_url
       });
 
-      return shipmentResponse;
+      return {
+        trackingNumber: shipmentResponse.awb_code,
+        labelUrl: shipmentResponse.label_url,
+        orderId: shipmentResponse.order_id,
+        courierName: shipmentResponse.courier_name
+      };
     } catch (error) {
       // FALLBACK: Generate mock reverse AWB if API fails
       logger.warn('Velocity reverse shipment API failed, using mock fallback', {
@@ -716,15 +703,12 @@ export class VelocityShipfastProvider extends BaseCourierAdapter {
       const timestamp = Date.now().toString().slice(-6);
       const mockReverseAwb = `RTO-${originalAwb}-${timestamp}`;
 
-      const mockResponse: VelocityReverseShipmentResponse = {
-        shipment_id: `RTO-SHIP-${timestamp}`,
-        order_id: `RTO-${orderId}`,
-        awb_code: mockReverseAwb,
-        original_awb: originalAwb,
-        courier_name: 'Velocity (Mock RTO)',
-        courier_company_id: 'VELOCITY-RTO',
-        label_url: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
-        pickup_scheduled_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      // Simplified mock response for new interface
+      const mockResponse = {
+        trackingNumber: mockReverseAwb,
+        labelUrl: `https://mock.velocity.in/labels/${mockReverseAwb}.pdf`,
+        orderId: orderId,
+        courierName: 'Velocity (Mock RTO)'
       };
 
       logger.info('Mock reverse shipment created', {

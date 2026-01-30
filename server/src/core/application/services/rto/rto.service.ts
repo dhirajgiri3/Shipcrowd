@@ -407,31 +407,14 @@ export default class RTOService {
             }
 
             // Check if shipment uses Velocity courier
-            const courierProvider = fullShipment.carrier?.toLowerCase();
-            const isVelocity = courierProvider?.includes('velocity');
+            // Get courier provider via Factory
+            // This decouples the service from specific implementations (Velocity, etc.)
+            const courierProvider = fullShipment.carrier || 'velocity'; // Default or logic fallback
 
-            if (!isVelocity) {
-                // FAIL FAST: Enforce courier integration
-                logger.error('RTO attempted for unsupported courier', {
-                    courier: courierProvider,
-                    originalAwb: shipment.awb
-                });
-
-                throw new AppError(
-                    `Automated RTO not supported for courier: ${courierProvider}`,
-                    'RTO_COURIER_NOT_SUPPORTED',
-                    400
-                );
-            }
-
-            // Import Velocity provider
-            const { VelocityShipfastProvider } = await import(
-                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
-            );
-
-            // Initialize Velocity adapter
-            const velocityAdapter = new VelocityShipfastProvider(
-                new mongoose.Types.ObjectId(shipment.companyId)
+            const { CourierFactory } = await import('../../../../infrastructure/external/couriers/courier.factory.js');
+            const courierAdapter = await CourierFactory.getProvider(
+                shipment.companyId.toString(),
+                courierProvider
             );
 
             // Prepare pickup address (customer location)
@@ -454,30 +437,31 @@ export default class RTOService {
                 height: fullShipment.packageDetails?.dimensions.height || 10
             };
 
-            // Call Velocity API to create reverse shipment
-            logger.info('Creating Velocity reverse shipment', {
+            // Call courier API to create reverse shipment
+            logger.info('Creating reverse shipment', {
+                courier: courierProvider,
                 originalAwb: shipment.awb,
                 orderId: shipment.orderId,
                 warehouseId: shipment.warehouseId
             });
 
-            const reverseShipmentResponse = await velocityAdapter.createReverseShipment(
-                shipment.awb,
+            const reverseShipmentResponse = await courierAdapter.createReverseShipment({
+                originalAwb: shipment.awb,
                 pickupAddress,
-                shipment.warehouseId,
-                packageDetails,
-                shipment.orderId,
-                'RTO - Return to Origin'
-            );
+                returnWarehouseId: String((fullShipment as any).warehouseId?._id || (fullShipment as any).warehouseId),
+                package: packageDetails,
+                orderId: shipment.orderId,
+                reason: 'RTO - Return to Origin'
+            });
 
             logger.info('Velocity reverse shipment created successfully', {
                 originalAwb: shipment.awb,
-                reverseAwb: reverseShipmentResponse.reverse_awb,
-                labelUrl: reverseShipmentResponse.label_url,
-                isFallback: reverseShipmentResponse.courier_name?.includes('Mock')
+                reverseAwb: reverseShipmentResponse.trackingNumber,
+                labelUrl: reverseShipmentResponse.labelUrl,
+                isFallback: reverseShipmentResponse.courierName?.includes('Mock')
             });
 
-            return reverseShipmentResponse.reverse_awb;
+            return reverseShipmentResponse.trackingNumber;
 
         } catch (error) {
             // NO FALLBACK - Fail properly to surface configuration or integration issues

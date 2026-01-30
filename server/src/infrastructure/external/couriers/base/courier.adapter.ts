@@ -79,6 +79,36 @@ export interface CourierRateResponse {
     estimatedDeliveryDays?: number;
 }
 
+export interface CourierReverseShipmentData {
+    originalAwb?: string;
+    orderId: string;
+    pickupAddress: {
+        name: string;
+        phone: string;
+        address: string;
+        city: string;
+        state: string;
+        pincode: string;
+        country: string;
+        email?: string;
+    };
+    returnWarehouseId: string;
+    package: {
+        weight: number;
+        length: number;
+        width: number;
+        height: number;
+    };
+    reason?: string;
+}
+
+export interface CourierReverseShipmentResponse {
+    trackingNumber: string;
+    labelUrl?: string;
+    orderId: string;
+    courierName?: string;
+}
+
 /**
  * Base Courier Adapter Interface
  * All courier integrations should implement this interface
@@ -109,6 +139,9 @@ export interface ICourierAdapter {
      * @param type 'delivery' (default) or 'pickup'
      */
     checkServiceability(pincode: string, type?: 'delivery' | 'pickup'): Promise<boolean>;
+    createWarehouse?(data: any): Promise<any>;
+    createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse>;
+    cancelReverseShipment(reverseAwb: string, originalAwb: string, reason?: string): Promise<boolean>;
 
     /**
      * Schedule a pickup
@@ -131,6 +164,13 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
     abstract getRates(request: CourierRateRequest): Promise<CourierRateResponse[]>;
     abstract cancelShipment(trackingNumber: string): Promise<boolean>;
     abstract checkServiceability(pincode: string, type?: 'delivery' | 'pickup'): Promise<boolean>;
+    abstract createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse>;
+    abstract cancelReverseShipment(reverseAwb: string, originalAwb: string, reason?: string): Promise<boolean>;
+
+    // Optional methods can have default implementation that throws NotSupported
+    async createWarehouse(data: any): Promise<any> {
+        throw new Error('Method not implemented.');
+    }
 
     /**
      * Common HTTP request method

@@ -206,22 +206,13 @@ export default class ReturnService {
         }
 
         // Only Velocity-backed shipments are supported for automated reverse pickup
-        const courierProvider = (shipment as any).carrier?.toLowerCase();
-        const isVelocity = courierProvider?.includes('velocity');
+        // Get courier provider via Factory
+        const courierProvider = (shipment as any).carrier || 'velocity';
 
-        if (!isVelocity) {
-            throw new ValidationError(
-                `Automated reverse pickup is only supported for Velocity shipments. Current courier: ${courierProvider || 'unknown'}`
-            );
-        }
-
-        // Import Velocity adapter dynamically (same pattern as RTO service)
-        const { VelocityShipfastProvider } = await import(
-            '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
-        );
-
-        const velocityAdapter = new VelocityShipfastProvider(
-            new mongoose.Types.ObjectId(returnOrder.companyId)
+        const { CourierFactory } = await import('../../../../infrastructure/external/couriers/courier.factory.js');
+        const courierAdapter = await CourierFactory.getProvider(
+            returnOrder.companyId.toString(),
+            courierProvider
         );
 
         const pickupAddress = {
@@ -242,17 +233,17 @@ export default class ReturnService {
             height: (shipment as any).packageDetails?.dimensions?.height || 10,
         };
 
-        const reverseShipmentResponse = await velocityAdapter.createReverseShipment(
-            (shipment as any).awb,
+        const reverseShipmentResponse = await courierAdapter.createReverseShipment({
+            originalAwb: (shipment as any).awb,
             pickupAddress,
-            (shipment as any).warehouseId?.toString(),
-            packageDetails,
-            (shipment as any).orderId?.toString() || returnOrder.orderId?.toString() || '',
-            'RETURN - Customer Return Request'
-        );
+            returnWarehouseId: (shipment as any).warehouseId?.toString(),
+            package: packageDetails,
+            orderId: (shipment as any).orderId?.toString() || returnOrder.orderId?.toString() || '',
+            reason: 'RETURN - Customer Return Request'
+        });
 
-        const realAwb = reverseShipmentResponse.reverse_awb;
-        const trackingUrl = reverseShipmentResponse.label_url;
+        const realAwb = reverseShipmentResponse.trackingNumber;
+        const trackingUrl = reverseShipmentResponse.labelUrl;
 
         // 4. Update return order
         returnOrder.pickup.status = 'scheduled';
