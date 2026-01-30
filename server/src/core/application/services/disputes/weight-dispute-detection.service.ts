@@ -72,6 +72,7 @@
 import mongoose from 'mongoose';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import { Shipment, Order, Company } from '../../../../infrastructure/database/mongoose/models';
+import { IShipment } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -237,7 +238,6 @@ class WeightDisputeDetectionService {
                 shipmentId,
                 error: error,
             });
-            console.error('FULL DISPUTE ERROR:', error);
             throw error;
         } finally {
             session.endSession();
@@ -287,7 +287,7 @@ class WeightDisputeDetectionService {
      * ```
      */
     private async calculateFinancialImpact(
-        shipment: any,
+        shipment: IShipment,
         declaredKg: number,
         actualKg: number
     ): Promise<FinancialImpact> {
@@ -340,7 +340,7 @@ class WeightDisputeDetectionService {
      * @throws {Error} If dispute save fails
      */
     private async createDispute(
-        shipment: any,
+        shipment: IShipment,
         declaredKg: number,
         actualKg: number,
         discrepancy: Discrepancy,
@@ -408,7 +408,7 @@ class WeightDisputeDetectionService {
      * @returns Promise<void>
      */
     private async updateShipmentWithDispute(
-        shipment: any,
+        shipment: IShipment,
         dispute: any,
         actualWeight: WeightInfo,
         carrierData: CarrierScanData,
@@ -454,7 +454,7 @@ class WeightDisputeDetectionService {
      * @returns Promise<void>
      */
     private async updateShipmentWeight(
-        shipment: any,
+        shipment: IShipment,
         actualWeight: WeightInfo,
         carrierData: CarrierScanData,
         verified: boolean,

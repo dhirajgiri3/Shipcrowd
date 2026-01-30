@@ -93,13 +93,13 @@ export default class ReturnService {
             throw new NotFoundError('Shipment', ErrorCode.RES_SHIPMENT_NOT_FOUND);
         }
 
-        if ((shipment as any).status !== 'delivered') {
+        if (shipment.currentStatus !== 'delivered') {
             throw new ValidationError('Returns can only be initiated for delivered shipments');
         }
 
         // 2. Check return eligibility window (7 days from delivery)
-        const deliveryTimeline = (shipment as any).timeline as any[];  // Type assertion for timeline
-        const deliveryDate = deliveryTimeline.find((t: any) => t.status === 'delivered')?.timestamp;
+        const deliveryTimeline = shipment.statusHistory;
+        const deliveryDate = deliveryTimeline.find(t => t.status === 'delivered')?.timestamp;
         if (deliveryDate) {
             const daysSinceDelivery = Math.floor(
                 (Date.now() - new Date(deliveryDate).getTime()) / (1000 * 60 * 60 * 24)
@@ -157,10 +157,10 @@ export default class ReturnService {
         try {
             await NotificationService.sendReturnStatusNotification(
                 {
-                    email: (shipment as any).customerDetails?.email,
-                    phone: (shipment as any).customerDetails?.phone
+                    email: shipment.deliveryDetails.recipientEmail,
+                    phone: shipment.deliveryDetails.recipientPhone
                 },
-                (shipment as any).customerDetails?.name || 'Customer',
+                shipment.deliveryDetails.recipientName || 'Customer',
                 returnOrder.returnId,
                 'requested',
                 returnOrder.items.map(i => i.productName)
@@ -216,14 +216,14 @@ export default class ReturnService {
         );
 
         const pickupAddress = {
-            name: (shipment as any).customerDetails?.name || 'Customer',
-            phone: (shipment as any).customerDetails?.phone || '',
-            address: (shipment as any).customerDetails?.address?.line1 || '',
-            city: (shipment as any).customerDetails?.address?.city || '',
-            state: (shipment as any).customerDetails?.address?.state || '',
-            pincode: (shipment as any).customerDetails?.address?.postalCode || '',
-            country: (shipment as any).customerDetails?.address?.country || 'India',
-            email: (shipment as any).customerDetails?.email,
+            name: (shipment as any).deliveryDetails?.recipientName || 'Customer',
+            phone: (shipment as any).deliveryDetails?.recipientPhone || '',
+            address: (shipment as any).deliveryDetails?.address?.line1 || '',
+            city: (shipment as any).deliveryDetails?.address?.city || '',
+            state: (shipment as any).deliveryDetails?.address?.state || '',
+            pincode: (shipment as any).deliveryDetails?.address?.postalCode || '',
+            country: (shipment as any).deliveryDetails?.address?.country || 'India',
+            email: (shipment as any).deliveryDetails?.recipientEmail,
         };
 
         const packageDetails = {
@@ -234,9 +234,9 @@ export default class ReturnService {
         };
 
         const reverseShipmentResponse = await courierAdapter.createReverseShipment({
-            originalAwb: (shipment as any).awb,
+            originalAwb: (shipment as any).trackingNumber,
             pickupAddress,
-            returnWarehouseId: (shipment as any).warehouseId?.toString(),
+            returnWarehouseId: (shipment as any).pickupDetails?.warehouseId?.toString(),
             package: packageDetails,
             orderId: (shipment as any).orderId?.toString() || returnOrder.orderId?.toString() || '',
             reason: 'RETURN - Customer Return Request'
@@ -277,19 +277,21 @@ export default class ReturnService {
             // Fetch shipment to get customer details
             const shipment = await Shipment.findById(returnOrder.shipmentId);
 
-            await NotificationService.sendReturnStatusNotification(
-                {
-                    email: (shipment as any)?.customerDetails?.email,
-                    phone: (shipment as any)?.customerDetails?.phone
-                },
-                (shipment as any)?.customerDetails?.name || 'Customer',
-                returnOrder.returnId,
-                'pickup_scheduled',
-                returnOrder.items.map(i => i.productName),
-                {
-                    pickupDate: data.scheduledDate
-                }
-            );
+            if (shipment) {
+                await NotificationService.sendReturnStatusNotification(
+                    {
+                        email: shipment.deliveryDetails.recipientEmail,
+                        phone: shipment.deliveryDetails.recipientPhone
+                    },
+                    shipment.deliveryDetails.recipientName || 'Customer',
+                    returnOrder.returnId,
+                    'pickup_scheduled',
+                    returnOrder.items.map(i => i.productName),
+                    {
+                        pickupDate: data.scheduledDate
+                    }
+                );
+            }
         } catch (notifError) {
             logger.warn('Failed to send pickup notification:', notifError);
         }
@@ -390,19 +392,21 @@ export default class ReturnService {
             const shipment = await Shipment.findById(returnOrder.shipmentId);
             const status = data.result === 'approved' ? 'qc_approved' : 'qc_rejected';
 
-            await NotificationService.sendReturnStatusNotification(
-                {
-                    email: (shipment as any)?.customerDetails?.email,
-                    phone: (shipment as any)?.customerDetails?.phone
-                },
-                (shipment as any)?.customerDetails?.name || 'Customer',
-                returnOrder.returnId,
-                status,
-                returnOrder.items.map(i => i.productName),
-                {
-                    rejectionReason: data.rejectionReason
-                }
-            );
+            if (shipment) {
+                await NotificationService.sendReturnStatusNotification(
+                    {
+                        email: shipment.deliveryDetails.recipientEmail,
+                        phone: shipment.deliveryDetails.recipientPhone
+                    },
+                    shipment.deliveryDetails.recipientName || 'Customer',
+                    returnOrder.returnId,
+                    status,
+                    returnOrder.items.map(i => i.productName),
+                    {
+                        rejectionReason: data.rejectionReason
+                    }
+                );
+            }
         } catch (notifError) {
             logger.warn('Failed to send QC result notification:', notifError);
         }
@@ -519,20 +523,22 @@ export default class ReturnService {
             try {
                 const shipment = await Shipment.findById(returnOrder.shipmentId);
 
-                await NotificationService.sendReturnStatusNotification(
-                    {
-                        email: (shipment as any)?.customerDetails?.email,
-                        phone: (shipment as any)?.customerDetails?.phone
-                    },
-                    (shipment as any)?.customerDetails?.name || 'Customer',
-                    returnOrder.returnId,
-                    'refund_processed',
-                    returnOrder.items.map(i => i.productName),
-                    {
-                        refundAmount: actualRefundAmount,
-                        refundTransactionId: transactionId
-                    }
-                );
+                if (shipment) {
+                    await NotificationService.sendReturnStatusNotification(
+                        {
+                            email: shipment.deliveryDetails.recipientEmail,
+                            phone: shipment.deliveryDetails.recipientPhone
+                        },
+                        shipment.deliveryDetails.recipientName || 'Customer',
+                        returnOrder.returnId,
+                        'refund_processed',
+                        returnOrder.items.map(i => i.productName),
+                        {
+                            refundAmount: actualRefundAmount,
+                            refundTransactionId: transactionId
+                        }
+                    );
+                }
             } catch (notifError) {
                 logger.warn('Failed to send refund confirmation:', notifError);
             }
@@ -821,19 +827,21 @@ export default class ReturnService {
         try {
             const shipment = await Shipment.findById(returnOrder.shipmentId);
 
-            await NotificationService.sendReturnStatusNotification(
-                {
-                    email: (shipment as any)?.customerDetails?.email,
-                    phone: (shipment as any)?.customerDetails?.phone
-                },
-                (shipment as any)?.customerDetails?.name || 'Customer',
-                returnOrder.returnId,
-                'cancelled',
-                returnOrder.items.map(i => i.productName),
-                {
-                    rejectionReason: reason
-                }
-            );
+            if (shipment) {
+                await NotificationService.sendReturnStatusNotification(
+                    {
+                        email: shipment.deliveryDetails.recipientEmail,
+                        phone: shipment.deliveryDetails.recipientPhone
+                    },
+                    shipment.deliveryDetails.recipientName || 'Customer',
+                    returnOrder.returnId,
+                    'cancelled',
+                    returnOrder.items.map(i => i.productName),
+                    {
+                        rejectionReason: reason
+                    }
+                );
+            }
         } catch (notifError) {
             logger.warn('Failed to send cancellation notification:', notifError);
         }
@@ -949,19 +957,21 @@ export default class ReturnService {
             if (shouldNotify) {
                 const shipment = await Shipment.findById(returnOrder.shipmentId);
 
-                await NotificationService.sendReturnStatusNotification(
-                    {
-                        email: (shipment as any)?.customerDetails?.email,
-                        phone: (shipment as any)?.customerDetails?.phone
-                    },
-                    (shipment as any)?.customerDetails?.name || 'Customer',
-                    returnOrder.returnId,
-                    internalStatus,
-                    returnOrder.items.map(i => i.productName),
-                    {
-                        rejectionReason: internalStatus === 'pickup_failed' ? remarks : undefined
-                    }
-                );
+                if (shipment) {
+                    await NotificationService.sendReturnStatusNotification(
+                        {
+                            email: shipment.deliveryDetails.recipientEmail,
+                            phone: shipment.deliveryDetails.recipientPhone
+                        },
+                        shipment.deliveryDetails.recipientName || 'Customer',
+                        returnOrder.returnId,
+                        internalStatus,
+                        returnOrder.items.map(i => i.productName),
+                        {
+                            rejectionReason: internalStatus === 'pickup_failed' ? remarks : undefined
+                        }
+                    );
+                }
             }
         } catch (notifError) {
             logger.warn('Failed to send pickup status notification:', notifError);

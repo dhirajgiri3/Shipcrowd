@@ -369,12 +369,12 @@ export class CODRemittanceJob {
                 utr: payout.utr || undefined,
                 failure_reason: payout.failure_reason,
                 // Razorpay payout object may include these fields; we keep them optional
-                reversed_at: (payout as any).reversed_at
-                    ? new Date((payout as any).reversed_at)
+                reversed_at: payout.reversed_at
+                    ? new Date(payout.reversed_at * 1000) // Convert unix timestamp to Date
                     : null,
-                amount: (payout as any).amount,
-                fees: (payout as any).fees,
-                tax: (payout as any).tax
+                amount: payout.amount,
+                fees: payout.fees,
+                tax: payout.tax
             };
         } catch (error: any) {
             logger.error('Razorpay payout status API call failed', {

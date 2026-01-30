@@ -292,7 +292,7 @@ export default class PickingService {
         const pickList = await PickList.findById(pickListId);
         if (!pickList) throw new AppError('Pick list not found', 'PICK_LIST_NOT_FOUND', 404);
         const optimized = this.optimizeByStrategy(pickList.items as IPickListItem[], pickList.pickingStrategy);
-        pickList.items = optimized as any;
+        pickList.items = optimized;
         await pickList.save();
         return optimized;
     }

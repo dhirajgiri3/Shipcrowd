@@ -42,6 +42,7 @@ export interface RazorpayPayout {
     narration: string;
     created_at: number;
     failure_reason?: string; // Added to interface to allow direct access
+    reversed_at?: number; // Added for reversal support
 }
 
 export interface PayoutStatus {

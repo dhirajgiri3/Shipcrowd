@@ -419,43 +419,44 @@ export default class RTOService {
 
             // Prepare pickup address (customer location)
             const pickupAddress = {
-                name: shipment.customer?.name || fullShipment.deliveryDetails.recipientName || 'Customer',
-                phone: shipment.customer?.phone || fullShipment.deliveryDetails.recipientPhone || '',
-                address: fullShipment.deliveryDetails.address.line1 || '',
-                city: fullShipment.deliveryDetails.address.city || '',
-                state: fullShipment.deliveryDetails.address.state || '',
-                pincode: fullShipment.deliveryDetails.address.postalCode || '',
-                country: fullShipment.deliveryDetails.address.country || 'India',
-                email: fullShipment.deliveryDetails.recipientEmail
+                name: fullShipment.deliveryDetails?.recipientName || 'Customer',
+                phone: fullShipment.deliveryDetails?.recipientPhone || '',
+                address: fullShipment.deliveryDetails?.address?.line1 || '',
+                city: fullShipment.deliveryDetails?.address?.city || '',
+                state: fullShipment.deliveryDetails?.address?.state || '',
+                pincode: fullShipment.deliveryDetails?.address?.postalCode || '',
+                country: fullShipment.deliveryDetails?.address?.country || 'India',
+                email: fullShipment.deliveryDetails?.recipientEmail
             };
 
             // Prepare package details
             const packageDetails = {
                 weight: fullShipment.packageDetails?.weight || 0.5, // Default 0.5kg if not specified
-                length: fullShipment.packageDetails?.dimensions.length || 10,
-                width: fullShipment.packageDetails?.dimensions.width || 10,
-                height: fullShipment.packageDetails?.dimensions.height || 10
+                length: fullShipment.packageDetails?.dimensions?.length || 10,
+                width: fullShipment.packageDetails?.dimensions?.width || 10,
+                height: fullShipment.packageDetails?.dimensions?.height || 10
             };
 
             // Call courier API to create reverse shipment
             logger.info('Creating reverse shipment', {
                 courier: courierProvider,
-                originalAwb: shipment.awb,
-                orderId: shipment.orderId,
-                warehouseId: shipment.warehouseId
+                originalAwb: fullShipment.trackingNumber,
+                orderId: fullShipment.orderId,
+                warehouseId: fullShipment.pickupDetails?.warehouseId
             });
 
+            // Use correct schema paths
             const reverseShipmentResponse = await courierAdapter.createReverseShipment({
-                originalAwb: shipment.awb,
+                originalAwb: fullShipment.trackingNumber,
                 pickupAddress,
-                returnWarehouseId: String((fullShipment as any).warehouseId?._id || (fullShipment as any).warehouseId),
+                returnWarehouseId: String(fullShipment.pickupDetails?.warehouseId || ''),
                 package: packageDetails,
-                orderId: shipment.orderId,
+                orderId: fullShipment.orderId.toString(),
                 reason: 'RTO - Return to Origin'
             });
 
             logger.info('Velocity reverse shipment created successfully', {
-                originalAwb: shipment.awb,
+                originalAwb: fullShipment.trackingNumber,
                 reverseAwb: reverseShipmentResponse.trackingNumber,
                 labelUrl: reverseShipmentResponse.labelUrl,
                 isFallback: reverseShipmentResponse.courierName?.includes('Mock')

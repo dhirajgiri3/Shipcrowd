@@ -98,6 +98,8 @@ export interface IScheduledReport extends Document {
 
     createdAt: Date;
     updatedAt: Date;
+
+    calculateNextRun(): Date | undefined;
 }
 
 const ScheduledReportSchema = new Schema<IScheduledReport>(

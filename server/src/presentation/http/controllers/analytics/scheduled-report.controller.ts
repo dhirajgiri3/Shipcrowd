@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import ScheduledReport from '../../../../infrastructure/database/mongoose/models/analytics/scheduled-report.model';
 import ScheduledReportExecutorService from '../../../../core/application/services/analytics/scheduled-report-executor.service';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
@@ -154,7 +155,7 @@ export const updateScheduledReport = async (req: Request, res: Response, next: N
             }
         });
 
-        report.updatedBy = auth.userId as any;
+        report.updatedBy = new mongoose.Types.ObjectId(auth.userId);
         await report.save();
 
         logger.info('Scheduled report updated', {
@@ -263,7 +264,7 @@ export const pauseReport = async (req: Request, res: Response, next: NextFunctio
         }
 
         report.isPaused = true;
-        report.updatedBy = auth.userId as any;
+        report.updatedBy = new mongoose.Types.ObjectId(auth.userId);
         await report.save();
 
         logger.info('Scheduled report paused', {
@@ -298,8 +299,8 @@ export const resumeReport = async (req: Request, res: Response, next: NextFuncti
         }
 
         report.isPaused = false;
-        report.nextRunAt = (report as any).calculateNextRun();
-        report.updatedBy = auth.userId as any;
+        report.nextRunAt = report.calculateNextRun();
+        report.updatedBy = new mongoose.Types.ObjectId(auth.userId);
         await report.save();
 
         logger.info('Scheduled report resumed', {

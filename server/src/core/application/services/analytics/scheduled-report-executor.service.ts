@@ -67,7 +67,7 @@ class ScheduledReportExecutorService {
             report.executionCount += 1;
             report.successCount += 1;
             report.lastRunAt = new Date();
-            report.nextRunAt = (report as any).calculateNextRun();
+            report.nextRunAt = report.calculateNextRun();
 
             await report.save();
 
@@ -89,7 +89,7 @@ class ScheduledReportExecutorService {
             report.executionCount += 1;
             report.failureCount += 1;
             report.lastRunAt = new Date();
-            report.nextRunAt = (report as any).calculateNextRun();
+            report.nextRunAt = report.calculateNextRun();
 
             await report.save();
 
@@ -461,10 +461,10 @@ class ScheduledReportExecutorService {
 
         for (const report of dueReports) {
             try {
-                await this.executeReport((report as any)._id.toString());
+                await this.executeReport(report.id);
             } catch (error) {
                 logger.error('Failed to execute report', {
-                    reportId: (report as any)._id,
+                    reportId: report._id,
                     error: error instanceof Error ? error.message : 'Unknown error',
                 });
                 // Continue with other reports
