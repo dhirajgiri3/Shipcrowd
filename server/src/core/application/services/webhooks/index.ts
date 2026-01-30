@@ -2,5 +2,5 @@
  * Webhook Services - Barrel Export
  */
 
-export * from './velocity-webhook.service';
-export * from './webhook-retry.service';
+export * from './velocity-webhook.service.js';
+export { default as WebhookDispatcherService } from './webhook-dispatcher.service.js';

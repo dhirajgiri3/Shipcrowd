@@ -1,1 +1,1 @@
-{"mongoUri":"mongodb://127.0.0.1:56277/"}
+{"mongoUri":"mongodb://127.0.0.1:57573/?replicaSet=testset"}

@@ -2,14 +2,11 @@
  * Global Setup for Jest
  * Starts MongoDB Memory Server before all tests
  */
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
 export default async function globalSetup(): Promise<void> {
-    const mongod = await MongoMemoryServer.create({
-        instance: {
-            dbName: 'Shipcrowd_test',
-            // replSet: 'rs0', // Disabled to fix connection hanging
-        }
+    const mongod = await MongoMemoryReplSet.create({
+        replSet: { count: 1, storageEngine: 'wiredTiger' },
     });
 
     const uri = mongod.getUri();

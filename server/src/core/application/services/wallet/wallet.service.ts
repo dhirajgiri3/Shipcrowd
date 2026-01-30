@@ -229,7 +229,7 @@ export default class WalletService {
         retryCount: number = 0,
         externalSession?: mongoose.ClientSession
     ): Promise<TransactionResult> {
-        const MAX_RETRIES = 3;
+        const MAX_RETRIES = 5;
 
         // FIX: Support external session for transaction isolation
         // If external session provided, use it; otherwise create our own
@@ -354,8 +354,16 @@ export default class WalletService {
                 await session.abortTransaction();
             }
 
-            // RETRY LOGIC: Exponential backoff on version conflicts
-            if (error.code === 'VERSION_CONFLICT' && retryCount < MAX_RETRIES) {
+            // RETRY LOGIC: Exponential backoff on version conflicts and WriteConflicts
+            const isRetryable =
+                (error.code === 'VERSION_CONFLICT' ||
+                    error.code === ErrorCode.BIZ_VERSION_CONFLICT ||
+                    error.code === 112 ||
+                    error.message?.includes('WriteConflict') ||
+                    error.name === 'VersionError' ||
+                    (error.hasErrorLabel && error.hasErrorLabel('TransientTransactionError')));
+
+            if (isRetryable && retryCount < MAX_RETRIES) {
                 const delay = Math.pow(2, retryCount) * 100 + Math.random() * 100; // Exponential backoff with jitter
                 logger.warn('Version conflict detected, retrying...', {
                     companyId,

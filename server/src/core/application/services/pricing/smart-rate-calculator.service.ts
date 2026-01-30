@@ -317,7 +317,7 @@ export class SmartRateCalculatorService {
         input: SmartRateInput
     ): Promise<CourierRateOption[]> {
         // Dynamic import to avoid circular dependency issues
-        const { CourierFactory } = await import('../courier/courier.factory');
+        const { CourierFactory } = await import('../courier/courier.factory.js');
         const mongoose = await import('mongoose');
 
         const results = await Promise.all(rates.map(async (rate) => {
@@ -359,7 +359,7 @@ export class SmartRateCalculatorService {
         rates: CourierRateOption[],
         input: SmartRateInput
     ): Promise<CourierRateOption[]> {
-        const { RoutingRule } = await import('../../../../infrastructure/database/mongoose/models');
+        const { RoutingRule } = await import('../../../../infrastructure/database/mongoose/models/index.js');
 
         // Fetch active rules from DB
         const rules = await RoutingRule.find({

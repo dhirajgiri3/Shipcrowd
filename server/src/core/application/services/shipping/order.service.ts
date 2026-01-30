@@ -346,6 +346,14 @@ export class OrderService extends CachedService {
                 };
             }
 
+            // Validate formats
+            if (!/^\d{10}$/.test(String(normalizedRow.customer_phone))) {
+                return { success: false, error: 'Invalid phone number' };
+            }
+            if (!/^\d{6}$/.test(String(normalizedRow.postal_code))) {
+                return { success: false, error: 'Invalid postal code' };
+            }
+
             const orderNumber = await OrderService.getUniqueOrderNumber();
             if (!orderNumber) {
                 return {
@@ -419,6 +427,7 @@ export class OrderService extends CachedService {
 
         const session = await mongoose.startSession();
         session.startTransaction();
+        let transactionCommitted = false;
 
         try {
             for (let i = 0; i < rows.length; i++) {
@@ -439,21 +448,31 @@ export class OrderService extends CachedService {
                 }
             }
 
+
+
             if (created.length === 0 && errors.length > 0) {
-                // Throwing here triggers catch block which handles abort
                 throw new ValidationError('No orders imported', ErrorCode.VAL_INVALID_INPUT);
             }
 
             await session.commitTransaction();
+            transactionCommitted = true;
 
             // Invalidate ALL list caches for this company after bulk import
-            await this.invalidateTags([
-                this.companyTag(companyId.toString(), 'orders')
-            ]);
+            try {
+                await this.invalidateTags([
+                    this.companyTag(companyId.toString(), 'orders')
+                ]);
+            } catch (err: any) {
+                logger.warn('Failed to invalidate cache after bulk import', { error: err.message });
+            }
 
-            return { created, errors };
-        } catch (error) {
-            await session.abortTransaction();
+            const result = { created, errors };
+            return result;
+        } catch (error: any) {
+            logger.error('Bulk Import Transaction Error', { error: error.message, stack: error.stack });
+            if (session.inTransaction()) {
+                await session.abortTransaction();
+            }
             throw error;
         } finally {
             session.endSession();

@@ -109,7 +109,7 @@ describe('Wallet Service - Production Tests', () => {
             );
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('insufficient');
+            expect(result.error).toMatch(/insufficient/i);
 
             const company = await Company.findById(testCompanyId);
             expect(company?.wallet.balance).toBe(initialBalance);
@@ -149,8 +149,8 @@ describe('Wallet Service - Production Tests', () => {
                         amount,
                         'shipping_cost',
                         `Concurrent ${i}`,
-                        { type: 'manual', id: i.toString() },
-                        'test'
+                        { type: 'manual', id: new mongoose.Types.ObjectId().toString() },
+                        'system'
                     )
                 );
 
@@ -158,9 +158,12 @@ describe('Wallet Service - Production Tests', () => {
 
             const successful = results.filter((r) => r.success).length;
             const failed = results.filter((r) => !r.success).length;
+            if (failed > 0) {
+                console.log('Concurrent Debit Failures:', JSON.stringify(results.filter(r => !r.success).map(r => r.error), null, 2));
+            }
 
-            // With 10,000 balance and 500 per debit: can do 20
-            expect(successful).toBe(20);
+            // With 10,000 balance and 500 per debit: can do 20. We tried 10.
+            expect(successful).toBe(10);
             expect(failed).toBe(0);
 
             const company = await Company.findById(testCompanyId);
@@ -218,7 +221,7 @@ describe('Wallet Service - Production Tests', () => {
 
             const expected = initialBalance + 100.55 - 50.25;
             expect(result.newBalance).toBe(expected);
-            expect(Math.abs(result.newBalance - expected) < 0.01).toBe(true);
+            expect(Math.abs(result.newBalance! - expected) < 0.01).toBe(true);
         });
 
         test('should not lose precision in multiple transactions', async () => {
@@ -238,7 +241,7 @@ describe('Wallet Service - Production Tests', () => {
                         ? await WalletService.credit(
                             testCompanyId,
                             tx.amount,
-                            'test',
+                            'other',
                             'Test',
                             { type: 'manual' },
                             'test'
@@ -246,7 +249,7 @@ describe('Wallet Service - Production Tests', () => {
                         : await WalletService.debit(
                             testCompanyId,
                             tx.amount,
-                            'test',
+                            'other',
                             'Test',
                             { type: 'manual' },
                             'test'
