@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
 import logger from '../../../../shared/logger/winston.logger';
+import SystemConfiguration from '../../../../infrastructure/database/mongoose/models/configuration/system-configuration.model';
 
 /**
  * Pincode Details from CSV
@@ -40,11 +41,11 @@ class PincodeLookupService {
     private isLoaded: boolean = false;
     private csvPath: string;
 
-    // Metro cities for zone calculation
-    private readonly METRO_CITIES = [
+    // Metro cities for zone calculation (loaded from config)
+    private metroCities: string[] = [
         'NEW DELHI', 'DELHI', 'MUMBAI', 'KOLKATA', 'CHENNAI',
-        'BENGALURU', 'BANGALORE', 'HYDERABAD', 'PUNE'
-    ];
+        'BENGALURU', 'BANGALORE', 'HYDERABAD', 'PUNE', 'AHMEDABAD'
+    ]; // Default fallback
 
     // J&K and Northeast states for special zone
     private readonly JKNE_STATES = [
@@ -70,10 +71,49 @@ class PincodeLookupService {
     }
 
     /**
+     * Load configuration from database (e.g. Metro cities)
+     */
+    public async loadConfig(): Promise<void> {
+        try {
+            const config = await SystemConfiguration.findOne({ key: 'metro_cities', isActive: true }).lean();
+            if (config && Array.isArray(config.value)) {
+                this.metroCities = config.value.map((city: string) => city.toUpperCase());
+                logger.info(`[PincodeLookup] Loaded ${this.metroCities.length} metro cities from config`);
+            } else {
+                logger.info('[PincodeLookup] No metro config found, using defaults');
+
+                // Optional: Seed the config if missing
+                try {
+                    await SystemConfiguration.create({
+                        key: 'metro_cities',
+                        value: this.metroCities, // Current defaults
+                        description: 'List of Metro cities for Zone C calculation',
+                        isActive: true,
+                        meta: {
+                            source: 'system_init',
+                            updatedAt: new Date()
+                        }
+                    });
+                    logger.info('[PincodeLookup] Seeded default metro configuration');
+                } catch (seedError) {
+                    // Ignore duplicate key error if race condition
+                    logger.warn('[PincodeLookup] Failed to seed metro config (might already exist)');
+                }
+            }
+        } catch (error) {
+            logger.error('[PincodeLookup] Failed to load config:', error);
+            // Non-blocking, continue with defaults
+        }
+    }
+
+    /**
      * Load pincodes from CSV file into memory
      * Called once during server startup
      */
     public async loadPincodesFromCSV(): Promise<void> {
+        // Load config in parallel or before
+        await this.loadConfig();
+
         if (this.isLoaded) {
             logger.info('Pincode cache already loaded, skipping...');
             return;
@@ -207,8 +247,8 @@ class PincodeLookupService {
         }
 
         // Check for special zones
-        const isFromMetro = this.METRO_CITIES.includes(fromDetails.city);
-        const isToMetro = this.METRO_CITIES.includes(toDetails.city);
+        const isFromMetro = this.metroCities.includes(fromDetails.city);
+        const isToMetro = this.metroCities.includes(toDetails.city);
         const isFromJKNE = this.JKNE_STATES.includes(fromDetails.state);
         const isToJKNE = this.JKNE_STATES.includes(toDetails.state);
 
@@ -270,7 +310,7 @@ class PincodeLookupService {
         // Search through all pincodes
         for (const [pincode, details] of this.pincodeCache) {
             const { city, state } = details;
-            
+
             // Match by pincode
             if (pincode.includes(q)) {
                 const key = `${city}|${state}|${pincode}`;
@@ -279,7 +319,7 @@ class PincodeLookupService {
                 }
                 seenCities.add(city);
             }
-            
+
             // Match by city name
             if (city.includes(q)) {
                 const key = `${city}|${state}|${pincode}`;
@@ -288,7 +328,7 @@ class PincodeLookupService {
                 }
                 seenCities.add(city);
             }
-            
+
             // Match by state name
             if (state.includes(q)) {
                 const key = `${city}|${state}|${pincode}`;
@@ -306,13 +346,13 @@ class PincodeLookupService {
 
         // Convert map to array and sort
         const suggestions = Array.from(results.values());
-        
+
         // Sort by relevance: exact match first, then by city name
         suggestions.sort((a, b) => {
             // If query matches city exactly, prioritize it
             if (a.city.startsWith(q) && !b.city.startsWith(q)) return -1;
             if (!a.city.startsWith(q) && b.city.startsWith(q)) return 1;
-            
+
             // Otherwise sort alphabetically by city
             return a.city.localeCompare(b.city);
         });

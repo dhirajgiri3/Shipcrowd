@@ -34,6 +34,18 @@ export interface IRateCard extends Document {
     carrier?: string;
     serviceType?: string;
   }>;
+  // Surcharges & Minimums
+  minimumCall?: number; // Minimum chargeable amount (e.g. 40)
+  fuelSurcharge?: number; // %age (e.g. 30)
+  fuelSurchargeBase?: 'freight' | 'freight_cod'; // Base for fuel calculation
+  remoteAreaEnabled?: boolean; // Safety flag
+  remoteAreaSurcharge?: number; // Flat fee (e.g. 50)
+  codSurcharges?: Array<{
+    min: number;
+    max: number;
+    value: number;
+    type: 'flat' | 'percentage';
+  }>;
   zoneMultipliers?: Record<string, number>; // Zone-based rate multipliers (e.g., zoneA: 0.85)
   effectiveDates: {
     startDate: Date;
@@ -173,6 +185,25 @@ const RateCardSchema = new Schema<IRateCard>(
         arrayLimit(500),
         'Maximum 500 customer overrides (supports customer-specific discounts)',
       ],
+    },
+    // Surcharges & Minimums
+    minimumCall: { type: Number, min: 0, default: 0 },
+    fuelSurcharge: { type: Number, min: 0, default: 0 }, // percentage
+    fuelSurchargeBase: {
+      type: String,
+      enum: ['freight', 'freight_cod'],
+      default: 'freight'
+    },
+    remoteAreaEnabled: { type: Boolean, default: false },
+    remoteAreaSurcharge: { type: Number, min: 0, default: 0 },
+    codSurcharges: {
+      type: [{
+        min: { type: Number, required: true },
+        max: { type: Number, required: true },
+        value: { type: Number, required: true },
+        type: { type: String, enum: ['flat', 'percentage'], required: true }
+      }],
+      validate: [arrayLimit(20), 'Max 20 COD slabs']
     },
     zoneMultipliers: {
       type: Map,

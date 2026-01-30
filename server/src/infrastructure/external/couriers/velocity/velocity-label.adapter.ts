@@ -26,32 +26,12 @@ class VelocityLabelAdapter implements ICarrierLabelAdapter {
             let labelUrl = shipment.label_url;
 
             if (!labelUrl) {
-                // If we don't have label_url, we need to fetch it.
-                // We need authentication, which requires companyId to look up credentials.
-                // Shipment object MUST have companyId.
+                // Velocity labels are provided during shipment creation.
+                // There is no documented public endpoint to fetch a label simply by AWB without a complex specific flow which is not guaranteed.
+                // We rely on the stored labelUrl.
 
-                if (!shipment.companyId) {
-                    throw new Error('Cannot fetch Velocity label: Missing companyId in shipment data');
-                }
-
-                const auth = new VelocityAuth(shipment.companyId as mongoose.Types.ObjectId, this.baseURL);
-                const token = await auth.getValidToken();
-
-                // Endpoint is hypothetical validation needed, but sticking to shazam.velocity.in base
-                // Assuming standard path pattern or using a known path if available
-                // User provided: /api/v2/shipments/{awb}/label -> corrected to use base url
-
-                const response = await axios.get(
-                    `${this.baseURL}/custom/api/v1/shipment/label/${shipment.awb}`,
-                    {
-                        headers: {
-                            'Authorization': token, // Velocity uses raw token, not Bearer? Verified in provider it uses raw token.
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-
-                labelUrl = response.data.label_url;
+                logger.warn(`Velocity label URL missing in shipment data for AWB: ${shipment.awb}`);
+                throw new Error('Label URL not available in shipment data. Please check shipment creation logs.');
             }
 
             if (!labelUrl) {

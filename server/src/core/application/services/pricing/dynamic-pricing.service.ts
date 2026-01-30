@@ -20,6 +20,8 @@ export interface CalculatePricingInput {
     rateCardId?: string; // Optional: specific rate card to use
     customerId?: string; // Optional: for customer-specific discounts
     shipmentType?: 'forward' | 'return'; // default: 'forward'
+    externalZone?: string; // Optional: Zone provided by external courier (e.g. Velocity)
+    isRemoteLocation?: boolean; // Manual flag for remote area
 }
 
 export interface PricingBreakdown {
@@ -36,6 +38,7 @@ export interface PricingBreakdown {
     total: number;
     metadata: {
         zone: string;
+        zoneSource: 'internal' | 'external_velocity' | 'courier_override';
         rateCardId?: string;
         carrierRate: number;
         zoneMultiplier: number;
@@ -44,8 +47,12 @@ export interface PricingBreakdown {
             baseCharge: number;
             weightCharge: number;
             zoneCharge: number;
+            fuelCharge?: number;
+            remoteAreaCharge?: number;
+            fuelSurchargeBase?: string;
         }
     };
+    pricingProvider: string; // e.g. 'velocity', 'internal', 'manual'
 }
 
 export class DynamicPricingService {
@@ -69,15 +76,19 @@ export class DynamicPricingService {
         const carrier = input.carrier || 'velocity';
         const serviceType = input.serviceType || 'standard';
 
-        // Step 1: Get zone (with cache)
-        const zone = await this.getZoneWithCache(input.fromPincode, input.toPincode);
-        logger.info(`[DynamicPricing] Zone: ${zone.zone}`);
+        // Step 1: Get zone (with cache or external override)
+        const { zone: zoneCode, isSameCity, isSameState, source } = await this.getZoneWithCache(
+            input.fromPincode,
+            input.toPincode,
+            input.externalZone
+        );
+        logger.info(`[DynamicPricing] Zone: ${zoneCode} (Source: ${source})`);
 
         // Step 1.5: Resolve Zone Code (string) to Zone ID (ObjectId) for RateCard lookup
         // Ideally cached, but fast enough via index
         const zoneDoc = await Zone.findOne({
             companyId: input.companyId,
-            standardZoneCode: zone.zone
+            standardZoneCode: zoneCode
         }).select('_id').lean();
 
         // Step 2: Get RateCard (with cache)
@@ -93,7 +104,7 @@ export class DynamicPricingService {
         // Step 3: Calculate base shipping cost
         const costBreakdown = this.calculateShippingCost(
             rateCard,
-            zone.zone,
+            zoneCode,
             zoneDoc?._id?.toString(), // Pass ID if found
             input.weight
         );
@@ -111,16 +122,87 @@ export class DynamicPricingService {
             );
         }
 
-        const shippingCost = costBreakdown.total - discount;
+        const baseShippingCost = costBreakdown.total - discount;
 
-        // Step 5: Calculate COD charges
-        const codCharge =
-            input.paymentMode === 'cod' && input.orderValue
-                ? this.codService.calculateCODCharge(input.orderValue, rateCard)
-                : 0;
+        // Step 5: Surcharges (Fuel, Remote Area)
+        // Fuel Charge
+        // Guardrail: Validate base enum
+        const validFuelBases = ['freight', 'freight_cod'];
+        const fuelBaseMode = validFuelBases.includes(rateCard.fuelSurchargeBase || '')
+            ? rateCard.fuelSurchargeBase
+            : 'freight'; // Default safety
+
+        const fuelBase = fuelBaseMode === 'freight_cod'
+            ? (baseShippingCost + (input.paymentMode === 'cod' ? (input.orderValue || 0) : 0))
+            : baseShippingCost;
+
+        // Let's re-order: Calculate COD charge first, then Fuel if needed.
+
+        // Step 5: Calculate COD charges (New Slab Logic or Legacy Service)
+        let codCharge = 0;
+        if (input.paymentMode === 'cod' && input.orderValue) {
+            if (rateCard.codSurcharges && rateCard.codSurcharges.length > 0) {
+                // New Slab Logic
+                const slab = rateCard.codSurcharges.find(
+                    (s: any) => input.orderValue! >= s.min && input.orderValue! <= s.max
+                );
+                if (slab) {
+                    codCharge = slab.type === 'percentage'
+                        ? (input.orderValue * slab.value) / 100
+                        : slab.value;
+                } else {
+                    // Fallback to max slab or legacy?
+                    // Use legacy if no slab matches (safer)
+                    codCharge = this.codService.calculateCODCharge(input.orderValue, rateCard);
+                }
+            } else {
+                // Legacy Service
+                codCharge = this.codService.calculateCODCharge(input.orderValue, rateCard);
+            }
+        }
+
+        // Step 6: Surcharges (Fuel, Remote Area)
+        // Fuel Charge
+        // Logic: Fuel % is typically on (Freight + COD Charge) or just Freight. 
+        // We use the new fuelSurchargeBase field.
+        let fuelCharge = 0;
+        if (rateCard.fuelSurcharge) {
+            const fuelBasis = rateCard.fuelSurchargeBase === 'freight_cod'
+                ? (baseShippingCost + codCharge)
+                : baseShippingCost;
+            fuelCharge = (fuelBasis * rateCard.fuelSurcharge) / 100;
+        }
+
+        // Remote Area Surcharge
+        let remoteAreaCharge = 0;
+
+        // Logic: Apply if enabled in RateCard AND (explicitly flagged in input OR matches a remote list)
+        // For now, we trust the input flag 'isRemoteArea' if passed (feature for future inputs)
+        // OR we can check if the pincode is in a specific remote list if we had one. 
+        // Since we don't have a global remote list yet, we'll rely on an explicit input flag 
+        // that we will add to CalculatePricingInput to make this functional.
+
+        // Extended Input Check
+        const isRemoteLocation = input.isRemoteLocation || false;
+
+        if (rateCard.remoteAreaEnabled && isRemoteLocation) {
+            remoteAreaCharge = rateCard.remoteAreaSurcharge || 0;
+        }
+
+        // Step 7: Subtotal & Minimum Call
+        let subTotal = baseShippingCost + codCharge + fuelCharge + remoteAreaCharge;
+
+        // Apply Minimum Call
+        if (rateCard.minimumCall && subTotal < rateCard.minimumCall) {
+            subTotal = rateCard.minimumCall;
+            // Adjust shipping cost to match min call? Or keep distinct?
+            // Usually we just bump the total.
+            // Let's adjust "shipping" component to absorb the difference for breakdown.
+            // But 'total' return is strict.
+        }
 
         // Step 6: Calculate GST (on shipping + COD)
-        const taxableAmount = shippingCost + codCharge;
+        const taxableAmount = subTotal;
         const gst = await this.calculateGST(
             taxableAmount,
             input.fromPincode,
@@ -130,9 +212,10 @@ export class DynamicPricingService {
         // Step 7: Calculate total
         const total = taxableAmount + gst.total;
 
+        // Return Breakdown
         return {
-            subtotal: 0,
-            shipping: shippingCost,
+            subtotal: baseShippingCost, // Raw freight
+            shipping: baseShippingCost,
             codCharge,
             tax: {
                 cgst: gst.cgst,
@@ -143,43 +226,80 @@ export class DynamicPricingService {
             discount,
             total,
             metadata: {
-                zone: zone.zone,
+                zone: zoneCode,
+                zoneSource: source,
                 rateCardId: rateCard._id?.toString(),
-                carrierRate: shippingCost,
-                zoneMultiplier: rateCard.zoneMultipliers?.[zone.zone] || 1.0,
+                carrierRate: baseShippingCost,
+                zoneMultiplier: rateCard.zoneMultipliers?.[zoneCode] || 1.0,
                 cached: false,
                 breakdown: {
                     baseCharge: costBreakdown.base,
                     weightCharge: costBreakdown.weight,
-                    zoneCharge: costBreakdown.zone
+                    zoneCharge: costBreakdown.zone,
+                    fuelCharge: Math.round(fuelCharge * 100) / 100,
+                    remoteAreaCharge: remoteAreaCharge,
+                    fuelSurchargeBase: fuelBaseMode
                 }
             },
+            pricingProvider: source === 'external_velocity' ? 'velocity' : 'internal'
         };
     }
 
 
     /**
-    * Get zone with Redis caching
+    * Get zone with Redis caching or external override
     */
     private async getZoneWithCache(
         fromPincode: string,
-        toPincode: string
-    ): Promise<{ zone: string; isSameCity: boolean; isSameState: boolean }> {
-        // Try cache first
+        toPincode: string,
+        externalZone?: string
+    ): Promise<{
+        zone: string;
+        isSameCity: boolean;
+        isSameState: boolean;
+        source: 'internal' | 'external_velocity' | 'courier_override';
+    }> {
+        // Priority 1: External Zone Override (Passthrough)
+        if (externalZone) {
+            // Guardrail: Validate Zone Format (Simple regex or allowlist)
+            // Allow 'zoneA'...'zoneE', plus potential provider-specific codes if strict.
+            // For now, simple alphanumeric checks to prevent injection/garbage.
+            const zoneRegex = /^[a-zA-Z0-9_\-]+$/;
+            if (!zoneRegex.test(externalZone) || externalZone.length > 20) {
+                logger.warn(`[DynamicPricing] Invalid external zone ignored: ${externalZone}`);
+                // Fallback to internal if invalid
+            } else {
+                logger.debug(`[DynamicPricing] Using External Zone: ${externalZone}`);
+                return {
+                    zone: externalZone,
+                    isSameCity: false, // Assumptions unsafe with external zone
+                    isSameState: false,
+                    source: 'external_velocity' // or 'courier_override' based on context, defaulting to velocity for now or make it dynamic
+                };
+            }
+        }
+
+
+        // Priority 2: Cache
         const cachedZone = await this.cacheService.getZone(fromPincode, toPincode);
         if (cachedZone) {
             logger.debug('[DynamicPricing] Zone cache HIT');
-            return { zone: cachedZone, isSameCity: false, isSameState: false };
+            return {
+                zone: cachedZone,
+                isSameCity: false,
+                isSameState: false,
+                source: 'internal'
+            };
         }
 
-        // Cache miss - calculate
+        // Priority 3: Internal Calculation
         logger.debug('[DynamicPricing] Zone cache MISS');
         const zoneInfo = this.pincodeService.getZoneFromPincodes(fromPincode, toPincode);
 
         // Cache for future requests
         await this.cacheService.cacheZone(fromPincode, toPincode, zoneInfo.zone);
 
-        return zoneInfo;
+        return { ...zoneInfo, source: 'internal' };
     }
 
     /**

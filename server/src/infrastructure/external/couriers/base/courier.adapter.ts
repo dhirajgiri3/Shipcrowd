@@ -147,6 +147,11 @@ export interface ICourierAdapter {
      * Schedule a pickup
      */
     schedulePickup?(data: any): Promise<any>;
+
+    /**
+     * Request reattempt for undelivered shipment
+     */
+    requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }>;
 }
 
 /**
@@ -169,6 +174,10 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
 
     // Optional methods can have default implementation that throws NotSupported
     async createWarehouse(data: any): Promise<any> {
+        throw new Error('Method not implemented.');
+    }
+
+    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }> {
         throw new Error('Method not implemented.');
     }
 

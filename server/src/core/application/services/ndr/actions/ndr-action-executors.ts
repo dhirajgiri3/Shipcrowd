@@ -337,22 +337,49 @@ Need help? Reply to this message.
         actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
-            const { ndrEvent } = context;
+            const { ndrEvent, companyId } = context;
 
-            // Instantiate Velocity Client dynamically to avoid circular dependencies if any
-            // In a real DI system, this would be injected
-            const { VelocityShipfastProvider } = await import('../../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js');
-            const velocityClient = new VelocityShipfastProvider(new (await import('mongoose')).Types.ObjectId(context.companyId));
+            // Dynamically import dependencies
+            const mongoose = await import('mongoose');
+            const { CourierFactory } = await import('../../courier/courier.factory.js');
+            const { Shipment } = await import('../../../../../infrastructure/database/mongoose/models/index.js');
 
-            const result = await velocityClient.requestReattempt(
+            // Determine carrier from shipment
+            let carrierName = 'velocity-shipfast'; // Default fallback, though should always be present
+
+            // Check if shipment is populated and has carrier
+            if (ndrEvent.shipment && (ndrEvent.shipment as any).carrier) {
+                carrierName = (ndrEvent.shipment as any).carrier;
+            } else {
+                // Fetch shipment if mostly likely just an ID
+                const shipmentDoc = await Shipment.findById(ndrEvent.shipment).select('carrier');
+                if (shipmentDoc) {
+                    carrierName = shipmentDoc.carrier;
+                } else {
+                    logger.warn('Shipment not found for NDR reattempt, defaulting to velocity-shipfast', {
+                        shipmentId: ndrEvent.shipment,
+                        ndrEventId: ndrEvent._id
+                    });
+                }
+            }
+
+            // Get generic courier provider
+            const provider = await CourierFactory.getProvider(
+                carrierName,
+                new mongoose.Types.ObjectId(companyId)
+            );
+
+            // Execute reattempt request via common interface
+            const result = await provider.requestReattempt(
                 ndrEvent.awb,
                 actionConfig.preferredDate ? new Date(actionConfig.preferredDate) : undefined,
-                actionConfig.notes
+                actionConfig.notes // "notes" maps to "instructions" in interface
             );
 
             logger.info('Courier reattempt requested', {
                 ndrEventId: ndrEvent._id,
                 awb: ndrEvent.awb,
+                carrier: carrierName,
                 success: result.success,
                 message: result.message
             });
@@ -361,7 +388,12 @@ Need help? Reply to this message.
                 success: result.success,
                 actionType: 'request_reattempt',
                 result: result.success ? 'success' : 'failed',
-                metadata: { awb: ndrEvent.awb, message: result.message, manualActionRequired: !result.success },
+                metadata: {
+                    awb: ndrEvent.awb,
+                    message: result.message,
+                    carrier: carrierName,
+                    manualActionRequired: !result.success
+                },
                 error: result.success ? undefined : result.message
             };
         } catch (error: any) {
