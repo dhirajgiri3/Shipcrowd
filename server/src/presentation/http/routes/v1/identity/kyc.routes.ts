@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction, RequestHandler } from 'expres
 import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
-import { kycRateLimiter } from '../../../middleware/security/rate-limit.middleware';
+import { kycRateLimiter } from '../../../../../shared/config/rateLimit.config';
 import kycController from '../../../controllers/identity/kyc.controller';
 import deepvueService from '../../../../../core/application/services/integrations/deepvue.service';
 

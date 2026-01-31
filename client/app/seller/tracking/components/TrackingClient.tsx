@@ -111,7 +111,7 @@ export function TrackingClient() {
                 <div className="p-8 rounded-[var(--radius-3xl)] bg-red-50 border border-red-200 text-center text-red-700">
                     <AlertCircle className="w-10 h-10 mx-auto mb-2 text-red-500" />
                     <h3 className="text-lg font-bold">Tracking Failed</h3>
-                    <p className="mt-1">{(error as any)?.response?.data?.message || 'Could not fetch tracking information. Please check the AWB number.'}</p>
+                    <p className="mt-1">{(error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message || 'Could not fetch tracking information. Please check the AWB number.'}</p>
                 </div>
             )}
 

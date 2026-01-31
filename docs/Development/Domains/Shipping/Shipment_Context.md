@@ -477,7 +477,7 @@ static canDeleteShipment(currentStatus: string): { canDelete: boolean; reason?: 
   "success": true,
   "message": "Shipment tracking information retrieved successfully",
   "data": {
-    "trackingNumber": "SHP-20251226-A7B3",
+    "trackingNumber": "SHP-20251226-A7B3", // or Carrier AWB e.g. "DL..."
     "carrier": "Delhivery",
     "serviceType": "express",
     "currentStatus": "in_transit",
@@ -490,29 +490,17 @@ static canDeleteShipment(currentStatus: string): { canDelete: boolean; reason?: 
       // Name/phone/address hidden for privacy
     },
     "timeline": [
-      {
-        "status": "created",
-        "timestamp": "2025-12-26T10:30:00.000Z",
-        "description": "Shipment created"
-      },
-      {
-        "status": "picked_up",
-        "timestamp": "2025-12-26T14:00:00.000Z",
-        "location": "Mumbai Hub",
-        "description": "Picked up from warehouse"
-      },
-      {
-        "status": "in_transit",
-        "timestamp": "2025-12-27T08:00:00.000Z",
-        "location": "Mumbai Sorting Center",
-        "description": "In transit"
-      }
+      // ...
     ]
   }
 }
 ```
 
-**Privacy:** Only shows city/state, hides recipient name/phone/full address.
+**Security:**
+- **Rate Limit:** 60 requests per minute per IP.
+- **Input Validation:** Max 50 characters.
+- **Caching:** Responses cached for 5 minutes.
+- **Privacy:** Only shows city/state, hides recipient name/phone/full address.
 
 ---
 

@@ -58,11 +58,12 @@ const createLimiterConfig = (
 
 /**
  * Global rate limiter
+ * Tuned for 20k shipments/month business scale (Supports shared office IPs/NAT)
  */
 export const globalRateLimiter = createLimiterConfig(
-    15 * 60 * 1000,
-    100,
-    SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(),
+    5 * 60 * 1000, // 5 minutes
+    1000, // 1000 requests per 5 minutes
+    SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(1000),
     'rl:global:',
     {
         handler: (req: any, res: any) => {
@@ -103,11 +104,13 @@ export const authRateLimiter = createLimiterConfig(
 
 /**
  * API rate limiter for authenticated users
+ * Tuned for: 20k shipments/month = ~660/day. 
+ * Heavy warehouse scanning users need burst capacity (120 req/min).
  */
 export const apiRateLimiter = createLimiterConfig(
     60 * 1000,
-    60,
-    SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(60),
+    120,
+    SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(120),
     'rl:api:',
     {
         keyGenerator: (req: any) => {
@@ -168,8 +171,117 @@ export const publicTrackingRateLimiter = createLimiterConfig(
     {
         keyGenerator: (req: any) => {
             return req.ip || 'unknown'; // Public endpoint, key by IP
+        },
+        handler: (req: any, res: any) => {
+            res.status(429).json({
+                success: false,
+                error: {
+                    code: 'RATE_LIMIT_EXCEEDED',
+                    message: SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(60),
+                },
+                timestamp: new Date().toISOString(),
+            });
         }
     }
+);
+
+/**
+ * Rate limiter for KYC verification endpoints
+ * Moderate strictness: 10 requests per hour
+ */
+export const kycRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    10,
+    'Too many KYC verification attempts. Please try again in an hour.',
+    'rl:kyc:'
+);
+
+/**
+ * Rate limiter for login attempts
+ * Strict: 5 requests per 15 minutes
+ */
+export const loginRateLimiter = createLimiterConfig(
+    15 * 60 * 1000,
+    5,
+    'Too many login attempts, please try again later',
+    'rl:login:'
+);
+
+/**
+ * Rate limiter for password reset requests
+ * Very Strict: 3 requests per hour
+ */
+export const passwordResetRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    3,
+    'Too many password reset requests, please try again later',
+    'rl:pwd_reset:'
+);
+
+/**
+ * Rate limiter for registration
+ * Moderate: 5 requests per hour (prevent spam accounts)
+ */
+export const registrationRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    5,
+    'Too many registration attempts, please try again later',
+    'rl:register:'
+);
+
+/**
+ * Rate limiter for email verification (clicking link)
+ * Moderate: 10 requests per hour
+ */
+export const emailVerificationRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    10,
+    'Too many verification attempts, please try again later',
+    'rl:email_verify:'
+);
+
+/**
+ * Rate limiter for resending verification email
+ * Strict: 3 requests per hour
+ */
+export const resendVerificationRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    3,
+    'Too many verification emails requested, please try again later',
+    'rl:resend_verify:'
+);
+
+/**
+ * Rate limiter for magic link requests
+ * Strict: 5 requests per hour
+ */
+export const magicLinkRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    5,
+    'Too many magic link requests, please try again later',
+    'rl:magic_link:'
+);
+
+/**
+ * Rate limiter for setting password
+ * Strict: 5 requests per hour
+ */
+export const setPasswordRateLimiter = createLimiterConfig(
+    60 * 60 * 1000,
+    5,
+    'Too many password set attempts, please try again later',
+    'rl:set_pwd:'
+);
+
+/**
+ * Public Rate Limiter (General non-auth endpoints)
+ * Permissive: 200 requests per 15 minutes
+ */
+export const publicRateLimiter = createLimiterConfig(
+    15 * 60 * 1000,
+    200,
+    SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(200),
+    'rl:public:'
 );
 
 /**

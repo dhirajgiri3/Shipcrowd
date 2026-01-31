@@ -4,8 +4,8 @@ import crypto from 'crypto';
 import authController from '../../../controllers/auth/auth.controller';
 import { authenticate, csrfProtection as oldCSRFProtection } from '../../../middleware/auth/auth';
 import { csrfProtection } from '../../../middleware/auth/csrf';
-import { authRateLimiter } from '../../../middleware/security/rate-limit.middleware';
 import {
+  authRateLimiter,
   loginRateLimiter,
   registrationRateLimiter,
   passwordResetRateLimiter,
@@ -13,7 +13,7 @@ import {
   resendVerificationRateLimiter,
   magicLinkRateLimiter,
   setPasswordRateLimiter,
-} from '../../../middleware/system/rate-limiter.middleware';
+} from '../../../../../shared/config/rateLimit.config';
 import { generateAuthTokens } from '../../../../../core/application/services/auth/oauth.service';
 import logger from '../../../../../shared/logger/winston.logger';
 import mfaRoutes from './mfa.routes';
