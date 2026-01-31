@@ -265,13 +265,13 @@ export const trackShipment = async (req: Request, res: Response, next: NextFunct
 
         const { trackingNumber } = req.params;
 
-        const awbRegex = /^SHP-\d{8}-\d{4}$/;
-        if (!awbRegex.test(trackingNumber)) {
-            throw new AppError('Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 'INVALID_TRACKING_FORMAT', 400);
-        }
-
+        // Allow searching by either Internal ID or Carrier AWB
+        // We removed the strict regex check to accommodate diverse carrier AWB formats
         const shipment = await Shipment.findOne({
-            trackingNumber,
+            $or: [
+                { trackingNumber: trackingNumber },
+                { 'carrierDetails.carrierTrackingNumber': trackingNumber }
+            ],
             companyId: auth.companyId,
             isDeleted: false,
         })
@@ -399,14 +399,13 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
     try {
         const { trackingNumber } = req.params;
 
-        // Basic format validation
-        const awbRegex = /^SHP-\d{8}-\d{4}$/;
-        if (!awbRegex.test(trackingNumber)) {
-            throw new AppError('Invalid tracking number format. Expected: SHP-YYYYMMDD-XXXX', 'INVALID_TRACKING_FORMAT', 400);
-        }
-
+        // Allow searching by either Internal ID or Carrier AWB
+        // We removed the strict regex check to accommodate diverse carrier AWB formats
         const shipment = await Shipment.findOne({
-            trackingNumber,
+            $or: [
+                { trackingNumber: trackingNumber },
+                { 'carrierDetails.carrierTrackingNumber': trackingNumber }
+            ],
             isDeleted: false,
         })
             .populate('orderId', 'orderNumber')
