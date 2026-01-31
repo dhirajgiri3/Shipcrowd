@@ -112,67 +112,45 @@ export class VelocityWebhookService implements WebhookEventHandler {
         };
       }
 
-      // Wrap in transaction for data integrity
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      // Refactored: Delegate to ShipmentService for consistent state transitions and transaction safety
+      // Dynamic import to avoid circular dependencies if any
+      const { ShipmentService } = await import('../shipping/shipment.service.js');
 
-      try {
-        // Add status to history
-        shipment.statusHistory.push({
-          status: internalStatus,
-          timestamp: new Date(payload.timestamp || Date.now()),
-          location: current_location || payload.tracking_event?.location,
-          description: description || payload.tracking_event?.description,
-          updatedBy: undefined // Webhook update, no user
+      const updateResult = await ShipmentService.updateShipmentStatus({
+        shipmentId: String(shipment._id),
+        currentStatus: shipment.currentStatus,
+        newStatus: internalStatus,
+        currentVersion: shipment.__v || 0,
+        userId: 'system',
+        location: current_location || payload.tracking_event?.location,
+        description: description || payload.tracking_event?.description
+      });
+
+      if (!updateResult.success) {
+        // If concurrent modification, we should retry or fail gracefully. 
+        // Since this is a webhook, we can fail and let Velocity retry.
+        logger.warn('Failed to update shipment status via webhook', {
+          awb,
+          error: updateResult.error,
+          code: updateResult.code
         });
+        throw new Error(updateResult.error || 'Failed to update shipment status');
+      }
 
-        // Update current status
-        shipment.currentStatus = internalStatus;
+      // If status updated, we might need to handle specific logic if it wasn't handled in ShipmentService
+      // Note: ShipmentService handles delivered, ndr, order sync, and outbound webhooks.
+      // We don't need to duplicate that logic here.
 
-        // Handle special status updates
-        if (internalStatus === 'delivered') {
-          shipment.actualDelivery = new Date();
-        }
+      // Reload shipment to get latest state for logging/response
+      // (Optional, or just use what we have. ShipmentService returns updated shipment)
+      const updatedShipment = updateResult.shipment;
 
-        if (internalStatus === 'ndr') {
-          if (!shipment.ndrDetails) {
-            shipment.ndrDetails = {
-              ndrAttempts: 0,
-              ndrStatus: 'pending'
-            };
-          }
-          shipment.ndrDetails.ndrReason = description;
-          shipment.ndrDetails.ndrDate = new Date();
-          shipment.ndrDetails.ndrAttempts = (shipment.ndrDetails.ndrAttempts || 0) + 1;
-          shipment.ndrDetails.ndrStatus = 'pending';
-
-          // Trigger NDR Automation (Phase 3)
-          try {
-            // Dynamic import to avoid circular dependency
-            const { default: NDRServiceClass } = await import('../logistics/ndr.service.js') as any;
-            const ndrService = new NDRServiceClass();
-            await ndrService.processNDREvent(shipment, {
-              awb: awb,
-              courierStatus: status,
-              remarks: description,
-              timestamp: new Date(payload.timestamp || Date.now()),
-              courierCode: 'velocity'
-            });
-          } catch (ndrError) {
-            console.error('NDR AUTOMATION ERROR:', ndrError);
-            logger.error('Failed to trigger NDR Automation', { error: ndrError });
-            // Don't fail the webhook processing itself
-          }
-        }
-
-        // Save shipment with session
-        await shipment.save({ session });
-        await session.commitTransaction();
-      } catch (txError) {
-        await session.abortTransaction();
-        throw txError;
-      } finally {
-        session.endSession();
+      // Update local reference for subsequent logic (like auto-sync) if needed
+      if (updatedShipment) {
+        shipment.currentStatus = updatedShipment.currentStatus;
+        shipment.statusHistory = updatedShipment.statusHistory;
+        shipment.ndrDetails = updatedShipment.ndrDetails;
+        shipment.actualDelivery = updatedShipment.actualDelivery;
       }
 
       logger.info('Shipment status updated successfully', {

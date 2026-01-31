@@ -9,6 +9,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
 
 import { VelocityRemittanceService } from './remittance/velocity-remittance.service';
+import ReconciliationReport from '../../../../infrastructure/database/mongoose/models/finance/reports/reconciliation-report.model';
 
 interface MISRow {
     awb: string;
@@ -44,6 +45,22 @@ export default class RemittanceReconciliationService {
         }
 
         logger.info(`[Reconciliation] Parsed ${rows.length} rows from MIS (${provider}) for company ${companyId}`);
+
+        // Phase 4: Create Reconciliation Report (Audit Trail)
+        const report = await ReconciliationReport.create({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            type: 'cod_remittance',
+            status: 'processing',
+            period: {
+                start: rows[0]?.remittanceDate || new Date(),
+                end: rows[rows.length - 1]?.remittanceDate || new Date()
+            },
+            sourceFile: {
+                name: 'manual_upload', // TODO: Pass filename from controller
+                uploadedAt: new Date()
+            },
+            generatedBy: uploadedBy
+        });
 
         // ... rest of logic ...
         // I need to keep the existing logic below, so I will return the replacement cursor to just update this method start and add the new method at the end.
@@ -183,18 +200,51 @@ export default class RemittanceReconciliationService {
         });
 
         // Update Shipments
-        await Shipment.updateMany(
-            { _id: { $in: processedShipments.map(s => s.shipmentId) } },
-            {
-                $set: {
-                    'remittance.included': true,
-                    'remittance.remittanceId': remittanceId
+        const bulkOps = processedShipments.map(s => ({
+            updateOne: {
+                filter: { _id: s.shipmentId },
+                update: {
+                    $set: {
+                        'remittance.included': true,
+                        'remittance.remittanceId': remittanceId,
+                        'remittance.remittedAt': new Date(),
+                        'remittance.remittedAmount': s.netAmount,
+                        'remittance.platformFee': s.deductions.platformFee
+                    }
                 }
             }
-        );
+        }));
+
+        if (bulkOps.length > 0) {
+            await Shipment.bulkWrite(bulkOps);
+        }
+
+        // Phase 4: Update Report Statistics
+        report.summary = {
+            totalRecords: rows.length,
+            matchedCount: processedShipments.filter(s => s.reconciliation.status === 'matched').length,
+            mismatchCount: mismatchCount,
+            notFoundCount: rows.length - processedShipments.length,
+            totalAmount: totalCOD,
+            discrepancyAmount: processedShipments.reduce((acc, s) => acc + (s.reconciliation.diffAmount || 0), 0)
+        };
+
+        report.discrepancies = processedShipments
+            .filter(s => s.reconciliation.status === 'mismatch')
+            .map(s => ({
+                referenceId: s.awb,
+                description: s.reconciliation.remarks || 'Mismatch',
+                systemAmount: s.codAmount,
+                externalAmount: s.reconciliation.courierAmount || 0,
+                status: 'pending'
+            }));
+
+        report.status = 'completed';
+        await report.save();
 
         return {
             remittanceId,
+            reportId: report._id,
             totalProcessed: processedShipments.length,
             mismatches: mismatchCount,
             netPayable: batch.financial.netPayable

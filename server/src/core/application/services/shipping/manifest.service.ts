@@ -116,10 +116,46 @@ class ManifestService {
                 ),
             };
 
+            // Call Carrier API for Manifest Creation (if supported)
+            let carrierManifestId: string | undefined;
+            let carrierManifestUrl: string | undefined;
+
+            try {
+                const provider = await CourierFactory.getProvider(
+                    data.carrier,
+                    new mongoose.Types.ObjectId(data.companyId)
+                );
+
+                // Check if provider supports createManifest
+                if (provider && typeof (provider as any).createManifest === 'function') {
+                    logger.info(`Calling ${data.carrier} API for manifest creation...`);
+
+                    const apiResult = await (provider as any).createManifest({
+                        shipmentIds: shipments.map((s: any) => s._id.toString()),
+                        awbs: shipments.map((s: any) => s.carrierDetails?.carrierTrackingNumber || s.trackingNumber),
+                        warehouseId: data.warehouseId
+                    });
+
+                    if (apiResult) {
+                        carrierManifestId = apiResult.manifestId;
+                        carrierManifestUrl = apiResult.manifestUrl;
+                        logger.info(`Carrier manifest created: ${carrierManifestId}`, { carrier: data.carrier });
+                    }
+                }
+            } catch (carrierError: any) {
+                // We log error but proceed with internal manifest to avoid blocking operations
+                // However, we mark it in notes that carrier sync failed
+                logger.error('Carrier manifest creation failed', {
+                    error: carrierError.message,
+                    carrier: data.carrier
+                });
+                data.notes = (data.notes ? data.notes + '\n' : '') + `[WARNING] Carrier manifest syncing failed: ${carrierError.message}`;
+            }
+
             // Prepare shipment data
             const manifestShipments = shipments.map((s: any) => ({
                 shipmentId: s._id,
-                awb: s.trackingNumber, // Mapped from trackingNumber
+                awb: s.carrierDetails?.carrierTrackingNumber || s.trackingNumber, // Prefer carrier AWB
                 weight: s.packageDetails?.weight || 0,
                 packages: s.packageDetails?.packageCount || 1,
                 codAmount: s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0,
@@ -130,14 +166,19 @@ class ManifestService {
                 [
                     {
                         manifestNumber,
-                        companyId: data.companyId,
-                        warehouseId: data.warehouseId,
+                        companyId: new mongoose.Types.ObjectId(data.companyId),
+                        warehouseId: new mongoose.Types.ObjectId(data.warehouseId),
                         carrier: data.carrier,
                         shipments: manifestShipments,
                         pickup: data.pickup,
                         summary,
                         status: 'open',
                         notes: data.notes,
+                        metadata: {
+                            carrierManifestId,
+                            carrierManifestUrl,
+                            generatedAt: new Date()
+                        }
                     },
                 ],
                 { session }

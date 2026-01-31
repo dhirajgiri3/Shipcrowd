@@ -195,6 +195,17 @@ export class QueueManager {
       },
     });
 
+    // Create Payout queue (Saga Pattern)
+    await this.createQueue({
+      name: 'payout-queue',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 10000 }, // 10s backoff
+        removeOnComplete: 500,
+        removeOnFail: false, // Keep failed jobs for manual inspection
+      },
+    });
+
     // Create Carrier Sync queue
     await this.createQueue({
       name: 'carrier-sync',

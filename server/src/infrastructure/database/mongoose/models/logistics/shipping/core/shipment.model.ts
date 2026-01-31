@@ -148,6 +148,7 @@ export interface IShipment extends Document {
     remittanceId?: string; // Remittance batch ID
     remittedAt?: Date;
     remittedAmount?: number; // Net amount after deductions
+    platformFee?: number; // Fee deducted by platform
   };
 
   // Wallet Transaction Reference
@@ -443,6 +444,7 @@ const ShipmentSchema = new Schema<IShipment>(
       remittanceId: String,
       remittedAt: Date,
       remittedAmount: Number,
+      platformFee: Number, // Added missing field
     },
     walletTransactionId: {
       type: Schema.Types.ObjectId,

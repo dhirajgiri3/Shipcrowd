@@ -23,7 +23,7 @@ interface CreateInvoiceDto {
     createdBy: string;
 }
 
-class InvoiceService {
+export class InvoiceService {
     /**
      * Generate sequential invoice number (transaction-safe)
      * Format: INV-YYYYMM-XXXX
@@ -122,6 +122,38 @@ class InvoiceService {
             cgstTotal += gstCalc.cgst;
             sgstTotal += gstCalc.sgst;
             igstTotal += gstCalc.igst;
+
+            // Platform Fee Line Item
+            const platformFee = (shipment as any).remittance?.platformFee || 0;
+            if (platformFee > 0) {
+                const feeGstCalc = GSTService.calculateLineItemGST(
+                    1,
+                    platformFee,
+                    sellerState.code,
+                    buyerState.code
+                );
+
+                lineItems.push({
+                    description: `Platform Fee - AWB: ${shipment.trackingNumber}`,
+                    sacCode: '998599',
+                    quantity: 1,
+                    unitPrice: platformFee,
+                    taxableAmount: feeGstCalc.taxableAmount,
+                    cgst: feeGstCalc.cgst,
+                    sgst: feeGstCalc.sgst,
+                    igst: feeGstCalc.igst,
+                    totalAmount: feeGstCalc.totalAmount,
+                    shipmentReference: {
+                        shipmentId: shipment._id as mongoose.Types.ObjectId,
+                        awb: shipment.trackingNumber,
+                    },
+                });
+
+                subtotal += feeGstCalc.taxableAmount;
+                cgstTotal += feeGstCalc.cgst;
+                sgstTotal += feeGstCalc.sgst;
+                igstTotal += feeGstCalc.igst;
+            }
         }
 
         const grandTotal = subtotal + cgstTotal + sgstTotal + igstTotal;

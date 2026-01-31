@@ -25,12 +25,13 @@ import {
     Upload,
     Tag,
     Zap,
-    Lock
+    Lock,
+    Trash2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
-import { useRateCards } from '@/src/core/api/hooks/logistics/useRateCards';
+import { useRateCards, useCloneRateCard, useDeleteRateCard } from '@/src/core/api/hooks/logistics/useRateCards';
 import { Loader } from '@/src/components/ui/feedback/Loader';
 import { useBulkUpdateRateCards, useExportRateCards } from '@/src/hooks/shipping/use-bulk-rate-card-operations';
 import { UploadRateCardModal } from './UploadRateCardModal';
@@ -52,6 +53,41 @@ export function RatecardsClient() {
     // Bulk operations hooks
     const { mutate: bulkUpdate, isPending: isBulkUpdating } = useBulkUpdateRateCards();
     const { mutate: exportCards, isPending: isExporting } = useExportRateCards();
+
+    // Single operations hooks
+    const { mutate: cloneCard, isPending: isCloning } = useCloneRateCard();
+    const { mutate: deleteCard, isPending: isDeleting } = useDeleteRateCard();
+
+    const handleClone = (id: string, name: string) => {
+        if (confirm(`Are you sure you want to clone "${name}"?`)) {
+            cloneCard(id, {
+                onSuccess: (newCard) => {
+                    addToast(`Successfully cloned "${name}" as "${newCard.name}"`, 'success');
+                },
+                onError: (err) => {
+                    addToast(`Failed to clone: ${err.message}`, 'error');
+                }
+            });
+        }
+    };
+
+    const handleDelete = (id: string, name: string) => {
+        if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+            deleteCard(id, {
+                onSuccess: () => {
+                    addToast(`Successfully deleted "${name}"`, 'success');
+                    // Also remove from selection if selected
+                    if (selectedCards.includes(id)) {
+                        setSelectedCards(prev => prev.filter(cardId => cardId !== id));
+                    }
+                },
+                onError: (err) => {
+                    // This handles the 409 Conflict message clearly
+                    addToast(`Failed to delete: ${err.message}`, 'error');
+                }
+            });
+        }
+    };
 
     const handleSelectAll = () => {
         if (selectedCards.length === filteredRateCards.length) {
@@ -432,15 +468,20 @@ export function RatecardsClient() {
                                     <div className="flex gap-1">
                                         <Button variant="ghost" size="sm" onClick={(e) => {
                                             e.stopPropagation();
-                                            addToast('Rate card duplicated!', 'success');
-                                        }}>
+                                            handleClone(card._id, card.name);
+                                        }} disabled={isCloning}>
                                             <Copy className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" onClick={(e) => {
+                                        <Link href={`/admin/ratecards/${card._id}/edit`}>
+                                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                                                <Edit2 className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={(e) => {
                                             e.stopPropagation();
-                                            addToast('Opening editor...', 'info');
-                                        }}>
-                                            <Edit2 className="h-4 w-4" />
+                                            handleDelete(card._id, card.name);
+                                        }} disabled={isDeleting}>
+                                            <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 </div>

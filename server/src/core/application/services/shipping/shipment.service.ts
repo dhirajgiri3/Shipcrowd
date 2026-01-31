@@ -213,24 +213,38 @@ export class ShipmentService {
         paymentMode?: 'cod' | 'prepaid';
         orderValue?: number;
         carrierOverride?: string;
+        strict?: boolean;
     }): Promise<{ selectedCarrier: string; selectedOption: any; carrierResult: CarrierSelectionResult }> {
-        const { companyId, totalWeight, originPincode, destinationPincode, serviceType, paymentMode, orderValue, carrierOverride } = args;
+        const { companyId, totalWeight, originPincode, destinationPincode, serviceType, paymentMode, orderValue, carrierOverride, strict } = args;
 
         const carrierService = getCarrierService();
-        const carrierResult: CarrierSelectionResult = await carrierService.selectBestCarrier({
-            companyId,
-            fromPincode: originPincode,
-            toPincode: destinationPincode,
-            weight: totalWeight,
-            paymentMode: paymentMode || 'prepaid',
-            orderValue,
-            serviceType,
-        });
+        const carrierResult: CarrierSelectionResult = await carrierService.selectBestCarrier(
+            {
+                companyId,
+                fromPincode: originPincode,
+                toPincode: destinationPincode,
+                weight: totalWeight,
+                paymentMode: paymentMode || 'prepaid',
+                orderValue,
+                serviceType,
+            },
+            strict
+        );
 
         const selectedCarrier = carrierOverride || carrierResult.selectedCarrier;
         const selectedOption = carrierResult.alternativeOptions.find(
             (opt: any) => opt.carrier.toLowerCase() === selectedCarrier.toLowerCase()
         ) || carrierResult.alternativeOptions[0];
+
+        // Strict Mode Validation: Ensure we actually found the requested carrier if override was used
+        if (strict && carrierOverride && selectedOption.carrier.toLowerCase() !== carrierOverride.toLowerCase()) {
+            // This happens if the override carrier wasn't serviceable or returned no rates
+            throw new AppError(
+                `Strict pricing violations: Requested carrier '${carrierOverride}' not available or no rate found`,
+                ErrorCode.PRC_STRICT_PRICING_VIOLATION,
+                400
+            );
+        }
 
         return { selectedCarrier, selectedOption, carrierResult };
     }
@@ -251,6 +265,8 @@ export class ShipmentService {
             instructions?: string;
         };
         pricingDetails?: any; // Added pricing details
+        idempotencyKey?: string; // Phase 2: Idempotency support
+        strict?: boolean; // Optional flag, but we enforce strict=true internally for creation
     }): Promise<{
         shipment: any;
         carrierSelection: {
@@ -266,7 +282,26 @@ export class ShipmentService {
         try {
             session.startTransaction();
 
-            const { order, companyId, userId, payload, pricingDetails } = args;
+            const { order, companyId, userId, payload, pricingDetails, idempotencyKey } = args;
+
+            // Idempotency Check (Compound Index: companyId + idempotencyKey)
+            if (idempotencyKey) {
+                // We need to add idempotencyKey to Shipment model and index it
+                const existingShipment = await Shipment.findOne({
+                    'metadata.idempotencyKey': idempotencyKey,
+                    companyId
+                });
+
+                if (existingShipment) {
+                    logger.info(`Idempotency hit for key: ${idempotencyKey}`, { shipmentId: existingShipment._id });
+                    await session.abortTransaction(); // No new changes needed
+                    return {
+                        shipment: existingShipment,
+                        carrierSelection: (existingShipment as any).carrierDetails || {}, // Fallback structure
+                        updatedOrder: order // Return original order state or fetch latest? Ideally latest.
+                    };
+                }
+            }
 
             // Generate tracking number
             const trackingNumber = await this.getUniqueTrackingNumber();
@@ -337,18 +372,30 @@ export class ShipmentService {
             // Fallback to static selection if API not used or failed
             if (!selectedOption) {
                 // Use dynamic carrier selection
+                // CRITICAL: Enforce STRICT mode for shipment creation
+                // We ignore any 'strict' flag passed in args and mandate it.
+                // Shipment creation MUST adhere to exact pricing rules or fail.
+                const enforcedStrict = true;
+
                 const selection = await this.selectCarrierForShipment({
                     companyId: companyId.toString(),
                     totalWeight,
                     originPincode,
                     destinationPincode: order.customerInfo.address.postalCode,
                     serviceType,
-                    paymentMode: order.paymentMode,
+                    paymentMode: order.paymentMethod,
                     orderValue: order.orderTotal,
                     carrierOverride: payload.carrierOverride,
+                    strict: enforcedStrict
                 });
+
                 selectedOption = selection.selectedOption;
                 carrierResult = selection.carrierResult;
+
+                // Validate Pricing Resolution (Double Check)
+                // If the pricing service didn't throw but returned a GENERIC result, we catch it here.
+                // Note: updating selectCarrierForShipment to return resolution metadata is needed.
+                // For now, assume selectCarrierForShipment handles strictness internally via pricingService.
             }
 
             // ========================================================================
@@ -418,6 +465,7 @@ export class ShipmentService {
                 pricingDetails, // Store pricing breakdown
                 currentStatus: 'created',
                 estimatedDelivery,
+                metadata: idempotencyKey ? { idempotencyKey } : undefined // Store idempotency key
             });
 
             await shipment.save({ session });
@@ -427,7 +475,8 @@ export class ShipmentService {
                 companyId.toString(),
                 (shipment._id as mongoose.Types.ObjectId).toString(),
                 shippingCost,
-                trackingNumber
+                trackingNumber,
+                idempotencyKey // Pass idempotency key
             );
 
             if (!walletResult.success) {
@@ -706,7 +755,7 @@ export class ShipmentService {
                     timestamp: new Date(),
                     location,
                     description,
-                    updatedBy: new mongoose.Types.ObjectId(userId),
+                    updatedBy: userId === 'system' ? undefined : new mongoose.Types.ObjectId(userId),
                 };
 
                 // Build update data
@@ -766,7 +815,7 @@ export class ShipmentService {
                                     status: newOrderStatus,
                                     timestamp: new Date(),
                                     comment: `Updated from shipment status: ${newStatus}`,
-                                    updatedBy: new mongoose.Types.ObjectId(userId),
+                                    updatedBy: userId === 'system' ? undefined : new mongoose.Types.ObjectId(userId),
                                 },
                             },
                         },

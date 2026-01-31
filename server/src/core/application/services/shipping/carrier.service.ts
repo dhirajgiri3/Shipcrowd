@@ -39,6 +39,7 @@ export interface GetRatesInput {
     paymentMode: 'cod' | 'prepaid';
     orderValue?: number;
     serviceType?: 'standard' | 'express';
+    strict?: boolean;
 }
 
 export class CarrierService {
@@ -73,6 +74,7 @@ export class CarrierService {
                 orderValue: input.orderValue,
                 carrier: 'velocity',
                 serviceType,
+                strict: input.strict
             });
 
             carriers.push({
@@ -160,8 +162,10 @@ export class CarrierService {
     /**
      * Select best carrier (Velocity preferred)
      */
-    async selectBestCarrier(input: GetRatesInput): Promise<CarrierSelectionResult> {
-        const allRates = await this.getAllRates(input);
+    async selectBestCarrier(input: GetRatesInput, strict: boolean = false): Promise<CarrierSelectionResult> {
+        // Pass strict flag to getAllRates if provided separately or rely on input properties
+        const ratesInput: GetRatesInput = { ...input, strict: input.strict || strict };
+        const allRates = await this.getAllRates(ratesInput);
 
         if (allRates.length === 0) {
             throw new Error('No carriers available for this route');

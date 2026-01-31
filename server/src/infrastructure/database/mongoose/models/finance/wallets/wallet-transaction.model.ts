@@ -163,6 +163,18 @@ WalletTransactionSchema.index({ company: 1, createdAt: -1 });
 WalletTransactionSchema.index({ company: 1, type: 1 });
 WalletTransactionSchema.index({ company: 1, reason: 1 });
 WalletTransactionSchema.index({ 'reference.type': 1, 'reference.id': 1 });
+// Idempotency Index (Phase 1 Hardening)
+WalletTransactionSchema.index(
+    { company: 1, 'metadata.idempotencyKey': 1 },
+    {
+        unique: true,
+        sparse: true,
+        background: true,
+        name: 'idx_company_idempotency'
+    }
+);
+// External Reference Index (Phase 1 Hardening)
+WalletTransactionSchema.index({ 'reference.externalId': 1 });
 // Index for refund queries (Issue #22)
 WalletTransactionSchema.index({ company: 1, status: 1, 'reference.id': 1 });
 // Index for audit trail queries (reversed transactions)

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import CODRemittance, { ICODRemittance } from '../../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
@@ -313,60 +314,39 @@ export default class CODRemittanceService {
         }
 
         try {
-            // Create Razorpay payout
-            // Note: Using 'as any' for Razorpay types - SDK types may be incomplete
-            const razorpayInstance = this.razorpay as any;
-            const payout: any = await razorpayInstance.payouts.create({
-                account_number: process.env.RAZORPAY_ACCOUNT_NUMBER!,
-                fund_account_id: razorpayFundAccountId,
-                amount: Math.round(remittance.financial.netPayable * 100), // Convert to paise
-                currency: 'INR',
-                mode: 'IMPS',
-                purpose: 'payout',
-                queue_if_low_balance: false,
-                reference_id: remittanceId,
-                narration: `COD Remittance #${remittance.batch.batchNumber}`,
-            });
+            // Saga Pattern: Enqueue Payout Job
+            // We do NOT call Razorpay directly here. We let the worker handle it.
 
-            // Update remittance with payout details
+            // 1. Update status to 'processing' (Locking)
             remittance.payout.status = 'processing';
-            remittance.payout.razorpayPayoutId = payout.id;
-            remittance.payout.initiatedAt = new Date();
-            remittance.status = 'paid';
-
-            remittance.timeline.push({
-                status: 'processing',
-                timestamp: new Date(),
-                actor: 'system',
-                action: `Razorpay payout initiated: ${payout.id}`,
-            });
-
             await remittance.save();
 
-            logger.info(`Payout initiated for ${remittanceId}: ${payout.id}`);
+            // 2. Enqueue Job
+            await QueueManager.addJob('payout-queue', 'process-payout', {
+                remittanceId: remittance.remittanceId,
+                companyId: company._id.toString(),
+                amount: Math.round(remittance.financial.netPayable * 100),
+                fundAccountId: razorpayFundAccountId,
+                batchNumber: remittance.batch.batchNumber
+            });
+
+            logger.info(`Payout job enqueued for ${remittanceId}`);
 
             return {
                 success: true,
-                razorpayPayoutId: payout.id,
                 status: 'processing',
             };
         } catch (error: any) {
-            // Handle Razorpay errors
+            logger.error(`Failed to enqueue payout for ${remittanceId}:`, error);
+
+            // Revert status if we failed to enqueue (though save was consistent)
+            // Actually, if we set it to processing, the worker will pick it up? 
+            // No, if addJob fails, the worker won't see it.
+            // We should revert.
             remittance.payout.status = 'failed';
-            remittance.payout.failureReason = error.message || 'Unknown Razorpay error';
+            remittance.payout.failureReason = 'Failed to enqueue payout job: ' + error.message;
             remittance.status = 'failed';
-
-            remittance.timeline.push({
-                status: 'failed',
-                timestamp: new Date(),
-                actor: 'system',
-                action: 'Razorpay payout failed',
-                notes: error.message,
-            });
-
             await remittance.save();
-
-            logger.error(`Payout failed for ${remittanceId}:`, error);
 
             return {
                 success: false,

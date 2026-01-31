@@ -175,7 +175,8 @@ export default class WalletService {
         description: string,
         reference?: TransactionReference,
         createdBy: string = 'system',
-        externalSession?: mongoose.ClientSession
+        externalSession?: mongoose.ClientSession,
+        idempotencyKey?: string // Added idempotency key
     ): Promise<TransactionResult> {
         // Input validation - prevent negative amounts
         if (amount <= 0) {
@@ -186,7 +187,7 @@ export default class WalletService {
             };
         }
 
-        return this.executeTransaction(companyId, 'credit', amount, reason, description, reference, createdBy, 0, externalSession);
+        return this.executeTransaction(companyId, 'credit', amount, reason, description, reference, createdBy, 0, externalSession, idempotencyKey);
     }
 
     /**
@@ -198,7 +199,8 @@ export default class WalletService {
         reason: TransactionReason,
         description: string,
         reference?: TransactionReference,
-        createdBy: string = 'system'
+        createdBy: string = 'system',
+        idempotencyKey?: string // Added idempotency key
     ): Promise<TransactionResult> {
         // Input validation - prevent negative amounts
         if (amount <= 0) {
@@ -211,7 +213,7 @@ export default class WalletService {
 
         // TOCTOU FIX: Balance check moved inside transaction (executeTransaction)
         // This prevents race condition where balance is checked outside session
-        return this.executeTransaction(companyId, 'debit', amount, reason, description, reference, createdBy);
+        return this.executeTransaction(companyId, 'debit', amount, reason, description, reference, createdBy, 0, undefined, idempotencyKey);
     }
 
     /**
@@ -227,7 +229,8 @@ export default class WalletService {
         reference?: TransactionReference,
         createdBy: string = 'system',
         retryCount: number = 0,
-        externalSession?: mongoose.ClientSession
+        externalSession?: mongoose.ClientSession,
+        idempotencyKey?: string
     ): Promise<TransactionResult> {
         const MAX_RETRIES = 5;
 
@@ -241,36 +244,109 @@ export default class WalletService {
         }
 
         try {
-            // Get company with version for optimistic locking
+            // 1. Idempotency Check (Compound: companyId + idempotencyKey)
+            if (idempotencyKey) {
+                // Using session(session) is critical to see uncommitted checks if we are retrying in same transaction?
+                // Actually, duplicate keys would violate the unique index added in Phase 1
+                const existingTx = await WalletTransaction.findOne({
+                    company: companyId,
+                    'metadata.idempotencyKey': idempotencyKey
+                }).session(session);
+
+                if (existingTx) {
+                    logger.info(`Wallet transaction idempotency hit`, {
+                        companyId,
+                        idempotencyKey,
+                        transactionId: existingTx._id
+                    });
+
+                    // If we started the transaction, abort it as we are just returning existing result
+                    if (!useExternalSession) {
+                        await session.abortTransaction();
+                    }
+
+                    return {
+                        success: true,
+                        transactionId: String(existingTx._id),
+                        newBalance: existingTx.balanceAfter // Return the balance at that point in time
+                    };
+                }
+            }
+
+            // 2. Fetch Company (State Before Update)
             const company = await Company.findById(companyId).session(session);
 
             if (!company) {
                 throw new AppError('Company not found', 'COMPANY_NOT_FOUND', 404);
             }
 
-            const currentBalance = company.wallet?.balance || 0;
+            const balanceBefore = company.wallet?.balance || 0;
+            const currentVersion = company.__v || 0;
             const balanceChange = type === 'debit' ? -amount : amount;
-            // Precision Fix: Round to 2 decimal places to avoid floating point errors
-            const rawNewBalance = currentBalance + balanceChange;
-            const newBalance = Math.round(rawNewBalance * 100) / 100;
 
-            // Validate balance for debits (INSIDE transaction to prevent TOCTOU)
-            if (type === 'debit' && newBalance < 0) {
+            // 3. CAS (Compare-And-Swap) Update
+            // This ensures we only update if:
+            // a) The version matches (Optimistic Locking)
+            // b) The balance is sufficient (for debits) - ATOMIC CHECK
+            const query: any = { _id: companyId, __v: currentVersion };
+
+            if (type === 'debit') {
+                // CRITICAL: MongoDB query-level condition prevents negative balance race conditions
+                query['wallet.balance'] = { $gte: amount };
+            }
+
+            const updateResult = await Company.findOneAndUpdate(
+                query,
+                {
+                    $inc: {
+                        'wallet.balance': balanceChange,
+                        __v: 1 // Increment version
+                    },
+                    $set: {
+                        'wallet.lastUpdated': new Date(),
+                    },
+                },
+                { session, new: true }
+            );
+
+            // 4. Handle Update Failure (Null Result)
+            if (!updateResult) {
+                // Determine if it was Insufficient Balance OR Version Conflict
+                // We fetch the LATEST state to diagnose
+                const latestCompany = await Company.findById(companyId).session(session);
+
+                if (!latestCompany) {
+                    throw new AppError('Company not found during Retry', 'COMPANY_NOT_FOUND', 404);
+                }
+
+                // CASE A: Insufficient Balance (Real Failure)
+                if (type === 'debit' && (latestCompany.wallet?.balance || 0) < amount) {
+                    throw new AppError(
+                        `Insufficient balance. Current: ₹${latestCompany.wallet?.balance}, Required: ₹${amount}`,
+                        'INSUFFICIENT_BALANCE',
+                        400
+                    );
+                }
+
+                // CASE B: Version Conflict (Retryable)
+                // If balance was sufficient, but update failed, it MUST be version mismatch
                 throw new AppError(
-                    `Insufficient balance. Current: ₹${currentBalance}, Required: ₹${amount}`,
-                    'INSUFFICIENT_BALANCE',
-                    400
+                    'Document was modified by another process. Retrying...',
+                    ErrorCode.BIZ_VERSION_CONFLICT,
+                    409
                 );
             }
 
-            // Create transaction record
+            const newBalance = updateResult.wallet.balance; // Accurate new balance from DB
+
+            // 5. Create Transaction Record (Audit Trail)
             const transaction = await WalletTransaction.create(
                 [
                     {
                         company: companyId,
                         type,
                         amount,
-                        balanceBefore: currentBalance,
+                        balanceBefore,
                         balanceAfter: newBalance,
                         reason,
                         description,
@@ -281,6 +357,7 @@ export default class WalletService {
                                 externalId: reference.externalId,
                             }
                             : undefined,
+                        metadata: idempotencyKey ? { idempotencyKey } : undefined, // Store idempotency key
                         createdBy,
                         status: 'completed',
                     },
@@ -288,29 +365,7 @@ export default class WalletService {
                 { session }
             );
 
-            // OPTIMISTIC LOCKING: Update with version check
-            const currentVersion = company.__v || 0;
-            const updateResult = await Company.findOneAndUpdate(
-                { _id: companyId, __v: currentVersion }, // Version check prevents lost updates
-                {
-                    $set: {
-                        'wallet.balance': newBalance,
-                        'wallet.lastUpdated': new Date(),
-                    },
-                    $inc: { __v: 1 }, // Increment version
-                },
-                { session, new: true }
-            );
-
-            if (!updateResult) {
-                throw new AppError(
-                    'Document was modified by another process. Retrying...',
-                    ErrorCode.BIZ_VERSION_CONFLICT,
-                    409
-                );
-            }
-
-            // Only commit if we own the session
+            // 6. Commit Transaction
             if (!useExternalSession) {
                 await session.commitTransaction();
             }
@@ -321,18 +376,18 @@ export default class WalletService {
                 type,
                 amount,
                 reason,
-                balanceBefore: currentBalance,
+                balanceBefore,
                 balanceAfter: newBalance,
                 version: currentVersion + 1,
             });
 
-            // Issue #C: Real-time low balance alert on crossing threshold downward
+            // 7. Post-Transaction Actions (Low Balance Alert)
             if (type === 'debit') {
                 const threshold = company.wallet?.lowBalanceThreshold || 500;
-                const crossedThreshold = currentBalance >= threshold && newBalance < threshold;
+                // Check if we crossed threshold downward
+                const crossedThreshold = balanceBefore >= threshold && newBalance < threshold;
 
                 if (crossedThreshold) {
-                    // Non-blocking notification
                     this.triggerLowBalanceAlert(companyId, newBalance, threshold)
                         .catch(err => {
                             logger.error('Failed to send low balance alert', {
@@ -365,7 +420,7 @@ export default class WalletService {
 
             if (isRetryable && retryCount < MAX_RETRIES) {
                 const delay = Math.pow(2, retryCount) * 100 + Math.random() * 100; // Exponential backoff with jitter
-                logger.warn('Version conflict detected, retrying...', {
+                logger.warn('Version/Concurrency conflict transaction retrying...', {
                     companyId,
                     retryCount: retryCount + 1,
                     delayMs: delay,
@@ -381,7 +436,8 @@ export default class WalletService {
                     reference,
                     createdBy,
                     retryCount + 1,
-                    undefined // Don't pass external session on retry
+                    undefined, // Don't pass external session on retry (start fresh)
+                    idempotencyKey
                 );
             }
 
@@ -399,7 +455,7 @@ export default class WalletService {
                 error: error.message,
             };
         } finally {
-            // Only end session if we created it (not if using external caller's session)
+            // Only end session if we created it
             if (!useExternalSession) {
                 session.endSession();
             }
@@ -444,12 +500,13 @@ export default class WalletService {
         companyId: string,
         shipmentId: string,
         amount: number,
-        awb: string
+        awb: string,
+        idempotencyKey?: string // Added idempotency key support
     ): Promise<TransactionResult> {
         return this.debit(companyId, amount, 'shipping_cost', `Shipping cost for AWB: ${awb}`, {
             type: 'shipment',
             id: shipmentId,
-        });
+        }, 'system', idempotencyKey);
     }
 
     /**

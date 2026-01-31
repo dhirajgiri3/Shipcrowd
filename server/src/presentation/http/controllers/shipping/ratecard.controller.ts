@@ -896,11 +896,135 @@ export const previewPrice = async (req: Request, res: Response, next: NextFuncti
     }
 };
 
+export const cloneRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        if (!companyId) {
+            throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const rateCardId = req.params.id;
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        const sourceCard = await RateCard.findOne({
+            _id: rateCardId,
+            companyId,
+            isDeleted: false
+        }).lean();
+
+        if (!sourceCard) {
+            throw new NotFoundError('Source rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+        }
+
+        // Create deep clone data
+        const cloneData = {
+            ...sourceCard,
+            _id: new mongoose.Types.ObjectId(),
+            name: `${sourceCard.name} (Copy)`,
+            status: 'draft', // Reset to draft
+            companyId, // Ensure ownership (same company)
+            effectiveDates: {
+                startDate: new Date(), // Reset effective dates
+                endDate: undefined
+            },
+            createdAt: undefined,
+            updatedAt: undefined,
+            __v: undefined
+        };
+
+        const newRateCard = new RateCard(cloneData);
+        await newRateCard.save();
+
+        await createAuditLog(
+            req.user._id,
+            companyId,
+            'create',
+            'ratecard',
+            String(newRateCard._id),
+            { message: 'Rate card cloned', sourceId: rateCardId },
+            req
+        );
+
+        sendCreated(res, { rateCard: newRateCard }, 'Rate card cloned successfully');
+    } catch (error) {
+        logger.error('Error cloning rate card:', error);
+        next(error);
+    }
+};
+
+export const deleteRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user) {
+            throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+        }
+
+        const companyId = req.user.companyId;
+        const rateCardId = req.params.id;
+
+        if (!mongoose.Types.ObjectId.isValid(rateCardId)) {
+            throw new ValidationError('Invalid rate card ID format');
+        }
+
+        // Safety Check 1: Ensure it's not the default card for ANY company
+        // (Even the current company shouldn't delete its active default card without switching)
+        const Company = mongoose.model('Company'); // Lazy load to avoid circular deps if any
+        const usageCount = await Company.countDocuments({
+            'settings.defaultRateCardId': new mongoose.Types.ObjectId(rateCardId)
+        });
+
+        if (usageCount > 0) {
+            throw new ConflictError(
+                'Cannot delete rate card because it is currently assigned as the Default Rate Card for one or more companies. Please reassign them first.',
+                ErrorCode.BIZ_CONFLICT
+            );
+        }
+
+        const rateCard = await RateCard.findOneAndUpdate(
+            {
+                _id: rateCardId,
+                companyId,
+                isDeleted: false
+            },
+            {
+                $set: { isDeleted: true }
+            },
+            { new: true }
+        );
+
+        if (!rateCard) {
+            throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+        }
+
+        await createAuditLog(
+            req.user._id,
+            companyId,
+            'delete',
+            'ratecard',
+            rateCardId,
+            { message: 'Rate card deleted (soft delete)' },
+            req
+        );
+
+        sendSuccess(res, { id: rateCardId }, 'Rate card deleted successfully');
+    } catch (error) {
+        logger.error('Error deleting rate card:', error);
+        next(error);
+    }
+};
+
 export default {
     createRateCard,
     getRateCards,
     getRateCardById,
     updateRateCard,
+    deleteRateCard,
+    cloneRateCard,
     calculateRate,
     compareCarrierRates,
     calculateSmartRates,

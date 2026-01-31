@@ -60,6 +60,8 @@ router.get('/:id', authenticate, asyncHandler(ratecardController.getRateCardById
  * @access Private
  */
 router.patch('/:id', authenticate, csrfProtection, asyncHandler(ratecardController.updateRateCard));
+router.delete('/:id', authenticate, csrfProtection, asyncHandler(ratecardController.deleteRateCard));
+router.post('/:id/clone', authenticate, csrfProtection, asyncHandler(ratecardController.cloneRateCard));
 
 /**
  * @route GET /api/v1/ratecards/:id/analytics

@@ -119,3 +119,37 @@ export const useCalculateRate = (payload: RateCalculationPayload, options?: UseQ
         ...options,
     });
 };
+
+/**
+ * Clone a rate card
+ */
+export const useCloneRateCard = (options?: UseMutationOptions<RateCard, ApiError, string>) => {
+    const queryClient = useQueryClient();
+    return useMutation<RateCard, ApiError, string>({
+        mutationFn: async (rateCardId) => {
+            const response = await apiClient.post(`/ratecards/${rateCardId}/clone`);
+            return response.data.rateCard;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all() });
+        },
+        ...options
+    });
+};
+
+/**
+ * Delete a rate card
+ */
+export const useDeleteRateCard = (options?: UseMutationOptions<{ id: string }, ApiError, string>) => {
+    const queryClient = useQueryClient();
+    return useMutation<{ id: string }, ApiError, string>({
+        mutationFn: async (rateCardId) => {
+            const response = await apiClient.delete(`/ratecards/${rateCardId}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all() });
+        },
+        ...options
+    });
+};

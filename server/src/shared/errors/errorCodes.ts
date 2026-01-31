@@ -27,6 +27,9 @@ export enum ErrorCode {
     AUTHZ_INSUFFICIENT_PERMISSIONS = 'AUTHZ_INSUFFICIENT_PERMISSIONS',
     AUTHZ_ROLE_REQUIRED = 'AUTHZ_ROLE_REQUIRED',
 
+    // Pricing errors
+    PRC_STRICT_PRICING_VIOLATION = 'PRC_STRICT_PRICING_VIOLATION',
+
     // Validation errors (VAL_)
     VALIDATION_ERROR = 'VALIDATION_ERROR',
     VAL_INVALID_INPUT = 'VAL_INVALID_INPUT',
@@ -137,6 +140,9 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.AUTHZ_FORBIDDEN]: 403,
     [ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS]: 403,
     [ErrorCode.AUTHZ_ROLE_REQUIRED]: 403,
+
+    // Pricing errors
+    [ErrorCode.PRC_STRICT_PRICING_VIOLATION]: 400,
 
     // Validation errors (400)
     [ErrorCode.VALIDATION_ERROR]: 400,

@@ -14,7 +14,7 @@ import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.j
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
 import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier-sync.job';
 import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping/manifest-pickup-retry.job';
-import { PricingReconciliationJob } from './infrastructure/jobs/finance/pricing-reconciliation.job';
+
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
 import { initializeCRMListeners } from './core/application/listeners/crm/index';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
@@ -73,9 +73,6 @@ const startServer = async (): Promise<void> => {
         DisputeSLAJob.initialize();
         logger.info('Dispute SLA management job initialized');
 
-        // Initialize Pricing Reconciliation Job
-        PricingReconciliationJob.initialize();
-        logger.info('Pricing reconciliation job initialized');
 
         // Initialize Carrier Sync Retry Job
         await CarrierSyncJob.initialize();

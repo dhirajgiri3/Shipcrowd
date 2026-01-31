@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import logger from '../../../../shared/logger/winston.logger';
+import logger from '../../../../../shared/logger/winston.logger';
 
 interface MISRow {
     awb: string;
