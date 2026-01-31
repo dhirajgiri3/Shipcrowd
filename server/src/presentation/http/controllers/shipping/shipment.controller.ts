@@ -23,6 +23,7 @@ import {
     calculatePagination
 } from '../../../../shared/utils/responseHelper';
 import { ShipmentService } from '../../../../core/application/services/shipping/shipment.service';
+import CacheService from '../../../../infrastructure/utilities/cache.service';
 import { AuthenticationError, ValidationError, DatabaseError, NotFoundError, ConflictError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import PricingOrchestratorService from '../../../../core/application/services/pricing/pricing-orchestrator.service';
@@ -399,6 +400,21 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
     try {
         const { trackingNumber } = req.params;
 
+        // 1. INPUT VALIDATION: Prevent Parameter DoS
+        if (trackingNumber.length > 50) {
+            throw new AppError('Invalid tracking number length', 'INVALID_TRACKING_FORMAT', 400);
+        }
+
+        // 2. CACHING: Check Redis first
+        // Key: tracking:public:{trackingNumber}
+        const cacheKey = `tracking:public:${trackingNumber}`;
+        const cachedResponse = await CacheService.get(cacheKey);
+
+        if (cachedResponse) {
+            sendSuccess(res, cachedResponse, 'Shipment tracking information retrieved successfully (from cache)');
+            return;
+        }
+
         // Allow searching by either Internal ID or Carrier AWB
         // We removed the strict regex check to accommodate diverse carrier AWB formats
         const shipment = await Shipment.findOne({
@@ -434,6 +450,9 @@ export const trackShipmentPublic = async (req: Request, res: Response, next: Nex
             },
             timeline,
         };
+
+        // 3. CACHE SET: Store result for 5 minutes (300 seconds)
+        await CacheService.set(cacheKey, publicResponse, 300);
 
         sendSuccess(res, publicResponse, 'Shipment tracking information retrieved successfully');
     } catch (error) {

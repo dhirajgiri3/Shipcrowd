@@ -157,6 +157,22 @@ export const uploadRateLimiter = createLimiterConfig(
 );
 
 /**
+ * Rate limiter for public tracking page
+ * Protects against enumeration and scraping
+ */
+export const publicTrackingRateLimiter = createLimiterConfig(
+    60 * 1000, // 1 minute
+    60, // 60 requests per minute
+    SYSTEM_MESSAGES.RATE_LIMIT_EXCEEDED(60),
+    'rl:tracking:',
+    {
+        keyGenerator: (req: any) => {
+            return req.ip || 'unknown'; // Public endpoint, key by IP
+        }
+    }
+);
+
+/**
  * Create custom rate limiter helper
  */
 export const createRateLimiter = (

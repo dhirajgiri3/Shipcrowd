@@ -62,7 +62,15 @@ router.get(
  * @desc Track a shipment by AWB/tracking number (Public)
  * @access Public
  */
-router.get('/public/track/:trackingNumber', asyncHandler(shipmentController.trackShipmentPublic));
+import { publicTrackingRateLimiter } from '../../../../../shared/config/rateLimit.config';
+
+/**
+ * @route GET /api/v1/shipments/public/track/:trackingNumber
+ * @desc Track a shipment by AWB/tracking number (Public)
+ * @access Public
+ * @rateLimit 60 requests per minute
+ */
+router.get('/public/track/:trackingNumber', publicTrackingRateLimiter, asyncHandler(shipmentController.trackShipmentPublic));
 
 /**
  * @route GET /api/v1/shipments/:shipmentId
