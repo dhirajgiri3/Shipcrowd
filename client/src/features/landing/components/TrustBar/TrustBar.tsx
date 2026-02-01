@@ -355,7 +355,7 @@ export default function TrustBar() {
                             >
                                 <div className="w-full h-full flex items-center justify-center">
                                     <motion.img
-                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
                                         alt="Shipcrowd"
                                         className="w-[75%] h-[75%] object-contain rounded-full"
                                         initial={{ opacity: 0.95 }}

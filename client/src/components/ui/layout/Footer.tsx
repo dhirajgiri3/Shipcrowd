@@ -145,7 +145,7 @@ export function Footer() {
                             <div className="flex items-center gap-2">
                                 <div className="relative w-32 h-12">
                                     <Image
-                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
                                         alt="Shipcrowd Logo"
                                         fill
                                         className="object-contain rounded-full"

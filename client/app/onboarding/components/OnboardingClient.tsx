@@ -101,11 +101,13 @@ export function OnboardingClient() {
         if (!authLoading) {
             if (!isAuthenticated) {
                 router.push("/login")
-            } else if (user?.companyId) {
-                router.push("/seller")
-            } else if (step === 1 && user?.isEmailVerified) {
-                // If email is verified, skip step 1
-                setStep(2)
+            } else {
+                if (user?.companyId) {
+                    router.push("/seller")
+                } else if (step === 1 && user?.isEmailVerified) {
+                    // If email is verified, skip step 1
+                    setStep(2)
+                }
             }
         }
     }, [authLoading, isAuthenticated, user?.companyId, user?.isEmailVerified, router])
@@ -327,7 +329,7 @@ export function OnboardingClient() {
                 <div className="flex items-center justify-between mb-8">
                     <Link href="/" className="inline-block">
                         <img
-                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
                             alt="Shipcrowd"
                             className="h-8 rounded-full"
                         />

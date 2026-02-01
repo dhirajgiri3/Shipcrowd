@@ -1134,7 +1134,16 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
 
     // Redirect to frontend without tokens in URL
-    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/seller/dashboard`;
+    // Determine redirect URL based on user state
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    let redirectUrl = `${baseUrl}/seller/dashboard`;
+
+    if (!user.companyId && user.role !== 'admin' && user.role !== 'super_admin') {
+      redirectUrl = `${baseUrl}/onboarding`;
+    } else if (user.role === 'admin' || user.role === 'super_admin') {
+      redirectUrl = `${baseUrl}/admin/dashboard`;
+    }
+
     res.redirect(redirectUrl);
   } catch (error) {
     logger.error('Google OAuth callback error:', error);

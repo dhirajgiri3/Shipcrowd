@@ -32,15 +32,23 @@ export function SellerLayoutClient({
     const { user, isInitialized } = useAuth();
 
     // Check if user has completed onboarding (has a company)
-    // REMOVED: Hard redirect trap - users can now access dashboard in limited mode
-    // useEffect(() => {
-    //     if (!isInitialized) return;
-    //     if (pathname?.startsWith('/onboarding')) return;
-    //     if (user && !user.companyId) {
-    //         console.log('[SellerLayout] User has no company - redirecting to onboarding');
-    //         router.push('/onboarding');
-    //     }
-    // }, [user, isInitialized, pathname, router]);
+    useEffect(() => {
+        if (!isInitialized) return;
+        if (pathname?.startsWith('/onboarding')) return;
+
+        // Admins don't strictly need a company to view the dashboard (view-only mode)
+        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+
+        if (user && !user.companyId && !isAdmin) {
+            router.push('/onboarding');
+        }
+    }, [user, isInitialized, pathname, router]);
+
+    // PREVENT RENDER: If user needs onboarding, don't render dashboard widgets.
+    // This prevents API calls that would fail (403) and potentially spam token refresh, killing the session.
+    if (isInitialized && user && !user.companyId && !['admin', 'super_admin'].includes(user.role)) {
+        return null; // or <Loader />
+    }
 
     return (
         <AuthGuard requiredRole="seller" redirectTo="/login">

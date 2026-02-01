@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import PromoCodeService from '../../../../core/application/services/marketing/promo-code.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
-import { apiRateLimiter } from '../../middleware/system/rate-limiter.middleware';
+
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 
 /**

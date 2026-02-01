@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/src/components/ui/feedback/Toast';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 /**
  * Company Setup Page
@@ -104,6 +105,14 @@ export const CompanySetupPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            {isLoading && (
+                <Loader
+                    variant="truck"
+                    fullScreen
+                    message="Setting up your workspace..."
+                    subMessage="We're configuring your dashboard and preferences"
+                />
+            )}
             <div className="max-w-2xl w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-900 text-center">
@@ -286,6 +295,7 @@ export const CompanySetupPage = () => {
                             disabled={isLoading}
                             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
+                            {/* We can keep this spinner for button-level feedback if the full screen loader is not covering everything immediately or if we want dual feedback */}
                             {isLoading ? (
                                 <>
                                     <svg

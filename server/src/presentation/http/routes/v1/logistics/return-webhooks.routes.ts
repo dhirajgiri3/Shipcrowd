@@ -6,7 +6,7 @@
 
 import { Router } from 'express';
 import ReturnWebhookController from '@/presentation/http/controllers/logistics/return-webhook.controller';
-import { apiRateLimiter } from '../../../middleware/system/rate-limiter.middleware';
+import { apiRateLimiter } from '@/shared/config/rateLimit.config';
 
 const router = Router();
 

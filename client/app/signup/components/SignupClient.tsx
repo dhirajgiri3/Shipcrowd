@@ -31,6 +31,7 @@ import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
 import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { consentApi } from '@/src/core/api/clients/consentApi';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 export function SignupClient() {
   const router = useRouter();
@@ -55,12 +56,11 @@ export function SignupClient() {
   // Don't render until auth is initialized
   if (!isInitialized) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
+      <Loader
+        variant="truck"
+        fullScreen
+        message="Loading secure session..."
+      />
     );
   }
 
@@ -133,7 +133,7 @@ export function SignupClient() {
           {/* Logo */}
           <Link href="/" className="inline-block mb-12">
             <img
-              src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+              src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
               alt="Shipcrowd"
               className="h-8 w-auto rounded-full"
             />

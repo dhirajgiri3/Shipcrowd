@@ -199,7 +199,7 @@ function SidebarComponent() {
             {/* Logo */}
             <div className="flex h-16 items-center px-6">
                 <img
-                    src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png"
+                    src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
                     alt="Shipcrowd Logo"
                     className="h-8 w-auto transition-opacity duration-200 hover:opacity-80 rounded-full"
                 />

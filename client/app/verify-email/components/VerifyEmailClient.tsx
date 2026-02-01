@@ -117,7 +117,7 @@ function VerifyEmailContent() {
       animate={{ opacity: 1, y: 0 }}
     >
       <Link href="/" className="inline-block mb-8">
-        <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Shipcrowd_logo_yopeh9.png" alt="Shipcrowd" className="h-8 w-auto mx-auto rounded-full" />
+        <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png" alt="Shipcrowd" className="h-8 w-auto mx-auto rounded-full" />
       </Link>
 
       {status === "loading" && (

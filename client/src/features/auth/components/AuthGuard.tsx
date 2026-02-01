@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import type { User } from '@/src/types/auth';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -63,7 +64,7 @@ export function AuthGuard({
 
       // Super admin can access any admin or seller route
       const hasRequiredRole = allowedRoles.includes(user.role) ||
-                              (isSuperAdmin && allowedRoles.includes('admin'));
+        (isSuperAdmin && allowedRoles.includes('admin'));
 
       if (!hasRequiredRole && !isAdminAccessingSeller) {
         // Only redirect if user truly doesn't have access
@@ -82,12 +83,7 @@ export function AuthGuard({
   // Show loading state while checking auth
   if (!isInitialized) {
     return loadingFallback || (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
+      <Loader variant="truck" fullScreen message="Loading Shipcrowd..." />
     );
   }
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import NotificationTemplateController from '../../../controllers/communication/notification-template.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { apiRateLimiter } from '../../../middleware/system/rate-limiter.middleware';
+import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 
 const router = Router();
 

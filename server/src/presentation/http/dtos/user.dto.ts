@@ -13,12 +13,26 @@ export class UserDTO {
    * @returns Sanitized user object safe for API responses
    */
     static toResponse(user: IUser): UserResponse {
+        let companyIdString: string | undefined;
+
+        if (typeof user.companyId === 'object' && user.companyId !== null && '_id' in user.companyId) {
+            companyIdString = (user.companyId as any)._id.toString();
+        } else {
+            companyIdString = (user.companyId as any)?.toString();
+        }
+
+        // FAIL-SAFE: If serialization failed and resulted in "[object Object]", force undefined
+        if (companyIdString === '[object Object]') {
+            console.error('[UserDTO] ⚠️ CRITICAL: companyId serialized to [object Object] - forcing undefined');
+            companyIdString = undefined;
+        }
+
         return {
             _id: (user._id as any).toString(),
             email: user.email,
             name: user.name,
             role: user.role,
-            companyId: user.companyId?.toString(), // Always string, never ObjectId
+            companyId: companyIdString,
             teamRole: user.teamRole,
             teamStatus: user.teamStatus,
             googleId: user.googleId,

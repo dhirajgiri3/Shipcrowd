@@ -35,11 +35,13 @@ import { Loader } from '@/components/ui';
 ```
 
 **Props:**
-- `variant`: `'truck' | 'spinner' | 'dots' | 'progress'` (default: `'spinner'`)
+- `variant`: `'truck' | 'spinner' | 'dots' | 'progress'` (default: `'truck'`)
 - `size`: `'sm' | 'md' | 'lg' | 'xl'` (default: `'md'`)
 - `message`: Optional loading message
+- `subMessage`: Optional sub-message (Truck variant only)
 - `progress`: Progress percentage for progress variant (0-100)
 - `centered`: Center the loader with minimum height
+- `fullScreen`: Show as massive full screen overlay
 - `className`: Additional CSS classes
 
 ---
@@ -271,13 +273,15 @@ All loaders automatically adapt to dark mode using CSS variables:
 
 ```css
 /* Light mode */
---gray-800: #1F2937;
---primary-blue: #2525FF;
+--text-primary: hsl(222, 30%, 15%);
+--bg-secondary: hsl(215, 25%, 97%);
+--primary-blue: hsl(240, 100%, 57%);
 
 /* Dark mode */
 .dark {
-  --gray-300: #D1D5DB;
-  --primary-blue: #3E3EFF;
+  --text-primary: hsl(220, 20%, 98%);
+  --bg-secondary: hsl(230, 15%, 4%);
+  --primary-blue: #7B61FF;
 }
 ```
 
