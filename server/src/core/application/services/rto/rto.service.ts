@@ -515,7 +515,6 @@ export default class RTOService {
                 // RTO reverses origin/dest: pickup from delivery address, deliver to warehouse
                 originPincode: fullShipment.deliveryDetails.address.postalCode,
                 destinationPincode: fullShipment.pickupDetails?.warehouseId?.toString() // Will need warehouse lookup for actual pincode
->>>>>>> refactor/frontend-polish-complete
             };
 
             // Calculate charges using RateCardService
