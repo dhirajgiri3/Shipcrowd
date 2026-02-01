@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import ProductMappingService from '../../../../core/application/services/shopify/product-mapping.service';
-import ShopifyInventorySyncService from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
+import { ShopifyInventorySyncService } from '../../../../core/application/services/shopify/shopify-inventory-sync.service';
 import { ValidationError, NotFoundError, AuthenticationError, AuthorizationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';

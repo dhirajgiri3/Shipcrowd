@@ -293,7 +293,7 @@ export class NDRActionExecutors {
             const shipmentId = String(ndrEvent.shipment);
             const ndrEventId = String(ndrEvent._id);
             const token = TokenService.generateAddressUpdateToken(shipmentId, companyId, ndrEventId);
-            const updateUrl = `${process.env.BASE_URL || 'https://shipcrowd.com'}/public/update-address/${token}`;
+            const updateUrl = `${process.env.BASE_URL || 'https://Shipcrowd.com'}/public/update-address/${token}`;
 
             // Send via WhatsApp with update link
             const message = `Hi ${customer.name},
@@ -337,20 +337,64 @@ Need help? Reply to this message.
         actionConfig: Record<string, any>
     ): Promise<ActionResult> {
         try {
-            const { ndrEvent } = context;
+            const { ndrEvent, companyId } = context;
 
-            // TODO: Integrate with courier API to request reattempt
-            // For now, mark as pending for manual action
-            logger.info('Reattempt request queued', {
+            // Dynamically import dependencies
+            const mongoose = await import('mongoose');
+            const { CourierFactory } = await import('../../courier/courier.factory.js');
+            const { Shipment } = await import('../../../../../infrastructure/database/mongoose/models/index.js');
+
+            // Determine carrier from shipment
+            let carrierName = 'velocity-shipfast'; // Default fallback, though should always be present
+
+            // Check if shipment is populated and has carrier
+            if (ndrEvent.shipment && (ndrEvent.shipment as any).carrier) {
+                carrierName = (ndrEvent.shipment as any).carrier;
+            } else {
+                // Fetch shipment if mostly likely just an ID
+                const shipmentDoc = await Shipment.findById(ndrEvent.shipment).select('carrier');
+                if (shipmentDoc) {
+                    carrierName = shipmentDoc.carrier;
+                } else {
+                    logger.warn('Shipment not found for NDR reattempt, defaulting to velocity-shipfast', {
+                        shipmentId: ndrEvent.shipment,
+                        ndrEventId: ndrEvent._id
+                    });
+                }
+            }
+
+            // Get generic courier provider
+            const provider = await CourierFactory.getProvider(
+                carrierName,
+                new mongoose.Types.ObjectId(companyId)
+            );
+
+            // Execute reattempt request via common interface
+            const result = await provider.requestReattempt(
+                ndrEvent.awb,
+                actionConfig.preferredDate ? new Date(actionConfig.preferredDate) : undefined,
+                actionConfig.notes // "notes" maps to "instructions" in interface
+            );
+
+            logger.info('Courier reattempt requested', {
                 ndrEventId: ndrEvent._id,
                 awb: ndrEvent.awb,
+                carrier: carrierName,
+                success: result.success,
+                message: result.message
             });
 
             return {
-                success: true,
+                success: result.success,
                 actionType: 'request_reattempt',
-                result: 'pending',
-                metadata: { awb: ndrEvent.awb, requiresManualAction: true },
+                result: result.success ? 'success' : 'failed',
+                metadata: {
+                    awb: ndrEvent.awb,
+                    message: result.message,
+                    carrier: carrierName,
+                    manualActionRequired: !result.success
+                },
+                error: result.success ? undefined : result.message
             };
         } catch (error: any) {
             return {

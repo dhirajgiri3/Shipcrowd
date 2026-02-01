@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Banknote,
     Search,
@@ -18,14 +18,16 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Filter,
-    Eye
+    Eye,
+    AlertCircle
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency } from '@/src/lib/utils';
+import { useCODRemittances, useCODStats } from '@/src/core/api/hooks/finance';
 
-// Mock COD remittance data
-const mockRemittances = [
+// Mock COD remittance data (fallback)
+const MOCK_REMITTANCES = [
     {
         id: 'REM-001',
         date: '2024-12-11',
@@ -83,8 +85,8 @@ const mockRemittances = [
     },
 ];
 
-// Mock pending COD shipments
-const mockPendingCOD = [
+// Mock pending COD shipments (fallback)
+const MOCK_PENDING_COD = [
     { awb: 'DL987654321IN', amount: 1299, deliveredDate: '2024-12-10', expectedRemit: '2024-12-13' },
     { awb: 'XB123456789IN', amount: 2499, deliveredDate: '2024-12-11', expectedRemit: '2024-12-14' },
     { awb: 'BD555666777IN', amount: 899, deliveredDate: '2024-12-11', expectedRemit: '2024-12-14' },
@@ -94,19 +96,53 @@ const mockPendingCOD = [
 export function CodClient() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'remittances' | 'pending'>('remittances');
+    const [page, setPage] = useState(1);
     const { addToast } = useToast();
 
-    const filteredRemittances = mockRemittances.filter(rem =>
-        rem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        rem.utr?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // --- REAL API INTEGRATION ---
+    const { data: remittancesResponse, isLoading: isLoadingRemittances } = useCODRemittances({
+        page,
+        limit: 25,
+        search: searchQuery || undefined
+    });
 
-    const totalCODCollected = mockRemittances.reduce((sum, r) => sum + r.totalCOD, 0);
-    const totalRemitted = mockRemittances.filter(r => r.status === 'processed').reduce((sum, r) => sum + r.netAmount, 0);
-    const totalPending = mockRemittances.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.netAmount, 0);
+    const { data: statsResponse, isLoading: isLoadingStats } = useCODStats();
+
+    // Extract data with mock fallback
+    const remittancesData: any[] = remittancesResponse?.remittances || MOCK_REMITTANCES;
+    const isUsingMockRemittances = !remittancesResponse?.remittances;
+
+    // Build stats from API or mock data
+    const totalCODCollected = statsResponse?.thisMonth?.totalCODCollected ||
+        MOCK_REMITTANCES.reduce((sum, r) => sum + r.totalCOD, 0);
+    const totalRemitted = statsResponse?.thisMonth?.netPaid ||
+        MOCK_REMITTANCES.filter(r => r.status === 'processed').reduce((sum, r) => sum + r.netAmount, 0);
+    const totalPending = statsResponse?.pending?.amount ||
+        MOCK_REMITTANCES.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.netAmount, 0);
+    const thisMonthCount = statsResponse?.thisMonth?.count || MOCK_REMITTANCES.length;
+
+    const isUsingMockStats = !statsResponse;
+
+    // Server-side filtered data for real API, client-side for mock
+    const filteredRemittances = isUsingMockRemittances
+        ? remittancesData.filter(rem =>
+            rem.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            rem.utr?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : remittancesData;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Mock Data Indicator */}
+            {(isUsingMockRemittances || isUsingMockStats) && (
+                <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                        ⚠️ Using mock data (API data not available)
+                    </p>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
@@ -170,7 +206,7 @@ export function CodClient() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">This Month</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockRemittances.length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{thisMonthCount}</p>
                                 <p className="text-xs text-[var(--text-muted)]">remittances</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -204,7 +240,7 @@ export function CodClient() {
                     )}
                 >
                     Pending COD
-                    <Badge variant="warning" className="text-xs">{mockPendingCOD.length}</Badge>
+                    <Badge variant="warning" className="text-xs">{MOCK_PENDING_COD.length}</Badge>
                 </button>
             </div>
 
@@ -324,7 +360,7 @@ export function CodClient() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-subtle)]">
-                                    {mockPendingCOD.map((item) => (
+                                    {MOCK_PENDING_COD.map((item) => (
                                         <tr key={item.awb} className="hover:bg-[var(--bg-secondary)] transition-colors">
                                             <td className="p-4">
                                                 <code className="font-mono text-sm font-semibold text-[var(--text-primary)]">{item.awb}</code>
@@ -345,7 +381,7 @@ export function CodClient() {
                                     <tr>
                                         <td className="p-4 font-medium text-[var(--text-primary)]">Total</td>
                                         <td className="p-4 text-right font-bold text-[var(--text-primary)]">
-                                            {formatCurrency(mockPendingCOD.reduce((sum, i) => sum + i.amount, 0))}
+                                            {formatCurrency(MOCK_PENDING_COD.reduce((sum, i) => sum + i.amount, 0))}
                                         </td>
                                         <td colSpan={2}></td>
                                     </tr>

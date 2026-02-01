@@ -116,8 +116,8 @@ export class AmazonProductMappingController {
                 amazonListingId,
                 amazonTitle,
                 amazonCategory,
-                shipcrowdSKU,
-                shipcrowdProductName,
+                ShipcrowdSKU,
+                ShipcrowdProductName,
                 fulfillmentType,
                 syncInventory,
                 syncPrice,
@@ -142,7 +142,7 @@ export class AmazonProductMappingController {
                 throw new ValidationError('Amazon SKU is required');
             }
 
-            if (!shipcrowdSKU) {
+            if (!ShipcrowdSKU) {
                 throw new ValidationError('Shipcrowd SKU is required');
             }
 
@@ -153,8 +153,8 @@ export class AmazonProductMappingController {
                 amazonListingId,
                 amazonTitle,
                 amazonCategory,
-                shipcrowdSKU,
-                shipcrowdProductName,
+                ShipcrowdSKU,
+                ShipcrowdProductName,
                 fulfillmentType,
                 mappedBy: String(userId),
                 syncInventory,
@@ -166,7 +166,7 @@ export class AmazonProductMappingController {
                     id: mapping._id,
                     amazonASIN: mapping.amazonASIN,
                     amazonSKU: mapping.amazonSKU,
-                    shipcrowdSKU: mapping.shipcrowdSKU,
+                    ShipcrowdSKU: mapping.ShipcrowdSKU,
                     fulfillmentType: mapping.fulfillmentType,
                 },
             }, 'Mapping created successfully');

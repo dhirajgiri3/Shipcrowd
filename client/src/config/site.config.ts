@@ -16,9 +16,9 @@ export const siteConfig = {
 
     // Links
     links: {
-        twitter: 'https://twitter.com/shipcrowd',
-        github: 'https://github.com/shipcrowd',
-        linkedin: 'https://linkedin.com/company/shipcrowd',
+        twitter: 'https://twitter.com/Shipcrowd',
+        github: 'https://github.com/Shipcrowd',
+        linkedin: 'https://linkedin.com/company/Shipcrowd',
     },
 
     // Features

@@ -20,8 +20,8 @@
 **Task 1.1: Development Environment**
 ```bash
 # All developers execute together
-git clone https://github.com/yourorg/shipcrowd-backend.git
-cd shipcrowd-backend/server
+git clone https://github.com/yourorg/Shipcrowd-backend.git
+cd Shipcrowd-backend/server
 npm install
 cp .env.example .env
 

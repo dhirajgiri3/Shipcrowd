@@ -6,7 +6,7 @@
 
 'use client';
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { AuditLogsViewer } from '@/src/features/settings/components/AuditLogsViewer';
 
 export default function AuditLogsPage() {

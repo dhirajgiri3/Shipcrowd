@@ -7,17 +7,24 @@
 
 import { Router } from 'express';
 import FraudController from '@/presentation/http/controllers/fraud/fraud.controller';
-// TODO: Uncomment when fraud detection is integrated
-// import { authenticate } from '../../middleware/auth/authentication.middleware';
-// import { authorize } from '../../middleware/auth/authorization.middleware';
-// import { apiRateLimiter } from '../../middleware/system/rate-limiter.middleware';
+// FRAUD DETECTION ARCHIVED - DO NOT ENABLE UNTIL FUTURE RELEASE
+// import { authenticate } from '@/presentation/http/middleware';
+// import { requireAccess } from '@/presentation/http/middleware/auth/unified-access';
+// // import { apiRateLimiter } from '../../middleware/system/rate-limiter.middleware';
 
 const router = Router();
 
-// TODO: Add middleware protection when fraud detection is integrated
-// All fraud routes require authentication and admin role
-// router.use(authenticate);
-// router.use(authorize({ roles: ['admin'] }));
+// // Rate limiting should be added here when available or imported
+// // router.use(apiRateLimiter);
+
+// // All fraud routes require authentication
+// // router.use(authenticate);
+
+// // All fraud routes require KYC verification
+// // router.use(requireAccess({ kyc: true }));
+
+// // Admin access required for all fraud operations
+// // router.use(requireAccess({ roles: ['admin'] }));
 
 /**
  * GET /fraud/alerts

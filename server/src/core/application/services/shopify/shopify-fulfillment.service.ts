@@ -80,7 +80,7 @@ interface CreateFulfillmentPayload {
 /**
  * Status update mappings from Shipcrowd to Shopify
  */
-const SHIPCROWD_TO_SHOPIFY_STATUS: Record<string, string> = {
+const Shipcrowd_TO_SHOPIFY_STATUS: Record<string, string> = {
     PICKED_UP: 'in_transit',
     IN_TRANSIT: 'in_transit',
     OUT_FOR_DELIVERY: 'out_for_delivery',
@@ -331,12 +331,12 @@ export class ShopifyFulfillmentService {
      * We use fulfillment events API to add status updates.
      *
      * @param orderId - Shipcrowd order ID
-     * @param shipcrowdStatus - Shipcrowd shipment status
+     * @param ShipcrowdStatus - Shipcrowd shipment status
      * @param message - Optional status message
      */
     static async updateShipmentStatus(
         orderId: string,
-        shipcrowdStatus: string,
+        ShipcrowdStatus: string,
         message?: string
     ): Promise<void> {
         try {
@@ -361,11 +361,11 @@ export class ShopifyFulfillmentService {
             });
 
             // Map Shipcrowd status to Shopify status
-            const shopifyStatus = SHIPCROWD_TO_SHOPIFY_STATUS[shipcrowdStatus];
+            const shopifyStatus = Shipcrowd_TO_SHOPIFY_STATUS[ShipcrowdStatus];
 
             if (!shopifyStatus) {
                 logger.debug('No Shopify status mapping for Shipcrowd status', {
-                    shipcrowdStatus,
+                    ShipcrowdStatus,
                 });
                 return;
             }
@@ -376,7 +376,7 @@ export class ShopifyFulfillmentService {
                 {
                     event: {
                         status: shopifyStatus,
-                        message: message || `Shipment status: ${shipcrowdStatus}`,
+                        message: message || `Shipment status: ${ShipcrowdStatus}`,
                     },
                 }
             );
@@ -390,7 +390,7 @@ export class ShopifyFulfillmentService {
             // Log but don't throw - status updates are non-critical
             logger.warn('Failed to update Shopify shipment status', {
                 orderId,
-                shipcrowdStatus,
+                ShipcrowdStatus,
                 error: error.message,
             });
         }
@@ -584,7 +584,7 @@ export class ShopifyFulfillmentService {
         }
 
         // Default fallback - Shipcrowd tracking page
-        return `${process.env.FRONTEND_URL || 'https://shipcrowd.com'}/track/${awbNumber}`;
+        return `${process.env.FRONTEND_URL || 'https://Shipcrowd.com'}/track/${awbNumber}`;
     }
 
     /**

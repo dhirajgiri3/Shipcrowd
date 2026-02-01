@@ -86,6 +86,13 @@ describe('Velocity Webhook Integration Tests', () => {
       carrierDetails: {
         carrierTrackingNumber: testAwb
       },
+      weights: {
+        declared: {
+          value: 1.5,
+          unit: 'kg'
+        },
+        verified: false
+      },
       isDeleted: false
     });
 

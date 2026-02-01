@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Badge } from '@/components/ui/core/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/core/Tabs';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/core/Tabs';
 import {
     ChevronLeft,
     Building2,
@@ -21,9 +21,9 @@ import {
     TrendingUp,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { toast } from 'sonner';
-
 interface SellerDetail {
     _id: string;
     companyName: string;
@@ -67,10 +67,10 @@ export default function SellerDetailPage({ params }: { params: { id: string } })
     const handleToggleStatus = async () => {
         try {
             await apiClient.post(`/admin/sellers/${params.id}/toggle-status`);
-            toast.success(`Seller ${seller?.isActive ? 'deactivated' : 'activated'} successfully`);
+            showSuccessToast(`Seller ${seller?.isActive ? 'deactivated' : 'activated'} successfully`);
             // Refetch data
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to toggle status');
+            handleApiError(error, 'Failed to toggle status');
         }
     };
 

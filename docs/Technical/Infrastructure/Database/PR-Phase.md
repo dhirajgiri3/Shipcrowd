@@ -60,7 +60,7 @@ Restore from backup if data corruption
 Rollback Commands:
 
 # Feature flag rollback
-kubectl set env deployment/shipcrowd-api FEATURE_[FLAG_NAME]=false
+kubectl set env deployment/Shipcrowd-api FEATURE_[FLAG_NAME]=false
 # Code rollback
 git revert -m 1 <merge-commit-hash>
 # Data rollback

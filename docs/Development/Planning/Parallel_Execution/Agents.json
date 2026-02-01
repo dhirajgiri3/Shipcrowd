@@ -14,7 +14,15 @@
         {
           "phase": 1,
           "day": 1,
-          "tasks": ["T1.1", "T1.2", "T1.3", "T1.4", "T1.5", "T1.6", "T1.7"],
+          "tasks": [
+            "T1.1",
+            "T1.2",
+            "T1.3",
+            "T1.4",
+            "T1.5",
+            "T1.6",
+            "T1.7"
+          ],
           "estimatedDuration": "8 hours",
           "timeWindow": {
             "earliest": "2025-01-XX 09:00 IST",
@@ -24,7 +32,9 @@
         {
           "phase": 3,
           "day": 3,
-          "tasks": ["T3.6"],
+          "tasks": [
+            "T3.6"
+          ],
           "estimatedDuration": "1 hour",
           "timeWindow": {
             "earliest": "2025-01-XX 14:00 IST",
@@ -71,7 +81,12 @@
         {
           "phase": 1,
           "day": 1,
-          "tasks": ["T2.1", "T2.2", "T2.3", "T2.4"],
+          "tasks": [
+            "T2.1",
+            "T2.2",
+            "T2.3",
+            "T2.4"
+          ],
           "estimatedDuration": "3 hours",
           "timeWindow": {
             "earliest": "2025-01-XX 13:00 IST",
@@ -82,7 +97,14 @@
         {
           "phase": 2,
           "day": 2,
-          "tasks": ["T2.5", "T2.6", "T2.7", "T2.8", "T2.9", "T2.10"],
+          "tasks": [
+            "T2.5",
+            "T2.6",
+            "T2.7",
+            "T2.8",
+            "T2.9",
+            "T2.10"
+          ],
           "estimatedDuration": "7.5 hours",
           "timeWindow": {
             "earliest": "2025-01-XX 09:00 IST",
@@ -92,7 +114,9 @@
         {
           "phase": 3,
           "day": 3,
-          "tasks": ["T2.11"],
+          "tasks": [
+            "T2.11"
+          ],
           "estimatedDuration": "1.5 hours",
           "timeWindow": {
             "earliest": "2025-01-XX 09:00 IST",
@@ -139,7 +163,12 @@
         {
           "phase": 3,
           "day": 3,
-          "tasks": ["T3.1", "T3.2", "T3.3", "T3.4"],
+          "tasks": [
+            "T3.1",
+            "T3.2",
+            "T3.3",
+            "T3.4"
+          ],
           "estimatedDuration": "3.5 hours",
           "timeWindow": {
             "earliest": "2025-01-XX 09:00 IST",
@@ -188,7 +217,11 @@
         {
           "phase": 3,
           "day": 3,
-          "tasks": ["T3.5", "T3.7", "T3.8"],
+          "tasks": [
+            "T3.5",
+            "T3.7",
+            "T3.8"
+          ],
           "estimatedDuration": "3.5 hours",
           "timeWindow": {
             "earliest": "2025-01-XX 13:00 IST",
@@ -205,7 +238,7 @@
       "expectedThroughput": "3 user flows tested in 1 hour, 10 bugs fixed in 1.5 hours",
       "preconditions": [
         "All features integrated (Backend + Frontend + Seed complete)",
-        "Test credentials created (demo@shipcrowd.com)",
+        "Test credentials created (demo@Shipcrowd.com)",
         "Chrome, Safari, Firefox installed for cross-browser testing"
       ],
       "outputs": [

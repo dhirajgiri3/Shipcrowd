@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authApi } from '@/src/core/api/authApi';
+import { authApi } from '@/src/core/api';
 
 interface PasswordStrengthIndicatorProps {
     password: string;

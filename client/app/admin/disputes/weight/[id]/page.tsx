@@ -17,9 +17,9 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWeightDispute, useResolveDispute } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate, formatDateTime } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DisputeTimeline } from '@/src/features/disputes';
-import type { ResolutionOutcome } from '@/src/types/api/dispute.types';
+import type { ResolutionOutcome } from '@/src/types/api/returns';
 
 const RESOLUTION_OUTCOMES = [
     {
@@ -30,8 +30,8 @@ const RESOLUTION_OUTCOMES = [
         icon: '✓'
     },
     {
-        value: 'shipcrowd_favor' as ResolutionOutcome,
-        label: 'ShipCrowd Favor',
+        value: 'Shipcrowd_favor' as ResolutionOutcome,
+        label: 'Shipcrowd Favor',
         description: 'Carrier weight is accurate, deduct from seller wallet',
         color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700',
         icon: '×'
@@ -172,13 +172,13 @@ export default function AdminDisputeReviewPage() {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        setSelectedOutcome('shipcrowd_favor');
+                                        setSelectedOutcome('Shipcrowd_favor');
                                         setReasonCode('INSUFFICIENT_EVIDENCE');
                                         setDeductionAmount(dispute.financialImpact.difference.toString());
                                     }}
                                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                                 >
-                                    Quick: ShipCrowd Favor
+                                    Quick: Shipcrowd Favor
                                 </button>
                             </div>
                         )}
@@ -335,8 +335,8 @@ export default function AdminDisputeReviewPage() {
                                                     key={outcome.value}
                                                     onClick={() => setSelectedOutcome(outcome.value)}
                                                     className={`p-3 rounded-lg border-2 text-left transition-all ${selectedOutcome === outcome.value
-                                                            ? `${outcome.color} border-current`
-                                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                                        ? `${outcome.color} border-current`
+                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-2">
@@ -367,7 +367,7 @@ export default function AdminDisputeReviewPage() {
                                                     </div>
                                                 </div>
                                             )}
-                                            {(selectedOutcome === 'shipcrowd_favor' || selectedOutcome === 'split') && (
+                                            {(selectedOutcome === 'Shipcrowd_favor' || selectedOutcome === 'split') && (
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Deduction Amount</label>
                                                     <div className="relative">

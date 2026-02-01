@@ -42,7 +42,7 @@ interface TrackingInfo {
 /**
  * Status mappings from Shipcrowd to Flipkart
  */
-const SHIPCROWD_TO_FLIPKART_STATUS: Record<string, string> = {
+const Shipcrowd_TO_FLIPKART_STATUS: Record<string, string> = {
     BOOKED: 'APPROVED',
     MANIFESTED: 'READY_TO_DISPATCH',
     PICKED_UP: 'READY_TO_DISPATCH',

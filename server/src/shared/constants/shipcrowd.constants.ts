@@ -1,16 +1,16 @@
 /**
- * ShipCrowd Business Constants
+ * Shipcrowd Business Constants
  * Centralized configuration for company details, GST information, and invoice settings
  */
 
 /**
- * ShipCrowd Company Details
+ * Shipcrowd Company Details
  * Used across all invoices, PDFs, and official documents
  */
-export const SHIPCROWD = {
-    LEGAL_NAME: 'ShipCrowd Logistics Private Limited',
-    GSTIN: process.env.SHIPCROWD_GSTIN || '06FKCPS6109D3Z7',
-    PAN: process.env.SHIPCROWD_PAN || 'FKCPS6109D',
+export const Shipcrowd = {
+    LEGAL_NAME: 'Shipcrowd Logistics Private Limited',
+    GSTIN: process.env.Shipcrowd_GSTIN || '06FKCPS6109D3Z7',
+    PAN: process.env.Shipcrowd_PAN || 'FKCPS6109D',
 
     ADDRESS: {
         line1: 'Industrial Area Phase 1',
@@ -23,10 +23,10 @@ export const SHIPCROWD = {
     },
 
     CONTACT: {
-        email: 'invoices@shipcrowd.com',
+        email: 'invoices@Shipcrowd.com',
         phone: '+91-1800-XXX-XXXX',
-        website: 'www.shipcrowd.com',
-        supportEmail: 'support@shipcrowd.com',
+        website: 'www.Shipcrowd.com',
+        supportEmail: 'support@Shipcrowd.com',
     },
 
     // GST Configuration

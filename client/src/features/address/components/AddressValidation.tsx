@@ -1,21 +1,14 @@
-/**
- * Address Validation Component
- * 
- * Reusable address input form with real-time validation and auto-fill.
- * Features:
- * - Pincode input with auto-validation
- * - City/State auto-fill on valid pincode
- * - Serviceability check status
- * - Inline validation errors
- * - Dark mode support
- */
-
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useCityStateFromPincode, usePincodeServiceability } from '@/src/core/api/hooks/useAddress';
-import { MapPin, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import type { Address, AddressValidationError, PincodeServiceability } from '@/src/types/api/address.types';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useCityStateFromPincode, usePincodeServiceability } from '@/src/core/api/hooks/logistics/useAddress';
+import { apiClient } from '@/src/core/api/http';
+import { MapPin, Search, AlertCircle, Check, Loader2, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import type { Address, AddressValidationError, PincodeInfo, PincodeServiceability } from '@/src/types/api/logistics';
+import { Input } from '@/src/components/ui';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface AddressValidationProps {
     initialAddress?: Partial<Address>;
@@ -27,6 +20,8 @@ interface AddressValidationProps {
     disabled?: boolean;
     className?: string;
 }
+
+type FieldVerificationState = 'unverified' | 'verified' | 'manual';
 
 export function AddressValidation({
     initialAddress = {},
@@ -53,36 +48,103 @@ export function AddressValidation({
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
-    const [isPincodeAutoFilled, setIsPincodeAutoFilled] = useState(false);
+    const [isManualEntry, setIsManualEntry] = useState(false); // To control manual input visibility
 
-    // Pincode lookup hooks
-    const { data: pincodeInfo, isLoading: isPincodeLoading } = useCityStateFromPincode(address.pincode || '');
+    // Pincode lookup states
+    const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(null);
+    const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+    const [pincodeError, setPincodeError] = useState<string | null>(null);
+    const [showPincodeHelp, setShowPincodeHelp] = useState(false);
+
+    // Animation state
+    const [justFilledFields, setJustFilledFields] = useState<Record<string, boolean>>({});
+
+    // Pincode serviceability hook (still uses the original hook)
     const { data: serviceability, isLoading: isServiceabilityLoading } = usePincodeServiceability(
         address.pincode || '',
-        { enabled: showServiceability && !!pincodeInfo }
+        { enabled: showServiceability && !!pincodeInfo && address.pincode?.length === 6 }
     );
 
-    // Auto-fill city and state when pincode info is fetched
+    // Debounce pincode lookup to avoid hitting API on every keystroke
     useEffect(() => {
-        if (pincodeInfo && !isPincodeAutoFilled) {
-            setAddress(prev => ({
-                ...prev,
-                city: pincodeInfo.city,
-                state: pincodeInfo.state,
-            }));
-            setIsPincodeAutoFilled(true);
-        }
-    }, [pincodeInfo, isPincodeAutoFilled]);
+        const lookupPincode = async () => {
+            if (address.pincode?.length === 6) {
+                // Clear previous errors
+                setPincodeError(null);
+                setIsPincodeLoading(true);
+                try {
+                    // Manual fetch using apiClient since hook doesn't expose fetcher
+                    const response = await apiClient.get(`/serviceability/pincode/${address.pincode}/info`);
+                    const info = response.data.data;
 
-    // Reset auto-fill flag when pincode changes
-    useEffect(() => {
-        setIsPincodeAutoFilled(false);
+                    if (info) {
+                        setPincodeInfo(info);
+                        // Auto-fill city and state if available
+                        if (info.city && info.state) {
+                            setAddress(prev => ({
+                                ...prev,
+                                city: info.city,
+                                state: info.state
+                            }));
+                            // Trigger animation for auto-filled fields
+                            triggerFieldAnimation('city');
+                            setTimeout(() => triggerFieldAnimation('state'), 100);
+                        }
+                    } else {
+                        setPincodeError("Pincode not found. Please enter details manually.");
+                        setPincodeInfo(null);
+                    }
+                } catch (err) {
+                    setPincodeError("Failed to verify pincode. You can enter details manually.");
+                    setPincodeInfo(null);
+                } finally {
+                    setIsPincodeLoading(false);
+                }
+            } else {
+                setPincodeInfo(null);
+                setPincodeError(null);
+            }
+        };
+
+        const timer = setTimeout(lookupPincode, 500);
+        return () => clearTimeout(timer);
     }, [address.pincode]);
+
+    const triggerFieldAnimation = (field: string) => {
+        setJustFilledFields(prev => ({ ...prev, [field]: true }));
+        setTimeout(() => {
+            setJustFilledFields(prev => ({ ...prev, [field]: false }));
+        }, 2000);
+    };
 
     // Notify parent on address change
     useEffect(() => {
         onAddressChange?.(address);
-    }, [address, onAddressChange]);
+    }, [address, onAddressChange]); // Added onAddressChange to dependencies for correctness
+
+    // Handle autocomplete address selection
+    const handleAddressAutoFill = useCallback((selectedAddress: Address) => {
+        // Staggered animation for delight
+        const fields = ['line1', 'line2', 'city', 'state', 'pincode'];
+
+        fields.forEach((field, index) => {
+            setTimeout(() => {
+                triggerFieldAnimation(field);
+            }, index * 150);
+        });
+
+        setAddress(prev => ({
+            ...prev,
+            line1: selectedAddress.line1,
+            line2: selectedAddress.line2 || '',
+            city: selectedAddress.city,
+            state: selectedAddress.state,
+            pincode: selectedAddress.pincode,
+            landmark: selectedAddress.landmark || '',
+        }));
+
+        setIsManualEntry(true); // Switch to manual view to show filled fields
+    }, []);
 
     // Validate fields
     const validateField = useCallback((field: keyof Address, value: string): string | null => {
@@ -173,38 +235,37 @@ export function AddressValidation({
         }));
     };
 
-    const inputClasses = (field: keyof Address) => `
-    w-full px-4 py-3 rounded-lg border transition-colors
-    ${errors[field] && touched[field]
-            ? 'border-red-500 focus:ring-red-500'
-            : 'border-gray-200 dark:border-gray-700 focus:ring-primary-500'
-        }
-    bg-white dark:bg-gray-800
-    text-gray-900 dark:text-white
-    placeholder:text-gray-400 dark:placeholder:text-gray-500
-    focus:outline-none focus:ring-2
-    disabled:opacity-50 disabled:cursor-not-allowed
-  `;
-
-    const labelClasses = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
     const errorClasses = 'text-xs text-red-500 mt-1 flex items-center gap-1';
 
     return (
         <div className={`space-y-4 ${className}`}>
-            {/* Address Line 1 */}
+            {/* Address Line 1 - with Autocomplete */}
             <div>
-                <label className={labelClasses}>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                     Address Line 1 {required && <span className="text-red-500">*</span>}
                 </label>
-                <input
-                    type="text"
-                    value={address.line1}
-                    onChange={(e) => handleChange('line1', e.target.value)}
-                    onBlur={() => handleBlur('line1')}
-                    placeholder="House/Flat No., Building Name, Street"
-                    className={inputClasses('line1')}
-                    disabled={disabled}
-                />
+                <div className="relative">
+                    <AddressAutocomplete
+                        value={address.line1 || ''}
+                        onChange={(value) => handleChange('line1', value)}
+                        onAddressSelect={handleAddressAutoFill}
+                        placeholder="Start typing your address..."
+                        disabled={disabled}
+                        error={!!(errors.line1 && touched.line1)}
+                    />
+                    <AnimatePresence>
+                        {justFilledFields['line1'] && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0 }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-primaryBlue"
+                            >
+                                <Check className="w-4 h-4" />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
                 {errors.line1 && touched.line1 && (
                     <p className={errorClasses}>
                         <AlertCircle className="w-3 h-3" />
@@ -215,44 +276,83 @@ export function AddressValidation({
 
             {/* Address Line 2 */}
             <div>
-                <label className={labelClasses}>Address Line 2</label>
-                <input
-                    type="text"
-                    value={address.line2}
-                    onChange={(e) => handleChange('line2', e.target.value)}
-                    placeholder="Area, Locality (Optional)"
-                    className={inputClasses('line2')}
-                    disabled={disabled}
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Address Line 2</label>
+                <div className="relative">
+                    <Input
+                        type="text"
+                        value={address.line2 || ''}
+                        onChange={(e) => handleChange('line2', e.target.value)}
+                        placeholder="Area, Locality (Optional)"
+                        disabled={disabled}
+                        size="lg"
+                        className={`transition-all duration-300 ${justFilledFields['line2'] ? 'bg-blue-50 border-blue-400' : ''}`}
+                    />
+                    <AnimatePresence>
+                        {justFilledFields['line2'] && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0 }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-primaryBlue"
+                            >
+                                <Check className="w-4 h-4" />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* Pincode, City, State Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Pincode */}
                 <div>
-                    <label className={labelClasses}>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                         Pincode {required && <span className="text-red-500">*</span>}
                     </label>
                     <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
+                        <Input
                             type="text"
-                            value={address.pincode}
-                            onChange={(e) => handleChange('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            value={address.pincode || ''}
+                            onChange={(e) => {
+                                // Only allow numbers and max 6 digits
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                handleChange('pincode', val);
+                            }}
                             onBlur={() => handleBlur('pincode')}
                             placeholder="6-digit"
                             maxLength={6}
-                            className={`${inputClasses('pincode')} pl-10 pr-10`}
                             disabled={disabled}
+                            size="lg"
+                            error={!!(errors.pincode && touched.pincode) || !!pincodeError}
+                            icon={<MapPin className="w-4 h-4" />}
+                            className={`transition-all duration-300 ${justFilledFields['pincode'] ? 'bg-blue-50 border-blue-400' : ''}`}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="postal-code"
                         />
                         {isPincodeLoading && (
-                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-500 animate-spin" />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                            </div>
                         )}
-                        {pincodeInfo && !isPincodeLoading && (
-                            <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                        {!isPincodeLoading && justFilledFields['pincode'] && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primaryBlue">
+                                <Check className="w-4 h-4" />
+                            </div>
                         )}
                     </div>
-                    {errors.pincode && touched.pincode && (
+                    {pincodeError && (
+                        <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-red-500">{pincodeError}</p>
+                            <button
+                                onClick={() => setAddress(prev => ({ ...prev, pincode: '' }))}
+                                className="text-xs text-slate-500 underline hover:text-slate-800"
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    )}
+                    {errors.pincode && touched.pincode && !pincodeError && (
                         <p className={errorClasses}>
                             <AlertCircle className="w-3 h-3" />
                             {errors.pincode}
@@ -262,18 +362,36 @@ export function AddressValidation({
 
                 {/* City */}
                 <div>
-                    <label className={labelClasses}>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                         City {required && <span className="text-red-500">*</span>}
                     </label>
-                    <input
-                        type="text"
-                        value={address.city}
-                        onChange={(e) => handleChange('city', e.target.value)}
-                        onBlur={() => handleBlur('city')}
-                        placeholder="City"
-                        className={`${inputClasses('city')} ${isPincodeAutoFilled ? 'bg-gray-50 dark:bg-gray-700/50' : ''}`}
-                        disabled={disabled || isPincodeLoading}
-                    />
+                    <div className="relative">
+                        <Input
+                            type="text"
+                            value={address.city || ''}
+                            onChange={(e) => handleChange('city', e.target.value)}
+                            onBlur={() => handleBlur('city')}
+                            placeholder="City"
+                            disabled={disabled || isPincodeLoading}
+                            size="lg"
+                            error={!!(errors.city && touched.city)}
+                            readOnly={!!pincodeInfo?.city} // Lock if fetched from service
+                            className={`transition-all duration-300 ${justFilledFields['city'] ? 'bg-blue-50 border-blue-400' : ''} ${pincodeInfo?.city ? 'bg-slate-50' : ''}`}
+                            autoComplete="address-level2"
+                        />
+                        <AnimatePresence>
+                            {justFilledFields['city'] && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0 }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primaryBlue"
+                                >
+                                    <Check className="w-4 h-4" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                     {errors.city && touched.city && (
                         <p className={errorClasses}>
                             <AlertCircle className="w-3 h-3" />
@@ -284,18 +402,36 @@ export function AddressValidation({
 
                 {/* State */}
                 <div>
-                    <label className={labelClasses}>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                         State {required && <span className="text-red-500">*</span>}
                     </label>
-                    <input
-                        type="text"
-                        value={address.state}
-                        onChange={(e) => handleChange('state', e.target.value)}
-                        onBlur={() => handleBlur('state')}
-                        placeholder="State"
-                        className={`${inputClasses('state')} ${isPincodeAutoFilled ? 'bg-gray-50 dark:bg-gray-700/50' : ''}`}
-                        disabled={disabled || isPincodeLoading}
-                    />
+                    <div className="relative">
+                        <Input
+                            type="text"
+                            value={address.state || ''}
+                            onChange={(e) => handleChange('state', e.target.value)}
+                            onBlur={() => handleBlur('state')}
+                            placeholder="State"
+                            disabled={disabled || isPincodeLoading}
+                            size="lg"
+                            error={!!(errors.state && touched.state)}
+                            readOnly={!!pincodeInfo?.state} // Lock if fetched from service
+                            className={`transition-all duration-300 ${justFilledFields['state'] ? 'bg-blue-50 border-blue-400' : ''} ${pincodeInfo?.state ? 'bg-slate-50' : ''}`}
+                            autoComplete="address-level1"
+                        />
+                        <AnimatePresence>
+                            {justFilledFields['state'] && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0 }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primaryBlue"
+                                >
+                                    <Check className="w-4 h-4" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                     {errors.state && touched.state && (
                         <p className={errorClasses}>
                             <AlertCircle className="w-3 h-3" />
@@ -307,43 +443,43 @@ export function AddressValidation({
 
             {/* Landmark */}
             <div>
-                <label className={labelClasses}>Landmark</label>
-                <input
+                <label className="block text-sm font-medium text-slate-700 mb-1">Landmark</label>
+                <Input
                     type="text"
-                    value={address.landmark}
+                    value={address.landmark || ''}
                     onChange={(e) => handleChange('landmark', e.target.value)}
                     placeholder="Near landmark (Optional)"
-                    className={inputClasses('landmark')}
                     disabled={disabled}
+                    size="lg"
                 />
             </div>
 
             {/* Serviceability Status */}
             {showServiceability && address.pincode?.length === 6 && !isServiceabilityLoading && serviceability && (
                 <div className={`p-3 rounded-lg flex items-center gap-3 ${serviceability.isServiceable
-                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                        : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-amber-50 border border-amber-200'
                     }`}>
                     {serviceability.isServiceable ? (
                         <>
-                            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
                             <div>
-                                <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                <p className="text-sm font-medium text-green-800">
                                     Serviceable Location
                                 </p>
-                                <p className="text-xs text-green-600 dark:text-green-400">
+                                <p className="text-xs text-green-600">
                                     {serviceability.serviceableCouriers.length} courier partners available
                                 </p>
                             </div>
                         </>
                     ) : (
                         <>
-                            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <AlertCircle className="w-5 h-5 text-amber-600" />
                             <div>
-                                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                <p className="text-sm font-medium text-amber-800">
                                     Limited Serviceability
                                 </p>
-                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                <p className="text-xs text-amber-600">
                                     Delivery may be delayed or unavailable
                                 </p>
                             </div>

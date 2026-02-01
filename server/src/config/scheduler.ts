@@ -3,6 +3,8 @@ import logger from '../shared/logger/winston.logger';
 import { processScheduledDeletions } from '../infrastructure/jobs/system/maintenance/account-deletion.job';
 import WeightDisputeJob from '../infrastructure/jobs/disputes/weight-dispute.job';
 import CODRemittanceJob from '../infrastructure/jobs/finance/cod-remittance.job';
+import InvoiceGenerationJob from '../infrastructure/jobs/finance/invoice-generation.job';
+import { startAutoRechargeScheduler } from '../infrastructure/schedulers/auto-recharge.scheduler';
 
 /**
  * Initialize all scheduled jobs
@@ -72,6 +74,19 @@ export const initializeScheduler = (): void => {
       }
     });
     codPayoutJob.start();
+
+    // Auto-Recharge (Every 5 minutes or configured)
+    startAutoRechargeScheduler();
+
+    // Monthly Invoice Generation (1st of every month at 01:00 AM)
+    const invoiceJob = new CronJob('0 1 1 * *', async () => {
+      try {
+        await InvoiceGenerationJob.queueMonthlyGeneration();
+      } catch (error) {
+        logger.error('Error queuing invoice generation job:', error);
+      }
+    });
+    invoiceJob.start();
 
     logger.info('Scheduler initialized successfully');
   } catch (error) {

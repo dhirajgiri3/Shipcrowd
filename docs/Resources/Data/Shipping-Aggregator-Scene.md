@@ -1,4 +1,4 @@
-# ShipCrowd: Complete Shipping Aggregator Concept & Workflow
+# Shipcrowd: Complete Shipping Aggregator Concept & Workflow
 
 This comprehensive guide explains the entire ecosystem of a Shipping Aggregator from the perspective of a user (Seller) like "Riya".
 
@@ -20,11 +20,11 @@ This comprehensive guide explains the entire ecosystem of a Shipping Aggregator 
 
 ## Part 1: Riya's Onboarding Journey
 
-Riya runs "Riya's Jewels" on Instagram. She wants to start shipping orders using ShipCrowd. Here is her step-by-step flow:
+Riya runs "Riya's Jewels" on Instagram. She wants to start shipping orders using Shipcrowd. Here is her step-by-step flow:
 
 ### Step 1: Signup & Email Verification
 
-- **Action**: Riya visits shipcrowd.com and clicks "Sign Up"
+- **Action**: Riya visits Shipcrowd.com and clicks "Sign Up"
 - **Input**: She enters `riya@jewels.com`, a password, and her mobile number
 - **System**: Sends an OTP to verify her email/phone
 - **Result**: Her account is created, but it is **Inactive (Tier 0)**. She cannot ship yet
@@ -36,19 +36,19 @@ Shipping is a regulated industry. We cannot let anonymous people ship packages b
 - **Action**: Riya sees a big warning: "Complete KYC to start shipping"
 - **Upload**: She uploads her PAN Card and Aadhaar Card (or GST Certificate if she is a registered company)
 - **Verification (DeepVue)**:
-  - ShipCrowd sends these details to the DeepVue API
+  - Shipcrowd sends these details to the DeepVue API
   - DeepVue checks with the Government Database
   - If details match (Name on PAN matches Name on Account), KYC is Auto-Approved
 - **Result**: Her account is now **Active (Tier 1)**
 
 ### Step 3: Wallet Recharge (Prepaid Model)
 
-ShipCrowd works on a **Prepaid Wallet model** (like a Metro Card). We generally don't give "Credit" to small sellers because they might vanish after shipping.
+Shipcrowd works on a **Prepaid Wallet model** (like a Metro Card). We generally don't give "Credit" to small sellers because they might vanish after shipping.
 
 - **Action**: Riya clicks "Recharge Wallet"
 - **Payment**: She pays ₹500 via UPI/Card (Razorpay)
-- **Result**: Her ShipCrowd Wallet balance shows ₹500
-- Money is now in your (ShipCrowd's) bank account
+- **Result**: Her Shipcrowd Wallet balance shows ₹500
+- Money is now in your (Shipcrowd's) bank account
 
 ---
 
@@ -68,7 +68,7 @@ Now Riya gets an order for a Necklace from a customer in Mumbai.
 
 ### Step 2: Rate Calculation (The "Magic")
 
-- **System Action**: ShipCrowd asks Velocity: "Who can take 0.5kg from Bangalore to Mumbai?"
+- **System Action**: Shipcrowd asks Velocity: "Who can take 0.5kg from Bangalore to Mumbai?"
 - **Display**: Riya sees a list of couriers with prices:
   - 🐢 Delhivery Surface: ₹40 (Delivers in 5 days)
   - 🐇 BlueDart Air: ₹90 (Delivers in 2 days)
@@ -86,10 +86,10 @@ Now Riya gets an order for a Necklace from a customer in Mumbai.
 ### Step 4: Manifest & Pickup
 
 - **Manifest**: At the end of the day, Riya clicks "Request Pickup"
-- **Backend**: ShipCrowd tells Velocity → Velocity tells Delhivery: "Go to Riya's house"
+- **Backend**: Shipcrowd tells Velocity → Velocity tells Delhivery: "Go to Riya's house"
 - **Physical Action**: A Delhivery boy comes to Riya's house
 - **Scanning**: He scans the barcode on the packet
-- **Status Update**: The order status in ShipCrowd changes from "Ready to Ship" to "Picked Up"
+- **Status Update**: The order status in Shipcrowd changes from "Ready to Ship" to "Picked Up"
 
 ---
 
@@ -98,7 +98,7 @@ Now Riya gets an order for a Necklace from a customer in Mumbai.
 ### Step 1: Tracking
 
 - The packet travels: Bangalore → Hub → Mumbai → Delivery Center
-- ShipCrowd gets updates from Velocity every few hours (via Webhook) and updates Riya's dashboard
+- Shipcrowd gets updates from Velocity every few hours (via Webhook) and updates Riya's dashboard
 
 ### Step 2: Delivery (Success)
 
@@ -111,7 +111,7 @@ Now Riya gets an order for a Necklace from a customer in Mumbai.
 - **Scenario**: Customer was not at home
 - **Status**: "NDR" (Non-Delivery Report)
 - **Riya's Action**: She gets an alert. She calls the customer: "Sir, please be home tomorrow"
-- **Action**: She clicks "Re-attempt" on ShipCrowd dashboard
+- **Action**: She clicks "Re-attempt" on Shipcrowd dashboard
 
 ---
 
@@ -123,10 +123,10 @@ This is the most important part for Riya.
 
 - **Day 1**: Customer gave ₹1,000 cash to the Delhivery boy
 - **Day 3**: Delhivery deposits this money to Velocity
-- **Day 5**: Velocity deposits this money to ShipCrowd's Bank Account
+- **Day 5**: Velocity deposits this money to Shipcrowd's Bank Account
 - **Day 7 (Remittance Day)**:
-  - ShipCrowd system sees that Riya is owed ₹1,000
-  - ShipCrowd automatically transfers ₹1,000 to Riya's Bank Account (minus any fees)
+  - Shipcrowd system sees that Riya is owed ₹1,000
+  - Shipcrowd automatically transfers ₹1,000 to Riya's Bank Account (minus any fees)
   - Riya is happy
 
 ---
@@ -136,7 +136,7 @@ This is the most important part for Riya.
 | Entity | Role |
 |--------|------|
 | **Seller (Riya)** | The user. Pays you for shipping |
-| **ShipCrowd (You)** | The Platform. You take money from Riya and pay Velocity. You maximize the gap (margin) |
+| **Shipcrowd (You)** | The Platform. You take money from Riya and pay Velocity. You maximize the gap (margin) |
 | **Velocity** | The Gateway. They aggregate couriers (Delhivery, etc.) |
 | **Couriers** | The actual trucks/boys (Delhivery, BlueDart, EcomExpress) |
 | **Customer** | The end person buying the necklace |
@@ -154,7 +154,7 @@ These scenarios occur daily and are essential for core platform operations. Fail
 **Frequency**: 15-20% of all shipments  
 **Business Impact**: Direct revenue loss
 
-**Setup**: Riya ships a packet. She declares weight as 0.5 kg. ShipCrowd charges her ₹40.
+**Setup**: Riya ships a packet. She declares weight as 0.5 kg. Shipcrowd charges her ₹40.
 
 **What Happens Next**:
 - At Delhivery Hub: The packet goes through an automated weighing machine
@@ -167,7 +167,7 @@ These scenarios occur daily and are essential for core platform operations. Fail
 - You are losing ₹55!
 
 **The Solution (Weight Dispute Management)**:
-- **Notification**: ShipCrowd sends Riya an alert: "Weight discrepancy detected. Declared: 0.5kg, Actual: 1.2kg. Additional charge: ₹55"
+- **Notification**: Shipcrowd sends Riya an alert: "Weight discrepancy detected. Declared: 0.5kg, Actual: 1.2kg. Additional charge: ₹55"
 - **Options**:
   - Auto-Deduct: If Riya has wallet balance, deduct ₹55 automatically
   - Hold Shipment: If no balance, mark shipment as "Payment Pending" and don't process future orders until she pays
@@ -218,8 +218,8 @@ These scenarios occur daily and are essential for core platform operations. Fail
 **The Timeline**:
 - Day 0: Orders delivered. Drivers have cash
 - Day 2: Delhivery deposits cash to Velocity
-- Day 5: Velocity deposits to ShipCrowd's bank account
-- Day 7: ShipCrowd transfers to Riya's account
+- Day 5: Velocity deposits to Shipcrowd's bank account
+- Day 7: Shipcrowd transfers to Riya's account
 
 **The Deductions**: From ₹1,00,000, Riya receives approximately:
 - ₹1,00,000 (COD collected)
@@ -305,7 +305,7 @@ These scenarios occur daily and are essential for core platform operations. Fail
 **Solution: Bulk CSV Upload**
 
 **Process**:
-1. **Template Download**: Riya downloads a CSV template from ShipCrowd
+1. **Template Download**: Riya downloads a CSV template from Shipcrowd
 2. **Fill Data**: She fills 500 rows with customer details
 3. **Upload**: She uploads the CSV
 4. **Validation**: Your system validates:
@@ -501,7 +501,7 @@ These scenarios occur regularly and significantly impact user experience and ope
 
 **Problem**: Riya has a Shopify store. Every time she gets an order, she has to:
 1. Copy customer details from Shopify
-2. Paste into ShipCrowd
+2. Paste into Shipcrowd
 3. Create order
 
 This is painful.
@@ -509,13 +509,13 @@ This is painful.
 **Solution: Shopify Integration**
 
 **How It Works**:
-1. **OAuth Connection**: Riya clicks "Connect Shopify" in ShipCrowd
+1. **OAuth Connection**: Riya clicks "Connect Shopify" in Shipcrowd
 2. **Authorization**: She logs into Shopify and approves access
-3. **Webhook Setup**: ShipCrowd registers a webhook with Shopify
+3. **Webhook Setup**: Shipcrowd registers a webhook with Shopify
 4. **Auto-Sync**:
    - Customer places order on Shopify
-   - Shopify sends webhook to ShipCrowd: "New order #1234"
-   - ShipCrowd auto-creates the order
+   - Shopify sends webhook to Shipcrowd: "New order #1234"
+   - Shipcrowd auto-creates the order
    - Riya just clicks "Ship" (or even auto-ship)
 
 **Similar Integrations**:
@@ -535,7 +535,7 @@ This is painful.
 **The Return Flow**:
 
 1. **Customer Action**: Customer clicks "Return" on Riya's website or contacts Riya directly
-2. **Riya's Action**: Riya creates a "Return Order" in ShipCrowd dashboard
+2. **Riya's Action**: Riya creates a "Return Order" in Shipcrowd dashboard
 3. **Input Required**:
    - Return Type: Exchange or Refund
    - Original Order ID: Links to the forward shipment
@@ -596,7 +596,7 @@ This is painful.
 **Frequency**: Ongoing for B2B sales  
 **Business Impact**: Enables sales team scalability
 
-**Setup**: ShipCrowd has a sales team. Amit (salesperson) brings Riya as a customer.
+**Setup**: Shipcrowd has a sales team. Amit (salesperson) brings Riya as a customer.
 
 **Commission Structure**:
 - Riya ships 1000 orders/month
@@ -633,7 +633,7 @@ This is painful.
 3. **Coverage**: If shipment is lost/damaged, Riya can claim up to ₹50,000
 
 **Claim Process**:
-1. Riya files claim in ShipCrowd
+1. Riya files claim in Shipcrowd
 2. You forward to Velocity
 3. Velocity investigates (usually 7-15 days)
 4. If approved, money is credited to Riya's wallet
@@ -683,19 +683,19 @@ This is painful.
 **Frequency**: Premium feature for established sellers  
 **Business Impact**: Professional branding = Seller retention
 
-**Setup**: Riya's customer receives SMS: "Track your order: https://shipcrowd.com/track/ABC123". But the customer doesn't know ShipCrowd—they ordered from "Riya's Jewels".
+**Setup**: Riya's customer receives SMS: "Track your order: https://Shipcrowd.com/track/ABC123". But the customer doesn't know Shipcrowd—they ordered from "Riya's Jewels".
 
 **White-Label Tracking Solution**:
 
 1. **Custom Domain**:
    - Riya sets up: tracking.riyasjewels.com
-   - ShipCrowd provides: Subdomain or custom domain support
-   - DNS: Riya points DNS to ShipCrowd servers
+   - Shipcrowd provides: Subdomain or custom domain support
+   - DNS: Riya points DNS to Shipcrowd servers
 
 2. **Branding Customization**:
    - Logo: Riya uploads her logo (appears on tracking page)
    - Colors: Riya selects brand colors (matches her website)
-   - Footer: "Powered by ShipCrowd" (small, at bottom) or completely white-label
+   - Footer: "Powered by Shipcrowd" (small, at bottom) or completely white-label
 
 3. **Tracking Page Features**:
    - Order Details: Shows product name, image (from Riya's catalog)
@@ -714,7 +714,7 @@ This is painful.
 **Frequency**: Continuous monitoring  
 **Business Impact**: Data-driven courier selection
 
-**Setup**: ShipCrowd works with 5 courier partners (Delhivery, BlueDart, XpressBees, EcomExpress, DTDC). How do you know which one is best?
+**Setup**: Shipcrowd works with 5 courier partners (Delhivery, BlueDart, XpressBees, EcomExpress, DTDC). How do you know which one is best?
 
 **The Performance Metrics**:
 
@@ -751,18 +751,18 @@ This is painful.
 **Frequency**: Continuous for integrations  
 **Business Impact**: 99.9% delivery rate vs 80% without retries
 
-**Setup**: ShipCrowd sends webhook to Riya's server: "Order ABC123 is delivered". But Riya's server is down, so webhook fails.
+**Setup**: Shipcrowd sends webhook to Riya's server: "Order ABC123 is delivered". But Riya's server is down, so webhook fails.
 
 **Webhook Retry Solution**:
 
 **Initial Attempt**:
-- ShipCrowd sends: `POST https://riyasjewels.com/webhook/order-update`
+- Shipcrowd sends: `POST https://riyasjewels.com/webhook/order-update`
 - Payload: `{"orderId": "ABC123", "status": "delivered", "timestamp": "2025-01-15T10:30:00Z"}`
 - Riya's server responds: HTTP 200 OK → Success ✅
 
 **If Failure**:
 - Riya's server responds: HTTP 500 (Internal Server Error) or timeout
-- ShipCrowd marks: Webhook failed, needs retry
+- Shipcrowd marks: Webhook failed, needs retry
 
 **Retry Strategy (Exponential Backoff)**:
 - Attempt 1: Immediate retry (after 1 second)
@@ -786,7 +786,7 @@ This is painful.
 **Frequency**: Continuous for API users  
 **Business Impact**: Protects infrastructure, enables monetization
 
-**Setup**: Riya's developer builds an integration. They make 10,000 API calls per minute (accidentally, due to a bug). This crashes ShipCrowd's servers.
+**Setup**: Riya's developer builds an integration. They make 10,000 API calls per minute (accidentally, due to a bug). This crashes Shipcrowd's servers.
 
 **Rate Limiting Solution**:
 
@@ -872,7 +872,7 @@ These scenarios are important for specific use cases, premium features, or edge 
    - Input: Weight: 500 kg, Dimensions: 120x100x80 cm (pallet size), Invoice Value: ₹2,00,000
 
 2. **E-way Bill Generation**:
-   - System Integration: ShipCrowd connects to GST Portal API
+   - System Integration: Shipcrowd connects to GST Portal API
    - Auto-Generation: System generates E-way Bill automatically
    - E-way Bill Number: EWB-123456789012 (12 digits)
 
@@ -934,7 +934,7 @@ These scenarios are important for specific use cases, premium features, or edge 
    - Input: Pickup: Bangalore, India, Delivery: New York, USA, Weight: 0.2 kg, Declared Value: $120 (₹10,000), Product Description: "Gold Necklace", HS Code: 7113.19.90
 
 2. **Documentation Required**:
-   - Commercial Invoice: Generated by ShipCrowd
+   - Commercial Invoice: Generated by Shipcrowd
    - Packing List: What's inside the package
    - Customs Declaration Form: CN22/CN23
 
@@ -1026,7 +1026,7 @@ These scenarios are important for specific use cases, premium features, or edge 
 **Frequency**: Every order  
 **Business Impact**: Optimizes cost vs speed trade-offs
 
-**Setup**: ShipCrowd receives order. Multiple couriers available. System must automatically pick best courier based on: price, delivery speed, performance, customer preferences, seller preferences, demand management.
+**Setup**: Shipcrowd receives order. Multiple couriers available. System must automatically pick best courier based on: price, delivery speed, performance, customer preferences, seller preferences, demand management.
 
 **Key Features**:
 - Multi-factor courier scoring algorithm
@@ -1060,7 +1060,7 @@ These scenarios are important for specific use cases, premium features, or edge 
 **Frequency**: 10-20% of sellers request credit  
 **Business Impact**: Enables growth for cash-constrained sellers
 
-**Setup**: Riya doesn't have ₹5,000 to recharge wallet. Can she get credit from ShipCrowd?
+**Setup**: Riya doesn't have ₹5,000 to recharge wallet. Can she get credit from Shipcrowd?
 
 **Key Features**:
 - Credit evaluation (check her history, sales performance)
@@ -1095,7 +1095,7 @@ These scenarios are important for specific use cases, premium features, or edge 
 **Frequency**: 5-10% of sellers (but high volume)  
 **Business Impact**: Team collaboration for enterprise sellers
 
-**Setup**: Riya's business grows. She now has 10 employees. How do they all access ShipCrowd with role-based permissions?
+**Setup**: Riya's business grows. She now has 10 employees. How do they all access Shipcrowd with role-based permissions?
 
 **Key Features**:
 - Multiple user roles (Admin, Operations Manager, Finance, Support)
@@ -1130,7 +1130,7 @@ These scenarios are important for specific use cases, premium features, or edge 
 **Frequency**: Continuous for multi-channel sellers  
 **Business Impact**: Prevents overselling
 
-**Setup**: Riya has orders on ShipCrowd, Shopify, and Amazon. Total inventory: 100 units. She needs to prevent overselling.
+**Setup**: Riya has orders on Shipcrowd, Shopify, and Amazon. Total inventory: 100 units. She needs to prevent overselling.
 
 **Key Features**:
 - Real-time inventory sync across channels
@@ -1147,7 +1147,7 @@ These scenarios are important for specific use cases, premium features, or edge 
 **Frequency**: <1% of orders (high-value only)  
 **Business Impact**: Security for premium shipments
 
-**Setup**: High-value order (₹50,000). ShipCrowd wants to ensure package stays secure throughout transit.
+**Setup**: High-value order (₹50,000). Shipcrowd wants to ensure package stays secure throughout transit.
 
 **Key Features**:
 - GPS tracking with geofencing (alert if package leaves intended route)
@@ -1199,7 +1199,7 @@ These scenarios are important for specific use cases, premium features, or edge 
 **Frequency**: Monthly campaigns  
 **Business Impact**: Seller acquisition and retention
 
-**Setup**: ShipCrowd wants to attract sellers. Offer ₹500 discount coupon for first 100 orders.
+**Setup**: Shipcrowd wants to attract sellers. Offer ₹500 discount coupon for first 100 orders.
 
 **Key Features**:
 - Promo code generation (WELCOME500 = ₹500 off)
@@ -1258,4 +1258,4 @@ These scenarios are important for specific use cases, premium features, or edge 
 - Seller Financing
 - Analytics & BI
 
-This comprehensive system makes ShipCrowd a professional, scalable shipping aggregator platform that sellers trust and rely on.
+This comprehensive system makes Shipcrowd a professional, scalable shipping aggregator platform that sellers trust and rely on.

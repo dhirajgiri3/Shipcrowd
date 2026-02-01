@@ -14,11 +14,11 @@ import {
     CardHeader,
     CardTitle,
     StatusBadge
-} from '@/components/ui';
+} from '@/src/components/ui';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAnalyticsParams, useSLAData } from '@/src/hooks';
-import { SLAMetric } from '@/src/types/analytics.types';
-import { ArrowDownRight, ArrowUpRight, Clock, Truck, ShieldAlert, IndianRupee } from 'lucide-react';
+import { ClientSLAMetric as SLAMetric } from '@/src/types/analytics/client-analytics.types';
+import { ArrowDownRight, ArrowUpRight, Clock, Truck, ShieldAlert, IndianRupee, type LucideIcon } from 'lucide-react';
 import {
     ResponsiveContainer,
     AreaChart,
@@ -43,14 +43,14 @@ export function SLADashboard() {
         );
     }
 
-    const metrics: { key: keyof typeof slaData; icon: any; color: string }[] = [
+    const metrics: { key: keyof typeof slaData; icon: LucideIcon; color: string }[] = [
         { key: 'pickupCompliance', icon: Truck, color: '#3B82F6' },
         { key: 'deliveryCompliance', icon: Clock, color: '#10B981' },
         { key: 'ndrResponseTime', icon: ShieldAlert, color: '#F59E0B' },
         { key: 'codSettlementTime', icon: IndianRupee, color: '#8B5CF6' },
     ];
 
-    const SLACard = ({ metric, icon: Icon, color }: { metric: SLAMetric; icon: any; color: string }) => {
+    const SLACard = ({ metric, icon: Icon, color }: { metric: SLAMetric; icon: LucideIcon; color: string }) => {
         const isPositive = metric.trend >= 0;
 
         return (

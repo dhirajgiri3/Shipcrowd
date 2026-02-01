@@ -189,7 +189,7 @@ Pre-generate:
 
 ---
 
-## **PART 6: SHIPCROWD-SPECIFIC ACCELERATIONS**
+## **PART 6: Shipcrowd-SPECIFIC ACCELERATIONS**
 
 ### 📦 **Backend (I Generate)**
 - [ ] Product model + controller + routes

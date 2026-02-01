@@ -117,6 +117,19 @@ router.patch(
 );
 
 /**
+ * @route POST /companies/:companyId/assign-ratecard
+ * @desc Assign a rate card to a company
+ * @access Private (Owner/Admin)
+ */
+router.post(
+  '/:companyId/assign-ratecard',
+  authenticate,
+  csrfProtection,
+  requireAccess({ companyMatch: true, teamRoles: ['owner', 'admin'] }),
+  asyncHandler(companyController.assignRateCard)
+);
+
+/**
  * Warehouse routes under company
  */
 

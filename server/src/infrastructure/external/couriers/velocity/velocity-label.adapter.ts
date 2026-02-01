@@ -1,6 +1,8 @@
 import axios from 'axios';
+import mongoose from 'mongoose';
 import { ICarrierLabelAdapter, LabelResponse } from '../../../../core/domain/interfaces/carrier-label.interface';
 import logger from '../../../../shared/logger/winston.logger';
+import { VelocityAuth } from './velocity.auth';
 
 /**
  * Velocity Label Adapter
@@ -11,12 +13,10 @@ import logger from '../../../../shared/logger/winston.logger';
  */
 
 class VelocityLabelAdapter implements ICarrierLabelAdapter {
-    private apiKey: string;
     private baseURL: string;
 
     constructor() {
-        this.apiKey = process.env.VELOCITY_API_KEY || '';
-        this.baseURL = process.env.VELOCITY_BASE_URL || 'https://api.velocitycourier.com';
+        this.baseURL = process.env.VELOCITY_BASE_URL || 'https://shazam.velocity.in';
     }
 
     async generateLabel(shipment: any): Promise<LabelResponse> {
@@ -26,17 +26,12 @@ class VelocityLabelAdapter implements ICarrierLabelAdapter {
             let labelUrl = shipment.label_url;
 
             if (!labelUrl) {
-                const response = await axios.get(
-                    `${this.baseURL}/api/v2/shipments/${shipment.awb}/label`,
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${this.apiKey}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
+                // Velocity labels are provided during shipment creation.
+                // There is no documented public endpoint to fetch a label simply by AWB without a complex specific flow which is not guaranteed.
+                // We rely on the stored labelUrl.
 
-                labelUrl = response.data.label_url;
+                logger.warn(`Velocity label URL missing in shipment data for AWB: ${shipment.awb}`);
+                throw new Error('Label URL not available in shipment data. Please check shipment creation logs.');
             }
 
             if (!labelUrl) {

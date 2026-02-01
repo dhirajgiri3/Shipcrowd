@@ -51,12 +51,46 @@ export interface ICompany extends Document {
     autoGenerateInvoice?: boolean;
     currency?: string;
     timezone?: string;
+    risk?: {
+      maxCodAmount?: number;
+      blockBlacklisted?: boolean;
+    };
+    webhook?: {
+      url?: string;
+      secret?: string;
+      enabled?: boolean;
+      events?: string[];
+    };
   };
   wallet: {
     balance: number;
     currency: string;
     lastUpdated?: Date;
     lowBalanceThreshold: number;
+    autoRecharge?: {
+      enabled: boolean;
+      threshold: number;
+      amount: number;
+      paymentMethodId?: string;
+      lastAttempt?: Date;
+      lastSuccess?: Date;
+      lastFailure?: {
+        timestamp: Date;
+        reason: string;
+        retryCount: number;
+        nextRetryAt: Date;
+      };
+      dailyLimit?: number;
+      monthlyLimit?: number;
+    };
+  };
+
+  // ✅ P0 FIX: Razorpay Fund Account Integration
+  financial?: {
+    razorpayContactId?: string;
+    razorpayFundAccountId?: string;
+    lastPayoutAt?: Date;
+    totalPayoutsReceived?: number;
   };
 
   profileStatus: 'incomplete' | 'complete';
@@ -72,6 +106,19 @@ export interface ICompany extends Document {
   isSuspended?: boolean;
   suspendedAt?: Date;
   suspensionReason?: string;
+
+  // ✅ PHASE 1.4: Active Days (Streak) Tracking
+  streakHistory?: {
+    current: number;
+    longest: number;
+    longestAchievedAt?: Date;
+    milestones?: Array<{
+      days: number;
+      achievedAt: Date;
+      badge: string;
+    }>;
+  };
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -165,6 +212,17 @@ const CompanySchema = new Schema<ICompany>(
         type: String,
         default: 'Asia/Kolkata',
       },
+      risk: {
+        maxCodAmount: { type: Number, default: 5000 },
+        blockBlacklisted: { type: Boolean, default: true }
+      },
+      // ✅ PHASE 3: Outbound Webhooks
+      webhook: {
+        url: String, // Endpoint to send POST requests
+        secret: String, // HMAC secret for signature verification
+        enabled: { type: Boolean, default: false },
+        events: [{ type: String }] // List of subscribed events (e.g., 'shipment.status_update')
+      }
     },
     wallet: {
       balance: {
@@ -180,6 +238,42 @@ const CompanySchema = new Schema<ICompany>(
       lowBalanceThreshold: {
         type: Number,
         default: 500,
+      },
+      autoRecharge: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        threshold: {
+          type: Number,
+          default: 1000,
+        },
+        amount: {
+          type: Number,
+          default: 5000,
+        },
+        paymentMethodId: String, // Saved card/UPI mandate
+        lastAttempt: Date,
+        lastSuccess: Date,
+        lastFailure: {
+          timestamp: Date,
+          reason: String,
+          retryCount: { type: Number, default: 0 },
+          nextRetryAt: Date,
+        },
+        dailyLimit: { type: Number, default: 100000 }, // ₹1 lakh default
+        monthlyLimit: { type: Number, default: 500000 }, // ₹5 lakh default
+      },
+    },
+
+    // ✅ P0 FIX: Razorpay Fund Account Integration for COD Settlements
+    financial: {
+      razorpayContactId: String,
+      razorpayFundAccountId: String,
+      lastPayoutAt: Date,
+      totalPayoutsReceived: {
+        type: Number,
+        default: 0,
       },
     },
 
@@ -225,6 +319,24 @@ const CompanySchema = new Schema<ICompany>(
     },
     suspendedAt: Date,
     suspensionReason: String,
+
+    // ✅ PHASE 1.4: Active Days (Streak) Tracking
+    streakHistory: {
+      current: {
+        type: Number,
+        default: 0,
+      },
+      longest: {
+        type: Number,
+        default: 0,
+      },
+      longestAchievedAt: Date,
+      milestones: [{
+        days: Number,
+        achievedAt: Date,
+        badge: String,
+      }],
+    },
   },
   {
     timestamps: true,

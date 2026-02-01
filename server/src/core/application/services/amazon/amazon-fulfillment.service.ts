@@ -62,7 +62,7 @@ const CARRIER_CODE_MAP: Record<string, string> = {
 /**
  * Status mappings from Shipcrowd to Amazon
  */
-const SHIPCROWD_TO_AMAZON_STATUS: Record<string, string> = {
+const Shipcrowd_TO_AMAZON_STATUS: Record<string, string> = {
     BOOKED: 'Pending',
     MANIFESTED: 'Shipped',
     PICKED_UP: 'Shipped',
@@ -249,7 +249,7 @@ export class AmazonFulfillmentService {
 <AmazonEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="amzn-envelope.xsd">
     <Header>
         <DocumentVersion>1.01</DocumentVersion>
-        <MerchantIdentifier>SHIPCROWD</MerchantIdentifier>
+        <MerchantIdentifier>Shipcrowd</MerchantIdentifier>
     </Header>
     <MessageType>OrderFulfillment</MessageType>
     <Message>

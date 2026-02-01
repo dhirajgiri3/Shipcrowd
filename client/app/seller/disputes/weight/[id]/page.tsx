@@ -19,7 +19,7 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWeightDispute } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { DisputeTimeline, SubmitEvidenceModal } from '@/src/features/disputes';
 
 export default function DisputeDetailPage() {
@@ -132,8 +132,8 @@ export default function DisputeDetailPage() {
 
                     {/* Discrepancy */}
                     <div className={`rounded-lg shadow p-6 ${dispute.discrepancy.thresholdExceeded
-                            ? 'bg-gradient-to-br from-red-600 to-red-700 text-white'
-                            : 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white'
+                        ? 'bg-gradient-to-br from-red-600 to-red-700 text-white'
+                        : 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white'
                         }`}>
                         <h3 className="text-sm font-medium text-white/80 mb-2">
                             Discrepancy
@@ -181,8 +181,8 @@ export default function DisputeDetailPage() {
                                         {dispute.financialImpact.chargeDirection === 'debit' ? 'You Owe' : 'Refund Due'}
                                     </span>
                                     <span className={`text-base font-bold ${dispute.financialImpact.chargeDirection === 'debit'
-                                            ? 'text-red-600 dark:text-red-400'
-                                            : 'text-green-600 dark:text-green-400'
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-green-600 dark:text-green-400'
                                         }`}>
                                         {dispute.financialImpact.chargeDirection === 'debit' ? '-' : '+'}
                                         {formatCurrency(dispute.financialImpact.difference)}

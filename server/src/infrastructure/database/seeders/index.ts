@@ -63,6 +63,7 @@ const COLLECTIONS_TO_CLEAR = [
     'flipkartstores',  // Actual MongoDB collection name
     // Integrations
     'integrations',
+    'couriers', // New collection
     // Phase 3 collections
     'rate_cards',  // Fixed: was 'ratecards'
     'zones',
@@ -95,7 +96,7 @@ function parseArgs(): { clean: boolean; help: boolean } {
  */
 function printHelp(): void {
     console.log(`
-ShipCrowd Database Seeder
+Shipcrowd Database Seeder
 
 Usage:
   npx tsx src/infrastructure/database/seeders/index.ts [options]
@@ -109,7 +110,7 @@ NPM Scripts:
   npm run seed:clean   Clear all data and reseed
 
 Environment Variables:
-  MONGODB_URI    MongoDB connection string (default: mongodb://localhost:27017/shipcrowd)
+  MONGODB_URI    MongoDB connection string (default: mongodb://localhost:27017/Shipcrowd)
   DEBUG          Set to 'true' for verbose logging
   `);
 }
@@ -118,7 +119,7 @@ Environment Variables:
  * Connect to MongoDB
  */
 async function connectDatabase(): Promise<void> {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd';
 
     logger.info(`Connecting to MongoDB: ${mongoUri.split('@').pop() || mongoUri.split('/').pop()}`);
 
@@ -193,6 +194,7 @@ async function runSeeders(): Promise<void> {
     const { seedAuditLogs } = await import('./seeders/26-audit-logs.seeder.js');
     const { seedPayouts } = await import('./seeders/27-payouts.seeder.js');
     const { seedPincodes } = await import('./seeders/28-pincodes.seeder.js');
+    const { seedCouriers } = await import('./seeders/29-couriers.seeder.js');
 
     // Seeder order based on dependencies
     const seeders = [
@@ -224,8 +226,9 @@ async function runSeeders(): Promise<void> {
         { name: 'Marketplace Sync Logs', fn: seedMarketplaceSyncLogs },
         { name: 'Product Mappings', fn: seedMarketplaceProductMappings },
         { name: 'Audit Logs', fn: seedAuditLogs },
-        { name: 'Payouts', fn: seedPayouts },
+        { name: 'Commission Payouts', fn: seedPayouts },
         { name: 'Pincodes', fn: seedPincodes },
+        { name: 'Couriers', fn: seedCouriers },
     ];
 
     for (const seeder of seeders) {
@@ -275,7 +278,7 @@ async function main(): Promise<void> {
 
     const globalTimer = createTimer();
 
-    logger.header('🌱 ShipCrowd Database Seeder');
+    logger.header('🌱 Shipcrowd Database Seeder');
 
     logger.info(`Mode: ${args.clean ? 'Clean + Seed' : 'Seed Only'}`);
     logger.info(`Started at: ${new Date().toLocaleString()}`);

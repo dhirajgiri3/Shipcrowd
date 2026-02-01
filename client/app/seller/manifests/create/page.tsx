@@ -14,8 +14,9 @@ import { useRouter } from 'next/navigation';
 import {
     useEligibleShipments,
     useCreateManifest,
-} from '@/src/core/api/hooks/useManifests';
-import { Loader } from '@/components/ui';
+} from '@/src/core/api/hooks/orders/useManifests';
+import { Loader, TruckLoader } from '@/src/components/ui';
+import { handleApiError } from '@/src/lib/error';
 import { toast } from 'sonner';
 import {
     ArrowLeft,
@@ -36,7 +37,7 @@ import type {
     CourierPartner,
     ManifestShipment,
     CreateManifestPayload,
-} from '@/src/types/api/manifest.types';
+} from '@/src/types/api/orders';
 
 // ==================== Courier Options ====================
 
@@ -549,23 +550,23 @@ export default function CreateManifestPage() {
                                     disabled={!canProceed() || isCreating}
                                     className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isCreating ? (
-                                        <>
-                                            <Loader variant="dots" size="sm" />
-                                            Creating...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            Create Manifest
-                                        </>
-                                    )}
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Create Manifest
                                 </button>
                             )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Truck Loader Overlay */}
+            {isCreating && (
+                <TruckLoader
+                    message="Generating Manifest PDF..."
+                    subMessage="Syncing with courier partner"
+                    fullScreen={true}
+                />
+            )}
         </div>
     );
 }

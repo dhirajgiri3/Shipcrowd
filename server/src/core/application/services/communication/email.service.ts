@@ -910,10 +910,10 @@ export const sendMagicLinkEmail = async (
     const html = `
       <h1>🔐 Your Magic Link</h1>
       <p>Hello ${name},</p>
-      <p>You requested a magic link to sign in to your ShipCrowd account. Click the button below to log in instantly:</p>
+      <p>You requested a magic link to sign in to your Shipcrowd account. Click the button below to log in instantly:</p>
       <p style="text-align: center; margin: 30px 0;">
         <a href="${magicUrl}" style="background-color: #2525FF; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
-          🚀 Sign In to ShipCrowd
+          🚀 Sign In to Shipcrowd
         </a>
       </p>
       <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
@@ -926,7 +926,7 @@ export const sendMagicLinkEmail = async (
       <p style="color: #999; font-size: 13px;">
         If you didn't request this magic link, you can safely ignore this email.
       </p>
-      <p>Thank you,<br>The ShipCrowd Team</p>
+      <p>Thank you,<br>The Shipcrowd Team</p>
     `;
 
     return sendEmail(to, '🔐 Your Magic Link to Login', html);
@@ -951,7 +951,7 @@ export const sendOwnerInvitationEmail = async (
     // Use SendGrid template with dynamic data
     return sendEmail(
       to,
-      `You've been invited to manage ${companyName} on ShipCrowd`,
+      `You've been invited to manage ${companyName} on Shipcrowd`,
       '', // HTML is not needed when using a template
       '', // Text is not needed when using a template
       undefined, // No attachments
@@ -967,7 +967,7 @@ export const sendOwnerInvitationEmail = async (
     const html = `
       <h1>Company Owner Invitation</h1>
       <p>Hello ${name},</p>
-      <p>You have been selected to be the owner of <strong>${companyName}</strong> on ShipCrowd!</p>
+      <p>You have been selected to be the owner of <strong>${companyName}</strong> on Shipcrowd!</p>
       <p>As the company owner, you'll have full access to:</p>
       <ul>
         <li>Manage orders and shipments</li>
@@ -980,10 +980,10 @@ export const sendOwnerInvitationEmail = async (
       <p><a href="${inviteUrl}" style="background-color: #2525FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation & Create Account</a></p>
       <p>This invitation will expire in 7 days.</p>
       <p>If you did not expect this invitation, please contact our support team.</p>
-      <p>Thank you,<br>The ShipCrowd Team</p>
+      <p>Thank you,<br>The Shipcrowd Team</p>
     `;
 
-    return sendEmail(to, `You've been invited to manage ${companyName} on ShipCrowd`, html);
+    return sendEmail(to, `You've been invited to manage ${companyName} on Shipcrowd`, html);
   }
 };
 
@@ -1018,7 +1018,7 @@ export const sendAccountRecoveryEmail = async (
           </div>
           <div class="content">
             <p>Hello ${name},</p>
-            <p>We received a request to recover your ShipCrowd account. If you were locked out or need to regain access, you can reset your account using the link below.</p>
+            <p>We received a request to recover your Shipcrowd account. If you were locked out or need to regain access, you can reset your account using the link below.</p>
             
             <div class="alert">
               <strong>⏰ This recovery link expires in 4 hours</strong>
@@ -1032,16 +1032,16 @@ export const sendAccountRecoveryEmail = async (
             <ul>
               <li>Unlock your account if it was locked</li>
               <li>Reset your password</li>
-              <li>Regain full access to your ShipCrowd account</li>
+              <li>Regain full access to your Shipcrowd account</li>
             </ul>
   `;
 
   const text = `
-Account Recovery - ShipCrowd
+Account Recovery - Shipcrowd
 
 Hello ${name},
 
-We received a request to recover your ShipCrowd account.
+We received a request to recover your Shipcrowd account.
 
 Recovery Link: ${recoveryUrl}
 
@@ -1050,10 +1050,10 @@ This link expires in 4 hours.
 If you didn't request this, please ignore this email and ensure your account credentials are secure.
 
 Thank you,
-The ShipCrowd Security Team
+The Shipcrowd Security Team
   `;
 
-  return sendEmail(to, '🔓 Account Recovery - ShipCrowd', html, text);
+  return sendEmail(to, '🔓 Account Recovery - Shipcrowd', html, text);
 };
 
 
@@ -1097,7 +1097,7 @@ export const sendNewDeviceLoginEmail = async (
     const html = `
       <h1>New Sign-in Detected</h1>
       <p>Hello ${name},</p>
-      <p>We detected a new sign-in to your ShipCrowd account from a new device.</p>
+      <p>We detected a new sign-in to your Shipcrowd account from a new device.</p>
       <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <p><strong>Device:</strong> ${deviceInfo.deviceType} (${deviceInfo.os})</p>
         <p><strong>Browser:</strong> ${deviceInfo.browser}</p>
@@ -1106,7 +1106,7 @@ export const sendNewDeviceLoginEmail = async (
       </div>
       <p>If this was you, you can safely ignore this email.</p>
       <p><strong>If this wasn't you, please reset your password immediately.</strong></p>
-      <p>Thank you,<br>The ShipCrowd Team</p>
+      <p>Thank you,<br>The Shipcrowd Team</p>
     `;
     return sendEmail(to, 'New Sign-in to Your Account', html);
   }
@@ -1129,25 +1129,25 @@ export const sendFraudAlertEmail = async (
     aiSummary?: string;
   }
 ): Promise<void> => {
-    const subject = `🚨 Fraud Alert: ${alertDetails.riskLevel.toUpperCase()} Risk Order Detected`;
+  const subject = `🚨 Fraud Alert: ${alertDetails.riskLevel.toUpperCase()} Risk Order Detected`;
 
-    const rulesHtml = alertDetails.matchedRules.length > 0
-      ? `<ul>${alertDetails.matchedRules.map(rule => `<li>${rule}</li>`).join('')}</ul>`
-      : '<p>No rules matched</p>';
+  const rulesHtml = alertDetails.matchedRules.length > 0
+    ? `<ul>${alertDetails.matchedRules.map(rule => `<li>${rule}</li>`).join('')}</ul>`
+    : '<p>No rules matched</p>';
 
-    const blacklistHtml = alertDetails.blacklistMatches.length > 0
-      ? `<ul>${alertDetails.blacklistMatches.map(match => `<li>${match}</li>`).join('')}</ul>`
-      : '<p>No blacklist matches</p>';
+  const blacklistHtml = alertDetails.blacklistMatches.length > 0
+    ? `<ul>${alertDetails.blacklistMatches.map(match => `<li>${match}</li>`).join('')}</ul>`
+    : '<p>No blacklist matches</p>';
 
-    const riskColors: Record<string, string> = {
-      low: '#10b981',
-      medium: '#f59e0b',
-      high: '#ef4444',
-      critical: '#dc2626',
-    };
-    const riskColor = riskColors[alertDetails.riskLevel] || '#6b7280';
+  const riskColors: Record<string, string> = {
+    low: '#10b981',
+    medium: '#f59e0b',
+    high: '#ef4444',
+    critical: '#dc2626',
+  };
+  const riskColor = riskColors[alertDetails.riskLevel] || '#6b7280';
 
-    const html = `
+  const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -1182,7 +1182,7 @@ export const sendFraudAlertEmail = async (
             ${blacklistHtml}
             ${alertDetails.aiSummary ? `<h3>🤖 AI Analysis</h3><p>${alertDetails.aiSummary}</p>` : ''}
             <p style="text-align: center; margin-top: 30px;">
-              <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/fraud/alerts/${alertDetails.alertId}" 
+              <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.Shipcrowd.com'}/fraud/alerts/${alertDetails.alertId}" 
                  style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
                 Review Alert →
               </a>
@@ -1193,8 +1193,8 @@ export const sendFraudAlertEmail = async (
       </html>
     `;
 
-    await sendEmail(adminEmail, subject, html);
-    logger.info('Fraud alert email sent', { alertId: alertDetails.alertId, adminEmail });
+  await sendEmail(adminEmail, subject, html);
+  logger.info('Fraud alert email sent', { alertId: alertDetails.alertId, adminEmail });
 };
 
 /**
@@ -1266,7 +1266,7 @@ export const sendDisputeCreatedEmail = async (
           </ul>
 
           <p style="text-align: center;">
-            <a href="${process.env.DASHBOARD_URL || 'https://app.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+            <a href="${process.env.DASHBOARD_URL || 'https://app.Shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
               View Dispute →
             </a>
           </p>
@@ -1327,7 +1327,7 @@ export const sendDisputeEscalatedEmail = async (
           </div>
 
           <p style="text-align: center;">
-            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.Shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
               Handle Escalation →
             </a>
           </p>
@@ -1442,7 +1442,7 @@ export const sendSLAWarningEmail = async (
           </div>
 
           <p style="text-align: center;">
-            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
+            <a href="${process.env.ADMIN_DASHBOARD_URL || 'https://admin.Shipcrowd.com'}/disputes/${disputeDetails.disputeId}" class="btn">
               Resolve Now →
             </a>
           </p>

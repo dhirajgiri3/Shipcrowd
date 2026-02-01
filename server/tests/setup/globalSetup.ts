@@ -2,13 +2,11 @@
  * Global Setup for Jest
  * Starts MongoDB Memory Server before all tests
  */
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
 export default async function globalSetup(): Promise<void> {
-    const mongod = await MongoMemoryServer.create({
-        instance: {
-            dbName: 'shipcrowd_test'
-        }
+    const mongod = await MongoMemoryReplSet.create({
+        replSet: { count: 1, storageEngine: 'wiredTiger' },
     });
 
     const uri = mongod.getUri();
@@ -27,6 +25,12 @@ export default async function globalSetup(): Promise<void> {
     // Store mongod instance globally so globalTeardown can access it
     (globalThis as any).__MONGOD__ = mongod;
 
+    // Write URI to a file so test suites can read it (simulating custom environment)
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, 'mongoConfig.json');
+    fs.writeFileSync(configPath, JSON.stringify({ mongoUri: uri }));
+
     console.log('✅ MongoDB Memory Server started at:', uri);
-    console.log('✅ MONGODB_URI set to test database');
+    console.log('✅ MONGODB_URI written to:', configPath);
 }

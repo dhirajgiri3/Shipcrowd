@@ -1,5 +1,7 @@
-import Redis from 'ioredis';
+import { RedisManager } from '../../../../infrastructure/redis/redis.manager';
 import logger from '../../../../shared/logger/winston.logger';
+import { Redis, Cluster } from 'ioredis';
+import PricingMetricsService from '../metrics/pricing-metrics.service';
 
 /**
  * Pricing Cache Service
@@ -13,32 +15,17 @@ import logger from '../../../../shared/logger/winston.logger';
  * - With cache: 8-12ms per calculation (85% faster)
  */
 export class PricingCacheService {
-    private redis: Redis;
     private readonly TTL = {
-        ZONE: 3600,        // 1 hour (zones rarely change)
-        RATECARD: 1800,    // 30 minutes (rate cards can change)
-        GST_STATE: 86400,  // 24 hours (state codes never change)
+        ZONE: 3600,        // 1 hour
+        RATECARD: 1800,    // 30 minutes
+        GST_STATE: 86400,  // 24 hours
     };
 
-    constructor() {
-        const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-        this.redis = new Redis(redisUrl, {
-            retryStrategy: (times) => {
-                if (times > 3) {
-                    logger.error('[PricingCache] Redis connection failed after 3 retries');
-                    return null; // Stop retrying
-                }
-                return Math.min(times * 200, 1000);
-            },
-        });
-
-        this.redis.on('connect', () => {
-            logger.info('[PricingCache] Redis connected');
-        });
-
-        this.redis.on('error', (error) => {
-            logger.error('[PricingCache] Redis error:', error);
-        });
+    /**
+     * Get Redis Client from Manager
+     */
+    private async getRedis(): Promise<Redis | Cluster> {
+        return RedisManager.getMainClient();
     }
 
     /**
@@ -48,10 +35,10 @@ export class PricingCacheService {
     async cacheZone(fromPincode: string, toPincode: string, zone: string): Promise<void> {
         const key = `zone:${fromPincode}:${toPincode}`;
         try {
-            await this.redis.setex(key, this.TTL.ZONE, zone);
+            const redis = await this.getRedis();
+            await redis.setex(key, this.TTL.ZONE, zone);
         } catch (error) {
             logger.warn('[PricingCache] Failed to cache zone:', error);
-            // Non-critical, continue without caching
         }
     }
 
@@ -61,7 +48,14 @@ export class PricingCacheService {
     async getZone(fromPincode: string, toPincode: string): Promise<string | null> {
         const key = `zone:${fromPincode}:${toPincode}`;
         try {
-            return await this.redis.get(key);
+            const redis = await this.getRedis();
+            const cached = await redis.get(key);
+            if (cached) {
+                PricingMetricsService.recordCacheHit('zone');
+                return cached;
+            }
+            PricingMetricsService.recordCacheMiss('zone');
+            return null;
         } catch (error) {
             logger.warn('[PricingCache] Failed to get cached zone:', error);
             return null;
@@ -69,53 +63,131 @@ export class PricingCacheService {
     }
 
     /**
-     * Cache RateCard
-     * Key format: ratecard:{companyId}:{carrier}:{serviceType}
+     * Cache RateCard by ID
+     * Key format: ratecard:id:{rateCardId}
      */
-    async cacheRateCard(
-        companyId: string,
-        carrier: string,
-        serviceType: string,
-        rateCard: any
-    ): Promise<void> {
-        const key = `ratecard:${companyId}:${carrier}:${serviceType}`;
+    async cacheRateCardById(rateCardId: string, rateCard: any): Promise<void> {
+        const key = `ratecard:id:${rateCardId}`;
         try {
-            await this.redis.setex(key, this.TTL.RATECARD, JSON.stringify(rateCard));
+            const redis = await this.getRedis();
+            await redis.setex(key, this.TTL.RATECARD, JSON.stringify(rateCard));
         } catch (error) {
-            logger.warn('[PricingCache] Failed to cache ratecard:', error);
+            logger.warn('[PricingCache] Failed to cache ratecard by ID:', error);
         }
     }
 
     /**
-     * Get cached RateCard
+     * Get cached RateCard by ID
      */
-    async getRateCard(
-        companyId: string,
-        carrier: string,
-        serviceType: string
-    ): Promise<any | null> {
-        const key = `ratecard:${companyId}:${carrier}:${serviceType}`;
+    async getRateCardById(rateCardId: string): Promise<any | null> {
+        const key = `ratecard:id:${rateCardId}`;
         try {
-            const cached = await this.redis.get(key);
-            return cached ? JSON.parse(cached) : null;
+            const redis = await this.getRedis();
+            const cached = await redis.get(key);
+            if (cached) {
+                PricingMetricsService.recordCacheHit('ratecardById');
+                return JSON.parse(cached);
+            }
+            PricingMetricsService.recordCacheMiss('ratecardById');
+            return null;
         } catch (error) {
-            logger.warn('[PricingCache] Failed to get cached ratecard:', error);
+            logger.warn('[PricingCache] Failed to get cached ratecard by ID:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Cache Company Default RateCard (Versioned)
+     * Key format: ratecard:default:{companyId}:{version}
+     * Stores the entire rate card object + metadata
+     */
+    async cacheDefaultRateCard(companyId: string, version: string, rateCard: any): Promise<void> {
+        const key = `ratecard:default:${companyId}:${version}`;
+        // Store a pointer to the current version as well
+        const pointerKey = `ratecard:default:${companyId}:current`;
+
+        try {
+            const redis = await this.getRedis();
+            const pipeline = redis.pipeline();
+
+            // Cache the concrete version
+            pipeline.setex(key, this.TTL.RATECARD, JSON.stringify(rateCard));
+
+            // Update the pointer
+            pipeline.setex(pointerKey, this.TTL.RATECARD, version);
+
+            await pipeline.exec();
+        } catch (error) {
+            logger.warn('[PricingCache] Failed to cache default ratecard:', error);
+        }
+    }
+
+    /**
+     * Get cached Company Default RateCard
+     * Looks up the current version pointer, then fetches the actual rate card
+     */
+    async getDefaultRateCard(companyId: string): Promise<any | null> {
+        const pointerKey = `ratecard:default:${companyId}:current`;
+
+        try {
+            const redis = await this.getRedis();
+            const version = await redis.get(pointerKey);
+
+            if (!version) {
+                PricingMetricsService.recordCacheMiss('defaultRateCard');
+                return null;
+            }
+
+            const key = `ratecard:default:${companyId}:${version}`;
+            const cached = await redis.get(key);
+
+            if (cached) {
+                PricingMetricsService.recordCacheHit('defaultRateCard');
+                return JSON.parse(cached);
+            }
+            PricingMetricsService.recordCacheMiss('defaultRateCard');
+            return null;
+        } catch (error) {
+            logger.warn('[PricingCache] Failed to get cached default ratecard:', error);
             return null;
         }
     }
 
     /**
      * Invalidate RateCard cache for a company
-     * Use when RateCard is updated
+     * Deletes both the pointer and the specific version keys
      */
     async invalidateRateCard(companyId: string): Promise<void> {
-        const pattern = `ratecard:${companyId}:*`;
+        const pointerKey = `ratecard:default:${companyId}:current`;
+        const pattern = `ratecard:default:${companyId}:*`;
+
         try {
-            const keys = await this.redis.keys(pattern);
-            if (keys.length > 0) {
-                await this.redis.del(...keys);
-                logger.info(`[PricingCache] Invalidated ${keys.length} ratecard cache entries`);
+            const redis = await this.getRedis();
+
+            // 1. Get current version to delete specifically
+            const currentVersion = await redis.get(pointerKey);
+
+            const pipeline = redis.pipeline();
+            pipeline.del(pointerKey);
+
+            if (currentVersion) {
+                pipeline.del(`ratecard:default:${companyId}:${currentVersion}`);
             }
+
+            // Also scan for any stranded keys (failsafe)
+            const stream = (redis as Redis).scanStream({ match: pattern, count: 100 });
+            const keys: string[] = [];
+
+            for await (const resultKeys of stream) {
+                keys.push(...resultKeys);
+            }
+
+            if (keys.length > 0) {
+                keys.forEach(k => pipeline.del(k));
+            }
+
+            await pipeline.exec();
+            logger.info(`[PricingCache] Invalidated ratecard cache for company ${companyId}`);
         } catch (error) {
             logger.warn('[PricingCache] Failed to invalidate ratecard cache:', error);
         }
@@ -126,43 +198,36 @@ export class PricingCacheService {
      */
     async getStats(): Promise<{
         totalKeys: number;
-        zoneKeys: number;
-        rateCardKeys: number;
         memoryUsed: string;
     }> {
         try {
-            const [totalKeys, zoneKeys, rateCardKeys, info] = await Promise.all([
-                this.redis.dbsize(),
-                this.redis.keys('zone:*').then(keys => keys.length),
-                this.redis.keys('ratecard:*').then(keys => keys.length),
-                this.redis.info('memory'),
-            ]);
+            const redis = await this.getRedis();
+            const pipeline = redis.pipeline();
+            pipeline.dbsize();
+            pipeline.info('memory');
 
-            const memoryMatch = info.match(/used_memory_human:(.+)/);
-            const memoryUsed = memoryMatch ? memoryMatch[1].trim() : 'unknown';
+            const results = await pipeline.exec();
+            let totalKeys = 0;
+            let memoryUsed = 'unknown';
 
-            return {
-                totalKeys,
-                zoneKeys,
-                rateCardKeys,
-                memoryUsed,
-            };
+            if (results) {
+                if (!results[0][0]) totalKeys = results[0][1] as number;
+                if (!results[1][0]) {
+                    const info = results[1][1] as string;
+                    const memoryMatch = info.match(/used_memory_human:(.+)/);
+                    memoryUsed = memoryMatch ? memoryMatch[1].trim() : 'unknown';
+                }
+            }
+
+            return { totalKeys, memoryUsed };
         } catch (error) {
             logger.error('[PricingCache] Failed to get stats:', error);
-            return {
-                totalKeys: 0,
-                zoneKeys: 0,
-                rateCardKeys: 0,
-                memoryUsed: 'unknown',
-            };
+            return { totalKeys: 0, memoryUsed: 'unknown' };
         }
     }
 
-    /**
-     * Close Redis connection
-     */
     async disconnect(): Promise<void> {
-        await this.redis.quit();
+        // Managed by RedisManager
     }
 }
 

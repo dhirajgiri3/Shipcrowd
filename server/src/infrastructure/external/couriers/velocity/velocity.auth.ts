@@ -22,6 +22,7 @@ export class VelocityAuth {
   private companyId: mongoose.Types.ObjectId;
   private httpClient: AxiosInstance;
   private tokenCache: { token: string; expiresAt: Date } | null = null;
+  private authPromise: Promise<string> | null = null; // Deduplication promise
 
   constructor(companyId: mongoose.Types.ObjectId, baseUrl: string = 'https://shazam.velocity.in') {
     this.companyId = companyId;
@@ -103,7 +104,10 @@ export class VelocityAuth {
       );
 
       const token = response.data.token;
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      // Use API expiry or fallback to 24 hours
+      const expiresAt = response.data.expires_at
+        ? new Date(response.data.expires_at)
+        : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       // Store token in database (encrypted)
       await this.storeToken(token, expiresAt);
@@ -159,6 +163,8 @@ export class VelocityAuth {
         },
         true
       );
+    } finally {
+      this.authPromise = null;
     }
   }
 
@@ -229,11 +235,18 @@ export class VelocityAuth {
     }
 
     // Token expired or doesn't exist - authenticate
+    // Use deduplication to prevent stampede
+    if (this.authPromise) {
+      logger.debug('Waiting for pending authentication', { companyId: this.companyId.toString() });
+      return this.authPromise;
+    }
+
     logger.info('Token expired or not found, authenticating', {
       companyId: this.companyId.toString()
     });
 
-    return await this.authenticate();
+    this.authPromise = this.authenticate();
+    return this.authPromise;
   }
 
   /**

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import PromoCodeService from '../../../../core/application/services/marketing/promo-code.service';
 import { ValidationError } from '../../../../shared/errors/app.error';
-import { apiRateLimiter } from '../../middleware/system/rate-limiter.middleware';
+
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
 
 /**
@@ -105,6 +105,51 @@ class PromoCodeController {
             const promos = await PromoCodeService.listPromos(req.user.companyId.toString(), activeOnly);
 
             sendSuccess(res, promos);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Update promo code
+     * PATCH /promos/:id
+     */
+    async updatePromo(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const data = req.body;
+
+            if (!req.user?.companyId) {
+                throw new ValidationError('Company ID required');
+            }
+
+            const promo = await PromoCodeService.updatePromo(
+                id,
+                req.user.companyId.toString(),
+                data
+            );
+
+            sendSuccess(res, { promo }, 'Promo code updated successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Delete promo code (Soft Delete)
+     * DELETE /promos/:id
+     */
+    async deletePromo(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+
+            if (!req.user?.companyId) {
+                throw new ValidationError('Company ID required');
+            }
+
+            await PromoCodeService.deletePromo(id, req.user.companyId.toString());
+
+            sendSuccess(res, null, 'Promo code deleted successfully');
         } catch (error) {
             next(error);
         }

@@ -36,8 +36,8 @@ export interface IProductMapping extends Document {
   shopifyInventoryItemId?: string; // For inventory API
 
   // Shipcrowd product details
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
 
   // Mapping metadata
   mappingType: 'AUTO' | 'MANUAL';
@@ -110,13 +110,13 @@ const ProductMappingSchema = new Schema<IProductMapping>(
     },
 
     // Shipcrowd product details
-    shipcrowdSKU: {
+    ShipcrowdSKU: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
     },
-    shipcrowdProductName: {
+    ShipcrowdProductName: {
       type: String,
       required: true,
       trim: true,
@@ -182,7 +182,7 @@ ProductMappingSchema.index(
   { companyId: 1, shopifyStoreId: 1, shopifyVariantId: 1 },
   { unique: true }
 );
-ProductMappingSchema.index({ companyId: 1, shipcrowdSKU: 1 });
+ProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 ProductMappingSchema.index({ shopifyStoreId: 1, shopifySKU: 1 });
 ProductMappingSchema.index({ companyId: 1, isActive: 1, syncInventory: 1 });
 
@@ -207,7 +207,7 @@ ProductMappingSchema.statics.findByShipcrowdSKU = function (
 ) {
   return this.findOne({
     shopifyStoreId: storeId,
-    shipcrowdSKU: sku.toUpperCase(),
+    ShipcrowdSKU: sku.toUpperCase(),
     isActive: true,
   });
 };

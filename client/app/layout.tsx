@@ -3,8 +3,10 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/features/auth";
 import { Providers as QueryProviders } from "@/src/core/providers/query-provider";
-import { Toaster } from "@/components/ui/feedback/Toaster";
-import { ErrorBoundary } from "@/src/components/ErrorBoundary";
+import { Toaster } from "@/src/components/ui/feedback/Toaster";
+import { ErrorBoundary } from '@/src/components/shared/ErrorBoundary';
+import { GlobalErrorProvider } from "@/src/core/providers/GlobalErrorProvider";
+import { NetworkStatusProvider } from "@/src/core/providers/NetworkStatusProvider";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FONT OPTIMIZATION
@@ -33,8 +35,8 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   // Core metadata
   title: {
-    default: "ShipCrowd - AI-Powered Shipping Aggregator for India",
-    template: "%s | ShipCrowd",
+    default: "Shipcrowd - AI-Powered Shipping Aggregator for India",
+    template: "%s | Shipcrowd",
   },
   description:
     "Ship Smarter, Not Harder. Compare rates from Delhivery, Bluedart, Xpressbees, DTDC & more. One dashboard, all couriers, best prices. India's smartest shipping platform for eCommerce sellers.",
@@ -59,9 +61,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: "https://shipcrowd.com",
-    siteName: "ShipCrowd",
-    title: "ShipCrowd - India's Smartest Shipping Aggregator",
+    url: "https://Shipcrowd.com",
+    siteName: "Shipcrowd",
+    title: "Shipcrowd - India's Smartest Shipping Aggregator",
     description:
       "Compare rates, book shipments, and track deliveries across all major couriers. Save up to 40% on shipping costs.",
   },
@@ -69,7 +71,7 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "ShipCrowd - Ship Smarter, Not Harder",
+    title: "Shipcrowd - Ship Smarter, Not Harder",
     description: "India's smartest shipping aggregator for eCommerce sellers.",
   },
 
@@ -133,7 +135,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var storageKey = 'shipcrowd-theme';
+                  var storageKey = 'Shipcrowd-theme';
                   var savedTheme = localStorage.getItem(storageKey);
                   var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                   var theme = savedTheme === 'system' || !savedTheme ? systemTheme : savedTheme;
@@ -148,11 +150,15 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <QueryProviders>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </QueryProviders>
+          <GlobalErrorProvider>
+            <NetworkStatusProvider>
+              <QueryProviders>
+                <AuthProvider>
+                  {children}
+                </AuthProvider>
+              </QueryProviders>
+            </NetworkStatusProvider>
+          </GlobalErrorProvider>
         </ErrorBoundary>
         <Toaster position="top-right" richColors />
       </body>

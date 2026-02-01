@@ -392,12 +392,12 @@ Create service managing SKU mappings between Shipcrowd and WooCommerce.
 
 **Methods to Implement:**
 - `autoMapProducts(storeId)`: Automatically matches Shipcrowd SKUs to WooCommerce products using exact SKU match or fuzzy name matching (Levenshtein distance < 3)
-- `createManualMapping(shipcrowdSku, woocommerceProductId, storeId, companyId)`: Manually map SKU to product
+- `createManualMapping(ShipcrowdSku, woocommerceProductId, storeId, companyId)`: Manually map SKU to product
 - `updateMapping(mappingId, updates)`: Update existing mapping
 - `deleteMapping(mappingId)`: Remove mapping
 - `getMappingsForStore(storeId)`: Get all mappings for store
 - `getMappingBySku(sku, storeId)`: Find mapping by Shipcrowd SKU
-- `bulkImportMappings(csvFile, storeId)`: Import mappings from CSV (columns: shipcrowdSku, woocommerceProductId, woocommerceSku)
+- `bulkImportMappings(csvFile, storeId)`: Import mappings from CSV (columns: ShipcrowdSku, woocommerceProductId, woocommerceSku)
 - `exportMappings(storeId)`: Export mappings to CSV
 
 Use existing ProductMapping model or create WooCommerceProductMapping model extending it
@@ -561,7 +561,7 @@ Create guide for setting up WooCommerce webhooks.
 **Content:**
 - Where to configure webhooks in WooCommerce (Settings → Advanced → Webhooks)
 - Required webhook topics: order.created, order.updated, product.updated
-- Delivery URL format: https://api.shipcrowd.com/webhooks/woocommerce/{storeId}/{topic}
+- Delivery URL format: https://api.Shipcrowd.com/webhooks/woocommerce/{storeId}/{topic}
 - Secret generation and configuration
 - Testing webhooks
 - Webhook retry behavior
@@ -2292,7 +2292,7 @@ npm install @aws-sdk/client-s3
 
 **Environment Variables:**
 ```bash
-AWS_S3_BUCKET_EXPORTS=shipcrowd-exports
+AWS_S3_BUCKET_EXPORTS=Shipcrowd-exports
 AWS_S3_REGION=ap-south-1
 ```
 

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
+import RemittanceReconciliationService from '../../../../core/application/services/finance/remittance-reconciliation.service';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendCreated, sendPaginated } from '../../../../shared/utils/responseHelper';
 import { ValidationError, AppError } from '../../../../shared/errors/app.error';
@@ -236,6 +237,25 @@ export const cancelRemittance = async (
 };
 
 
+/**
+ * Get COD settlement timeline (4-stage pipeline)
+ * GET /api/v1/finance/cod-remittance/timeline
+ */
+export const getTimeline = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const timeline = await CODRemittanceService.getTimeline(auth.companyId);
+        sendSuccess(res, timeline, 'COD timeline retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching COD timeline:', error);
+        next(error);
+    }
+};
+
 
 /**
  * Get dashboard stats
@@ -318,6 +338,43 @@ export const schedulePayout = async (
         sendSuccess(res, result, 'Payout schedule updated successfully');
     } catch (error) {
         logger.error('Error scheduling payout:', error);
+        next(error);
+    }
+};
+
+/**
+ * Upload MIS file for reconciliation
+ * POST /api/v1/finance/cod-remittance/upload-mis
+ */
+export const uploadMIS = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        if (!req.file) {
+            throw new ValidationError('MIS file is required');
+        }
+
+        const provider = req.body.provider || 'velocity';
+        if (!['velocity', 'generic'].includes(provider)) {
+            throw new ValidationError('Invalid provider. Allowed: velocity, generic');
+        }
+
+
+        const result = await RemittanceReconciliationService.createBatchFromMIS(
+            auth.companyId,
+            req.file.buffer,
+            req.file.mimetype,
+            auth.userId,
+            provider
+        );
+
+        sendCreated(res, result, 'MIS processed and reconciliation batch created successfully');
+    } catch (error) {
+        logger.error('Error processing MIS upload:', error);
         next(error);
     }
 };

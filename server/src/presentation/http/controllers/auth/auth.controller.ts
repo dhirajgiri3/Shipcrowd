@@ -2,12 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import passport from 'passport';
-import { User, IUser, MagicLink, TeamInvitation, Session } from '../../../../infrastructure/database/mongoose/models';
+import { User, IUser, MagicLink, TeamInvitation, Session, ISession } from '../../../../infrastructure/database/mongoose/models';
 import { createAuditLog } from '../../middleware/system/audit-log.middleware';
 import jwt from 'jsonwebtoken';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../../../../shared/helpers/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail, sendMagicLinkEmail } from '../../../../core/application/services/communication/email.service';
-import { createSession, updateSessionActivity } from '../../../../core/application/services/auth/session.service';
+import { createSession } from '../../../../core/application/services/auth/session.service';
 import { meetsMinimumRequirements, evaluatePasswordStrength, PASSWORD_REQUIREMENTS } from '../../../../core/application/services/auth/password.service';
 import OnboardingProgressService from '../../../../core/application/services/onboarding/progress.service';
 import { AuthTokenService } from '../../../../core/application/services/auth/token.service';
@@ -21,6 +21,20 @@ import { UserDTO } from '../../dtos/user.dto';
 import { AuthenticationError, ValidationError, NotFoundError, ExternalServiceError, ConflictError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import MFAService from '../../../../core/application/services/auth/mfa.service';
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// Helper function to get cookie options for auth tokens
+const getAuthCookieOptions = (maxAge: number) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
+  path: '/',
+  domain: process.env.NODE_ENV === 'development' ? 'localhost' : undefined,
+  maxAge,
+});
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -436,20 +450,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
     const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: cookieMaxAge,
-    });
-
-    // Set access token as httpOnly cookie
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(cookieMaxAge));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     // Determine next step for frontend routing
     let nextStep: string;
@@ -486,12 +488,12 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
  */
 export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Cookie names with secure prefix in production
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    // Cookie names with secure prefix in production (must match login)
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
+    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
-    // Validate that we have a refresh token from either cookies or body
-    const token = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken || req.body?.refreshToken;
+    // Validate that we have a refresh token from cookies (try both secure and non-secure names)
+    const token = req.cookies?.[refreshCookieName] || req.cookies?.[AUTH_COOKIES.REFRESH_TOKEN] || req.body?.refreshToken;
     if (!token) {
       throw new AuthenticationError(
         'Your session has expired. Please log in again to continue.',
@@ -499,137 +501,104 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       );
     }
 
-    try {
-      const payload = await verifyRefreshToken(token);
-      const user = await User.findById(payload.userId);
-      if (!user) {
-        throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
-      }
-      // Assert type after null check
-      const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
-
-      if (typedUser.security.tokenVersion !== payload.tokenVersion) {
-        throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
-      }
-
-      // Check if the session exists and is valid
-      const session = await Session.findOne({
-        userId: typedUser._id,
-        refreshToken: token,
-        isRevoked: false,
-        expiresAt: { $gt: new Date() }
-      });
-
-      if (!session) {
-        throw new AuthenticationError(
-          'Your session has expired. Please log in again to access your account.',
-          ErrorCode.AUTH_TOKEN_EXPIRED
-        );
-      }
-
-      // Check for inactivity timeout (Issue #27: Use env variable)
-      const INACTIVITY_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS || String(SESSION_CONSTANTS.DEFAULT_TIMEOUT_MS));
-
-      // ✅ FIX: Atomic session retrieval and activity update
-      // This eliminates the race condition between finding and updating session
-      const updatedSession = await Session.findOneAndUpdate(
-        {
-          userId: typedUser._id,
-          refreshToken: token,
-          isRevoked: false,
-          expiresAt: { $gt: new Date() }
-        },
-        { $set: { lastActive: new Date() } },
-        { new: true }
-      );
-
-      // (Lines 438-440 are redundant now as we check updatedSession below)
-
-      if (!updatedSession) {
-        // Session was already rotated by concurrent request (Fix #9: Idempotency)
-        sendSuccess(res, {
-          user: {
-            id: typedUser._id.toString(),
-            name: typedUser.name,
-            email: typedUser.email,
-            role: typedUser.role,
-            companyId: typedUser.companyId,
-          }
-        }, 'Token already refreshed by concurrent request');
-        return;
-      }
-
-      const lastActiveTime = updatedSession.lastActive?.getTime() || updatedSession.createdAt.getTime();
-      const timeSinceActive = Date.now() - lastActiveTime;
-
-      if (timeSinceActive > INACTIVITY_TIMEOUT_MS) {
-        updatedSession.isRevoked = true;
-        await updatedSession.save();
-
-        res.clearCookie('accessToken');
-        res.clearCookie('refreshToken');
-        throw new AuthenticationError(
-          'Your session expired due to inactivity. For security, please log in again.',
-          ErrorCode.AUTH_TOKEN_EXPIRED
-        );
-      }
-
-      const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
-
-      // TOKEN ROTATION: Generate a new refresh token for better security
-      const newRefreshToken = generateRefreshToken(
-        typedUser._id.toString(),
-        typedUser.security.tokenVersion || 0,
-        '7d'
-      );
-
-      // Revoke the old refresh token
-      await revokeRefreshToken(token);
-
-      // Update session with new refresh token
-      updatedSession.refreshToken = newRefreshToken;
-      updatedSession.lastActive = new Date();
-      await updatedSession.save();
-
-      res.cookie(refreshCookieName, newRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
-
-      // Set new access token as httpOnly cookie
-      res.cookie(accessCookieName, accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000, // 15 minutes
-      });
-
-      await createAuditLog(
-        typedUser._id.toString(),
-        typedUser.companyId,
-        'other',
-        'user',
-        typedUser._id.toString(),
-        { message: 'Token refreshed' },
-        req
-      );
-
-      sendSuccess(res, {
-        user: UserDTO.toResponse(typedUser),
-      }, 'Token refreshed');
-    } catch (tokenError) {
-      logger.error('Token verification error:', tokenError);
-      // ✅ CRITICAL FIX: Pass error to Express error handler instead of throwing
-      next(new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID));
-      return;
+    const payload = await verifyRefreshToken(token);
+    const user = await User.findById(payload.userId);
+    if (!user) {
+      throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
     }
+    // Assert type after null check
+    const typedUser = user as IUser & { _id: mongoose.Types.ObjectId };
+
+    if (typedUser.security.tokenVersion !== payload.tokenVersion) {
+      throw new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID);
+    }
+
+    // Find session by comparing hashed refresh token (tokens are hashed in DB)
+    // Cannot use findOneAndUpdate because we need to compare bcrypt hash
+    const activeSessions = await Session.find({
+      userId: typedUser._id,
+      isRevoked: false,
+      expiresAt: { $gt: new Date() }
+    });
+
+    let updatedSession: ISession | null = null;
+    for (const session of activeSessions) {
+      const isMatch = await session.compareRefreshToken(token);
+      if (isMatch) {
+        updatedSession = session;
+        break;
+      }
+    }
+
+    if (!updatedSession) {
+      throw new AuthenticationError(
+        'Your session has expired. Please log in again to access your account.',
+        ErrorCode.AUTH_TOKEN_EXPIRED
+      );
+    }
+
+    // ✅ PRODUCTION-GRADE: No inactivity timeout on refresh
+    // Refresh token TTL (7-30 days) controls session lifespan
+    // This follows industry best practice (Google, GitHub, Stripe, Shopify)
+    // Activity checks belong in access token validation, NOT refresh validation
+
+    const accessToken = generateAccessToken(typedUser._id.toString(), typedUser.role, typedUser.companyId);
+
+    // Calculate remaining session time to maintain original expiry (7d or 30d from login)
+    const now = Date.now();
+    const sessionExpiresAt = updatedSession.expiresAt.getTime();
+    const remainingTimeMs = sessionExpiresAt - now;
+    const remainingTimeDays = Math.ceil(remainingTimeMs / (24 * 60 * 60 * 1000));
+
+    // Generate new refresh token with remaining time (maintains remember me setting)
+    const tokenExpiry = `${remainingTimeDays}d`;
+    const newRefreshToken = generateRefreshToken(
+      typedUser._id.toString(),
+      typedUser.security.tokenVersion || 0,
+      tokenExpiry
+    );
+
+    // Update session with new token using proper rotation (tracks previousToken for reuse detection)
+    updatedSession.previousToken = updatedSession.refreshToken;
+    updatedSession.refreshToken = newRefreshToken;
+    updatedSession.rotationCount = (updatedSession.rotationCount || 0) + 1;
+    updatedSession.lastRotatedAt = new Date();
+    updatedSession.lastActive = new Date();
+    await updatedSession.save();
+
+    res.cookie(refreshCookieName, newRefreshToken, getAuthCookieOptions(remainingTimeMs));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
+
+    await createAuditLog(
+      typedUser._id.toString(),
+      typedUser.companyId,
+      'other',
+      'user',
+      typedUser._id.toString(),
+      { message: 'Token refreshed' },
+      req
+    );
+
+    logger.info(`✅ Token refresh SUCCESS for user ${typedUser._id}`);
+
+    sendSuccess(res, {
+      user: UserDTO.toResponse(typedUser),
+    }, 'Token refreshed');
+
+    // ✅ CRITICAL FIX: Revoke old token AFTER sending response
+    // This prevents race conditions and gives client time to receive new token
+    // Use setImmediate to defer until after response is sent
+    setImmediate(async () => {
+      try {
+        await revokeRefreshToken(token);
+        logger.debug(`Old refresh token revoked after successful rotation for user ${typedUser._id}`);
+      } catch (err) {
+        logger.error('Error revoking old refresh token (non-critical):', err);
+      }
+    });
   } catch (error) {
     logger.error('Token refresh error:', error);
-    // ✅ CRITICAL FIX: Pass error to Express error handler instead of throwing
-    next(new AuthenticationError('Invalid refresh token', ErrorCode.AUTH_TOKEN_INVALID));
-    return;
+    next(error); // Let Express error handler deal with it
   }
 };
 
@@ -765,19 +734,23 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Cookie names with secure prefix in production
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
+    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
 
     const refreshToken = req.cookies?.[refreshCookieName] || req.cookies?.refreshToken;
 
     // ✅ FIX: Get access token to blacklist it immediately
     const accessToken = req.cookies?.[accessCookieName] || req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
 
-    // Clear both cookies (regular and secure-prefixed)
-    res.clearCookie(refreshCookieName);
-    res.clearCookie(accessCookieName);
-    res.clearCookie('refreshToken'); // Clear regular cookie for backwards compatibility
-    res.clearCookie('accessToken');
+    // ✅ CRITICAL FIX: Clear cookies with EXACT same options used when setting them
+    // Cookies must be cleared with the same path, domain, secure, and sameSite settings
+    const cookieOptions = getAuthCookieOptions(0); // maxAge 0 to expire immediately
+
+    // Clear both tokens with proper options
+    res.clearCookie(refreshCookieName, cookieOptions);
+    res.clearCookie(accessCookieName, cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions); // Clear regular cookie for backwards compatibility
+    res.clearCookie('accessToken', cookieOptions);
 
     // Cast to AuthRequest to access user property
     const authReq = req as Request;
@@ -804,16 +777,20 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
         // Revoke the refresh token in the blacklist
         await revokeRefreshToken(refreshToken);
 
-        // Also mark the session as revoked in the database
-        const session = await Session.findOne({
-          refreshToken,
+        // Find session by comparing hashed token (cannot query directly - token is bcrypt hashed)
+        const activeSessions = await Session.find({
           userId: authReq.user._id,
-          isRevoked: false
+          isRevoked: false,
+          expiresAt: { $gt: new Date() }
         });
 
-        if (session) {
-          session.isRevoked = true;
-          await session.save();
+        for (const session of activeSessions) {
+          const isMatch = await session.compareRefreshToken(refreshToken);
+          if (isMatch) {
+            session.isRevoked = true;
+            await session.save();
+            break;
+          }
         }
       }
 
@@ -903,22 +880,11 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
 
     // ✅ Set httpOnly cookies
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
+    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     // ✅ FEATURE: Track onboarding progress when email is verified
     try {
@@ -1161,25 +1127,23 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
     );
 
     // Set httpOnly cookies (same as regular login)
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
+    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
+    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
 
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for OAuth
-    });
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
 
     // Redirect to frontend without tokens in URL
-    const redirectUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/seller/dashboard`;
+    // Determine redirect URL based on user state
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    let redirectUrl = `${baseUrl}/seller/dashboard`;
+
+    if (!user.companyId && user.role !== 'admin' && user.role !== 'super_admin') {
+      redirectUrl = `${baseUrl}/onboarding`;
+    } else if (user.role === 'admin' || user.role === 'super_admin') {
+      redirectUrl = `${baseUrl}/admin/dashboard`;
+    }
+
     res.redirect(redirectUrl);
   } catch (error) {
     logger.error('Google OAuth callback error:', error);
@@ -1348,19 +1312,8 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
     const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(7 * 24 * 60 * 60 * 1000));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     await createAuditLog(
       typedUser._id.toString(),
@@ -1741,22 +1694,11 @@ export const verifyMagicLink = async (req: Request, res: Response, next: NextFun
     await createSession(typedUser._id.toString(), refreshToken, req, expiresAt);
 
     // Set httpOnly cookies
-    const refreshCookieName = process.env.NODE_ENV === 'production' ? '__Secure-refreshToken' : 'refreshToken';
-    const accessCookieName = process.env.NODE_ENV === 'production' ? '__Secure-accessToken' : 'accessToken';
+    const refreshCookieName = 'refreshToken'; // Browser auto-prefixes in production
+    const accessCookieName = 'accessToken'; // Browser auto-prefixes in production
 
-    res.cookie(refreshCookieName, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
-
-    res.cookie(accessCookieName, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(30 * 24 * 60 * 60 * 1000));
+    res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
     // Audit log
     await createAuditLog(

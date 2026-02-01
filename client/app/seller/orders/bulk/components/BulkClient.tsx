@@ -2,9 +2,9 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Upload,
     FileSpreadsheet,
@@ -18,24 +18,27 @@ import {
     Package,
     FileText
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
+import { orderApi } from '@/src/core/api/clients/orderApi';
+import { useBulkOrderImport } from '@/src/core/api/hooks/orders/useBulkOrderImport';
 
-// Mock uploaded orders
-const mockUploadedOrders = [
-    { id: 1, orderId: 'ORD-001', customer: 'Rahul Sharma', phone: '9876543210', city: 'Delhi', status: 'valid' },
-    { id: 2, orderId: 'ORD-002', customer: 'Priya Singh', phone: '8765432109', city: 'Mumbai', status: 'valid' },
-    { id: 3, orderId: 'ORD-003', customer: 'Amit Kumar', phone: '765432', city: 'Bangalore', status: 'error', error: 'Invalid phone number' },
-    { id: 4, orderId: 'ORD-004', customer: 'Sneha Patel', phone: '6543210987', city: 'Ahmedabad', status: 'valid' },
-    { id: 5, orderId: 'ORD-005', customer: '', phone: '5432109876', city: 'Chennai', status: 'error', error: 'Customer name required' },
-];
+interface UploadedOrder {
+    id: number;
+    orderId?: string;
+    customer: string;
+    phone: string;
+    city: string;
+    status: 'valid' | 'error';
+    error?: string;
+}
 
 export function BulkClient() {
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadComplete, setUploadComplete] = useState(false);
-    const [orders, setOrders] = useState<typeof mockUploadedOrders>([]);
+    const [orders, setOrders] = useState<UploadedOrder[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { addToast } = useToast();
 
@@ -52,17 +55,62 @@ export function BulkClient() {
         }
     };
 
-    const handleUpload = () => {
+    const importMutation = useBulkOrderImport({
+        onSuccess: (result) => {
+            if (result.success) {
+                setUploadComplete(true);
+
+                // Transform API response to UI format
+                const uploadedOrders: UploadedOrder[] = [
+                    // Add successfully created orders
+                    ...result.data.created.map((order, idx) => ({
+                        id: idx + 1,
+                        orderId: order.orderNumber,
+                        customer: `Order ${order.orderNumber}`,
+                        phone: '',
+                        city: '',
+                        status: 'valid' as const,
+                    })),
+                    // Add failed orders
+                    ...result.data.errors.map((error, idx) => ({
+                        id: result.data.created.length + idx + 1,
+                        customer: `Row ${error.row}`,
+                        phone: '',
+                        city: '',
+                        status: 'error' as const,
+                        error: error.error,
+                    })),
+                ];
+
+                setOrders(uploadedOrders);
+                addToast(`File uploaded successfully! ${result.data.imported} orders imported.`, 'success');
+
+                if (result.data.failed > 0) {
+                    addToast(`${result.data.failed} rows failed to import`, 'warning');
+                }
+            } else {
+                addToast('Bulk upload failed', 'error');
+            }
+            setIsUploading(false);
+        },
+        onError: (error) => {
+            // Toast handled by hook
+            setIsUploading(false);
+        }
+    });
+
+    const handleUpload = async () => {
         if (!file) return;
 
         setIsUploading(true);
-        // Simulate upload
-        setTimeout(() => {
+        try {
+            importMutation.mutate(file);
+        } catch (error: any) {
+            // Should be caught by mutation onError usually, but just in case
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to upload file';
+            addToast(errorMessage, 'error');
             setIsUploading(false);
-            setUploadComplete(true);
-            setOrders(mockUploadedOrders);
-            addToast('File uploaded successfully! Review the orders below.', 'success');
-        }, 1500);
+        }
     };
 
     const handleCreateOrders = () => {

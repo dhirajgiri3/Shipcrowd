@@ -1,11 +1,11 @@
 ---
-name: shipcrowd-feature-implementation
-description: Implements new features for ShipCrowd shipping aggregator frontend following established patterns, architecture, and quality standards. Use when adding new pages, modals, tables, or domain features (Address Validation, Manifests, Communication Center, E-Commerce Integrations, Analytics, etc.).
+name: Shipcrowd-feature-implementation
+description: Implements new features for Shipcrowd shipping aggregator frontend following established patterns, architecture, and quality standards. Use when adding new pages, modals, tables, or domain features (Address Validation, Manifests, Communication Center, E-Commerce Integrations, Analytics, etc.).
 ---
 
-# ShipCrowd Feature Implementation Skill
+# Shipcrowd Feature Implementation Skill
 
-This skill guides implementation of new features for the ShipCrowd shipping aggregator platform, ensuring consistency with existing codebase patterns, architecture, and production-quality standards.
+This skill guides implementation of new features for the Shipcrowd shipping aggregator platform, ensuring consistency with existing codebase patterns, architecture, and production-quality standards.
 
 ## When to Use This Skill
 

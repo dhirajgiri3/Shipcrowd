@@ -1309,7 +1309,7 @@ None - all fixes are backwards compatible
 
 ```bash
 # Required for production
-NEXT_PUBLIC_API_URL=https://api.shipcrowd.com/v1
+NEXT_PUBLIC_API_URL=https://api.Shipcrowd.com/v1
 
 # Optional for development auth bypass
 NEXT_PUBLIC_DEV_BYPASS_AUTH=true  # Only in .env.development

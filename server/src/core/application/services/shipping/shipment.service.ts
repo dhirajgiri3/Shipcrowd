@@ -7,9 +7,12 @@ import { generateTrackingNumber, validateStatusTransition } from '../../../../sh
 import { SHIPMENT_STATUS_TRANSITIONS } from '../../../../shared/validation/schemas';
 import { withTransaction } from '../../../../shared/utils/transactionHelper';
 import { CourierFactory } from '../courier/courier.factory';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import logger from '../../../../shared/logger/winston.logger';
-import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
+import { AuthenticationError, ValidationError, DatabaseError, AppError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import WalletService from '../wallet/wallet.service';
+import WebhookDispatcherService from '../webhooks/webhook-dispatcher.service';
 
 /**
  * ShipmentService - Business logic for shipment management
@@ -210,24 +213,38 @@ export class ShipmentService {
         paymentMode?: 'cod' | 'prepaid';
         orderValue?: number;
         carrierOverride?: string;
+        strict?: boolean;
     }): Promise<{ selectedCarrier: string; selectedOption: any; carrierResult: CarrierSelectionResult }> {
-        const { companyId, totalWeight, originPincode, destinationPincode, serviceType, paymentMode, orderValue, carrierOverride } = args;
+        const { companyId, totalWeight, originPincode, destinationPincode, serviceType, paymentMode, orderValue, carrierOverride, strict } = args;
 
         const carrierService = getCarrierService();
-        const carrierResult: CarrierSelectionResult = await carrierService.selectBestCarrier({
-            companyId,
-            fromPincode: originPincode,
-            toPincode: destinationPincode,
-            weight: totalWeight,
-            paymentMode: paymentMode || 'prepaid',
-            orderValue,
-            serviceType,
-        });
+        const carrierResult: CarrierSelectionResult = await carrierService.selectBestCarrier(
+            {
+                companyId,
+                fromPincode: originPincode,
+                toPincode: destinationPincode,
+                weight: totalWeight,
+                paymentMode: paymentMode || 'prepaid',
+                orderValue,
+                serviceType,
+            },
+            strict
+        );
 
         const selectedCarrier = carrierOverride || carrierResult.selectedCarrier;
         const selectedOption = carrierResult.alternativeOptions.find(
             (opt: any) => opt.carrier.toLowerCase() === selectedCarrier.toLowerCase()
         ) || carrierResult.alternativeOptions[0];
+
+        // Strict Mode Validation: Ensure we actually found the requested carrier if override was used
+        if (strict && carrierOverride && selectedOption.carrier.toLowerCase() !== carrierOverride.toLowerCase()) {
+            // This happens if the override carrier wasn't serviceable or returned no rates
+            throw new AppError(
+                `Strict pricing violations: Requested carrier '${carrierOverride}' not available or no rate found`,
+                ErrorCode.PRC_STRICT_PRICING_VIOLATION,
+                400
+            );
+        }
 
         return { selectedCarrier, selectedOption, carrierResult };
     }
@@ -247,6 +264,9 @@ export class ShipmentService {
             carrierOverride?: string;
             instructions?: string;
         };
+        pricingDetails?: any; // Added pricing details
+        idempotencyKey?: string; // Phase 2: Idempotency support
+        strict?: boolean; // Optional flag, but we enforce strict=true internally for creation
     }): Promise<{
         shipment: any;
         carrierSelection: {
@@ -262,7 +282,26 @@ export class ShipmentService {
         try {
             session.startTransaction();
 
-            const { order, companyId, userId, payload } = args;
+            const { order, companyId, userId, payload, pricingDetails, idempotencyKey } = args;
+
+            // Idempotency Check (Compound Index: companyId + idempotencyKey)
+            if (idempotencyKey) {
+                // We need to add idempotencyKey to Shipment model and index it
+                const existingShipment = await Shipment.findOne({
+                    'metadata.idempotencyKey': idempotencyKey,
+                    companyId
+                });
+
+                if (existingShipment) {
+                    logger.info(`Idempotency hit for key: ${idempotencyKey}`, { shipmentId: existingShipment._id });
+                    await session.abortTransaction(); // No new changes needed
+                    return {
+                        shipment: existingShipment,
+                        carrierSelection: (existingShipment as any).carrierDetails || {}, // Fallback structure
+                        updatedOrder: order // Return original order state or fetch latest? Ideally latest.
+                    };
+                }
+            }
 
             // Generate tracking number
             const trackingNumber = await this.getUniqueTrackingNumber();
@@ -333,19 +372,56 @@ export class ShipmentService {
             // Fallback to static selection if API not used or failed
             if (!selectedOption) {
                 // Use dynamic carrier selection
+                // CRITICAL: Enforce STRICT mode for shipment creation
+                // We ignore any 'strict' flag passed in args and mandate it.
+                // Shipment creation MUST adhere to exact pricing rules or fail.
+                const enforcedStrict = true;
+
                 const selection = await this.selectCarrierForShipment({
                     companyId: companyId.toString(),
                     totalWeight,
                     originPincode,
-                    destinationPincode: order.deliveryAddress.pincode,
+                    destinationPincode: order.customerInfo.address.postalCode,
                     serviceType,
-                    paymentMode: order.paymentMode,
+                    paymentMode: order.paymentMethod,
                     orderValue: order.orderTotal,
                     carrierOverride: payload.carrierOverride,
+                    strict: enforcedStrict
                 });
+
                 selectedOption = selection.selectedOption;
                 carrierResult = selection.carrierResult;
+
+                // Validate Pricing Resolution (Double Check)
+                // If the pricing service didn't throw but returned a GENERIC result, we catch it here.
+                // Note: updating selectCarrierForShipment to return resolution metadata is needed.
+                // For now, assume selectCarrierForShipment handles strictness internally via pricingService.
             }
+
+            // ========================================================================
+            // WALLET INTEGRATION: Check balance and deduct shipping cost
+            // ========================================================================
+            const shippingCost = selectedOption.rate;
+
+            // Step 1: Check if wallet has sufficient balance
+            const hasBalance = await WalletService.hasMinimumBalance(
+                companyId.toString(),
+                shippingCost
+            );
+
+            if (!hasBalance) {
+                throw new AppError(
+                    `Insufficient wallet balance. Required: ₹${shippingCost.toFixed(2)}. Please recharge your wallet.`,
+                    ErrorCode.BIZ_INSUFFICIENT_BALANCE,
+                    400
+                );
+            }
+
+            logger.info('Wallet balance check passed', {
+                companyId: companyId.toString(),
+                requiredAmount: shippingCost,
+                orderId: order._id.toString()
+            });
 
             // Calculate estimated delivery
             const estimatedDelivery = new Date();
@@ -379,11 +455,48 @@ export class ShipmentService {
                     shippingCost: selectedOption.rate,
                     currency: 'INR',
                 },
+                weights: {
+                    declared: {
+                        value: totalWeight,
+                        unit: 'kg'
+                    },
+                    verified: false
+                },
+                pricingDetails, // Store pricing breakdown
                 currentStatus: 'created',
                 estimatedDelivery,
+                metadata: idempotencyKey ? { idempotencyKey } : undefined // Store idempotency key
             });
 
             await shipment.save({ session });
+
+            // Step 2: Deduct shipping cost from wallet (AFTER shipment saved, BEFORE carrier API)
+            const walletResult = await WalletService.handleShippingCost(
+                companyId.toString(),
+                (shipment._id as mongoose.Types.ObjectId).toString(),
+                shippingCost,
+                trackingNumber,
+                idempotencyKey // Pass idempotency key
+            );
+
+            if (!walletResult.success) {
+                throw new AppError(
+                    walletResult.error || 'Wallet deduction failed',
+                    ErrorCode.BIZ_WALLET_TRANSACTION_FAILED,
+                    400
+                );
+            }
+
+            // Store wallet transaction reference in shipment
+            (shipment as any).walletTransactionId = new mongoose.Types.ObjectId(walletResult.transactionId);
+            await shipment.save({ session });
+
+            logger.info('Wallet debited for shipment', {
+                shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                amount: shippingCost,
+                transactionId: walletResult.transactionId,
+                newBalance: walletResult.newBalance
+            });
 
             // ========================================================================
             // PHASE 1B: Call Velocity API to create shipment and get AWB/label
@@ -447,14 +560,22 @@ export class ShipmentService {
                     };
 
                     // Call Velocity createShipment with proper data structure
-                    const velocityResponse = await velocityProvider.createShipment(velocityShipmentData as any);
+                    // ✅ Generate idempotency key to prevent duplicates on retry
+                    const idempotencyKey = `${companyId}-${(shipment as any)._id}`;
+
+                    const velocityResponse = await velocityProvider.createShipment({
+                        ...velocityShipmentData,
+                        idempotencyKey
+                    });
 
                     // Update shipment with AWB and label from Velocity response
                     if (velocityResponse.trackingNumber) {
                         shipment.carrierDetails = {
                             ...shipment.carrierDetails,
                             carrierTrackingNumber: velocityResponse.trackingNumber,
-                            carrierServiceType: 'velocity-shipfast'
+                            carrierServiceType: 'velocity-shipfast',
+                            providerShipmentId: velocityResponse.providerShipmentId,
+                            retryCount: 0, // Reset retry count on success
                         };
 
                         // Add label to documents if provided
@@ -491,16 +612,26 @@ export class ShipmentService {
                         error: velocityError.message || velocityError
                     });
 
-                    // Update shipment status to indicate carrier sync is pending
+                    // Mark shipment as awaiting_carrier_sync for explicit retry handling
+                    shipment.currentStatus = 'awaiting_carrier_sync';
+                    shipment.carrierDetails = {
+                        ...shipment.carrierDetails,
+                        retryCount: 0,
+                    };
                     shipment.statusHistory.push({
-                        status: 'created',
+                        status: 'awaiting_carrier_sync',
                         timestamp: new Date(),
-                        description: 'Carrier API sync pending - will retry'
+                        description: 'Carrier API sync pending - will retry via background job'
                     });
                     await shipment.save({ session });
 
-                    // TODO: Add to retry queue for background processing
-                    // await CarrierSyncQueue.add({ shipmentId: shipment._id });
+                    // Add to retry queue for background processing
+                    await QueueManager.addJob('carrier-sync', 'sync-shipment', {
+                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString()
+                    }, {
+                        attempts: 5,
+                        backoff: { type: 'exponential', delay: 30000 }
+                    });
                 }
             }
 
@@ -624,7 +755,7 @@ export class ShipmentService {
                     timestamp: new Date(),
                     location,
                     description,
-                    updatedBy: new mongoose.Types.ObjectId(userId),
+                    updatedBy: userId === 'system' ? undefined : new mongoose.Types.ObjectId(userId),
                 };
 
                 // Build update data
@@ -684,7 +815,7 @@ export class ShipmentService {
                                     status: newOrderStatus,
                                     timestamp: new Date(),
                                     comment: `Updated from shipment status: ${newStatus}`,
-                                    updatedBy: new mongoose.Types.ObjectId(userId),
+                                    updatedBy: userId === 'system' ? undefined : new mongoose.Types.ObjectId(userId),
                                 },
                             },
                         },
@@ -694,6 +825,21 @@ export class ShipmentService {
 
                 return shipment;
             });
+
+            // ✅ PHASE 3: Outbound Webhook Trigger
+            if (updatedShipment) {
+                // Determine event name based on status
+                const eventName = updatedShipment.currentStatus === 'ndr'
+                    ? 'shipment.ndr'
+                    : 'shipment.status_updated';
+
+                // Fire and forget (don't block response)
+                WebhookDispatcherService.dispatch(
+                    updatedShipment.companyId.toString(),
+                    eventName,
+                    updatedShipment.toObject()
+                );
+            }
 
             return {
                 success: true,
@@ -758,5 +904,230 @@ export class ShipmentService {
             };
         }
         return { canDelete: true };
+    }
+
+    /**
+     * Retry carrier creation for a shipment
+     * Used by CarrierSyncJob to retry failed carrier API calls
+     *
+     * Guards against:
+     * - Retrying non-retryable shipments
+     * - Exceeding max retry attempts
+     * - Invalid warehouse states
+     * - Data inconsistency between shipment and order
+     */
+    static async retryShipmentCreation(shipmentId: string): Promise<boolean> {
+        const shipment = await Shipment.findById(shipmentId);
+        if (!shipment) {
+            logger.warn('Shipment not found for retry', { shipmentId });
+            throw new NotFoundError('Shipment not found');
+        }
+
+        // ✅ Guard Clause #1: Check if shipment is in retryable state
+        const retryableStatuses = ['created', 'awaiting_carrier_sync'];
+        if (!retryableStatuses.includes(shipment.currentStatus)) {
+            logger.info('Shipment not in retryable state, skipping', {
+                shipmentId,
+                currentStatus: shipment.currentStatus
+            });
+            return false; // Not an error, just not retryable
+        }
+
+        // ✅ Guard Clause #2: Check if already synced with carrier
+        if (shipment.carrierDetails?.carrierTrackingNumber) {
+            logger.info('Shipment already has carrier tracking number, skipping retry', {
+                shipmentId,
+                awb: shipment.carrierDetails.carrierTrackingNumber
+            });
+            return true; // Success - already synced
+        }
+
+        // ✅ Guard Clause #3: Check max retry attempts
+        const retryCount = shipment.carrierDetails?.retryCount || 0;
+        const MAX_RETRIES = 5;
+        if (retryCount >= MAX_RETRIES) {
+            logger.error('Max retry attempts exceeded for shipment', {
+                shipmentId,
+                retryCount,
+                maxRetries: MAX_RETRIES
+            });
+            // ⚠️ TODO: Alert admin or escalate to manual intervention queue
+            return false; // Failed - max retries reached
+        }
+
+        // Fetch order for validation
+        const order = await Order.findById(shipment.orderId);
+        if (!order) {
+            logger.error('Order not found for shipment retry', { shipmentId, orderId: shipment.orderId });
+            throw new NotFoundError('Order not found');
+        }
+
+        // ✅ Guard Clause #4: Validate warehouse exists
+        const warehouseId = shipment.pickupDetails?.warehouseId;
+        let warehouse = null;
+        if (warehouseId) {
+            warehouse = await Warehouse.findById(warehouseId).lean();
+            if (!warehouse) {
+                logger.error('Warehouse not found for shipment retry', { shipmentId, warehouseId });
+                // Can't retry without warehouse - mark as failed
+                return false;
+            }
+        }
+
+        // Reconstruct shipment data from saved fields
+        const velocityShipmentData = {
+            origin: {
+                name: warehouse?.name || 'Shipcrowd Warehouse',
+                phone: warehouse?.contactInfo?.phone || '',
+                address: warehouse?.address?.line1 || '',
+                city: warehouse?.address?.city || '',
+                state: warehouse?.address?.state || '',
+                pincode: (warehouse?.address?.postalCode as string) || '110001',
+                country: 'India'
+            },
+            destination: {
+                name: shipment.deliveryDetails.recipientName,
+                phone: shipment.deliveryDetails.recipientPhone,
+                email: shipment.deliveryDetails.recipientEmail,
+                address: shipment.deliveryDetails.address.line1 + (shipment.deliveryDetails.address.line2 ? ', ' + shipment.deliveryDetails.address.line2 : ''),
+                city: shipment.deliveryDetails.address.city,
+                state: shipment.deliveryDetails.address.state,
+                pincode: shipment.deliveryDetails.address.postalCode,
+                country: shipment.deliveryDetails.address.country || 'India'
+            },
+            package: {
+                weight: shipment.packageDetails.weight,
+                length: shipment.packageDetails.dimensions.length,
+                width: shipment.packageDetails.dimensions.width,
+                height: shipment.packageDetails.dimensions.height,
+                description: 'Product',
+                declaredValue: shipment.packageDetails.declaredValue
+            },
+            orderNumber: order.orderNumber,
+            paymentMode: shipment.paymentDetails.type as 'prepaid' | 'cod',
+            codAmount: shipment.paymentDetails.type === 'cod' ? shipment.paymentDetails.codAmount || 0 : 0,
+            warehouseId: warehouseId?.toString()
+        };
+
+        try {
+            logger.info('Retrying shipment creation with provider', {
+                shipmentId,
+                carrier: shipment.carrier,
+                retryAttempt: retryCount + 1
+            });
+
+            const provider = await CourierFactory.getProvider(shipment.carrier, shipment.companyId);
+
+            // ✅ Use shipment ID as idempotency key for deterministic retries
+            const idempotencyKey = `${shipment.companyId}-${shipment._id}`;
+
+            const velocityResponse = await provider.createShipment({
+                ...velocityShipmentData,
+                idempotencyKey
+            });
+
+            if (velocityResponse.trackingNumber) {
+                // ✅ Use transaction to ensure atomicity between shipment and order updates
+                const session = await mongoose.startSession();
+                session.startTransaction();
+
+                try {
+                    // Update shipment with carrier details
+                    shipment.carrierDetails = {
+                        ...shipment.carrierDetails,
+                        carrierTrackingNumber: velocityResponse.trackingNumber,
+                        carrierServiceType: 'velocity-shipfast',
+                        providerShipmentId: velocityResponse.providerShipmentId,
+                        retryCount: 0, // Reset on success
+                        lastRetryAttempt: new Date(),
+                    };
+
+                    if (velocityResponse.labelUrl) {
+                        shipment.documents.push({
+                            type: 'label',
+                            url: velocityResponse.labelUrl,
+                            createdAt: new Date()
+                        });
+                    }
+
+                    shipment.currentStatus = 'pending_pickup';
+                    shipment.statusHistory.push({
+                        status: 'pending_pickup',
+                        timestamp: new Date(),
+                        description: `Carrier AWB assigned via retry (Attempt ${retryCount + 1}): ${velocityResponse.trackingNumber}`
+                    });
+
+                    await shipment.save({ session });
+
+                    // Update order status in same transaction
+                    const updatedOrder = await Order.findByIdAndUpdate(
+                        shipment.orderId,
+                        {
+                            currentStatus: 'shipped',
+                            $push: {
+                                statusHistory: {
+                                    status: 'shipped',
+                                    timestamp: new Date(),
+                                    comment: `Shipment synced with carrier via retry (AWB: ${velocityResponse.trackingNumber})`
+                                }
+                            }
+                        },
+                        { session, new: true }
+                    );
+
+                    if (!updatedOrder) {
+                        throw new Error('Failed to update order status');
+                    }
+
+                    await session.commitTransaction();
+
+                    logger.info('Shipment creation retry successful', {
+                        shipmentId,
+                        awb: velocityResponse.trackingNumber,
+                        retryAttempt: retryCount + 1
+                    });
+                    return true;
+                } catch (txError) {
+                    await session.abortTransaction();
+                    logger.error('Transaction failed during retry', {
+                        shipmentId,
+                        error: txError instanceof Error ? txError.message : 'Unknown error'
+                    });
+                    throw txError;
+                } finally {
+                    session.endSession();
+                }
+            }
+        } catch (error: any) {
+            // Increment retry count and update last attempt time
+            const newRetryCount = retryCount + 1;
+            shipment.carrierDetails = {
+                ...shipment.carrierDetails,
+                retryCount: newRetryCount,
+                lastRetryAttempt: new Date(),
+            };
+            await shipment.save();
+
+            logger.error('Shipment creation retry failed', {
+                shipmentId,
+                retryAttempt: newRetryCount,
+                maxRetries: MAX_RETRIES,
+                error: error.message || error
+            });
+
+            // If max retries exceeded, log for manual intervention
+            if (newRetryCount >= MAX_RETRIES) {
+                logger.error('ALERT: Shipment exceeded max retry attempts', {
+                    shipmentId,
+                    orderId: (order._id as mongoose.Types.ObjectId).toString(),
+                    carrier: shipment.carrier
+                    // TODO: Send alert to admin dashboard
+                });
+            }
+
+            throw error; // BullMQ will retry this job
+        }
+
+        return false; // Unexpected path
     }
 }

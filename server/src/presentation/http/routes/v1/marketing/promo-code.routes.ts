@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import PromoCodeController from '../../../controllers/marketing/promo-code.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { apiRateLimiter } from '../../../middleware/system/rate-limiter.middleware';
+import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 
 const router = Router();
 
@@ -31,6 +31,22 @@ router.get(
     '/',
     authenticate,
     PromoCodeController.listPromos
+);
+
+// Update promo code
+router.patch(
+    '/:id',
+    authenticate,
+    apiRateLimiter,
+    PromoCodeController.updatePromo
+);
+
+// Delete promo code
+router.delete(
+    '/:id',
+    authenticate,
+    apiRateLimiter,
+    PromoCodeController.deletePromo
 );
 
 export default router;

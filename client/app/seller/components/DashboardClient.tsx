@@ -1,42 +1,65 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { AnimatedNumber } from '@/hooks/useCountUp';
-import {
-    Activity,
-    ArrowUpRight,
-    CheckCircle2,
-    DollarSign,
-    Package,
-    TrendingUp,
-    TrendingDown,
-    Truck,
-    Wallet,
-    Target
-} from 'lucide-react';
-import {
-    LazyAreaChart as AreaChart,
-    LazyArea as Area,
-    LazyPieChart as RechartsPieChart,
-    LazyPie as Pie,
-    LazyXAxis as XAxis,
-    LazyYAxis as YAxis,
-    LazyCartesianGrid as CartesianGrid,
-    LazyTooltip as Tooltip,
-    LazyResponsiveContainer as ResponsiveContainer,
-    LazyCell as Cell
-} from '@/src/components/charts/LazyCharts';
-import { useAuth } from '@/src/features/auth';
+import { useState, useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { cn } from '@/src/shared/utils';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { useSellerActions } from '@/src/core/api/hooks/useSellerActions';
-import { ActionsRequired } from '@/components/seller/ActionsRequired';
-import { QuickCreate } from '@/components/seller/QuickCreate';
-import { SmartInsights } from '@/components/seller/SmartInsights';
+import { motion } from 'framer-motion';
+import { Package, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/src/features/auth';
+import { DashboardSetupBanner } from '@/src/components/seller/dashboard/DashboardSetupBanner';
+import { useLoader } from '@/src/hooks/utility/useLoader';
+import { TruckLoader } from '@/src/components/ui';
+import {
+    PullToRefresh,
+    ScrollToTopButton
+} from '@/src/components/patterns';
+
+// Dashboard Components (Research-backed UX)
+import {
+    UrgentActionsBar,
+    PerformanceBar,
+    OrderTrendChart,
+    GeographicInsights,
+    SmartInsightsPanel,
+    CODSettlementTimeline,
+    CashFlowForecast,
+    RTOAnalytics,
+    ProfitabilityCard,
+    // Phase 2: Dashboard Optimization
+    CriticalAlertsBanner,
+    DeltaSinceLastVisit,
+} from '@/src/components/seller/dashboard';
+import type { CriticalAlert } from '@/src/components/seller/dashboard/CriticalAlertsBanner';
+
+// Dashboard Skeleton Loaders
+import {
+    PerformanceBarSkeleton,
+    OrderTrendChartSkeleton,
+    UrgentActionsBarSkeleton
+} from '@/src/components/seller/dashboard';
+
+// Real API Hooks
+import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useWalletBalance } from '@/src/core/api/hooks/finance/useWallet';
+import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
+import { useCODStats } from '@/src/core/api/hooks/finance/useCOD';
+import { useOrderTrends } from '@/src/core/api/hooks/analytics/useOrderTrends';
+import { useCODTimeline, useCashFlowForecast, transformCODTimelineToComponent, transformCashFlowToComponent } from '@/src/core/api/hooks/finance'; // Phase 3: New APIs
+import { useRTOAnalytics } from '@/src/core/api/hooks/analytics/useRTOAnalytics'; // Phase 4: RTO Analytics
+import { useProfitabilityAnalytics } from '@/src/core/api/hooks/analytics/useProfitabilityAnalytics'; // Phase 4: Profitability Analytics
+import { useGeographicInsights } from '@/src/core/api/hooks/analytics/useGeographicInsights'; // Phase 4: Geographic Insights
+import { useSmartInsights } from '@/src/core/api/hooks/analytics/useSmartInsights'; // Phase 5: Smart Insights (100% Real Data)
+import { QuickActionsFAB } from '@/src/components/seller/dashboard/QuickActionsFAB';
+
+// Dashboard Utilities
+import { transformDashboardToKPIs } from '@/src/lib/dashboard/data-utils';
+import { transformOrderTrendsToChart } from '@/src/lib/dashboard/order-trends';
+import { useDashboardDate } from '@/src/contexts/DashboardDateContext';
+
+// Phase 4: Keyboard Shortcuts
+import { useKeyboardShortcuts } from '@/src/hooks';
+import { KeyboardShortcutsModal } from '@/src/components/ui';
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -49,121 +72,123 @@ const containerVariants = {
     }
 };
 
-const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-        y: 0,
-        opacity: 1
-    }
-};
+// --- DATE FILTER PRESETS COMPONENT ---
+function DateFilterPresets() {
+    const { preset, setPreset, dateRange, setDateRange } = useDashboardDate();
+    const [showCustom, setShowCustom] = useState(false);
+    const [customStart, setCustomStart] = useState('');
+    const [customEnd, setCustomEnd] = useState('');
 
-// --- MOCK DATA ---
-const revenueDataDaily = [
-    { name: 'Mon', revenue: 12000, orders: 45 },
-    { name: 'Tue', revenue: 15200, orders: 58 },
-    { name: 'Wed', revenue: 13800, orders: 52 },
-    { name: 'Thu', revenue: 18500, orders: 68 },
-    { name: 'Fri', revenue: 16200, orders: 61 },
-    { name: 'Sat', revenue: 21000, orders: 82 },
-    { name: 'Sun', revenue: 23500, orders: 95 },
-];
+    const presets = [
+        { id: 'today' as const, label: 'Today' },
+        { id: 'last7days' as const, label: 'Last 7 Days' },
+        { id: 'last30days' as const, label: 'Last 30 Days' },
+    ];
 
-const revenueDataWeekly = [
-    { name: 'Week 1', revenue: 85000, orders: 320 },
-    { name: 'Week 2', revenue: 92000, orders: 345 },
-    { name: 'Week 3', revenue: 88000, orders: 310 },
-    { name: 'Week 4', revenue: 105000, orders: 410 },
-];
+    const handleCustomApply = () => {
+        if (customStart && customEnd) {
+            const start = new Date(customStart);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(customEnd);
+            end.setHours(23, 59, 59, 999);
 
-const revenueDataMonthly = [
-    { name: 'Jan', revenue: 320000, orders: 1200 },
-    { name: 'Feb', revenue: 350000, orders: 1350 },
-    { name: 'Mar', revenue: 420000, orders: 1500 },
-    { name: 'Apr', revenue: 380000, orders: 1400 },
-    { name: 'May', revenue: 450000, orders: 1650 },
-    { name: 'Jun', revenue: 480000, orders: 1800 },
-];
-
-const orderStatusData = [
-    { name: 'Delivered', value: 1250, color: 'var(--success)' },
-    { name: 'In Transit', value: 380, color: 'var(--primary-blue)' },
-    { name: 'Pending', value: 210, color: 'var(--warning)' },
-    { name: 'RTO', value: 85, color: 'var(--error)' },
-];
-
-// 1. Stat Card - Clean & Professional
-function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color, data, onClick }: any) {
-    const Component = onClick ? motion.button : motion.div;
+            setDateRange({ startDate: start, endDate: end }, 'custom');
+            setShowCustom(false);
+        }
+    };
 
     return (
-        <Component
-            variants={itemVariants}
-            onClick={onClick}
-            className={cn(
-                "group relative rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-6 text-left transition-all duration-200 w-full",
-                onClick && "hover:border-[var(--border-focus)] cursor-pointer"
-            )}
-        >
-            <div className="flex items-start justify-between mb-4">
-                <div className={cn(
-                    "p-2.5 rounded-lg transition-colors",
-                    color === 'blue' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
-                        color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                            color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
-                                "bg-[var(--warning-bg)] text-[var(--warning)]"
-                )}>
-                    <Icon className="w-5 h-5" />
-                </div>
-                {trend && (
-                    <div className={cn(
-                        "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
-                        trend === 'up' ? "text-[var(--success)] bg-[var(--success-bg)]" : "text-[var(--error)] bg-[var(--error-bg)]"
-                    )}>
-                        <TrendingUp className={cn("w-3 h-3", trend === 'down' && "rotate-180")} />
-                        {trendValue}
-                    </div>
-                )}
-            </div>
-
-            <div>
-                <p className="text-sm font-medium text-[var(--text-secondary)]">{title}</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                    <h3 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-                        <AnimatedNumber value={value} />
-                    </h3>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] mt-1">{subtext}</p>
-            </div>
-
-            {/* Micro-Chart: Minimalist */}
-            <div className="h-10 mt-4 -mx-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data || revenueDataDaily}>
-                        <defs>
-                            <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={
-                                    color === 'blue' ? 'var(--primary-blue)' :
-                                        color === 'emerald' ? 'var(--success)' :
-                                            color === 'violet' ? 'var(--primary-blue)' : 'var(--warning)'
-                                } stopOpacity={0.1} />
-                                <stop offset="100%" stopColor="transparent" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <Area
-                            type="monotone"
-                            dataKey="value"
-                            stroke={
-                                color === 'blue' ? 'var(--primary-blue)' :
-                                    color === 'emerald' ? 'var(--success)' :
-                                        color === 'violet' ? 'var(--primary-blue)' : 'var(--warning)'
+        <div className="relative flex items-center gap-2">
+            {/* Preset Buttons */}
+            <div className="flex items-center gap-1 p-1 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-subtle)]">
+                {presets.map((p) => (
+                    <button
+                        key={p.id}
+                        onClick={() => setPreset(p.id)}
+                        className={`
+                            px-3 py-1.5 rounded-md text-xs font-medium transition-all
+                            ${preset === p.id
+                                ? 'bg-[var(--bg-primary)] shadow-sm text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]/50'
                             }
-                            fill={`url(#gradient-${title})`}
-                            strokeWidth={1.5}
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
+                        `}
+                    >
+                        {p.label}
+                    </button>
+                ))}
+
+                {/* Custom Button */}
+                <button
+                    onClick={() => setShowCustom(!showCustom)}
+                    className={`
+                        px-3 py-1.5 rounded-md text-xs font-medium transition-all
+                        ${preset === 'custom'
+                            ? 'bg-[var(--bg-primary)] shadow-sm text-[var(--text-primary)] border border-[var(--border-subtle)]'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]/50'
+                        }
+                    `}
+                >
+                    Custom
+                </button>
             </div>
-        </Component>
+
+            {/* Custom Date Picker Dropdown */}
+            {showCustom && (
+                <div className="absolute top-full right-0 mt-3 p-4 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-subtle)] shadow-[var(--shadow-dropdown)] z-50 w-72 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider">Select Range</p>
+                        <button
+                            onClick={() => setShowCustom(false)}
+                            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[var(--bg-secondary)]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-[var(--text-secondary)] uppercase ml-1">From</label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={customStart}
+                                    onChange={(e) => setCustomStart(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)] outline-none transition-all placeholder-[var(--text-muted)]"
+                                    placeholder="Start Date"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-[var(--text-secondary)] uppercase ml-1">To</label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={customEnd}
+                                    onChange={(e) => setCustomEnd(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:border-[var(--primary-blue)] focus:ring-1 focus:ring-[var(--primary-blue-soft)] outline-none transition-all"
+                                    min={customStart}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleCustomApply}
+                        disabled={!customStart || !customEnd}
+                        className={`
+                            w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
+                            ${customStart && customEnd
+                                ? 'bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-sm hover:shadow-md transform active:scale-[0.98]'
+                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed'
+                            }
+                        `}
+                    >
+                        Apply Range
+                    </button>
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -171,46 +196,85 @@ export function DashboardClient() {
     const { user } = useAuth();
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+    const [isDataReady, setIsDataReady] = useState(false);
+    const [isManualRefresh, setIsManualRefresh] = useState(false);
 
-    // Fetch seller actionable items
-    const { data: actionsData, isLoading: actionsLoading } = useSellerActions();
+    // ✅ Get date range from centralized context
+    const { getAPIParams } = useDashboardDate();
+    const dateParams = getAPIParams();
+
+    // Loading state management with flash prevention
+    const { isLoading, showLoader, startLoading, stopLoading } = useLoader({
+        minDelay: 300,     // Don't show loader for fast operations (<300ms)
+        minDisplay: 500    // Keep visible for at least 500ms for smooth UX
+    });
+
+    // Phase 4: Keyboard Shortcuts
+    const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+    const { shortcuts } = useKeyboardShortcuts({
+        onShowHelp: () => setShowShortcutsModal(true),
+        enabled: true,
+    });
+
+    // ========== REAL API HOOKS ==========
+
+    // Core Metrics - Dashboard (✅ now uses centralized date filter)
+    const { data: dashboardMetrics, isLoading: metricsLoading, refetch: refetchMetrics } = useDashboardMetrics({
+        startDate: dateParams.startDate,
+        endDate: dateParams.endDate
+    });
+
+    // Wallet Balance (only if not using mock)
+    const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useWalletBalance();
+
+    // Order Trends (30-day chart data)
+    const { data: orderTrendsData, isLoading: orderTrendsLoading, refetch: refetchTrends } = useOrderTrends(30);
+
+    // COD Stats (for CODStatusCard)
+    const { data: codStatsData, isLoading: codStatsLoading, refetch: refetchCOD } = useCODStats();
+
+    // Orders List (for urgent actions - pending pickups, RTO)
+    const { data: ordersListData, isLoading: ordersListLoading, refetch: refetchOrders } = useOrdersList({
+        limit: 100,
+        status: 'all'
+    });
+
+    // Phase 3: COD Timeline & Cash Flow Forecast APIs
+    const { data: codTimelineData, isLoading: codTimelineLoading, refetch: refetchTimeline } = useCODTimeline();
+    const { data: cashFlowData, isLoading: cashFlowLoading, refetch: refetchCashFlow } = useCashFlowForecast();
+
+    // Phase 4: RTO Analytics API
+    const { data: rtoAnalyticsData, isLoading: rtoAnalyticsLoading, refetch: refetchRTO } = useRTOAnalytics();
+
+    // Phase 4: Profitability Analytics API
+    const { data: profitabilityData, isLoading: profitabilityLoading, refetch: refetchProfit } = useProfitabilityAnalytics();
+
+    // Phase 4: Geographic Insights API
+    const { data: geographicData, isLoading: geographicLoading, refetch: refetchGeo } = useGeographicInsights();
+
+    // Phase 5: Smart Insights API (100% Real Data)
+    const { data: smartInsightsData, isLoading: smartInsightsLoading, refetch: refetchInsights } = useSmartInsights();
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
 
-    // Simulated API Data
-    const metricsRaw = {
-        revenue: 120300,
-        orders: 1925,
-        activeShipments: 342,
-        deliveryRate: 94.5
-    };
-
-    // Derived State based on Filter
-    const chartData = useMemo(() => {
-        switch (timeFilter) {
-            case 'daily': return revenueDataDaily;
-            case 'monthly': return revenueDataMonthly;
-            case 'weekly':
-            default: return revenueDataWeekly;
-        }
-    }, [timeFilter]);
-
-    const displayMetrics = useMemo(() => {
-        // Just simulating data changes based on filter for effect
-        let multiplier = 1;
-        if (timeFilter === 'daily') multiplier = 0.15;
-        if (timeFilter === 'monthly') multiplier = 4.2;
-
-        return {
-            ...metricsRaw,
-            revenue: Math.floor(metricsRaw.revenue * multiplier),
-            orders: Math.floor(metricsRaw.orders * multiplier)
+    // Simulate initial data loading (in production, this would be actual API calls)
+    useEffect(() => {
+        const loadDashboardData = async () => {
+            // If critical metrics are still loading, start loader
+            if (metricsLoading || walletLoading) {
+                startLoading();
+            } else {
+                // Critical data loaded
+                setIsDataReady(true);
+                stopLoading();
+            }
         };
-    }, [timeFilter]);
+
+        loadDashboardData();
+    }, [startLoading, stopLoading, metricsLoading, walletLoading]);
 
     // Get greeting based on time
     const getGreeting = () => {
@@ -220,411 +284,447 @@ export function DashboardClient() {
         return 'Good Evening';
     };
 
-    const totalActions = actionsData?.totalActions || 0;
+    // --- PREPARE DATA FOR COMPONENTS (with fallback) ---
+
+    // 1. Urgent Actions Logic - Use real API data when available
+
+    // Filter real orders by status or fall back to mock
+    const pendingPickups = ordersListData?.data?.filter(order =>
+        order.currentStatus === 'pending_pickup' || order.currentStatus === 'pending'
+    ) || [];
+
+    const rtoOrders = ordersListData?.data?.filter(order =>
+        order.currentStatus?.toLowerCase().includes('rto')
+    ) || [];
+
+    // Determine urgent actions based on REAL data
+    const urgentActions = [
+        ...(pendingPickups.length > 0 ? [{
+            id: 'pickup-1',
+            type: 'pickup' as const,
+            title: 'Pickups Pending',
+            description: `${pendingPickups.length} orders waiting for courier pickup`,
+            count: pendingPickups.length,
+            ctaLabel: 'Schedule Pickup',
+            ctaUrl: '/seller/orders?status=pending_pickup',
+            severity: 'high' as const
+        }] : []),
+        ...(rtoOrders.length > 0 ? [{
+            id: 'rto-1',
+            type: 'rto' as const,
+            title: 'RTO Risk Detected',
+            description: `${rtoOrders.length} orders flagged for RTO risk`,
+            count: rtoOrders.length,
+            ctaLabel: 'Review Cases',
+            ctaUrl: '/seller/orders?status=rto_risk',
+            severity: 'medium' as const
+        }] : []),
+        // ✅ FIXED: Only show wallet alert if balance is actually low
+        ...(walletData?.balance !== undefined && walletData.balance < 1000 ? [{
+            id: 'wallet-1',
+            type: 'wallet' as const,
+            title: 'Low Wallet Balance',
+            description: `Balance ₹${walletData.balance.toLocaleString('en-IN')} below ₹1,000 threshold`,
+            ctaLabel: 'Recharge Now',
+            ctaUrl: '/seller/wallet',
+            severity: 'high' as const
+        }] : [])
+    ];
+
+    // 2. Snapshot Data Logic - Use real API or fallback to mock
+
+    // Transform API data to KPI format
+    const kpiTrendsFromAPI = dashboardMetrics ? transformDashboardToKPIs(
+        dashboardMetrics,
+        walletData?.balance
+    ) : null;
+
+    // Use null/safe defaults if data not yet loaded
+    const kpiTrends = kpiTrendsFromAPI ? {
+        revenue: {
+            value: kpiTrendsFromAPI.revenue.today,
+            sparkline: kpiTrendsFromAPI.revenue.sparkline,
+            delta: kpiTrendsFromAPI.revenue.delta,
+            trend: kpiTrendsFromAPI.revenue.trend
+        },
+        profit: {
+            value: kpiTrendsFromAPI.profit.today,
+            sparkline: kpiTrendsFromAPI.profit.sparkline,
+            delta: kpiTrendsFromAPI.profit.delta,
+            trend: kpiTrendsFromAPI.profit.trend
+        },
+        orders: {
+            value: kpiTrendsFromAPI.orders.today,
+            sparkline: kpiTrendsFromAPI.orders.sparkline,
+            delta: kpiTrendsFromAPI.orders.delta,
+            trend: kpiTrendsFromAPI.orders.trend
+        }
+    } : null; // PerformanceBar handles loading state if needed, or we use skeleton
+
+    // Smart insights data - Use REAL API (Phase 5: 100% Real Data)
+    const smartInsights = smartInsightsData || [];
+
+    // Order Trend Chart Data - Transform API data or use mock
+    const orderTrendChartData = (orderTrendsData ? transformOrderTrendsToChart(orderTrendsData) : []) || [];
+
+    // 3. Refresh Handler
+    const handleRefresh = async () => {
+        setIsManualRefresh(true);
+        // We don't call startLoading() here because we want to show the TruckLoader overlay
+        // instead of converting existing UI to skeletons.
+        // startLoading(); 
+
+        // Refetch all queries
+        await Promise.all([
+            refetchMetrics(),
+            refetchWallet(),
+            refetchTrends(),
+            refetchCOD(),
+            refetchOrders(),
+            refetchTimeline(),
+            refetchCashFlow(),
+            refetchRTO(),
+            refetchProfit(),
+            refetchGeo(),
+            refetchInsights()
+        ]);
+
+        setCurrentTime(new Date());
+        setIsDataReady(true);
+        // stopLoading();
+        setIsManualRefresh(false);
+    };
 
     return (
-        <div className="min-h-screen space-y-8 pb-10">
-            {/* 1. Enhanced Welcome Header */}
-            <header
-                className="relative rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6"
-            >
-                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex-1"
-                    >
-                        <div className="flex items-center gap-3 mb-2">
-                            <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ delay: 0.2, type: "spring" }}
-                                className="px-2.5 py-1 rounded-md bg-[var(--success-bg)] border border-[var(--success)]/20 flex items-center gap-2"
-                            >
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]"></span>
-                                </span>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--success)]">Live System</span>
-                            </motion.div>
-                            <span className="text-xs text-[var(--text-muted)] font-medium">
-                                {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                            </span>
-                        </div>
-                        <h1
-                            className="text-3xl font-bold text-[var(--text-primary)] tracking-tight mb-1"
+        <PullToRefresh onRefresh={handleRefresh}>
+            <div className="min-h-screen space-y-8 pb-10">
+                {/* 1. Enhanced Welcome Header */}
+                <header className="relative rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
+                    <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex-1"
                         >
-                            {getGreeting()}, {user?.name?.split(' ')[0] || 'Seller'}
-                        </h1>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                            Here's what's happening with your shipments today.
-                        </p>
-                    </motion.div>
+                            <div className="flex items-center gap-3 mb-2">
+                                <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: 0.2, type: "spring" }}
+                                    className="px-2.5 py-1 rounded-md bg-[var(--success-bg)] border border-[var(--success)]/20 flex items-center gap-2"
+                                >
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]"></span>
+                                    </span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--success)]">Live System</span>
+                                </motion.div>
+                                <span className="text-xs text-[var(--text-muted)] font-medium">
+                                    {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                </span>
+                            </div>
+                            <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight mb-1">
+                                {getGreeting()}, {user?.name?.split(' ')[0] || 'Seller'}
+                            </h1>
+                            <p className="text-sm text-[var(--text-secondary)]">
+                                Here&apos;s what&apos;s happening with your shipments today.
+                            </p>
+                        </motion.div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                        <DateRangePicker />
-                        <Link href="/seller/orders/create">
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="px-4 py-2 rounded-lg bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] transition-colors flex items-center gap-2 font-medium text-sm shadow-sm"
-                            >
-                                <Package className="w-4 h-4" />
-                                <span>Create Order</span>
-                            </motion.button>
-                        </Link>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                            <DateFilterPresets />
+
+                        </div>
                     </div>
-                </div>
-            </header>
+                </header>
 
-            {/* 🎯 ACTIONS REQUIRED */}
-            {totalActions > 0 && (
-                <ActionsRequired
-                    actions={actionsData?.items || []}
-                    isLoading={actionsLoading}
-                />
-            )}
+                {/* Setup Banner */}
+                <DashboardSetupBanner />
 
-            {/* ⚡ QUICK CREATE */}
-            <QuickCreate />
+                {/* Phase 2: Critical Alerts Banner (Above Everything) */}
+                {isDataReady && (() => {
+                    const alerts: CriticalAlert[] = [];
 
-            {/* 2. Key Metrics Grid */}
-            <motion.section
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-            >
-                <StatCard
-                    title="Total Revenue"
-                    value={displayMetrics.revenue}
-                    subtext="vs prev. period"
-                    icon={DollarSign}
-                    trend="up"
-                    trendValue="+14.5%"
-                    color="emerald"
-                    data={chartData.map(d => ({ value: d.revenue }))}
-                    onClick={() => router.push('/seller/analytics?tab=revenue')}
-                />
-                <StatCard
-                    title="Total Orders"
-                    value={displayMetrics.orders}
-                    subtext="vs prev. period"
-                    icon={Package}
-                    trend="up"
-                    trendValue="+8.2%"
-                    color="blue"
-                    data={chartData.map(d => ({ value: d.orders }))}
-                    onClick={() => router.push('/seller/orders')}
-                />
-                <StatCard
-                    title="Active Shipments"
-                    value={displayMetrics.activeShipments}
-                    subtext="Currently in transit"
-                    icon={Truck}
-                    trend="up"
-                    trendValue="+12"
-                    color="violet"
-                    data={[
-                        { value: 320 }, { value: 325 }, { value: 332 }, { value: 340 }, { value: 338 }, { value: 342 }
-                    ]}
-                    onClick={() => router.push('/seller/shipments?status=in_transit')}
-                />
-                <StatCard
-                    title="Delivery Rate"
-                    value={98.2}
-                    subtext="Success Rate"
-                    icon={Target}
-                    trend="up"
-                    trendValue="+0.8%"
-                    color="amber"
-                    data={[
-                        { value: 97 }, { value: 97.5 }, { value: 98 }, { value: 97.8 }, { value: 98 }, { value: 98.2 }
-                    ]}
-                    onClick={() => router.push('/seller/analytics?tab=performance')}
-                />
-            </motion.section>
+                    // Wallet low balance alert (stable ID based on threshold)
+                    if (walletData?.balance !== undefined && walletData.balance < 5000) {
+                        const severity: 'critical' | 'warning' = walletData.balance < 1000 ? 'critical' : 'warning';
+                        // ✅ FIXED: Stable ID based on severity threshold
+                        const walletAlertId = walletData.balance < 1000
+                            ? 'wallet-critical-sub1k'
+                            : 'wallet-warning-sub5k';
 
-            {/* 3. Main Dashboard Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        alerts.push({
+                            id: walletAlertId,
+                            type: 'wallet_low',
+                            severity: severity,
+                            title: 'Low Wallet Balance',
+                            message: `Your wallet balance is ₹${walletData.balance.toLocaleString('en-IN')}. Recharge now to avoid order disruptions.`,
+                            ctaLabel: 'Recharge Wallet',
+                            ctaUrl: '/seller/wallet',
+                            dismissable: true,
+                        });
+                    }
 
-                {/* LEFT COLUMN (2/3) */}
-                <div className="lg:col-span-2 space-y-8">
+                    // RTO spike detection (>20% increase)
+                    if (rtoAnalyticsData?.summary && rtoAnalyticsData.summary.change > 20) {
+                        // ✅ FIXED: Stable ID based on change magnitude (rounded to 10%)
+                        const rtoChangeRounded = Math.floor(rtoAnalyticsData.summary.change / 10) * 10;
+                        const rtoAlertId = `rto-spike-${rtoChangeRounded}pct`;
 
-                    {/* Revenue Analytics Chart - Enhanced */}
-                    <motion.div
+                        alerts.push({
+                            id: rtoAlertId,
+                            type: 'rto_spike',
+                            severity: 'warning',
+                            title: 'RTO Rate Spike Detected',
+                            message: `RTO rate increased by ${rtoAnalyticsData.summary.change.toFixed(1)}% compared to last period. Review affected orders.`,
+                            ctaLabel: 'View RTO Analytics',
+                            ctaUrl: '/seller/analytics/rto',
+                            dismissable: true,
+                        });
+                    }
+
+                    // Settlement delayed alert (>3 days overdue)
+                    if (codTimelineData?.stages) {
+                        const inProcessStage = codTimelineData.stages.find(s => s.stage === 'in_process');
+
+                        if (inProcessStage?.date) {
+                            const expectedDate = new Date(inProcessStage.date);
+                            const now = new Date();
+                            const daysOverdue = Math.floor((now.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                            if (daysOverdue > 3) {
+                                // ✅ NEW: Settlement delay alert
+                                const delayAlertId = `settlement-delayed-${Math.floor(daysOverdue / 3)}x`;
+
+                                alerts.push({
+                                    id: delayAlertId,
+                                    type: 'settlement_delayed',
+                                    severity: 'warning',
+                                    title: 'COD Settlement Delayed',
+                                    message: `Your COD settlement of ₹${inProcessStage.amount.toLocaleString('en-IN')} is ${daysOverdue} days overdue.`,
+                                    ctaLabel: 'Contact Support',
+                                    ctaUrl: '/seller/support',
+                                    dismissable: true,
+                                });
+                            }
+                        }
+                    }
+
+                    return alerts.length > 0 ? (
+                        <motion.section
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <CriticalAlertsBanner alerts={alerts} />
+                        </motion.section>
+                    ) : null;
+                })()}
+
+                {/* Phase 2: Delta Since Last Visit */}
+                {isDataReady && (
+                    <DeltaSinceLastVisit
+                        currentOrderCount={dashboardMetrics?.totalOrders || 0}
+                        currentWalletBalance={walletData?.balance || 0}
+                        currentRtoCount={dashboardMetrics?.rto || 0}
+                    />
+                )}
+
+                {/* ========== TIER 1: DECISION-CRITICAL (Above fold, cannot miss) ========== */}
+
+                {/* TIER 1: URGENT ACTIONS (Loss aversion psychology - immediate attention required) */}
+                {showLoader ? (
+                    <UrgentActionsBarSkeleton />
+                ) : urgentActions.length > 0 && isDataReady ? (
+                    <motion.section
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        <UrgentActionsBar actions={urgentActions} />
+                    </motion.section>
+                ) : null}
+
+                {/* TIER 1: PERFORMANCE BAR (Glanceable metrics with sparklines - answer "Is revenue up?" in <3s) */}
+                {showLoader ? (
+                    <PerformanceBarSkeleton />
+                ) : kpiTrends ? (
+                    <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="p-6 sm:p-8 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
                     >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-2 rounded-xl bg-[var(--primary-blue-soft)]">
-                                        <TrendingUp className="w-5 h-5 text-[var(--primary-blue)]" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Revenue Analytics</h3>
-                                </div>
-                                <p className="text-sm text-[var(--text-secondary)] ml-12">Track your income and order trends</p>
-                            </div>
-                            <div className="flex gap-2 ml-12 sm:ml-0 p-1 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)]">
-                                {['daily', 'weekly', 'monthly'].map((filter) => (
-                                    <button
-                                        key={filter}
-                                        onClick={() => setTimeFilter(filter as any)}
-                                        className={cn(
-                                            "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize",
-                                            timeFilter === filter
-                                                ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]"
-                                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                                        )}
-                                    >
-                                        {filter}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData}>
-                                    <defs>
-                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(value) => `₹${value / 1000}k`} />
-                                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)', borderRadius: '12px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }}
-                                        itemStyle={{ color: 'var(--text-primary)', fontSize: '12px' }}
-                                    />
-                                    <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                                    <Area yAxisId="right" type="monotone" dataKey="orders" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </motion.div>
+                        <PerformanceBar
+                            revenue={kpiTrends.revenue}
+                            profit={kpiTrends.profit}
+                            orders={kpiTrends.orders}
+                            walletBalance={walletData?.balance || 0}
+                            // Only show activeDays if viewing today/current period (streak is real-time)
+                            activeDays={(() => {
+                                const today = new Date();
+                                const endDate = new Date(dateParams.endDate);
+                                const isViewingCurrent = endDate >= today || endDate.toDateString() === today.toDateString();
+                                return isViewingCurrent ? (dashboardMetrics?.activeDays || dashboardMetrics?.shippingStreak || 0) : 0;
+                            })()}
+                            longestStreak={dashboardMetrics?.longestStreak || 0}
+                            milestones={dashboardMetrics?.milestones || []}
+                            lastUpdated={new Date().toISOString()}
+                            isUsingMock={false}
+                            onRevenueClick={() => router.push('/seller/analytics/revenue')}
+                            onProfitClick={() => router.push('/seller/analytics/profit')}
+                            onOrdersClick={() => router.push('/seller/orders')}
+                        />
+                    </motion.section>
+                ) : null}
 
-                    {/* Shipping Cost Analysis */}
-                    <motion.div
+                {/* TIER 1: COD SETTLEMENT TIMELINE (Critical for Indian sellers - 65% orders are COD, cash flow visibility) */}
+                {isDataReady && (
+                    <motion.section
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="p-6 sm:p-8 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
+                        transition={{ delay: 0.25 }}
                     >
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-2 rounded-xl bg-[var(--success-bg)]">
-                                        <DollarSign className="w-5 h-5 text-[var(--success)]" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Shipping Cost Analysis</h3>
-                                </div>
-                                <p className="text-sm text-[var(--text-secondary)] ml-12">Track costs and optimize shipping expenses</p>
-                            </div>
-                            <Link href="/seller/financials">
-                                <button className="text-sm font-semibold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1 transition-colors px-3 py-1.5 rounded-lg hover:bg-[var(--primary-blue-soft)]/20">
-                                    View Details
-                                    <ArrowUpRight className="w-4 h-4" />
-                                </button>
-                            </Link>
-                        </div>
+                        <CODSettlementTimeline />
+                    </motion.section>
+                )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
-                                <p className="text-xs font-medium text-[var(--text-secondary)] mb-1">Total Cost (30d)</p>
-                                <div className="flex items-baseline gap-2">
-                                    <p className="text-2xl font-bold text-[var(--text-primary)]">₹45,200</p>
-                                    <span className="text-xs font-bold text-[var(--success)] flex items-center gap-0.5">
-                                        <TrendingUp className="w-3 h-3 rotate-180" />
-                                        12%
-                                    </span>
-                                </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">vs last month</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
-                                <p className="text-xs font-medium text-[var(--text-secondary)] mb-1">Cost per Order</p>
-                                <div className="flex items-baseline gap-2">
-                                    <p className="text-2xl font-bold text-[var(--text-primary)]">₹23.50</p>
-                                    <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
-                                        <TrendingUp className="w-3 h-3 rotate-180" />
-                                        8%
-                                    </span>
-                                </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Average shipping cost</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-[var(--bg-secondary)]/50 border border-[var(--border-subtle)]">
-                                <p className="text-xs font-medium text-[var(--text-secondary)] mb-1">Cost % Revenue</p>
-                                <div className="flex items-baseline gap-2">
-                                    <p className="text-2xl font-bold text-[var(--text-primary)]">8.2%</p>
-                                    <span className="text-xs font-bold text-[var(--success)] flex items-center gap-0.5">
-                                        <TrendingUp className="w-3 h-3 rotate-180" />
-                                        1.2%
-                                    </span>
-                                </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">of total revenue</p>
-                            </div>
-                        </div>
 
-                        {/* Cost Optimization Opportunity */}
-                        <div className="p-4 rounded-2xl bg-[var(--success-bg)] border border-[var(--success)]/20">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-xl bg-[var(--success)]/20">
-                                    <TrendingDown className="w-5 h-5 text-[var(--success)]" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-semibold text-[var(--text-primary)] mb-1">Cost Savings Opportunity</p>
-                                    <p className="text-sm text-[var(--text-secondary)] mb-3">
-                                        Switch 15 orders to Delhivery for Zone B to save ₹1,200 this month
+                {/* ========== TIER 2: OPERATIONAL CLARITY ========== */}
+
+                {/* TIER 2: RTO ANALYTICS (Loss prevention FIRST - High RTO = revenue loss, actionable insights) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <RTOAnalytics />
+                    </motion.section>
+                )}
+
+                {/* TIER 2: PROFITABILITY CARD (Real profit calculation - not estimated 15%) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <ProfitabilityCard
+                            onViewDetails={() => router.push('/seller/analytics/profitability')}
+                        />
+                    </motion.section>
+                )}
+
+                {/* TIER 2: SMART INSIGHTS (Actionable recommendations - Business partner) - Phase 5: 100% Real Data */}
+                {isDataReady && smartInsights.length > 0 && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <SmartInsightsPanel
+                            insights={smartInsights}
+                            onApply={(id) => console.log('Applied insight:', id)}
+                        />
+                    </motion.section>
+                )}
+
+                {/* TIER 2: CASH FLOW FORECAST (Financial planning - know when money arrives) */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <CashFlowForecast />
+                    </motion.section>
+                )}
+
+                {/* Shipment Pipeline removed as per user request (redundant/cluttered) */}
+
+                {/* ========== TIER 3: CONTEXT & ACTIONS ========== */}
+
+                {/* TIER 3: ORDER TREND CHART (Strategic - 30-day trends for planning, not urgent) */}
+                {showLoader ? (
+                    <OrderTrendChartSkeleton />
+                ) : isDataReady ? (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <OrderTrendChart
+                            data={orderTrendChartData}
+                            onDataPointClick={(dataPoint) => {
+                                // Navigate to orders filtered by date
+                                router.push(`/seller/orders?date=${dataPoint.date}`);
+                            }}
+                        />
+                    </motion.section>
+                ) : null}
+
+                {/* TIER 3: GEOGRAPHIC INSIGHTS (Real API data) */}
+                {isDataReady && geographicData && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <GeographicInsights
+                            topCities={geographicData.topCities}
+                            regions={geographicData.regions}
+                            totalOrders={geographicData.totalOrders}
+                        />
+                    </motion.section>
+                )}
+
+                {/* Quick Actions moved to FAB at bottom of screen */}
+
+                {/* ========== TIER 4: EXPANDABLE DETAILS ========== */}
+
+                {/* TIER 4: Detailed Analytics - Link to dedicated page */}
+                {isDataReady && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <div className="p-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
+                                        Detailed Analytics
+                                    </h3>
+                                    <p className="text-sm text-[var(--text-secondary)]">
+                                        Revenue, customers, inventory, and custom reports
                                     </p>
-                                    <Link href="/seller/orders?optimize=true">
-                                        <button className="text-sm font-semibold text-[var(--success)] hover:text-[var(--success)]/80 flex items-center gap-1 transition-colors">
-                                            Optimize Now
-                                            <ArrowUpRight className="w-4 h-4" />
-                                        </button>
-                                    </Link>
                                 </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                </div>
-
-                {/* RIGHT COLUMN (1/3) */}
-                <div className="space-y-8">
-
-                    {/* Order Status Distribution */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
-                    >
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-[var(--text-primary)]">Order Status</h3>
-                            <Link href="/seller/orders">
-                                <button className="text-xs font-semibold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1 transition-colors">
-                                    View All
-                                    <ArrowUpRight className="w-3 h-3" />
-                                </button>
-                            </Link>
-                        </div>
-                        <div className="h-[250px] relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RechartsPieChart>
-                                    <Pie
-                                        data={orderStatusData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {orderStatusData.map((entry, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={entry.color}
-                                                strokeWidth={0}
-                                                style={{ cursor: 'pointer' }}
-                                                onClick={() => router.push(`/seller/orders?status=${entry.name.toLowerCase().replace(' ', '_')}`)}
-                                            />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
-                                        itemStyle={{ color: 'var(--text-primary)' }}
-                                    />
-                                </RechartsPieChart>
-                            </ResponsiveContainer>
-                            {/* Center Text */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-3xl font-bold text-[var(--text-primary)]">1.9k</span>
-                                <span className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wide">Orders</span>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                            {orderStatusData.map((status) => (
                                 <button
-                                    key={status.name}
-                                    onClick={() => router.push(`/seller/orders?status=${status.name.toLowerCase().replace(' ', '_')}`)}
-                                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors text-left group"
+                                    onClick={() => router.push('/seller/analytics')}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] rounded-lg transition-colors"
                                 >
-                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
-                                    <span className="text-xs font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">{status.name}</span>
-                                    <span className="ml-auto text-xs font-bold text-[var(--text-muted)]">{status.value}</span>
+                                    View Analytics
+                                    <ChevronRight className="w-4 h-4" />
                                 </button>
-                            ))}
+                            </div>
                         </div>
-                    </motion.div>
+                    </motion.section>
+                )}
 
-                    {/* Recent Activity */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-[var(--primary-blue)]" />
-                                Recent Activity
-                            </h3>
-                            <Link href="/seller/orders">
-                                <button className="text-xs font-semibold text-[var(--primary-blue)] hover:text-[var(--primary-blue-deep)] flex items-center gap-1 transition-colors">
-                                    View All
-                                    <ArrowUpRight className="w-3 h-3" />
-                                </button>
-                            </Link>
-                        </div>
+                {/* Scroll to top button */}
+                <ScrollToTopButton showAfter={400} />
 
-                        <div className="space-y-3">
-                            {[
-                                { action: 'Order Placed', details: 'Order #ORD-892 placed', time: 'Just now', icon: Package, color: 'blue', link: '/seller/orders/ORD-892' },
-                                { action: 'Payment Received', details: '₹1,299 received via UPI', time: '2 min ago', icon: Wallet, color: 'emerald', link: '/seller/financials' },
-                                { action: 'Shipment Created', details: 'AWB generated for order', time: '12 min ago', icon: Truck, color: 'violet', link: '/seller/shipments' },
-                                { action: 'Order Delivered', details: 'Successfully delivered', time: '40 min ago', icon: CheckCircle2, color: 'emerald', link: '/seller/orders?status=delivered' },
-                            ].map((item, i) => (
-                                <Link key={i} href={item.link || '#'}>
-                                    <div className="flex gap-3 p-3 rounded-2xl hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)] cursor-pointer group">
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110",
-                                            item.color === 'blue' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
-                                                item.color === 'emerald' ? "bg-[var(--success-bg)] text-[var(--success)]" :
-                                                    item.color === 'violet' ? "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]" :
-                                                        "bg-[var(--warning-bg)] text-[var(--warning)]"
-                                        )}>
-                                            <item.icon className="w-5 h-5" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between mb-0.5">
-                                                <p className="text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{item.action}</p>
-                                                <span className="text-[10px] font-medium text-[var(--text-muted)]">{item.time}</span>
-                                            </div>
-                                            <p className="text-xs text-[var(--text-secondary)] truncate">{item.details}</p>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    </motion.div>
-
-
-                    {/* Smart Insights */}
-                    <div className="mt-8">
-                        <SmartInsights />
-                    </div>
-
-                </div>
+                {/* Phase 4: Keyboard Shortcuts Modal */}
+                <KeyboardShortcutsModal
+                    isOpen={showShortcutsModal}
+                    onClose={() => setShowShortcutsModal(false)}
+                    shortcuts={shortcuts}
+                />
             </div>
-        </div>
+
+            {/* Quick Actions FAB - Always accessible */}
+            <QuickActionsFAB />
+
+            {/* Manual Refresh Delight - Truck Loader */}
+            {isManualRefresh && (
+                <TruckLoader
+                    message="Syncing latest updates..."
+                    subMessage="Fetching real-time data from carriers"
+                    fullScreen={true}
+                />
+            )}
+        </PullToRefresh>
     );
 }

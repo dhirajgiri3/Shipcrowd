@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import WalletService from '../../../../core/application/services/wallet/wallet.service';
+import { WalletAnalyticsService } from '../../../../core/application/services/wallet';
+import CODRemittanceService from '../../../../core/application/services/finance/cod-remittance.service';
 import { TransactionType, TransactionReason } from '../../../../infrastructure/database/mongoose/models';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
 import { sendSuccess, sendPaginated } from '../../../../shared/utils/responseHelper';
@@ -240,11 +242,136 @@ export const updateLowBalanceThreshold = async (
     }
 };
 
+/**
+ * Get spending insights
+ * GET /api/v1/finance/wallet/insights
+ */
+export const getSpendingInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const insights = await WalletAnalyticsService.getSpendingInsights(auth.companyId);
+
+        sendSuccess(res, insights, 'Spending insights retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching spending insights:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get wallet trends
+ * GET /api/v1/finance/wallet/trends
+ */
+export const getWalletTrends = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const trends = await WalletAnalyticsService.getWalletTrends(auth.companyId);
+
+        sendSuccess(res, trends, 'Wallet trends retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching wallet trends:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get available balance (Phase 2: Dashboard Optimization)
+ * Formula: Wallet Balance + Scheduled COD - Projected Outflows (7 days)
+ * GET /api/v1/finance/wallet/available-balance
+ */
+export const getAvailableBalance = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        // Get current wallet balance
+        const walletBalanceData = await WalletService.getBalance(auth.companyId);
+        const walletBalance = walletBalanceData.balance;
+
+        // ✅ FIXED: Get real scheduled COD settlements (next 7 days)
+        const scheduledCODSettlements = await CODRemittanceService.getScheduledSettlements(
+            auth.companyId,
+            7
+        );
+
+        // ✅ FIXED: Calculate real projected outflows based on past 30 days
+        const projectedOutflows = await WalletService.getProjectedOutflows(
+            auth.companyId,
+            7
+        );
+
+        // Calculate available to spend
+        const availableToSpend = walletBalance + scheduledCODSettlements - projectedOutflows;
+
+        // Low balance warning if available < 5000 (customizable threshold)
+        const lowBalanceThreshold = 5000;
+        const lowBalanceWarning = availableToSpend < lowBalanceThreshold;
+
+        sendSuccess(
+            res,
+            {
+                walletBalance,
+                scheduledCODSettlements,
+                projectedOutflows,
+                availableToSpend,
+                lowBalanceWarning,
+                threshold: lowBalanceThreshold,
+                breakdown: {
+                    currentBalance: walletBalance,
+                    incomingCOD: scheduledCODSettlements,
+                    expectedExpenses: projectedOutflows,
+                    netAvailable: availableToSpend,
+                },
+            },
+            'Available balance calculated successfully'
+        );
+    } catch (error) {
+        logger.error('Error calculating available balance:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get 7-day cash flow forecast
+ * GET /api/v1/finance/wallet/cash-flow-forecast
+ */
+export const getCashFlowForecast = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const forecast = await WalletService.getCashFlowForecast(auth.companyId);
+        sendSuccess(res, forecast, 'Cash flow forecast retrieved successfully');
+    } catch (error) {
+        logger.error('Error calculating cash flow forecast:', error);
+        next(error);
+    }
+};
+
 export default {
     getBalance,
     getTransactionHistory,
     rechargeWallet,
     refundTransaction,
     getWalletStats,
+    getSpendingInsights,
+    getWalletTrends,
     updateLowBalanceThreshold,
+    getAvailableBalance, // Phase 2: Dashboard Optimization
+    getCashFlowForecast, // Phase 3: Cash Flow Forecast
 };

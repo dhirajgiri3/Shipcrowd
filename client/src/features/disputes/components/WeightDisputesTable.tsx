@@ -16,9 +16,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
-import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
-import type { DisputeStatus, DisputeFilters } from '@/src/types/api/dispute.types';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { useDebouncedValue } from '@/src/hooks/data';
+import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
 
 const STATUS_FILTERS: { value: DisputeStatus | 'all'; label: string; count?: number }[] = [
     { value: 'all', label: 'All Disputes' },

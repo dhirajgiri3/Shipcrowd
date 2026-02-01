@@ -71,7 +71,7 @@ interface OrderNotePayload {
 /**
  * Status mapping from Shipcrowd to WooCommerce
  */
-const SHIPCROWD_TO_WOOCOMMERCE_STATUS: Record<string, WooCommerceOrderStatus> = {
+const Shipcrowd_TO_WOOCOMMERCE_STATUS: Record<string, WooCommerceOrderStatus> = {
     PENDING: 'pending',
     PROCESSING: 'processing',
     BOOKED: 'processing',
@@ -170,7 +170,7 @@ export class WooCommerceFulfillmentService {
                             trackingInfo.courierName
                         ),
                     },
-                    { key: '_shipcrowd_order_id', value: String(order._id) },
+                    { key: '_Shipcrowd_order_id', value: String(order._id) },
                 ];
             }
 
@@ -595,7 +595,7 @@ Thank you for your order!`;
         }
 
         // Default fallback - Shipcrowd tracking page
-        return `${process.env.FRONTEND_URL || 'https://shipcrowd.com'}/track/${awbNumber}`;
+        return `${process.env.FRONTEND_URL || 'https://Shipcrowd.com'}/track/${awbNumber}`;
     }
 
     /**

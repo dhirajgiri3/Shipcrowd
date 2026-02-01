@@ -1798,7 +1798,7 @@ await createAuditLog(
 
 ```bash
 # MongoDB
-MONGODB_URI=mongodb://localhost:27017/shipcrowd
+MONGODB_URI=mongodb://localhost:27017/Shipcrowd
 
 # JWT (for authentication)
 JWT_SECRET=<secret>

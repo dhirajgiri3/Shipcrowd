@@ -16,7 +16,7 @@ import { useWalletStats } from '@/src/core/api/hooks';
 import { formatCurrency, formatCompactCurrency } from '@/src/lib/utils';
 
 export function WalletStatsWidget() {
-    const [dateRange] = useState<{ start: string; end: string } | undefined>(undefined);
+    const [dateRange] = useState<{ startDate: string; endDate: string } | undefined>(undefined);
     const { data: stats, isLoading, isError } = useWalletStats(dateRange);
 
     if (isLoading) {

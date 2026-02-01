@@ -7,11 +7,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useTeamMembers, useInviteTeamMember, useUpdateMemberRole, useRemoveTeamMember } from '@/src/core/api/hooks/useSettings';
+import { useTeamMembers, useInviteTeamMember, useUpdateMemberRole, useRemoveTeamMember } from '@/src/core/api/hooks/settings/useSettings';
 import { UserPlus, Trash2, Mail, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { cn, formatDate } from '@/src/lib/utils';
-import { Button, Card, Input, Label, Select, Badge, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Loader } from '@/components/ui';
-import type { InviteTeamMemberPayload, TeamRole, TeamMember } from '@/src/types/api/settings.types';
+import { Button, Card, Input, Label, Select, Badge, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Loader } from '@/src/components/ui';
+import type { InviteTeamMemberPayload, TeamRole, TeamMember } from '@/src/types/api/settings';
 
 const TEAM_ROLES: { value: TeamRole; label: string; description: string }[] = [
     { value: 'owner', label: 'Owner', description: 'Full access to all features' },

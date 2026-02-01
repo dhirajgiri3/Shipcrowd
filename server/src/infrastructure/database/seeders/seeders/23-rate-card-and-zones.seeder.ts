@@ -57,6 +57,10 @@ export async function seedRateCardsAndZones(): Promise<void> {
     logger.step(23, 'Seeding Rate Cards & Zones');
 
     try {
+        // Clear existing zones and rate cards to prevent duplicate key errors
+        await Zone.deleteMany({});
+        await RateCard.deleteMany({});
+
         const companies = await Company.find({ status: 'approved' }).lean();
 
         if (companies.length === 0) {

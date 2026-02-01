@@ -1286,7 +1286,7 @@ const cleanContent = xss(userInput);
 **5. AWS S3 (Infrastructure Ready)**
 - **Purpose:** Document storage (labels, invoices, KYC docs)
 - **Status:** Dependencies installed, integration pending Week 4
-- **Bucket:** shipcrowd-documents (configured in env)
+- **Bucket:** Shipcrowd-documents (configured in env)
 
 ### 9.2 Future Integrations (Week 2+)
 
@@ -1926,8 +1926,8 @@ chore: Update dependencies (Mongoose 8.0)
 
 **Environments:**
 1. **Development** - Local machine
-2. **Staging** - `api-staging.shipcrowd.com`
-3. **Production** - `api.shipcrowd.com`
+2. **Staging** - `api-staging.Shipcrowd.com`
+3. **Production** - `api.Shipcrowd.com`
 
 **CI/CD Pipeline (Future):**
 ```
@@ -2019,7 +2019,7 @@ NODE_ENV=development
 PORT=5000
 
 # Database
-MONGO_URI=mongodb://localhost:27017/shipcrowd
+MONGO_URI=mongodb://localhost:27017/Shipcrowd
 MONGO_TEST_URI=<set by MongoDB Memory Server>
 
 # Authentication
@@ -2035,7 +2035,7 @@ GOOGLE_CALLBACK_URL=http://localhost:5000/api/v1/auth/google/callback
 
 # Email (SendGrid)
 SENDGRID_API_KEY=SG.your_sendgrid_api_key
-FROM_EMAIL=noreply@shipcrowd.com
+FROM_EMAIL=noreply@Shipcrowd.com
 FROM_NAME=Shipcrowd
 
 # SMS (Twilio)
@@ -2046,7 +2046,7 @@ TWILIO_PHONE_NUMBER=+1234567890
 # AWS S3
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_S3_BUCKET=shipcrowd-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 AWS_REGION=ap-south-1
 
 # DeepVue KYC

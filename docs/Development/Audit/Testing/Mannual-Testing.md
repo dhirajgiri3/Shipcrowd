@@ -94,7 +94,7 @@ npm run seed:integrations   # Setup Shopify/WooCommerce/Amazon/Flipkart test sto
 2. **Import Collection** (to be created during testing)
 3. **Setup Environments:**
    - Local (http://localhost:5005)
-   - Staging (https://staging.shipcrowd.com)
+   - Staging (https://staging.Shipcrowd.com)
 4. **Configure Environment Variables:**
    ```
    BASE_URL: http://localhost:5005/api/v1
@@ -440,7 +440,7 @@ pm.test("Login successful", function () {
 1. **Weight Discrepancy Detection**
    - Seller declares: 0.5 kg → Charged: ₹40
    - Courier weighing machine: Actual 1.2 kg → Revised charge: ₹95
-   - Velocity webhook → ShipCrowd creates weight dispute automatically
+   - Velocity webhook → Shipcrowd creates weight dispute automatically
 
 2. **Dispute Notification & Resolution**
    - Seller notified: "Weight discrepancy detected. Declared: 0.5kg, Actual: 1.2kg. Additional charge: ₹55"
@@ -517,8 +517,8 @@ pm.test("Login successful", function () {
 1. **COD Collection Timeline**
    - Day 0: 100 orders delivered → ₹1,00,000 COD collected by drivers
    - Day 2: Delhivery deposits to Velocity → ₹98,000 (₹2,000 COD handling fee)
-   - Day 5: Velocity deposits to ShipCrowd → ShipCrowd's bank account
-   - Day 7: ShipCrowd transfers to seller → ₹97,500 (minus ₹500 platform fee)
+   - Day 5: Velocity deposits to Shipcrowd → Shipcrowd's bank account
+   - Day 7: Shipcrowd transfers to seller → ₹97,500 (minus ₹500 platform fee)
 
 2. **Remittance Scheduling**
    - Default: Weekly remittance (every Monday)
@@ -680,17 +680,17 @@ pm.test("Login successful", function () {
 
 2. **Order Auto-Sync (Webhook Flow)**
    - Customer places order on Shopify → Shopify webhook: "orders/create"
-   - ShipCrowd receives webhook → Validates HMAC signature → Queues job
-   - Background job processes webhook → Order created in ShipCrowd
+   - Shipcrowd receives webhook → Validates HMAC signature → Queues job
+   - Background job processes webhook → Order created in Shipcrowd
    - Seller sees order in dashboard → Clicks "Ship" → Label generated
 
 3. **Fulfillment Status Sync**
-   - Order shipped in ShipCrowd → Update Shopify: "Order fulfilled"
+   - Order shipped in Shipcrowd → Update Shopify: "Order fulfilled"
    - Tracking number synced to Shopify → Customer sees tracking link
 
 4. **Inventory Sync (Two-Way)**
-   - Inventory updated in ShipCrowd → Sync to Shopify (update available qty)
-   - Inventory updated in Shopify → Webhook → Update ShipCrowd inventory
+   - Inventory updated in Shipcrowd → Sync to Shopify (update available qty)
+   - Inventory updated in Shopify → Webhook → Update Shipcrowd inventory
 
 5. **Webhook Security Testing**
    - Valid HMAC signature → Webhook processed
@@ -720,8 +720,8 @@ pm.test("Login successful", function () {
    - Webhook (if configured): order.created → Real-time sync
 
 3. **Product & Inventory Sync**
-   - Two-way inventory sync: WooCommerce ↔ ShipCrowd
-   - Product mapping: Link WooCommerce product to ShipCrowd SKU
+   - Two-way inventory sync: WooCommerce ↔ Shipcrowd
+   - Product mapping: Link WooCommerce product to Shipcrowd SKU
 
 4. **Webhook Security (WooCommerce uses different signature method)**
    - Signature: base64(hmac_sha256(raw_body, webhook_secret))
@@ -751,8 +751,8 @@ pm.test("Login successful", function () {
    - Lifecycle management: Approve order → Ready to dispatch → Generate label → Dispatch → Update tracking
 
 3. **Product Mapping (Critical for Multi-Marketplace)**
-   - Map Amazon ASIN → ShipCrowd SKU
-   - Map Flipkart listing ID → ShipCrowd SKU
+   - Map Amazon ASIN → Shipcrowd SKU
+   - Map Flipkart listing ID → Shipcrowd SKU
    - Central inventory: One SKU serves all marketplaces
 
 **Critical Validations:**
@@ -904,7 +904,7 @@ pm.test("Login successful", function () {
 2. **Push Notifications (Web)**
    - Browser permission requested → User accepts
    - Push notification sent → Appears on desktop
-   - Click notification → Opens ShipCrowd dashboard
+   - Click notification → Opens Shipcrowd dashboard
 
 3. **Notification Preferences**
    - User selects: Email, WhatsApp, SMS, Push, In-App

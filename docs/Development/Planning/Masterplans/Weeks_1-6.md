@@ -68,7 +68,7 @@ GOAL: Create master context for AI-native development
 
 Based on:
 - docs/Backend-Gap-Analysis.md
-- docs/SHIPCROWD_COMPLETE_FEATURE_LIST.md
+- docs/Shipcrowd_COMPLETE_FEATURE_LIST.md
 - Current codebase analysis
 
 Generate master context including:
@@ -4779,7 +4779,7 @@ export class S3Service {
       region: process.env.AWS_REGION || 'ap-south-1'
     });
 
-    this.bucket = process.env.AWS_S3_BUCKET || 'shipcrowd-documents';
+    this.bucket = process.env.AWS_S3_BUCKET || 'Shipcrowd-documents';
   }
 
   async uploadPDF(
@@ -4831,7 +4831,7 @@ export class S3Service {
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_REGION=ap-south-1
-AWS_S3_BUCKET=shipcrowd-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 ```
 
 **Deliverable:** S3 service configured
@@ -5401,7 +5401,7 @@ describe('Document Service Integration Tests', () => {
       const signedUrl = await documentService.getSignedDownloadUrl(document._id);
 
       expect(signedUrl).toContain('X-Amz-Signature');
-      expect(signedUrl).toContain('shipcrowd-documents');
+      expect(signedUrl).toContain('Shipcrowd-documents');
     });
 
     it('should expire signed URL after configured time', async () => {
@@ -5526,7 +5526,7 @@ Generate a shipping label PDF for a shipment.
     "_id": "60d5ec49f1b2c72b8c8e4f1b",
     "type": "SHIPPING_LABEL",
     "fileName": "label-AWB123456-1640000000000.pdf",
-    "s3Url": "https://shipcrowd-documents.s3.amazonaws.com/labels/...",
+    "s3Url": "https://Shipcrowd-documents.s3.amazonaws.com/labels/...",
     "metadata": {
       "awbNumber": "AWB123456"
     },
@@ -5589,7 +5589,7 @@ Get a signed S3 URL for downloading the document.
 {
   "success": true,
   "data": {
-    "downloadUrl": "https://shipcrowd-documents.s3.amazonaws.com/...?X-Amz-Signature=..."
+    "downloadUrl": "https://Shipcrowd-documents.s3.amazonaws.com/...?X-Amz-Signature=..."
   }
 }
 ```
@@ -5734,7 +5734,7 @@ PDFKit-based document generation (labels, invoices, manifests) with S3 storage.
 ```bash
 AWS_ACCESS_KEY_ID=xxxxx
 AWS_SECRET_ACCESS_KEY=xxxxx
-AWS_S3_BUCKET=shipcrowd-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 AWS_REGION=ap-south-1
 ```
 
@@ -5834,7 +5834,7 @@ RAZORPAY_WEBHOOK_SECRET=xxxxx
 # AWS S3
 AWS_ACCESS_KEY_ID=xxxxx
 AWS_SECRET_ACCESS_KEY=xxxxx
-AWS_S3_BUCKET=shipcrowd-documents
+AWS_S3_BUCKET=Shipcrowd-documents
 AWS_REGION=ap-south-1
 ```
 
@@ -7781,8 +7781,8 @@ interface IProductMapping {
   shopifyBarcode?: string;
 
   // Shipcrowd product
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
 
   // Mapping details
   mappingType: 'AUTO' | 'MANUAL';
@@ -8092,7 +8092,7 @@ Create ShopifyWebhookController with POST endpoints: /webhooks/shopify/orders/cr
 
 **Morning (3hrs): Task 4.1-4.3 - Product Mapping**
 
-Create ProductMappingService with `autoMapProducts()` that matches Shipcrowd SKUs to Shopify variant SKUs using fuzzy string matching (Levenshtein distance). Create ProductMappingController with endpoints: GET /product-mappings (list all), POST /product-mappings (manual map), DELETE /product-mappings/:id (unmap). Implement `bulkImportMappings()` accepting CSV file (columns: shipcrowdSKU, shopifyVariantId) and `exportMappings()` generating CSV for download. Store mappings in ProductMapping model with company scoping.
+Create ProductMappingService with `autoMapProducts()` that matches Shipcrowd SKUs to Shopify variant SKUs using fuzzy string matching (Levenshtein distance). Create ProductMappingController with endpoints: GET /product-mappings (list all), POST /product-mappings (manual map), DELETE /product-mappings/:id (unmap). Implement `bulkImportMappings()` accepting CSV file (columns: ShipcrowdSKU, shopifyVariantId) and `exportMappings()` generating CSV for download. Store mappings in ProductMapping model with company scoping.
 
 **Afternoon (3hrs): Task 4.4-4.6 - Unit Tests**
 

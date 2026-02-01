@@ -2,15 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { ZoneCreateWizard } from '@/src/features/admin/zones';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import { ChevronLeft } from 'lucide-react';
-import { toast } from 'sonner';
-
+import { showSuccessToast } from '@/src/lib/error';
 export function ZoneCreateClient() {
     const router = useRouter();
 
     const handleSuccess = () => {
-        toast.success('Zone created successfully');
+        showSuccessToast('Zone created successfully');
         router.push('/admin/zones');
     };
 

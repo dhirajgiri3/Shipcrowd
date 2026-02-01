@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Production optimizations
   reactStrictMode: true,
+  output: "standalone",
 
   // Compiler optimizations
   compiler: {
@@ -68,8 +69,9 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://*.razorpay.com",
-              "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com",
+              `connect-src 'self' ${process.env.NODE_ENV === 'development' ? 'http://localhost:5005 ws://localhost:5005' : ''} https://api.razorpay.com https://lumberjack.razorpay.com`,
               "frame-src 'self' https://api.razorpay.com",
+              "media-src 'self' https://res.cloudinary.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

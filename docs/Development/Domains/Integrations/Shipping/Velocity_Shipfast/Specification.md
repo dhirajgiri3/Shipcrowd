@@ -404,7 +404,7 @@ if (expiresAt < oneHourFromNow) {
    - `validateForwardOrderData(data)` - Complete validation with error list
 
 **Edge Cases Handled:**
-- Missing email → 'noreply@shipcrowd.com'
+- Missing email → 'noreply@Shipcrowd.com'
 - Missing SKU → Generated from product name
 - shipping_is_billing → always true
 - Phone with country code → stripped to 10 digits

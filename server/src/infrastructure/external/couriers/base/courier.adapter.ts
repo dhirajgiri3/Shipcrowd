@@ -29,6 +29,7 @@ export interface CourierShipmentData {
     orderNumber: string;
     paymentMode: 'prepaid' | 'cod';
     codAmount?: number;
+    idempotencyKey?: string;
 }
 
 export interface CourierShipmentResponse {
@@ -36,6 +37,7 @@ export interface CourierShipmentResponse {
     labelUrl?: string;
     estimatedDelivery?: Date;
     cost?: number;
+    providerShipmentId?: string; // Generic ID for provider's internal shipment record
 }
 
 export interface CourierTrackingResponse {
@@ -65,6 +67,7 @@ export interface CourierRateRequest {
         height: number;
     };
     paymentMode: 'prepaid' | 'cod';
+    shipmentType?: 'forward' | 'return';
 }
 
 export interface CourierRateResponse {
@@ -74,6 +77,36 @@ export interface CourierRateResponse {
     currency: string;
     serviceType?: string;
     estimatedDeliveryDays?: number;
+}
+
+export interface CourierReverseShipmentData {
+    originalAwb?: string;
+    orderId: string;
+    pickupAddress: {
+        name: string;
+        phone: string;
+        address: string;
+        city: string;
+        state: string;
+        pincode: string;
+        country: string;
+        email?: string;
+    };
+    returnWarehouseId: string;
+    package: {
+        weight: number;
+        length: number;
+        width: number;
+        height: number;
+    };
+    reason?: string;
+}
+
+export interface CourierReverseShipmentResponse {
+    trackingNumber: string;
+    labelUrl?: string;
+    orderId: string;
+    courierName?: string;
 }
 
 /**
@@ -103,8 +136,22 @@ export interface ICourierAdapter {
 
     /**
      * Check service availability for a pincode
+     * @param type 'delivery' (default) or 'pickup'
      */
-    checkServiceability(pincode: string): Promise<boolean>;
+    checkServiceability(pincode: string, type?: 'delivery' | 'pickup'): Promise<boolean>;
+    createWarehouse?(data: any): Promise<any>;
+    createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse>;
+    cancelReverseShipment(reverseAwb: string, originalAwb: string, reason?: string): Promise<boolean>;
+
+    /**
+     * Schedule a pickup
+     */
+    schedulePickup?(data: any): Promise<any>;
+
+    /**
+     * Request reattempt for undelivered shipment
+     */
+    requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }>;
 }
 
 /**
@@ -121,7 +168,18 @@ export abstract class BaseCourierAdapter implements ICourierAdapter {
     abstract trackShipment(trackingNumber: string): Promise<CourierTrackingResponse>;
     abstract getRates(request: CourierRateRequest): Promise<CourierRateResponse[]>;
     abstract cancelShipment(trackingNumber: string): Promise<boolean>;
-    abstract checkServiceability(pincode: string): Promise<boolean>;
+    abstract checkServiceability(pincode: string, type?: 'delivery' | 'pickup'): Promise<boolean>;
+    abstract createReverseShipment(data: CourierReverseShipmentData): Promise<CourierReverseShipmentResponse>;
+    abstract cancelReverseShipment(reverseAwb: string, originalAwb: string, reason?: string): Promise<boolean>;
+
+    // Optional methods can have default implementation that throws NotSupported
+    async createWarehouse(data: any): Promise<any> {
+        throw new Error('Method not implemented.');
+    }
+
+    async requestReattempt(trackingNumber: string, preferredDate?: Date, instructions?: string): Promise<{ success: boolean; message: string }> {
+        throw new Error('Method not implemented.');
+    }
 
     /**
      * Common HTTP request method

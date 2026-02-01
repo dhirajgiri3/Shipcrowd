@@ -13,7 +13,7 @@ import { KycSoftDeleteMigration } from './phase-1/kyc-soft-delete.migration';
  */
 
 async function connectDB() {
-    const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd';
+    const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd';
     await mongoose.connect(dbUri);
     console.log('✓ Connected to MongoDB');
 }

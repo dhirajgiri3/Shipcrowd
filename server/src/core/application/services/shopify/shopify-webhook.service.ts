@@ -393,7 +393,7 @@ export class ShopifyWebhookService {
 
       logger.info('Inventory updated (two-way sync)', {
         storeId,
-        sku: mapping.shipcrowdSKU,
+        sku: mapping.ShipcrowdSKU,
         available: payload.available,
       });
     } catch (error: any) {

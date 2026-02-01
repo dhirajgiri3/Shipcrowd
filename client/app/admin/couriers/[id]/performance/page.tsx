@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/core/Button';
+import { Button } from '@/src/components/ui/core/Button';
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/core/Card';
-import { Badge } from '@/components/ui/core/Badge';
-import { useCourier, useCourierPerformance } from '@/src/core/api/hooks/useCouriers';
-import type { PerformanceFilters } from '@/src/types/api/couriers.types';
+} from '@/src/components/ui/core/Card';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { useCourier, useCourierPerformance } from '@/src/core/api/hooks/logistics/useCouriers';
+import type { PerformanceFilters } from '@/src/types/api/logistics';
 import {
     ChevronLeft,
     TrendingUp,

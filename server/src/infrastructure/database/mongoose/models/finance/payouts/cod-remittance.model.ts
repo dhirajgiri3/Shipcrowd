@@ -70,6 +70,14 @@ export interface ICODRemittance extends Document {
         };
 
         netAmount: number; // codAmount - deductions.total
+
+        // Reconciliation Data
+        reconciliation?: {
+            status: 'pending' | 'matched' | 'mismatch' | 'not_found_in_file' | 'manual_override';
+            courierAmount?: number;
+            diffAmount?: number;
+            remarks?: string;
+        };
     }>;
 
     // Financial Summary
@@ -121,6 +129,9 @@ export interface ICODRemittance extends Document {
         failureReason?: string;
         retryCount?: number;
         lastRetryAt?: Date;
+        // Phase 1 Hardening: Error tracking
+        lastError?: string;
+        requiresManualIntervention?: boolean;
     };
 
     // Approval Workflow
@@ -253,6 +264,17 @@ const CODRemittanceSchema = new Schema<ICODRemittance>(
                         type: Number,
                         required: true,
                     },
+                    // ✅ NEW: Reconciliation Data (Phase 1)
+                    reconciliation: {
+                        status: {
+                            type: String,
+                            enum: ['pending', 'matched', 'mismatch', 'not_found_in_file', 'manual_override'],
+                            default: 'pending'
+                        },
+                        courierAmount: Number, // Amount reported by Velocity
+                        diffAmount: Number,    // dbAmount - courierAmount
+                        remarks: String
+                    }
                 },
             ],
             validate: [
@@ -347,6 +369,11 @@ const CODRemittanceSchema = new Schema<ICODRemittance>(
                 default: 0,
             },
             lastRetryAt: Date,
+            lastError: String,
+            requiresManualIntervention: {
+                type: Boolean,
+                default: false,
+            },
         },
         status: {
             type: String,
@@ -414,7 +441,16 @@ CODRemittanceSchema.index({ companyId: 1, status: 1, createdAt: -1 }); // Compan
 CODRemittanceSchema.index({ status: 1, createdAt: -1 }); // Admin: Pending approvals
 CODRemittanceSchema.index({ 'schedule.scheduledDate': 1 }); // Scheduler job
 CODRemittanceSchema.index({ 'payout.status': 1 }); // Processor job
-CODRemittanceSchema.index({ 'payout.razorpayPayoutId': 1 }); // Razorpay webhook lookup
+// Phase 1 Hardening: Unique Payout ID
+CODRemittanceSchema.index(
+    { 'payout.razorpayPayoutId': 1 },
+    {
+        unique: true,
+        sparse: true,
+        background: true,
+        name: 'idx_payout_razorpay_id'
+    }
+);
 CODRemittanceSchema.index({ companyId: 1, 'batch.batchNumber': -1 }); // Latest batch number
 CODRemittanceSchema.index({ createdAt: -1 }); // Recent remittances
 

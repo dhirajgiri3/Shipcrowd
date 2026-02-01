@@ -20,6 +20,18 @@ router.get(
 );
 
 /**
+ * @route GET /api/v1/analytics/dashboard/metrics
+ * @desc Get seller dashboard metrics (alias for /dashboard/seller for compatibility)
+ * @access Private
+ */
+router.get(
+    '/dashboard/metrics',
+    authenticate,
+    requireAccess({ tier: AccessTier.SANDBOX }),
+    asyncHandler(analyticsController.getSellerDashboard)
+);
+
+/**
  * @route GET /api/v1/analytics/dashboard/admin
  * @desc Get admin dashboard analytics (multi-company, admin only)
  * @access Private (Admin)
@@ -88,6 +100,30 @@ router.get('/seller-actions', authenticate, asyncHandler(analyticsController.get
  * Recent Customers
  */
 router.get('/recent-customers', authenticate, asyncHandler(analyticsController.getRecentCustomers));
+
+/**
+ * Phase 4: RTO Analytics (Dashboard)
+ * @route GET /api/v1/analytics/rto
+ */
+router.get('/rto', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getRTOAnalytics));
+
+/**
+ * Phase 4: Profitability Analytics (Dashboard)
+ * @route GET /api/v1/analytics/profitability
+ */
+router.get('/profitability', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getProfitabilityAnalytics));
+
+/**
+ * Phase 4: Geographic Insights (Dashboard)
+ * @route GET /api/v1/analytics/geography
+ */
+router.get('/geography', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getGeographicInsights));
+
+/**
+ * Phase 5: Smart Insights - AI-powered business recommendations
+ * @route GET /api/v1/analytics/insights
+ */
+router.get('/insights', authenticate, requireAccess({ tier: AccessTier.SANDBOX }), asyncHandler(analyticsController.getSmartInsights));
 
 // ✅ FEATURE 10: Authentication Analytics Dashboard
 import authAnalyticsRouter from '../analytics/auth.routes';

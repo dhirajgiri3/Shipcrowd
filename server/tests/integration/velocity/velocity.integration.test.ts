@@ -28,7 +28,7 @@ describe('Velocity Shipfast Integration', () => {
   beforeAll(async () => {
     // Ensure MongoDB connection
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shipcrowd_test');
+      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/Shipcrowd_test');
     }
   });
 
@@ -179,14 +179,16 @@ describe('Velocity Shipfast Integration', () => {
 
       const mockWarehouseResponse = {
         data: {
-          warehouse_id: 'WHVEL123',
-          warehouse_name: 'Test Warehouse',
-          status: 'active'
+          status: 'SUCCESS',
+          payload: {
+            warehouse_id: 'WHVEL123',
+            name: 'Test Warehouse',
+            status: 'active'
+          }
         }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse) // Auth
         .mockResolvedValueOnce(mockWarehouseResponse); // Warehouse creation
 
       const warehouse = await Warehouse.findById(testWarehouseId);
@@ -196,8 +198,8 @@ describe('Velocity Shipfast Integration', () => {
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/warehouse'),
         expect.objectContaining({
-          warehouse_name: 'Test Warehouse',
-          contact_phone: '9876543210'
+          name: 'Test Warehouse',
+          phone_number: '9876543210'
         }),
         expect.any(Object)
       );
@@ -265,13 +267,12 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockShipmentResponse);
 
       const result = await provider.createShipment(mockShipmentData);
 
       // Warehouse creation endpoint should not be called
-      expect(mockedAxios.post).toHaveBeenCalledTimes(2); // Only auth + shipment
+      expect(mockedAxios.post).toHaveBeenCalledTimes(1); // Only shipment (Auth skipped in mock)
       expect(mockedAxios.post).not.toHaveBeenCalledWith(
         expect.stringContaining('/warehouse'),
         expect.any(Object),
@@ -281,6 +282,8 @@ describe('Velocity Shipfast Integration', () => {
   });
 
   describe('Shipment Creation Flow', () => {
+    let mockShipmentData: CourierShipmentData;
+
     beforeEach(async () => {
       // Pre-sync warehouse to simplify tests
       await Warehouse.findByIdAndUpdate(testWarehouseId, {
@@ -288,38 +291,38 @@ describe('Velocity Shipfast Integration', () => {
           'carrierDetails.velocityWarehouseId': 'WHVEL123'
         }
       });
-    });
 
-    const mockShipmentData: CourierShipmentData = {
-      orderNumber: 'ORD-12345',
-      origin: {
-        name: 'Test Warehouse',
-        phone: '9876543210',
-        address: '123 Main St',
-        city: 'Delhi',
-        state: 'Delhi',
-        pincode: '110001',
-        country: 'India'
-      },
-      destination: {
-        name: 'John Doe',
-        phone: '9123456789',
-        address: '456 Park Ave',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        country: 'India'
-      },
-      package: {
-        weight: 1.5,
-        length: 20,
-        width: 15,
-        height: 10,
-        declaredValue: 1000
-      },
-      paymentMode: 'prepaid',
-      warehouseId: testWarehouseId
-    } as any;
+      mockShipmentData = {
+        orderNumber: 'ORD-12345',
+        origin: {
+          name: 'Test Warehouse',
+          phone: '9876543210',
+          address: '123 Main St',
+          city: 'Delhi',
+          state: 'Delhi',
+          pincode: '110001',
+          country: 'India'
+        },
+        destination: {
+          name: 'John Doe',
+          phone: '9123456789',
+          address: '456 Park Ave',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          pincode: '400001',
+          country: 'India'
+        },
+        package: {
+          weight: 1.5,
+          length: 20,
+          width: 15,
+          height: 10,
+          declaredValue: 1000
+        },
+        paymentMode: 'prepaid',
+        warehouseId: testWarehouseId
+      } as any;
+    });
 
     it('should create shipment successfully', async () => {
       const mockAuthResponse = {
@@ -328,15 +331,18 @@ describe('Velocity Shipfast Integration', () => {
 
       const mockShipmentResponse = {
         data: {
-          awb: 'SHPHYB123456789',
-          label_url: 'https://labels.velocity.in/AWB123.pdf',
-          courier_name: 'BlueDart',
-          estimated_delivery: '2025-12-30'
+          status: 1,
+          payload: {
+            awb_code: 'SHPHYB123456789',
+            label_url: 'https://labels.velocity.in/AWB123.pdf',
+            courier_name: 'BlueDart',
+            order_id: 'ORD-123',
+            shipment_id: 'SHP-123'
+          }
         }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockShipmentResponse);
 
       const result = await provider.createShipment(mockShipmentData);
@@ -345,10 +351,10 @@ describe('Velocity Shipfast Integration', () => {
       expect(result.labelUrl).toBe('https://labels.velocity.in/AWB123.pdf');
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/forward-order'),
+        expect.stringContaining('/forward-order-orchestration'),
         expect.objectContaining({
           order_id: 'ORD-12345',
-          payment_method: 'PREPAID',
+          payment_method: 'Prepaid',
           warehouse_id: 'WHVEL123'
         }),
         expect.any(Object)
@@ -368,15 +374,18 @@ describe('Velocity Shipfast Integration', () => {
 
       const mockShipmentResponse = {
         data: {
-          awb: 'SHPHYB987654321',
-          label_url: 'https://labels.velocity.in/AWB456.pdf',
-          courier_name: 'Delhivery',
-          estimated_delivery: '2025-12-30'
+          status: 1,
+          payload: {
+            awb_code: 'SHPHYB987654321',
+            label_url: 'https://labels.velocity.in/AWB456.pdf',
+            courier_name: 'Delhivery',
+            order_id: 'ORD-12345-COD',
+            shipment_id: 'SHP-987'
+          }
         }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockShipmentResponse);
 
       const result = await provider.createShipment(codData);
@@ -384,10 +393,10 @@ describe('Velocity Shipfast Integration', () => {
       expect(result.trackingNumber).toBe('SHPHYB987654321');
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/forward-order'),
+        expect.stringContaining('/forward-order-orchestration'),
         expect.objectContaining({
           payment_method: 'COD',
-          cod_amount: 1500
+          cod_collectible: 1500
         }),
         expect.any(Object)
       );
@@ -422,7 +431,6 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockRejectedValueOnce({
           response: {
             status: 400,
@@ -444,38 +452,41 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       const mockTrackingResponse = {
-        data: [
-          {
-            awb: 'SHPHYB123456789',
-            status_code: 'IT',
-            current_location: 'Delhi Hub',
-            estimated_delivery: '2025-12-30',
-            tracking_history: [
-              {
-                status: 'NEW',
-                description: 'Shipment created',
-                location: 'Mumbai Hub',
-                timestamp: '2025-12-25 10:00'
-              },
-              {
-                status: 'PKP',
-                description: 'Package picked up',
-                location: 'Mumbai Hub',
-                timestamp: '2025-12-26 14:30'
-              },
-              {
+        data: {
+          result: {
+            'SHPHYB123456789': {
+              tracking_data: {
+                awb_code: 'SHPHYB123456789',
                 status: 'IT',
-                description: 'In transit to destination',
-                location: 'Delhi Hub',
-                timestamp: '2025-12-27 08:15'
+                current_location: 'Delhi Hub',
+                estimated_delivery: '2025-12-30',
+                shipment_track: [
+                  {
+                    status: 'NEW',
+                    description: 'Shipment created',
+                    location: 'Mumbai Hub',
+                    timestamp: '2025-12-25 10:00'
+                  },
+                  {
+                    status: 'PKP',
+                    description: 'Package picked up',
+                    location: 'Mumbai Hub',
+                    timestamp: '2025-12-26 14:30'
+                  },
+                  {
+                    status: 'IT',
+                    description: 'In transit to destination',
+                    location: 'Delhi Hub',
+                    timestamp: '2025-12-27 08:15'
+                  }
+                ]
               }
-            ]
+            }
           }
-        ]
+        }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockTrackingResponse);
 
       const result = await provider.trackShipment('SHPHYB123456789');
@@ -495,11 +506,18 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       const mockTrackingResponse = {
-        data: []
+        data: {
+          result: {
+            'INVALID123': {
+              tracking_data: {
+                error: 'Shipment not found'
+              }
+            }
+          }
+        }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockTrackingResponse);
 
       await expect(provider.trackShipment('INVALID123')).rejects.toThrow(
@@ -515,13 +533,17 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       const mockTrackingResponse = {
-        data: [
-          {
-            awb: 'SHPHYB123456789',
-            status_code: 'NEW',
-            tracking_history: []
+        data: {
+          result: {
+            'SHPHYB123456789': {
+              tracking_data: {
+                awb_code: 'SHPHYB123456789',
+                status: 'NEW',
+                shipment_track: []
+              }
+            }
           }
-        ]
+        }
       };
 
       const mockCancelResponse = {
@@ -532,7 +554,6 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse) // Auth
         .mockResolvedValueOnce(mockTrackingResponse) // Tracking check
         .mockResolvedValueOnce(mockCancelResponse); // Cancel
 
@@ -542,7 +563,7 @@ describe('Velocity Shipfast Integration', () => {
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/cancel-order'),
         expect.objectContaining({
-          awb: 'SHPHYB123456789'
+          awbs: ['SHPHYB123456789']
         }),
         expect.any(Object)
       );
@@ -554,17 +575,20 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       const mockTrackingResponse = {
-        data: [
-          {
-            awb: 'SHPHYB123456789',
-            status_code: 'DEL', // Delivered
-            tracking_history: []
+        data: {
+          result: {
+            'SHPHYB123456789': {
+              tracking_data: {
+                awb_code: 'SHPHYB123456789',
+                status: 'DEL',
+                shipment_track: []
+              }
+            }
           }
-        ]
+        }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockTrackingResponse);
 
       await expect(provider.cancelShipment('SHPHYB123456789')).rejects.toThrow(
@@ -581,15 +605,17 @@ describe('Velocity Shipfast Integration', () => {
 
       const mockServiceabilityResponse = {
         data: {
-          is_serviceable: true,
-          available_carriers: [
-            { courier_name: 'BlueDart', rate: 50, estimated_delivery_days: 3 }
-          ]
+          status: 'SUCCESS',
+          result: {
+            zone: 'zone_a',
+            serviceability_results: [
+              { carrier_name: 'BlueDart', rate: 50, estimated_delivery_days: 3 }
+            ]
+          }
         }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockServiceabilityResponse);
 
       const result = await provider.checkServiceability('400001');
@@ -603,7 +629,6 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockRejectedValueOnce({
           response: {
             status: 422,
@@ -625,29 +650,31 @@ describe('Velocity Shipfast Integration', () => {
 
       const mockRatesResponse = {
         data: {
-          is_serviceable: true,
-          available_carriers: [
-            {
-              courier_name: 'Delhivery',
-              rate: 70,
-              estimated_delivery_days: 4
-            },
-            {
-              courier_name: 'BlueDart',
-              rate: 50,
-              estimated_delivery_days: 3
-            },
-            {
-              courier_name: 'DTDC',
-              rate: 60,
-              estimated_delivery_days: 5
-            }
-          ]
+          status: 'SUCCESS',
+          result: {
+            zone: 'zone_a',
+            serviceability_results: [
+              {
+                carrier_name: 'Delhivery',
+                rate: 70,
+                estimated_delivery_days: 4
+              },
+              {
+                carrier_name: 'BlueDart',
+                rate: 50,
+                estimated_delivery_days: 3
+              },
+              {
+                carrier_name: 'DTDC',
+                rate: 60,
+                estimated_delivery_days: 5
+              }
+            ]
+          }
         }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockRatesResponse);
 
       const result = await provider.getRates({
@@ -671,13 +698,14 @@ describe('Velocity Shipfast Integration', () => {
 
       const mockRatesResponse = {
         data: {
-          is_serviceable: false,
-          available_carriers: []
+          status: 'SUCCESS',
+          result: {
+            serviceability_results: []
+          }
         }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockResolvedValueOnce(mockRatesResponse);
 
       await expect(
@@ -730,11 +758,15 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       const mockSuccessResponse = {
-        data: { is_serviceable: true, available_carriers: [] }
+        data: {
+          status: 'SUCCESS',
+          result: {
+            serviceability_results: []
+          }
+        }
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse) // Auth
         .mockRejectedValueOnce({ // First attempt fails
           response: { status: 503, data: { error: 'Service unavailable' } }
         })
@@ -743,7 +775,7 @@ describe('Velocity Shipfast Integration', () => {
       const result = await provider.checkServiceability('400001');
 
       expect(result).toBe(true);
-      expect(mockedAxios.post).toHaveBeenCalledTimes(3); // Auth + 2 attempts
+      expect(mockedAxios.post).toHaveBeenCalledTimes(2); // 2 attempts, no auth
     });
 
     it('should not retry on validation error', async () => {
@@ -752,7 +784,6 @@ describe('Velocity Shipfast Integration', () => {
       };
 
       mockedAxios.post = jest.fn()
-        .mockResolvedValueOnce(mockAuthResponse)
         .mockRejectedValueOnce({
           response: {
             status: 400,
@@ -762,7 +793,7 @@ describe('Velocity Shipfast Integration', () => {
 
       await expect(provider.checkServiceability('INVALID')).rejects.toThrow();
 
-      expect(mockedAxios.post).toHaveBeenCalledTimes(2); // Auth + 1 attempt (no retry)
+      expect(mockedAxios.post).toHaveBeenCalledTimes(1); // 1 attempt (no retry), no auth
     });
   });
 });

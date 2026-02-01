@@ -7,11 +7,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useFraudAlerts, useFraudStats, useInvestigateAlert, useBlockEntity } from '@/src/core/api/hooks/useFraud';
+import { useFraudAlerts, useFraudStats, useInvestigateAlert, useBlockEntity } from '@/src/core/api/hooks/security/useFraud';
 import { Shield, AlertTriangle, CheckCircle, XCircle, Eye, Ban, User, Mail, Phone, MapPin } from 'lucide-react';
 import { cn, formatDateTime, formatCurrency } from '@/src/lib/utils';
-import type { FraudAlert, FraudAlertFilters, FraudRiskLevel, FraudAlertStatus, BlockEntityPayload } from '@/src/types/api/fraud.types';
-import { FRAUD_ALERT_TYPE_LABELS, RISK_LEVEL_COLORS, ALERT_STATUS_COLORS } from '@/src/types/api/fraud.types';
+import type { FraudAlert, FraudAlertFilters, FraudRiskLevel, FraudAlertStatus, BlockEntityPayload } from '@/src/types/api/security';
+import { FRAUD_ALERT_TYPE_LABELS, RISK_LEVEL_COLORS, ALERT_STATUS_COLORS } from '@/src/types/api/security';
 
 export default function FraudDetectionPage() {
     const [filters, setFilters] = useState<FraudAlertFilters>({});

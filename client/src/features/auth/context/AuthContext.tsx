@@ -2,13 +2,10 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
-import { authApi } from '@/src/core/api/authApi';
-import { sessionApi, type Session } from '@/src/core/api/sessionApi';
-import { companyApi } from '@/src/core/api/companyApi';
-import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked } from '@/src/core/api/client';
-import { normalizeError } from '@/src/core/api/client';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { authApi, sessionApi, companyApi } from '@/src/core/api';
+import type { Session } from '@/src/core/api/clients/sessionApi';
+import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked, normalizeError } from '@/src/core/api/http';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 /**
  * Auth Context
@@ -80,19 +77,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } else if (event.data.type === 'LOGIN') {
         // Received LOGIN from another tab
-        // ✅ Fix #3: Move async logic outside setState callback
-        if (!user) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] Synced login from another tab');
-          }
-          try {
-            const userData = await authApi.getMe();
-            setUser(userData);
-            setupTokenRefresh();
-            prefetchCSRFToken().catch(console.warn);
-          } catch (err) {
-            console.error('[Auth] Failed to sync login from tab:', err);
-          }
+        // Silently ignore - cookies are not shared across tabs in browsers
+        // Each tab maintains its own auth state
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] Login event received from another tab (ignored - cookies not shared)');
         }
       }
     };
@@ -105,7 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       window.removeEventListener('scroll', handleActivity);
       authChannel.close();
     };
-  }, []);
+  }, [user]);
 
   /**
    * Setup token refresh timer
@@ -116,72 +104,89 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Setup token refresh timer
    * Smart Refresh: Checks every minute, refreshes if 14 mins passed AND user is active
    */
+  /**
+   * ✅ PRODUCTION-GRADE TOKEN REFRESH (Industry Best Practice)
+   *
+   * Key Principles:
+   * 1. Fixed refresh cadence (9 mins) - runs BEFORE 15-min expiry
+   * 2. NO activity-based logic - refresh token controls session lifespan
+   * 3. Only stops when refresh fails (server decides validity)
+   * 4. Circuit breaker prevents infinite retry loops
+   *
+   * This follows the same model as Google/GitHub/Stripe/Shopify
+   */
   const setupTokenRefresh = useCallback(() => {
     // Clear existing interval
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
 
-    // Reset refresh timestamp
-    lastRefreshRef.current = Date.now();
+    // ✅ CRITICAL: Refresh every 9 mins (access token expires at 15 mins)
+    // This provides 6-minute safety buffer and ensures no token expiry
+    const REFRESH_INTERVAL = 9 * 60 * 1000; // 9 minutes
 
-    // Check every minute
-    refreshIntervalRef.current = setInterval(async () => {
-      const now = Date.now();
-      const timeSinceRefresh = now - lastRefreshRef.current;
-      const timeSinceActivity = now - lastActivityRef.current;
+    const performRefresh = async () => {
+      // ✅ Check circuit breaker before attempting refresh
+      if (isRefreshBlocked()) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Auth] Refresh blocked by circuit breaker - stopping refresh loop');
+        }
+        // Clear interval to stop further attempts
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+        return;
+      }
 
-      // CONFIG: Refresh after 14 mins
-      const REFRESH_THRESHOLD = 14 * 60 * 1000;
-      // CONFIG: Stop refreshing if inactive for 20 mins
-      const INACTIVITY_TIMEOUT = 20 * 60 * 1000;
+      try {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] 🔄 Proactive token refresh', {
+            timestamp: new Date().toLocaleTimeString(),
+            interval: '9 minutes',
+          });
+        }
 
-      // Only attempt refresh if time threshold met
-      if (timeSinceRefresh >= REFRESH_THRESHOLD) {
-        // ✅ Only refresh if user has been active recently
-        if (timeSinceActivity < INACTIVITY_TIMEOUT) {
-          // ✅ Check circuit breaker before attempting refresh
-          if (isRefreshBlocked()) {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('[Auth] Skipping refresh - circuit breaker active');
-            }
-            // Clear interval to stop further attempts
-            if (refreshIntervalRef.current) {
-              clearInterval(refreshIntervalRef.current);
-              refreshIntervalRef.current = null;
-            }
-            return;
-          }
+        // ✅ Call refresh endpoint - server decides if session is valid
+        const response = await authApi.refreshToken();
+        if (response?.data?.user) {
+          setUser(response.data.user);
+        }
 
-          try {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[Auth] Refreshing token (Active Session)');
-            }
-            // ✅ Fix #1: Use user data from refresh response
-            const response = await authApi.refreshToken();
-            if (response?.data?.user) {
-              setUser(response.data.user);
-            }
-            // Update last refresh time on success
-            lastRefreshRef.current = Date.now();
-          } catch (err) {
-            // Token refresh failed - session expired
-            console.error('[Auth] Refresh failed', err);
-            setUser(null);
-            if (refreshIntervalRef.current) {
-              clearInterval(refreshIntervalRef.current);
-              refreshIntervalRef.current = null;
-            }
-          }
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] Skipping refresh - User inactive');
-          }
-          // Do nothing, let token expire naturally. 
-          // Next user action will trigger 401 -> retry -> refresh (if refresh token valid)
+        // Update last refresh time on success
+        lastRefreshRef.current = Date.now();
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Auth] ✅ Token refresh successful');
+        }
+      } catch (err) {
+        // ✅ Refresh failed - server rejected refresh token
+        // This happens when:
+        // - Refresh token expired (7 days default, 30 days with remember-me)
+        // - User logged out from another device
+        // - Token was revoked or blacklisted
+        console.error('[Auth] Refresh failed - session expired', err);
+
+        // Clear user state and stop refresh loop
+        setUser(null);
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
         }
       }
-    }, 60 * 1000); // Check every minute
+    };
+
+    // ✅ Reset timestamps
+    lastRefreshRef.current = Date.now();
+    lastActivityRef.current = Date.now();
+
+    // ✅ Start fixed-cadence refresh (runs every 9 minutes regardless of activity)
+    refreshIntervalRef.current = setInterval(performRefresh, REFRESH_INTERVAL);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Auth] 🔐 Token refresh timer started (every 9 minutes)');
+      console.log('[Auth] Session lifespan controlled by refresh token TTL (7-30 days)');
+    }
   }, []);
 
   /**
@@ -203,6 +208,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const userData = await authApi.getMe(true);
       setUser(userData);
+      // ✅ Start auto-refresh timer for existing sessions
       setupTokenRefresh();
     } catch (err) {
       // User not authenticated - expected for public pages
@@ -276,6 +282,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         prefetchCSRFToken().catch(console.warn);
 
         setUser(userData);
+        // ✅ Update activity timestamp on login
+        lastActivityRef.current = Date.now();
         setupTokenRefresh(); // Start refresh timer on successful login
 
         // ✅ Broadcast LOGIN event to other tabs (ONLY on success)
@@ -290,6 +298,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
 
+        showSuccessToast('Welcome back!');
         return { success: true, user: userData };
       } catch (err) {
         const normalizedErr = normalizeError(err as any);
@@ -351,31 +360,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const response = await authApi.verifyEmail(token);
 
-        // ✅ If auto-login is enabled, set user state
+        // ✅ If auto-login is enabled, fetch full user data to ensure state consistency
         if (response.autoLogin && response.user) {
-          // Map response user to full User type
-          const fullUser: User = {
-            _id: response.user.id,
-            name: response.user.name,
-            email: response.user.email,
-            role: response.user.role as any,
-            companyId: response.user.companyId,
-            teamRole: response.user.teamRole as any,
-            isEmailVerified: true,
-            isActive: true,
-            kycStatus: {
-              isComplete: false,
-              lastUpdated: undefined,
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          setUser(fullUser);
+          // Fetch authoritative user data from backend (includes all V5 fields)
+          const userData = await authApi.getMe();
+          setUser(userData);
 
           // Broadcast login to other tabs via BroadcastChannel
           const authChannel = new BroadcastChannel('auth_channel');
-          authChannel.postMessage({ type: 'LOGIN', user: fullUser });
+          authChannel.postMessage({ type: 'LOGIN', user: userData });
           authChannel.close();
         }
 
@@ -507,12 +500,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const response = await authApi.changeEmail(data.newEmail, data.password);
 
-      toast.success('Verification email sent to new address. Please check your inbox.');
+      showSuccessToast('Verification email sent to new address. Please check your inbox.');
       return { success: true };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error(normalizedErr.message || 'Failed to change email');
+      handleApiError(err, 'Failed to change email');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);
@@ -551,13 +544,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Update state
       setUser(updatedUser);
 
-      toast.success(response.message || 'Company created successfully!');
+      showSuccessToast(response.message || 'Company created successfully!');
 
       return { success: true, company: response.company };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error(normalizedErr.message || 'Failed to create company');
+      handleApiError(err, 'Failed to create company');
       return { success: false, error: normalizedErr };
     } finally {
       setIsLoading(false);
@@ -578,7 +571,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
       setSessions([]);
-      toast.error('Failed to load sessions. Please try again.');
+      handleApiError(err, 'Failed to load sessions. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -597,12 +590,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Refresh sessions list
       await loadSessions();
 
-      toast.success('Session revoked successfully');
+      showSuccessToast('Session revoked successfully');
       return { success: true };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error('Failed to revoke session. Please try again.');
+      handleApiError(err, 'Failed to revoke session. Please try again.');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);
@@ -622,12 +615,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Refresh sessions list
       await loadSessions();
 
-      toast.success(`${result.revoked} session(s) revoked successfully`);
+      showSuccessToast(`${result.revoked} session(s) revoked successfully`);
       return { success: true, revokedCount: result.revoked };
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
-      toast.error('Failed to revoke sessions. Please try again.');
+      handleApiError(err, 'Failed to revoke sessions. Please try again.');
       return { success: false, error: normalizedErr.message };
     } finally {
       setIsLoading(false);

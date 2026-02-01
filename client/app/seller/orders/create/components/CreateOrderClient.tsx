@@ -17,16 +17,16 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { toast } from 'sonner';
-import { cn } from '@/src/shared/utils';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { Loader } from '@/components/ui';
-import { useCreateOrder } from '@/src/core/api/hooks/useOrders';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
+import { cn } from '@/src/lib/utils';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { Loader } from '@/src/components/ui';
+import { useCreateOrder } from '@/src/core/api/hooks/orders/useOrders';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import type { CreateOrderRequest, OrderFormData } from '@/src/types/order';
+import type { CreateOrderRequest, OrderFormData } from '@/src/types/domain/order';
 
 // Indian states list
 const INDIAN_STATES = [
@@ -51,11 +51,11 @@ export function CreateOrderClient() {
   const { isInitialized, isAuthenticated } = useAuth();
   const createOrderMutation = useCreateOrder({
     onSuccess: (order) => {
-      toast.success(`Order ${order.orderNumber} created successfully!`);
+      showSuccessToast(`Order ${order.orderNumber} created successfully!`);
       router.push('/seller/orders');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create order');
+      handleApiError(error, 'Failed to create order');
     }
   });
   const [currentStep, setCurrentStep] = useState(0);
@@ -161,7 +161,7 @@ export function CreateOrderClient() {
         products: prev.products.filter((p) => p.id !== productId),
       }));
     } else {
-      toast.error('At least one product is required');
+      handleApiError(new Error('At least one product is required'), 'At least one product is required');
     }
   };
 
@@ -709,7 +709,7 @@ export function CreateOrderClient() {
                 <Button
                   onClick={handleSubmit}
                   disabled={createOrderMutation.isPending}
-                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20 w-40"
+                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20 w-40"
                 >
                   {createOrderMutation.isPending ? (
                     <>
@@ -723,7 +723,7 @@ export function CreateOrderClient() {
               ) : (
                 <Button
                   onClick={nextStep}
-                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20"
+                  className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                 >
                   Next Step <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>

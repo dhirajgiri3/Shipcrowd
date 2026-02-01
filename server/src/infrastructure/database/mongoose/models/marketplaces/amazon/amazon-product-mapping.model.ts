@@ -19,9 +19,9 @@ export interface IAmazonProductMapping extends Document {
   companyId: Schema.Types.ObjectId;
 
   // Shipcrowd product
-  shipcrowdSKU: string;
-  shipcrowdProductId?: Schema.Types.ObjectId;
-  shipcrowdProductName?: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductId?: Schema.Types.ObjectId;
+  ShipcrowdProductName?: string;
 
   // Amazon listing
   amazonASIN: string; // Amazon Standard Identification Number
@@ -70,17 +70,17 @@ const AmazonProductMappingSchema = new Schema<IAmazonProductMapping>(
     },
 
     // Shipcrowd product
-    shipcrowdSKU: {
+    ShipcrowdSKU: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
     },
-    shipcrowdProductId: {
+    ShipcrowdProductId: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
     },
-    shipcrowdProductName: {
+    ShipcrowdProductName: {
       type: String,
     },
 
@@ -170,10 +170,10 @@ const AmazonProductMappingSchema = new Schema<IAmazonProductMapping>(
 );
 
 // Indexes
-AmazonProductMappingSchema.index({ amazonStoreId: 1, shipcrowdSKU: 1 }, { unique: true });
+AmazonProductMappingSchema.index({ amazonStoreId: 1, ShipcrowdSKU: 1 }, { unique: true });
 AmazonProductMappingSchema.index({ amazonStoreId: 1, amazonASIN: 1 });
 AmazonProductMappingSchema.index({ amazonStoreId: 1, amazonSKU: 1 });
-AmazonProductMappingSchema.index({ companyId: 1, shipcrowdSKU: 1 });
+AmazonProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 AmazonProductMappingSchema.index({ isActive: 1, syncInventory: 1 });
 AmazonProductMappingSchema.index({ fulfillmentType: 1, isActive: 1 });
 

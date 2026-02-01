@@ -1,17 +1,13 @@
 import { Queue, Worker, QueueEvents, Job } from 'bullmq';
-import RedisConnection from './redis.connection';
+import { RedisManager } from '../redis/redis.manager'; // Updated import
 import logger from '../../shared/logger/winston.logger';
+import JobFailureLog from '../database/mongoose/models/system/job-failure-log.model';
+
 
 /**
  * QueueManager
  *
  * Centralized queue management for BullMQ with Redis.
- * Manages queue creation, worker registration, and event handling.
- *
- * Queue Types:
- * - shopify-order-sync: Sync orders from Shopify
- * - shopify-inventory-sync: Push inventory to Shopify
- * - shopify-webhook-process: Process webhook events
  */
 
 interface QueueConfig {
@@ -45,8 +41,8 @@ export class QueueManager {
   static async initialize(): Promise<void> {
     logger.info('Initializing Queue Manager');
 
-    // Test Redis connection
-    const isConnected = await RedisConnection.testConnection();
+    // Test Redis connection via Manager
+    const isConnected = await RedisManager.healthCheck();
     if (!isConnected) {
       throw new Error('Failed to connect to Redis');
     }
@@ -56,12 +52,9 @@ export class QueueManager {
       name: 'shopify-order-sync',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
-        removeOnComplete: 100, // Keep last 100 completed jobs
-        removeOnFail: 200, // Keep last 200 failed jobs
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
       },
     });
 
@@ -69,10 +62,7 @@ export class QueueManager {
       name: 'shopify-inventory-sync',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },
@@ -82,10 +72,7 @@ export class QueueManager {
       name: 'shopify-webhook-process',
       defaultJobOptions: {
         attempts: 5,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
+        backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: 500,
         removeOnFail: 500,
       },
@@ -96,10 +83,7 @@ export class QueueManager {
       name: 'woocommerce-order-sync',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },
@@ -109,10 +93,7 @@ export class QueueManager {
       name: 'woocommerce-webhook-process',
       defaultJobOptions: {
         attempts: 5,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
+        backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: 500,
         removeOnFail: 500,
       },
@@ -123,10 +104,7 @@ export class QueueManager {
       name: 'flipkart-order-sync',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },
@@ -136,10 +114,7 @@ export class QueueManager {
       name: 'flipkart-webhook-process',
       defaultJobOptions: {
         attempts: 5,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
+        backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: 500,
         removeOnFail: 500,
       },
@@ -150,10 +125,7 @@ export class QueueManager {
       name: 'amazon-order-sync',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },
@@ -163,24 +135,18 @@ export class QueueManager {
       name: 'amazon-inventory-sync',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },
     });
 
-    // Create NDR/RTO queues (Week 8)
+    // Create NDR/RTO queues
     await this.createQueue({
       name: 'ndr-resolution',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
+        backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: 200,
         removeOnFail: 500,
       },
@@ -190,56 +156,85 @@ export class QueueManager {
       name: 'ndr-detection',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },
     });
 
-    // Create Email queue (Phase 4)
+    // Create Email queue
     await this.createQueue({
       name: 'email-queue',
       defaultJobOptions: {
-        attempts: 5,  // Retry up to 5 times
-        backoff: {
-          type: 'exponential',
-          delay: 60000  // Start with 1 minute
-        },
-        removeOnComplete: {
-          age: 3600,  // Keep completed jobs for 1 hour
-          count: 1000
-        } as any,
-        removeOnFail: false  // Keep failed jobs for manual review
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 60000 },
+        removeOnComplete: { age: 3600, count: 1000 } as any,
+        removeOnFail: false
       },
     });
 
-    // Create Weight Dispute queue (Week 9)
+    // Create Weight Dispute queue
     await this.createQueue({
       name: 'weight-dispute',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
+        backoff: { type: 'exponential', delay: 2000 },
         removeOnComplete: 200,
         removeOnFail: 500,
       },
     });
 
-    // Create COD Remittance queue (Week 9)
+    // Create COD Remittance queue
     await this.createQueue({
       name: 'cod-remittance',
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
+        backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: 200,
+        removeOnFail: 500,
+      },
+    });
+
+    // Create Payout queue (Saga Pattern)
+    await this.createQueue({
+      name: 'payout-queue',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 10000 }, // 10s backoff
+        removeOnComplete: 500,
+        removeOnFail: false, // Keep failed jobs for manual inspection
+      },
+    });
+
+    // Create Carrier Sync queue
+    await this.createQueue({
+      name: 'carrier-sync',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 30000 }, // 30s initial delay
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
+    // Create Manifest Pickup Retry queue
+    await this.createQueue({
+      name: 'manifest-pickup-retry',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 60000 }, // 1 minute initial delay
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    });
+
+    // Create Outbound Webhook queue
+    await this.createQueue({
+      name: 'outbound-webhooks',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 30000 }, // 30s initial retry delay
+        removeOnComplete: 500,
         removeOnFail: 500,
       },
     });
@@ -259,7 +254,7 @@ export class QueueManager {
       return this.queues.get(name)!;
     }
 
-    const connection = RedisConnection.getConnectionOptions();
+    const connection = RedisManager.getBullMQConnection();
 
     const queue = new Queue(name, {
       connection,
@@ -270,27 +265,43 @@ export class QueueManager {
     const events = new QueueEvents(name, { connection });
 
     events.on('completed', ({ jobId, returnvalue }) => {
-      logger.debug('Job completed', {
-        queue: name,
-        jobId,
-        returnvalue,
-      });
+      logger.debug('Job completed', { queue: name, jobId, returnvalue });
     });
 
-    events.on('failed', ({ jobId, failedReason }) => {
-      logger.error('Job failed', {
-        queue: name,
-        jobId,
-        failedReason,
-      });
+    events.on('failed', async ({ jobId, failedReason }) => {
+      logger.error('Job failed', { queue: name, jobId, failedReason });
+
+      // ✅ Archive failure to database
+      try {
+        const job = await queue.getJob(jobId);
+        if (job) {
+          // Only log if it has exhausted attempts or is a permanent failure
+          // Note: 'failed' event fires on every attempt failure. 
+          // We check if attemptsMade >= opts.attempts to determine if it's the "final" failure
+          const maxAttempts = job.opts.attempts || 1;
+
+          if (job.attemptsMade >= maxAttempts) {
+            await JobFailureLog.create({
+              jobId,
+              queueName: name,
+              jobName: job.name,
+              data: job.data,
+              error: failedReason,
+              stackTrace: job.stacktrace ? job.stacktrace.join('\n') : undefined,
+              attemptsMade: job.attemptsMade,
+              failedAt: new Date(),
+              status: 'open'
+            });
+            logger.info('Job failure archived to DB', { jobId, queue: name });
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to archive job failure', { jobId, error: err });
+      }
     });
 
     events.on('progress', ({ jobId, data }) => {
-      logger.debug('Job progress', {
-        queue: name,
-        jobId,
-        progress: data,
-      });
+      logger.debug('Job progress', { queue: name, jobId, progress: data });
     });
 
     this.queues.set(name, queue);
@@ -330,14 +341,14 @@ export class QueueManager {
       return this.workers.get(queueName)!;
     }
 
-    const connection = RedisConnection.getConnectionOptions();
+    const connection = RedisManager.getBullMQConnection();
 
     const worker = new Worker(queueName, processor, {
       connection,
       concurrency,
       limiter: {
-        max: 10, // Max 10 jobs per duration
-        duration: 1000, // Per second
+        max: 10,
+        duration: 1000,
       },
     });
 
@@ -583,8 +594,7 @@ export class QueueManager {
       logger.info('Queue closed', { queue: name });
     }
 
-    // Close Redis connection
-    await RedisConnection.close();
+    // RedisManager handles its own connection closing
 
     this.queues.clear();
     this.workers.clear();

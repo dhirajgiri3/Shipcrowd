@@ -2,7 +2,7 @@ import { ZoneCreateClient } from './components/ZoneCreateClient';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Create Zone | ShipCrowd Admin',
+    title: 'Create Zone | Shipcrowd Admin',
     description: 'Create a new shipping zone and configure pincode mappings',
 };
 

@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
-import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { showSuccessToast } from '@/src/lib/error';
 import {
     User,
     Building2,
@@ -23,13 +23,13 @@ import {
     Briefcase,
     ChevronRight
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-// import { kycApi, KYCData } from "@/src/core/api";
+import { cn } from '@/src/lib/utils';
+import { kycApi } from "@/src/core/api";
 import { useAuth } from '@/src/features/auth';
-import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/shared';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
-import { Loader } from '@/components/ui';
+import { isValidPAN, isValidGSTIN, isValidIFSC, isValidBankAccount, formatPAN, formatGSTIN, formatIFSC } from '@/src/lib/utils';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
+import { Loader } from '@/src/components/ui';
 
 // KYC Steps Configuration
 const kycSteps = [
@@ -86,38 +86,46 @@ export function KycClient() {
 
     // Fetch existing KYC on mount
     useEffect(() => {
-        // const fetchKYC = async () => {
-        //     // KYC fetching disabled for demo
-        // try {
-        // // const response = await kycApi.getKYC();
-        // // if (response.kyc) {
-        // // setExistingKYC(response.kyc);
-        // // Pre-fill form if KYC exists
-        // // const docs = response.kyc.documents || [];
-        // const panDoc = docs.find(d => d.type === 'pan');
-        // const bankDoc = docs.find(d => d.type === 'bank_account');
-        // const gstinDoc = docs.find(d => d.type === 'gstin');
+        const fetchKYC = async () => {
+            if (!user) return;
 
-        // if (panDoc?.status === 'verified') {
-        // setPanVerification({ verified: true, loading: false });
-        // }
-        // if (bankDoc?.status === 'verified') {
-        // setBankVerification({ verified: true, loading: false });
-        // }
-        // if (gstinDoc?.status === 'verified') {
-        // setGstinVerification({ verified: true, loading: false });
-        // }
-        // }
-        // } catch (err) {
-        // // No existing KYC, that's fine
-        // } finally {
-        // setIsLoading(false);
-        // }
-        // };
+            try {
+                const response = await kycApi.getKYC();
+                if (response.kyc) {
+                    setExistingKYC(response.kyc);
+                    // Pre-fill form if KYC exists
+                    const docs = response.kyc.documents || [];
+                    const panDoc = docs.find(d => d.type === 'pan');
+                    const bankDoc = docs.find(d => d.type === 'bank_account');
+                    const gstinDoc = docs.find(d => d.type === 'gstin');
+
+                    if (panDoc?.status === 'verified') {
+                        setPanVerification({ verified: true, loading: false, data: { name: 'Verified User' } }); // Data might need to be fetched or stored differently if not in doc
+                        setFormData(prev => ({ ...prev, pan: panDoc.number }));
+                    }
+                    if (bankDoc?.status === 'verified') {
+                        setBankVerification({ verified: true, loading: false });
+                        setFormData(prev => ({ ...prev, accountNumber: bankDoc.number, confirmAccountNumber: bankDoc.number }));
+                    }
+                    if (gstinDoc?.status === 'verified') {
+                        setGstinVerification({ verified: true, loading: false });
+                        setFormData(prev => ({ ...prev, gstin: gstinDoc.number }));
+                    }
+
+                    if (response.kyc.agreementAccepted) {
+                        setFormData(prev => ({ ...prev, agreementAccepted: true, confirmationAccepted: true }));
+                    }
+                }
+            } catch (err) {
+                // No existing KYC, that's fine
+                console.error("Error fetching KYC:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
         if (!authLoading && user) {
-            // KYC API is not yet integrated - just set loading to false
-            setIsLoading(false);
+            fetchKYC();
         } else if (!authLoading && !user) {
             router.push('/login');
         }
@@ -128,7 +136,7 @@ export function KycClient() {
         setError(null);
     };
 
-    // PAN Verification - Disabled for demo
+    // PAN Verification
     const verifyPAN = useCallback(async () => {
         if (!isValidPAN(formData.pan) || formData.pan.length !== 10) {
             setPanVerification({ verified: false, loading: false, error: 'Invalid PAN format' });
@@ -137,27 +145,49 @@ export function KycClient() {
 
         setPanVerification({ verified: false, loading: true });
 
-        // Simulate verification delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Stub: Show as verified for demo
-        setPanVerification({
-            verified: true,
-            loading: false,
-            data: { name: 'Demo User' }
-        });
-        toast.success('PAN verified successfully! (Demo mode)');
+        try {
+            const response = await kycApi.verifyPAN({ panNumber: formData.pan });
+            if (response.verified) {
+                setPanVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                showSuccessToast('PAN verified successfully!');
+            } else {
+                setPanVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'PAN verification failed'
+                });
+            }
+        } catch (err: any) {
+            setPanVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
     }, [formData.pan]);
 
-    // IFSC Lookup - Disabled for demo
+    // IFSC Lookup
     const lookupIFSC = useCallback(async () => {
         if (!isValidIFSC(formData.ifscCode) || formData.ifscCode.length !== 11) {
             setIfscData(null);
             return;
         }
 
-        // Stub: Show mock bank data for demo
-        setIfscData({ bank: 'Demo Bank', branch: 'Main Branch' });
+        try {
+            const response = await kycApi.verifyIFSC(formData.ifscCode);
+            if (response.success && response.data) {
+                setIfscData({ bank: response.data.bank, branch: response.data.branch });
+            } else {
+                setIfscData(null);
+            }
+        } catch (err) {
+            console.error("IFSC Lookup failed", err);
+            setIfscData(null);
+        }
     }, [formData.ifscCode]);
 
     // Bank Verification
@@ -175,13 +205,25 @@ export function KycClient() {
         setBankVerification({ verified: false, loading: true });
 
         try {
-            // KYC API temporarily disabled
-            // const response = await kycApi.verifyBankAccount({...});
-            setBankVerification({
-                verified: false,
-                loading: false,
-                error: 'Bank verification is temporarily disabled for demo mode'
+            const response = await kycApi.verifyBankAccount({
+                accountNumber: formData.accountNumber,
+                ifscCode: formData.ifscCode
             });
+
+            if (response.verified) {
+                setBankVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                showSuccessToast('Bank account verified successfully!');
+            } else {
+                setBankVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'Bank verification failed'
+                });
+            }
         } catch (err: any) {
             setBankVerification({
                 verified: false,
@@ -191,7 +233,7 @@ export function KycClient() {
         }
     }, [formData.accountNumber, formData.confirmAccountNumber, formData.ifscCode]);
 
-    // GSTIN Verification - Disabled for demo
+    // GSTIN Verification
     const verifyGSTIN = useCallback(async () => {
         if (!formData.gstin) return; // GSTIN is optional
 
@@ -202,16 +244,29 @@ export function KycClient() {
 
         setGstinVerification({ verified: false, loading: true });
 
-        // Simulate verification delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Stub: Show as verified for demo
-        setGstinVerification({
-            verified: true,
-            loading: false,
-            data: { businessName: 'Demo Business Pvt Ltd' }
-        });
-        toast.success('GSTIN verified! (Demo mode)');
+        try {
+            const response = await kycApi.verifyGSTIN({ gstin: formData.gstin });
+            if (response.verified) {
+                setGstinVerification({
+                    verified: true,
+                    loading: false,
+                    data: response.data
+                });
+                showSuccessToast('GSTIN verified!');
+            } else {
+                setGstinVerification({
+                    verified: false,
+                    loading: false,
+                    error: response.message || 'GSTIN verification failed'
+                });
+            }
+        } catch (err: any) {
+            setGstinVerification({
+                verified: false,
+                loading: false,
+                error: err.message || 'Verification failed'
+            });
+        }
     }, [formData.gstin]);
 
     // Step validation
@@ -272,19 +327,31 @@ export function KycClient() {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
     };
 
-    // Submit KYC - Disabled for demo
+    // Submit KYC
     const handleSubmit = async () => {
         if (!validateCurrentStep()) return;
 
         setIsSubmitting(true);
         setError(null);
 
-        // Simulate submission delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            await kycApi.submitKYC({
+                panNumber: formData.pan,
+                bankDetails: {
+                    accountNumber: formData.accountNumber,
+                    ifscCode: formData.ifscCode,
+                    bankName: ifscData?.bank
+                },
+                gstin: formData.gstin || undefined
+            });
 
-        toast.success('KYC submitted successfully! (Demo mode)');
-        router.push('/seller');
-        setIsSubmitting(false);
+            showSuccessToast('KYC submitted successfully!');
+            router.push('/seller');
+        } catch (err: any) {
+            setError(err.message || 'Failed to submit KYC');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Render verification badge - Updated design
@@ -343,7 +410,7 @@ export function KycClient() {
                         <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
                             Your account is fully verified. You can now access all features and start shipping.
                         </p>
-                        <Button onClick={() => router.push('/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20">
+                        <Button onClick={() => router.push('/seller')} className="w-full bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20">
                             Go to Dashboard
                         </Button>
                     </CardContent>
@@ -359,7 +426,7 @@ export function KycClient() {
                 <div>
                     <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Seller Onboarding</h1>
                     <p className="text-[var(--text-secondary)] mt-1 text-lg">
-                        Complete your verification to unlock ShipCrowd
+                        Complete your verification to unlock Shipcrowd
                     </p>
                 </div>
                 <div className="px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] backdrop-blur-md">
@@ -517,7 +584,7 @@ export function KycClient() {
                                                             size="sm"
                                                             onClick={verifyPAN}
                                                             disabled={formData.pan.length !== 10 || panVerification.loading}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white"
+                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                         >
                                                             {panVerification.loading ? "Verifying..." : "Verify Now"}
                                                         </Button>
@@ -624,7 +691,7 @@ export function KycClient() {
                                                     <Button
                                                         onClick={verifyBank}
                                                         disabled={!formData.accountNumber || !formData.ifscCode || bankVerification.loading}
-                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white px-6"
+                                                        className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white px-6"
                                                     >
                                                         {bankVerification.loading ? 'Verifying...' : 'Verify Account'}
                                                     </Button>
@@ -689,7 +756,7 @@ export function KycClient() {
                                                             size="sm"
                                                             onClick={verifyGSTIN}
                                                             disabled={formData.gstin.length !== 15 || gstinVerification.loading}
-                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white"
+                                                            className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white"
                                                         >
                                                             {gstinVerification.loading ? "Verifying..." : "Verify Now"}
                                                         </Button>
@@ -717,18 +784,18 @@ export function KycClient() {
                                     {currentStep === 4 && (
                                         <div className="space-y-6">
                                             <div className="bg-[var(--bg-secondary)] rounded-xl p-6 h-64 overflow-y-auto text-sm text-[var(--text-secondary)] border border-[var(--border-subtle)] custom-scrollbar">
-                                                <h4 className="font-bold text-[var(--text-primary)] mb-4 text-base">ShipCrowd Seller Agreement</h4>
+                                                <h4 className="font-bold text-[var(--text-primary)] mb-4 text-base">Shipcrowd Seller Agreement</h4>
                                                 <div className="space-y-4 leading-relaxed">
-                                                    <p>This Seller Agreement ("Agreement") is entered into between ShipCrowd Technologies Pvt. Ltd. ("ShipCrowd") and the Seller ("You") upon acceptance of these terms.</p>
+                                                    <p>This Seller Agreement ("Agreement") is entered into between Shipcrowd Technologies Pvt. Ltd. ("Shipcrowd") and the Seller ("You") upon acceptance of these terms.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">1. Services</h5>
-                                                    <p>ShipCrowd provides a logistics aggregation platform that enables sellers to ship products through various courier partners.</p>
+                                                    <p>Shipcrowd provides a logistics aggregation platform that enables sellers to ship products through various courier partners.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">2. Payment Terms</h5>
                                                     <p>COD remittance will be processed within 2-3 business days after delivery confirmation, subject to bank holidays.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">3. Liability</h5>
-                                                    <p>ShipCrowd's liability for lost or damaged shipments is limited to the declared value or the courier partner's standard liability, whichever is lower. Insurance is optional and recommended.</p>
+                                                    <p>Shipcrowd's liability for lost or damaged shipments is limited to the declared value or the courier partner's standard liability, whichever is lower. Insurance is optional and recommended.</p>
 
                                                     <h5 className="font-bold text-[var(--text-primary)] mt-4">4. Prohibited Items</h5>
                                                     <p>Seller agrees not to ship any items prohibited by law or by the courier partners (e.g., flammables, narcotics, currency).</p>
@@ -744,7 +811,7 @@ export function KycClient() {
                                                         onChange={(e) => handleInputChange('agreementAccepted', e.target.checked)}
                                                     />
                                                     <span className="text-sm text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
-                                                        I have read and agree to the <strong>ShipCrowd Seller Agreement</strong>, <strong>Terms of Service</strong>, and <strong>Privacy Policy</strong>.
+                                                        I have read and agree to the <strong>Shipcrowd Seller Agreement</strong>, <strong>Terms of Service</strong>, and <strong>Privacy Policy</strong>.
                                                     </span>
                                                 </label>
                                                 <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors border border-transparent hover:border-[var(--border-subtle)]">
@@ -777,7 +844,7 @@ export function KycClient() {
                                     {currentStep < 4 ? (
                                         <Button
                                             onClick={nextStep}
-                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20"
+                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20"
                                         >
                                             {currentStep === 3 && !formData.gstin ? 'Skip & Continue' : 'Next Step'}
                                             <ChevronRight className="h-4 w-4" />
@@ -788,7 +855,7 @@ export function KycClient() {
                                             isLoading={isSubmitting}
                                             loadingText="Submitting..."
                                             disabled={!formData.agreementAccepted || !formData.confirmationAccepted}
-                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-hover)] text-white shadow-lg shadow-blue-500/20 w-40"
+                                            className="gap-2 bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white shadow-lg shadow-blue-500/20 w-40"
                                         >
                                             <CheckCircle2 className="h-4 w-4" />
                                             Submit KYC

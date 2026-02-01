@@ -1,4 +1,4 @@
-# WooCommerce REST API Integration Guide for ShipCrowd
+# WooCommerce REST API Integration Guide for Shipcrowd
 
 **API Version**: WooCommerce REST API v3  
 **Last Updated**: January 7, 2026  
@@ -27,7 +27,7 @@
 
 ## Overview
 
-ShipCrowd integrates with WooCommerce stores via the REST API v3 to enable order management and fulfillment automation. This integration allows:
+Shipcrowd integrates with WooCommerce stores via the REST API v3 to enable order management and fulfillment automation. This integration allows:
 
 - **Order Ingestion**: Fetch new orders for fulfillment
 - **Order Updates**: Update order status and add tracking information
@@ -49,7 +49,7 @@ graph TD
         OA[OAuth 1.0a]
     end
 
-    subgraph ShipCrowd ["ShipCrowd Backend"]
+    subgraph Shipcrowd ["Shipcrowd Backend"]
         P[Polling Service]
         NH[Webhook Handler]
         OM[Order Manager]
@@ -128,7 +128,7 @@ All WooCommerce REST API endpoints follow this pattern:
 
 **Step 2: Configure API Key**
 ```
-Description: ShipCrowd Integration
+Description: Shipcrowd Integration
 User: [Select admin user]
 Permissions: Read/Write
 ```
@@ -136,7 +136,7 @@ Permissions: Read/Write
 **⚠️ Important**: 
 - **Read** permission: Can only fetch data
 - **Write** permission: Can only create/update data
-- **Read/Write** permission: Full access (required for ShipCrowd)
+- **Read/Write** permission: Full access (required for Shipcrowd)
 
 **Step 3: Save and Copy Credentials**
 
@@ -458,7 +458,7 @@ X-WP-TotalPages: 3
 Link: <https://example.com/wp-json/wc/v3/orders?page=2>; rel="next"
 ```
 
-**ShipCrowd Implementation**:
+**Shipcrowd Implementation**:
 ```javascript
 async function syncOrdersFromWooCommerce(storeUrl, credentials) {
   let page = 1;
@@ -488,9 +488,9 @@ async function syncOrdersFromWooCommerce(storeUrl, credentials) {
     page++;
   }
   
-  // Create ShipCrowd orders
+  // Create Shipcrowd orders
   for (const order of allOrders) {
-    await ShipCrowdOrder.create({
+    await ShipcrowdOrder.create({
       channel: 'WOOCOMMERCE',
       channelOrderId: order.id.toString(),
       channelOrderDisplayId: `#${order.number}`,
@@ -617,7 +617,7 @@ async function updateOrderWithTracking(orderId, trackingInfo, storeUrl, credenti
           value: new Date().toISOString()
         },
         {
-          key: '_shipcrowd_shipment_id',
+          key: '_Shipcrowd_shipment_id',
           value: trackingInfo.shipmentId
         }
       ]
@@ -725,10 +725,10 @@ async function updateProductStock(productId, quantity, storeUrl, credentials) {
 2. Click **"Add webhook"**
 3. Configure:
    ```
-   Name: ShipCrowd Order Created
+   Name: Shipcrowd Order Created
    Status: Active
    Topic: Order created
-   Delivery URL: https://shipcrowd.com/webhooks/woocommerce/orders/created
+   Delivery URL: https://Shipcrowd.com/webhooks/woocommerce/orders/created
    Secret: [Generate strong random string]
    API Version: WP REST API Integration v3
    ```
@@ -1059,7 +1059,7 @@ const response = await axios.get('https://localhost:8000/wp-json/wc/v3/orders', 
 
 **Solution**: **Always call WooCommerce API from server-side** (Node.js, PHP, Python), never from browser.
 
-Browser → ShipCrowd Server → WooCommerce API ✅  
+Browser → Shipcrowd Server → WooCommerce API ✅  
 Browser → WooCommerce API directly ❌
 
 ---
@@ -1073,10 +1073,10 @@ Browser → WooCommerce API directly ❌
 **Setup**:
 1. Install LocalWP
 2. Click **"Create a new site"**
-3. Site name: `shipcrowd-test-store`
+3. Site name: `Shipcrowd-test-store`
 4. PHP version: 8.0+
 5. Click **"Add Site"**
-6. Access: `http://shipcrowd-test-store.local`
+6. Access: `http://Shipcrowd-test-store.local`
 
 **Install WooCommerce**:
 1. Click **"WP Admin"** in LocalWP
@@ -1146,7 +1146,7 @@ ngrok http 8080
 - [ ] **API keys** generated with Read/Write permissions
 - [ ] **Webhooks** configured with strong secrets
 - [ ] **Rate limiting** enabled (optional)
-- [ ] **Firewall** configured to allow ShipCrowd IPs
+- [ ] **Firewall** configured to allow Shipcrowd IPs
 - [ ] **Backup** system in place
 - [ ] **Monitoring** for API errors
 
@@ -1195,7 +1195,7 @@ if (errorRate > 50) {
 **Document Version**: 2.0 (Comprehensive)  
 **Last Reviewed**: January 7, 2026  
 **Next Review**: April 1, 2026  
-**Maintained By**: ShipCrowd Technical Team
+**Maintained By**: Shipcrowd Technical Team
 
 **Official References**:
 - WooCommerce REST API Docs: https://woocommerce.github.io/woocommerce-rest-api-docs/

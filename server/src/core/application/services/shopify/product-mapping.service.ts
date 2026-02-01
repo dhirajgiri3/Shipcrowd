@@ -62,8 +62,8 @@ interface CreateMappingData {
   shopifyTitle: string;
   shopifyBarcode?: string;
   shopifyInventoryItemId?: string;
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
   mappedBy?: string;
   syncInventory?: boolean;
   syncPrice?: boolean;
@@ -142,8 +142,8 @@ export class ProductMappingService {
             shopifyTitle: `${product.title} - ${variant.title}`,
             shopifyBarcode: variant.barcode || undefined,
             shopifyInventoryItemId: variant.inventory_item_id?.toString(),
-            shipcrowdSKU: variant.sku.toUpperCase(),
-            shipcrowdProductName: product.title,
+            ShipcrowdSKU: variant.sku.toUpperCase(),
+            ShipcrowdProductName: product.title,
             mappingType: 'AUTO',
             mappedAt: new Date(),
             syncInventory: true,
@@ -255,7 +255,7 @@ export class ProductMappingService {
     logger.info('Created manual mapping', {
       mappingId: mapping._id,
       variantId: data.shopifyVariantId,
-      sku: data.shipcrowdSKU,
+      sku: data.ShipcrowdSKU,
     });
 
     return mapping;
@@ -277,7 +277,7 @@ export class ProductMappingService {
     logger.info('Deleted mapping', {
       mappingId,
       variantId: mapping.shopifyVariantId,
-      sku: mapping.shipcrowdSKU,
+      sku: mapping.ShipcrowdSKU,
     });
   }
 
@@ -317,9 +317,9 @@ export class ProductMappingService {
     if (filters.search) {
       query.$or = [
         { shopifySKU: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdSKU: { $regex: filters.search, $options: 'i' } },
+        { ShipcrowdSKU: { $regex: filters.search, $options: 'i' } },
         { shopifyTitle: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdProductName: { $regex: filters.search, $options: 'i' } },
+        { ShipcrowdProductName: { $regex: filters.search, $options: 'i' } },
       ];
     }
 
@@ -341,7 +341,7 @@ export class ProductMappingService {
   /**
    * Import mappings from CSV
    *
-   * CSV Format: shopifyProductId,shopifyVariantId,shopifySKU,shipcrowdSKU,syncInventory
+   * CSV Format: shopifyProductId,shopifyVariantId,shopifySKU,ShipcrowdSKU,syncInventory
    *
    * @param storeId - ShopifyStore ID
    * @param csvData - CSV file content
@@ -367,7 +367,7 @@ export class ProductMappingService {
     const headers = lines[0].split(',').map((h) => h.trim());
 
     // Validate headers
-    const requiredHeaders = ['shopifyProductId', 'shopifyVariantId', 'shopifySKU', 'shipcrowdSKU'];
+    const requiredHeaders = ['shopifyProductId', 'shopifyVariantId', 'shopifySKU', 'ShipcrowdSKU'];
     const hasAllHeaders = requiredHeaders.every((h) => headers.includes(h));
 
     if (!hasAllHeaders) {
@@ -403,8 +403,8 @@ export class ProductMappingService {
           shopifyVariantId: row.shopifyVariantId,
           shopifySKU: row.shopifySKU,
           shopifyTitle: row.shopifyTitle || 'Imported from CSV',
-          shipcrowdSKU: row.shipcrowdSKU.toUpperCase(),
-          shipcrowdProductName: row.shipcrowdProductName || row.shopifyTitle || 'Imported',
+          ShipcrowdSKU: row.ShipcrowdSKU.toUpperCase(),
+          ShipcrowdProductName: row.ShipcrowdProductName || row.shopifyTitle || 'Imported',
           mappingType: 'MANUAL',
           mappedAt: new Date(),
           syncInventory: row.syncInventory === 'true' || row.syncInventory === '1',
@@ -442,8 +442,8 @@ export class ProductMappingService {
       shopifySKU: m.shopifySKU,
       shopifyTitle: m.shopifyTitle,
       shopifyBarcode: m.shopifyBarcode || '',
-      shipcrowdSKU: m.shipcrowdSKU,
-      shipcrowdProductName: m.shipcrowdProductName,
+      ShipcrowdSKU: m.ShipcrowdSKU,
+      ShipcrowdProductName: m.ShipcrowdProductName,
       mappingType: m.mappingType,
       syncInventory: m.syncInventory,
       syncPrice: m.syncPrice,

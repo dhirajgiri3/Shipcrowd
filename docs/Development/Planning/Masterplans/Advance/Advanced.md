@@ -4,7 +4,7 @@
 > **Key Action:** Focus on **wiring existing services** rather than building from scratch.
 > See [AUDIT_VERIFICATION_2026-01-14.md](file:///Users/dhirajgiri/.gemini/antigravity/brain/c2b7a7af-c0f5-41aa-85a0-6bf3e70e89f5/AUDIT_VERIFICATION_2026-01-14.md) for full details.
 
-SHIPCROWD BACKEND: COMPREHENSIVE AUDIT & IMPLEMENTATION PLAN
+Shipcrowd BACKEND: COMPREHENSIVE AUDIT & IMPLEMENTATION PLAN
 Executive Summary: Complete End-to-End Analysis
 
 Status: Existing implementation 71% complete (core features) + Critical gaps requiring immediate attention
@@ -327,7 +327,7 @@ Complete Advanced.md plan: 12-16 weeks with 4-6 developers
 MVP Production-Ready: 6-8 weeks focusing on Phase 1-2 only
 Full Feature Set: 16-20 weeks with all advanced features
 
-# ShipCrowd Platform Completion Plan: MVP to Production (Weeks 11-16)
+# Shipcrowd Platform Completion Plan: MVP to Production (Weeks 11-16)
 
 **Version:** 2.0 - VERIFIED & CLEANED
 **Created:** 2026-01-07
@@ -612,7 +612,7 @@ Response: {
     disputeId: "DIS-001",
     resolution: {
       decision: "approve",
-      resolvedBy: "admin@shipcrowd.com",
+      resolvedBy: "admin@Shipcrowd.com",
       resolvedAt: "2026-01-09T10:30:00Z"
     }
   }
@@ -683,8 +683,8 @@ Check:
 ```
 Day 0: 100 orders delivered → Drivers collect ₹1,00,000 COD
 Day 2: Delhivery deposits to Velocity → ₹98,000 (₹2,000 fee)
-Day 5: Velocity deposits to ShipCrowd → ShipCrowd account
-Day 7: ShipCrowd transfers to seller → ₹97,500 (₹500 platform fee)
+Day 5: Velocity deposits to Shipcrowd → Shipcrowd account
+Day 7: Shipcrowd transfers to seller → ₹97,500 (₹500 platform fee)
 ```
 
 #### Database Schema (Extends Existing)
@@ -736,7 +736,7 @@ CODSettlement {
   _id: ObjectId,
   velocitySettlementId: string, // Velocity reference
   date: Date,
-  totalAmount: number,          // Amount deposited to ShipCrowd
+  totalAmount: number,          // Amount deposited to Shipcrowd
   deposits: [{
     sellerId: ObjectId,
     amount: number,
@@ -1718,7 +1718,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: shipcrowd-app
+    container_name: Shipcrowd-app
     ports:
       - "5005:5005"
     environment:
@@ -1732,13 +1732,13 @@ services:
     volumes:
       - ./logs:/app/logs
     networks:
-      - shipcrowd-network
+      - Shipcrowd-network
     restart: unless-stopped
 
   # MongoDB
   mongodb:
     image: mongo:7-alpine
-    container_name: shipcrowd-mongodb
+    container_name: Shipcrowd-mongodb
     ports:
       - "27017:27017"
     environment:
@@ -1749,7 +1749,7 @@ services:
       - mongodb_data:/data/db
       - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
     networks:
-      - shipcrowd-network
+      - Shipcrowd-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
@@ -1760,14 +1760,14 @@ services:
   # Redis
   redis:
     image: redis:7-alpine
-    container_name: shipcrowd-redis
+    container_name: Shipcrowd-redis
     ports:
       - "6379:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     networks:
-      - shipcrowd-network
+      - Shipcrowd-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
@@ -1778,7 +1778,7 @@ services:
   # Prometheus (Monitoring)
   prometheus:
     image: prom/prometheus:latest
-    container_name: shipcrowd-prometheus
+    container_name: Shipcrowd-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -1788,13 +1788,13 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
     networks:
-      - shipcrowd-network
+      - Shipcrowd-network
     restart: unless-stopped
 
   # Grafana (Dashboards)
   grafana:
     image: grafana/grafana:latest
-    container_name: shipcrowd-grafana
+    container_name: Shipcrowd-grafana
     ports:
       - "3000:3000"
     environment:
@@ -1804,7 +1804,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards
     networks:
-      - shipcrowd-network
+      - Shipcrowd-network
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -1812,7 +1812,7 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: shipcrowd-nginx
+    container_name: Shipcrowd-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -1820,7 +1820,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
-      - shipcrowd-network
+      - Shipcrowd-network
     restart: unless-stopped
     depends_on:
       - app
@@ -1832,7 +1832,7 @@ volumes:
   grafana_data:
 
 networks:
-  shipcrowd-network:
+  Shipcrowd-network:
     driver: bridge
 ```
 
@@ -1853,7 +1853,7 @@ server {
 
 server {
     listen 443 ssl http2;
-    server_name shipcrowd.com;
+    server_name Shipcrowd.com;
 
     ssl_certificate /etc/nginx/ssl/cert.pem;
     ssl_certificate_key /etc/nginx/ssl/key.pem;
@@ -2029,9 +2029,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: shipcrowd/backend:develop-${{ github.sha }}
-          cache-from: type=registry,ref=shipcrowd/backend:buildcache
-          cache-to: type=registry,ref=shipcrowd/backend:buildcache,mode=max
+          tags: Shipcrowd/backend:develop-${{ github.sha }}
+          cache-from: type=registry,ref=Shipcrowd/backend:buildcache
+          cache-to: type=registry,ref=Shipcrowd/backend:buildcache,mode=max
 
       - name: Build and push (staging)
         if: github.ref == 'refs/heads/staging'
@@ -2039,7 +2039,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: shipcrowd/backend:staging-${{ github.sha }},shipcrowd/backend:staging-latest
+          tags: Shipcrowd/backend:staging-${{ github.sha }},Shipcrowd/backend:staging-latest
 
       - name: Build and push (main)
         if: github.ref == 'refs/heads/main'
@@ -2047,7 +2047,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: shipcrowd/backend:${{ github.sha }},shipcrowd/backend:latest
+          tags: Shipcrowd/backend:${{ github.sha }},Shipcrowd/backend:latest
 
   # Stage 4: Deploy to Staging
   deploy-staging:
@@ -2087,13 +2087,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "ShipCrowd CI/CD Pipeline: ${{ job.status }}",
+              "text": "Shipcrowd CI/CD Pipeline: ${{ job.status }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*ShipCrowd CI/CD Pipeline*\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nStatus: ${{ job.status }}"
+                    "text": "*Shipcrowd CI/CD Pipeline*\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nStatus: ${{ job.status }}"
                   }
                 }
               ]
@@ -2113,10 +2113,10 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'shipcrowd'
+    monitor: 'Shipcrowd'
 
 scrape_configs:
-  - job_name: 'shipcrowd-app'
+  - job_name: 'Shipcrowd-app'
     static_configs:
       - targets: ['localhost:5005']
     metrics_path: '/metrics'
@@ -2162,7 +2162,7 @@ scrape_configs:
 
 #### Grafana Dashboard
 
-Dashboard name: "ShipCrowd Production Overview"
+Dashboard name: "Shipcrowd Production Overview"
 Panels:
 - Request volume (24-hour trend)
 - Error rate (P0 = red, P1 = yellow)
@@ -2432,7 +2432,7 @@ TOTAL: 500-680 hours (12-17 weeks)
 
 ## SUMMARY
 
-**ShipCrowd MVP Completion Plan**
+**Shipcrowd MVP Completion Plan**
 
 **Current Status:** 68% complete (26/38 scenarios)
 

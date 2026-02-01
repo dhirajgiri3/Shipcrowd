@@ -2,10 +2,11 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { useDebouncedValue } from '@/src/hooks/data';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     PackageX,
     Search,
@@ -20,9 +21,9 @@ import {
     Filter,
     Eye
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency } from '@/src/lib/utils';
 
 // Mock NDR/Returns data
 const mockNDRs = [
@@ -108,14 +109,15 @@ const statusFilters = [
 
 export function ReturnsClient() {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebouncedValue(searchQuery, 300);
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [selectedCourier, setSelectedCourier] = useState('All Couriers');
     const { addToast } = useToast();
 
     const filteredNDRs = mockNDRs.filter(ndr => {
-        const matchesSearch = ndr.awbNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ndr.sellerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ndr.customer.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = ndr.awbNumber.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            ndr.sellerName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            ndr.customer.toLowerCase().includes(debouncedSearch.toLowerCase());
         const matchesStatus = selectedStatus === 'all' || ndr.status === selectedStatus;
         const matchesCourier = selectedCourier === 'All Couriers' || ndr.courier === selectedCourier;
         return matchesSearch && matchesStatus && matchesCourier;

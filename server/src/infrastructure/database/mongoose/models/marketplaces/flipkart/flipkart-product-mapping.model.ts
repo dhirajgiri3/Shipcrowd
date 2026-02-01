@@ -18,9 +18,9 @@ export interface IFlipkartProductMapping extends Document {
   companyId: Schema.Types.ObjectId;
 
   // Shipcrowd product
-  shipcrowdSKU: string;
-  shipcrowdProductId?: Schema.Types.ObjectId;
-  shipcrowdProductName?: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductId?: Schema.Types.ObjectId;
+  ShipcrowdProductName?: string;
 
   // Flipkart listing
   flipkartFSN: string; // Flipkart Serial Number (unique product identifier)
@@ -72,17 +72,17 @@ const FlipkartProductMappingSchema = new Schema<IFlipkartProductMapping>(
     },
 
     // Shipcrowd product
-    shipcrowdSKU: {
+    ShipcrowdSKU: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
     },
-    shipcrowdProductId: {
+    ShipcrowdProductId: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
     },
-    shipcrowdProductName: {
+    ShipcrowdProductName: {
       type: String,
     },
 
@@ -165,9 +165,9 @@ const FlipkartProductMappingSchema = new Schema<IFlipkartProductMapping>(
 );
 
 // Indexes
-FlipkartProductMappingSchema.index({ flipkartStoreId: 1, shipcrowdSKU: 1 }, { unique: true });
+FlipkartProductMappingSchema.index({ flipkartStoreId: 1, ShipcrowdSKU: 1 }, { unique: true });
 FlipkartProductMappingSchema.index({ flipkartStoreId: 1, flipkartFSN: 1 });
-FlipkartProductMappingSchema.index({ companyId: 1, shipcrowdSKU: 1 });
+FlipkartProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 FlipkartProductMappingSchema.index({ isActive: 1, syncInventory: 1 });
 
 // Instance Methods

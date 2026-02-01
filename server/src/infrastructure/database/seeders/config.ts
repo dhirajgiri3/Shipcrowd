@@ -99,11 +99,12 @@ export const SEED_CONFIG = {
 
     // Carrier Distribution (must sum to 100)
     carriers: {
-        delhivery: 30,
-        bluedart: 20,
-        ecom_express: 20,
-        dtdc: 15,
-        xpressbees: 15,
+        delhivery: 0,
+        bluedart: 0,
+        ecom_express: 0,
+        dtdc: 0,
+        xpressbees: 0,
+        velocity: 100,
     },
 
     // City Tier Distribution (must sum to 100)
@@ -220,4 +221,4 @@ export type PaymentMethod = 'cod' | 'prepaid';
 export type DeliveryStatus = 'delivered' | 'ndr' | 'rto';
 export type NDRType = 'address_issue' | 'customer_unavailable' | 'refused' | 'payment_issue' | 'other';
 export type RTOReason = 'ndr_unresolved' | 'customer_cancellation' | 'damaged_in_transit' | 'refused' | 'other';
-export type CarrierName = 'delhivery' | 'bluedart' | 'ecom_express' | 'dtdc' | 'xpressbees';
+export type CarrierName = 'delhivery' | 'bluedart' | 'ecom_express' | 'dtdc' | 'xpressbees' | 'velocity';

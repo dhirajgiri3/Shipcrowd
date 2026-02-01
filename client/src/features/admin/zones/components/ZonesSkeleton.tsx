@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/core/Card';
-import { Skeleton } from '@/components/ui/data/Skeleton';
+import { Card, CardContent, CardHeader } from '@/src/components/ui/core/Card';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 
 export function ZonesSkeleton() {
     return (

@@ -51,7 +51,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
         // Note: Pickup address is determined by warehouse selection, validation should happen getting warehouse details or during shipment creation
 
-        const order = await OrderService.createOrder({
+        const order = await OrderService.getInstance().createOrder({
             companyId: new mongoose.Types.ObjectId(auth.companyId),
             userId: auth.userId,
             payload: validation.data
@@ -172,12 +172,13 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         }
 
         if (validation.data.currentStatus && validation.data.currentStatus !== order.currentStatus) {
-            const result = await OrderService.updateOrderStatus({
+            const result = await OrderService.getInstance().updateOrderStatus({
                 orderId: String(order._id),
                 currentStatus: order.currentStatus,
                 newStatus: validation.data.currentStatus,
                 currentVersion: order.__v,
-                userId: auth.userId
+                userId: auth.userId,
+                companyId: auth.companyId // Added for cache tagging
             });
 
             if (!result.success) {
@@ -232,7 +233,7 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
             throw new NotFoundError('Order', ErrorCode.RES_ORDER_NOT_FOUND);
         }
 
-        const { canDelete, reason } = OrderService.canDeleteOrder(order.currentStatus);
+        const { canDelete, reason } = OrderService.getInstance().canDeleteOrder(order.currentStatus);
         if (!canDelete) {
             throw new AppError(reason || 'Cannot delete order', 'CANNOT_DELETE_ORDER', 400);
         }
@@ -265,7 +266,7 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
             .on('data', (row) => rows.push(row))
             .on('end', async () => {
                 try {
-                    const result = await OrderService.bulkImportOrders({
+                    const result = await OrderService.getInstance().bulkImportOrders({
                         rows,
                         companyId: new mongoose.Types.ObjectId(auth.companyId)
                     });
@@ -296,6 +297,113 @@ export const bulkImportOrders = async (req: Request, res: Response, next: NextFu
     }
 };
 
+export const cloneOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const { orderId } = req.params;
+        validateObjectId(orderId, 'order');
+
+        const result = await OrderService.getInstance().cloneOrder({
+            orderId,
+            companyId: auth.companyId,
+            modifications: req.body.modifications
+        });
+
+        await createAuditLog(
+            auth.userId,
+            auth.companyId,
+            'create',
+            'order',
+            String(result.clonedOrder._id),
+            { clonedFrom: result.originalOrderNumber },
+            req
+        );
+
+        sendCreated(res, result, 'Order cloned successfully');
+    } catch (error) {
+        logger.error('Error cloning order:', error);
+        next(error);
+    }
+};
+
+export const splitOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        const { orderId } = req.params;
+        validateObjectId(orderId, 'order');
+
+        if (!req.body.splits || !Array.isArray(req.body.splits) || req.body.splits.length < 2) {
+            throw new ValidationError('At least 2 splits are required');
+        }
+
+        const result = await OrderService.getInstance().splitOrder({
+            orderId,
+            companyId: auth.companyId,
+            splits: req.body.splits
+        });
+
+        await createAuditLog(
+            auth.userId,
+            auth.companyId,
+            'create',
+            'order',
+            'split',
+            {
+                originalOrder: result.originalOrderNumber,
+                splitCount: result.splitOrders.length,
+                splitOrders: result.splitOrders.map(o => o.orderNumber)
+            },
+            req
+        );
+
+        sendCreated(res, result, `Order split into ${result.splitOrders.length} orders`);
+    } catch (error) {
+        logger.error('Error splitting order:', error);
+        next(error);
+    }
+};
+
+export const mergeOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        if (!req.body.orderIds || !Array.isArray(req.body.orderIds) || req.body.orderIds.length < 2) {
+            throw new ValidationError('At least 2 order IDs are required for merging');
+        }
+
+        // Validate all orderIds
+        req.body.orderIds.forEach((id: string, index: number) => {
+            validateObjectId(id, `orderIds[${index}]`);
+        });
+
+        const result = await OrderService.getInstance().mergeOrders({
+            orderIds: req.body.orderIds,
+            companyId: auth.companyId,
+            mergeOptions: req.body.mergeOptions
+        });
+
+        await createAuditLog(
+            auth.userId,
+            auth.companyId,
+            'create',
+            'order',
+            String(result.mergedOrder.id),
+            {
+                mergedFrom: result.cancelledOrders,
+                mergedOrderNumber: result.mergedOrder.orderNumber
+            },
+            req
+        );
+
+        sendCreated(res, result, `${result.cancelledOrders.length} orders merged successfully`);
+    } catch (error) {
+        logger.error('Error merging orders:', error);
+        next(error);
+    }
+};
+
 export default {
     createOrder,
     getOrders,
@@ -303,4 +411,7 @@ export default {
     updateOrder,
     deleteOrder,
     bulkImportOrders,
+    cloneOrder,
+    splitOrder,
+    mergeOrders,
 };

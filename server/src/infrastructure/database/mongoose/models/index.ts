@@ -16,6 +16,10 @@ export { default as TeamPermission } from './iam/access/team-permission.model';
 export * from './iam/access/team-permission.model';
 export { default as TeamInvitation } from './iam/access/team-invitation.model';
 export * from './iam/access/team-invitation.model';
+export { default as Role } from './iam/role.model';
+export * from './iam/role.model';
+export { default as Membership } from './iam/membership.model';
+export * from './iam/membership.model';
 
 // Organization
 export { default as Company } from './organization/core/company.model';
@@ -30,8 +34,10 @@ export { default as Lead } from './crm/leads/lead.model';
 export * from './crm/leads/lead.model';
 export { default as SalesRepresentative } from './crm/sales/sales-representative.model';
 export * from './crm/sales/sales-representative.model';
-export { default as CallLog } from './crm/sales/call-log.model';
-export * from './crm/sales/call-log.model';
+export { default as CallLog } from './crm/communication/call-log.model';
+export * from './crm/communication/call-log.model';
+export { default as SupportTicket } from './crm/support/support-ticket.model';
+export * from './crm/support/support-ticket.model';
 
 // Marketing
 export { default as Coupon } from './marketing/promotions/coupon.model';
@@ -40,6 +46,10 @@ export * from './marketing/promotions/coupon.model';
 // Finance
 export { default as Payout } from './finance/payouts/payout.model';
 export * from './finance/payouts/payout.model';
+export { default as CODRemittance } from './finance/payouts/cod-remittance.model';
+export * from './finance/payouts/cod-remittance.model';
+export { default as Invoice } from './finance/billing/invoice.model';
+export * from './finance/billing/invoice.model';
 export { default as WalletTransaction } from './finance/wallets/wallet-transaction.model';
 export * from './finance/wallets/wallet-transaction.model';
 export { default as CommissionRule } from './finance/commission/commission-rule.model';
@@ -70,10 +80,22 @@ export * from './logistics/warehouse/activities/pick-list.model';
 // Logistics - Shipping
 export { default as Shipment } from './logistics/shipping/core/shipment.model';
 export * from './logistics/shipping/core/shipment.model';
+export { default as Manifest } from './logistics/shipping/manifest.model';
+export * from './logistics/shipping/manifest.model';
+export { default as ManifestCounter } from './logistics/shipping/manifest-counter.model';
+export * from './logistics/shipping/manifest-counter.model';
 export { default as Zone } from './logistics/shipping/configuration/zone.model';
 export * from './logistics/shipping/configuration/zone.model';
 export { default as RateCard } from './logistics/shipping/configuration/rate-card.model';
 export * from './logistics/shipping/configuration/rate-card.model';
+export { default as RoutingRule } from './logistics/shipping/configuration/routing-rule.model';
+export * from './logistics/shipping/configuration/routing-rule.model';
+export { default as Courier } from './shipping/courier.model';
+export * from './shipping/courier.model';
+export { default as CourierPerformance } from './shipping/courier-performance.model';
+export * from './shipping/courier-performance.model';
+export { default as LabelTemplate } from './shipping/label-template.model';
+export * from './shipping/label-template.model';
 export { default as RTOEvent } from './logistics/shipping/exceptions/rto-event.model';
 export * from './logistics/shipping/exceptions/rto-event.model';
 export { default as NDREvent } from './logistics/shipping/exceptions/ndr-event.model';
@@ -117,6 +139,14 @@ export * from './marketplaces/woocommerce/woocommerce-sync-log.model';
 export { default as WooCommerceProductMapping } from './marketplaces/woocommerce/woocommerce-product-mapping.model';
 export * from './marketplaces/woocommerce/woocommerce-product-mapping.model';
 
+// Risk Engine
+export { default as BlacklistItem } from './risk/blacklist-item.model';
+export * from './risk/blacklist-item.model';
+
+// Communication
+export { default as NotificationTemplate } from './communication/notification-template.model';
+export * from './communication/notification-template.model';
+
 // System
 export { default as Integration } from './system/integrations/integration.model';
 export * from './system/integrations/integration.model';
@@ -126,8 +156,18 @@ export { default as WebhookDeadLetter } from './system/integrations/webhook-dead
 export * from './system/integrations/webhook-dead-letter.model';
 export { default as AuditLog } from './system/audit/audit-log.model';
 export * from './system/audit/audit-log.model';
+export { default as ScheduledReport } from './analytics/scheduled-report.model';
+export * from './analytics/scheduled-report.model';
 export { default as ReportConfig } from './system/reporting/report-config.model';
 export * from './system/reporting/report-config.model';
+
+// Admin
+export { default as ImpersonationSession } from './admin/impersonation-session.model';
+export * from './admin/impersonation-session.model';
+
+// System - Feature Flags
+export { default as FeatureFlag } from './system/feature-flag.model';
+export * from './system/feature-flag.model';
 
 // Onboarding & Gamification
 export { default as OnboardingProgress } from './onboarding/onboarding-progress.model';

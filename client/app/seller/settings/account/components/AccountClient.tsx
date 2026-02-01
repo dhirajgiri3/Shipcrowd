@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from 'react';
-import { authApi } from '@/src/core/api/authApi';
+import { authApi } from '@/src/core/api/clients/authApi';
 import { useAuth } from '@/src/features/auth';
-import { Button, Card } from '@/components/ui';
-import { toast } from 'sonner';
+import { Button, Card } from '@/src/components/ui';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { AlertTriangle, Trash2, UserX, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -26,11 +26,11 @@ export function AccountClient() {
         setIsDeactivating(true);
         try {
             await authApi.deactivateAccount(reason || undefined);
-            toast.success('Account deactivated successfully');
+            showSuccessToast('Account deactivated successfully');
             await logout();
             router.push('/');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to deactivate account');
+            handleApiError(error, 'Failed to deactivate account');
         } finally {
             setIsDeactivating(false);
         }
@@ -48,14 +48,14 @@ export function AccountClient() {
         try {
             const result = await authApi.scheduleAccountDeletion(reason || undefined);
             const deletionDate = new Date(result.data?.scheduledDeletionDate).toLocaleDateString();
-            toast.success(`Account deletion scheduled for ${deletionDate}`);
+            showSuccessToast(`Account deletion scheduled for ${deletionDate}`);
 
             // Show info about cancellation
             setTimeout(() => {
                 alert(`Your account will be deleted on ${deletionDate}.\n\nYou can cancel this by logging in before that date.`);
             }, 1000);
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to schedule deletion');
+            handleApiError(error, 'Failed to schedule deletion');
         } finally {
             setIsDeleting(false);
         }

@@ -1,119 +1,214 @@
 /**
  * Payouts Seeder
  * 
- * Generates Payout records from COD Remittances.
- * Ensures every COD remittance has a corresponding Payout record.
+ * Generates Payout records from Commission Transactions.
+ * Aligns with production PayoutProcessingService logic:
+ * - Groups approved commission transactions by sales representative
+ * - Creates Payout records for each group
+ * - Updates transactions with payoutBatch reference
  */
 
 import mongoose from 'mongoose';
 import Payout from '../../mongoose/models/finance/payouts/payout.model';
-import CODRemittance from '../../mongoose/models/finance/payouts/cod-remittance.model';
+import CommissionTransaction from '../../mongoose/models/finance/commission/commission-transaction.model';
+import SalesRepresentative from '../../mongoose/models/crm/sales/sales-representative.model';
 import { logger, createTimer } from '../utils/logger.utils';
+import { randomInt, selectRandom } from '../utils/random.utils';
+import { subDays } from '../utils/date.utils';
+
+// Payout status distribution
+const PAYOUT_STATUS_DISTRIBUTION = {
+    pending: 20,
+    processing: 15,
+    completed: 60,
+    failed: 5,
+};
+
+/**
+ * Select status based on distribution
+ */
+function selectPayoutStatus(): string {
+    const rand = Math.random() * 100;
+    let cumulative = 0;
+
+    for (const [status, weight] of Object.entries(PAYOUT_STATUS_DISTRIBUTION)) {
+        cumulative += weight;
+        if (rand <= cumulative) {
+            return status;
+        }
+    }
+
+    return 'completed';
+}
 
 export async function seedPayouts(): Promise<void> {
     const timer = createTimer();
-    logger.step(27, 'Seeding Payouts from COD Remittances');
+    logger.step(27, 'Seeding Payouts from Commission Transactions');
 
     try {
-        // Fetch all COD remittances
-        // We want to create payouts for ALL of them to ensure consistency
-        const remittances = await CODRemittance.find().lean();
+        // Find approved commission transactions that are NOT already in a payout batch
+        const eligibleTransactions = await CommissionTransaction.find({
+            status: 'approved',
+            payoutBatch: null,
+            isDeleted: false,
+        })
+            .populate('salesRepresentative')
+            .populate('company')
+            .lean();
 
-        if (remittances.length === 0) {
-            logger.warn('No COD remittances found. Skipping payouts seeder.');
+        if (eligibleTransactions.length === 0) {
+            logger.warn('No eligible commission transactions found. Skipping payouts seeder.');
             return;
         }
 
-        const payouts: any[] = [];
-        const remittanceUpdates: any[] = [];
+        // Group transactions by sales representative
+        const transactionsBySalesRep = new Map<string, any[]>();
 
-        for (const remittance of remittances) {
-            const rem = remittance as any;
+        for (const transaction of eligibleTransactions) {
+            const txn = transaction as any;
+            const salesRepId = txn.salesRepresentative?._id?.toString();
 
-            // Real-world logic: Payout records are only created after a Remittance is APPROVED.
-            // If a remittance is 'pending_approval', it is still in the finance review queue and no Payout transaction exists yet.
-            // If 'cancelled', the remittance was rejected and no Payout should exist.
-            if (['pending_approval', 'cancelled', 'draft'].includes(rem.status)) {
+            if (!salesRepId) {
+                logger.warn(`Transaction ${txn._id} has no sales representative, skipping`);
                 continue;
             }
 
-            // Map Remittance Status to Payout Status
-            // approved -> pending (Ready for processor)
-            // processing -> processing (Picked up by processor) - though Remittance usually jumps approved->paid in simple flows, if we had intermediate state.
-            // paid -> completed (Money moved)
-            // failed -> failed (Transaction failed)
+            if (!transactionsBySalesRep.has(salesRepId)) {
+                transactionsBySalesRep.set(salesRepId, []);
+            }
 
-            let payoutStatus = 'pending';
-            if (rem.status === 'paid') payoutStatus = 'completed';
-            else if (rem.status === 'approved') payoutStatus = 'pending'; // Approved means ready to process
-            else if (rem.status === 'failed') payoutStatus = 'failed';
+            transactionsBySalesRep.get(salesRepId)!.push(txn);
+        }
 
-            // Generate Payout Record
-            const payoutId = new mongoose.Types.ObjectId();
-            const payoutIdString = `PO-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        logger.info(`Grouped ${eligibleTransactions.length} transactions across ${transactionsBySalesRep.size} sales representatives`);
 
-            const payoutData = {
-                _id: payoutId,
-                payoutId: payoutIdString,
-                company: rem.companyId,
-                payoutType: 'cod_remittance',
-                codRemittanceId: rem._id,
-                totalAmount: rem.financial.totalCODCollected, // Gross
-                tdsDeducted: 0, // Usually 0 for COD remittance unless specified
-                // Deductions from remittance
-                deductions: [
-                    { type: 'shipping_charge', amount: rem.financial.deductionsSummary.totalShippingCharges },
-                    { type: 'weight_disputes', amount: rem.financial.deductionsSummary.totalWeightDisputes },
-                    { type: 'rto_charges', amount: rem.financial.deductionsSummary.totalRTOCharges },
-                    { type: 'platform_fees', amount: rem.financial.deductionsSummary.totalPlatformFees }
-                ],
-                netAmount: rem.financial.netPayable,
-                status: payoutStatus,
-                razorpay: {
-                    payoutId: rem.payout?.razorpayPayoutId,
-                    fundAccountId: rem.payout?.razorpayFundAccountId,
-                    contactId: rem.payout?.razorpayContactId,
-                    status: rem.payout?.status,
-                    failureReason: rem.payout?.failureReason
-                },
-                bankDetails: rem.payout?.accountDetails,
-                payoutDate: rem.createdAt,
-                processedAt: rem.payout?.initiatedAt,
-                // If completed, processedAt is usually initiatedAt or completedAt? 
-                failedAt: rem.status === 'failed' ? rem.updatedAt : undefined,
+        const payouts: any[] = [];
+        const transactionUpdates: any[] = [];
+
+        // Create payout for each sales representative
+        for (const [salesRepId, transactions] of transactionsBySalesRep.entries()) {
+            const firstTxn = transactions[0];
+            const salesRep = firstTxn.salesRepresentative;
+            const company = firstTxn.company;
+
+            // Validate relationships
+            if (!salesRep || !salesRep._id) {
+                logger.warn(`Skipping payout for sales rep ${salesRepId} - invalid sales representative object`);
+                continue;
+            }
+
+            if (!company || !company._id) {
+                logger.warn(`Skipping payout for sales rep ${salesRepId} - invalid company object`);
+                continue;
+            }
+
+            // Calculate amounts
+            const totalAmount = transactions.reduce((sum, t) => sum + (t.finalAmount || 0), 0);
+
+            // Apply TDS (0-2% randomly for seeding purposes)
+            const tdsRate = Math.random() > 0.7 ? randomInt(0, 2) : 0;
+            const tdsDeducted = tdsRate > 0 ? Math.round((totalAmount * tdsRate) / 100) : 0;
+            const netAmount = totalAmount - tdsDeducted;
+
+            if (netAmount <= 0) {
+                logger.warn(`Skipping payout for sales rep ${salesRepId} - net amount is ${netAmount}`);
+                continue;
+            }
+
+            // Generate payout ID
+            const timestamp = Date.now().toString(36).toUpperCase();
+            const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+            const payoutId = `PAY-${timestamp}-${random}`;
+            const payoutObjectId = new mongoose.Types.ObjectId();
+
+            // Determine status
+            const status = selectPayoutStatus();
+            const createdAt = subDays(new Date(), randomInt(1, 30));
+
+            // Create payout record
+            const payoutData: any = {
+                _id: payoutObjectId,
+                payoutId,
+                company: company._id,
+                salesRepresentative: salesRep._id,
+                payoutType: 'commission',
+                commissionTransactions: transactions.map(t => t._id),
+                totalAmount,
+                tdsDeducted,
+                netAmount,
+                status,
+                payoutDate: createdAt,
                 metadata: {
-                    source: 'cod_remittance_seeder',
-                    remittanceId: rem.remittanceId
+                    source: 'commission_payout_seeder',
+                    transactionCount: transactions.length,
+                    salesRepName: salesRep.user?.name || 'Unknown',
                 },
-                createdAt: rem.createdAt,
-                updatedAt: rem.updatedAt
+                createdAt,
+                updatedAt: createdAt,
             };
+
+            // Add status-specific fields
+            if (['processing', 'completed', 'failed'].includes(status)) {
+                // Add Razorpay mock data
+                const razorpayPayoutId = `payout_${Math.random().toString(36).substring(2, 15)}`;
+                payoutData.razorpay = {
+                    payoutId: razorpayPayoutId,
+                    fundAccountId: salesRep.razorpayFundAccountId || `fa_${Math.random().toString(36).substring(2, 15)}`,
+                    status: status === 'completed' ? 'processed' : status,
+                };
+            }
+
+            if (status === 'completed') {
+                payoutData.processedAt = new Date(createdAt.getTime() + randomInt(1, 5) * 24 * 60 * 60 * 1000);
+                payoutData.razorpay.utr = `UTR${Math.random().toString(36).substring(2, 15).toUpperCase()}`;
+            }
+
+            if (status === 'failed') {
+                payoutData.failedAt = new Date(createdAt.getTime() + randomInt(1, 3) * 24 * 60 * 60 * 1000);
+                payoutData.razorpay.failureReason = selectRandom([
+                    'Insufficient balance',
+                    'Invalid bank account',
+                    'Transaction declined by bank',
+                    'Account frozen',
+                ]);
+                payoutData.retryCount = randomInt(1, 3);
+            }
 
             payouts.push(payoutData);
 
-            // Store update for remittance to link back
-            remittanceUpdates.push({
-                updateOne: {
-                    filter: { _id: rem._id },
-                    update: { $set: { 'payout.payoutId': payoutId } } // Assuming we can store internal ID somewhere or just rely on new model
-                    // The request said: Update 15-cod-remittances.seeder.ts (store payoutId reference). 
-                    // Current CODRemittance model has `payout` object which has `razorpayPayoutId`. 
-                    // It might NOT have a field for internal Payout ID.
-                    // But Payout model has `codRemittanceId`, so we can traverse backwards.
-                }
-            });
+            // Prepare transaction updates to link them to this payout
+            for (const txn of transactions) {
+                transactionUpdates.push({
+                    updateOne: {
+                        filter: { _id: txn._id },
+                        update: {
+                            $set: {
+                                payoutBatch: payoutObjectId,
+                            }
+                        },
+                    },
+                });
+            }
         }
 
+        // Insert payouts
         if (payouts.length > 0) {
-            await (Payout as any).insertMany(payouts); // Cast to any to avoid strict type issues if interface update not fully propagated
+            await Payout.insertMany(payouts);
+
+            // Update transactions with payout batch references
+            if (transactionUpdates.length > 0) {
+                await CommissionTransaction.bulkWrite(transactionUpdates);
+            }
+
+            logger.complete('Payouts', payouts.length, timer.elapsed());
+            logger.table({
+                'Total Payouts': payouts.length,
+                'Total Transactions': eligibleTransactions.length,
+                'Sales Representatives': transactionsBySalesRep.size,
+            });
+        } else {
+            logger.warn('No payouts created - all transactions had invalid amounts');
         }
-
-        // We could update Remittance if there was a field, but if not, Payout->Remittance link is enough.
-        // User said "Update 15-cod-remittances.seeder.ts (store payoutId reference)".
-        // Since I can't easily modify CODRemittance model right now (it wasn't in list but likely exists),
-        // I will assume the backward link is what's most important.
-
-        logger.complete('Payouts', payouts.length, timer.elapsed());
 
     } catch (error) {
         logger.error('Failed to seed payouts:', error);

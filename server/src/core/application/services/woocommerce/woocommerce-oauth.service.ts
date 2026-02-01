@@ -216,7 +216,7 @@ export default class WooCommerceOAuthService {
         consumerSecret: store.decryptConsumerSecret(),
       });
 
-      const appUrl = process.env.APP_URL || 'https://api.shipcrowd.com';
+      const appUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
       const results: WebhookRegistrationResult[] = [];
 
       for (const topic of WEBHOOK_TOPICS) {

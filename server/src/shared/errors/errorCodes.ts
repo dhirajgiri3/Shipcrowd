@@ -27,6 +27,9 @@ export enum ErrorCode {
     AUTHZ_INSUFFICIENT_PERMISSIONS = 'AUTHZ_INSUFFICIENT_PERMISSIONS',
     AUTHZ_ROLE_REQUIRED = 'AUTHZ_ROLE_REQUIRED',
 
+    // Pricing errors
+    PRC_STRICT_PRICING_VIOLATION = 'PRC_STRICT_PRICING_VIOLATION',
+
     // Validation errors (VAL_)
     VALIDATION_ERROR = 'VALIDATION_ERROR',
     VAL_INVALID_INPUT = 'VAL_INVALID_INPUT',
@@ -53,12 +56,14 @@ export enum ErrorCode {
     BIZ_ORDER_NUMBER_GENERATION_FAILED = 'BIZ_ORDER_NUMBER_GENERATION_FAILED',
     BIZ_CONCURRENT_MODIFICATION = 'BIZ_CONCURRENT_MODIFICATION',
     BIZ_SETUP_FAILED = 'BIZ_SETUP_FAILED',
+    BIZ_SETUP_REQUIRED = 'BIZ_SETUP_REQUIRED', // Onboarding incomplete - company setup needed
 
     // Financial errors (BIZ_)
     BIZ_INSUFFICIENT_BALANCE = 'BIZ_INSUFFICIENT_BALANCE',
     BIZ_WALLET_TRANSACTION_FAILED = 'BIZ_WALLET_TRANSACTION_FAILED',
     BIZ_COD_REMITTANCE_FAILED = 'BIZ_COD_REMITTANCE_FAILED',
     BIZ_PAYOUT_FAILED = 'BIZ_PAYOUT_FAILED',
+    BIZ_RISK_CHECK_FAILED = 'BIZ_RISK_CHECK_FAILED',
 
     // Concurrency errors (BIZ_)
     BIZ_VERSION_CONFLICT = 'BIZ_VERSION_CONFLICT',
@@ -136,6 +141,9 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS]: 403,
     [ErrorCode.AUTHZ_ROLE_REQUIRED]: 403,
 
+    // Pricing errors
+    [ErrorCode.PRC_STRICT_PRICING_VIOLATION]: 400,
+
     // Validation errors (400)
     [ErrorCode.VALIDATION_ERROR]: 400,
     [ErrorCode.VAL_INVALID_INPUT]: 400,
@@ -162,10 +170,12 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.BIZ_ORDER_NUMBER_GENERATION_FAILED]: 500,
     [ErrorCode.BIZ_CONCURRENT_MODIFICATION]: 409,
     [ErrorCode.BIZ_SETUP_FAILED]: 500,
+    [ErrorCode.BIZ_SETUP_REQUIRED]: 403, // Setup incomplete - forbidden until onboarding complete
     [ErrorCode.BIZ_INSUFFICIENT_BALANCE]: 400,
     [ErrorCode.BIZ_WALLET_TRANSACTION_FAILED]: 500,
     [ErrorCode.BIZ_COD_REMITTANCE_FAILED]: 500,
     [ErrorCode.BIZ_PAYOUT_FAILED]: 500,
+    [ErrorCode.BIZ_RISK_CHECK_FAILED]: 400,
 
     // Concurrency errors (409)
     [ErrorCode.BIZ_VERSION_CONFLICT]: 409,
@@ -193,7 +203,7 @@ export const errorStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.RES_KYC_SETUP_FAILED]: 500,
     [ErrorCode.RES_KYC_VERSION_CONFLICT]: 409,
     [ErrorCode.RES_KYC_OPTIMISTIC_LOCK_FAILURE]: 409,
-    
+
     // External service errors (502/503)
     [ErrorCode.EXT_SERVICE_UNAVAILABLE]: 503,
     [ErrorCode.EXT_SERVICE_ERROR]: 502,

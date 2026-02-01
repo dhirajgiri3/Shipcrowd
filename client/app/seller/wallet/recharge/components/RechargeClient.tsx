@@ -2,13 +2,13 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import Script from 'next/script';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Wallet,
-    Plus,
     CreditCard,
     Building2,
     QrCode,
@@ -17,13 +17,17 @@ import {
     IndianRupee,
     Gift,
     Zap,
-    Clock,
     Shield
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency } from '@/src/lib/utils';
 import Link from 'next/link';
+import { TruckLoader } from '@/src/components/ui';
+
+// API Hooks
+import { useWalletBalance, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
+import { useProfile } from '@/src/core/api/hooks/settings/useProfile';
 
 const quickAmounts = [1000, 2000, 5000, 10000, 25000, 50000];
 
@@ -33,7 +37,8 @@ const paymentMethods = [
     { id: 'netbanking', name: 'Net Banking', description: 'All major banks', icon: Building2 },
 ];
 
-// Mock promo codes
+// Mock promo codes (Strategy: Keep mocks for non-critical features like promos for now, unless API exists)
+// Mock promo codes (Strategy: Keep mocks for non-critical features like promos for now, unless API exists)
 const mockPromoCodes = [
     { code: 'SHIP50', discount: 50, type: 'flat', minAmount: 2000 },
     { code: 'FIRST10', discount: 10, type: 'percent', minAmount: 1000, maxDiscount: 500 },
@@ -44,10 +49,15 @@ export function RechargeClient() {
     const [selectedMethod, setSelectedMethod] = useState('upi');
     const [promoCode, setPromoCode] = useState('');
     const [appliedPromo, setAppliedPromo] = useState<typeof mockPromoCodes[0] | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
+
+    // API Hooks
+    const { data: balanceData } = useWalletBalance();
+    const { mutate: rechargeWallet, isPending: isRecharging } = useRechargeWallet();
+    const { data: profile } = useProfile();
     const { addToast } = useToast();
 
-    const currentBalance = 24500;
+    const currentBalance = balanceData?.balance || 0;
 
     const handleQuickAmount = (value: number) => {
         setAmount(value.toString());
@@ -74,6 +84,12 @@ export function RechargeClient() {
 
     const calculateTotal = () => {
         const baseAmount = Number(amount) || 0;
+        // Note: For wallet recharge, usually promos give EXTRA credit, not discount on payment.
+        // But following existing logic: user pays LESS for same credit? Or pays SAME for MORE credit?
+        // Standard wallet logic: Pay X, Get X + Bonus. 
+        // Current logic implies: Pay X - Discount. 
+        // We will assume "Pay calculated total, get 'amount' credit".
+
         if (appliedPromo) {
             if (appliedPromo.type === 'flat') {
                 return Math.max(0, baseAmount - appliedPromo.discount);
@@ -91,15 +107,61 @@ export function RechargeClient() {
             addToast('Minimum recharge amount is ₹100', 'warning');
             return;
         }
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            addToast('Redirecting to payment gateway...', 'info');
-        }, 1000);
+
+        if (!isRazorpayLoaded) {
+            addToast('Payment gateway failed to load. Please refresh.', 'error');
+            return;
+        }
+
+        const payAmount = calculateTotal();
+
+        // Initialize Razorpay Options
+        const options: RazorpayOptions = {
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_1234567890',
+            amount: payAmount * 100, // Amount in paise
+            currency: "INR",
+            name: "Shipcrowd Logistics",
+            description: "Wallet Recharge",
+            image: "https://shipcrowd.com/logo.png",
+            order_id: "", // Backend does not pre-create order yet, use empty string to satisfy type
+            handler: function (response: any) {
+                // On success, verify/credit on backend
+                rechargeWallet(
+                    {
+                        amount: Number(amount), // Credit the original requested amount
+                        paymentId: response.razorpay_payment_id,
+                    },
+                    {
+                        onSuccess: () => {
+                            setAmount('');
+                            setAppliedPromo(null);
+                            setPromoCode('');
+                        }
+                    }
+                );
+            },
+            prefill: {
+                name: profile?.name || "",
+                email: profile?.email || "",
+                contact: profile?.phone || ""
+            },
+            theme: {
+                color: "#2563EB"
+            }
+        };
+
+        const rzp1 = new window.Razorpay(options);
+        rzp1.open();
     };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            <Script
+                id="razorpay-checkout-js"
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                onLoad={() => setIsRazorpayLoaded(true)}
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
@@ -111,7 +173,7 @@ export function RechargeClient() {
                         Add funds to your wallet for shipping
                     </p>
                 </div>
-                <Link href="/seller/financials">
+                <Link href="/seller/wallet">
                     <Button variant="outline">View Transactions</Button>
                 </Link>
             </div>
@@ -300,7 +362,7 @@ export function RechargeClient() {
 
                             <div className="border-t pt-4">
                                 <div className="flex justify-between text-lg font-bold">
-                                    <span>Total</span>
+                                    <span>Total Pay</span>
                                     <span>{formatCurrency(calculateTotal())}</span>
                                 </div>
                             </div>
@@ -308,11 +370,11 @@ export function RechargeClient() {
                             <Button
                                 className="w-full h-12"
                                 onClick={handleProceed}
-                                isLoading={isLoading}
-                                disabled={!amount || Number(amount) < 100}
+                                isLoading={isRecharging}
+                                disabled={!amount || Number(amount) < 100 || isRecharging}
                             >
                                 <Zap className="h-4 w-4 mr-2" />
-                                Proceed to Pay
+                                {isRecharging ? 'Processing...' : 'Proceed to Pay'}
                                 <ArrowRight className="h-4 w-4 ml-2" />
                             </Button>
 
@@ -324,6 +386,14 @@ export function RechargeClient() {
                     </Card>
                 </div>
             </div>
+            {/* Truck Loader Overlay */}
+            {isRecharging && (
+                <TruckLoader
+                    message="Verifying Payment..."
+                    subMessage="Updating your wallet balance"
+                    fullScreen={true}
+                />
+            )}
         </div>
     );
 }

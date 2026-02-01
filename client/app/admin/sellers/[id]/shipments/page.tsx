@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { ChevronLeft, Search, Download, Package } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/src/core/api/client';
+import { apiClient } from '@/src/core/api';
 
 interface Shipment {
     _id: string;

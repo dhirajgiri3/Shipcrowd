@@ -6,6 +6,8 @@ export interface IZone extends Document {
   name: string;
   companyId: mongoose.Types.ObjectId;
   postalCodes: string[];
+  zoneType?: 'standard' | 'custom'; // Hybrid zones: standard (A-E) or custom
+  standardZoneCode?: 'zoneA' | 'zoneB' | 'zoneC' | 'zoneD' | 'zoneE'; // For standard zones
   geographicalBoundaries?: {
     type: string;
     coordinates: number[][][];
@@ -45,6 +47,16 @@ const ZoneSchema = new Schema<IZone>(
         arrayLimit(10000),
         'Maximum 10,000 postal codes per zone (allows national zones while preventing index bloat)',
       ],
+    },
+    zoneType: {
+      type: String,
+      enum: ['standard', 'custom'],
+      default: 'custom',
+    },
+    standardZoneCode: {
+      type: String,
+      enum: ['zoneA', 'zoneB', 'zoneC', 'zoneD', 'zoneE'],
+      required: false,
     },
     geographicalBoundaries: {
       type: {
@@ -110,6 +122,7 @@ ZoneSchema.index({ isDeleted: 1 });
 // Compound indexes for common query patterns
 ZoneSchema.index({ companyId: 1, name: 1 }); // Zone lookup by company
 ZoneSchema.index({ companyId: 1, isDeleted: 1 }); // Active zones listing
+ZoneSchema.index({ companyId: 1, zoneType: 1, standardZoneCode: 1 }); // Standard zone lookup
 
 // Geospatial index for location-based queries
 ZoneSchema.index({ geographicalBoundaries: '2dsphere' }, { sparse: true }); // Geo queries for zone matching

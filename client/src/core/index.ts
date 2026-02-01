@@ -8,7 +8,7 @@
 export * from './api';
 
 // Configuration
-export * from './config/query-config';
+export * from './api/config/query-client';
 
 // Providers
 export { Providers } from './providers/query-provider';

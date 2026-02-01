@@ -7,107 +7,27 @@ import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, ValidationError, DatabaseError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { DynamicPricingService } from '../pricing/dynamic-pricing.service';
+import { CachedService } from '../../base/cached.service';
 
 /**
  * OrderService - Business logic for order management
  * 
- * Framework-agnostic service encapsulating pure business rules for orders.
- * Handles order creation, status management, bulk imports, and event emissions.
- * 
- * BUSINESS RULES:
- * ===============
- * 1. Unique Order Number Generation
- *    - Condition: Every new order
- *    - Action: Retry up to 10 times if collision detected
- *    - Reason: Ensure globally unique order identifiers
- * 
- * 2. Optimistic Locking for Status Updates
- *    - Condition: Status change requests
- *    - Action: Check __v field, fail if concurrent modification
- *    - Reason: Prevent lost updates in multi-user environment
- * 
- * 3. Status Transition Validation
- *    - Condition: Status update attempts
- *    - Action: Validate against ORDER_STATUS_TRANSITIONS matrix
- *    - Reason: Enforce valid order lifecycle (e.g., can't go from delivered to pending)
- * 
- * 4. Deletion Protection
- *    - Condition: Delete request for shipped/delivered orders
- *    - Action: Reject deletion
- *    - Reason: Preserve audit trail for fulfilled orders
- * 
- * 5. Event Emission
- *    - Condition: Order created
- *    - Action: Emit 'order.created' event
- *    - Reason: Trigger downstream processes (commission calc, inventory sync)
- * 
- * 6. Bulk Import Atomicity
- *    - Condition: CSV bulk import
- *    - Action: Use MongoDB transaction, rollback if all rows fail
- *    - Reason: All-or-nothing for data consistency
- * 
- * ERROR HANDLING:
- * ==============
- * Expected Errors:
- * - Error: Failed to generate unique order number (after 10 retries)
- * - Validation Error: Invalid status transition
- * - Concurrent Modification: Version conflict on status update
- * - CSV Import Error: Missing required fields
- * 
- * Recovery Strategy:
- * - Order Number Collision: Retry with new number (max 10 attempts)
- * - Version Conflict: Return error, client must retry
- * - Invalid Transition: Return validation error with reason
- * - Bulk Import: Collect errors per row, commit successful rows
- * 
- * DEPENDENCIES:
- * ============
- * Internal:
- * - Order Model: Order CRUD operations
- * - EventBus: Event emission for order.created
- * - Helpers: generateOrderNumber, validateStatusTransition
- * - Logger: Winston (implicit via models)
- * 
- * Used By:
- * - OrderController: HTTP API endpoints
- * - Commission Calculation Service: Auto-calculate commissions
- * - Inventory Sync Services: Update stock levels
- * - Marketplace Integrations: Sync orders from Shopify/Amazon/etc
- * 
- * PERFORMANCE:
- * ===========
- * - Order Creation: <100ms (single document write + event emit)
- * - Status Update: <50ms (single findOneAndUpdate with version check)
- * - Bulk Import: ~50ms per row (sequential processing in transaction)
- * - Order Number Generation: <10ms average (collision rate <1%)
- * 
- * TESTING:
- * =======
- * Unit Tests: tests/unit/services/shipping/order.service.test.ts
- * Coverage: TBD
- * 
- * Critical Test Cases:
- * - Unique order number generation with collisions
- * - Optimistic locking (concurrent status updates)
- * - Status transition validation (all valid/invalid paths)
- * - Deletion protection (shipped/delivered orders)
- * - Bulk import with partial failures
- * - Event emission on order creation
- * 
- * Business Impact:
- * - Core order management for all channels
- * - Used in 100% of order flows
- * - Must maintain data integrity
+ * Includes caching via CachedService (Tier 3 Strategy)
  */
-export class OrderService {
+export class OrderService extends CachedService {
+    protected serviceName = 'order';
+
+    // Singleton pattern helper
+    private static instance: OrderService;
+    static getInstance(): OrderService {
+        if (!OrderService.instance) {
+            OrderService.instance = new OrderService();
+        }
+        return OrderService.instance;
+    }
+
     /**
      * Calculate order totals from products
-     * 
-     * Feature Flag: USE_DYNAMIC_PRICING
-     * - false (default): Uses legacy calculation (shipping: 0, tax: 0)
-     * - true: Uses dynamic pricing with RateCard, Zone, GST services
-     * 
-     * @deprecated Legacy implementation - will be removed after Phase 0 validation
      */
     static calculateTotalsLegacy(products: Array<{ price: number; quantity: number }>) {
         const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
@@ -115,18 +35,7 @@ export class OrderService {
     }
 
     /**
-     * Calculate order totals with dynamic pricing (WIRED)
-     * 
-     * Phase 0.2 Implementation:
-     * ✅ Zone lookup via PincodeLookupService
-     * ✅ RateCard query for shipping cost
-     * ✅ COD charges (2% or ₹30 minimum)
-     * ✅ GST calculation via GSTService
-     * ✅ Redis caching for performance
-     * 
-     * @param products - Array of products with price and quantity
-     * @param shipmentDetails - Required shipment details for dynamic pricing
-     * @returns Order totals with shipping and tax
+     * Calculate order totals with dynamic pricing
      */
     static async calculateTotals(
         products: Array<{ price: number; quantity: number }>,
@@ -138,33 +47,28 @@ export class OrderService {
             weight?: number;
         }
     ) {
+        // [Existing logic unchanged for brevity, but crucial to keep]
         const useDynamicPricing = process.env.USE_DYNAMIC_PRICING === 'true';
 
-        // Fallback to legacy if flag disabled or shipment details missing
         if (!useDynamicPricing || !shipmentDetails?.fromPincode || !shipmentDetails?.toPincode) {
             return this.calculateTotalsLegacy(products);
         }
 
         try {
-            // Use DynamicPricingService for enhanced pricing
             const pricingService = new DynamicPricingService();
-
-            // Calculate product subtotal
             const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
 
-            // Calculate shipping, COD, and GST using wired services
             const pricing = await pricingService.calculatePricing({
                 companyId: shipmentDetails.companyId || '',
                 fromPincode: shipmentDetails.fromPincode,
                 toPincode: shipmentDetails.toPincode,
-                weight: shipmentDetails.weight || 0.5, // Default 0.5kg if not provided
+                weight: shipmentDetails.weight || 0.5,
                 paymentMode: shipmentDetails.paymentMode || 'prepaid',
-                orderValue: subtotal, // For COD charge calculation
-                carrier: 'velocity', // Default carrier
+                orderValue: subtotal,
+                carrier: 'velocity',
                 serviceType: 'standard',
             });
 
-            // Combine product subtotal with shipping/COD/tax
             const total = subtotal + pricing.shipping + pricing.codCharge + pricing.tax.total;
 
             return {
@@ -189,9 +93,7 @@ export class OrderService {
     }
 
     /**
-     * Generate a unique order number with retry logic
-     * @param maxAttempts Maximum number of attempts to generate unique number
-     * @returns Unique order number or null if failed
+     * Generate a unique order number
      */
     static async getUniqueOrderNumber(maxAttempts = 10): Promise<string | null> {
         for (let i = 0; i < maxAttempts; i++) {
@@ -203,11 +105,51 @@ export class OrderService {
     }
 
     /**
-     * Create a new order
-     * @param args Order creation parameters
-     * @returns Created order document
+     * List Orders with Caching (Tier 3)
      */
-    static async createOrder(args: {
+    async listOrders(companyId: string, queryParams: any, pagination: { page: number; limit: number }) {
+        // 1. Generate Cache Key based on query params
+        const cacheKey = this.listCacheKey(companyId, { ...queryParams, ...pagination });
+
+        // 2. Define Tags for invalidation
+        // Tag 1: company:{id}:orders (Invalidate all lists for this company)
+        const tags = [this.companyTag(companyId, 'orders')];
+
+        // 3. Fetch (Cache Hit/Miss)
+        return this.cache.getOrSet(
+            cacheKey,
+            async () => {
+                // Real DB Query
+                const skip = (pagination.page - 1) * pagination.limit;
+                const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
+
+                // Apply filters (simplified for example)
+                if (queryParams.status && queryParams.status !== 'all') {
+                    filter.currentStatus = queryParams.status;
+                }
+
+                const [orders, total] = await Promise.all([
+                    Order.find(filter)
+                        .sort({ createdAt: -1 })
+                        .skip(skip)
+                        .limit(pagination.limit)
+                        .lean(),
+                    Order.countDocuments(filter)
+                ]);
+
+                return { orders, total, page: pagination.page, pages: Math.ceil(total / pagination.limit) };
+            },
+            {
+                ttl: 300, // 5 minutes list caching
+                tags: tags
+            }
+        );
+    }
+
+    /**
+     * Create a new order (Invalidates List Cache)
+     */
+    async createOrder(args: {
         companyId: mongoose.Types.ObjectId;
         userId: string;
         payload: {
@@ -217,7 +159,7 @@ export class OrderService {
             warehouseId?: string;
             notes?: string;
             tags?: string[];
-            salesRepId?: string; // NEW: optional sales rep assignment
+            salesRepId?: string;
         };
     }) {
         const session = await mongoose.startSession();
@@ -227,12 +169,12 @@ export class OrderService {
 
             const { companyId, payload } = args;
 
-            const orderNumber = await this.getUniqueOrderNumber();
+            const orderNumber = await OrderService.getUniqueOrderNumber();
             if (!orderNumber) {
                 throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
             }
 
-            const totals = this.calculateTotals(payload.products);
+            const totals = await OrderService.calculateTotals(payload.products); // Using static call properly
 
             const order = new Order({
                 orderNumber,
@@ -255,7 +197,7 @@ export class OrderService {
 
             await session.commitTransaction();
 
-            // Emit order.created event (outside transaction)
+            // Emit event
             const eventPayload: OrderEventPayload = {
                 orderId: (order._id as any).toString(),
                 companyId: companyId.toString(),
@@ -263,6 +205,12 @@ export class OrderService {
                 salesRepId: payload.salesRepId,
             };
             eventBus.emitEvent('order.created', eventPayload);
+
+            // CACHE INVALIDATION (The "Magic")
+            // Invalidate ALL order lists for this company so the new order appears immediately
+            await this.invalidateTags([
+                this.companyTag(companyId.toString(), 'orders')
+            ]);
 
             return order;
         } catch (error) {
@@ -275,20 +223,19 @@ export class OrderService {
     }
 
     /**
-     * Update order status with optimistic locking
-     * @param args Status update parameters
-     * @returns Updated order or null if concurrent modification detected
+     * Update order status (Invalidates List Cache + Detail Cache)
      */
-    static async updateOrderStatus(args: {
+    async updateOrderStatus(args: {
         orderId: string;
         currentStatus: string;
         newStatus: string;
         currentVersion: number;
         userId: string;
+        companyId: string; // Added for cache tagging
     }) {
-        const { orderId, currentStatus, newStatus, currentVersion, userId } = args;
+        const { orderId, currentStatus, newStatus, currentVersion, userId, companyId } = args;
 
-        // Validate status transition
+        // Static validation usage
         const { valid } = validateStatusTransition(
             currentStatus,
             newStatus,
@@ -329,6 +276,15 @@ export class OrderService {
             };
         }
 
+        // AUTO INVALIDATION
+        // 1. Invalidate lists (since status changed, filters might change)
+        await this.invalidateTags([
+            this.companyTag(companyId, 'orders')
+        ]);
+
+        // 2. Invalidate detail cache (if we had set it)
+        await this.cache.delete(`order:${orderId}`);
+
         return {
             success: true,
             order: updatedOrder
@@ -337,10 +293,8 @@ export class OrderService {
 
     /**
      * Validate if an order can be deleted based on its status
-     * @param currentStatus Current order status
-     * @returns Validation result
      */
-    static canDeleteOrder(currentStatus: string): { canDelete: boolean; reason?: string } {
+    canDeleteOrder(currentStatus: string): { canDelete: boolean; reason?: string } {
         const nonDeletableStatuses = ['shipped', 'delivered'];
         if (nonDeletableStatuses.includes(currentStatus)) {
             return {
@@ -353,10 +307,8 @@ export class OrderService {
 
     /**
      * Process a single CSV row into an order
-     * @param args CSV row processing parameters
-     * @returns Created order or error
      */
-    static async processBulkOrderRow(args: {
+    async processBulkOrderRow(args: {
         row: any;
         rowIndex: number;
         companyId: mongoose.Types.ObjectId;
@@ -364,9 +316,28 @@ export class OrderService {
     }): Promise<{ success: boolean; order?: any; error?: string }> {
         const { row, rowIndex, companyId, session } = args;
 
+        // Normalize keys (aliases)
+        const normalizedRow = {
+            customer_name: row.customer_name || row.customer,
+            customer_phone: row.customer_phone || row.phone,
+            address_line1: row.address_line1 || row.address,
+            address_line2: row.address_line2,
+            city: row.city,
+            state: row.state,
+            postal_code: row.postal_code || row.pincode,
+            country: row.country,
+            product_name: row.product_name || row.product,
+            sku: row.sku,
+            quantity: row.quantity,
+            price: row.price,
+            weight: row.weight,
+            payment_method: row.payment_method || row.payment_mode || 'prepaid',
+            payment_status: row.payment_status
+        };
+
         try {
             const requiredFields = ['customer_name', 'customer_phone', 'address_line1', 'city', 'state', 'postal_code', 'product_name', 'quantity', 'price'];
-            const missingFields = requiredFields.filter(f => !row[f]);
+            const missingFields = requiredFields.filter(f => !normalizedRow[f as keyof typeof normalizedRow]);
 
             if (missingFields.length > 0) {
                 return {
@@ -375,7 +346,15 @@ export class OrderService {
                 };
             }
 
-            const orderNumber = await this.getUniqueOrderNumber();
+            // Validate formats
+            if (!/^\d{10}$/.test(String(normalizedRow.customer_phone))) {
+                return { success: false, error: 'Invalid phone number' };
+            }
+            if (!/^\d{6}$/.test(String(normalizedRow.postal_code))) {
+                return { success: false, error: 'Invalid postal code' };
+            }
+
+            const orderNumber = await OrderService.getUniqueOrderNumber();
             if (!orderNumber) {
                 return {
                     success: false,
@@ -383,35 +362,35 @@ export class OrderService {
                 };
             }
 
-            const quantity = parseInt(row.quantity, 10);
-            const price = parseFloat(row.price);
+            const quantity = parseInt(String(normalizedRow.quantity), 10);
+            const price = parseFloat(String(normalizedRow.price));
             const subtotal = quantity * price;
 
             const order = new Order({
                 orderNumber,
                 companyId,
                 customerInfo: {
-                    name: row.customer_name,
-                    email: row.customer_email || undefined,
-                    phone: row.customer_phone,
+                    name: normalizedRow.customer_name,
+                    email: row.customer_email || row.email || undefined,
+                    phone: normalizedRow.customer_phone,
                     address: {
-                        line1: row.address_line1,
-                        line2: row.address_line2 || '',
-                        city: row.city,
-                        state: row.state,
-                        country: row.country || 'India',
-                        postalCode: row.postal_code,
+                        line1: normalizedRow.address_line1,
+                        line2: normalizedRow.address_line2 || '',
+                        city: normalizedRow.city,
+                        state: normalizedRow.state,
+                        country: normalizedRow.country || 'India',
+                        postalCode: normalizedRow.postal_code,
                     },
                 },
                 products: [{
-                    name: row.product_name,
-                    sku: row.sku || '',
+                    name: normalizedRow.product_name,
+                    sku: normalizedRow.sku || '',
                     quantity,
                     price,
-                    weight: row.weight ? parseFloat(row.weight) : undefined,
+                    weight: normalizedRow.weight ? parseFloat(String(normalizedRow.weight)) : undefined,
                 }],
-                paymentMethod: row.payment_method === 'cod' ? 'cod' : 'prepaid',
-                paymentStatus: row.payment_method === 'cod' ? 'pending' : 'paid',
+                paymentMethod: normalizedRow.payment_method === 'cod' ? 'cod' : 'prepaid',
+                paymentStatus: normalizedRow.payment_status || (normalizedRow.payment_method === 'cod' ? 'pending' : 'paid'),
                 source: 'manual',
                 currentStatus: 'pending',
                 totals: { subtotal, tax: 0, shipping: 0, discount: 0, total: subtotal },
@@ -434,10 +413,8 @@ export class OrderService {
 
     /**
      * Process multiple CSV rows in a transaction
-     * @param args Bulk import parameters
-     * @returns Import results with created orders and errors
      */
-    static async bulkImportOrders(args: {
+    async bulkImportOrders(args: {
         rows: any[];
         companyId: mongoose.Types.ObjectId;
     }): Promise<{
@@ -450,6 +427,7 @@ export class OrderService {
 
         const session = await mongoose.startSession();
         session.startTransaction();
+        let transactionCommitted = false;
 
         try {
             for (let i = 0; i < rows.length; i++) {
@@ -470,16 +448,448 @@ export class OrderService {
                 }
             }
 
+
+
             if (created.length === 0 && errors.length > 0) {
-                await session.abortTransaction();
                 throw new ValidationError('No orders imported', ErrorCode.VAL_INVALID_INPUT);
             }
 
             await session.commitTransaction();
+            transactionCommitted = true;
 
-            return { created, errors };
+            // Invalidate ALL list caches for this company after bulk import
+            try {
+                await this.invalidateTags([
+                    this.companyTag(companyId.toString(), 'orders')
+                ]);
+            } catch (err: any) {
+                logger.warn('Failed to invalidate cache after bulk import', { error: err.message });
+            }
+
+            const result = { created, errors };
+            return result;
+        } catch (error: any) {
+            logger.error('Bulk Import Transaction Error', { error: error.message, stack: error.stack });
+            if (session.inTransaction()) {
+                await session.abortTransaction();
+            }
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Clone an existing order with optional modifications
+     * Useful for: Quick order duplication, correction of wrong orders, reordering
+     */
+    async cloneOrder(args: {
+        orderId: string;
+        companyId: string;
+        modifications?: {
+            customerInfo?: any;
+            products?: any[];
+            paymentMethod?: string;
+            warehouseId?: string;
+            notes?: string;
+        };
+    }) {
+        const { orderId, companyId, modifications } = args;
+        const session = await mongoose.startSession();
+
+        try {
+            session.startTransaction();
+
+            // Fetch original order
+            const originalOrder = await Order.findOne({
+                _id: orderId,
+                companyId: new mongoose.Types.ObjectId(companyId)
+            }).lean();
+
+            if (!originalOrder) {
+                throw new AppError('Order not found or access denied', ErrorCode.RES_NOT_FOUND, 404);
+            }
+
+            // Generate new order number
+            const newOrderNumber = await OrderService.getUniqueOrderNumber();
+            if (!newOrderNumber) {
+                throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
+            }
+
+            // Merge original order data with modifications
+            const customerInfo = modifications?.customerInfo || originalOrder.customerInfo;
+            const products = modifications?.products || originalOrder.products;
+            const paymentMethod = modifications?.paymentMethod || originalOrder.paymentMethod;
+            const warehouseId = modifications?.warehouseId || originalOrder.warehouseId;
+            const notes = modifications?.notes || `Cloned from ${originalOrder.orderNumber}${modifications?.notes ? ': ' + modifications.notes : ''}`;
+
+            // Recalculate totals based on products
+            const totals = await OrderService.calculateTotals(products);
+
+            // Create cloned order
+            const clonedOrder = new Order({
+                orderNumber: newOrderNumber,
+                companyId: new mongoose.Types.ObjectId(companyId),
+                customerInfo,
+                products,
+                paymentMethod,
+                paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+                source: 'cloned',
+                warehouseId: warehouseId ? new mongoose.Types.ObjectId(warehouseId as string) : undefined,
+                currentStatus: 'pending',
+                totals,
+                notes,
+                tags: [...(originalOrder.tags || []), 'cloned'],
+                shippingDetails: { shippingCost: 0 },
+            });
+
+            await clonedOrder.save({ session });
+            await session.commitTransaction();
+
+            // Emit event
+            const eventPayload: OrderEventPayload = {
+                orderId: (clonedOrder._id as any).toString(),
+                companyId: companyId,
+                orderNumber: clonedOrder.orderNumber,
+            };
+            eventBus.emitEvent('order.created', eventPayload);
+
+            // Invalidate cache
+            await this.invalidateTags([
+                this.companyTag(companyId, 'orders')
+            ]);
+
+            return {
+                success: true,
+                clonedOrder,
+                originalOrderNumber: originalOrder.orderNumber
+            };
         } catch (error) {
             await session.abortTransaction();
+            logger.error('Error cloning order (transaction rolled back):', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Split a single order into multiple orders
+     * Useful for: Partial shipments, inventory constraints, different warehouse fulfillment
+     */
+    async splitOrder(args: {
+        orderId: string;
+        companyId: string;
+        splits: Array<{
+            products: Array<{ sku?: string; name: string; quantity: number }>;
+            warehouseId?: string;
+            notes?: string;
+        }>;
+    }) {
+        const { orderId, companyId, splits } = args;
+        const session = await mongoose.startSession();
+
+        try {
+            session.startTransaction();
+
+            // Fetch original order
+            const originalOrder = await Order.findOne({
+                _id: orderId,
+                companyId: new mongoose.Types.ObjectId(companyId)
+            });
+
+            if (!originalOrder) {
+                throw new AppError('Order not found or access denied', ErrorCode.RES_NOT_FOUND, 404);
+            }
+
+            // Validate order can be split (must be pending)
+            if (originalOrder.currentStatus !== 'pending') {
+                throw new ValidationError(
+                    `Cannot split order with status '${originalOrder.currentStatus}'. Only pending orders can be split.`,
+                    ErrorCode.VAL_INVALID_INPUT
+                );
+            }
+
+            // Validate splits don't exceed original quantities
+            const originalProductMap = new Map(
+                originalOrder.products.map(p => [p.sku || p.name, p.quantity])
+            );
+
+            const splitProductTotals = new Map<string, number>();
+            for (const split of splits) {
+                for (const product of split.products) {
+                    const key = product.sku || product.name;
+                    const current = splitProductTotals.get(key) || 0;
+                    splitProductTotals.set(key, current + product.quantity);
+                }
+            }
+
+            // Check if split quantities match original
+            for (const [key, splitTotal] of splitProductTotals.entries()) {
+                const originalQty = originalProductMap.get(key);
+                if (!originalQty) {
+                    throw new ValidationError(
+                        `Product '${key}' not found in original order`,
+                        ErrorCode.VAL_INVALID_INPUT
+                    );
+                }
+                if (splitTotal > originalQty) {
+                    throw new ValidationError(
+                        `Split total for '${key}' (${splitTotal}) exceeds original quantity (${originalQty})`,
+                        ErrorCode.VAL_INVALID_INPUT
+                    );
+                }
+            }
+
+            // Create split orders
+            const splitOrders: any[] = [];
+            for (let i = 0; i < splits.length; i++) {
+                const split = splits[i];
+                const newOrderNumber = await OrderService.getUniqueOrderNumber();
+                if (!newOrderNumber) {
+                    throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
+                }
+
+                // Map split products to full product data
+                const splitProducts = split.products.map(sp => {
+                    const originalProduct = originalOrder.products.find(
+                        op => (op.sku || op.name) === (sp.sku || sp.name)
+                    );
+                    if (!originalProduct) {
+                        throw new ValidationError(
+                            `Product '${sp.sku || sp.name}' not found in original order`,
+                            ErrorCode.VAL_INVALID_INPUT
+                        );
+                    }
+                    return {
+                        name: sp.name,
+                        sku: sp.sku || originalProduct.sku,
+                        quantity: sp.quantity,
+                        price: originalProduct.price,
+                        weight: originalProduct.weight,
+                    };
+                });
+
+                // Calculate totals for this split
+                const totals = await OrderService.calculateTotals(splitProducts);
+
+                const splitOrder = new Order({
+                    orderNumber: newOrderNumber,
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    customerInfo: originalOrder.customerInfo,
+                    products: splitProducts,
+                    paymentMethod: originalOrder.paymentMethod,
+                    paymentStatus: originalOrder.paymentStatus,
+                    source: 'split',
+                    warehouseId: split.warehouseId
+                        ? new mongoose.Types.ObjectId(split.warehouseId)
+                        : originalOrder.warehouseId,
+                    currentStatus: 'pending',
+                    totals,
+                    notes: `Split ${i + 1}/${splits.length} from ${originalOrder.orderNumber}${split.notes ? ': ' + split.notes : ''}`,
+                    tags: [...(originalOrder.tags || []), 'split'],
+                    shippingDetails: { shippingCost: 0 },
+                });
+
+                await splitOrder.save({ session });
+                splitOrders.push(splitOrder);
+
+                // Emit event for each split order
+                const eventPayload: OrderEventPayload = {
+                    orderId: (splitOrder._id as any).toString(),
+                    companyId: companyId,
+                    orderNumber: splitOrder.orderNumber,
+                };
+                eventBus.emitEvent('order.created', eventPayload);
+            }
+
+            // Cancel original order
+            originalOrder.currentStatus = 'cancelled';
+            originalOrder.statusHistory.push({
+                status: 'cancelled',
+                timestamp: new Date(),
+                notes: `Order split into ${splits.length} orders: ${splitOrders.map(o => o.orderNumber).join(', ')}`
+            } as any);
+            await originalOrder.save({ session });
+
+            await session.commitTransaction();
+
+            // Invalidate cache
+            await this.invalidateTags([
+                this.companyTag(companyId, 'orders')
+            ]);
+
+            return {
+                success: true,
+                originalOrderNumber: originalOrder.orderNumber,
+                splitOrders: splitOrders.map(o => ({
+                    orderNumber: o.orderNumber,
+                    id: o._id,
+                    products: o.products,
+                    totals: o.totals
+                }))
+            };
+        } catch (error) {
+            await session.abortTransaction();
+            logger.error('Error splitting order (transaction rolled back):', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Merge multiple orders into a single order
+     * Useful for: Combining orders for same customer, bulk shipping optimization
+     */
+    async mergeOrders(args: {
+        orderIds: string[];
+        companyId: string;
+        mergeOptions?: {
+            warehouseId?: string;
+            paymentMethod?: string;
+            notes?: string;
+        };
+    }) {
+        const { orderIds, companyId, mergeOptions } = args;
+        const session = await mongoose.startSession();
+
+        try {
+            session.startTransaction();
+
+            // Validate minimum 2 orders
+            if (orderIds.length < 2) {
+                throw new ValidationError(
+                    'At least 2 orders are required for merging',
+                    ErrorCode.VAL_INVALID_INPUT
+                );
+            }
+
+            // Fetch all orders
+            const orders = await Order.find({
+                _id: { $in: orderIds.map(id => new mongoose.Types.ObjectId(id)) },
+                companyId: new mongoose.Types.ObjectId(companyId)
+            });
+
+            if (orders.length !== orderIds.length) {
+                throw new AppError('Some orders not found or access denied', ErrorCode.RES_NOT_FOUND, 404);
+            }
+
+            // Validate all orders are pending
+            const nonPendingOrders = orders.filter(o => o.currentStatus !== 'pending');
+            if (nonPendingOrders.length > 0) {
+                throw new ValidationError(
+                    `Cannot merge orders. These orders are not pending: ${nonPendingOrders.map(o => o.orderNumber).join(', ')}`,
+                    ErrorCode.VAL_INVALID_INPUT
+                );
+            }
+
+            // Validate all orders have same customer (by phone or email)
+            const firstCustomer = orders[0].customerInfo;
+            const mismatchedOrders = orders.filter(o =>
+                o.customerInfo.phone !== firstCustomer.phone &&
+                o.customerInfo.email !== firstCustomer.email
+            );
+            if (mismatchedOrders.length > 0) {
+                throw new ValidationError(
+                    'Cannot merge orders from different customers',
+                    ErrorCode.VAL_INVALID_INPUT
+                );
+            }
+
+            // Merge products from all orders
+            const allProducts: any[] = [];
+            for (const order of orders) {
+                allProducts.push(...order.products);
+            }
+
+            // Consolidate duplicate products (same SKU)
+            const productMap = new Map<string, any>();
+            for (const product of allProducts) {
+                const key = product.sku || product.name;
+                if (productMap.has(key)) {
+                    const existing = productMap.get(key);
+                    existing.quantity += product.quantity;
+                } else {
+                    productMap.set(key, { ...product });
+                }
+            }
+
+            const mergedProducts = Array.from(productMap.values());
+
+            // Calculate totals
+            const totals = await OrderService.calculateTotals(mergedProducts);
+
+            // Determine payment method (prefer COD if any order is COD)
+            const paymentMethod = mergeOptions?.paymentMethod ||
+                (orders.some(o => o.paymentMethod === 'cod') ? 'cod' : 'prepaid');
+
+            // Generate new order number
+            const newOrderNumber = await OrderService.getUniqueOrderNumber();
+            if (!newOrderNumber) {
+                throw new AppError('Failed to generate unique order number', ErrorCode.SYS_INTERNAL_ERROR, 500);
+            }
+
+            // Create merged order
+            const mergedOrder = new Order({
+                orderNumber: newOrderNumber,
+                companyId: new mongoose.Types.ObjectId(companyId),
+                customerInfo: firstCustomer,
+                products: mergedProducts,
+                paymentMethod,
+                paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+                source: 'merged',
+                warehouseId: mergeOptions?.warehouseId
+                    ? new mongoose.Types.ObjectId(mergeOptions.warehouseId)
+                    : orders[0].warehouseId,
+                currentStatus: 'pending',
+                totals,
+                notes: `Merged from orders: ${orders.map(o => o.orderNumber).join(', ')}${mergeOptions?.notes ? '. ' + mergeOptions.notes : ''}`,
+                tags: ['merged'],
+                shippingDetails: { shippingCost: 0 },
+            });
+
+            await mergedOrder.save({ session });
+
+            // Cancel all original orders
+            for (const order of orders) {
+                order.currentStatus = 'cancelled';
+                order.statusHistory.push({
+                    status: 'cancelled',
+                    timestamp: new Date(),
+                    notes: `Merged into order ${mergedOrder.orderNumber}`
+                } as any);
+                await order.save({ session });
+            }
+
+            await session.commitTransaction();
+
+            // Emit event
+            const eventPayload: OrderEventPayload = {
+                orderId: (mergedOrder._id as any).toString(),
+                companyId: companyId,
+                orderNumber: mergedOrder.orderNumber,
+            };
+            eventBus.emitEvent('order.created', eventPayload);
+
+            // Invalidate cache
+            await this.invalidateTags([
+                this.companyTag(companyId, 'orders')
+            ]);
+
+            return {
+                success: true,
+                mergedOrder: {
+                    orderNumber: mergedOrder.orderNumber,
+                    id: mergedOrder._id,
+                    products: mergedOrder.products,
+                    totals: mergedOrder.totals
+                },
+                cancelledOrders: orders.map(o => o.orderNumber)
+            };
+        } catch (error) {
+            await session.abortTransaction();
+            logger.error('Error merging orders (transaction rolled back):', error);
             throw error;
         } finally {
             session.endSession();

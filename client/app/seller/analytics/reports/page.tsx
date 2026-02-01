@@ -4,7 +4,7 @@
  * Page for building custom analytics reports.
  */
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { ReportBuilder } from '@/src/features/analytics/components/ReportBuilder';
 
 export default function AnalyticsReportsPage() {

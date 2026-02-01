@@ -4,7 +4,7 @@
  * Configure and manage webhooks for real-time event notifications.
  */
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { WebhooksManager } from '@/src/features/settings/components/WebhooksManager';
 
 export default function WebhooksPage() {

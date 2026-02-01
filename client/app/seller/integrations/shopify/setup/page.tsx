@@ -18,8 +18,7 @@ import {
     useInitiateOAuth,
     useTestConnection,
     useCreateIntegration,
-} from '@/src/core/api/hooks/useEcommerceIntegrations';
-import { toast } from 'sonner';
+} from '@/src/core/api/hooks/integrations/useEcommerceIntegrations';
 import {
     Store,
     Check,
@@ -34,7 +33,7 @@ import type {
     FieldMapping,
     ShopifyCredentials,
     SyncFrequency,
-} from '@/src/types/api/integrations.types';
+} from '@/src/types/api/integrations';
 
 const wizardSteps: WizardStep[] = [
     { id: 1, title: 'Store Details', description: 'Enter your Shopify store' },
@@ -206,7 +205,7 @@ export default function ShopifyIntegrationPage() {
             onStepChange={setCurrentStep}
             onClose={handleClose}
             title="Connect Shopify Store"
-            subtitle="Automatically sync your Shopify orders to ShipCrowd"
+            subtitle="Automatically sync your Shopify orders to Shipcrowd"
             canGoBack={currentStep > 1}
             canGoNext={canProceed()}
             onBack={handleBack}
@@ -282,7 +281,7 @@ export default function ShopifyIntegrationPage() {
                             Authenticate with Shopify
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400">
-                            Click the button below to authorize ShipCrowd to access your Shopify store
+                            Click the button below to authorize Shipcrowd to access your Shopify store
                         </p>
                     </div>
 
@@ -322,7 +321,7 @@ export default function ShopifyIntegrationPage() {
                                 </h4>
                                 <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                                     <li>1. You'll be redirected to Shopify to log in</li>
-                                    <li>2. Review the permissions ShipCrowd is requesting</li>
+                                    <li>2. Review the permissions Shipcrowd is requesting</li>
                                     <li>3. Click "Install app" to authorize</li>
                                     <li>4. You'll be brought back here to continue setup</li>
                                 </ol>
@@ -340,7 +339,7 @@ export default function ShopifyIntegrationPage() {
                             Configure Sync Settings
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400">
-                            Customize how orders are synced between Shopify and ShipCrowd
+                            Customize how orders are synced between Shopify and Shipcrowd
                         </p>
                     </div>
 
@@ -478,8 +477,8 @@ export default function ShopifyIntegrationPage() {
                     {/* Test Results */}
                     {testResult && (
                         <div className={`rounded-lg p-6 border ${testResult.success
-                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                             }`}>
                             {testResult.success ? (
                                 <>

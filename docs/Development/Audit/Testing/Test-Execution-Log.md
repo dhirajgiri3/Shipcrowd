@@ -1,4 +1,4 @@
-# ShipCrowd Manual Testing - Execution Log
+# Shipcrowd Manual Testing - Execution Log
 
 **Start Date**: January 12, 2026
 **Tester**: Dhiraj Giri
@@ -34,7 +34,7 @@
 |---|-----------|--------|---------------|-------|
 | 1 | Health Check | ⏳ Pending | - | Verify server health |
 | 2 | Get CSRF Token | ⏳ Pending | - | Required for POST requests |
-| 3 | Register New User | ⏳ Pending | - | Create test.seller@shipcrowd.com |
+| 3 | Register New User | ⏳ Pending | - | Create test.seller@Shipcrowd.com |
 | 4 | Verify Email | ⏳ Pending | - | Check server logs for token |
 | 5 | Login (Email/Password) | ⏳ Pending | - | Get access & refresh tokens |
 | 6 | Get Current User | ⏳ Pending | - | Verify user data |
@@ -162,7 +162,7 @@
 ## Test Data Created
 
 ### Users
-- **Seller**: test.seller@shipcrowd.com (Pending creation)
+- **Seller**: test.seller@Shipcrowd.com (Pending creation)
 - **Admin**: (If needed)
 - **Team Member**: (If needed)
 

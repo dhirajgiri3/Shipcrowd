@@ -42,24 +42,22 @@ router.post(
 /**
  * @route GET /warehouses
  * @desc Get all warehouses
- * @access Private (Sandbox+)
+ * @access Private (Authenticated)
  */
 router.get(
   '/',
   authenticate,
-  requireAccess({ tier: AccessTier.SANDBOX }),
   asyncHandler(warehouseController.getWarehouses)
 );
 
 /**
  * @route GET /warehouses/:warehouseId
  * @desc Get a warehouse by ID
- * @access Private (Sandbox+)
+ * @access Private (Authenticated)
  */
 router.get(
   '/:warehouseId',
   authenticate,
-  requireAccess({ tier: AccessTier.SANDBOX }),
   asyncHandler(warehouseController.getWarehouseById)
 );
 

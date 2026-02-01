@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useOrdersList } from '@/src/core/api/hooks/useOrders';
-import { DataTable } from '@/components/ui/data/DataTable';
-import { Button } from '@/components/ui/core/Button';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { formatCurrency, cn } from '@/src/shared/utils';
-import { AnimatedNumber } from '@/hooks/useCountUp';
-import { OrderDetailsPanel } from '@/components/seller/OrderDetailsPanel';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Button } from '@/src/components/ui/core/Button';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { formatCurrency, cn } from '@/src/lib/utils';
+import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
+import { OrderDetailsPanel } from '@/src/components/seller/OrderDetailsPanel';
 import {
     Search,
     Eye,
@@ -21,16 +21,22 @@ import {
     CheckCircle2,
     Calendar,
     ChevronDown,
-    MoreHorizontal
+    MoreHorizontal,
+    FileText
 } from 'lucide-react';
-import { Order } from '@/src/types/order';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { Order } from '@/src/types/domain/order';
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
     LazyBarChart as BarChart,
     LazyBar as Bar,
     LazyResponsiveContainer as ResponsiveContainer
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
+import { SmartFilterChips, FilterPreset } from '@/src/components/seller/orders/SmartFilterChips';
+import { ResponsiveOrderList } from '@/src/components/seller/orders/ResponsiveOrderList';
+import { useIsMobile } from '@/src/hooks/ux';
+import { useOrdersList } from '@/src/core/api/hooks/orders/useOrders';
 
 // --- VISUALIZATION DATA ---
 const trendData = [
@@ -44,123 +50,119 @@ const trendData = [
 ];
 
 export function OrdersClient() {
+    const isMobile = useIsMobile();
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const debouncedSearch = useDebouncedValue(search, 300);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [activeTab, setActiveTab] = useState('all');
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
+    const [smartFilter, setSmartFilter] = useState<FilterPreset>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
+    const { addToast } = useToast();
     const limit = 20;
 
-    // Debounce search input (300ms delay)
+    // Reset page on search change
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-            setPage(1); // Reset to first page on search
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [search]);
+        setPage(1);
+    }, [debouncedSearch]);
 
     // Reset page when tab changes
     useEffect(() => {
         setPage(1);
     }, [activeTab]);
 
-    // --- MOCK DATA GENERATOR ---
-    const MOCK_ORDERS_DATA = useMemo(() => {
-        const statuses = ['delivered', 'in_transit', 'shipped', 'pending', 'cancelled', 'rto'];
-        const paymentStatuses = ['paid', 'pending', 'failed'];
-        const productsList = [
-            'Wireless Noise Cancelling Headphones', 'Smart Fitness Watch Gen 4', 'Ergonomic Office Chair',
-            'Mechanical Gaming Keyboard', 'USB-C Docking Station', 'Ultra-Wide Monitor 34"',
-            'Bluetooth Portable Speaker', 'Laptop Stand Adjustable', 'Vegan Leather Backpack', 'Smart Home Hub'
-        ];
-        const customers = [
-            'Aarav Patel', 'Vihaan Sharma', 'Aditya Verma', 'Sai Kumar', 'Ananya Singh', 'Diya Rao',
-            'Isha Mehta', 'Arjun Nair', 'Meera Reddy', 'Kabir Das', 'Rohan Gupta', 'Sanya Malhotra'
-        ];
+    // --- REAL API INTEGRATION ---
+    const {
+        data: ordersResponse,
+        isLoading,
+        error,
+        refetch: refetchOrders
+    } = useOrdersList({
+        page,
+        limit,
+        status: activeTab !== 'all' ? activeTab : undefined,
+        search: debouncedSearch || undefined,
+    });
 
-        return Array.from({ length: 45 }).map((_, i) => {
-            const status = statuses[Math.floor(Math.random() * statuses.length)];
-            const paymentStatus = paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)];
-            const product = productsList[Math.floor(Math.random() * productsList.length)];
-            const customer = customers[Math.floor(Math.random() * customers.length)];
-            const amount = Math.floor(Math.random() * 15000) + 999;
+    // Use real data from API
+    // Note: Backend sends { success, data: Order[], pagination } via sendPaginated()
+    // So we access response.data directly (not response.data.orders)
+    const ordersData: Order[] = ordersResponse?.data || [];
 
-            return {
-                _id: `ORD-${2024000 + i}`,
-                orderNumber: `ORD-${2024000 + i}`,
-                customerInfo: {
-                    name: customer,
-                    phone: `+91 ${9000000000 + Math.floor(Math.random() * 999999999)}`,
-                    email: `${customer.toLowerCase().replace(' ', '.')}@example.com`
-                },
-                products: [
-                    {
-                        name: product,
-                        quantity: Math.floor(Math.random() * 3) + 1,
-                        price: amount
-                    }
-                ],
-                currentStatus: status,
-                paymentStatus: paymentStatus as 'paid' | 'pending' | 'failed',
-                paymentMethod: i % 3 === 0 ? 'cod' : 'prepaid',
-                totals: {
-                    subtotal: amount,
-                    tax: amount * 0.18,
-                    shipping: 100,
-                    total: amount + (amount * 0.18) + 100
-                },
-                createdAt: new Date(Date.now() - Math.floor(Math.random() * 1000000000)).toISOString()
-            } as Order;
-        }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, []);
+    const refetch = async () => {
+        setIsRefreshing(true);
+        await refetchOrders();
+        setIsRefreshing(false);
+    };
 
-    // Simulate Loading
-    const [isLoading, setIsLoading] = useState(true);
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+    // Filter Data with Smart Filters (client-side filtering for mock, server-side for real API)
+    const filteredOrders = useMemo(() => {
+        let filtered = ordersData;
 
-    const error: any = null;
-    const refetch = async () => { setIsLoading(true); setTimeout(() => setIsLoading(false), 500); };
+        // Smart filter (takes precedence over tab filter)
+        // Note: Ideally this should be handled by the backend API
+        if (smartFilter !== 'all') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Filter Mock Data
-    const filteredMockOrders = useMemo(() => {
-        let filtered = MOCK_ORDERS_DATA;
-
-        if (debouncedSearch) {
-            const lowerSearch = debouncedSearch.toLowerCase();
-            filtered = filtered.filter(o =>
-                o.orderNumber.toLowerCase().includes(lowerSearch) ||
-                o.customerInfo.name.toLowerCase().includes(lowerSearch)
-            );
-        }
-
-        if (activeTab !== 'all') {
-            if (activeTab === 'unshipped') {
-                filtered = filtered.filter(o => ['pending', 'processing'].includes(o.currentStatus));
-            } else {
-                filtered = filtered.filter(o => o.currentStatus === activeTab);
+            switch (smartFilter) {
+                case 'needs_attention':
+                    filtered = filtered.filter(o =>
+                        ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
+                    );
+                    break;
+                case 'today':
+                    filtered = filtered.filter(o => {
+                        const orderDate = new Date(o.createdAt);
+                        orderDate.setHours(0, 0, 0, 0);
+                        return orderDate.getTime() === today.getTime();
+                    });
+                    break;
+                case 'cod_pending':
+                    filtered = filtered.filter(o =>
+                        o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
+                    );
+                    break;
+                case 'last_7_days':
+                    filtered = filtered.filter(o => {
+                        const orderDate = new Date(o.createdAt);
+                        return orderDate >= sevenDaysAgo;
+                    });
+                    break;
+                case 'zone_b':
+                    filtered = filtered.filter(o => {
+                        const state = o.customerInfo?.address?.state;
+                        return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
+                    });
+                    break;
             }
+        }
+        // Tab filter is handled by API status param, so we don't need to filter again here unless it's 'unshipped' grouping
+        else if (activeTab === 'unshipped') {
+            // API might return all 'unshipped' statuses if we passed a specific param, 
+            // but if we passed 'unshipped' as status, the backend should handle it.
+            // If the backend treats 'unshipped' as a status alias, we are good.
+            // If not, we might need to filter here. Assuming backend handles it for now or we filter just in case.
+            filtered = filtered.filter(o => ['pending', 'processing', 'pickup_pending'].includes(o.currentStatus));
         }
 
         return filtered;
-    }, [debouncedSearch, activeTab, MOCK_ORDERS_DATA]);
+    }, [activeTab, smartFilter, ordersData]);
 
-    const orders = filteredMockOrders.slice((page - 1) * limit, page * limit);
+    const orders = filteredOrders.slice((page - 1) * limit, page * limit);
     const pagination = {
-        total: filteredMockOrders.length,
-        pages: Math.ceil(filteredMockOrders.length / limit),
+        total: filteredOrders.length,
+        pages: Math.ceil(filteredOrders.length / limit),
         page,
         limit
     };
 
     // Filter Logic (client-side for payment filter)
     const filteredData = useMemo(() => {
-        return orders.filter(item => {
+        return orders.filter((item: Order) => {
             const matchesPayment = paymentFilter === 'all' || item.paymentStatus === paymentFilter;
             return matchesPayment;
         });
@@ -168,15 +170,46 @@ export function OrdersClient() {
 
     // Derived Metrics
     const metrics = useMemo(() => {
-        const totalRevenue = filteredData.reduce((acc, curr) => acc + (curr.totals?.total || 0), 0);
-        const pendingPaymentCount = filteredData.filter(o => o.paymentStatus === 'pending').length;
+        const totalRevenue = filteredData.reduce((acc: number, curr: Order) => acc + (curr.totals?.total || 0), 0);
+        const pendingPaymentCount = filteredData.filter((o: Order) => o.paymentStatus === 'pending').length;
         return { totalRevenue, pendingPaymentCount };
     }, [filteredData]);
+
+    // Smart Filter Counts
+    const filterCounts = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        return {
+            all: ordersData.length,
+            needs_attention: ordersData.filter((o: Order) =>
+                ['rto', 'cancelled', 'ready_to_ship', 'ndr', 'pickup_pending', 'pickup_failed', 'exception'].includes(o.currentStatus)
+            ).length,
+            today: ordersData.filter((o: Order) => {
+                const orderDate = new Date(o.createdAt);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate.getTime() === today.getTime();
+            }).length,
+            cod_pending: ordersData.filter((o: Order) =>
+                o.paymentMethod === 'cod' && o.currentStatus !== 'delivered'
+            ).length,
+            last_7_days: ordersData.filter((o: Order) => {
+                const orderDate = new Date(o.createdAt);
+                return orderDate >= sevenDaysAgo;
+            }).length,
+            zone_b: ordersData.filter((o: Order) => {
+                const state = o.customerInfo?.address?.state;
+                return state && ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Chhattisgarh'].includes(state);
+            }).length
+        };
+    }, [ordersData]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await refetch();
-        setTimeout(() => setIsRefreshing(false), 500);
+        setIsRefreshing(false);
     };
 
     // --- Columns Definition ---
@@ -305,7 +338,10 @@ export function OrdersClient() {
             {/* --- HEADER --- */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Orders</h1>
+
+                    </div>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Manage your orders and fulfillments</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -317,6 +353,14 @@ export function OrdersClient() {
                         className={cn("h-10 w-10 p-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] shadow-sm", isRefreshing && "animate-spin")}
                     >
                         <RefreshCw className="w-4 h-4 text-[var(--text-secondary)]" />
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Manifest feature coming soon', 'info')}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Bulk Manifest
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-10 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] text-sm font-medium shadow-sm transition-all" onClick={() => addToast('Bulk Label feature coming soon', 'info')}>
+                        <Package className="w-4 h-4 mr-2" />
+                        Bulk Label
                     </Button>
                     <Button size="sm" className="h-10 px-5 rounded-xl bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] text-sm font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95">
                         <Download className="w-4 h-4 mr-2" />
@@ -401,7 +445,7 @@ export function OrdersClient() {
                                 <p className="text-xs text-[var(--text-muted)] mt-1">Payments Pending</p>
                             </div>
                             <div className="flex-1 p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{orders.filter(o => o.currentStatus === 'pending').length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{orders.filter((o: Order) => o.currentStatus === 'pending').length}</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">To Ship</p>
                             </div>
                         </div>
@@ -456,7 +500,7 @@ export function OrdersClient() {
                                 {['all', 'paid', 'pending', 'failed'].map(opt => (
                                     <button
                                         key={opt}
-                                        onClick={() => setPaymentFilter(opt as any)}
+                                        onClick={() => setPaymentFilter(opt as 'all' | 'paid' | 'pending' | 'failed')}
                                         className={cn(
                                             "w-full text-left px-3 py-2 text-sm rounded-lg capitalize transition-colors flex items-center justify-between",
                                             paymentFilter === opt ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
@@ -471,70 +515,61 @@ export function OrdersClient() {
                     </div>
                 </div>
 
-                <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm">
-                    {/* Error State */}
-                    {error && (
-                        <div className="py-20 text-center">
-                            <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
-                                <AlertCircle className="w-10 h-10 text-[var(--error)]" />
-                            </div>
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to load orders</h3>
-                            <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{error.message || 'An unexpected error occurred while fetching your orders. Please try again.'}</p>
-                            <Button
-                                variant="primary"
-                                onClick={() => refetch()}
-                                className="mx-auto"
-                            >
-                                <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
-                            </Button>
-                        </div>
-                    )}
+                {/* Smart Filter Chips */}
+                <SmartFilterChips
+                    activeFilter={smartFilter}
+                    onFilterChange={(filter) => {
+                        setSmartFilter(filter);
+                        setPage(1); // Reset pagination
+                    }}
+                    counts={filterCounts}
+                />
 
-                    {/* Loading State */}
-                    {isLoading && !error && (
-                        <div className="py-12">
-                            <div className="animate-pulse space-y-4 px-6">
-                                {Array.from({ length: 6 }).map((_, i) => (
-                                    <div key={i} className="flex items-center gap-6 py-2">
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-24" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-32" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-48 flex-1" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-24" />
-                                        <div className="h-6 bg-[var(--bg-secondary)] rounded-md w-20" />
-                                    </div>
-                                ))}
-                            </div>
+                {/* Error State */}
+                {error && (
+                    <div className="bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] shadow-sm py-20 text-center">
+                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-6">
+                            <AlertCircle className="w-10 h-10 text-[var(--error)]" />
                         </div>
-                    )}
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">Failed to load orders</h3>
+                        <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{error.message || 'An unexpected error occurred while fetching your orders. Please try again.'}</p>
+                        <Button
+                            variant="primary"
+                            onClick={() => refetch()}
+                            className="mx-auto"
+                        >
+                            <RefreshCw className="w-4 h-4 mr-2" /> Retry Connection
+                        </Button>
+                    </div>
+                )}
 
-                    {/* Data Table */}
-                    {!isLoading && !error && (
-                        <>
-                            <DataTable
-                                columns={columns}
-                                data={filteredData}
-                                onRowClick={(row) => setSelectedOrder(row)}
-                                isLoading={isLoading}
-                            />
-                            {filteredData.length === 0 && (
-                                <div className="py-24 text-center">
-                                    <div className="w-20 h-20 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <Package className="w-10 h-10 text-[var(--text-muted)]" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-[var(--text-primary)]">No orders found</h3>
-                                    <p className="text-[var(--text-muted)] text-sm mt-2 mb-6">Your search criteria didn't match any records.</p>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => { setSearch(''); setActiveTab('all'); setPaymentFilter('all'); }}
-                                        className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
-                                    >
-                                        Clear all filters
-                                    </Button>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
+                {/* Responsive Order List */}
+                {!error && (
+                    <ResponsiveOrderList
+                        orders={filteredData}
+                        isLoading={isLoading}
+                        onOrderClick={(order) => setSelectedOrder(order)}
+                        className={isMobile ? '' : 'bg-[var(--bg-primary)] rounded-[var(--radius-xl)] border border-[var(--border-subtle)] overflow-hidden shadow-sm'}
+                    />
+                )}
+
+                {/* Empty State with Clear Filters */}
+                {!isLoading && !error && filteredData.length === 0 && (
+                    <div className="text-center mt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setSearch('');
+                                setActiveTab('all');
+                                setPaymentFilter('all');
+                                setSmartFilter('all');
+                            }}
+                            className="text-[var(--primary-blue)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"
+                        >
+                            Clear all filters
+                        </Button>
+                    </div>
+                )}
 
                 {/* Pagination Controls */}
                 {pagination && pagination.pages > 1 && (

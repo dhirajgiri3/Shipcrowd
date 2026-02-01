@@ -31,7 +31,7 @@ export default function HowItWorks() {
                         transition={{ delay: 0.1 }}
                         className="text-4xl md:text-5xl lg:text-7xl font-bold text-charcoal-950 mb-6 leading-[1.1] tracking-tight"
                     >
-                        How ShipCrowd Works
+                        How Shipcrowd Works
                     </motion.h2>
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}

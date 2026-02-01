@@ -1,11 +1,11 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/core/Button';
-import { AnimatedNumber } from '@/hooks/useCountUp';
+import { Button } from '@/src/components/ui/core/Button';
+import { AnimatedNumber } from '@/src/hooks/utility/useCountUp';
 import {
     Activity,
     AlertTriangle,
@@ -37,8 +37,8 @@ import {
     X,
     Zap
 } from 'lucide-react';
-import { NotificationCenter } from '@/components/shared/NotificationCenter';
-import { SellerHealthDashboard } from '@/components/admin/SellerHealthDashboard';
+import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
+import { SellerHealthDashboard } from '@/src/components/admin/SellerHealthDashboard';
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
@@ -52,12 +52,15 @@ import {
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer,
     LazyCell as Cell
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import { useAuth } from '@/src/features/auth';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/shared/utils';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { TopSellers } from '@/components/admin/TopSellers';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency, cn } from '@/src/lib/utils';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { TopSellers } from '@/src/components/admin/TopSellers';
+import { useDashboardMetrics } from '@/src/core/api/hooks/analytics/useAnalytics';
+import { useUserList } from '@/src/core/api/hooks/admin/useUserManagement';
+import { DashboardMetrics } from '@/src/types/api/analytics';
 
 // --- ANIMATION VARIANTS ---
 const containerVariants = {
@@ -77,24 +80,6 @@ const itemVariants = {
         opacity: 1
     }
 };
-
-// --- MOCK DATA ---
-const revenueData = [
-    { name: 'Mon', revenue: 45000, orders: 120 },
-    { name: 'Tue', revenue: 52000, orders: 145 },
-    { name: 'Wed', revenue: 49000, orders: 132 },
-    { name: 'Thu', revenue: 62000, orders: 180 },
-    { name: 'Fri', revenue: 58000, orders: 160 },
-    { name: 'Sat', revenue: 75000, orders: 210 },
-    { name: 'Sun', revenue: 82000, orders: 245 },
-];
-
-const orderStatusData = [
-    { name: 'Delivered', value: 4500, color: 'var(--success)' },
-    { name: 'In Transit', value: 1200, color: 'var(--primary-blue)' },
-    { name: 'Pending', value: 800, color: 'var(--warning)' },
-    { name: 'RTO', value: 300, color: 'var(--error)' },
-];
 
 const aiInsights = [
     {
@@ -148,9 +133,11 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
                 {trend && (
                     <div className={cn(
                         "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
-                        trend === 'up' ? "text-[var(--success)] bg-[var(--success-bg)]" : "text-[var(--error)] bg-[var(--error-bg)]"
+                        trend === 'up' ? "text-[var(--success)] bg-[var(--success-bg)]" :
+                            trend === 'down' ? "text-[var(--error)] bg-[var(--error-bg)]" :
+                                "text-[var(--text-secondary)] bg-[var(--bg-secondary)]"
                     )}>
-                        <TrendingUp className={cn("w-3 h-3", trend === 'down' && "rotate-180")} />
+                        {trend !== 'stable' && <TrendingUp className={cn("w-3 h-3", trend === 'down' && "rotate-180")} />}
                         {trendValue}
                     </div>
                 )}
@@ -168,7 +155,7 @@ function StatCard({ title, value, subtext, icon: Icon, trend, trendValue, color,
 
             <div className="h-10 mt-4 -mx-2 opacity-50 group-hover:opacity-100 transition-opacity">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data || revenueData}>
+                    <AreaChart data={data || []}>
                         <defs>
                             <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor={
@@ -244,13 +231,38 @@ export function DashboardClient() {
         return () => clearInterval(timer);
     }, []);
 
-    // Simulated API Data
-    const metrics = {
-        gmv: 1250000,
-        orders: 4520,
-        activeSellers: 142,
-        avgSla: 94.5
-    };
+    // --- REAL API HOOKS ---
+    const { data: metricsData, isLoading: metricsLoading } = useDashboardMetrics();
+    const { data: userStatsData, isLoading: userStatsLoading } = useUserList({
+        limit: 0,
+        role: 'seller'
+    });
+
+    // --- DATA TRANSFORMATION ---
+
+    // Revenue & Order Trend Data
+    const revenueTrendData = useMemo(() => {
+        if (!metricsData?.weeklyTrend) return [];
+        return metricsData.weeklyTrend.map(day => ({
+            name: new Date(day._id).toLocaleDateString('en-US', { weekday: 'short' }),
+            revenue: day.revenue || 0,
+            orders: day.orders || 0
+        })).slice(-7); // Last 7 data points
+    }, [metricsData]);
+
+    // Order Status Distribution
+    const orderStatusData = useMemo(() => {
+        if (!metricsData) return [];
+        return [
+            { name: 'Delivered', value: metricsData.delivered || 0, color: 'var(--success)' },
+            { name: 'In Transit', value: metricsData.inTransit || 0, color: 'var(--primary-blue)' },
+            { name: 'Pending', value: (metricsData.pendingPickup || 0) + (metricsData.readyToShip || 0), color: 'var(--warning)' },
+            { name: 'RTO/NDR', value: (metricsData.rto || 0) + (metricsData.ndr || 0), color: 'var(--error)' }
+        ].filter(item => item.value > 0);
+    }, [metricsData]);
+
+    // Active Sellers Count
+    const activeSellersCount = userStatsData?.stats?.sellers || 0;
 
     return (
         <div className="min-h-screen space-y-8 pb-10">
@@ -301,47 +313,43 @@ export function DashboardClient() {
             >
                 <StatCard
                     title="Total Revenue"
-                    value={metrics.gmv}
-                    subtext="vs prev. 30 days"
+                    value={metricsData?.totalRevenue || 0}
+                    subtext="vs last period"
                     icon={DollarSign}
-                    trend="up"
-                    trendValue="+14.5%"
+                    trend={metricsData?.deltas?.revenue ? (metricsData.deltas.revenue >= 0 ? 'up' : 'down') : 'stable'}
+                    trendValue={metricsData?.deltas?.revenue ? `${metricsData.deltas.revenue > 0 ? '+' : ''}${metricsData.deltas.revenue.toFixed(1)}%` : '0%'}
                     color="emerald"
-                    data={revenueData.map(d => ({ value: d.revenue }))}
+                    data={revenueTrendData.map(d => ({ value: d.revenue }))}
                 />
                 <StatCard
                     title="Total Orders"
-                    value={metrics.orders}
-                    subtext="vs prev. 30 days"
+                    value={metricsData?.totalOrders || 0}
+                    subtext="vs last period"
                     icon={Package}
-                    trend="up"
-                    trendValue="+8.2%"
+                    trend={metricsData?.deltas?.orders ? (metricsData.deltas.orders >= 0 ? 'up' : 'down') : 'stable'}
+                    trendValue={metricsData?.deltas?.orders ? `${metricsData.deltas.orders > 0 ? '+' : ''}${metricsData.deltas.orders.toFixed(1)}%` : '0%'}
                     color="blue"
-                    data={revenueData.map(d => ({ value: d.orders }))}
+                    data={revenueTrendData.map(d => ({ value: d.orders }))}
                 />
                 <StatCard
                     title="Active Sellers"
-                    value={metrics.activeSellers}
-                    subtext="4 pending approval"
+                    value={activeSellersCount}
+                    subtext="Total Sellers"
                     icon={Users}
                     trend="up"
-                    trendValue="+12"
+                    trendValue="Live"
                     color="violet"
-                    data={[
-                        { value: 120 }, { value: 125 }, { value: 132 }, { value: 140 }, { value: 138 }, { value: 142 }
-                    ]}
+                    data={[{ value: activeSellersCount }]}
                 />
                 <StatCard
-                    title="Avg. SLA"
-                    value={98.2}
-                    subtext="Delivery Success Rate"
+                    title="Success Rate"
+                    value={metricsData?.successRate || 0}
+                    subtext="Delivery Performance"
                     icon={Zap}
-                    trend="down"
-                    trendValue="-0.4%"
+                    trend={metricsData?.successRate && metricsData.successRate >= 95 ? 'up' : 'stable'}
+                    trendValue={metricsData?.successRate ? `${metricsData.successRate.toFixed(1)}%` : '0%'}
                     color="amber"
-                    data={[
-                        { value: 99 }, { value: 98 }, { value: 98.5 }, { value: 97 }, { value: 98 }, { value: 98.2 }
-                    ]}
+                    data={metricsData?.weeklyTrend?.map(d => ({ value: 98 })) || []}
                 />
             </motion.section>
 
@@ -370,30 +378,36 @@ export function DashboardClient() {
                             </div>
                         </div>
                         <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={revenueData}>
-                                    <defs>
-                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(value) => `₹${value / 1000}k`} />
-                                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)', borderRadius: '12px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }}
-                                        itemStyle={{ color: 'var(--text-primary)', fontSize: '12px' }}
-                                    />
-                                    <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                                    <Area yAxisId="right" type="monotone" dataKey="orders" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                            {revenueTrendData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={revenueTrendData}>
+                                        <defs>
+                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="var(--primary-blue)" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--success)" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(value) => `₹${value / 1000}k`} />
+                                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)', borderRadius: '12px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.1)' }}
+                                            itemStyle={{ color: 'var(--text-primary)', fontSize: '12px' }}
+                                        />
+                                        <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                        <Area yAxisId="right" type="monotone" dataKey="orders" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorOrders)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-[var(--text-muted)]">
+                                    No chart data available
+                                </div>
+                            )}
                         </div>
                     </motion.div>
 
@@ -460,7 +474,14 @@ export function DashboardClient() {
                     </motion.div>
 
                     {/* Top Sellers Table */}
-                    <TopSellers />
+                    <TopSellers data={userStatsData?.users?.slice(0, 5).map(user => ({
+                        companyId: user._id,
+                        companyName: user.companyName || user.name,
+                        totalOrders: user.totalOrders || 0,
+                        totalRevenue: 0, // Not available in list view yet
+                        pendingOrders: 0, // Not available in list view yet
+                        deliveredOrders: 0 // Not available in list view yet
+                    }))} />
 
                 </div>
 
@@ -499,30 +520,38 @@ export function DashboardClient() {
                     <div className="p-6 rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
                         <h3 className="font-bold text-[var(--text-primary)] mb-6">Order Status</h3>
                         <div className="h-[250px] relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RechartsPieChart>
-                                    <Pie
-                                        data={orderStatusData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {orderStatusData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
-                                        itemStyle={{ color: 'var(--text-primary)' }}
-                                    />
-                                </RechartsPieChart>
-                            </ResponsiveContainer>
+                            {orderStatusData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RechartsPieChart>
+                                        <Pie
+                                            data={orderStatusData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {orderStatusData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
+                                            itemStyle={{ color: 'var(--text-primary)' }}
+                                        />
+                                    </RechartsPieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-[var(--text-muted)]">
+                                    No status data
+                                </div>
+                            )}
                             {/* Center Text */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-3xl font-bold text-[var(--text-primary)]">4.5k</span>
+                                <span className="text-3xl font-bold text-[var(--text-primary)]">
+                                    <AnimatedNumber value={metricsData?.totalOrders || 0} />
+                                </span>
                                 <span className="text-xs text-[var(--text-secondary)] font-medium uppercase tracking-wide">Orders</span>
                             </div>
                         </div>

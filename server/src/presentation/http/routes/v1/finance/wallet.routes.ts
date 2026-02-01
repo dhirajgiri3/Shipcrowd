@@ -14,6 +14,12 @@ router.use(requireAccess({ kyc: true }));
 // Get wallet balance
 router.get('/balance', walletController.getBalance);
 
+// Get available balance (Phase 2: Dashboard Optimization) - Calculated metric
+router.get('/available-balance', walletController.getAvailableBalance);
+
+// Get 7-day cash flow forecast (Phase 3)
+router.get('/cash-flow-forecast', walletController.getCashFlowForecast);
+
 // Get transaction history
 router.get('/transactions', walletController.getTransactionHistory);
 
@@ -22,6 +28,12 @@ router.post('/recharge', walletController.rechargeWallet);
 
 // Get wallet statistics
 router.get('/stats', walletController.getWalletStats);
+
+// Get spending insights (week-over-week, categories)
+router.get('/insights', walletController.getSpendingInsights);
+
+// Get wallet trends (projections, weekly change)
+router.get('/trends', walletController.getWalletTrends);
 
 // Update low balance threshold
 router.put('/threshold', walletController.updateLowBalanceThreshold);

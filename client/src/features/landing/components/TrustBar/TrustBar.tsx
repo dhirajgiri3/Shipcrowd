@@ -306,7 +306,7 @@ export default function TrustBar() {
                             )
                         })}
 
-                        {/* Center ShipCrowd Logo - Minimal Design */}
+                        {/* Center Shipcrowd Logo - Minimal Design */}
                         <motion.g
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={inView ? { opacity: 1, scale: 1 } : {}}
@@ -346,7 +346,7 @@ export default function TrustBar() {
                                 strokeWidth="1"
                             />
 
-                            {/* ShipCrowd logo */}
+                            {/* Shipcrowd logo */}
                             <foreignObject
                                 x={centerX - 50}
                                 y={centerY - 50}
@@ -355,8 +355,8 @@ export default function TrustBar() {
                             >
                                 <div className="w-full h-full flex items-center justify-center">
                                     <motion.img
-                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                                        alt="ShipCrowd"
+                                        src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
+                                        alt="Shipcrowd"
                                         className="w-[75%] h-[75%] object-contain rounded-full"
                                         initial={{ opacity: 0.95 }}
                                         animate={{

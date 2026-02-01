@@ -317,9 +317,9 @@ export class FlipkartOrderSyncService {
 
       // Update if Flipkart order is newer
       const flipkartUpdated = new Date(shipment.modifiedAt);
-      const shipcrowdUpdated = new Date(existingOrder.updatedAt);
+      const ShipcrowdUpdated = new Date(existingOrder.updatedAt);
 
-      if (flipkartUpdated <= shipcrowdUpdated) {
+      if (flipkartUpdated <= ShipcrowdUpdated) {
         logger.debug('Skipping unchanged order', {
           orderItemId: shipment.orderItemId,
         });
@@ -344,7 +344,7 @@ export class FlipkartOrderSyncService {
 
     logger.info('Created order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
-      shipcrowdOrderId: order._id,
+      ShipcrowdOrderId: order._id,
       orderNumber: order.orderNumber,
     });
 
@@ -382,7 +382,7 @@ export class FlipkartOrderSyncService {
 
     logger.info('Updated order from Flipkart', {
       flipkartOrderItemId: shipment.orderItemId,
-      shipcrowdOrderId: existingOrder._id,
+      ShipcrowdOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
     });
 

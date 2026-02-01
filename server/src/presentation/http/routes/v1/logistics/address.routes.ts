@@ -5,13 +5,16 @@ import * as addressController from '../../../controllers/logistics/address.contr
 
 const router = express.Router();
 
-// Publicly accessible if authenticated (or maybe allowed for unauthenticated checkout if needed?)
-// For now, requiring authentication as per typical internal API usage
+// Pincode info endpoint - PUBLIC for onboarding (no auth required)
+router.get('/pincode/:pincode/info', addressController.getPincodeInfo);
+
+// All routes below require authentication
 router.use(authenticate);
 
 // Validate Pincode and Check Serviceability should check KYC
 router.get('/validate-pincode/:pincode', checkKYC, addressController.validatePincode);
 router.post('/check-serviceability', checkKYC, addressController.checkServiceability);
 router.post('/calculate-distance', checkKYC, addressController.calculateDistance);
+router.get('/suggestions', addressController.getAddressSuggestions);
 
 export default router;

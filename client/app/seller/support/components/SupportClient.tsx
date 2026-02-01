@@ -2,10 +2,15 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import {
+    Card, CardContent, CardHeader, CardTitle, CardDescription,
+    Button,
+    Input,
+    Badge,
+    CardSkeleton,
+    Loader
+} from '@/src/components/ui';
+import { useLoader } from '@/src/hooks/utility/useLoader';
 import {
     HelpCircle,
     MessageSquare,
@@ -23,39 +28,10 @@ import {
     Send,
     Paperclip
 } from 'lucide-react';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { cn } from '@/src/shared/utils';
-
-// Mock tickets
-const mockTickets = [
-    {
-        id: 'TKT-001',
-        subject: 'Shipment stuck in transit for 5 days',
-        status: 'open',
-        priority: 'high',
-        createdAt: '2024-12-11',
-        lastUpdate: '2 hours ago',
-        awbNumber: 'DL123456789',
-    },
-    {
-        id: 'TKT-002',
-        subject: 'COD remittance not received for Week 48',
-        status: 'in_progress',
-        priority: 'medium',
-        createdAt: '2024-12-09',
-        lastUpdate: '1 day ago',
-        awbNumber: null,
-    },
-    {
-        id: 'TKT-003',
-        subject: 'Weight discrepancy dispute',
-        status: 'resolved',
-        priority: 'low',
-        createdAt: '2024-12-05',
-        lastUpdate: '3 days ago',
-        awbNumber: 'XB987654321',
-    },
-];
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { cn } from '@/src/lib/utils';
+import { useSupportTickets, useCreateSupportTicket } from '@/src/core/api/hooks/support/useSupport';
+import { formatDistanceToNow } from 'date-fns';
 
 const faqItems = [
     { question: 'How do I create a shipment?', category: 'Shipments' },
@@ -67,18 +43,36 @@ const faqItems = [
 ];
 
 export function SupportClient() {
+    // API Hooks
+    const [ticketFilter, setTicketFilter] = useState<'all' | 'open' | 'resolved'>('all');
+    const { data: ticketsData, isLoading } = useSupportTickets({
+        status: ticketFilter === 'all' ? undefined : ticketFilter === 'open' ? 'open,in_progress' : 'resolved,closed',
+        page: 1,
+        limit: 20,
+    });
+    const createTicket = useCreateSupportTicket();
+
+    // Local State
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'help' | 'tickets'>('help');
     const [showNewTicket, setShowNewTicket] = useState(false);
-    const [ticketFilter, setTicketFilter] = useState<'all' | 'open' | 'resolved'>('all');
+    const [ticketForm, setTicketForm] = useState({
+        subject: '',
+        category: '',
+        priority: 'medium',
+        description: '',
+        awbNumber: '',
+    });
     const { addToast } = useToast();
 
-    const filteredTickets = mockTickets.filter(ticket => {
-        if (ticketFilter === 'all') return true;
-        if (ticketFilter === 'open') return ticket.status === 'open' || ticket.status === 'in_progress';
-        if (ticketFilter === 'resolved') return ticket.status === 'resolved';
-        return true;
+    // Loader state
+    const { isLoading: isSubmitLoading, showLoader, startLoading, stopLoading } = useLoader({
+        minDelay: 300,
+        minDisplay: 500
     });
+
+    const tickets = ticketsData?.tickets || [];
+    const filteredTickets = tickets;
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -157,30 +151,47 @@ export function SupportClient() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[var(--text-primary)]">Issue Category *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] transition-colors">
+                                <select
+                                    value={ticketForm.category}
+                                    onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                                    className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] transition-colors"
+                                >
                                     <option value="">Select category</option>
-                                    <option value="shipment">Shipment Issue</option>
-                                    <option value="payment">Payment / COD</option>
-                                    <option value="ndr">NDR Related</option>
-                                    <option value="weight">Weight Discrepancy</option>
-                                    <option value="integration">Integration Help</option>
+                                    <option value="technical">Technical Issue</option>
+                                    <option value="billing">Billing / Payment</option>
+                                    <option value="logistics">Logistics / Shipment</option>
                                     <option value="other">Other</option>
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--text-primary)]">AWB Number (if applicable)</label>
-                                <Input placeholder="e.g., DL123456789" />
+                                <label className="text-sm font-medium text-[var(--text-primary)]">Priority</label>
+                                <select
+                                    value={ticketForm.priority}
+                                    onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                                    className="flex h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-default)] transition-colors"
+                                >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--text-primary)]">Subject *</label>
-                            <Input placeholder="Brief description of your issue" />
+                            <Input
+                                placeholder="Brief description of your issue"
+                                value={ticketForm.subject}
+                                onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-[var(--text-primary)]">Description *</label>
                             <textarea
+                                value={ticketForm.description}
+                                onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
                                 className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-default)] transition-colors resize-none"
                                 placeholder="Provide detailed information about your issue..."
                             />
@@ -194,10 +205,34 @@ export function SupportClient() {
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
                             <Button variant="outline" onClick={() => setShowNewTicket(false)}>Cancel</Button>
-                            <Button onClick={() => {
-                                addToast('Ticket submitted successfully!', 'success');
-                                setShowNewTicket(false);
-                            }}>
+                            <Button
+                                disabled={isSubmitLoading || !ticketForm.subject || !ticketForm.category || !ticketForm.description}
+                                isLoading={showLoader}
+                                onClick={async () => {
+                                    startLoading();
+                                    try {
+                                        await createTicket.mutateAsync({
+                                            subject: ticketForm.subject,
+                                            category: ticketForm.category,
+                                            priority: ticketForm.priority,
+                                            description: ticketForm.description,
+                                        });
+                                        setShowNewTicket(false);
+                                        setTicketForm({
+                                            subject: '',
+                                            category: '',
+                                            priority: 'medium',
+                                            description: '',
+                                            awbNumber: '',
+                                        });
+                                        addToast('Ticket created successfully', 'success');
+                                    } catch (error) {
+                                        console.error(error);
+                                    } finally {
+                                        stopLoading();
+                                    }
+                                }}
+                            >
                                 <Send className="h-4 w-4 mr-2" />
                                 Submit Ticket
                             </Button>
@@ -254,7 +289,7 @@ export function SupportClient() {
                                     <Mail className="h-6 w-6 text-[var(--warning)]" />
                                 </div>
                                 <h3 className="font-semibold text-[var(--text-primary)]">Email Support</h3>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">support@shipcrowd.in</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">support@Shipcrowd.in</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-2">Response within 24hrs</p>
                             </CardContent>
                         </Card>
@@ -316,40 +351,49 @@ export function SupportClient() {
                     </div>
 
                     {/* Tickets List */}
-                    <div className="space-y-4">
-                        {filteredTickets.map((ticket) => (
-                            <Card
-                                key={ticket.id}
-                                className={cn(
-                                    "hover:shadow-md transition-all cursor-pointer border-l-4",
-                                    getPriorityColor(ticket.priority)
-                                )}
-                                onClick={() => addToast(`Opening ticket ${ticket.id}...`, 'info')}
-                            >
-                                <CardContent className="p-5">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-mono text-[var(--text-muted)]">{ticket.id}</span>
-                                                {getStatusBadge(ticket.status)}
+                    {isLoading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                                <CardSkeleton key={i} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {filteredTickets.map((ticket) => (
+                                <Card
+                                    key={ticket._id}
+                                    className={cn(
+                                        "hover:shadow-md transition-all cursor-pointer border-l-4",
+                                        getPriorityColor(ticket.priority)
+                                    )}
+                                    onClick={() => addToast(`Opening ticket ${ticket.ticketId}...`, 'info')}
+                                >
+                                    <CardContent className="p-5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-mono text-[var(--text-muted)]">{ticket.ticketId}</span>
+                                                    {getStatusBadge(ticket.status)}
+                                                    <Badge variant="outline" className="text-xs capitalize">{ticket.category}</Badge>
+                                                </div>
+                                                <h3 className="font-medium text-[var(--text-primary)]">{ticket.subject}</h3>
+                                                <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
+                                                    <span>Created: {new Date(ticket.createdAt).toLocaleDateString()}</span>
+                                                    <Badge variant="outline" className="text-xs capitalize">{ticket.priority}</Badge>
+                                                </div>
                                             </div>
-                                            <h3 className="font-medium text-[var(--text-primary)]">{ticket.subject}</h3>
-                                            <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
-                                                <span>Created: {ticket.createdAt}</span>
-                                                {ticket.awbNumber && (
-                                                    <span className="bg-[var(--bg-tertiary)] px-2 py-0.5 rounded">AWB: {ticket.awbNumber}</span>
-                                                )}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-[var(--text-muted)]">
+                                                    Updated {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })}
+                                                </span>
+                                                <ChevronRight className="h-5 w-5 text-[var(--text-muted)]" />
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-[var(--text-muted)]">Updated {ticket.lastUpdate}</span>
-                                            <ChevronRight className="h-5 w-5 text-[var(--text-muted)]" />
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Empty State */}
                     {filteredTickets.length === 0 && (

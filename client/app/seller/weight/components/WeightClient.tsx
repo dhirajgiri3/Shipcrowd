@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     Scale,
     Search,
@@ -18,69 +18,14 @@ import {
     Package,
     TrendingUp,
     MessageSquare,
-    FileText
+    FileText,
+    Loader2
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency } from '@/src/shared/utils';
-
-// Mock weight discrepancy data
-const mockDiscrepancies = [
-    {
-        id: 'WD-001',
-        awbNumber: 'DL987654321IN',
-        orderId: 'ORD-2024-001234',
-        courier: 'Delhivery',
-        declaredWeight: 500,
-        chargedWeight: 850,
-        difference: 350,
-        additionalCharge: 45,
-        status: 'pending',
-        createdAt: '2024-12-11',
-        deadlineDate: '2024-12-14',
-    },
-    {
-        id: 'WD-002',
-        awbNumber: 'XB123456789IN',
-        orderId: 'ORD-2024-001235',
-        courier: 'Xpressbees',
-        declaredWeight: 1000,
-        chargedWeight: 1500,
-        difference: 500,
-        additionalCharge: 65,
-        status: 'accepted',
-        createdAt: '2024-12-10',
-        deadlineDate: '2024-12-13',
-    },
-    {
-        id: 'WD-003',
-        awbNumber: 'BD555666777IN',
-        orderId: 'ORD-2024-001236',
-        courier: 'Bluedart',
-        declaredWeight: 750,
-        chargedWeight: 1200,
-        difference: 450,
-        additionalCharge: 58,
-        status: 'disputed',
-        createdAt: '2024-12-09',
-        deadlineDate: '2024-12-12',
-        disputeReason: 'Incorrect volumetric calculation',
-    },
-    {
-        id: 'WD-004',
-        awbNumber: 'DT999888777IN',
-        orderId: 'ORD-2024-001237',
-        courier: 'DTDC',
-        declaredWeight: 300,
-        chargedWeight: 500,
-        difference: 200,
-        additionalCharge: 28,
-        status: 'resolved',
-        createdAt: '2024-12-08',
-        deadlineDate: '2024-12-11',
-        resolution: 'Refunded ₹28',
-    },
-];
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency } from '@/src/lib/utils';
+import { useWeightDiscrepancies, useAcceptDiscrepancy, useDisputeDiscrepancy } from '@/src/core/api/hooks/seller/useWeightDiscrepancy';
+import { useDebouncedValue } from '@/src/hooks/data/useDebouncedValue';
 
 const statusFilters = [
     { id: 'all', label: 'All' },
@@ -92,15 +37,20 @@ const statusFilters = [
 
 export function WeightClient() {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearch = useDebouncedValue(searchQuery, 500);
     const [selectedStatus, setSelectedStatus] = useState('all');
     const { addToast } = useToast();
 
-    const filteredDiscrepancies = mockDiscrepancies.filter(disc => {
-        const matchesSearch = disc.awbNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            disc.orderId.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || disc.status === selectedStatus;
-        return matchesSearch && matchesStatus;
+    // API Hooks
+    const { data: discrepancyData, isLoading } = useWeightDiscrepancies({
+        status: selectedStatus === 'all' ? undefined : selectedStatus,
+        search: debouncedSearch
     });
+
+    const { mutate: acceptDiscrepancy, isPending: isAccepting } = useAcceptDiscrepancy();
+    const { mutate: disputeDiscrepancy, isPending: isDisputing } = useDisputeDiscrepancy();
+
+    const discrepancies = discrepancyData?.discrepancies || [];
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -118,15 +68,20 @@ export function WeightClient() {
     };
 
     const handleAccept = (id: string) => {
-        addToast('Weight discrepancy accepted. Amount will be deducted.', 'info');
+        acceptDiscrepancy(id);
     };
 
     const handleDispute = (id: string) => {
-        addToast('Dispute submitted successfully!', 'success');
+        // In a real app, you'd open a modal to collect reason and proof
+        // For now, we'll simulate a dispute reason
+        const reason = "Weight mismatch with manifest";
+        disputeDiscrepancy({ id, reason });
     };
 
-    const totalPending = mockDiscrepancies.filter(d => d.status === 'pending').length;
-    const totalAdditionalCharges = mockDiscrepancies
+    // Calculate stats from fetched data (or use a separate stats endpoint if available)
+    // For now, these stats are only accurate for the current page/filter if no separate stats API
+    const totalPending = discrepancies.filter(d => d.status === 'pending').length;
+    const totalAdditionalCharges = discrepancies
         .filter(d => d.status === 'pending' || d.status === 'accepted')
         .reduce((sum, d) => sum + d.additionalCharge, 0);
 
@@ -152,7 +107,7 @@ export function WeightClient() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Total Discrepancies</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockDiscrepancies.length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">{discrepancyData?.total || 0}</p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[var(--primary-blue-soft)] flex items-center justify-center">
                                 <Scale className="h-5 w-5 text-[var(--primary-blue)]" />
@@ -244,84 +199,98 @@ export function WeightClient() {
             {/* Discrepancy Table */}
             <Card>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
-                                <tr>
-                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB / Order</th>
-                                    <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
-                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Declared</th>
-                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charged</th>
-                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Difference</th>
-                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Add. Charge</th>
-                                    <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                                    <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[var(--border-subtle)]">
-                                {filteredDiscrepancies.map((disc) => (
-                                    <tr key={disc.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                        <td className="p-4">
-                                            <code className="font-mono font-semibold text-[var(--text-primary)]">{disc.awbNumber}</code>
-                                            <p className="text-xs text-[var(--text-muted)] mt-1">{disc.orderId}</p>
-                                        </td>
-                                        <td className="p-4">
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.courier}</p>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.declaredWeight}g</p>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">{disc.chargedWeight}g</p>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <p className="text-sm font-semibold text-[var(--error)]">+{disc.difference}g</p>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(disc.additionalCharge)}</p>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            {getStatusBadge(disc.status)}
-                                        </td>
-                                        <td className="p-4">
-                                            {disc.status === 'pending' && (
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="text-xs"
-                                                        onClick={() => handleAccept(disc.id)}
-                                                    >
-                                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                                        Accept
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        className="text-xs bg-[var(--primary-blue)]"
-                                                        onClick={() => handleDispute(disc.id)}
-                                                    >
-                                                        <FileText className="h-3 w-3 mr-1" />
-                                                        Dispute
-                                                    </Button>
-                                                </div>
-                                            )}
-                                            {disc.status === 'disputed' && (
-                                                <p className="text-xs text-[var(--text-muted)] text-right">Under review</p>
-                                            )}
-                                            {disc.status === 'resolved' && disc.resolution && (
-                                                <p className="text-xs text-[var(--success)] text-right">{disc.resolution}</p>
-                                            )}
-                                        </td>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center p-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)]">
+                                    <tr>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">AWB / Order</th>
+                                        <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Courier</th>
+                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Declared</th>
+                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Charged</th>
+                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Difference</th>
+                                        <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Add. Charge</th>
+                                        <th className="text-center p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
+                                        <th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-[var(--border-subtle)]">
+                                    {discrepancies.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={8} className="p-8 text-center text-[var(--text-muted)]">
+                                                No discrepancies found
+                                            </td>
+                                        </tr>
+                                    ) : discrepancies.map((disc) => (
+                                        <tr key={disc.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                                            <td className="p-4">
+                                                <code className="font-mono font-semibold text-[var(--text-primary)]">{disc.awbNumber}</code>
+                                                <p className="text-xs text-[var(--text-muted)] mt-1">{disc.orderId}</p>
+                                            </td>
+                                            <td className="p-4">
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">{disc.courier}</p>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">{disc.declaredWeight}g</p>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <p className="text-sm font-medium text-[var(--text-primary)]">{disc.chargedWeight}g</p>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <p className="text-sm font-semibold text-[var(--error)]">+{disc.difference}g</p>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <p className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(disc.additionalCharge)}</p>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {getStatusBadge(disc.status)}
+                                            </td>
+                                            <td className="p-4">
+                                                {disc.status === 'pending' && (
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="text-xs"
+                                                            onClick={() => handleAccept(disc.id)}
+                                                            disabled={isAccepting}
+                                                        >
+                                                            {isAccepting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                                                            Accept
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="text-xs bg-[var(--primary-blue)]"
+                                                            onClick={() => handleDispute(disc.id)}
+                                                            disabled={isDisputing}
+                                                        >
+                                                            {isDisputing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <FileText className="h-3 w-3 mr-1" />}
+                                                            Dispute
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                                {disc.status === 'disputed' && (
+                                                    <p className="text-xs text-[var(--text-muted)] text-right">Under review</p>
+                                                )}
+                                                {disc.status === 'resolved' && disc.resolution && (
+                                                    <p className="text-xs text-[var(--success)] text-right">{disc.resolution}</p>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
             {/* Empty State */}
-            {filteredDiscrepancies.length === 0 && (
+            {!isLoading && discrepancies.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
                         <CheckCircle className="h-12 w-12 text-[var(--success)] mx-auto mb-4" />

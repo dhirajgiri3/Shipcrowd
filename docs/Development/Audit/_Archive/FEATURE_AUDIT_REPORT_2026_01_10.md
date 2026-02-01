@@ -685,7 +685,7 @@ All 7 core fulfillment features fully implemented. **100% core feature parity ac
 
 ---
 
-## COMPARISON TABLE: SHIPCROWD vs MYROCKETXPRESS SPEC
+## COMPARISON TABLE: Shipcrowd vs MYROCKETXPRESS SPEC
 
 | Feature Category | Feature | Status | Code Ready | Notes |
 |---|---|---|---|---|

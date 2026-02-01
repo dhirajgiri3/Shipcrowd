@@ -1,4 +1,4 @@
-# ShipCrowd Frontend Implementation Plan
+# Shipcrowd Frontend Implementation Plan
 **Based on:** FRONTEND_AUDIT_2026-01-14.md
 **Date:** January 14, 2026
 **Status:** Ready for Implementation

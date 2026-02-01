@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useEffect } from 'react';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 interface OnboardingGuardProps {
     children: React.ReactNode;
@@ -20,7 +21,7 @@ export const OnboardingGuard = ({ children }: OnboardingGuardProps) => {
     useEffect(() => {
         // If user already has a company, redirect to dashboard
         if (!isLoading && user?.companyId) {
-            const redirectPath = user.role === 'admin' ? '/admin/dashboard' : '/seller/dashboard';
+            const redirectPath = ['admin', 'super_admin'].includes(user.role) ? '/admin' : '/seller';
             router.push(redirectPath);
         }
     }, [user, isLoading, router]);
@@ -28,9 +29,12 @@ export const OnboardingGuard = ({ children }: OnboardingGuardProps) => {
     // Show loading state while checking auth
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
+            <Loader
+                variant="truck"
+                fullScreen
+                message="Checking account status..."
+                subMessage="Please wait while we verify your details"
+            />
         );
     }
 

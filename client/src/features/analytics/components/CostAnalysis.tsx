@@ -13,7 +13,7 @@ import {
     CardHeader,
     CardTitle,
     StatusBadge
-} from '@/components/ui';
+} from '@/src/components/ui';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAnalyticsParams, useCostAnalysis } from '@/src/hooks';
 import {
@@ -30,7 +30,7 @@ import {
     CartesianGrid
 } from 'recharts';
 import { formatCompactCurrency, formatCurrency } from '@/src/lib/utils';
-import { IndianRupee, TrendingUp, Wallet } from 'lucide-react';
+import { IndianRupee, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
 
 export function CostAnalysis() {
     const { timeRange, setTimeRange, dateRange } = useAnalyticsParams();
@@ -51,7 +51,7 @@ export function CostAnalysis() {
 
     const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
-    const SummaryCard = ({ title, value, subtext, icon: Icon }: { title: string; value: string; subtext: string; icon: any }) => (
+    const SummaryCard = ({ title, value, subtext, icon: Icon }: { title: string; value: string; subtext: string; icon: LucideIcon }) => (
         <Card>
             <CardContent className="p-6">
                 <div className="flex justify-between items-start">
@@ -118,8 +118,8 @@ export function CostAnalysis() {
                                         paddingAngle={5}
                                         dataKey="amount"
                                     >
-                                        {costs.costPerZone.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        {costs.costPerZone.map((entry, index) => (
+                                            <Cell key={entry.category || index} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip
@@ -150,8 +150,8 @@ export function CostAnalysis() {
                                         paddingAngle={5}
                                         dataKey="amount"
                                     >
-                                        {costs.costPerCourier.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        {costs.costPerCourier.map((entry, index) => (
+                                            <Cell key={entry.category || index} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip

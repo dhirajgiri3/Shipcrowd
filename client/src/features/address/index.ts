@@ -15,8 +15,8 @@ export type {
     PincodeServiceability,
     CourierCoverage,
     CourierName,
-    ZoneType,
+    CourierZoneType,
     ServiceabilityCheckRequest,
     ServiceabilityCheckResponse,
     ServiceabilityFilters,
-} from '@/src/types/api/address.types';
+} from '@/src/types/api/logistics';

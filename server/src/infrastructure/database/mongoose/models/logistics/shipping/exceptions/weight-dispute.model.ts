@@ -77,13 +77,13 @@ export interface IWeightDispute extends Document {
 
     // Resolution
     resolution?: {
-        outcome: 'seller_favor' | 'shipcrowd_favor' | 'split' | 'waived';
+        outcome: 'seller_favor' | 'Shipcrowd_favor' | 'split' | 'waived';
         adjustedWeight?: {
             value: number;
             unit: 'kg' | 'g';
         };
         refundAmount?: number; // If seller_favor
-        deductionAmount?: number; // If shipcrowd_favor
+        deductionAmount?: number; // If Shipcrowd_favor
         reasonCode: string; // AUTO_RESOLVED_NO_RESPONSE, SELLER_PROVIDED_PROOF, etc.
         resolvedAt: Date;
         resolvedBy: mongoose.Types.ObjectId | 'system';
@@ -228,7 +228,7 @@ const WeightDisputeSchema = new Schema<IWeightDispute>(
         resolution: {
             outcome: {
                 type: String,
-                enum: ['seller_favor', 'shipcrowd_favor', 'split', 'waived'],
+                enum: ['seller_favor', 'Shipcrowd_favor', 'split', 'waived'],
             },
             adjustedWeight: {
                 value: Number,

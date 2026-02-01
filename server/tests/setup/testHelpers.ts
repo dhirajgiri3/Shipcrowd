@@ -7,9 +7,26 @@ import jwt from 'jsonwebtoken';
 
 // Connect to MongoDB before all tests in a file
 beforeAll(async () => {
-    const uri = process.env.MONGO_TEST_URI;
+    let uri = process.env.MONGO_TEST_URI || process.env.MONGODB_URI;
     if (!uri) {
-        throw new Error('MONGO_TEST_URI not set. Make sure globalSetup ran correctly.');
+        // Try reading from config file
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const configPath = path.join(__dirname, 'mongoConfig.json');
+
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                uri = config.mongoUri;
+            }
+        } catch (e) {
+            console.warn('Failed to read mongoConfig.json', e);
+        }
+    }
+
+    if (!uri) {
+        console.warn('MONGO_TEST_URI not set. Falling back to local test database.');
+        uri = 'mongodb://localhost:27017/shipcrowd_test_fallback';
     }
 
     if (mongoose.connection.readyState === 0) {
@@ -37,13 +54,18 @@ beforeEach(async () => {
  */
 export const generateAuthToken = (
     userId: string,
-    role: 'seller' | 'admin' | 'user' = 'seller'
+    role: 'seller' | 'admin' | 'user' | 'staff' | 'super_admin' = 'seller'
 ): string => {
-    const secret = process.env.JWT_SECRET || 'test_jwt_secret';
+    const secret = process.env.ACCESS_TOKEN_SECRET || 'access_token_secret';
+    // Match the payload structure from jwt.ts (generateAccessToken)
     return jwt.sign(
         { userId, role },
         secret,
-        { expiresIn: '1h' }
+        {
+            expiresIn: '1h',
+            audience: 'Shipcrowd-api',
+            issuer: 'Shipcrowd-auth'
+        }
     );
 };
 

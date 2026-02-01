@@ -2,13 +2,12 @@
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/core/Button';
-import { useZones, useDeleteZone } from '@/src/core/api/hooks/useZones';
-import type { ZoneType } from '@/src/types/api/zones.types';
+import { Button } from '@/src/components/ui/core/Button';
+import { useZones, useDeleteZone } from '@/src/core/api/hooks/logistics/useZones';
+import type { ZoneType } from '@/src/types/api/logistics';
 import { ZoneStatsCards, ZoneFilters, ZoneListTable, ZonesSkeleton } from '@/src/features/admin/zones';
 import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
-
+import { showSuccessToast } from '@/src/lib/error';
 export function ZonesClient() {
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState<ZoneType | 'all'>('all');
@@ -29,7 +28,7 @@ export function ZonesClient() {
     const handleDelete = (id: string, name: string) => {
         if (confirm(`Are you sure you want to delete zone "${name}"? This action cannot be undone.`)) {
             deleteZone(id);
-            toast.success('Zone deleted successfully');
+            showSuccessToast('Zone deleted successfully');
         }
     };
 

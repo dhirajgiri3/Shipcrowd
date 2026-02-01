@@ -172,7 +172,7 @@ Use this endpoint for uptime monitoring (Pingdom, UptimeRobot, etc.).
 
 ```bash
 # Example with curl
-curl https://api.shipcrowd.com/api/v1/webhooks/velocity/health
+curl https://api.Shipcrowd.com/api/v1/webhooks/velocity/health
 
 # Expected response:
 {

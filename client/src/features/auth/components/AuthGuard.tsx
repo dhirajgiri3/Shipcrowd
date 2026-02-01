@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import type { User } from '@/src/types/auth';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -40,19 +41,7 @@ export function AuthGuard({
   useEffect(() => {
     if (!isInitialized) return;
 
-    // ✅ Dev mode bypass with explicit environment variable (CRITICAL SECURITY)
-    // Only bypass auth if BOTH conditions are true:
-    // 1. NODE_ENV === 'development'
-    // 2. NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true' (explicit opt-in)
-    const isDevBypass =
-      process.env.NODE_ENV === 'development' &&
-      process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true';
-
-    if (isDevBypass) {
-      console.warn('[AuthGuard] DEV MODE: Auth bypass enabled for', pathname);
-      setShouldRender(true);
-      return;
-    }
+    // ✅ ALWAYS check authentication (Bypass removed for security)
 
     // ✅ ALWAYS check authentication in production and when bypass is disabled
     if (!isAuthenticated) {
@@ -68,9 +57,19 @@ export function AuthGuard({
     // Check role-based access
     if (requiredRole && user) {
       const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-      if (!allowedRoles.includes(user.role)) {
-        // Redirect to user's default dashboard instead of generic unauthorized page for better UX
-        const destination = user.role === 'admin' ? '/admin' : '/seller';
+
+      // ✅ FIX: Role hierarchy - super_admin has all admin privileges
+      const isSuperAdmin = user.role === 'super_admin';
+      const isAdminAccessingSeller = (user.role === 'admin' || isSuperAdmin) && allowedRoles.includes('seller');
+
+      // Super admin can access any admin or seller route
+      const hasRequiredRole = allowedRoles.includes(user.role) ||
+        (isSuperAdmin && allowedRoles.includes('admin'));
+
+      if (!hasRequiredRole && !isAdminAccessingSeller) {
+        // Only redirect if user truly doesn't have access
+        // Sellers can't access admin routes, but admins/super_admins CAN access seller routes
+        const destination = (user.role === 'admin' || isSuperAdmin) ? '/admin' : '/seller';
         if (pathname !== destination) {
           router.push(destination);
         }
@@ -84,12 +83,7 @@ export function AuthGuard({
   // Show loading state while checking auth
   if (!isInitialized) {
     return loadingFallback || (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
+      <Loader variant="truck" fullScreen message="Loading Shipcrowd..." />
     );
   }
 

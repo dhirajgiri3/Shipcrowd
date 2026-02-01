@@ -322,15 +322,21 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
     }
 
     if (validation.data.isDefault === true) {
-      await Warehouse.updateMany(
+      // First, unset all other warehouses as default
+      const unsetResult = await Warehouse.updateMany(
         { companyId: req.user.companyId, _id: { $ne: warehouseId }, isDeleted: false },
         { $set: { isDefault: false } }
       );
+      logger.info(`[Warehouse] Set ${unsetResult.modifiedCount} other warehouses to isDefault: false`);
+
+      // Update company's default warehouse ID
       await Company.findByIdAndUpdate(req.user.companyId, { 'settings.defaultWarehouseId': warehouseId });
+      logger.info(`[Warehouse] Updated company ${req.user.companyId} default warehouse to ${warehouseId}`);
     } else if (validation.data.isDefault === false && warehouse.isDefault) {
       throw new ValidationError('Cannot unset the default warehouse. Set another warehouse as default first.');
     }
 
+    // Update the warehouse with new data
     const updatedWarehouse = await Warehouse.findByIdAndUpdate(
       warehouseId,
       { $set: validation.data },
@@ -341,14 +347,30 @@ export const updateWarehouse = async (req: Request, res: Response, next: NextFun
       throw new NotFoundError('Warehouse not found after update', ErrorCode.RES_WAREHOUSE_NOT_FOUND);
     }
 
+    logger.info(`[Warehouse] Updated warehouse ${warehouseId}, isDefault: ${updatedWarehouse.isDefault}`);
+
     await createAuditLog(req.user._id, req.user.companyId, 'update', 'warehouse', warehouseId, { message: 'Warehouse updated' }, req);
 
-    const warehouseObj = updatedWarehouse.toObject();
-    if (warehouseObj.operatingHours) {
-      (warehouseObj as any).formattedHours = formatOperatingHours(warehouseObj.operatingHours);
-    }
+    // ✅ FIX: Fetch fresh data AFTER all updates are complete
+    // Use a small delay to ensure MongoDB index updates are complete
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-    sendSuccess(res, { warehouse: warehouseObj }, 'Warehouse updated successfully');
+    const allWarehouses = await Warehouse.find({
+      companyId: req.user.companyId,
+      isDeleted: false
+    }).sort({ isDefault: -1, name: 1 }).lean();
+
+    const formattedWarehouses = allWarehouses.map(wh => {
+      if (wh.operatingHours) {
+        (wh as any).formattedHours = formatOperatingHours(wh.operatingHours);
+      }
+      return wh;
+    });
+
+    sendSuccess(res, {
+      warehouse: updatedWarehouse.toObject(),
+      warehouses: formattedWarehouses // Include all warehouses for frontend cache update
+    }, 'Warehouse updated successfully');
   } catch (error) {
     logger.error('Error updating warehouse:', error);
     next(error);

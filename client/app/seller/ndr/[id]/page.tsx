@@ -21,7 +21,7 @@ import { TakeActionModal } from '@/src/features/ndr/components/TakeActionModal';
 import { CommunicationHistory } from '@/src/features/ndr/components/CommunicationHistory';
 import { NDRTimeline } from '@/src/features/ndr/components/NDRTimeline';
 import { formatDate } from '@/src/lib/utils';
-import type { NDRAction } from '@/src/types/api/ndr.types';
+import type { NDRAction } from '@/src/types/api/orders';
 
 const STATUS_COLORS = {
     open: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',

@@ -465,7 +465,7 @@ npm run dev
 [Detailed test scenarios for all domains]
 
 ## Database Verification
-mongosh shipcrowd_dev
+mongosh Shipcrowd_dev
 db.users.find({ email: "test@example.com" })
 db.orders.find({ company: ObjectId("...") })
 

@@ -6,7 +6,7 @@
         "version": "1.0.0",
         "contact": {
             "name": "Shipcrowd Team",
-            "email": "api@shipcrowd.com"
+            "email": "api@Shipcrowd.com"
         },
         "license": {
             "name": "Proprietary"
@@ -18,7 +18,7 @@
             "description": "Development server"
         },
         {
-            "url": "https://api.shipcrowd.com/v1",
+            "url": "https://api.Shipcrowd.com/v1",
             "description": "Production server"
         }
     ],

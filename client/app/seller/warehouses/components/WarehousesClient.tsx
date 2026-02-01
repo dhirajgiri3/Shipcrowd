@@ -1,6 +1,18 @@
+/**
+ * Warehouses List Client Component
+ * 
+ * This Client Component handles:
+ * - Fetching warehouse data from API
+ * - Interactive UI (edit/delete modals, state management)
+ * - Loading, error, and empty states
+ * - Real-time data updates via React Query
+ * 
+ * The parent Server Component (page.tsx) simply renders this.
+ */
+
 "use client";
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Building2,
@@ -10,172 +22,345 @@ import {
     Edit,
     Trash2,
     CheckCircle2,
-    Star
+    Loader2,
+    AlertCircle,
+    Info,
+    Boxes
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
-import { cn } from '@/src/shared/utils';
+import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { cn } from '@/src/lib/utils';
 import Link from 'next/link';
-
-// Mock warehouses data
-const mockWarehouses = [
-    {
-        id: 'WH001',
-        name: 'Mumbai Central Hub',
-        address: {
-            line1: '123 MG Road',
-            city: 'Mumbai',
-            state: 'Maharashtra',
-            postalCode: '400001',
-        },
-        contactPerson: 'Rajesh Kumar',
-        phone: '9876543210',
-        isDefault: true,
-        isVerified: true,
-        ordersThisMonth: 245,
-    },
-    {
-        id: 'WH002',
-        name: 'Delhi Warehouse',
-        address: {
-            line1: '456 Connaught Place',
-            city: 'New Delhi',
-            state: 'Delhi',
-            postalCode: '110001',
-        },
-        contactPerson: 'Priya Singh',
-        phone: '9123456789',
-        isDefault: false,
-        isVerified: true,
-        ordersThisMonth: 189,
-    },
-    {
-        id: 'WH003',
-        name: 'Bangalore Storage',
-        address: {
-            line1: '789 Electronic City',
-            city: 'Bangalore',
-            state: 'Karnataka',
-            postalCode: '560100',
-        },
-        contactPerson: 'Amit Patel',
-        phone: '9988776655',
-        isDefault: false,
-        isVerified: false,
-        ordersThisMonth: 67,
-    },
-];
+import { useWarehouses, useUpdateWarehouse, Warehouse } from '@/src/core/api/hooks/logistics/useWarehouses';
+import { EditWarehouseModal, DeleteWarehouseDialog } from '@/src/features/warehouse';
 
 export function WarehousesClient() {
-    const [warehouses] = useState(mockWarehouses);
+    const { data: warehouses, isLoading, isError, error, refetch } = useWarehouses();
+    const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
+    const [deletingWarehouse, setDeletingWarehouse] = useState<Warehouse | null>(null);
+    const [togglingDefaultId, setTogglingDefaultId] = useState<string | null>(null);
+
+    const updateWarehouseMutation = useUpdateWarehouse();
+
+    // Reset toggling state when mutation completes (success or error)
+    React.useEffect(() => {
+        if (!updateWarehouseMutation.isPending) {
+            setTogglingDefaultId(null);
+        }
+    }, [updateWarehouseMutation.isPending]);
+
+    const handleToggleDefault = (warehouse: Warehouse) => {
+        if (warehouse.isDefault) return; // Already default, nothing to do
+
+        setTogglingDefaultId(warehouse._id);
+        updateWarehouseMutation.mutate({
+            warehouseId: warehouse._id,
+            data: { isDefault: true },
+        });
+    };
+
+    // Extract error message from API response
+    const errorMessage = error?.message || 'We couldn\'t fetch your warehouses. Please try again.';
+    const errorReason = error?.code;
+
+    // Loading State
+    if (isLoading) {
+        return (
+            <div className="min-h-screen space-y-6 pb-10">
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                            Warehouses
+                        </h1>
+                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                            Manage your pickup locations and warehouses
+                        </p>
+                    </div>
+                    <Link href="/seller/warehouses/add">
+                        <Button variant="primary" className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Warehouse
+                        </Button>
+                    </Link>
+                </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <Card key={i} className="border-[var(--border-default)]">
+                            <CardContent className="p-6 space-y-4">
+                                <div className="h-12 w-12 rounded-2xl bg-[var(--bg-tertiary)] animate-pulse" />
+                                <div className="space-y-2">
+                                    <div className="h-4 bg-[var(--bg-tertiary)] rounded animate-pulse w-3/4" />
+                                    <div className="h-3 bg-[var(--bg-tertiary)] rounded animate-pulse w-1/2" />
+                                </div>
+                                <div className="h-20 bg-[var(--bg-tertiary)] rounded animate-pulse" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Error State
+    if (isError) {
+        return (
+            <div className="min-h-screen space-y-6 pb-10">
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                            Warehouses
+                        </h1>
+                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                            Manage your pickup locations and warehouses
+                        </p>
+                    </div>
+                </header>
+
+                <Card className="border-[var(--error)]">
+                    <CardContent className="p-12 text-center">
+                        <AlertCircle className="h-12 w-12 text-[var(--error)] mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                            {errorReason === 'INSUFFICIENT_ACCESS_TIER' ? 'Access Restricted' : 'Failed to Load Warehouses'}
+                        </h3>
+                        <p className="text-sm text-[var(--text-secondary)] mb-4 max-w-md mx-auto">
+                            {errorMessage}
+                        </p>
+                        {errorReason === 'INSUFFICIENT_ACCESS_TIER' && (
+                            <p className="text-xs text-[var(--text-muted)] mb-4">
+                                Please complete your account setup or contact support to access this feature.
+                            </p>
+                        )}
+                        <Button onClick={() => refetch()} variant="outline">
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Empty State
+    if (!warehouses || warehouses.length === 0) {
+        return (
+            <div className="min-h-screen space-y-6 pb-10">
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                            Warehouses
+                        </h1>
+                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                            Manage your pickup locations and warehouses
+                        </p>
+                    </div>
+                    <Link href="/seller/warehouses/add">
+                        <Button variant="primary" className="shadow-lg shadow-blue-500/20">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Warehouse
+                        </Button>
+                    </Link>
+                </header>
+
+                <Card className="border-dashed border-2">
+                    <CardContent className="p-12 text-center">
+                        <div className="h-16 w-16 rounded-2xl bg-[var(--bg-tertiary)] flex items-center justify-center mx-auto mb-4">
+                            <Building2 className="h-8 w-8 text-[var(--text-muted)]" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                            No Warehouses Yet
+                        </h3>
+                        <p className="text-sm text-[var(--text-muted)] mb-4">
+                            Get started by adding your first warehouse.
+                        </p>
+                        <Link href="/seller/warehouses/add">
+                            <Button variant="primary">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Your First Warehouse
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen space-y-6 pb-10">
             {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <motion.h1
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-3xl font-bold text-[var(--text-primary)] tracking-tight"
-                    >
-                        Warehouses
-                    </motion.h1>
-                    <p className="text-sm text-[var(--text-secondary)] mt-2">
-                        Manage your pickup locations and warehouses
-                    </p>
+            <header className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-3xl font-bold text-[var(--text-primary)] tracking-tight"
+                        >
+                            Warehouses
+                        </motion.h1>
+                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                            Manage your pickup locations and warehouses
+                        </p>
+                    </div>
+
+                    <Link href="/seller/warehouses/add">
+                        <Button variant="primary" className="bg-[var(--primary-blue)] hover:bg-[var(--primary-blue-deep)] text-white">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Warehouse
+                        </Button>
+                    </Link>
                 </div>
 
-                <Link href="/seller/warehouses/add">
-                    <Button variant="primary" className="shadow-lg shadow-blue-500/20">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Warehouse
-                    </Button>
-                </Link>
+                {/* Info Banner */}
+                {warehouses.length > 1 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-start gap-3 p-4 rounded-xl bg-[var(--primary-blue)]/5 border border-[var(--primary-blue)]/20"
+                    >
+                        <Info className="w-5 h-5 text-[var(--primary-blue)] shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-sm text-[var(--text-primary)] font-medium">
+                                Default Warehouse
+                            </p>
+                            <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                                Your default warehouse is automatically selected for new shipments. Click <span className="font-semibold text-[var(--primary-blue)]">"Make Default"</span> on any warehouse to update your primary pickup location.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
             </header>
 
             {/* Warehouses Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {warehouses.map((warehouse, index) => (
                     <motion.div
-                        key={warehouse.id}
+                        key={warehouse._id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                     >
-                        <Card className="border-[var(--border-default)] hover:shadow-lg transition-shadow h-full">
-                            <CardContent className="p-6 space-y-4">
+                        <Card className="border-[var(--border-default)] hover:border-[var(--primary-blue)]/50 transition-all duration-300 h-full group">
+                            <CardContent className="p-5 space-y-4">
                                 {/* Header */}
                                 <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-start gap-4">
                                         <div className={cn(
-                                            "h-12 w-12 rounded-2xl flex items-center justify-center",
+                                            "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border-2 transition-all",
                                             warehouse.isDefault
-                                                ? "bg-gradient-to-br from-[var(--primary-blue)] to-[var(--primary-blue-light)] text-white shadow-lg shadow-blue-500/20"
-                                                : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
+                                                ? "bg-[var(--primary-blue)]/10 border-[var(--primary-blue)]/20 text-[var(--primary-blue)]"
+                                                : "bg-[var(--bg-tertiary)] border-[var(--border-subtle)] text-[var(--text-muted)] group-hover:border-[var(--primary-blue)]/30 group-hover:text-[var(--primary-blue)]"
                                         )}>
-                                            <Building2 className="h-6 w-6" />
+                                            <Building2 className="w-6 h-6" />
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                                {warehouse.name}
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-[var(--text-primary)] leading-tight text-base">
+                                                    {warehouse.name}
+                                                </h3>
                                                 {warehouse.isDefault && (
-                                                    <Star className="h-4 w-4 text-[var(--warning)] fill-[var(--warning)]" />
+                                                    <Badge variant="outline" className="bg-[var(--primary-blue)]/10 text-[var(--primary-blue)] border-[var(--primary-blue)]/20 h-5 px-1.5 text-[10px] font-semibold">
+                                                        Default
+                                                    </Badge>
                                                 )}
-                                            </h3>
-                                            <p className="text-xs text-[var(--text-muted)]">
-                                                {warehouse.id}
+                                            </div>
+                                            <p className="font-mono text-[10px] text-[var(--text-muted)] tracking-wide">
+                                                ID: {warehouse._id.slice(-8)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {warehouse.isVerified ? (
-                                        <Badge className="bg-[var(--success-bg)] text-[var(--success)]">
-                                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                                            Verified
+                                    {warehouse.isActive ? (
+                                        <Badge variant="outline" className="bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]/20 pl-1.5 pr-2 py-0.5 h-6">
+                                            <CheckCircle2 className="w-3 h-3 mr-1.5" />
+                                            Active
                                         </Badge>
                                     ) : (
-                                        <Badge className="bg-[var(--warning-bg)] text-[var(--warning)]">
-                                            Pending
+                                        <Badge variant="outline" className="bg-[var(--bg-secondary)] text-[var(--text-muted)] border-[var(--border-subtle)] pl-1.5 pr-2 py-0.5 h-6">
+                                            Inactive
                                         </Badge>
                                     )}
                                 </div>
 
+                                <div className="h-px bg-[var(--border-subtle)]" />
+
                                 {/* Address */}
-                                <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-                                    <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-[var(--text-muted)]" />
-                                    <div>
-                                        <p>{warehouse.address.line1}</p>
-                                        <p>{warehouse.address.city}, {warehouse.address.state} - {warehouse.address.postalCode}</p>
+                                <div className="space-y-3">
+                                    <div className="flex items-start gap-3">
+                                        <MapPin className="w-4 h-4 mt-0.5 text-[var(--text-muted)] shrink-0" />
+                                        <div className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                                            <p className="font-medium text-[var(--text-primary)]">{warehouse.address.line1}</p>
+                                            {warehouse.address.line2 && <p>{warehouse.address.line2}</p>}
+                                            <p className="text-[var(--text-muted)]">{warehouse.address.city}, {warehouse.address.state} - <span className="font-mono">{warehouse.address.postalCode}</span></p>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Contact */}
-                                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                                    <Phone className="h-4 w-4 text-[var(--text-muted)]" />
-                                    <span>{warehouse.contactPerson} • {warehouse.phone}</span>
-                                </div>
-
-                                {/* Stats */}
-                                <div className="pt-4 border-t border-[var(--border-subtle)]">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-[var(--text-muted)]">Orders this month</span>
-                                        <span className="font-semibold text-[var(--text-primary)]">{warehouse.ordersThisMonth}</span>
-                                    </div>
+                                    {/* Contact */}
+                                    {warehouse.contactInfo && (warehouse.contactInfo.name || warehouse.contactInfo.phone) && (
+                                        <div className="flex items-center gap-3 text-sm">
+                                            <Phone className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                                            <div className="text-[var(--text-secondary)]">
+                                                {warehouse.contactInfo.name && <span className="font-medium text-[var(--text-primary)] mr-1">{warehouse.contactInfo.name}</span>}
+                                                {warehouse.contactInfo.name && warehouse.contactInfo.phone && <span className="text-[var(--text-muted)] mx-1">•</span>}
+                                                {warehouse.contactInfo.phone && <span className="font-mono text-xs">{warehouse.contactInfo.phone}</span>}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex gap-2 pt-2">
-                                    <Button variant="outline" size="sm" className="flex-1">
-                                        <Edit className="h-4 w-4 mr-1" />
+                                <div className="pt-2 flex flex-wrap gap-2">
+                                    <Link href={`/seller/warehouses/${warehouse._id}/inventory`}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 text-xs bg-[var(--bg-primary)] hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)] transition-colors"
+                                        >
+                                            <Boxes className="w-3.5 h-3.5 mr-1.5" />
+                                            Inventory
+                                        </Button>
+                                    </Link>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 text-xs bg-[var(--bg-primary)] hover:border-[var(--text-muted)] transition-colors"
+                                        onClick={() => setEditingWarehouse(warehouse)}
+                                    >
+                                        <Edit className="w-3 h-3 mr-1.5" />
                                         Edit
                                     </Button>
+
                                     {!warehouse.isDefault && (
-                                        <Button variant="outline" size="sm" className="text-[var(--error)] hover:bg-[var(--error-bg)]">
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 text-xs border-[var(--primary-blue)]/30 text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5 hover:border-[var(--primary-blue)] transition-colors"
+                                                onClick={() => handleToggleDefault(warehouse)}
+                                                disabled={togglingDefaultId === warehouse._id}
+                                            >
+                                                {togglingDefaultId === warehouse._id ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                                                ) : (
+                                                    <CheckCircle2 className="w-3 h-3 mr-1.5" />
+                                                )}
+                                                Make Default
+                                            </Button>
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 w-8 p-0 border-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/5 hover:border-[var(--error)] ml-auto"
+                                                onClick={() => setDeletingWarehouse(warehouse)}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </>
                                     )}
+
+                                    {/* Spacer for default card to push edit button */}
+                                    {warehouse.isDefault && <div className="flex-1" />}
                                 </div>
                             </CardContent>
                         </Card>
@@ -189,22 +374,33 @@ export function WarehousesClient() {
                     transition={{ delay: warehouses.length * 0.1 }}
                 >
                     <Link href="/seller/warehouses/add">
-                        <Card className="border-dashed border-2 border-[var(--border-default)] hover:border-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)]/10 transition-all h-full min-h-[300px] cursor-pointer group">
-                            <CardContent className="h-full flex flex-col items-center justify-center p-6 text-center">
-                                <div className="h-16 w-16 rounded-2xl bg-[var(--bg-tertiary)] group-hover:bg-[var(--primary-blue)]/10 flex items-center justify-center mb-4 transition-colors">
-                                    <Plus className="h-8 w-8 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
-                                </div>
-                                <h3 className="font-semibold text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)]">
-                                    Add New Warehouse
-                                </h3>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">
-                                    Set up a new pickup location
-                                </p>
-                            </CardContent>
+                        <Card className="border-dashed border-2 border-[var(--border-default)] hover:border-[var(--primary-blue)]/50 hover:bg-[var(--bg-tertiary)]/50 transition-all duration-300 h-full min-h-[280px] cursor-pointer group flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-[var(--bg-tertiary)] group-hover:bg-[var(--primary-blue)]/10 flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110">
+                                <Plus className="w-6 h-6 text-[var(--text-muted)] group-hover:text-[var(--primary-blue)]" />
+                            </div>
+                            <h3 className="font-semibold text-[var(--text-secondary)] group-hover:text-[var(--primary-blue)] transition-colors">
+                                Add New Warehouse
+                            </h3>
+                            <p className="text-sm text-[var(--text-muted)] mt-1">
+                                Set up a new pickup location
+                            </p>
                         </Card>
                     </Link>
                 </motion.div>
             </div>
+
+            {/* Modals */}
+            <EditWarehouseModal
+                warehouse={editingWarehouse!}
+                isOpen={!!editingWarehouse}
+                onClose={() => setEditingWarehouse(null)}
+            />
+
+            <DeleteWarehouseDialog
+                warehouse={deletingWarehouse}
+                isOpen={!!deletingWarehouse}
+                onClose={() => setDeletingWarehouse(null)}
+            />
         </div>
     );
 }

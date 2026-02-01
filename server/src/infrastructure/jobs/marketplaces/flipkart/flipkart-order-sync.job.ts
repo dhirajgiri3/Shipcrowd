@@ -20,7 +20,7 @@
 
 import { Job, Queue, Worker } from 'bullmq';
 import QueueManager from '../../../utilities/queue-manager';
-import RedisConnection from '../../../utilities/redis.connection';
+import { RedisManager } from '../../../redis/redis.manager';
 import FlipkartOrderSyncService from '../../../../core/application/services/flipkart/flipkart-order-sync.service';
 import { FlipkartStore } from '../../../database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
@@ -54,7 +54,7 @@ export default class FlipkartOrderSyncJob {
           return this.processJob(job);
         },
         {
-          connection: RedisConnection.getConnectionOptions(),
+          connection: RedisManager.getBullMQConnection(),
           concurrency: 3, // Process 3 stores in parallel
           limiter: {
             max: 10, // Max 10 jobs

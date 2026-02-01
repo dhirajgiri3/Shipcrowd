@@ -1,11 +1,10 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
-// Removed duplicate import
-import { MOCK_PREDICTIONS, MOCK_ANOMALIES, MOCK_AI_INSIGHTS } from '@/src/lib/mockData';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Loader2 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     ComposedChart, Line, ResponsiveContainer
@@ -15,9 +14,21 @@ import {
     MessageSquare, ArrowRight, Target, Sparkles,
     Activity, ArrowUpRight
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
+import { useAIPredictions, useAnomalyDetection, useAIInsights, useUpdateAnomalyStatus, useDemandForecast } from '@/src/core/api/hooks/admin/useAdminIntelligence';
 
 export function IntelligenceClient() {
+    // API Hooks
+    const { data: predictionsData, isLoading: isPredictionsLoading } = useAIPredictions();
+    const { data: anomaliesData, isLoading: isAnomaliesLoading } = useAnomalyDetection();
+    const { data: insightsData, isLoading: isInsightsLoading } = useAIInsights();
+    const { data: forecastData, isLoading: isForecastLoading } = useDemandForecast(30);
+
+    const predictions = predictionsData?.predictions || [];
+    const anomalies = anomaliesData?.anomalies || [];
+    const insights = insightsData?.insights || [];
+    const forecastTimeSeries = forecastData?.forecast || [];
+
     // Animation variants
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -64,7 +75,7 @@ export function IntelligenceClient() {
                         <Activity className="h-4 w-4 mr-2" />
                         Live Monitor
                     </Button>
-                    <Button className="bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-hover)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
+                    <Button className="bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all">
                         <Zap className="h-4 w-4 mr-2" />
                         Run Deep Analysis
                     </Button>
@@ -73,7 +84,7 @@ export function IntelligenceClient() {
 
             {/* 1. AI Insights Cards */}
             <motion.div variants={containerVariants} className="grid gap-6 lg:grid-cols-3">
-                {MOCK_AI_INSIGHTS.map((insight, idx) => {
+                {insights.map((insight, idx) => {
                     const isCritical = insight.impact === 'High';
                     return (
                         <motion.div
@@ -137,12 +148,21 @@ export function IntelligenceClient() {
                         <CardContent className="h-[400px]">
                             <div className="mb-4 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="neutral" className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">Confidence: 94%</Badge>
-                                    <Badge variant="neutral" className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">Model: v2.4 (XGBoost)</Badge>
+                                    <Badge variant="neutral" className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                                        Confidence: {forecastData?.accuracy ? `${forecastData.accuracy}%` : '94%'}
+                                    </Badge>
+                                    <Badge variant="neutral" className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                                        Model: {forecastData?.modelVersion || 'v2.4 (XGBoost)'}
+                                    </Badge>
                                 </div>
                             </div>
+                            {isForecastLoading ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                </div>
+                            ) : (
                             <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={MOCK_PREDICTIONS} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                                <ComposedChart data={forecastTimeSeries} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                                     <defs>
                                         <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="var(--primary-blue)" stopOpacity={0.2} />
@@ -198,6 +218,7 @@ export function IntelligenceClient() {
                                     />
                                 </ComposedChart>
                             </ResponsiveContainer>
+                            )}
                         </CardContent>
                     </Card>
                 </motion.div>
@@ -215,30 +236,41 @@ export function IntelligenceClient() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-y-auto pt-6 space-y-4 pr-2 custom-scrollbar">
-                            {MOCK_ANOMALIES.map((anomaly, i) => (
-                                <motion.div
-                                    key={anomaly.id}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="relative group p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-elevated)] transition-all duration-200"
-                                >
-                                    <div className="absolute left-0 top-4 bottom-4 w-1 bg-gradient-to-b from-transparent via-[var(--border-strong)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <div className="flex justify-between items-start mb-2">
-                                        <Badge
-                                            variant={anomaly.severity === 'critical' ? 'destructive' : anomaly.severity === 'high' ? 'warning' : 'neutral'}
-                                            className="px-2 py-0.5 text-[10px] uppercase font-bold"
-                                        >
-                                            {anomaly.type}
-                                        </Badge>
-                                        <span className="text-[10px] font-mono text-[var(--text-muted)]">{anomaly.timestamp}</span>
-                                    </div>
-                                    <p className="text-sm text-[var(--text-primary)] font-medium leading-relaxed mb-1">{anomaly.message}</p>
-                                    <Button variant="link" className="p-0 h-auto text-xs text-[var(--primary-blue)] hover:no-underline opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                        Investigate <ArrowRight className="h-3 w-3" />
-                                    </Button>
-                                </motion.div>
-                            ))}
+                            {isAnomaliesLoading ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                </div>
+                            ) : anomalies.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                                    <AlertTriangle className="h-12 w-12 text-[var(--text-muted)] mb-3 opacity-50" />
+                                    <p className="text-sm text-[var(--text-muted)]">No anomalies detected</p>
+                                </div>
+                            ) : (
+                                anomalies.map((anomaly, i) => (
+                                    <motion.div
+                                        key={anomaly.id}
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="relative group p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-elevated)] transition-all duration-200"
+                                    >
+                                        <div className="absolute left-0 top-4 bottom-4 w-1 bg-gradient-to-b from-transparent via-[var(--border-strong)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="flex justify-between items-start mb-2">
+                                            <Badge
+                                                variant={anomaly.severity === 'critical' ? 'destructive' : anomaly.severity === 'high' ? 'warning' : 'neutral'}
+                                                className="px-2 py-0.5 text-[10px] uppercase font-bold"
+                                            >
+                                                {anomaly.category}
+                                            </Badge>
+                                            <span className="text-[10px] font-mono text-[var(--text-muted)]">{new Date(anomaly.detectedAt).toLocaleTimeString()}</span>
+                                        </div>
+                                        <p className="text-sm text-[var(--text-primary)] font-medium leading-relaxed mb-1">{anomaly.description}</p>
+                                        <Button variant="link" className="p-0 h-auto text-xs text-[var(--primary-blue)] hover:no-underline opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                            Investigate <ArrowRight className="h-3 w-3" />
+                                        </Button>
+                                    </motion.div>
+                                ))
+                            )}
                         </CardContent>
                         <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50">
                             <Button variant="outline" className="w-full text-xs text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-primary)]">

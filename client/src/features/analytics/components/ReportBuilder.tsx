@@ -14,12 +14,12 @@ import {
     CardHeader,
     CardTitle,
     Loader
-} from '@/components/ui';
+} from '@/src/components/ui';
 import { ChartTypeSelector } from './ChartTypeSelector';
 import { DateRangeFilter } from './DateRangeFilter';
 import { MetricSelector, AVAILABLE_METRICS } from './MetricSelector';
 import { useCustomReport, useAnalyticsParams } from '@/src/hooks';
-import { ChartType, ReportConfig } from '@/src/types/analytics.types';
+import { ClientChartType as ChartType, ReportConfig } from '@/src/types/analytics/client-analytics.types';
 import { Download, Play } from 'lucide-react';
 import { useState } from 'react';
 import {

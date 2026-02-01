@@ -407,33 +407,20 @@ export default class RTOService {
             }
 
             // Check if shipment uses Velocity courier
-            const courierProvider = fullShipment.carrier?.toLowerCase();
-            const isVelocity = courierProvider?.includes('velocity');
+            // Get courier provider via Factory
+            // This decouples the service from specific implementations (Velocity, etc.)
+            const courierProvider = fullShipment.carrier || 'velocity'; // Default or logic fallback
 
-            if (!isVelocity) {
-                // Fallback for non-Velocity couriers
-                logger.info('Non-Velocity courier detected, using mock reverse AWB', {
-                    courier: courierProvider,
-                    originalAwb: shipment.awb
-                });
-                const timestamp = Date.now().toString().slice(-6);
-                return `RTO-${shipment.awb}-${timestamp}`;
-            }
-
-            // Import Velocity provider
-            const { VelocityShipfastProvider } = await import(
-                '../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
-            );
-
-            // Initialize Velocity adapter
-            const velocityAdapter = new VelocityShipfastProvider(
-                new mongoose.Types.ObjectId(shipment.companyId)
+            const { CourierFactory } = await import('../../../../infrastructure/external/couriers/courier.factory.js');
+            const courierAdapter = await CourierFactory.getProvider(
+                shipment.companyId.toString(),
+                courierProvider
             );
 
             // Prepare pickup address (customer location)
             const pickupAddress = {
-                name: shipment.customer?.name || fullShipment.deliveryDetails?.recipientName || 'Customer',
-                phone: shipment.customer?.phone || fullShipment.deliveryDetails?.recipientPhone || '',
+                name: fullShipment.deliveryDetails?.recipientName || 'Customer',
+                phone: fullShipment.deliveryDetails?.recipientPhone || '',
                 address: fullShipment.deliveryDetails?.address?.line1 || '',
                 city: fullShipment.deliveryDetails?.address?.city || '',
                 state: fullShipment.deliveryDetails?.address?.state || '',
@@ -450,48 +437,54 @@ export default class RTOService {
                 height: fullShipment.packageDetails?.dimensions?.height || 10
             };
 
-            // Call Velocity API to create reverse shipment
-            logger.info('Creating Velocity reverse shipment', {
-                originalAwb: shipment.awb,
-                orderId: shipment.orderId,
-                warehouseId: shipment.warehouseId
+            // Call courier API to create reverse shipment
+            logger.info('Creating reverse shipment', {
+                courier: courierProvider,
+                originalAwb: fullShipment.trackingNumber,
+                orderId: fullShipment.orderId,
+                warehouseId: fullShipment.pickupDetails?.warehouseId
             });
 
-            const reverseShipmentResponse = await velocityAdapter.createReverseShipment(
-                shipment.awb,
+            // Use correct schema paths
+            const reverseShipmentResponse = await courierAdapter.createReverseShipment({
+                originalAwb: fullShipment.trackingNumber,
                 pickupAddress,
-                shipment.warehouseId,
-                packageDetails,
-                shipment.orderId,
-                'RTO - Return to Origin'
-            );
+                returnWarehouseId: String(fullShipment.pickupDetails?.warehouseId || ''),
+                package: packageDetails,
+                orderId: fullShipment.orderId.toString(),
+                reason: 'RTO - Return to Origin'
+            });
 
             logger.info('Velocity reverse shipment created successfully', {
-                originalAwb: shipment.awb,
-                reverseAwb: reverseShipmentResponse.reverse_awb,
-                labelUrl: reverseShipmentResponse.label_url,
-                isFallback: reverseShipmentResponse.courier_name?.includes('Mock')
+                originalAwb: fullShipment.trackingNumber,
+                reverseAwb: reverseShipmentResponse.trackingNumber,
+                labelUrl: reverseShipmentResponse.labelUrl,
+                isFallback: reverseShipmentResponse.courierName?.includes('Mock')
             });
 
-            return reverseShipmentResponse.reverse_awb;
+            return reverseShipmentResponse.trackingNumber;
 
         } catch (error) {
-            // Final fallback: Generate mock reverse AWB on any error
-            logger.error('Error creating reverse shipment, using mock fallback', {
+            // NO FALLBACK - Fail properly to surface configuration or integration issues
+            logger.error('Failed to create reverse shipment with courier', {
                 originalAwb: shipment.awb,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                companyId: shipment.companyId,
+                warehouseId: shipment.warehouseId,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
             });
 
-            const timestamp = Date.now().toString().slice(-6);
-            const reverseAwb = `RTO-${shipment.awb}-${timestamp}`;
-
-            logger.info('Mock reverse AWB generated', {
-                originalAwb: shipment.awb,
-                reverseAwb,
-                fallbackReason: 'API error or courier not supported'
-            });
-
-            return reverseAwb;
+            throw new AppError(
+                'Failed to create reverse shipment. Please verify courier configuration and Velocity API credentials.',
+                'RTO_REVERSE_SHIPMENT_FAILED',
+                500,
+                true,
+                {
+                    originalAwb: shipment.awb,
+                    companyId: shipment.companyId,
+                    warehouseId: shipment.warehouseId
+                }
+            );
         }
     }
 
@@ -519,10 +512,10 @@ export default class RTOService {
                 carrier: fullShipment.carrier || 'velocity',
                 serviceType: fullShipment.serviceType || 'express',
                 weight: fullShipment.packageDetails?.weight || 0.5,
-                originPincode: fullShipment.deliveryDetails?.address?.postalCode, // RTO reverses origin/dest
-                destinationPincode: fullShipment.pickupDetails?.warehouseId ? undefined : fullShipment.deliveryDetails?.address?.postalCode,
-                zoneId: undefined, // Zone calculation not implemented in current model
-                customerId: fullShipment.companyId?.toString()
+                // RTO reverses origin/dest: pickup from delivery address, deliver to warehouse
+                originPincode: fullShipment.deliveryDetails.address.postalCode,
+                destinationPincode: fullShipment.pickupDetails?.warehouseId?.toString() // Will need warehouse lookup for actual pincode
+>>>>>>> refactor/frontend-polish-complete
             };
 
             // Calculate charges using RateCardService
@@ -842,33 +835,33 @@ export default class RTOService {
                 shipment.companyId as mongoose.Types.ObjectId
             );
 
-            const pickupResponse = await velocityAdapter.schedulePickup(
-                rtoEvent.reverseAwb || '',
-                pickupDate,
-                timeSlot,
-                pickupAddress
-            );
+            // const pickupResponse = await velocityAdapter.schedulePickup(
+            //     rtoEvent.reverseAwb || '',
+            //     pickupDate,
+            //     timeSlot,
+            //     pickupAddress
+            // );
 
-            // Update RTO event metadata
-            if (!rtoEvent.metadata) {
-                rtoEvent.metadata = {};
-            }
-            rtoEvent.metadata.pickupScheduled = true;
-            rtoEvent.metadata.pickupId = pickupResponse.pickup_id;
-            rtoEvent.metadata.pickupDate = pickupResponse.scheduled_date;
-            rtoEvent.metadata.pickupTimeSlot = pickupResponse.time_slot;
-            await rtoEvent.save();
+            // // Update RTO event metadata
+            // if (!rtoEvent.metadata) {
+            //     rtoEvent.metadata = {};
+            // }
+            // rtoEvent.metadata.pickupScheduled = true;
+            // rtoEvent.metadata.pickupId = pickupResponse.pickup_id;
+            // rtoEvent.metadata.pickupDate = pickupResponse.scheduled_date;
+            // rtoEvent.metadata.pickupTimeSlot = pickupResponse.time_slot;
+            // await rtoEvent.save();
 
-            logger.info('Reverse pickup scheduled successfully', {
-                rtoEventId,
-                pickupId: pickupResponse.pickup_id,
-                pickupDate: pickupResponse.scheduled_date
-            });
+            // logger.info('Reverse pickup scheduled successfully', {
+            //     rtoEventId,
+            //     pickupId: pickupResponse.pickup_id,
+            //     pickupDate: pickupResponse.scheduled_date
+            // });
 
             return {
-                success: true,
-                pickupId: pickupResponse.pickup_id,
-                message: pickupResponse.message
+                success: false,
+                // pickupId: pickupResponse.pickup_id,
+                message: 'Pickup scheduling not yet implemented for RTO (Phase 5)'
             };
 
         } catch (error) {
@@ -1102,6 +1095,211 @@ export default class RTOService {
             byReason,
             avgCharges: totalStats[0]?.avgCharges || 0,
             returnRate: 0, // Metric requires total shipment count context, to be implemented in AnalyticsService
+        };
+    }
+
+    /**
+     * Get comprehensive RTO analytics for dashboard
+     * Phase 4: Powers RTOAnalytics component with real data
+     */
+    static async getRTOAnalytics(companyId: string): Promise<{
+        summary: {
+            currentRate: number;
+            previousRate: number;
+            change: number;
+            industryAverage: number;
+            totalRTO: number;
+            totalOrders: number;
+            estimatedLoss: number;
+        };
+        trend: Array<{ month: string; rate: number }>;
+        byCourier: Array<{ courier: string; rate: number; count: number; total: number }>;
+        byReason: Array<{ reason: string; label: string; percentage: number; count: number }>;
+        recommendations: Array<{ type: string; message: string; impact?: string }>;
+    }> {
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+        // Current + previous month stats using proper models
+        const [currentRTOs, currentShipments, previousRTOs, previousShipments] = await Promise.all([
+            RTOEvent.countDocuments({
+                company: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: currentMonthStart }
+            }),
+            Shipment.countDocuments({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: currentMonthStart }
+            }),
+            RTOEvent.countDocuments({
+                company: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd }
+            }),
+            Shipment.countDocuments({
+                companyId: new mongoose.Types.ObjectId(companyId),
+                createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd }
+            })
+        ]);
+
+        const currentRate = currentShipments > 0 ? (currentRTOs / currentShipments) * 100 : 0;
+        const previousRate = previousShipments > 0 ? (previousRTOs / previousShipments) * 100 : 0;
+        const change = previousRate > 0 ? currentRate - previousRate : 0;
+        const industryAverage = 10.5; // Benchmark for Indian e-commerce COD
+        const avgRTOCharge = 80; // Average RTO charge in INR
+        const estimatedLoss = currentRTOs * avgRTOCharge;
+
+        // 6-month trend using proper model
+        const trend: Array<{ month: string; rate: number }> = [];
+        for (let i = 5; i >= 0; i--) {
+            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+            const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' });
+
+            const [rtos, shipments] = await Promise.all([
+                RTOEvent.countDocuments({
+                    company: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: monthStart, $lte: monthEnd }
+                }),
+                Shipment.countDocuments({
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: monthStart, $lte: monthEnd }
+                })
+            ]);
+
+            const rate = shipments > 0 ? (rtos / shipments) * 100 : 0;
+            trend.push({ month: monthName, rate: Math.round(rate * 10) / 10 });
+        }
+
+        // Courier breakdown using Shipment model aggregation
+        const courierBreakdown = await Shipment.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: currentMonthStart },
+                    currentStatus: { $regex: 'rto', $options: 'i' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$carrier', // Use 'carrier' field from Shipment model
+                    rtoCount: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const courierTotals = await Shipment.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: currentMonthStart }
+                }
+            },
+            {
+                $group: {
+                    _id: '$carrier',
+                    total: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const courierMap = new Map(courierTotals.map((c: any) => [c._id, c.total]));
+        const byCourier = courierBreakdown.map((item: any) => {
+            const total = courierMap.get(item._id) || 0;
+            const rate = total > 0 ? (item.rtoCount / total) * 100 : 0;
+            return {
+                courier: item._id || 'Unknown',
+                rate: Math.round(rate * 10) / 10,
+                count: item.rtoCount,
+                total
+            };
+        }).sort((a, b) => a.rate - b.rate); // Best courier first (lowest RTO rate)
+
+        // Reason breakdown using RTOEvent model
+        const reasonBreakdown = await RTOEvent.aggregate([
+            {
+                $match: {
+                    company: new mongoose.Types.ObjectId(companyId),
+                    createdAt: { $gte: currentMonthStart }
+                }
+            },
+            {
+                $group: {
+                    _id: '$rtoReason',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const totalReasonCount = reasonBreakdown.reduce((sum, r) => sum + r.count, 0);
+        const reasonLabels: Record<string, string> = {
+            'ndr_unresolved': 'Customer Unavailable',
+            'customer_cancellation': 'Customer Refused',
+            'refused': 'Order Refused',
+            'incorrect_product': 'Incorrect Address',
+            'damaged_in_transit': 'Damaged',
+            'qc_failure': 'QC Failure',
+            'other': 'Other'
+        };
+
+        const byReason = reasonBreakdown.map(item => ({
+            reason: item._id,
+            label: reasonLabels[item._id] || item._id,
+            percentage: totalReasonCount > 0 ? Math.round((item.count / totalReasonCount) * 100) : 0,
+            count: item.count
+        })).sort((a, b) => b.percentage - a.percentage);
+
+        // Generate smart recommendations based on data patterns
+        const recommendations: Array<{ type: string; message: string; impact?: string }> = [];
+
+        // Recommendation 1: Courier switching if high variance exists
+        if (byCourier.length > 1) {
+            const worst = byCourier[byCourier.length - 1];
+            const best = byCourier[0];
+            if (worst.rate - best.rate > 3) { // >3% difference
+                const savings = Math.round((worst.count - (worst.total * best.rate / 100)) * avgRTOCharge);
+                recommendations.push({
+                    type: 'courier_switch',
+                    message: `Switch orders from ${worst.courier} to ${best.courier}`,
+                    impact: `Save ₹${savings.toLocaleString()}/month`
+                });
+            }
+        }
+
+        // Recommendation 2: Address verification if incorrect address is significant
+        const addressReason = byReason.find(r => r.reason === 'incorrect_product');
+        if (addressReason && addressReason.percentage > 10) {
+            recommendations.push({
+                type: 'verification',
+                message: 'Enable address verification before dispatch',
+                impact: 'Reduce incorrect address RTOs by 40%'
+            });
+        }
+
+        // Recommendation 3: IVR confirmation if customer unavailable is high
+        const unavailableReason = byReason.find(r => r.reason === 'ndr_unresolved');
+        if (unavailableReason && unavailableReason.percentage > 30) {
+            recommendations.push({
+                type: 'verification',
+                message: 'Enable IVR confirmation for COD orders above ₹1,000',
+                impact: 'Reduce customer unavailable by 25%'
+            });
+        }
+
+        return {
+            summary: {
+                currentRate: Math.round(currentRate * 10) / 10,
+                previousRate: Math.round(previousRate * 10) / 10,
+                change: Math.round(change * 10) / 10,
+                industryAverage,
+                totalRTO: currentRTOs,
+                totalOrders: currentShipments,
+                estimatedLoss
+            },
+            trend,
+            byCourier,
+            byReason,
+            recommendations
         };
     }
 }

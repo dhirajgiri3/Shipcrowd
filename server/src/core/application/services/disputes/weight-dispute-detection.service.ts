@@ -72,6 +72,7 @@
 import mongoose from 'mongoose';
 import WeightDispute from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/weight-dispute.model';
 import { Shipment, Order, Company } from '../../../../infrastructure/database/mongoose/models';
+import { IShipment } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/core/shipment.model';
 import logger from '../../../../shared/logger/winston.logger';
 import { AppError, NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
@@ -185,6 +186,37 @@ class WeightDisputeDetectionService {
                 // await this.notificationService.sendWeightDisputeAlert(shipment.companyId, dispute);
 
                 await session.commitTransaction();
+
+                // Week 11 Feature: Auto-Resolve if Discrepancy <= 5% (Tolerance)
+                // Even if financial impact triggered the dispute, if the % is small, we auto-accept/resolve it.
+                if (discrepancy.percentage <= 5) {
+                    try {
+                        const { default: resolutionService } = await import('./weight-dispute-resolution.service.js');
+
+                        logger.info('Auto-resolving dispute within 5% tolerance', { disputeId: dispute.disputeId });
+
+                        await (resolutionService as any).resolveDispute(
+                            String(dispute._id),
+                            'system',
+                            {
+                                outcome: 'Shipcrowd_favor', // We accept carrier weight -> Seller pays
+                                deductionAmount: financialImpact.difference,
+                                reasonCode: 'AUTO_ACCEPT_TOLERANCE',
+                                notes: `Auto-accepted carrier weight (Diff: ${discrepancy.percentage.toFixed(2)}% <= 5%)`
+                            }
+                        );
+
+                        // Return updated status if needed, or just the original dispute
+                        dispute.status = 'auto_resolved';
+                    } catch (resolveError) {
+                        logger.error('Failed to auto-resolve tolerance dispute', {
+                            disputeId: dispute.disputeId,
+                            error: resolveError
+                        });
+                        // Don't throw, let the dispute remain pending for manual review
+                    }
+                }
+
                 return dispute;
             } else {
                 // No dispute needed, just update shipment with verified weight
@@ -204,7 +236,7 @@ class WeightDisputeDetectionService {
             await session.abortTransaction();
             logger.error('Error in weight discrepancy detection (transaction rolled back)', {
                 shipmentId,
-                error: error instanceof Error ? error.message : error,
+                error: error,
             });
             throw error;
         } finally {
@@ -255,7 +287,7 @@ class WeightDisputeDetectionService {
      * ```
      */
     private async calculateFinancialImpact(
-        shipment: any,
+        shipment: IShipment,
         declaredKg: number,
         actualKg: number
     ): Promise<FinancialImpact> {
@@ -308,7 +340,7 @@ class WeightDisputeDetectionService {
      * @throws {Error} If dispute save fails
      */
     private async createDispute(
-        shipment: any,
+        shipment: IShipment,
         declaredKg: number,
         actualKg: number,
         discrepancy: Discrepancy,
@@ -376,16 +408,18 @@ class WeightDisputeDetectionService {
      * @returns Promise<void>
      */
     private async updateShipmentWithDispute(
-        shipment: any,
+        shipment: IShipment,
         dispute: any,
         actualWeight: WeightInfo,
         carrierData: CarrierScanData,
         session: mongoose.ClientSession
     ): Promise<void> {
-        shipment.weights = {
-            declared: shipment.weights?.declared || {
-                value: shipment.packageDetails.weight,
-                unit: 'kg',
+        const declaredValue = shipment.packageDetails?.weight || 0;
+
+        shipment.set('weights', {
+            declared: {
+                value: declaredValue,
+                unit: 'kg'
             },
             actual: {
                 value: this.convertToKg(actualWeight),
@@ -394,7 +428,7 @@ class WeightDisputeDetectionService {
                 scannedBy: carrierData.carrierName,
             },
             verified: true,
-        };
+        });
 
         shipment.weightDispute = {
             exists: true,
@@ -420,7 +454,7 @@ class WeightDisputeDetectionService {
      * @returns Promise<void>
      */
     private async updateShipmentWeight(
-        shipment: any,
+        shipment: IShipment,
         actualWeight: WeightInfo,
         carrierData: CarrierScanData,
         verified: boolean,

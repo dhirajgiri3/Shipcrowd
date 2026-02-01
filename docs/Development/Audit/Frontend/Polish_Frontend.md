@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This plan addresses **critical technical debt**, **architectural inconsistencies**, and **security/performance issues** discovered through exhaustive analysis of the ShipCrowd client codebase. Unlike the original Phase 8 plan (focused narrowly on debouncing and error boundaries), this revised plan tackles **systemic issues** that threaten long-term maintainability, security, and developer productivity.
+This plan addresses **critical technical debt**, **architectural inconsistencies**, and **security/performance issues** discovered through exhaustive analysis of the Shipcrowd client codebase. Unlike the original Phase 8 plan (focused narrowly on debouncing and error boundaries), this revised plan tackles **systemic issues** that threaten long-term maintainability, security, and developer productivity.
 
 ### Scope
 - **466 TypeScript files** analyzed
@@ -733,7 +733,7 @@ export const INVALIDATION_PATTERNS = {
 
 **Content**:
 ```markdown
-# ShipCrowd Client Architecture
+# Shipcrowd Client Architecture
 
 ## Component Organization
 

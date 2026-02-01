@@ -180,11 +180,55 @@ export class AddressUpdateController {
                 newAddress
             );
 
-            // TODO: Request courier reattempt via courier API
-            // await CourierService.requestReattempt(shipment._id);
-            logger.info('Courier reattempt request pending (not implemented)', {
-                shipmentId: shipment._id,
-            });
+            // Sync address update with Courier
+            try {
+                // Instantiate Velocity Client dynamically
+                // TODO: Use DI container in future refactor
+                const { VelocityShipfastProvider } = await import('../../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js');
+                const velocityClient = new VelocityShipfastProvider(new (await import('mongoose')).Types.ObjectId(String(shipment.companyId)));
+
+                // 1. Update address on Courier side
+                const courierUpdateResult = await velocityClient.updateDeliveryAddress(
+                    shipment.trackingNumber,
+                    {
+                        line1: address.line1,
+                        city: address.city,
+                        state: address.state,
+                        pincode: address.postalCode,
+                        country: address.country || 'India'
+                    },
+                    (shipment as any).orderId || shipment.trackingNumber, // Fallback if orderId missing
+                    phone || shipment.deliveryDetails.recipientPhone
+                );
+
+                if (!courierUpdateResult.success) {
+                    logger.error('Failed to sync address to courier', {
+                        shipmentId: shipment._id,
+                        error: courierUpdateResult.message
+                    });
+                    // We continue anyway as DB is updated, but this is critical log
+                } else {
+                    logger.info('Address synced to courier', { shipmentId: shipment._id });
+                }
+
+                // 2. Request Reattempt immediately with new address
+                const reattemptResult = await velocityClient.requestReattempt(
+                    shipment.trackingNumber,
+                    new Date(Date.now() + 24 * 60 * 60 * 1000), // Schedule for next day
+                    'Customer updated address via Magic Link'
+                );
+
+                logger.info('Courier reattempt requested after address update', {
+                    shipmentId: shipment._id,
+                    success: reattemptResult.success
+                });
+
+            } catch (courierError: any) {
+                logger.error('Courier sync failed during address update', {
+                    shipmentId: shipment._id,
+                    error: courierError.message
+                });
+            }
 
             // Send WhatsApp confirmation
             const confirmationMessage = `✅ Address Updated Successfully!

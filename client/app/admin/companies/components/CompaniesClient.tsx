@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { companyApi, Company, CompanyStats } from '@/src/core/api/companyApi';
+import { companyApi, Company, CompanyStats } from '@/src/core/api/clients/companyApi';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
-
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 export function CompaniesClient() {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [stats, setStats] = useState<CompanyStats | null>(null);
@@ -32,7 +31,7 @@ export function CompaniesClient() {
             setCompanies(data.companies);
             setTotalPages(data.pagination.pages);
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to fetch companies');
+            handleApiError(error, 'Failed to fetch companies');
         } finally {
             setLoading(false);
         }
@@ -50,11 +49,11 @@ export function CompaniesClient() {
     const handleStatusChange = async (companyId: string, newStatus: Company['status']) => {
         try {
             await companyApi.updateCompanyStatus(companyId, newStatus);
-            toast.success('Company status updated successfully');
+            showSuccessToast('Company status updated successfully');
             fetchCompanies();
             fetchStats();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to update status');
+            handleApiError(error, 'Failed to update status');
         }
     };
 
@@ -313,11 +312,11 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                     postalCode: formData.postalCode,
                 },
             });
-            toast.success('Company created successfully');
+            showSuccessToast('Company created successfully');
             onSuccess();
             onClose();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to create company');
+            handleApiError(error, 'Failed to create company');
         } finally {
             setLoading(false);
         }
@@ -430,10 +429,10 @@ function InviteOwnerModal({ company, onClose }: { company: Company; onClose: () 
 
         try {
             await companyApi.inviteOwner(company._id, formData);
-            toast.success('Owner invitation sent successfully');
+            showSuccessToast('Owner invitation sent successfully');
             onClose();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to send invitation');
+            handleApiError(error, 'Failed to send invitation');
         } finally {
             setLoading(false);
         }

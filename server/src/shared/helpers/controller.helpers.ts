@@ -18,22 +18,39 @@ export interface ApiError {
 /**
  * Handle common controller guard checks
  * Throws errors if checks fail
+ *
+ * Role-based access:
+ * - super_admin: Platform owner, no company required
+ * - admin: Platform manager, optional company (dual role if has companyId)
+ * - seller: Must have company
+ * - staff: Must have company
+ *
+ * Dual role logic:
+ * - Admin WITH companyId = Can access both admin + seller endpoints
+ * - Admin WITHOUT companyId = Only admin endpoints (platform-wide)
  */
 export const guardChecks = (
     req: Request,
     options: { requireCompany?: boolean } = { requireCompany: true }
-): { userId: string; companyId: string } => {
+): { userId: string; companyId: string; isAdmin: boolean; isSuperAdmin: boolean } => {
     if (!req.user) {
         throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
     }
 
-    if (options.requireCompany && !req.user.companyId) {
+    const isSuperAdmin = req.user.role === 'super_admin';
+    const isAdmin = req.user.role === 'admin' || isSuperAdmin;
+
+    // Super admins and admins without company can skip company requirement
+    // This allows them to access platform-wide admin endpoints
+    if (options.requireCompany && !req.user.companyId && !isAdmin) {
         throw new AuthenticationError('User is not associated with any company', ErrorCode.AUTH_REQUIRED);
     }
 
     return {
         userId: req.user._id,
         companyId: req.user.companyId || '',
+        isAdmin,
+        isSuperAdmin,
     };
 };
 

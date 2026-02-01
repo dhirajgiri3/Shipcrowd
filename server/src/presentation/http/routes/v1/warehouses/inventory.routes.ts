@@ -5,6 +5,7 @@
  */
 
 import { Router } from 'express';
+import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import inventoryController from '@/presentation/http/controllers/warehouse/inventory.controller';
 import { authenticate } from '@/presentation/http/middleware';
@@ -58,8 +59,13 @@ router.post('/:id/transfer', stockOperationLimiter, inventoryManagers, inventory
 router.post('/:id/damage', stockOperationLimiter, inventoryManagers, inventoryController.markDamaged);
 router.post('/:id/cycle-count', stockOperationLimiter, inventoryManagers, inventoryController.cycleCount);
 
+const upload = multer({ storage: multer.memoryStorage() });
+
 // Availability check
 router.post('/check-availability', inventoryController.checkAvailability);
+
+// CSV Import
+router.post('/:warehouseId/import', inventoryManagers, upload.single('file'), inventoryController.importInventory);
 
 // Alerts
 router.get('/alerts/low-stock', inventoryController.getLowStockAlerts);

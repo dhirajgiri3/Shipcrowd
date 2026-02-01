@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { ShieldCheck, X, AlertCircle } from "lucide-react"
-import { Button } from "@/components/ui/core/Button"
+import { Button } from '@/src/components/ui/core/Button'
 import { motion, AnimatePresence } from "framer-motion"
 
 interface KYCRequiredModalProps {

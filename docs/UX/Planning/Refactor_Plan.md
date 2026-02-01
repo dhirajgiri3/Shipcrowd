@@ -1322,7 +1322,7 @@ Priya Singh,9123456789,priya@email.com,456 Park Street,,Delhi,Delhi,110001,Jeans
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'shipcrowd-bulk-order-template.csv';
+    a.download = 'Shipcrowd-bulk-order-template.csv';
     a.click();
     URL.revokeObjectURL(url);
   };

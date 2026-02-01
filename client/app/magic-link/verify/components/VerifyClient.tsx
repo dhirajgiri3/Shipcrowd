@@ -2,10 +2,10 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { authApi } from '@/src/core/api/authApi';
+import { authApi } from '@/src/core/api/clients/authApi';
 import { useAuth } from '@/src/features/auth';
-import { Card } from '@/components/ui';
-import { toast } from 'sonner';
+import { Card } from '@/src/components/ui';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 function MagicLinkVerifyContent() {
@@ -19,7 +19,7 @@ function MagicLinkVerifyContent() {
 
         if (!token) {
             setStatus('error');
-            toast.error('Invalid magic link');
+            handleApiError(new Error('Invalid magic link'), 'Invalid magic link');
             return;
         }
 
@@ -28,7 +28,7 @@ function MagicLinkVerifyContent() {
                 await authApi.verifyMagicLink(token);
                 await refreshUser();
                 setStatus('success');
-                toast.success('Welcome back!');
+                showSuccessToast('Welcome back!');
 
                 // Redirect after short delay
                 setTimeout(() => {
@@ -36,7 +36,7 @@ function MagicLinkVerifyContent() {
                 }, 1500);
             } catch (error: any) {
                 setStatus('error');
-                toast.error(error.response?.data?.message || 'Invalid or expired magic link');
+                handleApiError(error, 'Invalid or expired magic link');
             }
         };
 

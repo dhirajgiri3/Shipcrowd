@@ -18,7 +18,7 @@ describe('Cross-Company KYC Security', () => {
     beforeAll(async () => {
         // Connect to test database
         if (mongoose.connection.readyState === 0) {
-            await mongoose.connect(process.env.MONGODB_URI_TEST || 'mongodb://localhost:27017/shipcrowd-test');
+            await mongoose.connect(process.env.MONGODB_URI_TEST || 'mongodb://localhost:27017/Shipcrowd-test');
         }
     });
 

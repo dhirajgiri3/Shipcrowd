@@ -18,7 +18,7 @@ import {
     useUpdateTemplate,
     useDeleteTemplate,
     useTestTemplate,
-} from '@/src/core/api/hooks/useCommunication';
+} from '@/src/core/api/hooks/communication/useCommunication';
 import {
     Plus,
     Mail,
@@ -33,16 +33,15 @@ import {
     Copy,
     RefreshCw,
 } from 'lucide-react';
-import { Loader, CardSkeleton } from '@/components/ui';
-import { toast } from 'sonner';
+import { Loader, CardSkeleton } from '@/src/components/ui';
 import type {
     CommunicationTemplate,
     TemplateType,
     TemplateCategory,
     CreateTemplatePayload,
     AVAILABLE_VARIABLES,
-} from '@/src/types/api/communication.types';
-import { AVAILABLE_VARIABLES as TEMPLATE_VARIABLES } from '@/src/types/api/communication.types';
+} from '@/src/types/api/communication';
+import { AVAILABLE_VARIABLES as TEMPLATE_VARIABLES } from '@/src/types/api/communication';
 
 // ==================== Type/Category Config ====================
 

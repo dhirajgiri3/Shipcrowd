@@ -15,8 +15,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeightDisputes } from '@/src/core/api/hooks';
 import { formatCurrency, formatDate } from '@/src/lib/utils';
-import { StatusBadge } from '@/src/components/shared/StatusBadge';
-import type { DisputeStatus, DisputeFilters } from '@/src/types/api/dispute.types';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import type { DisputeStatus, DisputeFilters } from '@/src/types/api/returns';
 
 const STATUS_TABS = [
     { value: 'all', label: 'All' },
@@ -98,8 +98,8 @@ export function AdminDisputesTable() {
                             key={tab.value}
                             onClick={() => setFilters({ ...filters, status: tab.value === 'all' ? undefined : tab.value as DisputeStatus, page: 1 })}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${(filters.status === tab.value || (!filters.status && tab.value === 'all'))
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {tab.label}
@@ -115,7 +115,7 @@ export function AdminDisputesTable() {
                             Bulk Resolve: Seller Favor
                         </button>
                         <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
-                            Bulk Resolve: ShipCrowd Favor
+                            Bulk Resolve: Shipcrowd Favor
                         </button>
                         <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                             Clear

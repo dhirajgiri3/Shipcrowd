@@ -1,9 +1,9 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import { User, Bell, Lock, Globe, CreditCard } from 'lucide-react';
 import { useState } from 'react';
 
@@ -71,7 +71,7 @@ export function SettingsClient() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">Email Address</label>
-                                    <Input defaultValue="dhiraj.giri@shipcrowd.in" />
+                                    <Input defaultValue="dhiraj.giri@Shipcrowd.in" />
                                 </div>
                                 <div className="pt-4 flex justify-end">
                                     <Button>Save Changes</Button>

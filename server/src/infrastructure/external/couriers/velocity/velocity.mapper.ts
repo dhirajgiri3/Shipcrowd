@@ -140,18 +140,18 @@ export class VelocityMapper {
       billing_pincode: data.destination.pincode,
       billing_state: data.destination.state,
       billing_country: data.destination.country,
-      billing_email: (data.destination as any).email || warehouseDetails?.email || 'noreply@shipcrowd.com',
+      billing_email: (data.destination as any).email || warehouseDetails?.email || 'noreply@Shipcrowd.com',
       billing_phone: this.normalizePhone(data.destination.phone),
       shipping_is_billing: true,
       print_label: true,
       order_items: orderItems,
-      payment_method: data.paymentMode === 'cod' ? 'COD' : 'PREPAID',
+      payment_method: data.paymentMode === 'cod' ? 'COD' : 'Prepaid',
       sub_total: subTotal,
       length: data.package.length || 20,
       breadth: data.package.width || 15,
       height: data.package.height || 10,
       weight: this.calculateWeight(data.package.weight),
-      cod_collectible: data.paymentMode === 'cod' ? data.codAmount : undefined,
+      cod_collectible: data.paymentMode === 'cod' ? data.codAmount : 0,
       pickup_location: warehouseName,
       warehouse_id: warehouseId,
       vendor_details: vendorDetails
@@ -207,19 +207,16 @@ export class VelocityMapper {
   }): VelocityWarehouseRequest {
     return {
       name: warehouse.name,
-      phone: this.normalizePhone(warehouse.contactInfo.phone),
-      email: warehouse.contactInfo.email || 'noreply@shipcrowd.com',
-      address: warehouse.address.line1,
-      address_2: warehouse.address.line2 || '',
-      city: warehouse.address.city,
-      state: warehouse.address.state,
-      country: warehouse.address.country,
-      pin_code: warehouse.address.postalCode,
-      return_address: warehouse.address.line1,
-      return_city: warehouse.address.city,
-      return_state: warehouse.address.state,
-      return_country: warehouse.address.country,
-      return_pin_code: warehouse.address.postalCode
+      contact_person: warehouse.contactInfo.name,
+      phone_number: this.normalizePhone(warehouse.contactInfo.phone),
+      email: warehouse.contactInfo.email || 'noreply@Shipcrowd.com',
+      address_attributes: {
+        street_address: [warehouse.address.line1, warehouse.address.line2].filter(Boolean).join(', '),
+        city: warehouse.address.city,
+        state: warehouse.address.state,
+        country: warehouse.address.country,
+        zip: warehouse.address.postalCode
+      }
     };
   }
 

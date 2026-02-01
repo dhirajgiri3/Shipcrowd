@@ -1,4 +1,3 @@
-import { Navigation, Footer } from "@/components/ui";
 import Hero from "@/src/features/landing/components/Hero";
 import TrustBar from "@/src/features/landing/components/TrustBar";
 import ProblemSection from "@/src/features/landing/components/ProblemSection";
@@ -7,9 +6,10 @@ import FeatureEcosystem from "@/src/features/landing/components/FeatureEcosystem
 import HowItWorks from "@/src/features/landing/components/HowItWorks";
 import SocialProof from "@/src/features/landing/components/SocialProof";
 import Pricing from "@/src/features/landing/components/Pricing";
+import { Navigation, Footer } from "@/src/components/ui";
 
 
-export default function Page() {
+export function LandingClient() {
     return (
         <main className="min-h-screen bg-[var(--bg-primary)] selection:bg-primaryBlue/20 selection:text-primaryBlue">
             <Navigation />
@@ -25,3 +25,5 @@ export default function Page() {
         </main>
     );
 }
+
+export default LandingClient;

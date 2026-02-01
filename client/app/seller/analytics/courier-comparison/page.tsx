@@ -8,10 +8,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useCourierComparison } from '@/src/core/api/hooks/useAnalytics';
+import { useCourierComparison } from '@/src/core/api/hooks/analytics/useAnalytics';
 import { Trophy, TrendingUp, TrendingDown, DollarSign, Clock, Package, AlertCircle } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
-import type { AnalyticsFilters, TimeRange } from '@/src/types/api/analytics.types';
+import type { AnalyticsFilters, TimeRange } from '@/src/types/api/analytics';
 
 const timeRangeOptions: { value: TimeRange; label: string }[] = [
     { value: '7days', label: 'Last 7 Days' },

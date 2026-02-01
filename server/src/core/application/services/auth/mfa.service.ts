@@ -34,8 +34,8 @@ class MFAService {
 
             // Generate secret
             const secret = speakeasy.generateSecret({
-                name: `ShipCrowd (${userEmail})`,
-                issuer: 'ShipCrowd',
+                name: `Shipcrowd (${userEmail})`,
+                issuer: 'Shipcrowd',
                 length: 32,
             });
 

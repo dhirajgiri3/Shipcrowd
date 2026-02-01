@@ -15,7 +15,7 @@
 
 import React, { useState } from 'react';
 import { useTakeNDRAction } from '@/src/core/api/hooks';
-import type { NDRAction, CommunicationChannel, TakeNDRActionPayload } from '@/src/types/api/ndr.types';
+import type { NDRAction, CommunicationChannel, TakeNDRActionPayload } from '@/src/types/api/orders';
 
 interface TakeActionModalProps {
     caseId: string;

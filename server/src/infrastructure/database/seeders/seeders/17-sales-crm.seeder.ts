@@ -12,7 +12,7 @@ import User from '../../mongoose/models/iam/users/user.model';
 import Company from '../../mongoose/models/organization/core/company.model';
 import SalesRepresentative from '../../mongoose/models/crm/sales/sales-representative.model';
 import Lead from '../../mongoose/models/crm/leads/lead.model';
-import CallLog from '../../mongoose/models/crm/sales/call-log.model';
+import CallLog from '../../mongoose/models/crm/communication/call-log.model';
 import NDREvent from '../../mongoose/models/logistics/shipping/exceptions/ndr-event.model';
 import Shipment from '../../mongoose/models/logistics/shipping/core/shipment.model';
 import { randomInt, selectRandom, selectWeightedFromObject, generateAlphanumeric } from '../utils/random.utils';

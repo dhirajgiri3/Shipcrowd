@@ -13,7 +13,7 @@ import {
     useDownloadManifestPdf,
     useMarkPickedUp,
     useCancelManifest,
-} from '@/src/core/api/hooks/useManifests';
+} from '@/src/core/api/hooks/orders/useManifests';
 import {
     ArrowLeft,
     FileText,
@@ -32,8 +32,8 @@ import {
     Check,
 } from 'lucide-react';
 import Link from 'next/link';
-import { toast } from 'sonner';
-import type { ManifestStatus, ManifestShipment } from '@/src/types/api/manifest.types';
+import { showInfoToast } from '@/src/lib/error';
+import type { ManifestStatus, ManifestShipment } from '@/src/types/api/orders';
 
 // ==================== Status Config ====================
 
@@ -74,7 +74,7 @@ export default function ManifestDetailPage() {
                 .map(s => s.shipmentId);
 
             if (unPickedIds.length === 0) {
-                toast.info('All shipments already marked as picked up');
+                showInfoToast('All shipments already marked as picked up');
                 return;
             }
 

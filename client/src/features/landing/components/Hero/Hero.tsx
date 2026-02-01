@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion"
 import { ArrowRight, TrendingUp, ShieldCheck, Truck, Home, Settings, CreditCard, LayoutGrid, ChevronDown, Plus, MoreHorizontal, Search, Bell, Package, Users, BarChart3, Activity } from "lucide-react"
-import { Button } from "@/components/ui/core/Button"
+import { Button } from '@/src/components/ui/core/Button'
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
@@ -15,7 +15,7 @@ import {
     LazyCartesianGrid as CartesianGrid,
     LazyTooltip as Tooltip,
     LazyResponsiveContainer as ResponsiveContainer
-} from '@/src/components/charts/LazyCharts';
+} from '@/src/components/features/charts/LazyCharts';
 import CountUp from 'react-countup'
 import { useInView } from 'react-intersection-observer'
 import { useState, useEffect } from 'react'
@@ -228,8 +228,8 @@ export default function Hero() {
                                     {/* Logo */}
                                     <div className="flex items-center gap-3 text-slate-900 font-bold text-base px-3 mb-6">
                                         <img
-                                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                                            alt="ShipCrowd"
+                                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
+                                            alt="Shipcrowd"
                                             className="h-6 w-auto object-contain rounded-full"
                                         />
                                     </div>

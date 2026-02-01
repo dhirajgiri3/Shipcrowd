@@ -40,7 +40,7 @@ export const checkPermission = (module: string, action: string) => {
       if (user.teamRole === 'owner' || user.teamRole === 'admin' || user.teamRole === 'manager') {
         // For critical operations, ensure proper role hierarchy
         if ((module === 'team' && (action === 'remove' || action === 'manage_roles' || action === 'manage_permissions')) &&
-            user.teamRole !== 'owner' && user.teamRole !== 'admin') {
+          user.teamRole !== 'owner' && user.teamRole !== 'admin') {
           // Only owners and admins can manage roles and remove team members
           res.status(403).json({ message: 'This action requires owner or admin privileges' });
           return;

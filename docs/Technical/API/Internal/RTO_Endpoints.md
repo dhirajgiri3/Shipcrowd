@@ -38,7 +38,7 @@ Retrieve paginated list of RTO events.
 **Example Request:**
 
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/rto/events?page=1&returnStatus=in_transit" \
+curl -X GET "https://api.Shipcrowd.com/api/v1/rto/events?page=1&returnStatus=in_transit" \
   -H "Authorization: Bearer your_token_here"
 ```
 
@@ -121,7 +121,7 @@ Retrieve detailed information about a specific RTO event.
 **Example Request:**
 
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/rto/events/rto123" \
+curl -X GET "https://api.Shipcrowd.com/api/v1/rto/events/rto123" \
   -H "Authorization: Bearer your_token_here"
 ```
 
@@ -171,7 +171,7 @@ Manually initiate RTO for a shipment.
 **Example Request:**
 
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/rto/trigger" \
+curl -X POST "https://api.Shipcrowd.com/api/v1/rto/trigger" \
   -H "Authorization: Bearer your_token_here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -254,8 +254,8 @@ Record quality check result for returned item.
   "passed": true,
   "remarks": "Item in good condition, repackaged",
   "images": [
-    "https://storage.shipcrowd.com/qc/item123_1.jpg",
-    "https://storage.shipcrowd.com/qc/item123_2.jpg"
+    "https://storage.Shipcrowd.com/qc/item123_1.jpg",
+    "https://storage.Shipcrowd.com/qc/item123_2.jpg"
   ]
 }
 ```
@@ -263,13 +263,13 @@ Record quality check result for returned item.
 **Example Request:**
 
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/rto/events/rto123/qc" \
+curl -X POST "https://api.Shipcrowd.com/api/v1/rto/events/rto123/qc" \
   -H "Authorization: Bearer your_token_here" \
   -H "Content-Type: application/json" \
   -d '{
     "passed": true,
     "remarks": "Item in good condition",
-    "images": ["https://storage.shipcrowd.com/qc/item123.jpg"]
+    "images": ["https://storage.Shipcrowd.com/qc/item123.jpg"]
   }'
 ```
 
@@ -285,7 +285,7 @@ curl -X POST "https://api.shipcrowd.com/api/v1/rto/events/rto123/qc" \
     "qcResult": {
       "passed": true,
       "remarks": "Item in good condition, repackaged",
-      "images": ["https://storage.shipcrowd.com/qc/item123.jpg"],
+      "images": ["https://storage.Shipcrowd.com/qc/item123.jpg"],
       "qcDate": "2026-01-09T16:00:00.000Z"
     }
   }

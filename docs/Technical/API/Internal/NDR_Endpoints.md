@@ -40,7 +40,7 @@ Retrieve a paginated list of NDR events for the authenticated company.
 **Example Request:**
 
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/ndr/events?page=1&limit=20&status=in_resolution" \
+curl -X GET "https://api.Shipcrowd.com/api/v1/ndr/events?page=1&limit=20&status=in_resolution" \
   -H "Authorization: Bearer your_token_here"
 ```
 
@@ -103,7 +103,7 @@ Retrieve detailed information about a specific NDR event.
 **Example Request:**
 
 ```bash
-curl -X GET "https://api.shipcrowd.com/api/v1/ndr/events/65a1b2c3d4e5f6g7h8i9j0k1" \
+curl -X GET "https://api.Shipcrowd.com/api/v1/ndr/events/65a1b2c3d4e5f6g7h8i9j0k1" \
   -H "Authorization: Bearer your_token_here"
 ```
 
@@ -160,7 +160,7 @@ Manually mark an NDR as resolved with a resolution note.
 **Example Request:**
 
 ```bash
-curl -X POST "https://api.shipcrowd.com/api/v1/ndr/events/65a1b2c3d4e5f6g7h8i9j0k1/resolve" \
+curl -X POST "https://api.Shipcrowd.com/api/v1/ndr/events/65a1b2c3d4e5f6g7h8i9j0k1/resolve" \
   -H "Authorization: Bearer your_token_here" \
   -H "Content-Type: application/json" \
   -d '{

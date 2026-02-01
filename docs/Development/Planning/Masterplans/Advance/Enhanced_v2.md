@@ -1,4 +1,4 @@
-# ShipCrowd Platform: Complete Advanced Implementation Plan v2.0
+# Shipcrowd Platform: Complete Advanced Implementation Plan v2.0
 
 **Version:** 2.0 (Enhanced & Improved)
 **Created:** 2026-01-07
@@ -141,7 +141,7 @@ interface IWeightDispute {
 
   // Resolution
   resolution?: {
-    outcome: 'seller_favor' | 'shipcrowd_favor' | 'split' | 'waived'
+    outcome: 'seller_favor' | 'Shipcrowd_favor' | 'split' | 'waived'
     adjustedWeight?: { value: number, unit: string }
     refundAmount?: number
     deductionAmount?: number
@@ -345,7 +345,7 @@ export class WeightDisputeDetectionService {
       `Found ${shipmentsWithoutActualWeight.length} shipments missing weight verification`
     );
 
-    // Alert shipcrowd to follow up with carrier
+    // Alert Shipcrowd to follow up with carrier
     // Could trigger automatic escalation to carrier support
   }
 
@@ -420,7 +420,7 @@ export class WeightDisputeResolutionService {
 
     await this.weightDisputeRepo.update(disputeId, dispute);
 
-    // Notify shipcrowd team to review
+    // Notify Shipcrowd team to review
     await this.notificationService.sendInternalAlertForReview(
       'weight_dispute_needs_review',
       dispute
@@ -441,7 +441,7 @@ export class WeightDisputeResolutionService {
     if (!dispute) throw new NotFoundError('Dispute not found');
 
     // Validate resolution
-    if (!['seller_favor', 'shipcrowd_favor', 'split', 'waived'].includes(resolution.outcome)) {
+    if (!['seller_favor', 'Shipcrowd_favor', 'split', 'waived'].includes(resolution.outcome)) {
       throw new ValidationError('Invalid resolution outcome');
     }
 
@@ -489,7 +489,7 @@ export class WeightDisputeResolutionService {
   }
 
   /**
-   * Auto-resolve disputes after 7 days of inactivity (favor shipcrowd)
+   * Auto-resolve disputes after 7 days of inactivity (favor Shipcrowd)
    */
   async autoResolveExpiredDisputes(): Promise<number> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -504,7 +504,7 @@ export class WeightDisputeResolutionService {
     for (const dispute of expiredDisputes) {
       try {
         await this.resolveDispute(dispute._id, 'system', {
-          outcome: 'shipcrowd_favor',
+          outcome: 'Shipcrowd_favor',
           deductionAmount: dispute.financialImpact.difference,
           reasonCode: 'AUTO_RESOLVED_NO_RESPONSE',
           notes: 'Automatically resolved after 7 days of no seller response'
@@ -548,7 +548,7 @@ export class WeightDisputeResolutionService {
       );
     }
 
-    if ((outcome === 'shipcrowd_favor' || outcome === 'split') && deductionAmount) {
+    if ((outcome === 'Shipcrowd_favor' || outcome === 'split') && deductionAmount) {
       // Deduct from seller's wallet or hold shipment
       const balance = await this.walletService.getBalance(dispute.companyId);
 
@@ -732,7 +732,7 @@ Multi-channel notifications:
 Test scenarios:
 1. Weight discrepancy detection (5% threshold)
 2. Seller evidence submission
-3. Admin resolution (seller favor/shipcrowd favor/split)
+3. Admin resolution (seller favor/Shipcrowd favor/split)
 4. Wallet debit/credit
 5. Auto-resolution after 7 days
 6. Concurrent disputes
@@ -805,7 +805,7 @@ interface ICODRemittance {
       weightDiscrepancies: number   // From disputes
       rtoCharges: number            // Return charges
       insuranceClaims: number
-      platformFee: number           // ShipCrowd commission (%)
+      platformFee: number           // Shipcrowd commission (%)
       other: number
       total: number
     }
@@ -1000,7 +1000,7 @@ export class CODRemittanceCalculationService {
       status: 'resolved'
     });
 
-    if (resolvedDispute?.resolution?.outcome === 'shipcrowd_favor') {
+    if (resolvedDispute?.resolution?.outcome === 'Shipcrowd_favor') {
       deductions.weightDispute = resolvedDispute.resolution.deductionAmount || 0;
     }
 
@@ -1414,7 +1414,7 @@ export class CODRemittanceProcessingService {
         accountNumber: company.bankAccount.accountNumber,
         ifsc: company.bankAccount.ifsc,
         amount: remittance.financial.netPayable * 100,  // Convert to paise
-        narration: `ShipCrowd COD Remittance ${remittance.remittanceId}`,
+        narration: `Shipcrowd COD Remittance ${remittance.remittanceId}`,
         reference: remittance.remittanceId,
         contactName: company.businessName
       });

@@ -29,7 +29,7 @@ export async function seedPincodes(): Promise<void> {
         // Clear existing pincodes
         await Pincode.deleteMany({});
 
-        const csvPath = path.join(__dirname, '../../../../../assets/pincodes.csv');
+        const csvPath = path.join(__dirname, '../../../../assets/pincodes.csv');
         const pincodes: Partial<IPincode>[] = [];
 
         // Read and parse CSV

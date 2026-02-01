@@ -149,7 +149,7 @@ export default class WooCommerceOrderSyncService {
 
             logger.debug('WooCommerce order updated', {
               orderId: wooOrder.id,
-              shipcrowdOrderId: existingOrder._id,
+              ShipcrowdOrderId: existingOrder._id,
             });
           } else {
             // Create new order
@@ -158,7 +158,7 @@ export default class WooCommerceOrderSyncService {
 
             logger.debug('WooCommerce order created', {
               orderId: wooOrder.id,
-              shipcrowdOrderId: newOrder._id,
+              ShipcrowdOrderId: newOrder._id,
             });
           }
         } catch (error: any) {
@@ -276,7 +276,7 @@ export default class WooCommerceOrderSyncService {
 
       logger.info('WooCommerce order synced', {
         wooOrderId,
-        shipcrowdOrderId: order._id,
+        ShipcrowdOrderId: order._id,
       });
 
       return order;

@@ -51,9 +51,9 @@ SMTP_PASS=your_zeptomail_api_key_here
 cat .gitignore | grep .env
 
 # Use BFG Repo-Cleaner to remove sensitive data from history
-git clone --mirror https://github.com/your-org/shipcrowd.git
-java -jar bfg.jar --replace-text passwords.txt shipcrowd.git
-cd shipcrowd.git
+git clone --mirror https://github.com/your-org/Shipcrowd.git
+java -jar bfg.jar --replace-text passwords.txt Shipcrowd.git
+cd Shipcrowd.git
 git reflog expire --expire=now --all && git gc --prune=now --aggressive
 git push --force
 ```
@@ -704,8 +704,8 @@ router.post('/recharge', walletController.rechargeWallet);
 const allowedOrigins = [
     process.env.CLIENT_URL,
     process.env.CLIENT_URL_STAGING,
-    'https://app.shipcrowd.com',
-    'https://staging.shipcrowd.com',
+    'https://app.Shipcrowd.com',
+    'https://staging.Shipcrowd.com',
 ].filter(Boolean);
 
 const corsOptions: CorsOptions = {

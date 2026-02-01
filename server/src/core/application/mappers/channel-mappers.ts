@@ -17,7 +17,7 @@
  * import { ShopifyOrderMapper, WooCommerceOrderMapper, FulfillmentMapper } from './channel-mappers';
  *
  * // Convert Shopify order to Shipcrowd format
- * const shipcrowdOrder = ShopifyOrderMapper.toShipcrowd(shopifyOrder, store);
+ * const ShipcrowdOrder = ShopifyOrderMapper.toShipcrowd(shopifyOrder, store);
  *
  * // Convert Shipcrowd shipment to Shopify fulfillment
  * const fulfillmentPayload = FulfillmentMapper.toShopifyFulfillment(shipment, order);
@@ -635,7 +635,7 @@ export class FulfillmentMapper {
     /**
      * Map Shipcrowd shipment status to Shopify fulfillment status
      */
-    static toShopifyStatus(shipcrowdStatus: string): string {
+    static toShopifyStatus(ShipcrowdStatus: string): string {
         const statusMap: Record<string, string> = {
             PICKED_UP: 'in_transit',
             IN_TRANSIT: 'in_transit',
@@ -648,13 +648,13 @@ export class FulfillmentMapper {
             RTO_DELIVERED: 'failure',
         };
 
-        return statusMap[shipcrowdStatus] || 'in_transit';
+        return statusMap[ShipcrowdStatus] || 'in_transit';
     }
 
     /**
      * Map Shipcrowd shipment status to WooCommerce order status
      */
-    static toWooCommerceStatus(shipcrowdStatus: string): 'processing' | 'completed' | 'cancelled' | 'failed' {
+    static toWooCommerceStatus(ShipcrowdStatus: string): 'processing' | 'completed' | 'cancelled' | 'failed' {
         const statusMap: Record<string, 'processing' | 'completed' | 'cancelled' | 'failed'> = {
             PENDING: 'processing',
             BOOKED: 'processing',
@@ -666,7 +666,7 @@ export class FulfillmentMapper {
             RTO_DELIVERED: 'failed',
         };
 
-        return statusMap[shipcrowdStatus] || 'processing';
+        return statusMap[ShipcrowdStatus] || 'processing';
     }
 
     /**
@@ -693,7 +693,7 @@ export class FulfillmentMapper {
             }
         }
 
-        return `${process.env.FRONTEND_URL || 'https://shipcrowd.com'}/track/${awbNumber}`;
+        return `${process.env.FRONTEND_URL || 'https://Shipcrowd.com'}/track/${awbNumber}`;
     }
 }
 

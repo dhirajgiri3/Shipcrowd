@@ -229,12 +229,12 @@ function generateShipmentData(order: any, warehouse: any): any {
         documents: [
             {
                 type: 'label',
-                url: `https://storage.shipcrowd.com/labels/${generateTrackingNumber(carrier)}.pdf`,
+                url: `https://storage.Shipcrowd.com/labels/${generateTrackingNumber(carrier)}.pdf`,
                 createdAt: pickupDate,
             },
             {
                 type: 'invoice',
-                url: `https://storage.shipcrowd.com/invoices/${order.orderNumber}.pdf`,
+                url: `https://storage.Shipcrowd.com/invoices/${order.orderNumber}.pdf`,
                 createdAt: pickupDate,
             },
         ],
@@ -280,6 +280,7 @@ function generateShipmentData(order: any, warehouse: any): any {
             rtoShippingCost: Math.round((order.shippingDetails?.shippingCost || 100) * 1.3),
         } : undefined,
         isDeleted: false,
+        isDemoData: true,
         createdAt: order.createdAt,
         updatedAt: actualDelivery || new Date(),
     };

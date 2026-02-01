@@ -391,12 +391,12 @@ DISPUTE_AUTO_ESCALATION_HOURS=2
 DISPUTE_AUTO_CLOSE_DAYS=7
 
 # Admin Notifications
-DISPUTE_ADMIN_EMAIL=disputes@shipcrowd.com
-DISPUTE_ESCALATION_EMAIL=escalations@shipcrowd.com
+DISPUTE_ADMIN_EMAIL=disputes@Shipcrowd.com
+DISPUTE_ESCALATION_EMAIL=escalations@Shipcrowd.com
 
 # Dashboard URLs
-DASHBOARD_URL=https://app.shipcrowd.com
-ADMIN_DASHBOARD_URL=https://admin.shipcrowd.com
+DASHBOARD_URL=https://app.Shipcrowd.com
+ADMIN_DASHBOARD_URL=https://admin.Shipcrowd.com
 ```
 
 ---

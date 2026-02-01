@@ -11,12 +11,17 @@
  */
 
 import { OrdersClient } from './components/OrdersClient';
+import { DashboardErrorBoundary } from '@/src/components/errors/DashboardErrorBoundary';
 
 export default function SellerOrdersPage() {
     // TODO: Fetch orders from API server-side
     // const orders = await getOrders();
     // return <OrdersClient initialOrders={orders} />;
 
-    // For now, client component handles its own data (mock)
-    return <OrdersClient />;
+    // For now, client component handles its own data
+    return (
+        <DashboardErrorBoundary>
+            <OrdersClient />
+        </DashboardErrorBoundary>
+    );
 }

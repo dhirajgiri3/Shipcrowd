@@ -64,8 +64,8 @@ interface CreateMappingData {
   flipkartListingId?: string;
   flipkartTitle: string;
   flipkartCategory?: string;
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
   mappedBy?: string;
   syncInventory?: boolean;
   syncPrice?: boolean;
@@ -142,8 +142,8 @@ export class FlipkartProductMappingService {
           flipkartListingId: listing.listingId,
           flipkartTitle: listing.title,
           flipkartCategory: listing.category,
-          shipcrowdSKU: listing.sku.toUpperCase(),
-          shipcrowdProductName: listing.title,
+          ShipcrowdSKU: listing.sku.toUpperCase(),
+          ShipcrowdProductName: listing.title,
           mappingType: 'AUTO',
           mappedAt: new Date(),
           syncInventory: true,
@@ -272,7 +272,7 @@ export class FlipkartProductMappingService {
     logger.info('Created manual mapping', {
       mappingId: mapping._id,
       fsn: data.flipkartFSN,
-      sku: data.shipcrowdSKU,
+      sku: data.ShipcrowdSKU,
     });
 
     return mapping;
@@ -294,7 +294,7 @@ export class FlipkartProductMappingService {
     logger.info('Deleted mapping', {
       mappingId,
       fsn: mapping.flipkartFSN,
-      sku: mapping.shipcrowdSKU,
+      sku: mapping.ShipcrowdSKU,
     });
   }
 
@@ -335,9 +335,9 @@ export class FlipkartProductMappingService {
       query.$or = [
         { flipkartSKU: { $regex: filters.search, $options: 'i' } },
         { flipkartFSN: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdSKU: { $regex: filters.search, $options: 'i' } },
+        { ShipcrowdSKU: { $regex: filters.search, $options: 'i' } },
         { flipkartTitle: { $regex: filters.search, $options: 'i' } },
-        { shipcrowdProductName: { $regex: filters.search, $options: 'i' } },
+        { ShipcrowdProductName: { $regex: filters.search, $options: 'i' } },
       ];
     }
 
@@ -380,7 +380,7 @@ export class FlipkartProductMappingService {
   /**
    * Import mappings from CSV
    *
-   * CSV Format: shipcrowdSKU,flipkartFSN,flipkartSKU,syncInventory
+   * CSV Format: ShipcrowdSKU,flipkartFSN,flipkartSKU,syncInventory
    *
    * @param storeId - FlipkartStore ID
    * @param csvData - CSV file content
@@ -406,7 +406,7 @@ export class FlipkartProductMappingService {
     const headers = lines[0].split(',').map((h) => h.trim());
 
     // Validate headers
-    const requiredHeaders = ['shipcrowdSKU', 'flipkartFSN', 'flipkartSKU'];
+    const requiredHeaders = ['ShipcrowdSKU', 'flipkartFSN', 'flipkartSKU'];
     const hasAllHeaders = requiredHeaders.every((h) => headers.includes(h));
 
     if (!hasAllHeaders) {
@@ -427,7 +427,7 @@ export class FlipkartProductMappingService {
 
       try {
         // Validate required fields
-        if (!row.shipcrowdSKU || !row.flipkartFSN || !row.flipkartSKU) {
+        if (!row.ShipcrowdSKU || !row.flipkartFSN || !row.flipkartSKU) {
           result.errors.push(`Row ${i + 1}: Missing required fields`);
           result.failed++;
           continue;
@@ -454,8 +454,8 @@ export class FlipkartProductMappingService {
           flipkartListingId: row.flipkartListingId || undefined,
           flipkartTitle: row.flipkartTitle || 'Imported from CSV',
           flipkartCategory: row.flipkartCategory || undefined,
-          shipcrowdSKU: row.shipcrowdSKU.toUpperCase(),
-          shipcrowdProductName: row.shipcrowdProductName || row.flipkartTitle || 'Imported',
+          ShipcrowdSKU: row.ShipcrowdSKU.toUpperCase(),
+          ShipcrowdProductName: row.ShipcrowdProductName || row.flipkartTitle || 'Imported',
           mappingType: 'CSV_IMPORT',
           mappedAt: new Date(),
           syncInventory: row.syncInventory === 'true' || row.syncInventory === '1',
@@ -489,13 +489,13 @@ export class FlipkartProductMappingService {
     const mappings = await FlipkartProductMapping.find({ flipkartStoreId: storeId });
 
     const data = mappings.map((m) => ({
-      shipcrowdSKU: m.shipcrowdSKU,
+      ShipcrowdSKU: m.ShipcrowdSKU,
       flipkartFSN: m.flipkartFSN,
       flipkartSKU: m.flipkartSKU,
       flipkartListingId: m.flipkartListingId || '',
       flipkartTitle: m.flipkartTitle,
       flipkartCategory: m.flipkartCategory || '',
-      shipcrowdProductName: m.shipcrowdProductName,
+      ShipcrowdProductName: m.ShipcrowdProductName,
       mappingType: m.mappingType,
       syncInventory: m.syncInventory,
       syncPrice: m.syncPrice,

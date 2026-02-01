@@ -1634,13 +1634,13 @@ db.salesrepresentatives.updateMany({}, { $unset: { company: "" } });
 **Before Each Migration:**
 ```bash
 # Full database backup
-mongodump --uri="mongodb://localhost:27017/shipcrowd" --out="/backup/$(date +%Y%m%d_%H%M%S)"
+mongodump --uri="mongodb://localhost:27017/Shipcrowd" --out="/backup/$(date +%Y%m%d_%H%M%S)"
 
 # Specific collection backup
-mongodump --uri="mongodb://localhost:27017/shipcrowd" --collection=salesrepresentatives --out="/backup/salesreps_$(date +%Y%m%d_%H%M%S)"
+mongodump --uri="mongodb://localhost:27017/Shipcrowd" --collection=salesrepresentatives --out="/backup/salesreps_$(date +%Y%m%d_%H%M%S)"
 
 # Verify backup
-mongorestore --uri="mongodb://localhost:27017/shipcrowd_test" --dir="/backup/20260116_120000" --dryRun
+mongorestore --uri="mongodb://localhost:27017/Shipcrowd_test" --dir="/backup/20260116_120000" --dryRun
 ```
 
 **Backup Retention:**

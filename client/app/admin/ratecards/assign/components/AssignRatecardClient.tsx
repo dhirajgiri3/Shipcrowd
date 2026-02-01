@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     CreditCard,
     Search,
@@ -16,57 +16,44 @@ import {
     AlertTriangle,
     ArrowRight,
     X,
-    Users
+    Users,
+    Loader2
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
-
-// Mock sellers for assignment
-const mockSellers = [
-    { id: 'SEL-001', name: 'TechGadgets Inc.', city: 'Mumbai', assignedCards: 2 },
-    { id: 'SEL-002', name: 'Fashion Hub', city: 'Delhi', assignedCards: 1 },
-    { id: 'SEL-003', name: 'HomeDecor Plus', city: 'Bangalore', assignedCards: 3 },
-    { id: 'SEL-004', name: 'Electronics World', city: 'Chennai', assignedCards: 0 },
-    { id: 'SEL-005', name: 'Sports Zone', city: 'Pune', assignedCards: 2 },
-];
-
-// Mock rate cards
-const mockRateCards = [
-    { id: 'RC-001', name: 'Standard Surface', courier: 'Delhivery', type: 'B2C', isActive: true },
-    { id: 'RC-002', name: 'Express Air', courier: 'Bluedart', type: 'B2C', isActive: true },
-    { id: 'RC-003', name: 'Economy Ground', courier: 'DTDC', type: 'B2C', isActive: true },
-    { id: 'RC-004', name: 'Premium Express', courier: 'Xpressbees', type: 'B2C', isActive: true },
-    { id: 'RC-005', name: 'B2B Heavy', courier: 'Delhivery', type: 'B2B', isActive: false },
-];
-
-// Mock current assignments
-const mockAssignments = [
-    { sellerId: 'SEL-001', rateCardIds: ['RC-001', 'RC-002'] },
-    { sellerId: 'SEL-002', rateCardIds: ['RC-003'] },
-    { sellerId: 'SEL-003', rateCardIds: ['RC-001', 'RC-002', 'RC-004'] },
-    { sellerId: 'SEL-005', rateCardIds: ['RC-002', 'RC-003'] },
-];
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { useRateCardAssignments, useAssignRateCard, useUnassignRateCard } from '@/src/core/api/hooks/admin/useRateCardManagement';
+import { useAdminSellers } from '@/src/core/api/hooks/admin/useAdminSellers';
+import { useRateCards } from '@/src/core/api/hooks/logistics/useRateCards';
 
 export function AssignRatecardClient() {
     const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
     const [searchSeller, setSearchSeller] = useState('');
     const [searchCard, setSearchCard] = useState('');
-    const [assignments, setAssignments] = useState(mockAssignments);
     const { addToast } = useToast();
 
-    const filteredSellers = mockSellers.filter(s =>
-        s.name.toLowerCase().includes(searchSeller.toLowerCase()) ||
-        s.city.toLowerCase().includes(searchSeller.toLowerCase())
+    // API Hooks
+    const { data: sellersData, isLoading: isLoadingSellers } = useAdminSellers();
+    const { data: assignmentsData, isLoading: isLoadingAssignments } = useRateCardAssignments();
+    const { data: rateCardsData, isLoading: isLoadingRateCards } = useRateCards();
+    const { mutate: assignCard, isPending: isAssigning } = useAssignRateCard();
+    const { mutate: unassignCard, isPending: isUnassigning } = useUnassignRateCard();
+
+    const sellers = sellersData?.companies || [];
+    const assignments = assignmentsData?.assignments || [];
+    const rateCards = rateCardsData || [];
+
+    const filteredSellers = sellers.filter(s =>
+        s.name.toLowerCase().includes(searchSeller.toLowerCase())
     );
 
-    const filteredCards = mockRateCards.filter(c =>
-        c.name.toLowerCase().includes(searchCard.toLowerCase()) ||
-        c.courier.toLowerCase().includes(searchCard.toLowerCase())
+    const filteredCards = rateCards.filter(c =>
+        c.name.toLowerCase().includes(searchCard.toLowerCase())
     );
 
     const getSellerAssignments = (sellerId: string) => {
-        const assignment = assignments.find(a => a.sellerId === sellerId);
-        return assignment?.rateCardIds || [];
+        return assignments
+            .filter(a => a.sellerId === sellerId && a.isActive)
+            .map(a => a.rateCardId);
     };
 
     const isCardAssigned = (sellerId: string, cardId: string) => {
@@ -76,33 +63,27 @@ export function AssignRatecardClient() {
     const toggleCardAssignment = (cardId: string) => {
         if (!selectedSeller) return;
 
-        setAssignments(prev => {
-            const existing = prev.find(a => a.sellerId === selectedSeller);
-            if (existing) {
-                if (existing.rateCardIds.includes(cardId)) {
-                    // Remove
-                    return prev.map(a =>
-                        a.sellerId === selectedSeller
-                            ? { ...a, rateCardIds: a.rateCardIds.filter(id => id !== cardId) }
-                            : a
-                    );
-                } else {
-                    // Add
-                    return prev.map(a =>
-                        a.sellerId === selectedSeller
-                            ? { ...a, rateCardIds: [...a.rateCardIds, cardId] }
-                            : a
-                    );
-                }
-            } else {
-                // Create new assignment
-                return [...prev, { sellerId: selectedSeller, rateCardIds: [cardId] }];
+        const isAssigned = isCardAssigned(selectedSeller, cardId);
+
+        if (isAssigned) {
+            // Find the assignment to unassign
+            const assignment = assignments.find(
+                a => a.sellerId === selectedSeller && a.rateCardId === cardId && a.isActive
+            );
+            if (assignment) {
+                unassignCard(assignment.id);
             }
-        });
-        addToast('Assignment updated', 'success');
+        } else {
+            // Assign the card
+            assignCard({
+                rateCardId: cardId,
+                sellerId: selectedSeller,
+                priority: 1
+            });
+        }
     };
 
-    const selectedSellerData = mockSellers.find(s => s.id === selectedSeller);
+    const selectedSellerData = sellers.find(s => s._id === selectedSeller);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -126,7 +107,9 @@ export function AssignRatecardClient() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Total Rate Cards</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockRateCards.length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">
+                                    {isLoadingRateCards ? <Loader2 className="h-6 w-6 animate-spin" /> : rateCards.length}
+                                </p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-[#2525FF]/10 flex items-center justify-center">
                                 <CreditCard className="h-5 w-5 text-[#2525FF]" />
@@ -139,7 +122,9 @@ export function AssignRatecardClient() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-[var(--text-muted)]">Total Sellers</p>
-                                <p className="text-2xl font-bold text-[var(--text-primary)]">{mockSellers.length}</p>
+                                <p className="text-2xl font-bold text-[var(--text-primary)]">
+                                    {isLoadingSellers ? <Loader2 className="h-6 w-6 animate-spin" /> : sellers.length}
+                                </p>
                             </div>
                             <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
                                 <Users className="h-5 w-5 text-emerald-600" />
@@ -151,13 +136,13 @@ export function AssignRatecardClient() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-muted)]">Unassigned Sellers</p>
-                                <p className="text-2xl font-bold text-amber-600">
-                                    {mockSellers.filter(s => !assignments.find(a => a.sellerId === s.id)).length}
+                                <p className="text-sm text-[var(--text-muted)]">Active Assignments</p>
+                                <p className="text-2xl font-bold text-emerald-600">
+                                    {isLoadingAssignments ? <Loader2 className="h-6 w-6 animate-spin" /> : assignments.filter(a => a.isActive).length}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-emerald-600" />
                             </div>
                         </div>
                     </CardContent>
@@ -182,33 +167,43 @@ export function AssignRatecardClient() {
                             icon={<Search className="h-4 w-4" />}
                         />
                         <div className="space-y-2 max-h-96 overflow-y-auto">
-                            {filteredSellers.map((seller) => {
-                                const assignedCount = getSellerAssignments(seller.id).length;
-                                return (
-                                    <div
-                                        key={seller.id}
-                                        onClick={() => setSelectedSeller(seller.id)}
-                                        className={cn(
-                                            "p-4 rounded-xl border cursor-pointer transition-all",
-                                            selectedSeller === seller.id
-                                                ? "border-[#2525FF] bg-[#2525FF]/5 ring-2 ring-[#2525FF]/20"
-                                                : "border-gray-200 hover:border-gray-300"
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h4 className="font-semibold text-[var(--text-primary)]">{seller.name}</h4>
-                                                <p className="text-sm text-[var(--text-muted)]">{seller.city}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <Badge variant={assignedCount > 0 ? 'success' : 'warning'}>
-                                                    {assignedCount} cards
-                                                </Badge>
+                            {isLoadingSellers ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                </div>
+                            ) : filteredSellers.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <p className="text-[var(--text-muted)]">No sellers found</p>
+                                </div>
+                            ) : (
+                                filteredSellers.map((seller) => {
+                                    const assignedCount = getSellerAssignments(seller._id).length;
+                                    return (
+                                        <div
+                                            key={seller._id}
+                                            onClick={() => setSelectedSeller(seller._id)}
+                                            className={cn(
+                                                "p-4 rounded-xl border cursor-pointer transition-all",
+                                                selectedSeller === seller._id
+                                                    ? "border-[#2525FF] bg-[#2525FF]/5 ring-2 ring-[#2525FF]/20"
+                                                    : "border-gray-200 hover:border-gray-300"
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="font-semibold text-[var(--text-primary)]">{seller.name}</h4>
+                                                    <p className="text-sm text-[var(--text-muted)]">{seller.address.city}, {seller.address.state}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <Badge variant={assignedCount > 0 ? 'success' : 'warning'}>
+                                                        {assignedCount} cards
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -242,41 +237,50 @@ export function AssignRatecardClient() {
                                     icon={<Search className="h-4 w-4" />}
                                 />
                                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                                    {filteredCards.map((card) => {
-                                        const isAssigned = isCardAssigned(selectedSeller, card.id);
-                                        return (
-                                            <div
-                                                key={card.id}
-                                                onClick={() => toggleCardAssignment(card.id)}
-                                                className={cn(
-                                                    "p-4 rounded-xl border cursor-pointer transition-all",
-                                                    isAssigned
-                                                        ? "border-emerald-300 bg-emerald-50"
-                                                        : "border-gray-200 hover:border-gray-300"
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={cn(
-                                                            "h-5 w-5 rounded-full border-2 flex items-center justify-center",
-                                                            isAssigned
-                                                                ? "border-emerald-500 bg-emerald-500"
-                                                                : "border-gray-300"
-                                                        )}>
-                                                            {isAssigned && <CheckCircle className="h-3 w-3 text-white" />}
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-[var(--text-primary)]">{card.name}</h4>
-                                                            <p className="text-sm text-[var(--text-muted)]">{card.courier} • {card.type}</p>
+                                    {isLoadingRateCards ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
+                                        </div>
+                                    ) : filteredCards.length === 0 ? (
+                                        <div className="text-center py-8">
+                                            <p className="text-[var(--text-muted)]">No rate cards available</p>
+                                        </div>
+                                    ) : (
+                                        filteredCards.map((card) => {
+                                            const isAssigned = isCardAssigned(selectedSeller, card._id);
+                                            const isProcessing = isAssigning || isUnassigning;
+                                            return (
+                                                <div
+                                                    key={card._id}
+                                                    onClick={() => !isProcessing && toggleCardAssignment(card._id)}
+                                                    className={cn(
+                                                        "p-4 rounded-xl border transition-all",
+                                                        isProcessing ? "cursor-wait opacity-50" : "cursor-pointer",
+                                                        isAssigned
+                                                            ? "border-emerald-300 bg-emerald-50"
+                                                            : "border-gray-200 hover:border-gray-300"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn(
+                                                                "h-5 w-5 rounded-full border-2 flex items-center justify-center",
+                                                                isAssigned
+                                                                    ? "border-emerald-500 bg-emerald-500"
+                                                                    : "border-gray-300"
+                                                            )}>
+                                                                {isAssigned && <CheckCircle className="h-3 w-3 text-white" />}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-semibold text-[var(--text-primary)]">{card.name}</h4>
+                                                                <p className="text-sm text-[var(--text-muted)]">Rate Card ID: {card._id}</p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <Badge variant={card.isActive ? 'success' : 'neutral'}>
-                                                        {card.isActive ? 'Active' : 'Inactive'}
-                                                    </Badge>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })
+                                    )}
                                 </div>
                             </>
                         ) : (

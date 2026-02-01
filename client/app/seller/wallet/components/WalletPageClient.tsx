@@ -9,7 +9,7 @@
 'use client';
 
 import { useState } from 'react';
-import { WalletBalanceCard, WalletTransactionList, AddMoneyModal, WithdrawMoneyModal } from '@/src/features/wallet';
+import { WalletBalanceCard, WalletTransactionList, AddMoneyModal } from '@/src/features/wallet';
 import { WalletStatsWidget } from '@/src/features/wallet';
 import { useWalletBalance } from '@/src/core/api/hooks';
 
@@ -47,11 +47,7 @@ export function WalletPageClient() {
                 onClose={() => setShowAddMoney(false)}
                 currentBalance={balance?.balance || 0}
             />
-            <WithdrawMoneyModal
-                isOpen={showWithdraw}
-                onClose={() => setShowWithdraw(false)}
-                currentBalance={balance?.balance || 0}
-            />
+
         </>
     );
 }

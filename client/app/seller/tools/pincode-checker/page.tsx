@@ -12,7 +12,7 @@
 
 import React, { useState } from 'react';
 import { PincodeChecker } from '@/src/features/address';
-import { useRouteServiceability } from '@/src/core/api/hooks/useAddress';
+import { useRouteServiceability } from '@/src/core/api/hooks/logistics/useAddress';
 import {
     MapPin,
     ArrowRight,
@@ -26,7 +26,7 @@ import {
     Loader2,
     RotateCcw,
 } from 'lucide-react';
-import type { CourierCoverage, ServiceabilityCheckRequest } from '@/src/types/api/address.types';
+import type { CourierCoverage, ServiceabilityCheckRequest } from '@/src/types/api/logistics';
 
 export default function PincodeCheckerPage() {
     const [mode, setMode] = useState<'single' | 'route'>('single');

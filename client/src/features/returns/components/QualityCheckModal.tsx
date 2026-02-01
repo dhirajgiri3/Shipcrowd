@@ -15,9 +15,9 @@
 import React, { useState } from 'react';
 import { usePerformQC } from '@/src/core/api/hooks';
 import { useModalState } from '@/src/hooks';
-import type { PerformQCPayload, ReturnItem } from '@/src/types/api/returns.types';
-import { handleApiError } from '@/src/lib/error-handler';
-import { uploadQCImages, UploadError } from '@/src/lib/upload';
+import type { PerformQCPayload, ReturnItem } from '@/src/types/api/returns';
+import { handleApiError } from '@/src/lib/error';
+import { uploadQCImages, UploadError } from '@/src/lib/data';
 
 interface QCModalProps {
   returnId: string;

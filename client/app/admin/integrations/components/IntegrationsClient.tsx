@@ -1,27 +1,51 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Badge } from '@/components/ui/core/Badge';
-import { Plug, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { Plug, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { useIntegrations } from '@/src/core/api/hooks/integrations/useIntegrations';
+import { useUserList } from '@/src/core/api/hooks/admin/useUserManagement';
 
-const mockIntegrations = [
+const MOCK_INTEGRATIONS = [
     { name: 'Shopify', status: 'connected', ordersSync: 12450, lastSync: '2 mins ago', logo: 'https://cdn.worldvectorlogo.com/logos/shopify.svg' },
     { name: 'WooCommerce', status: 'connected', ordersSync: 6720, lastSync: '15 mins ago', logo: 'https://cdn.worldvectorlogo.com/logos/woocommerce.svg' },
     { name: 'Amazon Seller', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: 'https://toppng.com/uploads/preview/amazon-logo-vector-1157394522189k5iof9l3.png' },
     { name: 'Flipkart', status: 'disconnected', ordersSync: 0, lastSync: 'Never', logo: 'https://cdn.worldvectorlogo.com/logos/flipkart.svg' },
 ];
 
-const mockUsers = [
-    { name: 'Rajesh Kumar', email: 'rajesh@shipcrowd.in', role: 'Admin', status: 'Active', lastActive: '2 mins ago' },
-    { name: 'Priya Sharma', email: 'priya@shipcrowd.in', role: 'Operations', status: 'Active', lastActive: '10 mins ago' },
-    { name: 'Amit Verma', email: 'amit@shipcrowd.in', role: 'Finance', status: 'Active', lastActive: '1 hour ago' },
-    { name: 'Sneha Patel', email: 'sneha@shipcrowd.in', role: 'Support', status: 'Inactive', lastActive: '2 days ago' },
+const MOCK_USERS = [
+    { name: 'Rajesh Kumar', email: 'rajesh@Shipcrowd.in', role: 'Admin', status: 'Active', lastActive: '2 mins ago' },
+    { name: 'Priya Sharma', email: 'priya@Shipcrowd.in', role: 'Operations', status: 'Active', lastActive: '10 mins ago' },
+    { name: 'Amit Verma', email: 'amit@Shipcrowd.in', role: 'Finance', status: 'Active', lastActive: '1 hour ago' },
+    { name: 'Sneha Patel', email: 'sneha@Shipcrowd.in', role: 'Support', status: 'Inactive', lastActive: '2 days ago' },
 ];
 
 export function IntegrationsClient() {
+    // --- REAL API INTEGRATION ---
+    const { data: integrationsResponse, isLoading: integrationsLoading } = useIntegrations();
+    const { data: usersResponse, isLoading: usersLoading } = useUserList({ page: 1, limit: 10 });
+
+    // Extract data with fallback
+    const integrations = integrationsResponse?.integrations || [];
+    const isUsingMockIntegrations = !integrationsResponse?.integrations;
+
+    const users = usersResponse?.users || [];
+    const isUsingMockUsers = !usersResponse?.users;
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Mock Data Indicators */}
+            {(isUsingMockIntegrations || isUsingMockUsers) && (
+                <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                        ⚠️ Using mock data (API data not available)
+                    </p>
+                </div>
+            )}
+
             {/* 1. Integrations Section */}
             <div>
                 <div className="flex items-center justify-between mb-4">
@@ -38,7 +62,7 @@ export function IntegrationsClient() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {mockIntegrations.map((integration, idx) => (
+                    {(integrations.length > 0 ? integrations : MOCK_INTEGRATIONS).map((integration: any, idx: number) => (
                         <Card key={idx} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between mb-3">
@@ -94,7 +118,7 @@ export function IntegrationsClient() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-subtle)]">
-                                    {mockUsers.map((user, idx) => (
+                                    {(users.length > 0 ? users : MOCK_USERS).map((user: any, idx: number) => (
                                         <tr key={idx} className="hover:bg-[var(--bg-secondary)]">
                                             <td className="px-6 py-4 font-medium text-[var(--text-primary)]">{user.name}</td>
                                             <td className="px-6 py-4 text-[var(--text-secondary)]">{user.email}</td>

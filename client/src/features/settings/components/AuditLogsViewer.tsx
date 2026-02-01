@@ -7,11 +7,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuditLogs, useExportAuditLogs } from '@/src/core/api/hooks/useSettings';
+import { useAuditLogs, useExportAuditLogs } from '@/src/core/api/hooks/security/useAuditLogs';
 import { Download, Calendar, Filter, Loader2, Search } from 'lucide-react';
 import { formatDate, formatDateTime } from '@/src/lib/utils';
-import { Button, Card, Input, Label, Select, Badge } from '@/components/ui';
-import type { AuditLogFilters, AuditAction, AuditResource } from '@/src/types/api/settings.types';
+import { Button, Card, Input, Label, Select, Badge } from '@/src/components/ui';
+import type { AuditLogFilters, AuditAction, AuditResource, AuditLog } from '@/src/types/api/settings';
 
 export function AuditLogsViewer() {
     const [filters, setFilters] = useState<AuditLogFilters>({});
@@ -101,7 +101,7 @@ export function AuditLogsViewer() {
                             </tr>
                         </thead>
                         <tbody>
-                            {logsData?.logs.map((log: any, index: number) => (
+                            {logsData?.logs.map((log: AuditLog, index: number) => (
                                 <tr
                                     key={log._id}
                                     className={index !== ((logsData?.logs.length || 0) - 1) ? 'border-b border-[var(--border-subtle)]' : ''}
@@ -112,7 +112,7 @@ export function AuditLogsViewer() {
                                     <td className="py-4 px-4">
                                         <div>
                                             <p className="text-sm font-medium text-[var(--text-primary)]">{log.userName}</p>
-                                            <p className="text-xs text-[var(--text-muted)]">{log.userId}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{log.userEmail}</p>
                                         </div>
                                     </td>
                                     <td className="py-4 px-4">

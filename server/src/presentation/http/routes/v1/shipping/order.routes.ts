@@ -3,6 +3,8 @@ import { authenticate, csrfProtection } from '../../../middleware/auth/auth';
 import { requireAccess, requireCompleteCompany } from '../../../middleware/index';
 import { AccessTier } from '../../../../../core/domain/types/access-tier';
 import orderController from '../../../controllers/shipping/order.controller';
+import shipmentController from '../../../controllers/shipping/shipment.controller';
+import ratecardController from '../../../controllers/shipping/ratecard.controller';
 import asyncHandler from '../../../../../shared/utils/asyncHandler';
 import multer from 'multer';
 
@@ -103,6 +105,79 @@ router.post(
     requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
     upload.single('file'),
     asyncHandler(orderController.bulkImportOrders)
+);
+
+/**
+ * @route POST /api/v1/orders/:orderId/clone
+ * @desc Clone an existing order with optional modifications
+ * @access Private (Production)
+ */
+router.post(
+    '/:orderId/clone',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.cloneOrder)
+);
+
+/**
+ * @route POST /api/v1/orders/:orderId/split
+ * @desc Split a single order into multiple orders
+ * @access Private (Production)
+ */
+router.post(
+    '/:orderId/split',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.splitOrder)
+);
+
+/**
+ * @route POST /api/v1/orders/merge
+ * @desc Merge multiple orders into a single order
+ * @access Private (Production)
+ */
+router.post(
+    '/merge',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    asyncHandler(orderController.mergeOrders)
+);
+
+/**
+ * @route POST /api/v1/orders/:orderId/ship
+ * @desc Ship an order (Adapter to Shipment Controller)
+ * @access Private (Production)
+ */
+router.post(
+    '/:orderId/ship',
+    authenticate,
+    csrfProtection,
+    requireAccess({ tier: AccessTier.PRODUCTION, kyc: true, roles: ['seller'], companyMatch: true }),
+    async (req, res, next) => {
+        // Create shipment expects orderId in body
+        req.body.orderId = req.params.orderId;
+        return shipmentController.createShipment(req, res, next);
+    }
+);
+
+/**
+ * @route GET /api/v1/orders/courier-rates
+ * @desc Get courier rates (Adapter to RateCard Controller)
+ * @access Private
+ */
+router.get(
+    '/courier-rates',
+    authenticate,
+    async (req, res, next) => {
+        // Map query params to body for rate calculation if needed
+        if (Object.keys(req.query).length > 0) {
+            req.body = { ...req.body, ...req.query };
+        }
+        return ratecardController.calculateRate(req, res, next);
+    }
 );
 
 export default router;

@@ -1,49 +1,25 @@
-/**
- * Velocity Webhook Routes
- *
- * Routes for handling Velocity Shipfast webhooks
- */
-
 import { Router } from 'express';
-import {
-  handleVelocityWebhook,
-  getWebhookMetrics,
-  webhookHealthCheck
-} from '../../../controllers/webhooks/velocity.webhook.controller';
-import {
-  verifyVelocityWebhookSignature,
-  bypassWebhookVerification
-} from '../../../middleware/webhooks/velocity-webhook-auth.middleware';
-import { authenticate } from '../../../middleware/auth/auth';
+import { VelocityWebhookController } from '../../../controllers/webhooks/couriers/velocity.webhook.controller';
+import { verifyVelocityWebhookSignature } from '../../../middleware/webhooks/velocity-webhook-auth.middleware';
 
 const router = Router();
 
 /**
- * POST /api/v1/webhooks/velocity
+ * POST /
  * Handle incoming Velocity webhooks
- * Public endpoint - protected by HMAC signature verification
  */
 router.post(
   '/',
-  // Use signature verification in production, bypass in development if needed
-  process.env.BYPASS_WEBHOOK_VERIFICATION === 'true'
-    ? bypassWebhookVerification
-    : verifyVelocityWebhookSignature,
-  handleVelocityWebhook
+  verifyVelocityWebhookSignature,
+  VelocityWebhookController.handleWebhook
 );
 
 /**
- * GET /api/v1/webhooks/velocity/health
- * Health check endpoint
- * Public endpoint
+ * GET /health
+ * internal health check
  */
-router.get('/health', webhookHealthCheck);
-
-/**
- * GET /api/v1/webhooks/velocity/metrics
- * Get webhook processing metrics
- * Protected endpoint - requires authentication
- */
-router.get('/metrics', authenticate, getWebhookMetrics);
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'velocity-webhook' });
+});
 
 export default router;

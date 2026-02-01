@@ -326,7 +326,7 @@ export default class PackingService {
         const pkg = station.packages.find((p) => p.packageNumber === packageNumber);
         if (!pkg) throw new AppError('Package not found', 'PACKAGE_NOT_FOUND', 404);
 
-        return `https://shipcrowd.s3.amazonaws.com/labels/${stationId}-${packageNumber}.pdf`;
+        return `https://Shipcrowd.s3.amazonaws.com/labels/${stationId}-${packageNumber}.pdf`;
     }
 
     static async getStationStats(stationId: string, startDate: Date, endDate: Date): Promise<IPackingStationStats> {

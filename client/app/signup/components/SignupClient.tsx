@@ -26,11 +26,12 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/src/shared/utils/password';
-import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
-import { consentApi } from '@/src/core/api/consentApi';
+import { validatePassword, getPasswordStrengthColor, getPasswordStrengthLabel } from '@/src/lib/utils/password';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
+import { consentApi } from '@/src/core/api/clients/consentApi';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 export function SignupClient() {
   const router = useRouter();
@@ -55,12 +56,11 @@ export function SignupClient() {
   // Don't render until auth is initialized
   if (!isInitialized) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
+      <Loader
+        variant="truck"
+        fullScreen
+        message="Loading secure session..."
+      />
     );
   }
 
@@ -81,21 +81,18 @@ export function SignupClient() {
     if (!name || !email || !password) {
       const message = 'Please fill in all fields';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
     if (!email.includes('@')) {
       const message = 'Please enter a valid email address';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
     if (!agreedToTerms) {
       const message = 'Please agree to the Terms of Service and Privacy Policy';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
@@ -103,7 +100,6 @@ export function SignupClient() {
     if (!passwordValidation?.isValid) {
       const message = 'Password does not meet requirements';
       setLocalError(message);
-      toast.error(message);
       return;
     }
 
@@ -112,7 +108,7 @@ export function SignupClient() {
     if (result.success) {
       const message = 'Registration successful! Please check your email to verify your account.';
       setSuccessMessage(message);
-      toast.success(message);
+      showSuccessToast(message);
 
       // Redirect to verify-email page after 2 seconds
       setTimeout(() => {
@@ -121,7 +117,6 @@ export function SignupClient() {
     } else {
       const errorMessage = result.error?.message || 'Registration failed. Please try again.';
       setLocalError(errorMessage);
-      toast.error(errorMessage);
     }
   };
 
@@ -138,8 +133,8 @@ export function SignupClient() {
           {/* Logo */}
           <Link href="/" className="inline-block mb-12">
             <img
-              src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-              alt="ShipCrowd"
+              src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
+              alt="Shipcrowd"
               className="h-8 w-auto rounded-full"
             />
           </Link>

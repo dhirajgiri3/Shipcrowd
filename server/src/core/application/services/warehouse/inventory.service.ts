@@ -17,7 +17,6 @@
 import mongoose from 'mongoose';
 import { Inventory, IInventory } from '@/infrastructure/database/mongoose/models';
 import { StockMovement, IStockMovement } from '@/infrastructure/database/mongoose/models';
-import { WarehouseLocation } from '@/infrastructure/database/mongoose/models';
 import {
     ICreateInventoryDTO,
     IUpdateInventoryDTO,
@@ -38,6 +37,17 @@ import {
 } from '@/core/domain/interfaces/warehouse/inventory.interface.service';
 import { AppError } from '@/shared/errors/app.error';
 import logger from '@/shared/logger/winston.logger';
+import csv from 'csv-parser';
+import { Readable } from 'stream';
+
+interface CSVInventoryRow {
+    sku: string;
+    quantity: string;
+    productName?: string;
+    location?: string;
+    barcode?: string;
+    reorderPoint?: string;
+}
 
 export default class InventoryService {
     static async createInventory(data: ICreateInventoryDTO): Promise<IInventory> {
@@ -502,5 +512,140 @@ export default class InventoryService {
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         return `SM-${year}-${timestamp}-${random}`;
+    }
+
+    /**
+     * Import inventory from CSV
+     * Handles bulk creation/update of inventory items
+     */
+    static async importFromCSV(
+        companyId: string,
+        warehouseId: string,
+        fileBuffer: Buffer,
+        userId: string
+    ): Promise<{ success: number; failed: number; errors: any[] }> {
+        const results: CSVInventoryRow[] = [];
+        const errors: any[] = [];
+
+        // Parse CSV
+        await new Promise<void>((resolve, reject) => {
+            const stream = Readable.from(fileBuffer);
+            stream
+                .pipe(csv())
+                .on('data', (data: any) => results.push(data))
+                .on('end', () => resolve())
+                .on('error', (err: any) => reject(err));
+        });
+
+        let successCount = 0;
+        let failedCount = 0;
+
+        // Process in batches of 50 to manage memory/connections
+        const BATCH_SIZE = 50;
+        for (let i = 0; i < results.length; i += BATCH_SIZE) {
+            const batch = results.slice(i, i + BATCH_SIZE);
+
+            await Promise.all(batch.map(async (row, index) => {
+                const rowIndex = i + index + 2; // +2 for 1-based index and header row
+                const session = await mongoose.startSession();
+                session.startTransaction();
+
+                try {
+                    // Validation
+                    if (!row.sku || !row.quantity) {
+                        throw new Error('SKU and Quantity are required');
+                    }
+
+                    const quantity = parseInt(row.quantity, 10);
+                    if (isNaN(quantity) || quantity < 0) {
+                        throw new Error('Quantity must be a valid non-negative number');
+                    }
+
+                    if (row.reorderPoint) {
+                        const rp = parseInt(row.reorderPoint, 10);
+                        if (isNaN(rp) || rp < 0) {
+                            throw new Error('Reorder Point must be a valid non-negative number');
+                        }
+                    }
+
+                    const sku = row.sku.trim();
+                    const productName = row.productName?.trim() || sku;
+
+                    // Find or Create Inventory
+                    let inventory = await Inventory.findOne({
+                        warehouseId,
+                        sku
+                    }).session(session);
+
+                    let previousQty = 0;
+                    let movementType: 'RECEIVE' | 'ADJUSTMENT' = 'ADJUSTMENT';
+
+                    if (inventory) {
+                        previousQty = inventory.onHand;
+                        inventory.onHand = quantity; // Overwrite strategy
+                        inventory.productName = productName; // Update name if provided
+                        if (row.barcode) inventory.barcode = row.barcode;
+                        if (row.reorderPoint) inventory.reorderPoint = parseInt(row.reorderPoint, 10);
+                        if (row.location) inventory.location = row.location;
+                        await inventory.save({ session });
+                    } else {
+                        movementType = 'RECEIVE';
+                        const newInventory = await Inventory.create([{
+                            warehouseId,
+                            companyId,
+                            sku,
+                            productName,
+                            onHand: quantity,
+                            barcode: row.barcode,
+                            reorderPoint: row.reorderPoint ? parseInt(row.reorderPoint, 10) : undefined,
+                            location: row.location,
+                            status: 'ACTIVE'
+                        }], { session });
+                        inventory = newInventory[0];
+                    }
+
+                    // Create Movement if quantity changed
+                    if (previousQty !== quantity || movementType === 'RECEIVE') {
+                        const diff = quantity - previousQty;
+                        await StockMovement.create([{
+                            warehouseId,
+                            companyId,
+                            movementNumber: await this.generateMovementNumber(),
+                            type: movementType,
+                            direction: diff >= 0 ? 'IN' : 'OUT',
+                            sku,
+                            productName,
+                            inventoryId: inventory._id,
+                            quantity: Math.abs(diff),
+                            previousQuantity: previousQty,
+                            newQuantity: quantity,
+                            reason: 'CSV Import',
+                            performedBy: userId,
+                            status: 'COMPLETED'
+                        }], { session });
+                    }
+
+                    await session.commitTransaction();
+                    successCount++;
+
+                } catch (error: any) {
+                    await session.abortTransaction();
+                    failedCount++;
+                    errors.push({
+                        row: rowIndex,
+                        sku: row.sku || 'UNKNOWN',
+                        error: error.message
+                    });
+                } finally {
+                    session.endSession();
+                }
+            }));
+        }
+
+        return {
+            success: successCount,
+            failed: failedCount,
+            errors
+        };
     }
 }

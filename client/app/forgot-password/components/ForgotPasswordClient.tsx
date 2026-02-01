@@ -14,58 +14,54 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Mail, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { LoadingButton } from '@/src/components/ui/utility/LoadingButton';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export function ForgotPasswordClient() {
-  const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+    const [email, setEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
 
-  const { resetPassword } = useAuth();
+    const { resetPassword } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
 
-    // Client-side validation
-    if (!email) {
-      const message = 'Please enter your email address';
-      setError(message);
-      toast.error(message);
-      return;
-    }
+        // Client-side validation
+        if (!email) {
+            const message = 'Please enter your email address';
+            setError(message);
+            return;
+        }
 
-    if (!email.includes('@')) {
-      const message = 'Please enter a valid email address';
-      setError(message);
-      toast.error(message);
-      return;
-    }
+        if (!email.includes('@')) {
+            const message = 'Please enter a valid email address';
+            setError(message);
+            return;
+        }
 
-    setIsLoading(true);
+        setIsLoading(true);
 
-    try {
-      const result = await resetPassword(email);
-      if (result.success) {
-        setSuccess(true);
-        toast.success('Password reset link sent! Check your email.');
-      } else {
-        const errorMessage = result.error?.message || 'Failed to send reset link';
-        setError(errorMessage);
-        toast.error(errorMessage);
-      }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to send reset link';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        try {
+            const result = await resetPassword(email);
+            if (result.success) {
+                setSuccess(true);
+                showSuccessToast('Password reset link sent! Check your email.');
+            } else {
+                const errorMessage = result.error?.message || 'Failed to send reset link';
+                setError(errorMessage);
+            }
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to send reset link';
+            setError(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <div className="flex min-h-screen">
@@ -80,8 +76,8 @@ export function ForgotPasswordClient() {
                     {/* Logo */}
                     <Link href="/" className="inline-block mb-12">
                         <img
-                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="ShipCrowd"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
+                            alt="Shipcrowd"
                             className="h-8 w-auto rounded-full"
                         />
                     </Link>

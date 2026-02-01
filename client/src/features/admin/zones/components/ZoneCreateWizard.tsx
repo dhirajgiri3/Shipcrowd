@@ -1,16 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/core/Button';
-import { Card, CardContent } from '@/components/ui/core/Card';
-import { Input } from '@/components/ui/core/Input';
-import { Label } from '@/components/ui/core/Label';
-import { Textarea } from '@/components/ui/core/Textarea';
-import { useCreateZone } from '@/src/core/api/hooks/useZones';
-import type { ZoneType, CreateZoneRequest } from '@/src/types/api/zones.types';
+import { Button } from '@/src/components/ui/core/Button';
+import { Card, CardContent } from '@/src/components/ui/core/Card';
+import { Input } from '@/src/components/ui/core/Input';
+import { Label } from '@/src/components/ui/core/Label';
+import { Textarea } from '@/src/components/ui/core/Textarea';
+import { useCreateZone } from '@/src/core/api/hooks/logistics/useZones';
+import type { ZoneType, CreateZoneRequest } from '@/src/types/api/logistics';
 import { ChevronRight, Check, Upload, ChevronLeft } from 'lucide-react';
-import { toast } from 'sonner';
-
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 const STEPS = ['Basic Info', 'Pincodes', 'Review'];
 
 interface ZoneCreateWizardProps {
@@ -45,14 +44,13 @@ export function ZoneCreateWizard({ onSuccess, onCancel }: ZoneCreateWizardProps)
             .filter((p) => /^\d{6}$/.test(p));
 
         if (pincodes.length === 0) {
-            toast.error('Please enter valid 6-digit pincodes');
-            return;
+                        return;
         }
 
         const uniquePincodes = Array.from(new Set([...formData.pincodes, ...pincodes]));
         updateFormData({ pincodes: uniquePincodes });
         setPincodeInput('');
-        toast.success(`Added ${pincodes.length} pincodes`);
+        showSuccessToast(`Added ${pincodes.length} pincodes`);
     };
 
     const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,17 +65,15 @@ export function ZoneCreateWizard({ onSuccess, onCancel }: ZoneCreateWizardProps)
                 .filter((p) => /^\d{6}$/.test(p));
 
             if (pincodes.length === 0) {
-                toast.error('No valid pincodes found in CSV');
-                return;
+                                return;
             }
 
             const uniquePincodes = Array.from(new Set([...formData.pincodes, ...pincodes]));
             updateFormData({ pincodes: uniquePincodes });
             setCsvFile(file);
-            toast.success(`Imported ${pincodes.length} pincodes from CSV`);
+            showSuccessToast(`Imported ${pincodes.length} pincodes from CSV`);
         } catch (error) {
-            toast.error('Failed to read CSV file');
-        }
+                    }
     };
 
     const handleRemovePincode = (pincode: string) => {
@@ -89,14 +85,12 @@ export function ZoneCreateWizard({ onSuccess, onCancel }: ZoneCreateWizardProps)
     const handleNext = () => {
         if (currentStep === 0) {
             if (!formData.name || !formData.type || !formData.transitDays) {
-                toast.error('Please fill in all required fields');
-                return;
+                                return;
             }
         }
         if (currentStep === 1) {
             if (formData.pincodes.length === 0) {
-                toast.error('Please add at least one pincode');
-                return;
+                                return;
             }
         }
         setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1));

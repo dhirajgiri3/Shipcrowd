@@ -101,7 +101,7 @@ export class FlipkartInventorySyncService {
     // Find product mapping
     const mapping = await FlipkartProductMapping.findOne({
       flipkartStoreId: storeId,
-      shipcrowdSKU: sku.toUpperCase(),
+      ShipcrowdSKU: sku.toUpperCase(),
       isActive: true,
       syncInventory: true,
     });
@@ -217,7 +217,7 @@ export class FlipkartInventorySyncService {
         sku: string;
         inventory: number;
         mappingId: string;
-        shipcrowdSKU: string;
+        ShipcrowdSKU: string;
       }> = [];
 
       // Prepare batch data
@@ -228,7 +228,7 @@ export class FlipkartInventorySyncService {
           // Find mapping
           const mapping = await FlipkartProductMapping.findOne({
             flipkartStoreId: storeId,
-            shipcrowdSKU: update.sku.toUpperCase(),
+            ShipcrowdSKU: update.sku.toUpperCase(),
             isActive: true,
             syncInventory: true,
           });
@@ -248,7 +248,7 @@ export class FlipkartInventorySyncService {
             sku: mapping.flipkartSKU,
             inventory: update.quantity,
             mappingId: String(mapping._id),
-            shipcrowdSKU: update.sku,
+            ShipcrowdSKU: update.sku,
           });
         } catch (error: any) {
           result.itemsFailed++;
@@ -288,7 +288,7 @@ export class FlipkartInventorySyncService {
                 result.itemsSynced++;
 
                 logger.debug('Synced inventory for SKU', {
-                  sku: item.shipcrowdSKU,
+                  sku: item.ShipcrowdSKU,
                   fsn: item.fsn,
                   quantity: item.inventory,
                 });
@@ -307,14 +307,14 @@ export class FlipkartInventorySyncService {
                 }
                 result.itemsFailed++;
                 result.syncErrors.push({
-                  itemId: item.shipcrowdSKU,
+                  itemId: item.ShipcrowdSKU,
                   error: failure.error,
                   errorCode: failure.errorCode,
                   timestamp: new Date(),
                 });
 
                 logger.error('Failed to sync inventory for SKU', {
-                  sku: item.shipcrowdSKU,
+                  sku: item.ShipcrowdSKU,
                   fsn: item.fsn,
                   error: failure.error,
                 });
@@ -326,7 +326,7 @@ export class FlipkartInventorySyncService {
           for (const item of batchListings) {
             result.itemsFailed++;
             result.syncErrors.push({
-              itemId: item.shipcrowdSKU,
+              itemId: item.ShipcrowdSKU,
               error: error.message,
               timestamp: new Date(),
             });
@@ -387,7 +387,7 @@ export class FlipkartInventorySyncService {
 
     await this.pushInventoryToFlipkart(
       mapping.flipkartStoreId.toString(),
-      mapping.shipcrowdSKU,
+      mapping.ShipcrowdSKU,
       quantity
     );
   }

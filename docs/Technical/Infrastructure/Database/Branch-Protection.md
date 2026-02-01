@@ -157,7 +157,7 @@ When: Production incident caused by schema change
 Process:
 
 Immediate: Disable feature flag
-kubectl set env deployment/shipcrowd-api FEATURE_[NAME]=false
+kubectl set env deployment/Shipcrowd-api FEATURE_[NAME]=false
 Within 15 min: Verify incident resolved
 Within 1 hour: Revert merge commit if flag disable insufficient
 git revert -m 1 <merge-commit-hash>

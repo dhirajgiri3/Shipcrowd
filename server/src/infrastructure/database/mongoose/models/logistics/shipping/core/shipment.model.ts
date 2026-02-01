@@ -59,6 +59,21 @@ export interface IShipment extends Document {
     shippingCost: number;
     currency: string;
   };
+  pricingDetails?: {
+    rateCardId: mongoose.Types.ObjectId;
+    rateCardName: string;
+    baseRate: number;
+    weightCharge: number;
+    zoneCharge: number;
+    zone: string;
+    customerDiscount: number;
+    subtotal: number;
+    codCharge: number;
+    gstAmount: number;
+    totalPrice: number;
+    calculatedAt: Date;
+    calculationMethod: 'ratecard' | 'fallback' | 'override';
+  };
   statusHistory: Array<{
     status: string;
     timestamp: Date;
@@ -79,6 +94,9 @@ export interface IShipment extends Document {
     carrierServiceType?: string;
     carrierAccount?: string;
     manifestId?: string;
+    providerShipmentId?: string;
+    retryCount?: number; // Tracks carrier sync retry attempts
+    lastRetryAttempt?: Date; // Timestamp of last retry attempt
   };
   ndrDetails?: {
     ndrReason?: string;
@@ -130,7 +148,11 @@ export interface IShipment extends Document {
     remittanceId?: string; // Remittance batch ID
     remittedAt?: Date;
     remittedAmount?: number; // Net amount after deductions
+    platformFee?: number; // Fee deducted by platform
   };
+
+  // Wallet Transaction Reference
+  walletTransactionId?: mongoose.Types.ObjectId;
 
   isDeleted: boolean;
   isDemoData?: boolean;
@@ -258,6 +280,27 @@ const ShipmentSchema = new Schema<IShipment>(
         default: 'INR',
       },
     },
+    pricingDetails: {
+      rateCardId: {
+        type: Schema.Types.ObjectId,
+        ref: 'RateCard',
+      },
+      rateCardName: String,
+      baseRate: Number,
+      weightCharge: Number,
+      zoneCharge: Number,
+      zone: String,
+      customerDiscount: Number,
+      subtotal: Number,
+      codCharge: Number,
+      gstAmount: Number,
+      totalPrice: Number,
+      calculatedAt: Date,
+      calculationMethod: {
+        type: String,
+        enum: ['ratecard', 'fallback', 'override'],
+      },
+    },
     statusHistory: {
       type: [
         {
@@ -317,6 +360,12 @@ const ShipmentSchema = new Schema<IShipment>(
       carrierServiceType: String,
       carrierAccount: String,
       manifestId: String,
+      providerShipmentId: String,
+      retryCount: {
+        type: Number,
+        default: 0,
+      },
+      lastRetryAttempt: Date,
     },
     ndrDetails: {
       ndrReason: String,
@@ -395,6 +444,12 @@ const ShipmentSchema = new Schema<IShipment>(
       remittanceId: String,
       remittedAt: Date,
       remittedAmount: Number,
+      platformFee: Number, // Added missing field
+    },
+    walletTransactionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'WalletTransaction',
+      index: true,
     },
     isDeleted: {
       type: Boolean,

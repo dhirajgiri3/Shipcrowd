@@ -718,11 +718,11 @@ async verifyPayment(req: Request, res: Response): Promise<void> {
     const razorpayOrder = await this.razorpayService.fetchOrder(razorpay_order_id);
 
     // Extract Shipcrowd order ID from notes
-    const shipcrowdOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
     // Update order in database
     const order = await Order.findByIdAndUpdate(
-      shipcrowdOrderId,
+      ShipcrowdOrderId,
       {
         paymentStatus: 'paid',
         'shippingDetails.paymentId': razorpay_payment_id,
@@ -893,10 +893,10 @@ export class RazorpayWebhookController {
 
     // Fetch order from notes
     const razorpayOrder = await this.razorpayService.fetchOrder(payment.order_id);
-    const shipcrowdOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
     // Update order status
-    await Order.findByIdAndUpdate(shipcrowdOrderId, {
+    await Order.findByIdAndUpdate(ShipcrowdOrderId, {
       paymentStatus: 'paid',
       'shippingDetails.paymentId': payment.id,
     });
@@ -915,9 +915,9 @@ export class RazorpayWebhookController {
 
     // Update order status
     const razorpayOrder = await this.razorpayService.fetchOrder(payment.order_id);
-    const shipcrowdOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
-    await Order.findByIdAndUpdate(shipcrowdOrderId, {
+    await Order.findByIdAndUpdate(ShipcrowdOrderId, {
       paymentStatus: 'failed',
     });
 
@@ -936,9 +936,9 @@ export class RazorpayWebhookController {
     // Update order status
     const payment = await this.razorpayService.fetchPayment(refund.payment_id);
     const razorpayOrder = await this.razorpayService.fetchOrder(payment.order_id);
-    const shipcrowdOrderId = razorpayOrder.notes.orderId;
+    const ShipcrowdOrderId = razorpayOrder.notes.orderId;
 
-    await Order.findByIdAndUpdate(shipcrowdOrderId, {
+    await Order.findByIdAndUpdate(ShipcrowdOrderId, {
       paymentStatus: 'refunded',
     });
 

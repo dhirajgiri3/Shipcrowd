@@ -1,8 +1,8 @@
-# ShipCrowd Database Seeding Script - Enhanced Implementation Plan
+# Shipcrowd Database Seeding Script - Enhanced Implementation Plan
 
 ## Executive Summary
 
-Comprehensive seeding plan for ShipCrowd shipping aggregator with **100% schema alignment**, production-quality data generation, and realistic business patterns.
+Comprehensive seeding plan for Shipcrowd shipping aggregator with **100% schema alignment**, production-quality data generation, and realistic business patterns.
 
 **Scope**: 16+ database models
 **Data Volume**: 17,000-28,000+ records
@@ -764,7 +764,7 @@ export async function seedUsers() {
   // 1. Admin Users (5)
   for (let i = 0; i < 5; i++) {
     users.push({
-      email: `admin${i + 1}@shipcrowd.com`,
+      email: `admin${i + 1}@Shipcrowd.com`,
       password: await bcrypt.hash('Admin@123456', 10),
       name: generateIndianName(),
       role: 'admin',
@@ -935,7 +935,7 @@ export async function seedWalletTransactions() {
 
 ```typescript
 // Use predefined UUIDs for deterministic seeding
-const SEEDER_SEED = 'shipcrowd-v1'; // Change to re-seed
+const SEEDER_SEED = 'Shipcrowd-v1'; // Change to re-seed
 
 // Or check before inserting
 const existingUsers = await User.countDocuments();

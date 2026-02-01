@@ -2,8 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useAuth } from '@/src/features/auth';
-import { Button, Input, Card } from '@/components/ui';
-import { toast } from 'sonner';
+import { Button, Input, Card } from '@/src/components/ui';
 import { Mail, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 

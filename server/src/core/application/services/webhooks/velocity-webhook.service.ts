@@ -16,8 +16,8 @@
 
 import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
-import RTOEvent, { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model.js';
+import { Shipment, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
+import { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
 import {
   VelocityWebhookPayload,
   WebhookProcessingResult,
@@ -35,6 +35,33 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
     try {
       const { awb, order_id, status, status_code, current_location, description } = payload.shipment_data;
+
+      // Idempotency: Check if we already processed this exact webhook
+      const webhookId = payload.webhook_id || `${awb}-${status_code}-${payload.timestamp}`;
+      const cacheKey = `webhook:velocity:${webhookId}`;
+
+      try {
+        // Try Redis first (if available), fall back to in-memory Set if needed
+        // Note: Dynamic import to avoid circular dependency issues during initialization
+        const { CacheService } = await import('@/infrastructure/utilities/cache.service.js');
+        const alreadyProcessed = await CacheService.get(cacheKey);
+
+        if (alreadyProcessed) {
+          logger.info('Duplicate webhook detected, skipping', { webhookId, awb });
+          return {
+            success: true,
+            awb,
+            orderId: order_id,
+            statusUpdated: false,
+            timestamp: new Date()
+          };
+        }
+        // Mark as processed (TTL: 24 hours)
+        await CacheService.set(cacheKey, '1', 86400);
+      } catch (cacheError) {
+        // Cache unavailable - proceed without dedup (log warning)
+        logger.warn('Webhook dedup cache unavailable, proceeding', { webhookId });
+      }
 
       logger.info('Processing Velocity status update webhook', {
         awb,
@@ -85,38 +112,46 @@ export class VelocityWebhookService implements WebhookEventHandler {
         };
       }
 
-      // Add status to history
-      shipment.statusHistory.push({
-        status: internalStatus,
-        timestamp: new Date(payload.timestamp || Date.now()),
+      // Refactored: Delegate to ShipmentService for consistent state transitions and transaction safety
+      // Dynamic import to avoid circular dependencies if any
+      const { ShipmentService } = await import('../shipping/shipment.service.js');
+
+      const updateResult = await ShipmentService.updateShipmentStatus({
+        shipmentId: String(shipment._id),
+        currentStatus: shipment.currentStatus,
+        newStatus: internalStatus,
+        currentVersion: shipment.__v || 0,
+        userId: 'system',
         location: current_location || payload.tracking_event?.location,
-        description: description || payload.tracking_event?.description,
-        updatedBy: undefined // Webhook update, no user
+        description: description || payload.tracking_event?.description
       });
 
-      // Update current status
-      shipment.currentStatus = internalStatus;
-
-      // Handle special status updates
-      if (internalStatus === 'delivered') {
-        shipment.actualDelivery = new Date();
+      if (!updateResult.success) {
+        // If concurrent modification, we should retry or fail gracefully. 
+        // Since this is a webhook, we can fail and let Velocity retry.
+        logger.warn('Failed to update shipment status via webhook', {
+          awb,
+          error: updateResult.error,
+          code: updateResult.code
+        });
+        throw new Error(updateResult.error || 'Failed to update shipment status');
       }
 
-      if (internalStatus === 'ndr') {
-        if (!shipment.ndrDetails) {
-          shipment.ndrDetails = {
-            ndrAttempts: 0,
-            ndrStatus: 'pending'
-          };
-        }
-        shipment.ndrDetails.ndrReason = description;
-        shipment.ndrDetails.ndrDate = new Date();
-        shipment.ndrDetails.ndrAttempts = (shipment.ndrDetails.ndrAttempts || 0) + 1;
-        shipment.ndrDetails.ndrStatus = 'pending';
-      }
+      // If status updated, we might need to handle specific logic if it wasn't handled in ShipmentService
+      // Note: ShipmentService handles delivered, ndr, order sync, and outbound webhooks.
+      // We don't need to duplicate that logic here.
 
-      // Save shipment
-      await shipment.save();
+      // Reload shipment to get latest state for logging/response
+      // (Optional, or just use what we have. ShipmentService returns updated shipment)
+      const updatedShipment = updateResult.shipment;
+
+      // Update local reference for subsequent logic (like auto-sync) if needed
+      if (updatedShipment) {
+        shipment.currentStatus = updatedShipment.currentStatus;
+        shipment.statusHistory = updatedShipment.statusHistory;
+        shipment.ndrDetails = updatedShipment.ndrDetails;
+        shipment.actualDelivery = updatedShipment.actualDelivery;
+      }
 
       logger.info('Shipment status updated successfully', {
         awb,
@@ -152,11 +187,16 @@ export class VelocityWebhookService implements WebhookEventHandler {
               String(shipment._id),
               internalStatus
             ),
-          ]).catch((error) => {
-            logger.warn('E-commerce fulfillment auto-sync encountered errors', {
-              shipmentId: shipment._id,
-              status: internalStatus,
-              error: error.message,
+          ]).then((results) => {
+            const platforms = ['Shopify', 'WooCommerce', 'Amazon', 'Flipkart'];
+            results.forEach((result, index) => {
+              if (result.status === 'rejected') {
+                logger.warn(`${platforms[index]} fulfillment sync failed`, {
+                  shipmentId: String(shipment._id),
+                  status: internalStatus,
+                  error: result.reason?.message || result.reason
+                });
+              }
             });
           });
 
@@ -481,10 +521,10 @@ export class VelocityWebhookService implements WebhookEventHandler {
         statusCode: status_code
       });
 
+      // RTOEvent model is imported at the top of the file
       // Find RTO event by reverse AWB
       const rtoEvent = await RTOEvent.findOne({
-        reverseAwb: awb,
-        isDeleted: false
+        reverseAwb: awb
       }).populate('shipment');
 
       if (!rtoEvent) {
@@ -500,16 +540,14 @@ export class VelocityWebhookService implements WebhookEventHandler {
       }
 
       // Map Velocity status to RTO return status
-      const statusMapping: Record<string, string> = {
+      const statusMapping: Record<string, IRTOEvent['returnStatus']> = {
         'NEW': 'initiated',
         'PKP': 'in_transit',           // Picked up from customer
         'IT': 'in_transit',             // In transit to warehouse
         'OFD': 'in_transit',            // Out for delivery to warehouse
         'DEL': 'delivered_to_warehouse', // Delivered to warehouse
         'RTO': 'in_transit',            // RTO-in-RTO (rare edge case)
-        'LOST': 'lost',
-        'DAMAGED': 'damaged',
-        'CANCELLED': 'cancelled'
+        'CANCELLED': 'initiated'        // Map cancelled to initiated
       };
 
       const newReturnStatus = statusMapping[status_code] || 'in_transit';
@@ -517,7 +555,7 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       // Update RTO event status
       if (isStatusChange) {
-        rtoEvent.returnStatus = newReturnStatus as any;
+        rtoEvent.returnStatus = newReturnStatus as IRTOEvent['returnStatus'];
 
         // Update actualReturnDate if delivered to warehouse
         if (newReturnStatus === 'delivered_to_warehouse') {

@@ -2,8 +2,8 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
 import {
     FileText,
     Download,
@@ -15,50 +15,20 @@ import {
     Truck,
     Package
 } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { cn } from '@/src/lib/utils';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// Mock shipment data for label
-const mockShipmentForLabel = {
-    awbNumber: 'DL987654321IN',
-    orderId: 'ORD-2024-001234',
-    courier: 'Delhivery',
-    service: 'Surface Express',
-    createdAt: '2024-12-11',
-    weight: '1.5 kg',
-    dimensions: '20 x 15 x 10 cm',
-    paymentMode: 'COD',
-    codAmount: 1299,
-    shipperDetails: {
-        name: 'Fashion Hub India',
-        address: '123, Industrial Area, Phase 2',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        phone: '+91 98765 43210',
-    },
-    consigneeDetails: {
-        name: 'Rahul Sharma',
-        address: '456, Green Park Extension',
-        city: 'New Delhi',
-        state: 'Delhi',
-        pincode: '110016',
-        phone: '+91 87654 32109',
-    },
-    productDetails: {
-        name: 'Premium Cotton T-Shirt',
-        sku: 'TSH-BLK-XL-001',
-        quantity: 2,
-    },
-};
+import { useShipmentByAwb, useGenerateLabel } from '@/src/core/api/hooks/seller/useShipment';
 
 export function LabelClient() {
     const [awbInput, setAwbInput] = useState('');
-    const [shipmentData, setShipmentData] = useState<typeof mockShipmentForLabel | null>(null);
-    const [isSearching, setIsSearching] = useState(false);
+    const [searchedAwb, setSearchedAwb] = useState('');
     const { addToast } = useToast();
     const [currentTime, setCurrentTime] = useState(new Date());
+
+    // API Hooks
+    const { data: shipmentData, isLoading: isSearching, error } = useShipmentByAwb(searchedAwb);
+    const { mutate: generateLabel, isPending: isGenerating } = useGenerateLabel();
 
     // Clock
     useEffect(() => {
@@ -71,23 +41,34 @@ export function LabelClient() {
             addToast('Please enter an AWB number', 'warning');
             return;
         }
-
-        setIsSearching(true);
-        // Simulate API call
-        setTimeout(() => {
-            setShipmentData(mockShipmentForLabel);
-            setIsSearching(false);
-            addToast('Shipment found!', 'success');
-        }, 1200);
+        setSearchedAwb(awbInput);
     };
 
     const handlePrint = () => {
-        addToast('Opening print dialog...', 'info');
-        window.print();
+        if (!shipmentData) return;
+
+        generateLabel(shipmentData.awbNumber, {
+            onSuccess: (response) => {
+                // In a real scenario, this would likely open a PDF URL in a new window or trigger a print dialog
+                // For now we simulate the print action as before, but normally we'd use response.labelUrl
+                window.print();
+            }
+        });
     };
 
     const handleDownload = () => {
-        addToast('Downloading label as PDF...', 'success');
+        if (!shipmentData) return;
+
+        generateLabel(shipmentData.awbNumber, {
+            onSuccess: (response) => {
+                // Determine if we have a URL to open
+                if (response.labelUrl) {
+                    window.open(response.labelUrl, '_blank');
+                } else {
+                    addToast('Downloading label...', 'success');
+                }
+            }
+        });
     };
 
     const copyToClipboard = (text: string) => {
@@ -167,21 +148,31 @@ export function LabelClient() {
                         </Button>
                     </div>
                     <div className="mt-4 flex gap-2">
-                        {['DL987654321IN', 'AWB192837465'].map(awb => (
-                            <button
-                                key={awb}
-                                onClick={() => { setAwbInput(awb); }}
-                                className="text-xs px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors border border-[var(--border-subtle)]"
-                            >
-                                {awb}
-                            </button>
-                        ))}
+                        {/* Remove hardcoded suggestions or replace with recent history if available */}
                     </div>
                 </div>
             </motion.div>
 
             {/* Label Preview Area */}
             <AnimatePresence mode="wait">
+                {/* Error State */}
+                {searchedAwb && error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="py-12 text-center"
+                    >
+                        <div className="w-20 h-20 bg-[var(--error-bg)] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Truck className="h-10 w-10 text-[var(--error)]" />
+                        </div>
+                        <h3 className="text-xl font-bold text-[var(--error)]">Shipment Not Found</h3>
+                        <p className="text-[var(--text-muted)] mt-1">
+                            We couldn't find a shipment with AWB <strong>{searchedAwb}</strong>. Please check and try again.
+                        </p>
+                    </motion.div>
+                )}
+
                 {shipmentData ? (
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
@@ -199,10 +190,19 @@ export function LabelClient() {
                                         <p className="text-sm text-[var(--text-muted)]">Verified shipping document</p>
                                     </div>
                                     <div className="flex gap-3">
-                                        <Button variant="outline" onClick={handleDownload} className="bg-[var(--bg-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] h-10 px-4 rounded-xl">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleDownload}
+                                            disabled={isGenerating}
+                                            className="bg-[var(--bg-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] h-10 px-4 rounded-xl"
+                                        >
                                             <Download className="h-4 w-4 mr-2" /> PDF
                                         </Button>
-                                        <Button onClick={handlePrint} className="bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-secondary)] h-10 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                                        <Button
+                                            onClick={handlePrint}
+                                            disabled={isGenerating}
+                                            className="bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-[var(--text-secondary)] h-10 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                                        >
                                             <Printer className="h-4 w-4 mr-2" /> Print
                                         </Button>
                                     </div>
@@ -280,7 +280,7 @@ export function LabelClient() {
                                         </div>
                                         <div className="p-4">
                                             <p className="font-bold text-slate-400 uppercase mb-1 text-[10px] tracking-wider">Date</p>
-                                            <p className="font-bold">{shipmentData.createdAt}</p>
+                                            <p className="font-bold">{new Date(shipmentData.createdAt).toLocaleDateString()}</p>
                                         </div>
                                     </div>
 
@@ -289,7 +289,7 @@ export function LabelClient() {
                                         <div className="absolute top-4 right-4 border border-slate-200 rounded p-1">
                                             <QrCode className="h-16 w-16 text-slate-900" />
                                         </div>
-                                        {/* Simulated Barcode Lines */}
+                                        {/* Simulated Barcode Lines (CSS/Image could be improved for real generation) */}
                                         <div className="h-16 w-full max-w-sm bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Code_128_barcode_sample.svg/1200px-Code_128_barcode_sample.svg.png')] bg-cover bg-center opacity-90 grayscale contrast-150 mb-3" />
                                         <p className="font-mono font-bold text-3xl tracking-[0.3em] text-slate-900 mt-2">{shipmentData.awbNumber}</p>
                                         <p className="text-[10px] text-slate-400 uppercase mt-2 font-bold tracking-widest">Scan for Status</p>
@@ -342,11 +342,20 @@ export function LabelClient() {
                                 transition={{ delay: 0.3 }}
                                 className="p-6 rounded-[var(--radius-3xl)] bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm"
                             >
-                                <Button className="w-full h-14 text-lg font-semibold bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-brand-lg mb-4 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" onClick={handlePrint}>
+                                <Button
+                                    className="w-full h-14 text-lg font-semibold bg-[var(--primary-blue)] text-white hover:bg-[var(--primary-blue-deep)] shadow-brand-lg mb-4 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    onClick={handlePrint}
+                                    disabled={isGenerating}
+                                >
                                     <Printer className="h-5 w-5 mr-2" />
                                     Print Label
                                 </Button>
-                                <Button variant="outline" className="w-full h-14 bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-xl" onClick={handleDownload}>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-14 bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-xl"
+                                    onClick={handleDownload}
+                                    disabled={isGenerating}
+                                >
                                     <Download className="h-5 w-5 mr-2" />
                                     Download PDF
                                 </Button>
@@ -355,7 +364,7 @@ export function LabelClient() {
                     </motion.div>
                 ) : (
                     /* Initial State */
-                    !isSearching && (
+                    !isSearching && !error && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

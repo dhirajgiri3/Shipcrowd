@@ -1386,9 +1386,9 @@ emailVerificationRateLimiter = rateLimit({
 **Environment Variables:**
 ```
 SENDGRID_API_KEY=SG.xxx
-FROM_EMAIL=noreply@shipcrowd.com
-VERIFICATION_URL=https://app.shipcrowd.com/verify-email?token=
-PASSWORD_RESET_URL=https://app.shipcrowd.com/reset-password?token=
+FROM_EMAIL=noreply@Shipcrowd.com
+VERIFICATION_URL=https://app.Shipcrowd.com/verify-email?token=
+PASSWORD_RESET_URL=https://app.Shipcrowd.com/reset-password?token=
 ```
 
 **Email Templates (SendGrid):**
@@ -1734,9 +1734,9 @@ ENCRYPTION_KEY=<32-byte-hex-string>
 
 # Email
 SENDGRID_API_KEY=SG.xxx
-FROM_EMAIL=noreply@shipcrowd.com
-VERIFICATION_URL=https://app.shipcrowd.com/verify-email?token=
-PASSWORD_RESET_URL=https://app.shipcrowd.com/reset-password?token=
+FROM_EMAIL=noreply@Shipcrowd.com
+VERIFICATION_URL=https://app.Shipcrowd.com/verify-email?token=
+PASSWORD_RESET_URL=https://app.Shipcrowd.com/reset-password?token=
 
 # OAuth
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com

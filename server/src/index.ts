@@ -12,8 +12,15 @@ import { NDRResolutionJob } from './infrastructure/jobs/logistics/shipping/ndr-r
 import { WeightDisputeJob } from './infrastructure/jobs/disputes/weight-dispute.job';
 import { CODRemittanceJob } from './infrastructure/jobs/finance/cod-remittance.job';
 import { DisputeSLAJob } from './infrastructure/jobs/logistics/dispute-sla.job';
+import { CarrierSyncJob } from './infrastructure/jobs/logistics/shipping/carrier-sync.job';
+import { ManifestPickupRetryJob } from './infrastructure/jobs/logistics/shipping/manifest-pickup-retry.job';
+
 import { initializeCommissionEventHandlers } from './shared/events/commissionEventHandlers';
+import { initializeCRMListeners } from './core/application/listeners/crm/index';
 import PincodeLookupService from './core/application/services/logistics/pincode-lookup.service';
+import CacheService from './infrastructure/utilities/cache.service';
+import { initializeRateLimitRedis } from './shared/config/rateLimit.config';
+import { PubSubService } from './infrastructure/redis/pubsub.service';
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +39,16 @@ const startServer = async (): Promise<void> => {
         // Load Pincode Cache from CSV (in-memory for fast lookups)
         await PincodeLookupService.loadPincodesFromCSV();
         logger.info('Pincode cache loaded successfully');
+
+        // Initialize Cache Service (Redis or Memory)
+        await CacheService.initialize();
+
+        // Initialize Rate Limiter Redis Client (BEFORE routes are loaded)
+        await initializeRateLimitRedis();
+
+        // Initialize PubSub for distributed cache invalidation
+        await PubSubService.initialize();
+        logger.info('PubSub service initialized');
 
         // Initialize Queue Manager FIRST (creates all queues)
         await QueueManager.initialize();
@@ -56,12 +73,25 @@ const startServer = async (): Promise<void> => {
         DisputeSLAJob.initialize();
         logger.info('Dispute SLA management job initialized');
 
+
+        // Initialize Carrier Sync Retry Job
+        await CarrierSyncJob.initialize();
+        logger.info('Carrier sync retry job initialized');
+
+        // Initialize Manifest Pickup Retry Job
+        await ManifestPickupRetryJob.initialize();
+        logger.info('Manifest pickup retry job initialized');
+
         // NOW Initialize Scheduler (after all workers are registered)
         initializeScheduler();
 
         // Initialize Commission System Event Handlers
         initializeCommissionEventHandlers();
         logger.info('Commission event handlers initialized');
+
+        // Initialize CRM Event Handlers (NDR, etc.)
+        initializeCRMListeners();
+        logger.info('CRM event handlers initialized');
 
         // Start listening
         app.listen(PORT, () => {

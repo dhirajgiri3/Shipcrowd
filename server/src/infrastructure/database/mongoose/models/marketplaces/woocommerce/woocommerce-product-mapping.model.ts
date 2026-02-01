@@ -38,8 +38,8 @@ export interface IWooCommerceProductMapping extends Document {
   woocommerceVariationId?: number; // Null for simple products
   woocommerceSKU: string;
   woocommerceTitle: string;
-  shipcrowdSKU: string;
-  shipcrowdProductName?: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName?: string;
   mappingType: 'AUTO' | 'MANUAL';
   syncInventory: boolean;
   syncPrice: boolean;
@@ -87,14 +87,14 @@ const WooCommerceProductMappingSchema = new Schema<IWooCommerceProductMapping>(
       type: String,
       required: true,
     },
-    shipcrowdSKU: {
+    ShipcrowdSKU: {
       type: String,
       required: true,
       uppercase: true,
       trim: true,
       index: true,
     },
-    shipcrowdProductName: {
+    ShipcrowdProductName: {
       type: String,
     },
     mappingType: {
@@ -156,7 +156,7 @@ WooCommerceProductMappingSchema.index(
 WooCommerceProductMappingSchema.index({
   companyId: 1,
   woocommerceStoreId: 1,
-  shipcrowdSKU: 1,
+  ShipcrowdSKU: 1,
 });
 
 // Query active mappings
@@ -212,7 +212,7 @@ WooCommerceProductMappingSchema.statics.findByShipcrowdSKU = function (
 ) {
   return this.findOne({
     woocommerceStoreId: storeId,
-    shipcrowdSKU: sku.toUpperCase(),
+    ShipcrowdSKU: sku.toUpperCase(),
     isActive: true,
   });
 };

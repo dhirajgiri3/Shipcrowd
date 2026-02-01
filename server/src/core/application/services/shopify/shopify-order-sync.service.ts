@@ -249,9 +249,9 @@ export class ShopifyOrderSyncService {
 
       // Update if Shopify order is newer
       const shopifyUpdated = new Date(shopifyOrder.updated_at);
-      const shipcrowdUpdated = new Date(existingOrder.updatedAt);
+      const ShipcrowdUpdated = new Date(existingOrder.updatedAt);
 
-      if (shopifyUpdated <= shipcrowdUpdated) {
+      if (shopifyUpdated <= ShipcrowdUpdated) {
         logger.debug('Skipping unchanged order', {
           orderId: shopifyOrder.id,
         });
@@ -276,7 +276,7 @@ export class ShopifyOrderSyncService {
 
     logger.info('Created order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
-      shipcrowdOrderId: order._id,
+      ShipcrowdOrderId: order._id,
       orderNumber: order.orderNumber,
     });
 
@@ -308,7 +308,7 @@ export class ShopifyOrderSyncService {
 
     logger.info('Updated order from Shopify', {
       shopifyOrderId: shopifyOrder.id,
-      shipcrowdOrderId: existingOrder._id,
+      ShipcrowdOrderId: existingOrder._id,
       orderNumber: existingOrder.orderNumber,
     });
 

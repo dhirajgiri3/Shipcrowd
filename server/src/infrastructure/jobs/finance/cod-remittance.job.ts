@@ -193,16 +193,54 @@ export class CODRemittanceJob {
 
     /**
      * Fetch settlement from Velocity API (Real mode only)
-     * TODO: Implement when Velocity settlement API is ready
+     *
+     * NOTE:
+     * - This method is only called when FeatureFlagService.useRealVelocityAPI() === true
+     * - On any error, the caller will log and continue without crashing the worker
      */
-    private static async fetchVelocitySettlement(remittanceId: string): Promise<any> {
-        // TODO: Replace with actual Velocity API call
-        // Example implementation:
-        // const velocityClient = new VelocityAPIClient();
-        // const settlement = await velocityClient.getSettlement(remittanceId);
-        // return settlement;
+    private static async fetchVelocitySettlement(remittanceId: string): Promise<{
+        status: string;
+        settlementId?: string;
+        utr?: string;
+        settledAmount?: number;
+        settledAt?: Date;
+        bankDetails?: unknown;
+    }> {
+        try {
+            const { VelocityShipfastProvider } = await import(
+                '../../../infrastructure/external/couriers/velocity/velocity-shipfast.provider.js'
+            );
 
-        throw new Error('Velocity settlement API not yet implemented - use mock mode (set USE_REAL_VELOCITY_API=false)');
+            // Get company ID from remittance (need to fetch remittance to get companyId)
+            const remittance = await CODRemittance.findOne({ remittanceId }).select('companyId');
+            if (!remittance) {
+                throw new Error(`Remittance not found: ${remittanceId}`);
+            }
+
+            const velocityClient = new VelocityShipfastProvider(remittance.companyId);
+            const settlement = await velocityClient.getSettlementStatus(remittanceId);
+
+            return {
+                status: settlement.status,
+                settlementId: settlement.settlement_id,
+                utr: settlement.utr_number,
+                settledAmount: settlement.settled_amount,
+                settledAt: settlement.settled_at ? new Date(settlement.settled_at) : undefined,
+                bankDetails: settlement.bank_details
+            };
+        } catch (error: any) {
+            // Check if error is 404 (Settlement not found) - Treat as pending
+            if (error.statusCode === 404 || error.message.includes('not found')) {
+                return { status: 'pending' };
+            }
+
+            logger.error('Velocity settlement API call failed', {
+                remittanceId,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**
@@ -251,9 +289,13 @@ export class CODRemittanceJob {
 
                 if (useRealAPI) {
                     // REAL API MODE - Call actual Razorpay API
-                    payoutStatus = await this.fetchRazorpayPayoutStatus(
-                        remittance.payout.razorpayPayoutId! // Non-null: query filters for existence
-                    );
+                    const payoutId = remittance.payout.razorpayPayoutId;
+                    if (!payoutId) {
+                        logger.warn('Skipping payout verification: No Payout ID', { remittanceId: remittance.remittanceId });
+                        continue;
+                    }
+
+                    payoutStatus = await this.fetchRazorpayPayoutStatus(payoutId);
                 } else {
                     // MOCK MODE - Simulate payout status check
                     await MockDataService.simulateDelay(1000);
@@ -278,7 +320,7 @@ export class CODRemittanceJob {
                     });
                 } else if (payoutStatus.status === 'failed') {
                     remittance.payout.status = 'failed';
-                    remittance.payout.failureReason = payoutStatus.failure_reason;
+                    remittance.payout.failureReason = payoutStatus.failure_reason || undefined;
                     remittance.status = 'failed'; // Correct enum value
                     await remittance.save();
 
@@ -299,19 +341,49 @@ export class CODRemittanceJob {
 
     /**
      * Fetch payout status from Razorpay API (Real mode only)
-     * TODO: Implement when Razorpay payout status API is ready
+     *
+     * NOTE:
+     * - This method is only called when FeatureFlagService.useRealRazorpayAPI() === true
+     * - On any error, the caller will log and continue without crashing the worker
      */
-    private static async fetchRazorpayPayoutStatus(razorpayPayoutId: string): Promise<any> {
-        // TODO: Replace with actual Razorpay API call
-        // Example implementation:
-        // const razorpay = new Razorpay({
-        //     key_id: process.env.RAZORPAY_KEY_ID,
-        //     key_secret: process.env.RAZORPAY_KEY_SECRET
-        // });
-        // const payout = await razorpay.payouts.fetch(razorpayPayoutId);
-        // return payout;
+    private static async fetchRazorpayPayoutStatus(razorpayPayoutId: string): Promise<{
+        status: string;
+        utr?: string;
+        failure_reason?: string;
+        reversed_at?: Date | null;
+        amount?: number;
+        fees?: number;
+        tax?: number;
+    }> {
+        try {
+            // Dynamic import to avoid circular dependencies if any
+            const { RazorpayPayoutProvider } = await import(
+                '../../../infrastructure/payment/razorpay/razorpay-payout.provider.js'
+            );
 
-        throw new Error('Razorpay payout verification API not yet implemented - use mock mode (set USE_REAL_RAZORPAY_API=false)');
+            const razorpayClient = new RazorpayPayoutProvider();
+            const payout = await razorpayClient.getPayoutStatus(razorpayPayoutId);
+
+            return {
+                status: payout.status,
+                utr: payout.utr || undefined,
+                failure_reason: payout.failure_reason,
+                // Razorpay payout object may include these fields; we keep them optional
+                reversed_at: payout.reversed_at
+                    ? new Date(payout.reversed_at * 1000) // Convert unix timestamp to Date
+                    : null,
+                amount: payout.amount,
+                fees: payout.fees,
+                tax: payout.tax
+            };
+        } catch (error: any) {
+            logger.error('Razorpay payout status API call failed', {
+                razorpayPayoutId,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**

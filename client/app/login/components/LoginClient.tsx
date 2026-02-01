@@ -25,9 +25,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { OAUTH_CONFIG } from '@/src/config/oauth';
-import { toast } from 'sonner';
-import { Alert, AlertDescription } from '@/components/ui/feedback/Alert';
-import { LoadingButton } from '@/components/ui/utility/LoadingButton';
+import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { Alert, AlertDescription } from '@/src/components/ui/feedback/Alert';
+import { Loader2 } from 'lucide-react';
 
 export function LoginClient() {
     return (
@@ -41,7 +41,7 @@ function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectPath = searchParams.get('redirect');
-    const { login, isLoading, isInitialized, isAuthenticated } = useAuth();
+    const { login, isLoading, isInitialized, isAuthenticated, user } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
@@ -51,14 +51,18 @@ function LoginForm() {
 
     // Redirect if already authenticated
     useEffect(() => {
-        if (isInitialized && isAuthenticated) {
-            if (redirectPath && redirectPath !== '/') {
+        if (isInitialized && isAuthenticated && user) {
+            // Prioritize explicit redirect path from URL
+            if (redirectPath && redirectPath !== '/' && redirectPath !== '/login') {
                 router.push(redirectPath);
-            } else {
-                router.push('/seller');
+                return;
             }
+
+            // Role-based redirection
+            const destination = ['admin', 'super_admin'].includes(user.role) ? '/admin' : '/seller';
+            router.push(destination);
         }
-    }, [isInitialized, isAuthenticated, router, redirectPath]);
+    }, [isInitialized, isAuthenticated, user, router, redirectPath]);
 
     // Don't render until auth is initialized
     if (!isInitialized) {
@@ -85,33 +89,20 @@ function LoginForm() {
         if (!email || !password) {
             const message = 'Please fill in all fields';
             setLocalError(message);
-            toast.error(message);
             return;
         }
 
         if (!email.includes('@')) {
             const message = 'Please enter a valid email address';
             setLocalError(message);
-            toast.error(message);
             return;
         }
 
         const result = await login({ email, password, rememberMe });
 
-        if (result.success) {
-            toast.success('Welcome back!');
-
-            // Redirect to original destination if present, otherwise role-based default
-            if (redirectPath && redirectPath !== '/') {
-                router.push(redirectPath);
-            } else {
-                const destination = result.user?.role === 'admin' ? '/admin' : '/seller';
-                router.push(destination);
-            }
-        } else {
+        if (!result.success) {
             const errorMessage = result.error?.message || 'Login failed. Please try again.';
             setLocalError(errorMessage);
-            toast.error(errorMessage);
         }
     };
 
@@ -128,8 +119,8 @@ function LoginForm() {
                     {/* Logo */}
                     <Link href="/" className="inline-block mb-12">
                         <img
-                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png"
-                            alt="ShipCrowd"
+                            src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png"
+                            alt="Shipcrowd"
                             className="h-8 w-auto rounded-full"
                         />
                     </Link>
@@ -260,18 +251,24 @@ function LoginForm() {
                             </Link>
                         </div>
 
-                        {/* Submit Button - Using LoadingButton */}
-                        <LoadingButton
+                        {/* Submit Button */}
+                        <button
                             type="submit"
-                            isLoading={isLoading}
-                            loadingText="Signing in..."
-                            className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90"
+                            disabled={isLoading}
+                            className="w-full h-auto py-3 text-white rounded-lg bg-primaryBlue hover:bg-primaryBlue/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            <span className="flex items-center justify-center gap-2">
-                                Sign in
-                                <ArrowRight className="w-4 h-4" />
-                            </span>
-                        </LoadingButton>
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Signing in...
+                                </>
+                            ) : (
+                                <>
+                                    Sign in
+                                    <ArrowRight className="w-4 h-4" />
+                                </>
+                            )}
+                        </button>
                     </form>
 
                     {/* Footer */}

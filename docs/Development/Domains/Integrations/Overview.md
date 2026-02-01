@@ -27,7 +27,7 @@ Shipcrowd integrates with major e-commerce platforms to enable seamless order fu
 │                 E-COMMERCE INTEGRATION FLOW                  │
 └─────────────────────────────────────────────────────────────┘
 
-PLATFORM                 SHIPCROWD                 COURIER
+PLATFORM                 Shipcrowd                 COURIER
 ┌─────────┐             ┌─────────┐              ┌─────────┐
 │ Shopify │────────────▶│  Order  │─────────────▶│Velocity │
 │  Store  │  Webhook    │ Service │  API Call    │Shipfast │
@@ -239,8 +239,8 @@ export interface IProductMapping extends Document {
   platformBarcode?: string;
 
   // Shipcrowd product identifiers
-  shipcrowdSKU: string;
-  shipcrowdProductName: string;
+  ShipcrowdSKU: string;
+  ShipcrowdProductName: string;
 
   // Mapping metadata
   mappingType: 'AUTO' | 'MANUAL';
@@ -286,12 +286,12 @@ const ProductMappingSchema = new Schema<IProductMapping>({
   },
   platformTitle: String,
   platformBarcode: String,
-  shipcrowdSKU: {
+  ShipcrowdSKU: {
     type: String,
     required: true,
     index: true
   },
-  shipcrowdProductName: String,
+  ShipcrowdProductName: String,
   mappingType: {
     type: String,
     enum: ['AUTO', 'MANUAL'],
@@ -326,7 +326,7 @@ const ProductMappingSchema = new Schema<IProductMapping>({
 
 // Indexes for quick lookups
 ProductMappingSchema.index({ companyId: 1, platformSKU: 1 });
-ProductMappingSchema.index({ companyId: 1, shipcrowdSKU: 1 });
+ProductMappingSchema.index({ companyId: 1, ShipcrowdSKU: 1 });
 ProductMappingSchema.index({ platformStoreId: 1, platformProductId: 1 });
 
 const ProductMapping = mongoose.model<IProductMapping>('ProductMapping', ProductMappingSchema);
@@ -516,7 +516,7 @@ export class ShopifyOAuthService {
    */
   private async registerWebhooks(shop: string, accessToken: string, storeId: string): Promise<void> {
     const shopDomain = this.normalizeShopDomain(shop);
-    const baseUrl = process.env.APP_URL || 'https://api.shipcrowd.com';
+    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
 
     const webhooks = [
       {
@@ -733,7 +733,7 @@ export class ShopifyOrderSyncService {
           productId: item.product_id.toString(),
           variantId: item.variant_id.toString(),
           productName: item.title,
-          sku: mapping?.shipcrowdSKU || item.sku,
+          sku: mapping?.ShipcrowdSKU || item.sku,
           quantity: item.quantity,
           unitPrice: parseFloat(item.price),
           totalPrice: parseFloat(item.price) * item.quantity
@@ -987,7 +987,7 @@ export class WooCommerceService {
    */
   async registerWebhooks(store: IWooCommerceStore): Promise<void> {
     const apiClient = this.createApiClient(store);
-    const baseUrl = process.env.APP_URL || 'https://api.shipcrowd.com';
+    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
 
     const webhooks = [
       {
@@ -1515,7 +1515,7 @@ export class FlipkartOAuthService {
    */
   async registerWebhooks(store: IFlipkartStore): Promise<void> {
     const apiClient = await this.createApiClient(store);
-    const baseUrl = process.env.APP_URL || 'https://api.shipcrowd.com';
+    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
     const webhookSecret = crypto.randomBytes(32).toString('hex');
 
     const webhookTopics = [
@@ -2415,7 +2415,7 @@ Add to `.env`:
 # Shopify Configuration
 SHOPIFY_API_KEY=your_shopify_api_key
 SHOPIFY_API_SECRET=your_shopify_api_secret
-SHOPIFY_REDIRECT_URI=https://api.shipcrowd.com/api/v1/integrations/shopify/auth/callback
+SHOPIFY_REDIRECT_URI=https://api.Shipcrowd.com/api/v1/integrations/shopify/auth/callback
 
 # WooCommerce Configuration
 # (Keys are per-store, stored encrypted in database)
@@ -2433,7 +2433,7 @@ FLIPKART_API_BASE_URL=https://api.flipkart.net/sellers
 ENCRYPTION_KEY=your_64_char_hex_encryption_key
 
 # App URL
-APP_URL=https://api.shipcrowd.com
+APP_URL=https://api.Shipcrowd.com
 ```
 
 ---

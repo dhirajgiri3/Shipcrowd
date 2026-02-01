@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import CODRemittance, { ICODRemittance } from '../../../../infrastructure/database/mongoose/models/finance/payouts/cod-remittance.model';
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 import { AppError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import logger from '../../../../shared/logger/winston.logger';
@@ -42,13 +43,13 @@ export default class CODRemittanceService {
         // Find all delivered COD shipments not yet remitted
         const eligibleShipments = await Shipment.find({
             companyId: new mongoose.Types.ObjectId(companyId),
-            paymentMode: 'COD',
+            'paymentDetails.type': 'cod',
             currentStatus: 'delivered',
             actualDelivery: { $lte: cutoffDate },
             'remittance.included': { $ne: true },
             isDeleted: false,
         })
-            .select('trackingNumber billing.codAmount billing.totalAmount actualDelivery')
+            .select('trackingNumber paymentDetails.codAmount paymentDetails.shippingCost actualDelivery')
             .lean();
 
         if (!eligibleShipments || eligibleShipments.length === 0) {
@@ -62,8 +63,8 @@ export default class CODRemittanceService {
         let totalDeductions = 0;
 
         const formattedShipments = eligibleShipments.map((shipment: any) => {
-            const codAmount = shipment.billing?.codAmount || 0;
-            const shippingCharge = shipment.billing?.totalAmount || 0;
+            const codAmount = shipment.paymentDetails?.codAmount || 0;
+            const shippingCharge = shipment.paymentDetails?.shippingCost || 0;
             const platformFee = codAmount * 0.005; // 0.5% platform fee
 
             const deductionsTotal = shippingCharge + platformFee;
@@ -313,60 +314,39 @@ export default class CODRemittanceService {
         }
 
         try {
-            // Create Razorpay payout
-            // Note: Using 'as any' for Razorpay types - SDK types may be incomplete
-            const razorpayInstance = this.razorpay as any;
-            const payout: any = await razorpayInstance.payouts.create({
-                account_number: process.env.RAZORPAY_ACCOUNT_NUMBER!,
-                fund_account_id: razorpayFundAccountId,
-                amount: Math.round(remittance.financial.netPayable * 100), // Convert to paise
-                currency: 'INR',
-                mode: 'IMPS',
-                purpose: 'payout',
-                queue_if_low_balance: false,
-                reference_id: remittanceId,
-                narration: `COD Remittance #${remittance.batch.batchNumber}`,
-            });
+            // Saga Pattern: Enqueue Payout Job
+            // We do NOT call Razorpay directly here. We let the worker handle it.
 
-            // Update remittance with payout details
+            // 1. Update status to 'processing' (Locking)
             remittance.payout.status = 'processing';
-            remittance.payout.razorpayPayoutId = payout.id;
-            remittance.payout.initiatedAt = new Date();
-            remittance.status = 'paid';
-
-            remittance.timeline.push({
-                status: 'processing',
-                timestamp: new Date(),
-                actor: 'system',
-                action: `Razorpay payout initiated: ${payout.id}`,
-            });
-
             await remittance.save();
 
-            logger.info(`Payout initiated for ${remittanceId}: ${payout.id}`);
+            // 2. Enqueue Job
+            await QueueManager.addJob('payout-queue', 'process-payout', {
+                remittanceId: remittance.remittanceId,
+                companyId: company._id.toString(),
+                amount: Math.round(remittance.financial.netPayable * 100),
+                fundAccountId: razorpayFundAccountId,
+                batchNumber: remittance.batch.batchNumber
+            });
+
+            logger.info(`Payout job enqueued for ${remittanceId}`);
 
             return {
                 success: true,
-                razorpayPayoutId: payout.id,
                 status: 'processing',
             };
         } catch (error: any) {
-            // Handle Razorpay errors
+            logger.error(`Failed to enqueue payout for ${remittanceId}:`, error);
+
+            // Revert status if we failed to enqueue (though save was consistent)
+            // Actually, if we set it to processing, the worker will pick it up? 
+            // No, if addJob fails, the worker won't see it.
+            // We should revert.
             remittance.payout.status = 'failed';
-            remittance.payout.failureReason = error.message || 'Unknown Razorpay error';
+            remittance.payout.failureReason = 'Failed to enqueue payout job: ' + error.message;
             remittance.status = 'failed';
-
-            remittance.timeline.push({
-                status: 'failed',
-                timestamp: new Date(),
-                actor: 'system',
-                action: 'Razorpay payout failed',
-                notes: error.message,
-            });
-
             await remittance.save();
-
-            logger.error(`Payout failed for ${remittanceId}:`, error);
 
             return {
                 success: false,
@@ -572,7 +552,21 @@ export default class CODRemittanceService {
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
             // 1. Pending Collection (Delivered but not remitted)
-            const eligible = await this.getEligibleShipments(companyId, now);
+            let eligible;
+            try {
+                eligible = await this.getEligibleShipments(companyId, now);
+            } catch (error) {
+                // If no eligible shipments, return zeros instead of throwing error
+                eligible = {
+                    shipments: [],
+                    summary: {
+                        totalShipments: 0,
+                        totalCOD: 0,
+                        totalDeductions: 0,
+                        netPayable: 0
+                    }
+                };
+            }
 
             // 2. In Settlement (Batches created but not paid)
             const inSettlement = await CODRemittance.aggregate([
@@ -681,6 +675,145 @@ export default class CODRemittanceService {
     }
 
     /**
+     * Get COD settlement timeline (4-stage pipeline)
+     * Powers the CODSettlementTimeline dashboard component
+     * Stages: Collected → In Process → Scheduled → Settled
+     */
+    static async getTimeline(companyId: string): Promise<{
+        stages: Array<{
+            stage: 'collected' | 'in_process' | 'scheduled' | 'settled';
+            amount: number;
+            count: number;
+            date: string | null;
+        }>;
+        nextSettlementIn: string;
+        totalPending: number;
+    }> {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        // Stage 1: Collected (Delivered COD not yet in a batch)
+        let collected = { amount: 0, count: 0 };
+        try {
+            const eligibleData = await this.getEligibleShipments(companyId, now);
+            collected = {
+                amount: eligibleData.summary.totalCOD,
+                count: eligibleData.summary.totalShipments
+            };
+        } catch (error) {
+            // No eligible shipments is fine
+            collected = { amount: 0, count: 0 };
+        }
+
+        // Stage 2: In Process (Batches pending approval)
+        const inProcessResult = await CODRemittance.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: 'pending_approval',
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    amount: { $sum: '$financial.netPayable' },
+                    count: { $sum: '$financial.totalShipments' }
+                }
+            }
+        ]);
+        const inProcess = {
+            amount: inProcessResult[0]?.amount || 0,
+            count: inProcessResult[0]?.count || 0
+        };
+
+        // Stage 3: Scheduled (Approved, ready for payout)
+        const scheduledResult = await CODRemittance.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: 'approved',
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    amount: { $sum: '$financial.netPayable' },
+                    count: { $sum: '$financial.totalShipments' }
+                }
+            }
+        ]);
+        const scheduled = {
+            amount: scheduledResult[0]?.amount || 0,
+            count: scheduledResult[0]?.count || 0
+        };
+
+        // Get next scheduled payout date (estimate: tomorrow if approved batches exist)
+        const nextPayoutDate = scheduled.amount > 0
+            ? new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            : null;
+
+        // Stage 4: Settled (Paid in last 30 days)
+        const settledResult = await CODRemittance.aggregate([
+            {
+                $match: {
+                    companyId: new mongoose.Types.ObjectId(companyId),
+                    status: 'paid',
+                    'payout.completedAt': { $gte: thirtyDaysAgo },
+                    isDeleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    amount: { $sum: '$financial.netPayable' },
+                    count: { $sum: '$financial.totalShipments' }
+                }
+            }
+        ]);
+
+        // Get last settlement date
+        const lastSettlement = await CODRemittance.findOne({
+            companyId: new mongoose.Types.ObjectId(companyId),
+            status: 'paid',
+            isDeleted: false
+        })
+            .sort({ 'payout.completedAt': -1 })
+            .select('payout.completedAt')
+            .lean();
+
+        const settled = {
+            amount: settledResult[0]?.amount || 0,
+            count: settledResult[0]?.count || 0,
+            date: lastSettlement?.payout?.completedAt
+                ? new Date(lastSettlement.payout.completedAt).toISOString().split('T')[0]
+                : null
+        };
+
+        // Calculate next settlement estimate
+        let nextSettlementIn = 'No pending settlements';
+        if (scheduled.amount > 0) {
+            nextSettlementIn = '1 day';
+        } else if (inProcess.amount > 0) {
+            nextSettlementIn = '2-3 days';
+        } else if (collected.amount > 0) {
+            nextSettlementIn = '3-5 days';
+        }
+
+        return {
+            stages: [
+                { stage: 'collected', amount: collected.amount, count: collected.count, date: null },
+                { stage: 'in_process', amount: inProcess.amount, count: inProcess.count, date: null },
+                { stage: 'scheduled', amount: scheduled.amount, count: scheduled.count, date: nextPayoutDate },
+                { stage: 'settled', amount: settled.amount, count: settled.count, date: settled.date }
+            ],
+            nextSettlementIn,
+            totalPending: collected.amount + inProcess.amount + scheduled.amount
+        };
+    }
+
+    /**
      * Schedule payout preference
      */
     static async schedulePayout(
@@ -694,5 +827,60 @@ export default class CODRemittanceService {
             ...schedule,
             nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         };
+    }
+
+    /**
+     * Get total scheduled COD settlements for next N days
+     * Used by Available Balance calculation to show incoming cash flow
+     * 
+     * @param companyId - Company ID
+     * @param days - Number of days to look ahead (default: 7)
+     * @returns Total amount scheduled to arrive in seller's wallet
+     */
+    static async getScheduledSettlements(
+        companyId: string,
+        days: number = 7
+    ): Promise<number> {
+        try {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() + days);
+
+            // Find all approved batches scheduled for payout within N days
+            const scheduled = await CODRemittance.aggregate([
+                {
+                    $match: {
+                        companyId: new mongoose.Types.ObjectId(companyId),
+                        status: 'approved', // Ready for payout
+                        scheduledDate: { $lte: cutoffDate },
+                        isDeleted: false,
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAmount: { $sum: '$netPayable' },
+                    },
+                },
+            ]);
+
+            const total = scheduled[0]?.totalAmount || 0;
+
+            logger.info('Calculated scheduled COD settlements', {
+                companyId,
+                days,
+                total,
+                cutoffDate: cutoffDate.toISOString(),
+            });
+
+            return total;
+        } catch (error) {
+            logger.error('Error calculating scheduled COD settlements', {
+                companyId,
+                days,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            });
+            // Return 0 instead of throwing - don't block Available Balance calculation
+            return 0;
+        }
     }
 }

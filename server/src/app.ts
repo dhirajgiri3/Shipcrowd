@@ -16,7 +16,7 @@ import v1Routes from './presentation/http/routes/v1';
 
 // Import middleware
 import { securityHeaders } from './presentation/http/middleware/system/security-headers.middleware';
-import { globalRateLimiter } from './presentation/http/middleware/system/rate-limiter.middleware';
+import { globalRateLimiter } from './shared/config/rateLimit.config';
 
 // Import shared utilities
 import logger from './shared/logger/winston.logger';

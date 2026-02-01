@@ -1,13 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { Order } from '../../../../infrastructure/database/mongoose/models';
-import { Shipment } from '../../../../infrastructure/database/mongoose/models';
+import { Order, Company, Shipment } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 import mongoose from 'mongoose';
 import { guardChecks } from '../../../../shared/helpers/controller.helpers';
-import cacheService from '../../../../shared/services/cache.service';
+import cacheService from '../../../../core/application/services/analytics/analytics-cache.service';
 import { sendSuccess } from '../../../../shared/utils/responseHelper';
 import { AuthorizationError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import RTOService from '../../../../core/application/services/rto/rto.service';
+import GeographicAnalyticsService from '../../../../core/application/services/analytics/geographic-analytics.service';
+import SmartInsightsService from '../../../../core/application/services/analytics/smart-insights.service';
 
 /**
  * Analytics Controller
@@ -40,21 +42,23 @@ export const getSellerDashboard = async (
 
         // Check cache first (5 min TTL)
         const cacheKey = `analytics:seller:${auth.companyId}:${req.query.startDate || 'default'}:${req.query.endDate || 'default'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Dashboard data retrieved from cache');
             return;
         }
 
-        // Date filters
+        // Date filters - Default to "today" for dashboard (00:00 to 23:59)
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
         const startDate = req.query.startDate
             ? new Date(req.query.startDate as string)
-            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+            : todayStart; // Default to today 00:00
         const endDate = req.query.endDate
             ? new Date(req.query.endDate as string)
-            : new Date();
-
-        // Order counts by status
+            : todayEnd; // Default to today 23:59
         const orderStats = await Order.aggregate([
             {
                 $match: {
@@ -122,27 +126,195 @@ export const getSellerDashboard = async (
             .select('trackingNumber carrier currentStatus createdAt deliveryDetails')
             .lean();
 
-        // Weekly trend (last 7 days)
+        // ✅ PHASE 1.3: Calculate actual profit from all orders in date range
+        const actualProfitData = await Order.aggregate([
+            {
+                $match: {
+                    companyId: companyObjectId,
+                    isDeleted: false,
+                    createdAt: { $gte: startDate, $lte: endDate },
+                },
+            },
+            {
+                $project: {
+                    revenue: '$totals.total',
+                    shippingCost: { $ifNull: ['$shippingCost', 0] },
+                    platformFee: { $ifNull: ['$platformFee', 0] },
+                    codCharge: { $ifNull: ['$codCharge', 0] },
+                    taxes: { $ifNull: ['$totals.tax', 0] },
+                },
+            },
+            {
+                $project: {
+                    revenue: 1,
+                    totalCosts: {
+                        $add: ['$shippingCost', '$platformFee', '$codCharge', '$taxes'],
+                    },
+                    profit: {
+                        $subtract: [
+                            '$revenue',
+                            { $add: ['$shippingCost', '$platformFee', '$codCharge', '$taxes'] },
+                        ],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalProfit: { $sum: '$profit' },
+                    totalCosts: { $sum: '$totalCosts' },
+                },
+            },
+        ]);
+
+        const actualProfit = actualProfitData[0]?.totalProfit || 0;
+        const totalCosts = actualProfitData[0]?.totalCosts || 0;
+
+        // ✅ PHASE 1.4: Extended trend for delta calculation
+        const selectedRangeDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+        const extendedStartDate = new Date(startDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+
         const weeklyTrend = await Order.aggregate([
             {
                 $match: {
                     companyId: companyObjectId,
                     isDeleted: false,
-                    createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+                    createdAt: { $gte: extendedStartDate, $lte: endDate },
+                },
+            },
+            {
+                $project: {
+                    date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    revenue: '$totals.total',
+                    shippingCost: { $ifNull: ['$shippingCost', 0] },
+                    platformFee: { $ifNull: ['$platformFee', 0] },
+                    codCharge: { $ifNull: ['$codCharge', 0] },
+                    taxes: { $ifNull: ['$totals.tax', 0] },
+                },
+            },
+            {
+                $project: {
+                    date: 1,
+                    revenue: 1,
+                    profit: {
+                        $subtract: [
+                            '$revenue',
+                            { $add: ['$shippingCost', '$platformFee', '$codCharge', '$taxes'] },
+                        ],
+                    },
                 },
             },
             {
                 $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    _id: '$date',
                     orders: { $sum: 1 },
-                    revenue: { $sum: '$totals.total' },
+                    revenue: { $sum: '$revenue' },
+                    profit: { $sum: '$profit' },
                 },
             },
             { $sort: { _id: 1 } },
         ]);
 
+        const calculateDelta = (data: any[], field: 'revenue' | 'profit' | 'orders') => {
+            if (data.length < 2) return 0;
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const currentPeriodData = data.filter(d => d._id >= startDateStr);
+            const previousPeriodData = data.filter(d => d._id < startDateStr);
+            if (currentPeriodData.length === 0 || previousPeriodData.length === 0) return 0;
+            const currentTotal = currentPeriodData.reduce((sum, d) => sum + (d[field] || 0), 0);
+            const previousTotal = previousPeriodData.reduce((sum, d) => sum + (d[field] || 0), 0);
+            if (previousTotal === 0) return currentTotal > 0 ? 100 : 0;
+            return ((currentTotal - previousTotal) / previousTotal) * 100;
+        };
+
+        const revenueDelta = calculateDelta(weeklyTrend, 'revenue');
+        const profitDelta = calculateDelta(weeklyTrend, 'profit');
+        const ordersDelta = calculateDelta(weeklyTrend, 'orders');
+
+        // ✅ PHASE 1.4: Calculate Shipping Streak
+        const last30DaysOrders = await Order.aggregate([
+            {
+                $match: {
+                    companyId: companyObjectId,
+                    isDeleted: false,
+                    createdAt: {
+                        $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                        $lte: new Date()
+                    },
+                },
+            },
+            {
+                $project: {
+                    date: {
+                        $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Kolkata' }
+                    }
+                }
+            },
+            { $group: { _id: '$date' } },
+            { $sort: { _id: -1 } }
+        ]);
+
+        const activeDates = new Set(last30DaysOrders.map(o => o._id));
+        let streak = 0;
+        const checkDate = new Date();
+        const getISTDateString = (date: Date) => date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+        let currentDateStr = getISTDateString(checkDate);
+        if (activeDates.has(currentDateStr)) streak++;
+
+        for (let i = 1; i <= 30; i++) {
+            const prevDate = new Date();
+            prevDate.setDate(prevDate.getDate() - i);
+            const prevDateStr = getISTDateString(prevDate);
+            if (activeDates.has(prevDateStr)) {
+                streak++;
+            } else if (i === 1 && streak === 0) {
+                continue;
+            } else {
+                if (streak > 0 || i > 1) break;
+            }
+        }
+
+        // ✅ PHASE 1.4: Update streak history
+        const company = await Company.findById(companyObjectId);
+        if (company) {
+            if (!company.streakHistory) {
+                company.streakHistory = {
+                    current: streak,
+                    longest: streak,
+                    longestAchievedAt: new Date(),
+                    milestones: []
+                };
+            } else {
+                company.streakHistory.current = streak;
+                if (streak > (company.streakHistory.longest || 0)) {
+                    company.streakHistory.longest = streak;
+                    company.streakHistory.longestAchievedAt = new Date();
+                }
+            }
+            const milestones = [
+                { days: 7, badge: 'Week Warrior' },
+                { days: 30, badge: 'Monthly Master' },
+                { days: 100, badge: 'Century Champion' },
+                { days: 365, badge: 'Year Legend' }
+            ];
+            for (const milestone of milestones) {
+                const alreadyAchieved = company.streakHistory.milestones?.some((m: { days: number }) => m.days === milestone.days);
+                if (streak >= milestone.days && !alreadyAchieved) {
+                    if (!company.streakHistory.milestones) company.streakHistory.milestones = [];
+                    company.streakHistory.milestones.push({
+                        days: milestone.days,
+                        achievedAt: new Date(),
+                        badge: milestone.badge
+                    });
+                }
+            }
+            await company.save();
+        }
+
         const responseData = {
             totalOrders,
+            totalShipments: totalOrders,
             pendingOrders: statusCounts['pending'] || 0,
             readyToShip: statusCounts['ready_to_ship'] || 0,
             shippedOrders: statusCounts['shipped'] || 0,
@@ -150,18 +322,29 @@ export const getSellerDashboard = async (
             cancelledOrders: statusCounts['cancelled'] || 0,
             rtoOrders: statusCounts['rto'] || 0,
             totalRevenue,
+            totalProfit: actualProfit,
+            totalCosts,
+            profitMargin: totalRevenue > 0 ? ((actualProfit / totalRevenue) * 100).toFixed(2) : '0.00',
             successRate: parseFloat(successRate),
             codPending: {
                 amount: codPending[0]?.total || 0,
                 count: codPending[0]?.count || 0,
             },
             recentShipments,
-            weeklyTrend,
+            weeklyTrend: weeklyTrend.filter(d => d._id >= startDate.toISOString().split('T')[0]),
+            activeDays: streak,
+            longestStreak: company?.streakHistory?.longest || streak,
+            milestones: company?.streakHistory?.milestones || [],
+            deltas: {
+                revenue: parseFloat(revenueDelta.toFixed(2)),
+                profit: parseFloat(profitDelta.toFixed(2)),
+                orders: parseFloat(ordersDelta.toFixed(2)),
+            },
             dateRange: { startDate, endDate },
         };
 
         // Cache for 5 minutes
-        cacheService.set(cacheKey, responseData, 300);
+        await cacheService.set(cacheKey, responseData, 300);
 
         sendSuccess(res, responseData, 'Seller dashboard data retrieved successfully');
     } catch (error) {
@@ -544,14 +727,14 @@ export const getRevenueStats = async (
 
         // Check cache
         const cacheKey = `analytics:revenue:${auth.companyId}:${startDate || 'all'}:${endDate || 'all'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Revenue stats (cached)');
             return;
         }
 
         const stats = await RevenueAnalyticsService.getRevenueStats(auth.companyId!, dateRange);
-        cacheService.set(cacheKey, stats, 300);
+        await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Revenue stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching revenue stats:', error);
@@ -982,6 +1165,128 @@ export const getRecentCustomers = async (
     }
 };
 
+/**
+ * Get RTO Analytics for dashboard
+ * Phase 4: Powers RTOAnalytics component
+ * @route GET /api/v1/analytics/rto
+ */
+export const getRTOAnalytics = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache key
+        const cacheKey = `analytics:rto:${auth.companyId}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'RTO analytics retrieved from cache');
+            return;
+        }
+
+        const analytics = await RTOService.getRTOAnalytics(auth.companyId!);
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, analytics, 300);
+
+        sendSuccess(res, analytics, 'RTO analytics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching RTO analytics:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get Profitability Analytics for dashboard
+ * Phase 4: Powers ProfitabilityCard component
+ * @route GET /api/v1/analytics/profitability
+ */
+export const getProfitabilityAnalytics = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache key
+        const cacheKey = `analytics:profitability:${auth.companyId}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Profitability analytics retrieved from cache');
+            return;
+        }
+
+        const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId!);
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, analytics, 300);
+
+        sendSuccess(res, analytics, 'Profitability analytics retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching profitability analytics:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get Smart Insights for dashboard
+ * Phase 5: Powers SmartInsightsPanel component
+ * @route GET /api/v1/analytics/insights
+ */
+export const getSmartInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache handled within Service layer (1 hour)
+        const insights = await SmartInsightsService.generateInsights(auth.companyId!);
+
+        sendSuccess(res, insights, 'Smart insights generated successfully');
+    } catch (error) {
+        logger.error('Error generating smart insights:', error);
+        next(error);
+    }
+};
+
+/**
+ * Get Geographic Insights for dashboard
+ * Phase 4: Powers GeographicInsights component
+ * @route GET /api/v1/analytics/geography
+ */
+export const getGeographicInsights = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req, { requireCompany: true });
+
+        // Cache key
+        const cacheKey = `analytics:geography:${auth.companyId}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            sendSuccess(res, cached, 'Geographic insights retrieved from cache');
+            return;
+        }
+
+        const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId!);
+
+        // Cache for 5 minutes
+        cacheService.set(cacheKey, analytics, 300);
+
+        sendSuccess(res, analytics, 'Geographic insights retrieved successfully');
+    } catch (error) {
+        logger.error('Error fetching geographic insights:', error);
+        next(error);
+    }
+};
+
 export default {
     getSellerDashboard,
     getAdminDashboard,
@@ -1000,4 +1305,10 @@ export default {
     deleteReportConfig,
     getSellerActions,
     getRecentCustomers,
+    // Phase 4: Dashboard Analytics
+    getRTOAnalytics,
+    getProfitabilityAnalytics,
+    getGeographicInsights,
+    // Phase 5: Smart Insights
+    getSmartInsights,
 };

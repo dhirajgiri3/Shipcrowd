@@ -4,7 +4,7 @@
  * Page for tracking Service Level Agreement compliance.
  */
 
-import { PageHeader } from '@/components/ui';
+import { PageHeader } from '@/src/components/ui';
 import { SLADashboard } from '@/src/features/analytics/components/SLADashboard';
 
 export default function SLADashboardPage() {

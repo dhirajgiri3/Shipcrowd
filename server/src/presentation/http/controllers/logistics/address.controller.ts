@@ -7,6 +7,8 @@ import {
     checkServiceabilitySchema,
     calculateDistanceSchema
 } from '../../../../shared/validation/schemas/address.schemas';
+import PincodeLookupService from '../../../../core/application/services/logistics/pincode-lookup.service';
+
 
 /**
  * Validate Pincode
@@ -95,6 +97,94 @@ export const calculateDistance = async (
         );
 
         sendSuccess(res, result, 'Distance calculated successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get Address Suggestions for Autocomplete
+ * GET /api/v1/logistics/address/suggestions?q=query
+ */
+export const getAddressSuggestions = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { q } = req.query;
+
+        if (!q || typeof q !== 'string') {
+            throw new ValidationError(
+                'Query parameter "q" is required',
+                ErrorCode.VAL_INVALID_INPUT
+            );
+        }
+
+        if (q.length < 1) {
+            sendSuccess(res, [], 'Address suggestions retrieved');
+            return;
+        }
+
+        const suggestions = PincodeLookupService.searchAddressSuggestions(q);
+
+        sendSuccess(res, suggestions, 'Address suggestions retrieved');
+    } catch (error) {
+        next(error);
+    }
+}
+/**
+ * Get Pincode Info (City/State lookup)
+ * GET /api/v1/serviceability/pincode/:pincode/info
+ */
+export const getPincodeInfo = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const { pincode } = req.params;
+
+        // Validate format
+        if (!PincodeLookupService.isValidPincodeFormat(pincode)) {
+            throw new ValidationError('Invalid pincode format', ErrorCode.VAL_PINCODE_INVALID);
+        }
+
+        const details = PincodeLookupService.getPincodeDetails(pincode);
+
+        if (!details) {
+            res.status(404).json({
+                success: false,
+                message: 'Pincode not found',
+                code: 'PINCODE_NOT_FOUND'
+            });
+            return;
+        }
+
+        // details is an array, return the first match
+        const detailsArray = Array.isArray(details) ? details : [details];
+        
+        if (detailsArray.length === 0) {
+            res.status(404).json({
+                success: false,
+                message: 'Pincode not found',
+                code: 'PINCODE_NOT_FOUND'
+            });
+            return;
+        }
+
+        const info = {
+            pincode: detailsArray[0].pincode,
+            city: detailsArray[0].city,
+            state: detailsArray[0].state,
+            // Include all matches if there are multiple cities for same pincode
+            alternatives: detailsArray.length > 1 ? detailsArray.map(d => ({
+                city: d.city,
+                state: d.state
+            })) : undefined
+        };
+
+        sendSuccess(res, { data: info }, 'Pincode information retrieved successfully');
     } catch (error) {
         next(error);
     }

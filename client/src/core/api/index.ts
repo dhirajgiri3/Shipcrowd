@@ -6,35 +6,34 @@
  */
 
 // API Client
-export { apiClient, normalizeError, isApiEnabled } from './client';
-export type { ApiError } from './client';
+export * from './http';
 
-// Auth API
-export { authApi } from './authApi';
-// export type {
-//     AuthUser,
-//     LoginCredentials,
-//     LoginResponse,
-//     RegisterData,
-//     RegisterResponse,
-//     ChangePasswordData,
-//     ChangeEmailData,
-//     PasswordStrengthResponse,
-// } from './authApi';
+// API Clients (endpoints)
+export { authApi } from './clients/authApi';
+export { companyApi } from './clients/companyApi';
+export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './clients/companyApi';
+export { kycApi } from './clients/kycApi';
+export { consentApi } from './clients/consentApi';
+export { orderApi } from './clients/orderApi';
+export { recoveryApi } from './clients/recoveryApi';
+export { sessionApi } from './clients/sessionApi';
+export { shipmentApi } from './clients/shipmentApi';
+export { bankAccountApi } from './clients/bankAccountApi';
+export { sellerHealthApi } from './clients/sellerHealthApi';
+export { financialsApi } from './clients/financialsApi';
+export { billingApi } from './clients/billingApi';
+export { ndrApi } from './clients/ndrApi';
+export { weightApi } from './clients/weightApi';
+export { profitApi } from './clients/profitApi';
+export { intelligenceApi } from './clients/intelligenceApi';
+export { courierRecommendationApi } from './clients/courierRecommendationApi';
 
-// Company API
-// export { companyApi } from './companyApi';
-// export type { Company, CompanyAddress, CompanyBillingInfo, CreateCompanyData } from './companyApi';
+// React Query Configuration
+export * from './config';
 
-// KYC API
-// export { kycApi } from './kycApi';
-// export type { KYCData, KYCDocument, SubmitKYCRequest, VerifyPANRequest, VerifyBankAccountRequest, VerifyGSTINRequest } from './kycApi';
-
-// Error Handling
-// export { handleApiError, showSuccessToast, showInfoToast } from '@/src/lib/error-handler';
+// Utilities
+export * from './lib';
 
 // React Query Hooks
 export * from './hooks';
 
-// OpenAPI Types
-// export type { components, paths } from './types/api';

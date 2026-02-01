@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Clock, Mail } from 'lucide-react';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { authApi } from '@/src/core/api/authApi';
-import { toast } from 'sonner';
-import { Loader } from '@/components/ui';
+import { authApi } from '@/src/core/api/clients/authApi';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
+import { Loader } from '@/src/components/ui';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -97,16 +97,14 @@ function VerifyEmailContent() {
     try {
       const result = await resendVerification(email);
       if (result.success) {
-        toast.success('Verification email resent! Please check your inbox.');
+        showSuccessToast('Verification email resent! Please check your inbox.');
         setCanResend(false);
 
         // Re-enable resend after 60 seconds
         setTimeout(() => setCanResend(true), 60000);
       } else {
-        toast.error(result.error?.message || 'Failed to resend verification email');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to resend verification email');
     } finally {
       setIsResending(false);
     }
@@ -119,7 +117,7 @@ function VerifyEmailContent() {
       animate={{ opacity: 1, y: 0 }}
     >
       <Link href="/" className="inline-block mb-8">
-        <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1767468077/Helix_logo_yopeh9.png" alt="ShipCrowd" className="h-8 w-auto mx-auto rounded-full" />
+        <img src="https://res.cloudinary.com/divbobkmd/image/upload/v1769869575/Shipcrowd-logo_utcmu0.png" alt="Shipcrowd" className="h-8 w-auto mx-auto rounded-full" />
       </Link>
 
       {status === "loading" && (

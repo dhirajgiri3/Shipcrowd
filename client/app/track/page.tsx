@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, X, History, Box } from 'lucide-react';
-import { trackingApi, PublicTrackingResponse } from '@/src/core/api/trackingApi';
+import { shipmentApi, NormalizedTrackingData } from '@/src/core/api/clients/shipmentApi';
 import confetti from 'canvas-confetti';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -14,8 +14,8 @@ import { JourneyMapLeaflet } from './components/JourneyMapLeaflet';
 import { ShipmentDetails } from './components/ShipmentDetails';
 import { DeliveryInfo } from './components/DeliveryInfo';
 import { EasterEggs } from './components/EasterEggs';
-import { Navigation, Footer, Loader } from '@/components/ui';
-import { useLoader } from '@/hooks';
+import { Navigation, Footer, Loader } from '@/src/components/ui';
+import { useLoader } from '@/src/hooks';
 
 // Lazy load heavy 3D component
 const Package3D = lazy(() =>
@@ -48,7 +48,7 @@ function TrackPageContent() {
   const router = useRouter();
 
   const [trackingNumber, setTrackingNumber] = useState('');
-  const [shipment, setShipment] = useState<PublicTrackingResponse | null>(null);
+  const [shipment, setShipment] = useState<NormalizedTrackingData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
@@ -140,7 +140,7 @@ function TrackPageContent() {
   };
 
   // Mock data helper
-  const getMockShipmentByKeyword = (keyword: string): PublicTrackingResponse | null => {
+  const getMockShipmentByKeyword = (keyword: string): NormalizedTrackingData | null => {
     const mockData = {
       DEMO: {
         trackingNumber: 'SHP-2025-0001',
@@ -194,9 +194,10 @@ function TrackPageContent() {
     };
 
     const key = keyword.toUpperCase();
-    return (mockData as Record<string, PublicTrackingResponse>)[key] || null;
+    return (mockData as any)[key] || null;
   };
 
+  // Main tracking logic
   const handleTrack = async (e?: React.FormEvent, overrideNumber?: string) => {
     if (e) e.preventDefault();
     const numberToTrack = overrideNumber || trackingNumber;
@@ -209,14 +210,16 @@ function TrackPageContent() {
 
     updateURL(numberToTrack.trim());
 
-    const mockKeywords = ['DEMO', 'DELIVERED', 'TRANSIT', 'ROCKET'];
     const upperNumber = numberToTrack.trim().toUpperCase();
+    const mockKeywords = ['DEMO', 'DELIVERED', 'TRANSIT', 'ROCKET'];
 
+    // 1. Check for Demo Keywords
     if (mockKeywords.includes(upperNumber)) {
       setTimeout(() => {
         let mockShipment = getMockShipmentByKeyword(upperNumber);
 
         if (upperNumber === 'ROCKET') {
+          // Rocket specific mock logic (preserved)
           mockShipment = {
             trackingNumber: 'SPACE-X-042',
             carrier: 'Interstellar Logistics',
@@ -225,10 +228,20 @@ function TrackPageContent() {
             estimatedDelivery: new Date().toISOString(),
             createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
             recipient: { city: 'Low Earth Orbit', state: 'Space' },
+            origin: 'Cape Canaveral',
+            destination: 'ISS',
+            awb: 'SPACE-X-042',
+            status: 'IN_TRANSIT',
+            courier: 'Interstellar Logistics',
+            history: [
+              { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true },
+              { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!', completed: true, current: false },
+              { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.', completed: true, current: false },
+            ],
             timeline: [
-              { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!' },
-              { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!' },
-              { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.' },
+              { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true },
+              { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!', completed: true, current: false },
+              { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.', completed: true, current: false },
             ],
           };
 
@@ -254,12 +267,34 @@ function TrackPageContent() {
       return;
     }
 
+    // 2. Real API Call
     try {
-      const data = await trackingApi.trackShipment(numberToTrack.trim());
-      setShipment(data);
+      const data = await shipmentApi.trackShipment(numberToTrack.trim());
+
+      // Normalize status and update shipment
+      const normalizedShipment = {
+        ...data,
+        currentStatus: data.currentStatus // Ensure consistent casing if needed
+      };
+
+      setShipment(normalizedShipment);
       addToRecent(data.trackingNumber, data.currentStatus);
+
+      // Trigger celebration for real delivered shipments
+      if (normalizedShipment.currentStatus?.toUpperCase() === 'DELIVERED') {
+        // Re-trigger the useEffect dependency
+        // The useEffect handles the confetti based on `shipment.currentStatus`
+      }
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to find shipment');
+      console.error('Tracking Error:', err);
+      // Detailed error message
+      let message = 'Failed to find shipment. Please check the number and try again.';
+      if (err instanceof Error) {
+        // Check for specific API error messages if available
+        message = err.message;
+      }
+      setError(message);
     } finally {
       stopLoading();
     }

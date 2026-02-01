@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from 'react';
-import { Sidebar } from '@/components/admin/Sidebar';
-import { Header } from '@/components/admin/Header';
-import { ThemeProvider } from '@/components/shared/ThemeProvider';
-import { ToastProvider } from '@/components/ui/feedback/Toast';
+import { Sidebar } from '@/src/components/admin/Sidebar';
+import { Header } from '@/src/components/admin/Header';
+import { ThemeProvider } from '@/src/components/shared/ThemeProvider';
+import { ToastProvider } from '@/src/components/ui/feedback/Toast';
 import { AuthGuard } from '@/src/features/auth/components/AuthGuard';
 import { X } from 'lucide-react';
-import { cn } from '@/src/shared/utils';
+import { cn } from '@/src/lib/utils';
 
 /**
  * Client-side layout wrapper for Admin dashboard

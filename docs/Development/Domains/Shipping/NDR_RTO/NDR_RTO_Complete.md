@@ -846,7 +846,7 @@ export class NDRService {
    - Webhook: ndr_raised
    - Payload: AWB, Reason, Timestamp
           ↓
-3. SHIPCROWD RECEIVES WEBHOOK
+3. Shipcrowd RECEIVES WEBHOOK
    - Verify signature
    - Update shipment.ndrDetails
    - Create NDRLog entry
@@ -1667,7 +1667,7 @@ graph TB
   shipmentId: string,
   ndrEventId?: string,
   purpose: 'address_update',
-  iss: 'shipcrowd',
+  iss: 'Shipcrowd',
   sub: 'address-update',
   exp: 48 hours
 }

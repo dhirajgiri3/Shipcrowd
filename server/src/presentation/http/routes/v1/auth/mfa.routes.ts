@@ -4,7 +4,7 @@ import { authenticate } from '../../../middleware/auth/auth';
 import {
     apiRateLimiter,
     loginRateLimiter
-} from '../../../middleware/system/rate-limiter.middleware';
+} from '../../../../../shared/config/rateLimit.config';
 
 
 const router = Router();

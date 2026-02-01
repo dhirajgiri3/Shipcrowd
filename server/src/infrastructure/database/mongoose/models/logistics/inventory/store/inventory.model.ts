@@ -55,6 +55,7 @@ export interface IInventory extends Document {
         quantity: number;
         isPickFace: boolean;
     }>;
+    location?: string;
 
     // Status
     status: InventoryStatus;
@@ -201,6 +202,12 @@ const InventorySchema = new Schema<IInventory>(
                 default: false,
             },
         }],
+
+        // Simple location description (for CSV import / non-WMS usage)
+        location: {
+            type: String,
+            trim: true,
+        },
 
         // Status
         status: {

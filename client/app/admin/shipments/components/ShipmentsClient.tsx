@@ -3,17 +3,16 @@ export const dynamic = "force-dynamic";
 
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MOCK_SHIPMENTS } from '@/src/lib/mockData';
-import { DataTable } from '@/components/ui/data/DataTable';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
-import { DateRangePicker } from '@/components/ui/form/DateRangePicker';
-import { useToast } from '@/components/ui/feedback/Toast';
-import { formatCurrency, cn } from '@/src/shared/utils';
-import { ShipmentDetailModal } from '@/components/admin/ShipmentDetailModal';
-import { StatusBadge } from '@/components/admin/StatusBadge';
-import { getCourierLogo } from '@/src/lib/constants';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
+import { DateRangePicker } from '@/src/components/ui/form/DateRangePicker';
+import { useToast } from '@/src/components/ui/feedback/Toast';
+import { formatCurrency, cn } from '@/src/lib/utils';
+import { ShipmentDetailModal } from '@/src/components/admin/ShipmentDetailModal';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
+import { getCourierLogo } from '@/src/constants';
 import {
     Search,
     Eye,
@@ -30,7 +29,8 @@ import {
     MapPin,
     Calendar
 } from 'lucide-react';
-import { Shipment } from '@/src/types/admin';
+import { Shipment } from '@/src/types/domain/admin';
+import { useShipments } from '@/src/core/api/hooks/orders/useShipments';
 
 export function ShipmentsClient() {
     const [search, setSearch] = useState('');
@@ -38,18 +38,14 @@ export function ShipmentsClient() {
     const [statusFilter, setStatusFilter] = useState('all');
     const { addToast } = useToast();
 
-    // Derived Data
-    const filteredData = useMemo(() => {
-        return MOCK_SHIPMENTS.filter(item => {
-            const matchesSearch =
-                item.awb.toLowerCase().includes(search.toLowerCase()) ||
-                item.customer.name.toLowerCase().includes(search.toLowerCase()) ||
-                item.orderNumber.toLowerCase().includes(search.toLowerCase());
+    // Fetch shipments from API
+    const { data: shipmentsResponse, isLoading } = useShipments({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: search || undefined
+    });
 
-            const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
-            return matchesSearch && matchesStatus;
-        });
-    }, [search, statusFilter]);
+    const shipmentsData = shipmentsResponse?.shipments || [];
+    const filteredData = shipmentsData;
 
     // Status Cards Data
     const statusGrid = [
@@ -62,8 +58,8 @@ export function ShipmentsClient() {
     ];
 
     const getStatusCount = (id: string) => {
-        if (id === 'all') return MOCK_SHIPMENTS.length;
-        return MOCK_SHIPMENTS.filter(s => s.status === id).length;
+        if (id === 'all') return shipmentsData.length;
+        return shipmentsData.filter((s: any) => s.status === id).length;
     };
 
     // Columns
@@ -247,7 +243,7 @@ export function ShipmentsClient() {
                 <div className="bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-subtle)] overflow-hidden shadow-sm">
                     <DataTable
                         columns={columns}
-                        data={filteredData}
+                        data={filteredData as any[]}
                         onRowClick={(row) => setSelectedShipment(row)}
                     />
                 </div>

@@ -165,7 +165,7 @@ Brief description of what this endpoint does and its business purpose.
 
 ```bash
 curl -X POST \
-  'https://api.shipcrowd.com/api/v1/endpoint' \
+  'https://api.Shipcrowd.com/api/v1/endpoint' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -176,7 +176,7 @@ curl -X POST \
 ### JavaScript (fetch)
 
 ```javascript
-const response = await fetch('https://api.shipcrowd.com/api/v1/endpoint', {
+const response = await fetch('https://api.Shipcrowd.com/api/v1/endpoint', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${token}`,

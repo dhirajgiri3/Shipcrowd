@@ -1,10 +1,14 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
 import { useState } from 'react';
-import { QUERY_CONFIG } from '../config/query-config';
+import { QUERY_CONFIG } from '../api/config/query-client';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createIDBPersister } from '../api/lib/idb-persister';
+
+const persister = createIDBPersister();
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -27,7 +31,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     );
 
     return (
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+                persister,
+                maxAge: 1000 * 60 * 60 * 24, // 24 hours
+                buster: `v${process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}`, // Auto-bust on version change
+            }}
+        >
             {children}
             <Toaster
                 position="top-right"
@@ -36,7 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 theme="dark"
             />
             {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
     );
 }
 

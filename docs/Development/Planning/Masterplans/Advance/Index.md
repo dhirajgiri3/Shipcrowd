@@ -1,4 +1,4 @@
-# 🚀 ShipCrowd Master Plan v2.0 - Complete Implementation Guide
+# 🚀 Shipcrowd Master Plan v2.0 - Complete Implementation Guide
 
 **Status:** ✅ READY FOR IMPLEMENTATION
 **Created:** 2026-01-07

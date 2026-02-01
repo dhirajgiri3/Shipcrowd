@@ -199,7 +199,7 @@ export const submitSellerEvidence = async (
  * Admin resolves dispute (requires admin role)
  * 
  * Body:
- * - outcome: 'seller_favor' | 'shipcrowd_favor' | 'split' | 'waived'
+ * - outcome: 'seller_favor' | 'Shipcrowd_favor' | 'split' | 'waived'
  * - adjustedWeight?: { value: number, unit: 'kg' | 'g' }
  * - refundAmount?: number
  * - deductionAmount?: number
@@ -231,7 +231,7 @@ export const resolveDispute = async (
             throw new ValidationError('outcome, reasonCode, and notes are required');
         }
 
-        const validOutcomes = ['seller_favor', 'shipcrowd_favor', 'split', 'waived'];
+        const validOutcomes = ['seller_favor', 'Shipcrowd_favor', 'split', 'waived'];
         if (!validOutcomes.includes(outcome)) {
             throw new ValidationError(`outcome must be one of: ${validOutcomes.join(', ')}`);
         }

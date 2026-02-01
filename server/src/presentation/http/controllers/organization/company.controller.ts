@@ -12,6 +12,7 @@ import { AuthTokenService } from '../../../../core/application/services/auth/tok
 import { AuthenticationError, ValidationError, DatabaseError, AuthorizationError, ConflictError, NotFoundError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendPaginated, sendCreated, calculatePagination } from '../../../../shared/utils/responseHelper';
+import CompanyOnboardingService from '../../../../core/application/services/organization/company-onboarding.service';
 
 const createCompanySchema = z.object({
   name: z.string().min(2),
@@ -39,7 +40,21 @@ const createCompanySchema = z.object({
   }).optional(),
 });
 
-const updateCompanySchema = createCompanySchema.partial();
+const updateCompanySchema = createCompanySchema.partial().extend({
+  settings: z.object({
+    defaultRateCardId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
+    defaultWarehouseId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
+    notificationEmail: z.string().email().optional(),
+    notificationPhone: z.string().optional(),
+    autoGenerateInvoice: z.boolean().optional(),
+    currency: z.string().optional(),
+    timezone: z.string().optional(),
+  }).optional(),
+});
+
+const assignRateCardSchema = z.object({
+  rateCardId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid rate card ID'),
+});
 
 export const getCompanyById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -106,6 +121,12 @@ export const createCompany = async (req: Request, res: Response, next: NextFunct
 
     await company.save();
     const savedCompany = company as ICompany;
+
+    // Auto-setup: Create default zones and rate card for new company
+    // This runs asynchronously and won't block company creation if it fails
+    CompanyOnboardingService.setupNewCompany(savedCompany._id).catch(err => {
+      logger.error(`[CompanyCreation] Onboarding failed for company ${savedCompany._id}:`, err);
+    });
 
     if (req.user.role !== 'admin') {
       await User.findByIdAndUpdate(req.user._id, {
@@ -377,6 +398,62 @@ export const getCompanyStats = async (req: Request, res: Response, next: NextFun
   }
 };
 
+export const assignRateCard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new AuthenticationError('Authentication required', ErrorCode.AUTH_REQUIRED);
+    }
+
+    const companyId = req.params.companyId;
+    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+      throw new ValidationError('Invalid company ID format', ErrorCode.VAL_INVALID_INPUT);
+    }
+
+    const validation = assignRateCardSchema.safeParse(req.body);
+    if (!validation.success) {
+      throw new ValidationError(validation.error.errors[0].message, ErrorCode.VAL_INVALID_INPUT);
+    }
+
+    // Verify rate card exists
+    const RateCard = (await import('../../../../infrastructure/database/mongoose/models/index.js')).RateCard;
+    const rateCard = await RateCard.findOne({
+      _id: validation.data.rateCardId,
+      isDeleted: false,
+      status: 'active'
+    });
+
+    if (!rateCard) {
+      throw new NotFoundError('Rate card', ErrorCode.RES_RATECARD_NOT_FOUND);
+    }
+
+    // Update company
+    const company = await Company.findOneAndUpdate(
+      { _id: companyId, isDeleted: false },
+      { $set: { 'settings.defaultRateCardId': validation.data.rateCardId } },
+      { new: true }
+    );
+
+    if (!company) {
+      throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
+    }
+
+    await createAuditLog(
+      req.user._id,
+      companyId,
+      'update',
+      'company',
+      companyId,
+      { message: 'Rate card assigned', rateCardId: validation.data.rateCardId },
+      req
+    );
+
+    sendSuccess(res, { company }, 'Rate card assigned successfully');
+  } catch (error) {
+    logger.error('Error assigning rate card:', error);
+    next(error);
+  }
+};
+
 export default {
   getCompanyById,
   createCompany,
@@ -385,4 +462,5 @@ export default {
   inviteCompanyOwner,
   updateCompanyStatus,
   getCompanyStats,
+  assignRateCard,
 };

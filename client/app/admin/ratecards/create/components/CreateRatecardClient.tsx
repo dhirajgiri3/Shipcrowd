@@ -2,10 +2,10 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/core/Card';
-import { Button } from '@/components/ui/core/Button';
-import { Input } from '@/components/ui/core/Input';
-import { Badge } from '@/components/ui/core/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
+import { Button } from '@/src/components/ui/core/Button';
+import { Input } from '@/src/components/ui/core/Input';
+import { Badge } from '@/src/components/ui/core/Badge';
 import {
     CreditCard,
     ArrowLeft,
@@ -17,8 +17,10 @@ import {
     Plus,
     Trash2
 } from 'lucide-react';
-import { useToast } from '@/components/ui/feedback/Toast';
+import { useToast } from '@/src/components/ui/feedback/Toast';
 import Link from 'next/link';
+import { useCreateRateCard } from '@/src/hooks/shipping/use-create-rate-card';
+import { useRouter } from 'next/navigation';
 
 // Mock couriers for dropdown
 const couriers = [
@@ -35,6 +37,8 @@ const zoneMappings = ['state', 'region'];
 
 export function CreateRatecardClient() {
     const { addToast } = useToast();
+    const router = useRouter();
+    const { mutate: createRateCard, isPending } = useCreateRateCard();
     const [selectedCourier, setSelectedCourier] = useState('');
     const [formData, setFormData] = useState({
         courierProviderId: '',
@@ -57,6 +61,9 @@ export function CreateRatecardClient() {
         basicZoneD: '',
         basicZoneE: '',
         // Additional slab
+        isGeneric: false, // New state for Generic Rate Cards
+
+        // Additional slab
         additionalWeight: '500',
         additionalZoneA: '',
         additionalZoneB: '',
@@ -78,6 +85,96 @@ export function CreateRatecardClient() {
 
     const selectedCourierData = couriers.find(c => c.id === selectedCourier);
 
+    const handleSubmit = () => {
+        // Validation
+        if (!formData.isGeneric && (!formData.courierProviderId || !formData.courierServiceId)) {
+            addToast('Please select a courier and service, or choose "Generic Rate Card"', 'error');
+            return;
+        }
+        if (!formData.rateCardCategory) {
+            addToast('Please select a rate card category', 'error');
+            return;
+        }
+
+        if (!formData.basicZoneA || !formData.basicZoneB) {
+            addToast('Please set at least Zone A and Zone B rates', 'error');
+            return;
+        }
+
+        // Calculate Multipliers based on Zone A Baseline
+        const basePrice = parseFloat(formData.basicZoneA) || 0;
+        const multipliers: Record<string, number> = { zoneA: 1.0 };
+
+        if (basePrice > 0) {
+            multipliers.zoneB = parseFloat((parseFloat(formData.basicZoneB) / basePrice).toFixed(2));
+            multipliers.zoneC = parseFloat((parseFloat(formData.basicZoneC) / basePrice).toFixed(2));
+            multipliers.zoneD = parseFloat((parseFloat(formData.basicZoneD) / basePrice).toFixed(2));
+            multipliers.zoneE = parseFloat((parseFloat(formData.basicZoneE) / basePrice).toFixed(2));
+        }
+
+        // Calculate Price Per Kg for Additional Weight
+        // UI asks for "Price per X gm". Backend expects "Price per 1 Kg".
+        const addWeightGm = parseFloat(formData.additionalWeight) || 500;
+        const addPriceA = parseFloat(formData.additionalZoneA) || 0;
+        const pricePerKg = addPriceA > 0 ? (addPriceA / addWeightGm) * 1000 : 0;
+
+        // Transform to API format (Model-compliant)
+        const payload = {
+            name: formData.isGeneric
+                ? `GENERIC ${formData.rateCardCategory} ${Date.now()}`
+                : `${selectedCourierData?.name} ${formData.courierServiceId} ${formData.rateCardCategory} ${Date.now()}`,
+            courierProviderId: formData.isGeneric ? null : formData.courierProviderId,
+            courierServiceId: formData.isGeneric ? null : formData.courierServiceId,
+            rateCardCategory: formData.rateCardCategory,
+            shipmentType: formData.shipmentType as 'forward' | 'reverse',
+            gst: parseFloat(formData.gst),
+            minimumFare: parseFloat(formData.minimumFare) || 0,
+            minimumFareCalculatedOn: formData.minimumFareCalculatedOn as 'freight' | 'freight_overhead',
+            zoneBType: formData.zoneBType as 'state' | 'region',
+            isWeightConstraint: formData.isWeightConstraint,
+            minWeight: formData.minWeight ? parseFloat(formData.minWeight) : undefined,
+            maxWeight: formData.maxWeight ? parseFloat(formData.maxWeight) : undefined,
+            status: formData.status as 'active' | 'inactive',
+
+            // Backend Model Structure
+            baseRates: [{
+                carrier: formData.isGeneric ? undefined : formData.courierProviderId, // or name
+                serviceType: formData.isGeneric ? undefined : formData.courierServiceId,
+                basePrice: basePrice,
+                minWeight: 0,
+                maxWeight: parseFloat(formData.basicWeight) / 1000 // Convert gm to kg
+            }],
+
+            weightRules: [{
+                minWeight: parseFloat(formData.basicWeight) / 1000,
+                maxWeight: 1000, // Upper limit
+                pricePerKg: pricePerKg,
+                carrier: formData.isGeneric ? undefined : formData.courierProviderId,
+                serviceType: formData.isGeneric ? undefined : formData.courierServiceId
+            }],
+
+            zoneMultipliers: multipliers,
+
+            codPercentage: parseFloat(formData.codPercentage),
+            codMinimumCharge: parseFloat(formData.codMinimumCharge),
+
+            // Required Dates
+            effectiveDates: {
+                startDate: new Date().toISOString()
+            }
+        };
+
+        createRateCard(payload, {
+            onSuccess: () => {
+                addToast('Rate card created successfully!', 'success');
+                router.push('/admin/ratecards');
+            },
+            onError: (error: any) => {
+                addToast(error?.response?.data?.message || 'Failed to create rate card', 'error');
+            }
+        });
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
             {/* Header */}
@@ -98,9 +195,9 @@ export function CreateRatecardClient() {
                         </p>
                     </div>
                 </div>
-                <Button onClick={() => addToast('Rate card saved successfully!', 'success')}>
+                <Button onClick={handleSubmit} disabled={isPending}>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Rate Card
+                    {isPending ? 'Saving...' : 'Save Rate Card'}
                 </Button>
             </div>
 
@@ -115,13 +212,37 @@ export function CreateRatecardClient() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="flex items-center space-x-2 pt-6">
+                            <input
+                                type="checkbox"
+                                id="isGeneric"
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                checked={formData.isGeneric}
+                                onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        isGeneric: isChecked,
+                                        // Reset courier selection if generic is checked
+                                        courierProviderId: isChecked ? '' : prev.courierProviderId,
+                                        courierServiceId: isChecked ? '' : prev.courierServiceId
+                                    }));
+                                    if (isChecked) setSelectedCourier('');
+                                }}
+                            />
+                            <label htmlFor="isGeneric" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                                Generic Rate Card (Apply to all couriers)
+                            </label>
+                        </div>
+
                         {/* Courier Provider */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Courier Provider *</label>
+                            <label className={`text-sm font-medium ${formData.isGeneric ? 'text-gray-400' : 'text-gray-700'}`}>Courier Provider *</label>
                             <select
                                 value={formData.courierProviderId}
                                 onChange={(e) => handleInputChange('courierProviderId', e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                disabled={formData.isGeneric}
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:bg-gray-100"
                             >
                                 <option value="">Select Courier</option>
                                 {couriers.map((c) => (
@@ -132,12 +253,12 @@ export function CreateRatecardClient() {
 
                         {/* Courier Service */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Courier Service *</label>
+                            <label className={`text-sm font-medium ${formData.isGeneric ? 'text-gray-400' : 'text-gray-700'}`}>Courier Service *</label>
                             <select
                                 value={formData.courierServiceId}
                                 onChange={(e) => handleInputChange('courierServiceId', e.target.value)}
-                                disabled={!selectedCourierData}
-                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!selectedCourierData || formData.isGeneric}
+                                className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300 disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                                 <option value="">Select Service</option>
                                 {selectedCourierData?.services.map((s) => (
@@ -409,6 +530,6 @@ export function CreateRatecardClient() {
                     Create Rate Card
                 </Button>
             </div>
-        </div>
+        </div >
     );
 }

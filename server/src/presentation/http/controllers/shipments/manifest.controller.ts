@@ -129,6 +129,7 @@ class ManifestController {
                 'Content-Disposition',
                 `attachment; filename="manifest-${manifest.manifestNumber}.pdf"`
             );
+        
             res.send(pdfBuffer);
 
             logger.info(`Manifest PDF downloaded: ${manifest.manifestNumber}`);
@@ -174,6 +175,114 @@ class ManifestController {
             const manifest = await ManifestService.handoverManifest(id, userId);
 
             sendSuccess(res, manifest, 'Manifest marked as handed over');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Update manifest (pickup details, notes)
+     * PATCH /shipments/manifests/:id
+     */
+    async updateManifest(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId?.toString();
+            const { pickup, notes } = req.body;
+
+            if (!companyId) {
+                throw new ValidationError('Company ID is required');
+            }
+
+            // Validate at least one field is being updated
+            if (!pickup && notes === undefined) {
+                throw new ValidationError('At least one field (pickup or notes) must be provided');
+            }
+
+            const manifest = await ManifestService.updateManifest(id, companyId, {
+                pickup: pickup ? {
+                    scheduledDate: pickup.scheduledDate ? new Date(pickup.scheduledDate) : undefined,
+                    timeSlot: pickup.timeSlot,
+                    contactPerson: pickup.contactPerson,
+                    contactPhone: pickup.contactPhone,
+                } : undefined,
+                notes,
+            });
+
+            sendSuccess(res, manifest, 'Manifest updated successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Delete manifest (only if status is 'open')
+     * DELETE /shipments/manifests/:id
+     */
+    async deleteManifest(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId?.toString();
+
+            if (!companyId) {
+                throw new ValidationError('Company ID is required');
+            }
+
+            await ManifestService.deleteManifest(id, companyId);
+
+            sendSuccess(res, { deleted: true }, 'Manifest deleted successfully');
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Add shipments to manifest
+     * POST /shipments/manifests/:id/add-shipments
+     */
+    async addShipments(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId?.toString();
+            const { shipmentIds } = req.body;
+
+            if (!companyId) {
+                throw new ValidationError('Company ID is required');
+            }
+
+            if (!shipmentIds || !Array.isArray(shipmentIds) || shipmentIds.length === 0) {
+                throw new ValidationError('shipmentIds array is required and must not be empty');
+            }
+
+            const manifest = await ManifestService.addShipments(id, companyId, shipmentIds);
+
+            sendSuccess(res, manifest, `${shipmentIds.length} shipment(s) added to manifest`);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Remove shipments from manifest
+     * POST /shipments/manifests/:id/remove-shipments
+     */
+    async removeShipments(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const companyId = req.user?.companyId?.toString();
+            const { shipmentIds } = req.body;
+
+            if (!companyId) {
+                throw new ValidationError('Company ID is required');
+            }
+
+            if (!shipmentIds || !Array.isArray(shipmentIds) || shipmentIds.length === 0) {
+                throw new ValidationError('shipmentIds array is required and must not be empty');
+            }
+
+            const manifest = await ManifestService.removeShipments(id, companyId, shipmentIds);
+
+            sendSuccess(res, manifest, `${shipmentIds.length} shipment(s) removed from manifest`);
         } catch (error) {
             next(error);
         }

@@ -5,6 +5,8 @@ import ManifestCounter from '../../../../infrastructure/database/mongoose/models
 import { Shipment } from '../../../../infrastructure/database/mongoose/models';
 import { NotFoundError, ValidationError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
+import { CourierFactory } from '../courier/courier.factory';
+import QueueManager from '../../../../infrastructure/utilities/queue-manager';
 
 /**
  * Manifest Service
@@ -106,21 +108,57 @@ class ManifestService {
             // Calculate summary
             const summary = {
                 totalShipments: shipments.length,
-                totalWeight: shipments.reduce((sum, s: any) => sum + (s.weights?.total || 0), 0),
-                totalPackages: shipments.reduce((sum, s: any) => sum + (s.no_of_boxes || 1), 0),
+                totalWeight: shipments.reduce((sum, s: any) => sum + (s.packageDetails?.weight || 0), 0),
+                totalPackages: shipments.reduce((sum, s: any) => sum + (s.packageDetails?.packageCount || 1), 0),
                 totalCODAmount: shipments.reduce(
-                    (sum, s: any) => sum + (s.payment_method === 'cod' ? s.cod_amount || 0 : 0),
+                    (sum, s: any) => sum + (s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0),
                     0
                 ),
             };
 
+            // Call Carrier API for Manifest Creation (if supported)
+            let carrierManifestId: string | undefined;
+            let carrierManifestUrl: string | undefined;
+
+            try {
+                const provider = await CourierFactory.getProvider(
+                    data.carrier,
+                    new mongoose.Types.ObjectId(data.companyId)
+                );
+
+                // Check if provider supports createManifest
+                if (provider && typeof (provider as any).createManifest === 'function') {
+                    logger.info(`Calling ${data.carrier} API for manifest creation...`);
+
+                    const apiResult = await (provider as any).createManifest({
+                        shipmentIds: shipments.map((s: any) => s._id.toString()),
+                        awbs: shipments.map((s: any) => s.carrierDetails?.carrierTrackingNumber || s.trackingNumber),
+                        warehouseId: data.warehouseId
+                    });
+
+                    if (apiResult) {
+                        carrierManifestId = apiResult.manifestId;
+                        carrierManifestUrl = apiResult.manifestUrl;
+                        logger.info(`Carrier manifest created: ${carrierManifestId}`, { carrier: data.carrier });
+                    }
+                }
+            } catch (carrierError: any) {
+                // We log error but proceed with internal manifest to avoid blocking operations
+                // However, we mark it in notes that carrier sync failed
+                logger.error('Carrier manifest creation failed', {
+                    error: carrierError.message,
+                    carrier: data.carrier
+                });
+                data.notes = (data.notes ? data.notes + '\n' : '') + `[WARNING] Carrier manifest syncing failed: ${carrierError.message}`;
+            }
+
             // Prepare shipment data
             const manifestShipments = shipments.map((s: any) => ({
                 shipmentId: s._id,
-                awb: s.awb,
-                weight: s.weights?.total || 0,
-                packages: s.no_of_boxes || 1,
-                codAmount: s.payment_method === 'cod' ? s.cod_amount || 0 : 0,
+                awb: s.carrierDetails?.carrierTrackingNumber || s.trackingNumber, // Prefer carrier AWB
+                weight: s.packageDetails?.weight || 0,
+                packages: s.packageDetails?.packageCount || 1,
+                codAmount: s.paymentDetails?.type === 'cod' ? s.paymentDetails?.codAmount || 0 : 0,
             }));
 
             // Create manifest
@@ -128,14 +166,19 @@ class ManifestService {
                 [
                     {
                         manifestNumber,
-                        companyId: data.companyId,
-                        warehouseId: data.warehouseId,
+                        companyId: new mongoose.Types.ObjectId(data.companyId),
+                        warehouseId: new mongoose.Types.ObjectId(data.warehouseId),
                         carrier: data.carrier,
                         shipments: manifestShipments,
                         pickup: data.pickup,
                         summary,
                         status: 'open',
                         notes: data.notes,
+                        metadata: {
+                            carrierManifestId,
+                            carrierManifestUrl,
+                            generatedAt: new Date()
+                        }
                     },
                 ],
                 { session }
@@ -323,6 +366,9 @@ class ManifestService {
 
     /**
      * Close manifest and schedule pickup
+     *
+     * Attempts to schedule pickups with carriers. Failed pickups are queued for retry
+     * rather than silently failing, ensuring operational visibility.
      */
     async closeManifest(manifestId: string, userId: string) {
         const manifest = await Manifest.findById(manifestId);
@@ -335,15 +381,130 @@ class ManifestService {
             throw new ValidationError('Manifest is already closed or handed over');
         }
 
-        // TODO: Call carrier API to schedule pickup
-        // For now, just update status
+        // Track pickup scheduling results for audit
+        const pickupResults = {
+            successful: 0,
+            failed: 0,
+            failedShipments: [] as Array<{ shipmentId: string; trackingNumber: string; error: string }>
+        };
+
+        // Call carrier API to schedule pickup if supported
+        try {
+            const shipments = await Shipment.find({
+                _id: { $in: manifest.shipments.map(s => s.shipmentId) }
+            });
+
+            // Group by carrier
+            const carrierShipments = new Map<string, typeof shipments>();
+            for (const shipment of shipments) {
+                const carrier = shipment.carrier;
+                if (!carrierShipments.has(carrier)) {
+                    carrierShipments.set(carrier, []);
+                }
+                carrierShipments.get(carrier)!.push(shipment);
+            }
+
+            // Schedule pickup for each carrier's shipments
+            for (const [carrier, carrierBatch] of carrierShipments) {
+                try {
+                    const provider = await CourierFactory.getProvider(carrier, manifest.companyId);
+
+                    if (provider.schedulePickup) {
+                        logger.info(`Scheduling pickups for manifest ${manifest.manifestNumber} (${carrier})`, {
+                            shipmentCount: carrierBatch.length
+                        });
+
+                        // Process serially to avoid rate limits
+                        for (const shipment of carrierBatch) {
+                            if (shipment.carrierDetails?.providerShipmentId) {
+                                try {
+                                    await provider.schedulePickup({
+                                        providerShipmentId: shipment.carrierDetails.providerShipmentId
+                                    });
+
+                                    pickupResults.successful++;
+                                    logger.info(`Pickup scheduled successfully`, {
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        trackingNumber: shipment.trackingNumber
+                                    });
+                                } catch (pickupError: any) {
+                                    const errorMsg = pickupError.message || 'Unknown error';
+
+                                    logger.error(`Failed to schedule pickup for shipment ${shipment.trackingNumber}`, {
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        error: errorMsg
+                                    });
+
+                                    pickupResults.failed++;
+                                    pickupResults.failedShipments.push({
+                                        shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                        trackingNumber: shipment.trackingNumber,
+                                        error: errorMsg
+                                    });
+
+                                    // ✅ Queue failed pickup for retry (instead of silencing it)
+                                    try {
+                                        await QueueManager.addJob(
+                                            'manifest-pickup-retry',
+                                            'schedule-pickup',
+                                            {
+                                                manifestId,
+                                                shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                                carrier,
+                                                providerShipmentId: shipment.carrierDetails.providerShipmentId
+                                            },
+                                            {
+                                                attempts: 3,
+                                                backoff: { type: 'exponential', delay: 60000 } // 1 minute initial delay
+                                            }
+                                        );
+
+                                        logger.info(`Queued pickup retry for shipment`, {
+                                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                            trackingNumber: shipment.trackingNumber
+                                        });
+                                    } catch (queueError) {
+                                        logger.error(`Failed to queue pickup retry`, {
+                                            shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                            error: queueError instanceof Error ? queueError.message : 'Unknown error'
+                                        });
+                                    }
+                                }
+                            } else {
+                                logger.warn(`Shipment missing providerShipmentId, cannot schedule pickup`, {
+                                    shipmentId: (shipment._id as mongoose.Types.ObjectId).toString(),
+                                    trackingNumber: shipment.trackingNumber
+                                });
+                            }
+                        }
+                    } else {
+                        logger.info(`Provider does not support pickup scheduling`, { carrier });
+                    }
+                } catch (providerError) {
+                    logger.warn(`Could not get provider '${carrier}' for manifest pickup scheduling`, {
+                        error: providerError instanceof Error ? providerError.message : 'Unknown error'
+                    });
+                }
+            }
+        } catch (error) {
+            logger.error(`Error processing carrier pickup for manifest ${manifestId}:`, error);
+            // Don't throw - allow manifest to close even if pickup scheduling had errors
+        }
+
+        // Mark manifest as closed
         manifest.status = 'closed';
         manifest.closedAt = new Date();
         manifest.closedBy = new mongoose.Types.ObjectId(userId);
 
+        // ✅ Store pickup scheduling results in manifest notes for audit trail
+        const resultsNote = `Pickup scheduling results: ${pickupResults.successful} successful, ${pickupResults.failed} failed`;
+        manifest.notes = (manifest.notes ? manifest.notes + '\n' : '') + resultsNote;
+
         await manifest.save();
 
-        logger.info(`Manifest ${manifest.manifestNumber} closed by user ${userId}`);
+        logger.info(`Manifest ${manifest.manifestNumber} closed by user ${userId}`, {
+            pickupResults
+        });
 
         return manifest;
     }
@@ -423,6 +584,267 @@ class ManifestService {
             page: Math.floor((filters.skip || 0) / (filters.limit || 50)) + 1,
             pages: Math.ceil(total / (filters.limit || 50)),
         };
+    }
+
+    /**
+     * Update manifest (pickup details, notes)
+     * Can only update manifests with status 'open'
+     */
+    async updateManifest(
+        manifestId: string,
+        companyId: string,
+        updates: {
+            pickup?: {
+                scheduledDate?: Date;
+                timeSlot?: string;
+                contactPerson?: string;
+                contactPhone?: string;
+            };
+            notes?: string;
+        }
+    ) {
+        const manifest = await Manifest.findById(manifestId);
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        // Verify manifest belongs to the company
+        if (manifest.companyId.toString() !== companyId) {
+            throw new ValidationError('Access denied: Manifest does not belong to your company');
+        }
+
+        // Only allow updates if manifest is still open
+        if (manifest.status !== 'open') {
+            throw new ValidationError('Cannot update manifest: Status must be "open"');
+        }
+
+        // Update pickup details if provided
+        if (updates.pickup) {
+            if (updates.pickup.scheduledDate !== undefined) {
+                manifest.pickup.scheduledDate = updates.pickup.scheduledDate;
+            }
+            if (updates.pickup.timeSlot !== undefined) {
+                manifest.pickup.timeSlot = updates.pickup.timeSlot;
+            }
+            if (updates.pickup.contactPerson !== undefined) {
+                manifest.pickup.contactPerson = updates.pickup.contactPerson;
+            }
+            if (updates.pickup.contactPhone !== undefined) {
+                manifest.pickup.contactPhone = updates.pickup.contactPhone;
+            }
+        }
+
+        // Update notes if provided
+        if (updates.notes !== undefined) {
+            manifest.notes = updates.notes;
+        }
+
+        await manifest.save();
+
+        logger.info(`Manifest ${manifest.manifestNumber} updated`);
+
+        return manifest;
+    }
+
+    /**
+     * Delete manifest
+     * Can only delete manifests with status 'open'
+     */
+    async deleteManifest(manifestId: string, companyId: string) {
+        const manifest = await Manifest.findById(manifestId);
+
+        if (!manifest) {
+            throw new NotFoundError('Manifest not found');
+        }
+
+        // Verify manifest belongs to the company
+        if (manifest.companyId.toString() !== companyId) {
+            throw new ValidationError('Access denied: Manifest does not belong to your company');
+        }
+
+        // Only allow deletion if manifest is still open
+        if (manifest.status !== 'open') {
+            throw new ValidationError('Cannot delete manifest: Only open manifests can be deleted');
+        }
+
+        await Manifest.deleteOne({ _id: manifestId });
+
+        logger.info(`Manifest ${manifest.manifestNumber} deleted`);
+
+        return true;
+    }
+
+    /**
+     * Add shipments to existing manifest
+     * Validates carrier consistency and recalculates summary
+     */
+    async addShipments(manifestId: string, companyId: string, shipmentIds: string[]) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const manifest = await Manifest.findById(manifestId).session(session);
+
+            if (!manifest) {
+                throw new NotFoundError('Manifest not found');
+            }
+
+            // Verify manifest belongs to the company
+            if (manifest.companyId.toString() !== companyId) {
+                throw new ValidationError('Access denied: Manifest does not belong to your company');
+            }
+
+            // Only allow adding shipments if manifest is still open
+            if (manifest.status !== 'open') {
+                throw new ValidationError('Cannot add shipments: Manifest status must be "open"');
+            }
+
+            // Fetch new shipments
+            const shipments = await Shipment.find({
+                _id: { $in: shipmentIds },
+            }).session(session);
+
+            if (shipments.length === 0) {
+                throw new NotFoundError('No valid shipments found');
+            }
+
+            if (shipments.length !== shipmentIds.length) {
+                throw new ValidationError('Some shipment IDs are invalid');
+            }
+
+            // Validate all new shipments belong to the same carrier as manifest
+            const invalidShipments = shipments.filter((s: any) => s.carrier !== manifest.carrier);
+            if (invalidShipments.length > 0) {
+                throw new ValidationError(
+                    `Cannot add shipments: ${invalidShipments.length} shipment(s) belong to different carrier. Manifest is for ${manifest.carrier}.`
+                );
+            }
+
+            // Check for duplicates
+            const existingShipmentIds = manifest.shipments.map((s) => s.shipmentId.toString());
+            const duplicates = shipmentIds.filter((id) => existingShipmentIds.includes(id));
+            if (duplicates.length > 0) {
+                throw new ValidationError(`${duplicates.length} shipment(s) already exist in this manifest`);
+            }
+
+            // Add new shipments
+            const newManifestShipments = shipments.map((s: any) => ({
+                shipmentId: s._id,
+                awb: s.awb,
+                weight: s.weights?.total || 0,
+                packages: s.no_of_boxes || 1,
+                codAmount: s.payment_method === 'cod' ? s.cod_amount || 0 : 0,
+            }));
+
+            manifest.shipments.push(...newManifestShipments);
+
+            // Recalculate summary
+            manifest.summary.totalShipments = manifest.shipments.length;
+            manifest.summary.totalWeight = manifest.shipments.reduce(
+                (sum, s) => sum + s.weight,
+                0
+            );
+            manifest.summary.totalPackages = manifest.shipments.reduce(
+                (sum, s) => sum + s.packages,
+                0
+            );
+            manifest.summary.totalCODAmount = manifest.shipments.reduce(
+                (sum, s) => sum + s.codAmount,
+                0
+            );
+
+            await manifest.save({ session });
+            await session.commitTransaction();
+
+            logger.info(
+                `${shipmentIds.length} shipment(s) added to manifest ${manifest.manifestNumber}`
+            );
+
+            return manifest;
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Error adding shipments to manifest:', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Remove shipments from existing manifest
+     * Recalculates summary and prevents removal if manifest is empty
+     */
+    async removeShipments(manifestId: string, companyId: string, shipmentIds: string[]) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const manifest = await Manifest.findById(manifestId).session(session);
+
+            if (!manifest) {
+                throw new NotFoundError('Manifest not found');
+            }
+
+            // Verify manifest belongs to the company
+            if (manifest.companyId.toString() !== companyId) {
+                throw new ValidationError('Access denied: Manifest does not belong to your company');
+            }
+
+            // Only allow removing shipments if manifest is still open
+            if (manifest.status !== 'open') {
+                throw new ValidationError('Cannot remove shipments: Manifest status must be "open"');
+            }
+
+            // Check if shipments exist in manifest
+            const existingShipmentIds = manifest.shipments.map((s) => s.shipmentId.toString());
+            const notFound = shipmentIds.filter((id) => !existingShipmentIds.includes(id));
+            if (notFound.length > 0) {
+                throw new ValidationError(`${notFound.length} shipment(s) not found in this manifest`);
+            }
+
+            // Prevent removing all shipments
+            if (shipmentIds.length >= manifest.shipments.length) {
+                throw new ValidationError(
+                    'Cannot remove all shipments. Delete the manifest instead.'
+                );
+            }
+
+            // Remove shipments
+            manifest.shipments = manifest.shipments.filter(
+                (s) => !shipmentIds.includes(s.shipmentId.toString())
+            );
+
+            // Recalculate summary
+            manifest.summary.totalShipments = manifest.shipments.length;
+            manifest.summary.totalWeight = manifest.shipments.reduce(
+                (sum, s) => sum + s.weight,
+                0
+            );
+            manifest.summary.totalPackages = manifest.shipments.reduce(
+                (sum, s) => sum + s.packages,
+                0
+            );
+            manifest.summary.totalCODAmount = manifest.shipments.reduce(
+                (sum, s) => sum + s.codAmount,
+                0
+            );
+
+            await manifest.save({ session });
+            await session.commitTransaction();
+
+            logger.info(
+                `${shipmentIds.length} shipment(s) removed from manifest ${manifest.manifestNumber}`
+            );
+
+            return manifest;
+        } catch (error: any) {
+            await session.abortTransaction();
+            logger.error('Error removing shipments from manifest:', error);
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 }
 

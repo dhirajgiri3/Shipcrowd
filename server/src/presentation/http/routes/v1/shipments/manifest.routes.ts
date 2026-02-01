@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import ManifestController from '../../../controllers/shipments/manifest.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { apiRateLimiter } from '../../../middleware/system/rate-limiter.middleware';
+import { apiRateLimiter } from '../../../../../shared/config/rateLimit.config';
 
 const router = Router();
 
@@ -53,6 +53,38 @@ router.post(
     authenticate,
     apiRateLimiter,
     ManifestController.handoverManifest
+);
+
+// Update manifest (pickup details, notes)
+router.patch(
+    '/manifests/:id',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.updateManifest
+);
+
+// Delete manifest (only if status is 'open')
+router.delete(
+    '/manifests/:id',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.deleteManifest
+);
+
+// Add shipments to manifest
+router.post(
+    '/manifests/:id/add-shipments',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.addShipments
+);
+
+// Remove shipments from manifest
+router.post(
+    '/manifests/:id/remove-shipments',
+    authenticate,
+    apiRateLimiter,
+    ManifestController.removeShipments
 );
 
 export default router;

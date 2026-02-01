@@ -1,6 +1,6 @@
 'use client';
 
-import { PageError } from '@/components/ui';
+import { PageError } from '@/src/components/ui';
 
 export default function ZonesError({
     error,

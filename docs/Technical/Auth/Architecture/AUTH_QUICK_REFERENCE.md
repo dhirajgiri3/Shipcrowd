@@ -393,7 +393,7 @@ NODE_ENV=production  # Forces HTTPS for cookies
 SECURE_COOKIES=true  # Requires HTTPS
 
 # Email
-MAIL_FROM=noreply@shipcrowd.com
+MAIL_FROM=noreply@Shipcrowd.com
 ```
 
 ---

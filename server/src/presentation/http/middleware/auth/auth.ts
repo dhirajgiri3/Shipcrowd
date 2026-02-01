@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { verifyAccessToken } from '../../../../shared/helpers/jwt';
 import { User } from '../../../../infrastructure/database/mongoose/models';
+import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
 
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -17,6 +18,12 @@ export const authenticate = async (
     // Get token from cookie first, then fallback to Authorization header
     let token = req.cookies?.accessToken;
 
+    // Debug logging
+    if (process.env.NODE_ENV === 'development' && !token) {
+      logger.debug('No accessToken cookie found. Available cookies:', Object.keys(req.cookies || {}));
+      logger.debug('Cookie header:', req.headers.cookie);
+    }
+
     if (!token) {
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -29,26 +36,107 @@ export const authenticate = async (
       return;
     }
 
-    // Verify token
-    const payload = await verifyAccessToken(token);
+    // Verify token (skip blacklist check - access tokens are not blacklisted during rotation)
+    const payload = await verifyAccessToken(token, false);
 
-    // Set user in request from token payload
+    // Fetch full user data from database for access tier checks
+    const dbUser = await User.findById(payload.userId)
+      .select('_id role companyId isEmailVerified kycStatus teamRole teamStatus isSuspended suspensionReason suspendedAt suspensionExpiresAt isBanned banReason bannedAt')
+      .lean();
+
+    if (!dbUser) {
+      res.status(401).json({ message: 'User not found' });
+      return;
+    }
+
+    // Check if user is banned
+    if (dbUser.isBanned) {
+      logger.error('Access denied: User is banned', {
+        userId: payload.userId,
+        bannedAt: dbUser.bannedAt,
+        reason: dbUser.banReason,
+      });
+
+      res.status(403).json({
+        success: false,
+        message: 'Your account has been permanently banned. Please contact support if you believe this is an error.',
+        code: 'USER_BANNED',
+        data: {
+          bannedAt: dbUser.bannedAt,
+          reason: dbUser.banReason,
+          contactSupport: true,
+        },
+      });
+      return;
+    }
+
+    // Check if user is suspended
+    if (dbUser.isSuspended) {
+      // Check if suspension has expired
+      if (dbUser.suspensionExpiresAt && new Date() > dbUser.suspensionExpiresAt) {
+        // Auto-unsuspend
+        await User.updateOne(
+          { _id: dbUser._id },
+          {
+            $set: {
+              isSuspended: false,
+              isActive: true,
+            },
+            $unset: {
+              suspensionReason: 1,
+              suspendedAt: 1,
+              suspendedBy: 1,
+              suspensionExpiresAt: 1,
+            },
+          }
+        );
+        logger.info('User auto-unsuspended after expiration', {
+          userId: payload.userId,
+        });
+      } else {
+        logger.warn('Access denied: User is suspended', {
+          userId: payload.userId,
+          suspendedAt: dbUser.suspendedAt,
+          expiresAt: dbUser.suspensionExpiresAt,
+          reason: dbUser.suspensionReason,
+        });
+
+        res.status(403).json({
+          success: false,
+          message: dbUser.suspensionExpiresAt
+            ? `Your account is temporarily suspended until ${dbUser.suspensionExpiresAt.toISOString()}. ${dbUser.suspensionReason || ''}`
+            : `Your account is suspended. ${dbUser.suspensionReason || 'Please contact support for assistance.'}`,
+          code: 'USER_SUSPENDED',
+          data: {
+            suspendedAt: dbUser.suspendedAt,
+            expiresAt: dbUser.suspensionExpiresAt,
+            reason: dbUser.suspensionReason,
+            contactSupport: true,
+          },
+        });
+        return;
+      }
+    }
+
+    // Set full user object in request for downstream middleware
     req.user = {
-      _id: payload.userId,
-      role: payload.role,
-      companyId: payload.companyId,
+      _id: dbUser._id.toString(),
+      role: dbUser.role,
+      companyId: dbUser.companyId?.toString(),
+      isEmailVerified: dbUser.isEmailVerified,
+      kycStatus: dbUser.kycStatus,
+      teamRole: dbUser.teamRole,
+      teamStatus: dbUser.teamStatus,
     };
 
-    // ✅ FEATURE 27: Company Suspension Check
     // Block access if user's company is suspended
-    if (payload.companyId) {
-      const { Company } = await import('../../../../infrastructure/database/mongoose/models/index.js');
-      const company = await Company.findById(payload.companyId).select('isSuspended suspendedAt suspensionReason');
+    if (dbUser.companyId) {
+      const company = await Company.findById(dbUser.companyId).select('isSuspended suspendedAt suspensionReason');
 
       if (company?.isSuspended) {
         logger.warn('Access denied: Company is suspended', {
           userId: payload.userId,
-          companyId: payload.companyId,
+          companyId: dbUser.companyId,
           suspendedAt: company.suspendedAt,
         });
 
@@ -67,6 +155,7 @@ export const authenticate = async (
 
     next();
   } catch (error) {
+    logger.error('Authentication middleware error:', error);
     res.status(401).json({ message: 'Invalid or expired token' });
   }
 };

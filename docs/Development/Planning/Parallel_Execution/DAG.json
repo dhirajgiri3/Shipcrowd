@@ -14,8 +14,15 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 90,
-      "inputs": ["Order model (existing)", "Auth middleware (existing)"],
-      "outputs": ["order.controller.ts", "order.routes.ts", "6 REST endpoints"],
+      "inputs": [
+        "Order model (existing)",
+        "Auth middleware (existing)"
+      ],
+      "outputs": [
+        "order.controller.ts",
+        "order.routes.ts",
+        "6 REST endpoints"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -27,8 +34,16 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 90,
-      "inputs": ["Shipment model (existing)", "Order model for linking"],
-      "outputs": ["shipment.controller.ts", "shipment.routes.ts", "carrier-selection.ts", "6 REST endpoints"],
+      "inputs": [
+        "Shipment model (existing)",
+        "Order model for linking"
+      ],
+      "outputs": [
+        "shipment.controller.ts",
+        "shipment.routes.ts",
+        "carrier-selection.ts",
+        "6 REST endpoints"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -40,8 +55,13 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 30,
-      "inputs": ["order.routes.ts", "shipment.routes.ts"],
-      "outputs": ["Updated routes/v1/index.ts"],
+      "inputs": [
+        "order.routes.ts",
+        "shipment.routes.ts"
+      ],
+      "outputs": [
+        "Updated routes/v1/index.ts"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -53,8 +73,15 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 90,
-      "inputs": ["Order model", "Shipment model", "MongoDB aggregation pipeline"],
-      "outputs": ["analytics.controller.ts", "4 GET endpoints"],
+      "inputs": [
+        "Order model",
+        "Shipment model",
+        "MongoDB aggregation pipeline"
+      ],
+      "outputs": [
+        "analytics.controller.ts",
+        "4 GET endpoints"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -66,8 +93,13 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 90,
-      "inputs": ["RateCard model (existing)"],
-      "outputs": ["ratecard.controller.ts", "5 REST endpoints"],
+      "inputs": [
+        "RateCard model (existing)"
+      ],
+      "outputs": [
+        "ratecard.controller.ts",
+        "5 REST endpoints"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -79,8 +111,13 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 60,
-      "inputs": ["Zone model (existing)"],
-      "outputs": ["zone.controller.ts", "4 REST endpoints"],
+      "inputs": [
+        "Zone model (existing)"
+      ],
+      "outputs": [
+        "zone.controller.ts",
+        "4 REST endpoints"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -92,8 +129,13 @@
       "agent": "backend",
       "phase": 1,
       "estimatedDuration": 30,
-      "inputs": ["All controllers from T1.1-T1.6"],
-      "outputs": ["openapi.json", "TypeScript type definitions"],
+      "inputs": [
+        "All controllers from T1.1-T1.6"
+      ],
+      "outputs": [
+        "openapi.json",
+        "TypeScript type definitions"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -105,8 +147,14 @@
       "agent": "frontend",
       "phase": 1,
       "estimatedDuration": 90,
-      "inputs": ["openapi.json (from T1.7)", "Environment config"],
-      "outputs": ["client/src/lib/api/client.ts", "TypeScript types"],
+      "inputs": [
+        "openapi.json (from T1.7)",
+        "Environment config"
+      ],
+      "outputs": [
+        "client/src/lib/api/client.ts",
+        "TypeScript types"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -118,8 +166,13 @@
       "agent": "frontend",
       "phase": 1,
       "estimatedDuration": 30,
-      "inputs": ["API client from T2.1", "Order types from openapi.json"],
-      "outputs": ["hooks/api/useOrders.ts"],
+      "inputs": [
+        "API client from T2.1",
+        "Order types from openapi.json"
+      ],
+      "outputs": [
+        "hooks/api/useOrders.ts"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -131,8 +184,13 @@
       "agent": "frontend",
       "phase": 1,
       "estimatedDuration": 30,
-      "inputs": ["API client from T2.1", "Shipment types from openapi.json"],
-      "outputs": ["hooks/api/useShipments.ts"],
+      "inputs": [
+        "API client from T2.1",
+        "Shipment types from openapi.json"
+      ],
+      "outputs": [
+        "hooks/api/useShipments.ts"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -144,8 +202,14 @@
       "agent": "frontend",
       "phase": 1,
       "estimatedDuration": 30,
-      "inputs": ["API client from T2.1", "Analytics/Warehouse types"],
-      "outputs": ["hooks/api/useAnalytics.ts", "hooks/api/useWarehouses.ts"],
+      "inputs": [
+        "API client from T2.1",
+        "Analytics/Warehouse types"
+      ],
+      "outputs": [
+        "hooks/api/useAnalytics.ts",
+        "hooks/api/useWarehouses.ts"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -157,8 +221,13 @@
       "agent": "frontend",
       "phase": 2,
       "estimatedDuration": 90,
-      "inputs": ["useAnalytics hook from T2.4", "Analytics API from T1.4"],
-      "outputs": ["Updated app/seller/page.tsx with live data"],
+      "inputs": [
+        "useAnalytics hook from T2.4",
+        "Analytics API from T1.4"
+      ],
+      "outputs": [
+        "Updated app/seller/page.tsx with live data"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -170,8 +239,13 @@
       "agent": "frontend",
       "phase": 2,
       "estimatedDuration": 90,
-      "inputs": ["useOrders hook from T2.2", "Order API from T1.1"],
-      "outputs": ["Updated app/seller/orders/page.tsx with CRUD operations"],
+      "inputs": [
+        "useOrders hook from T2.2",
+        "Order API from T1.1"
+      ],
+      "outputs": [
+        "Updated app/seller/orders/page.tsx with CRUD operations"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -183,8 +257,14 @@
       "agent": "frontend",
       "phase": 2,
       "estimatedDuration": 90,
-      "inputs": ["useShipments hook from T2.3", "Shipment API from T1.2"],
-      "outputs": ["Updated app/seller/shipments/page.tsx", "shipping-label.ts (jsPDF)"],
+      "inputs": [
+        "useShipments hook from T2.3",
+        "Shipment API from T1.2"
+      ],
+      "outputs": [
+        "Updated app/seller/shipments/page.tsx",
+        "shipping-label.ts (jsPDF)"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -196,8 +276,13 @@
       "agent": "frontend",
       "phase": 2,
       "estimatedDuration": 60,
-      "inputs": ["useWarehouses hook from T2.4", "Warehouse API (existing)"],
-      "outputs": ["Updated app/seller/warehouses/page.tsx"],
+      "inputs": [
+        "useWarehouses hook from T2.4",
+        "Warehouse API (existing)"
+      ],
+      "outputs": [
+        "Updated app/seller/warehouses/page.tsx"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -209,8 +294,13 @@
       "agent": "frontend",
       "phase": 2,
       "estimatedDuration": 60,
-      "inputs": ["useRateCards hook", "RateCard API from T1.5"],
-      "outputs": ["Updated app/seller/rates/page.tsx"],
+      "inputs": [
+        "useRateCards hook",
+        "RateCard API from T1.5"
+      ],
+      "outputs": [
+        "Updated app/seller/rates/page.tsx"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -222,8 +312,13 @@
       "agent": "frontend",
       "phase": 2,
       "estimatedDuration": 60,
-      "inputs": ["useAnalytics hook", "Admin analytics API from T1.4"],
-      "outputs": ["Updated app/admin/page.tsx"],
+      "inputs": [
+        "useAnalytics hook",
+        "Admin analytics API from T1.4"
+      ],
+      "outputs": [
+        "Updated app/admin/page.tsx"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -235,8 +330,14 @@
       "agent": "frontend",
       "phase": 3,
       "estimatedDuration": 90,
-      "inputs": ["All connected pages from T2.5-T2.10"],
-      "outputs": ["Skeleton loaders", "Empty state illustrations", "Toast system"],
+      "inputs": [
+        "All connected pages from T2.5-T2.10"
+      ],
+      "outputs": [
+        "Skeleton loaders",
+        "Empty state illustrations",
+        "Toast system"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -248,8 +349,13 @@
       "agent": "seed",
       "phase": 3,
       "estimatedDuration": 60,
-      "inputs": ["All backend models (Day 1 complete)", "Faker.js"],
-      "outputs": ["seed-demo-data.ts with companies/users/warehouses"],
+      "inputs": [
+        "All backend models (Day 1 complete)",
+        "Faker.js"
+      ],
+      "outputs": [
+        "seed-demo-data.ts with companies/users/warehouses"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -261,8 +367,13 @@
       "agent": "seed",
       "phase": 3,
       "estimatedDuration": 60,
-      "inputs": ["Companies/warehouses from T3.1", "Product catalog"],
-      "outputs": ["200 orders (30 pending, 60 delivered, 40 shipped, 10 cancelled, 15 RTO)"],
+      "inputs": [
+        "Companies/warehouses from T3.1",
+        "Product catalog"
+      ],
+      "outputs": [
+        "200 orders (30 pending, 60 delivered, 40 shipped, 10 cancelled, 15 RTO)"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -274,8 +385,13 @@
       "agent": "seed",
       "phase": 3,
       "estimatedDuration": 60,
-      "inputs": ["Orders from T3.2", "Carrier selection algorithm"],
-      "outputs": ["120 shipments (Delhivery 40%, DTDC 35%, Xpressbees 25%)"],
+      "inputs": [
+        "Orders from T3.2",
+        "Carrier selection algorithm"
+      ],
+      "outputs": [
+        "120 shipments (Delhivery 40%, DTDC 35%, Xpressbees 25%)"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -287,8 +403,14 @@
       "agent": "seed",
       "phase": 3,
       "estimatedDuration": 30,
-      "inputs": ["Zone model", "RateCard model"],
-      "outputs": ["4 zones", "3 rate cards (Light/Medium/Heavy)"],
+      "inputs": [
+        "Zone model",
+        "RateCard model"
+      ],
+      "outputs": [
+        "4 zones",
+        "3 rate cards (Light/Medium/Heavy)"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -300,8 +422,15 @@
       "agent": "qa",
       "phase": 3,
       "estimatedDuration": 60,
-      "inputs": ["Seeded database from T3.1-T3.4", "All frontend pages", "All backend APIs"],
-      "outputs": ["Test report with pass/fail status", "Bug list"],
+      "inputs": [
+        "Seeded database from T3.1-T3.4",
+        "All frontend pages",
+        "All backend APIs"
+      ],
+      "outputs": [
+        "Test report with pass/fail status",
+        "Bug list"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": false,
       "priority": "P0-CRITICAL"
@@ -313,8 +442,15 @@
       "agent": "backend",
       "phase": 3,
       "estimatedDuration": 60,
-      "inputs": ["Backend codebase", "Performance profiling tools"],
-      "outputs": ["Optimized queries", "Response time < 500ms", "Page load < 2s"],
+      "inputs": [
+        "Backend codebase",
+        "Performance profiling tools"
+      ],
+      "outputs": [
+        "Optimized queries",
+        "Response time < 500ms",
+        "Page load < 2s"
+      ],
       "resourceType": "CPU + DB",
       "idempotent": true,
       "priority": "P1-IMPORTANT"
@@ -326,8 +462,15 @@
       "agent": "qa",
       "phase": 3,
       "estimatedDuration": 60,
-      "inputs": ["All completed features", "Client requirements"],
-      "outputs": ["demo-script.md", "Demo credentials", "Checklist"],
+      "inputs": [
+        "All completed features",
+        "Client requirements"
+      ],
+      "outputs": [
+        "demo-script.md",
+        "Demo credentials",
+        "Checklist"
+      ],
       "resourceType": "CPU",
       "idempotent": true,
       "priority": "P0-CRITICAL"
@@ -339,54 +482,219 @@
       "agent": "qa",
       "phase": 3,
       "estimatedDuration": 90,
-      "inputs": ["All features from T2.5-T2.11 and T3.1-T3.4"],
-      "outputs": ["Bug-free application", "QA sign-off report"],
+      "inputs": [
+        "All features from T2.5-T2.11 and T3.1-T3.4"
+      ],
+      "outputs": [
+        "Bug-free application",
+        "QA sign-off report"
+      ],
       "resourceType": "CPU",
       "idempotent": false,
       "priority": "P0-CRITICAL"
     }
   ],
   "edges": [
-    {"from": "T1.1", "to": "T1.3", "type": "depends"},
-    {"from": "T1.2", "to": "T1.3", "type": "depends"},
-    {"from": "T1.1", "to": "T1.7", "type": "depends"},
-    {"from": "T1.2", "to": "T1.7", "type": "depends"},
-    {"from": "T1.4", "to": "T1.7", "type": "depends"},
-    {"from": "T1.5", "to": "T1.7", "type": "depends"},
-    {"from": "T1.6", "to": "T1.7", "type": "depends"},
-    {"from": "T1.7", "to": "T2.1", "type": "depends"},
-    {"from": "T2.1", "to": "T2.2", "type": "depends"},
-    {"from": "T2.1", "to": "T2.3", "type": "depends"},
-    {"from": "T2.1", "to": "T2.4", "type": "depends"},
-    {"from": "T2.4", "to": "T2.5", "type": "depends"},
-    {"from": "T1.4", "to": "T2.5", "type": "depends"},
-    {"from": "T2.2", "to": "T2.6", "type": "depends"},
-    {"from": "T1.1", "to": "T2.6", "type": "depends"},
-    {"from": "T2.3", "to": "T2.7", "type": "depends"},
-    {"from": "T1.2", "to": "T2.7", "type": "depends"},
-    {"from": "T2.4", "to": "T2.8", "type": "depends"},
-    {"from": "T2.4", "to": "T2.9", "type": "depends"},
-    {"from": "T1.5", "to": "T2.9", "type": "depends"},
-    {"from": "T2.4", "to": "T2.10", "type": "depends"},
-    {"from": "T1.4", "to": "T2.10", "type": "depends"},
-    {"from": "T2.5", "to": "T2.11", "type": "depends"},
-    {"from": "T2.6", "to": "T2.11", "type": "depends"},
-    {"from": "T2.7", "to": "T2.11", "type": "depends"},
-    {"from": "T2.8", "to": "T2.11", "type": "depends"},
-    {"from": "T2.9", "to": "T2.11", "type": "depends"},
-    {"from": "T2.10", "to": "T2.11", "type": "depends"},
-    {"from": "T1.3", "to": "T3.1", "type": "phase_boundary"},
-    {"from": "T1.7", "to": "T3.1", "type": "phase_boundary"},
-    {"from": "T3.1", "to": "T3.2", "type": "depends"},
-    {"from": "T3.2", "to": "T3.3", "type": "depends"},
-    {"from": "T3.1", "to": "T3.4", "type": "depends"},
-    {"from": "T3.3", "to": "T3.5", "type": "depends"},
-    {"from": "T3.4", "to": "T3.5", "type": "depends"},
-    {"from": "T2.11", "to": "T3.5", "type": "depends"},
-    {"from": "T3.5", "to": "T3.6", "type": "depends"},
-    {"from": "T3.5", "to": "T3.7", "type": "depends"},
-    {"from": "T3.6", "to": "T3.8", "type": "depends"},
-    {"from": "T3.7", "to": "T3.8", "type": "depends"}
+    {
+      "from": "T1.1",
+      "to": "T1.3",
+      "type": "depends"
+    },
+    {
+      "from": "T1.2",
+      "to": "T1.3",
+      "type": "depends"
+    },
+    {
+      "from": "T1.1",
+      "to": "T1.7",
+      "type": "depends"
+    },
+    {
+      "from": "T1.2",
+      "to": "T1.7",
+      "type": "depends"
+    },
+    {
+      "from": "T1.4",
+      "to": "T1.7",
+      "type": "depends"
+    },
+    {
+      "from": "T1.5",
+      "to": "T1.7",
+      "type": "depends"
+    },
+    {
+      "from": "T1.6",
+      "to": "T1.7",
+      "type": "depends"
+    },
+    {
+      "from": "T1.7",
+      "to": "T2.1",
+      "type": "depends"
+    },
+    {
+      "from": "T2.1",
+      "to": "T2.2",
+      "type": "depends"
+    },
+    {
+      "from": "T2.1",
+      "to": "T2.3",
+      "type": "depends"
+    },
+    {
+      "from": "T2.1",
+      "to": "T2.4",
+      "type": "depends"
+    },
+    {
+      "from": "T2.4",
+      "to": "T2.5",
+      "type": "depends"
+    },
+    {
+      "from": "T1.4",
+      "to": "T2.5",
+      "type": "depends"
+    },
+    {
+      "from": "T2.2",
+      "to": "T2.6",
+      "type": "depends"
+    },
+    {
+      "from": "T1.1",
+      "to": "T2.6",
+      "type": "depends"
+    },
+    {
+      "from": "T2.3",
+      "to": "T2.7",
+      "type": "depends"
+    },
+    {
+      "from": "T1.2",
+      "to": "T2.7",
+      "type": "depends"
+    },
+    {
+      "from": "T2.4",
+      "to": "T2.8",
+      "type": "depends"
+    },
+    {
+      "from": "T2.4",
+      "to": "T2.9",
+      "type": "depends"
+    },
+    {
+      "from": "T1.5",
+      "to": "T2.9",
+      "type": "depends"
+    },
+    {
+      "from": "T2.4",
+      "to": "T2.10",
+      "type": "depends"
+    },
+    {
+      "from": "T1.4",
+      "to": "T2.10",
+      "type": "depends"
+    },
+    {
+      "from": "T2.5",
+      "to": "T2.11",
+      "type": "depends"
+    },
+    {
+      "from": "T2.6",
+      "to": "T2.11",
+      "type": "depends"
+    },
+    {
+      "from": "T2.7",
+      "to": "T2.11",
+      "type": "depends"
+    },
+    {
+      "from": "T2.8",
+      "to": "T2.11",
+      "type": "depends"
+    },
+    {
+      "from": "T2.9",
+      "to": "T2.11",
+      "type": "depends"
+    },
+    {
+      "from": "T2.10",
+      "to": "T2.11",
+      "type": "depends"
+    },
+    {
+      "from": "T1.3",
+      "to": "T3.1",
+      "type": "phase_boundary"
+    },
+    {
+      "from": "T1.7",
+      "to": "T3.1",
+      "type": "phase_boundary"
+    },
+    {
+      "from": "T3.1",
+      "to": "T3.2",
+      "type": "depends"
+    },
+    {
+      "from": "T3.2",
+      "to": "T3.3",
+      "type": "depends"
+    },
+    {
+      "from": "T3.1",
+      "to": "T3.4",
+      "type": "depends"
+    },
+    {
+      "from": "T3.3",
+      "to": "T3.5",
+      "type": "depends"
+    },
+    {
+      "from": "T3.4",
+      "to": "T3.5",
+      "type": "depends"
+    },
+    {
+      "from": "T2.11",
+      "to": "T3.5",
+      "type": "depends"
+    },
+    {
+      "from": "T3.5",
+      "to": "T3.6",
+      "type": "depends"
+    },
+    {
+      "from": "T3.5",
+      "to": "T3.7",
+      "type": "depends"
+    },
+    {
+      "from": "T3.6",
+      "to": "T3.8",
+      "type": "depends"
+    },
+    {
+      "from": "T3.7",
+      "to": "T3.8",
+      "type": "depends"
+    }
   ],
   "criticalPath": [
     "T1.2",

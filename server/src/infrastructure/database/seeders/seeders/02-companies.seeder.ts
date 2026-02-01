@@ -7,6 +7,8 @@
 import mongoose from 'mongoose';
 import Company from '../../mongoose/models/organization/core/company.model';
 import User from '../../mongoose/models/iam/users/user.model';
+import Membership from '../../mongoose/models/iam/membership.model'; // V5
+import Role from '../../mongoose/models/iam/role.model'; // V5
 import { SEED_CONFIG, BusinessType } from '../config';
 import { randomInt, randomFloat, selectWeightedFromObject, selectRandom, generateHexColor } from '../utils/random.utils';
 import { logger, createTimer } from '../utils/logger.utils';
@@ -92,6 +94,7 @@ function generateCompanyData(
         status: selectWeightedFromObject(SEED_CONFIG.companyStatus),
         isActive: true,
         isDeleted: false,
+        isDemoData: true,
     };
 }
 
@@ -103,17 +106,111 @@ export async function seedCompanies(): Promise<void> {
     logger.step(2, 'Seeding Companies');
 
     try {
+        // ============================================
+        // Admin Company (for dual-role support)
+        // ============================================
+
+        // V5: Fetch Company Roles
+        const ownerRole = await Role.findOne({ name: 'owner', scope: 'company' });
+        const managerRole = await Role.findOne({ name: 'manager', scope: 'company' });
+        const memberRole = await Role.findOne({ name: 'member', scope: 'company' });
+        const viewerRole = await Role.findOne({ name: 'viewer', scope: 'company' });
+
+        if (!ownerRole || !managerRole || !memberRole || !viewerRole) {
+            throw new Error('Company roles not found. Run seed-roles migration first.');
+        }
+
+        const roleMap = {
+            owner: ownerRole._id,
+            manager: managerRole._id,
+            member: memberRole._id,
+            viewer: viewerRole._id
+        };
+
+        const CREATE_ADMIN_COMPANY = true; // Enabled for frontend role switching
+
+        let adminCompanyCount = 0;
+        if (CREATE_ADMIN_COMPANY) {
+            logger.info('Creating admin company for dual-role testing...');
+            const adminCompanyData = {
+                name: 'Shipcrowd Demo Store',
+                address: {
+                    line1: 'Demo Store HQ',
+                    line2: 'Tech Park',
+                    city: 'Mumbai',
+                    state: 'Maharashtra',
+                    country: 'India',
+                    postalCode: '400051',
+                },
+                billingInfo: {
+                    gstin: generateGSTIN('27', 'ADMIN00000'),
+                    pan: 'ADMIN00000',
+                    bankName: 'HDFC Bank',
+                    accountNumber: generateAccountNumber(selectBank()),
+                    ifscCode: 'HDFC0000001',
+                    upiId: 'admin@Shipcrowd',
+                },
+                branding: {
+                    logo: 'https://ui-avatars.com/api/?name=HD&background=6366f1&color=fff',
+                    primaryColor: '#6366f1',
+                    secondaryColor: '#8b5cf6',
+                    emailTemplate: 'default',
+                },
+                integrations: {},
+                settings: {
+                    notificationEmail: 'admin1@Shipcrowd.com',
+                    notificationPhone: '+919999999999',
+                    autoGenerateInvoice: true,
+                },
+                wallet: {
+                    balance: 1000000,
+                    currency: 'INR',
+                    lastUpdated: new Date(),
+                    lowBalanceThreshold: 100000,
+                },
+                status: 'approved',
+                isActive: true,
+                isDeleted: false,
+                isDemoData: true,
+            };
+
+            const adminCompany = await Company.create(adminCompanyData);
+
+            // Link only admin1 to this company using V5 Membership
+            const adminUser = await User.findOne({ email: 'admin1@Shipcrowd.com' });
+            if (adminUser) {
+                await Membership.create({
+                    userId: adminUser._id,
+                    companyId: adminCompany._id,
+                    roles: [roleMap.owner],
+                    status: 'active'
+                });
+            }
+
+            adminCompanyCount = 1;
+            logger.success(`✓ Admin company created and linked to admin1@Shipcrowd.com`);
+        }
+
+        // ============================================
+        // Create Seller Companies
+        // ============================================
         // Get seller users
-        const sellers = await User.find({ role: 'seller', teamRole: 'owner' }).lean();
+        const sellers = await User.find({ role: 'seller' }).lean();
 
         if (sellers.length === 0) {
-            logger.warn('No seller users found. Skipping companies seeder.');
+            logger.warn('No seller users found. Skipping seller companies.');
+            if (adminCompanyCount > 0) {
+                logger.complete('companies', adminCompanyCount, timer.elapsed());
+            }
             return;
         }
 
         const companies: any[] = [];
         const businessTypes: BusinessType[] = [];
         const usedNames = new Set<string>();
+        if (CREATE_ADMIN_COMPANY) {
+            usedNames.add('Shipcrowd Demo Store');
+        }
 
         // Generate companies for each seller
         for (let i = 0; i < sellers.length; i++) {
@@ -143,20 +240,25 @@ export async function seedCompanies(): Promise<void> {
 
         // Insert all companies using create() to trigger encryption middleware
         // Note: insertMany() bypasses Mongoose middleware, leaving sensitive data unencrypted
-        logger.info('Creating companies with encryption...');
+        logger.info('Creating seller companies with encryption...');
         const insertedCompanies = await Promise.all(
             companies.map(companyData => Company.create(companyData))
         );
 
-        // Link companies to seller users
-        const bulkOps = insertedCompanies.map((company, index) => ({
-            updateOne: {
-                filter: { _id: sellers[index]._id },
-                update: { companyId: company._id },
-            },
-        }));
+        // Link companies to seller users via Membership (Owner)
+        // We use a loop to trigger pre/post save hooks (Critical for V5 Sync)
+        logger.info('Creating owner memberships...');
+        for (let i = 0; i < insertedCompanies.length; i++) {
+            const company = insertedCompanies[i];
+            const seller = sellers[i];
 
-        await User.bulkWrite(bulkOps);
+            await Membership.create({
+                userId: seller._id,
+                companyId: company._id,
+                roles: [roleMap.owner], // Assign Owner Role
+                status: 'active'
+            });
+        }
 
         // Link staff users to companies
         const staffUsers = await User.find({ role: 'staff' }).lean();
@@ -180,31 +282,27 @@ export async function seedCompanies(): Promise<void> {
                 const randomStaffIndex = randomInt(0, staffUsers.length - 1);
                 const staffUser = staffUsers[randomStaffIndex];
 
-                // Don't reassign a staff member (remove from available pool conceptually)
-                if (staffUser.companyId) continue;
+                // Check if staff already has membership (skip if so)
+                const existingMembership = await Membership.findOne({ userId: staffUser._id });
+                if (existingMembership) continue;
 
+                // V5: Select role
                 const teamRoles = ['manager', 'member', 'member', 'member', 'member', 'viewer'];
-                const teamRole = selectRandom(teamRoles);
+                const selectedRoleName = selectRandom(teamRoles) as keyof typeof roleMap;
+                const roleId = roleMap[selectedRoleName];
+
                 const isActive = Math.random() < 0.85;
 
-                staffBulkOps.push({
-                    updateOne: {
-                        filter: { _id: staffUser._id },
-                        update: {
-                            companyId: company._id,
-                            teamRole,
-                            teamStatus: isActive ? 'active' : 'invited',
-                            isEmailVerified: isActive,
-                        },
-                    },
+                // Create Membership
+                await Membership.create({
+                    userId: staffUser._id,
+                    companyId: company._id,
+                    roles: [roleId],
+                    status: isActive ? 'active' : 'invited'
                 });
 
                 staffLinked++;
             }
-        }
-
-        if (staffBulkOps.length > 0) {
-            await User.bulkWrite(staffBulkOps);
         }
 
         // Count by business type
@@ -217,17 +315,29 @@ export async function seedCompanies(): Promise<void> {
         const kycSubmittedCount = companies.filter((c) => c.status === 'kyc_submitted').length;
         const suspendedCount = companies.filter((c) => c.status === 'suspended').length;
 
-        logger.complete('companies', companies.length, timer.elapsed());
-        logger.table({
-            'Total Companies': companies.length,
-            '-- Fashion': fashionCount,
-            '-- Electronics': electronicsCount,
-            '-- B2B': b2bCount,
-            'Status: Approved': approvedCount,
-            'Status: KYC Submitted': kycSubmittedCount,
-            'Status: Suspended': suspendedCount,
-            'Staff Members Linked': staffLinked,
-        });
+        const totalCompanies = companies.length + adminCompanyCount;
+
+        logger.complete('companies', totalCompanies, timer.elapsed());
+        const tableData: Record<string, any> = {
+            'Total Companies': totalCompanies,
+        };
+
+        if (adminCompanyCount > 0) {
+            tableData['-- Admin Companies'] = adminCompanyCount;
+        }
+
+        tableData['-- Seller Companies'] = companies.length;
+        tableData['Business Types:'] = '';
+        tableData['  Fashion'] = fashionCount;
+        tableData['  Electronics'] = electronicsCount;
+        tableData['  B2B'] = b2bCount;
+        tableData['Status:'] = '';
+        tableData['  Approved'] = approvedCount + adminCompanyCount;
+        tableData['  KYC Submitted'] = kycSubmittedCount;
+        tableData['  Suspended'] = suspendedCount;
+        tableData['Staff Linked'] = staffLinked;
+
+        logger.table(tableData);
 
     } catch (error) {
         logger.error('Failed to seed companies:', error);

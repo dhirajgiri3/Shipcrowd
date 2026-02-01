@@ -40,6 +40,7 @@ import cron from 'node-cron';
 import Dispute from '@/infrastructure/database/mongoose/models/logistics/disputes/dispute.model';
 import logger from '@/shared/logger/winston.logger';
 import QueueManager from '@/infrastructure/utilities/queue-manager';
+import mongoose from 'mongoose';
 
 // ============================================================================
 // CONFIGURATION
@@ -49,6 +50,10 @@ const BATCH_SIZE = 500;
 const SLA_WARNING_HOURS = 4; // Warn 4 hours before deadline
 const AUTO_ESCALATION_HOURS = 2; // Escalate if overdue >2 hours
 const AUTO_CLOSE_DAYS = 7; // Close resolved disputes after 7 days
+
+// System user ObjectId for automated actions
+// Using a special ID to mark system-generated actions
+const SYSTEM_USER_ID = new mongoose.Types.ObjectId('000000000000000000000001');
 
 // ============================================================================
 // JOB IMPLEMENTATION
@@ -76,7 +81,7 @@ export class DisputeSLAJob {
                     $push: {
                         timeline: {
                             action: 'SLA deadline breached',
-                            performedBy: 'system',
+                            performedBy: SYSTEM_USER_ID,
                             timestamp: now,
                             notes: 'Automatically marked as overdue by system',
                         },
@@ -134,7 +139,7 @@ export class DisputeSLAJob {
                             $push: {
                                 timeline: {
                                     action: 'Dispute auto-escalated due to SLA breach',
-                                    performedBy: 'system',
+                                    performedBy: SYSTEM_USER_ID,
                                     timestamp: now,
                                     notes: `Dispute breached SLA by ${Math.round(
                                         (now.getTime() - dispute.sla.deadline.getTime()) /
@@ -146,11 +151,18 @@ export class DisputeSLAJob {
                     );
 
                     // Queue notification to admin
-                    await QueueManager.addJob('email', 'dispute-escalated', {
-                        disputeId: dispute.disputeId,
-                        type: 'auto_escalation',
-                        reason: 'SLA breach',
-                    });
+                    try {
+                        await QueueManager.addJob('email', 'dispute-escalated', {
+                            disputeId: dispute.disputeId,
+                            type: 'auto_escalation',
+                            reason: 'SLA breach',
+                        });
+                    } catch (emailError) {
+                        logger.warn('Failed to queue dispute escalation email', {
+                            disputeId: dispute.disputeId,
+                            error: emailError instanceof Error ? emailError.message : String(emailError),
+                        });
+                    }
 
                     logger.warn('Dispute auto-escalated', {
                         disputeId: dispute.disputeId,
@@ -214,11 +226,18 @@ export class DisputeSLAJob {
                     );
 
                     // Queue notification
-                    await QueueManager.addJob('email', 'dispute-sla-warning', {
-                        disputeId: dispute.disputeId,
-                        hoursRemaining,
-                        deadline: dispute.sla.deadline,
-                    });
+                    try {
+                        await QueueManager.addJob('email', 'dispute-sla-warning', {
+                            disputeId: dispute.disputeId,
+                            hoursRemaining,
+                            deadline: dispute.sla.deadline,
+                        });
+                    } catch (emailError) {
+                        logger.warn('Failed to queue SLA warning email', {
+                            disputeId: dispute.disputeId,
+                            error: emailError instanceof Error ? emailError.message : String(emailError),
+                        });
+                    }
 
                     // Update timeline
                     await Dispute.updateOne(
@@ -227,7 +246,7 @@ export class DisputeSLAJob {
                             $push: {
                                 timeline: {
                                     action: 'SLA warning notification sent',
-                                    performedBy: 'system',
+                                    performedBy: SYSTEM_USER_ID,
                                     timestamp: now,
                                     notes: `${hoursRemaining} hours remaining until SLA deadline`,
                                 },
@@ -279,7 +298,7 @@ export class DisputeSLAJob {
                     $push: {
                         timeline: {
                             action: 'Dispute auto-closed',
-                            performedBy: 'system',
+                            performedBy: SYSTEM_USER_ID,
                             timestamp: now,
                             notes: `Automatically closed ${AUTO_CLOSE_DAYS} days after resolution`,
                         },
@@ -342,7 +361,11 @@ export class DisputeSLAJob {
                     timestamp: new Date().toISOString(),
                 });
             } catch (emailError) {
-                logger.error('Failed to send job failure alert:', emailError);
+                // Email queue might not be configured, log but don't fail the entire job
+                logger.warn('Failed to send job failure alert (non-critical):', {
+                    error: emailError instanceof Error ? emailError.message : String(emailError),
+                    note: 'Email queue may not be configured. Check QueueManager initialization.'
+                });
             }
 
             throw error;
