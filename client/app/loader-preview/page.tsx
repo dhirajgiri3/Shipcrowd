@@ -8,223 +8,221 @@ export default function LoaderPreviewPage() {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [size, setSize] = useState<LoaderSize>('md');
     const [progress, setProgress] = useState(45);
-    const [message, setMessage] = useState('Loading data...');
-    const [subMessage, setSubMessage] = useState('Please wait while we fetch your information.');
+    const [message, setMessage] = useState('Verifying credentials...');
+    const [subMessage, setSubMessage] = useState('This usually takes a few seconds.');
     const [showFullScreen, setShowFullScreen] = useState(false);
 
-    // Toggle theme class on the wrapper
-    const containerClass = cn(
-        "min-h-screen p-8 transition-colors duration-300",
-        theme === 'dark' ? 'dark bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'
-    );
-
-    const cardClass = cn(
-        "p-6 rounded-xl border transition-all duration-300",
-        theme === 'dark'
-            ? "bg-gray-900 border-gray-800 shadow-none"
-            : "bg-white border-gray-200 shadow-sm"
+    // Dynamic Theme Wrapper
+    const wrapperClass = cn(
+        "min-h-screen transition-colors duration-500 font-sans selection:bg-zinc-200 dark:selection:bg-zinc-800",
+        theme === 'dark' ? "dark bg-zinc-950 text-zinc-50" : "bg-zinc-50 text-zinc-900"
     );
 
     return (
-        <div className={containerClass}>
-            <div className="max-w-6xl mx-auto space-y-8">
-
-                {/* Header & Controls */}
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
+        <div className={wrapperClass}>
+            {/* Sticky Glass Header */}
+            <header className="sticky top-0 z-40 w-full border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-zinc-950/60">
+                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="h-8 w-8 rounded-lg bg-zinc-900 dark:bg-zinc-50 flex items-center justify-center">
+                            <span className="text-zinc-50 dark:text-zinc-900 font-bold text-lg">L</span>
+                        </div>
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Loader Design Studio</h1>
-                            <p className={cn("mt-2", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
-                                Preview and iterate on application loading states.
+                            <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                                Global Loader System
+                            </h1>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                                Design System v2.0 • Neutral Aesthetics
                             </p>
                         </div>
+                    </div>
+
+                    {/* Global Actions */}
+                    <div className="flex items-center gap-4">
+                        <div className="hidden md:flex items-center gap-2 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                            {(['sm', 'md', 'lg', 'xl'] as LoaderSize[]).map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => setSize(s)}
+                                    className={cn(
+                                        "px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider transition-all",
+                                        size === s
+                                            ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                                            : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                    )}
+                                >
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-2 hidden md:block" />
 
                         <button
                             onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
                             className={cn(
-                                "px-4 py-2 rounded-lg font-medium transition-colors",
+                                "h-9 px-4 rounded-full text-sm font-medium transition-all flex items-center gap-2",
                                 theme === 'dark'
-                                    ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                                    : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 shadow-sm"
+                                    ? "bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
+                                    : "bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50 shadow-sm"
                             )}
                         >
-                            {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+                            {theme === 'light' ? (
+                                <>
+                                    <span className="opacity-70">Turn Off Lights</span>
+                                    <span>Moon</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="opacity-70">Turn On Lights</span>
+                                    <span>Sun</span>
+                                </>
+                            )}
                         </button>
                     </div>
+                </div>
+            </header>
 
-                    {/* Controls Grid */}
-                    <div className={cn(
-                        "p-6 rounded-xl border grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
-                        theme === 'dark' ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200 shadow-sm"
-                    )}>
-                        {/* Size Control */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-semibold uppercase tracking-wider opacity-70">
-                                Size
-                            </label>
-                            <div className="flex bg-gray-100/10 p-1 rounded-lg border border-gray-500/20">
-                                {(['sm', 'md', 'lg', 'xl'] as LoaderSize[]).map((s) => (
-                                    <button
-                                        key={s}
-                                        onClick={() => setSize(s)}
-                                        className={cn(
-                                            "flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all",
-                                            size === s
-                                                ? (theme === 'dark' ? "bg-gray-800 text-white shadow-sm" : "bg-white text-gray-900 shadow-sm")
-                                                : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                                        )}
-                                    >
-                                        {s.toUpperCase()}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+            <main className="max-w-7xl mx-auto p-6 lg:p-12 space-y-12">
 
-                        {/* Progress Control */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-semibold uppercase tracking-wider opacity-70">
-                                Progress ({progress}%)
-                            </label>
+                {/* Playground Controls Section */}
+                <section className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+                    <div className="md:col-span-8 space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 ml-1">
+                            Simulation Context
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={progress}
-                                onChange={(e) => setProgress(Number(e.target.value))}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600"
+                                type="text"
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                placeholder="Primary status message..."
+                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-sm focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500 outline-none transition-all placeholder:text-zinc-400"
+                            />
+                            <input
+                                type="text"
+                                value={subMessage}
+                                onChange={(e) => setSubMessage(e.target.value)}
+                                placeholder="Secondary explanation..."
+                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 text-sm focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500 outline-none transition-all placeholder:text-zinc-400"
                             />
                         </div>
-
-                        {/* Message Control */}
-                        <div className="space-y-3 md:col-span-2">
-                            <label className="text-sm font-semibold uppercase tracking-wider opacity-70">
-                                Messages
-                            </label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <input
-                                    type="text"
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    placeholder="Main message"
-                                    className={cn(
-                                        "w-full px-3 py-2 rounded-md border bg-transparent text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none",
-                                        theme === 'dark' ? "border-gray-700 placeholder-gray-600" : "border-gray-300 placeholder-gray-400"
-                                    )}
-                                />
-                                <input
-                                    type="text"
-                                    value={subMessage}
-                                    onChange={(e) => setSubMessage(e.target.value)}
-                                    placeholder="Sub message"
-                                    className={cn(
-                                        "w-full px-3 py-2 rounded-md border bg-transparent text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none",
-                                        theme === 'dark' ? "border-gray-700 placeholder-gray-600" : "border-gray-300 placeholder-gray-400"
-                                    )}
-                                />
-                            </div>
-                        </div>
                     </div>
-                </div>
 
-                <hr className={cn("border-t", theme === 'dark' ? "border-gray-800" : "border-gray-200")} />
+                    <div className="md:col-span-4 space-y-2">
+                        <div className="flex justify-between items-center px-1">
+                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                Simulated Progress
+                            </label>
+                            <span className="text-xs font-mono text-zinc-900 dark:text-zinc-100">{progress}%</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={progress}
+                            onChange={(e) => setProgress(Number(e.target.value))}
+                            className="w-full h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+                        />
+                    </div>
+                </section>
 
-                {/* Preview Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="w-full h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent" />
 
-                    {/* Truck Loader Card */}
-                    <div className={cn(cardClass, "lg:col-span-2 flex flex-col items-center justify-center min-h-[300px]")}>
-                        <div className="w-full flex justify-between items-start mb-8">
-                            <h3 className="text-lg font-semibold">Truck Loader (Primary)</h3>
+                {/* Showcase Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+                    {/* Primary Loader Showcase (Larger) */}
+                    <div className="lg:col-span-7 flex flex-col gap-4">
+                        <div className="flex items-center justify-between px-1">
+                            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Primary Truck Loader</h2>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                                High Value / Auth / Tracking
+                            </span>
+                        </div>
+
+                        <div className="relative group rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-12 min-h-[400px] flex items-center justify-center overflow-hidden transition-all hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-black/50">
+                            {/* Grid Background Pattern */}
+                            <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+                                style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '24px 24px' }}
+                            />
+
+                            <Loader
+                                variant="truck"
+                                size={size}
+                                message={message}
+                                subMessage={subMessage}
+                            />
+
                             <button
                                 onClick={() => setShowFullScreen(true)}
-                                className="text-xs px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition-colors"
+                                className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-xs font-bold tracking-wide shadow-lg transform translate-y-2 group-hover:translate-y-0 duration-300"
                             >
-                                Preview Full Screen
+                                Preview Overlay Pattern
                             </button>
                         </div>
-
-                        <Loader
-                            variant="truck"
-                            size={size}
-                            message={message}
-                            subMessage={subMessage}
-                        />
                     </div>
 
-                    {/* Spinner Loader Card */}
-                    <div className={cn(cardClass, "flex flex-col items-center justify-center min-h-[250px]")}>
-                        <div className="w-full text-left mb-8">
-                            <h3 className="text-lg font-semibold">Spinner</h3>
-                            <p className={cn("text-xs mt-1", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
-                                Used for sections, cards, and modal content.
-                            </p>
+                    {/* Secondary Loaders Column */}
+                    <div className="lg:col-span-5 flex flex-col gap-8">
+
+                        {/* Spinner Card */}
+                        <div className="flex-1 flex flex-col gap-4">
+                            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 px-1">Contextual Spinner</h2>
+                            <div className="flex-1 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-8 flex flex-col items-center justify-center gap-6 relative overflow-hidden group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+                                <Loader variant="spinner" size={size} />
+                                <p className="text-sm text-zinc-500 text-center max-w-[200px]">
+                                    Minimal circular indicator for cards, tables, and modal contents.
+                                </p>
+                            </div>
                         </div>
-                        <Loader
-                            variant="spinner"
-                            size={size}
-                            message={message}
-                        />
+
+                        <div className="grid grid-cols-2 gap-6">
+                            {/* Dots Card */}
+                            <div className="flex flex-col gap-4">
+                                <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 px-1">Inline Dots</h2>
+                                <div className="aspect-square rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-6 flex flex-col items-center justify-center gap-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+                                    <div className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                                        <Loader variant="dots" size={size === 'xl' ? 'lg' : size} />
+                                    </div>
+                                    <span className="text-xs text-zinc-400">Button State</span>
+                                </div>
+                            </div>
+
+                            {/* Progress Card */}
+                            <div className="flex flex-col gap-4">
+                                <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 px-1">Progress</h2>
+                                <div className="aspect-square rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-6 flex flex-col items-center justify-center gap-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+                                    <div className="w-full">
+                                        <Loader variant="progress" size={size === 'xl' ? 'md' : 'sm'} progress={progress} />
+                                    </div>
+                                    <span className="text-xs text-zinc-400">Batch Ops</span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
-
-                    {/* Progress Loader Card */}
-                    <div className={cn(cardClass, "flex flex-col items-center justify-center min-h-[250px]")}>
-                        <div className="w-full text-left mb-8">
-                            <h3 className="text-lg font-semibold">Progress Bar</h3>
-                            <p className={cn("text-xs mt-1", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
-                                Used for file uploads and batch operations.
-                            </p>
-                        </div>
-                        <div className="w-full px-8">
-                            <Loader
-                                variant="progress"
-                                size={size}
-                                progress={progress}
-                                message={`${progress}% Complete`}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Dots Loader Card */}
-                    <div className={cn(cardClass, "flex flex-col items-center justify-center min-h-[250px]")}>
-                        <div className="w-full text-left mb-8">
-                            <h3 className="text-lg font-semibold">Dots</h3>
-                            <p className={cn("text-xs mt-1", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
-                                Used for inline states and button loading.
-                            </p>
-                        </div>
-
-                        <div className="flex gap-4 items-center">
-                            <button disabled className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center gap-2 opacity-90">
-                                <span>Processing</span>
-                                <Loader variant="dots" size="sm" className="inline-flex" />
-                            </button>
-
-                            <div className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700" />
-
-                            <Loader variant="dots" size={size} />
-                        </div>
-                    </div>
-
                 </div>
-            </div>
 
-            {/* Full Screen Mode */}
+            </main>
+
+            {/* Full Screen Overlay Portal */}
             {showFullScreen && (
                 <div
                     onClick={() => setShowFullScreen(false)}
-                    className="fixed inset-0 z-50 cursor-pointer"
-                    title="Click anywhere to close"
+                    className="fixed inset-0 z-[100] cursor-pointer"
                 >
-                    {/* We wrap it in a theme provider div to ensure variables work in portal/overlay */}
-                    <div className={theme === 'dark' ? 'dark text-white' : 'text-gray-900'}>
+                    <div className={theme === 'dark' ? 'dark text-zinc-50' : 'text-zinc-900'}>
                         <Loader
                             variant="truck"
                             fullScreen
                             message={message}
                             subMessage={subMessage}
                         />
-                        <div className="fixed top-8 right-8 z-[110] text-sm text-gray-500 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                            Click to close
+                        <div className="fixed top-8 right-8 z-[110] animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-sm font-medium text-zinc-500 mix-blend-difference">
+                                Click anywhere to close
+                            </div>
                         </div>
                     </div>
                 </div>
