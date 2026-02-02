@@ -42,6 +42,14 @@ router.get(
   ShopifyController.getStore
 );
 
+// Update store settings
+router.patch(
+  '/stores/:id/settings',
+  authenticate,
+  requireAccess({ teamRoles: ['owner', 'admin'] }),
+  ShopifyController.updateSettings
+);
+
 // Disconnect store
 router.delete(
   '/stores/:id',
@@ -60,6 +68,14 @@ router.post(
   authenticate,
   requireAccess({ tier: AccessTier.SANDBOX }),
   ShopifyController.testConnection
+);
+
+// Get sync logs
+router.get(
+  '/stores/:id/sync/logs',
+  authenticate,
+  requireAccess({ tier: AccessTier.SANDBOX }),
+  ShopifyController.getSyncLogs
 );
 
 // Pause sync

@@ -3,6 +3,7 @@ import ShopifyOAuthService from '../../../../core/application/services/shopify/s
 import ShopifyFulfillmentService from '../../../../core/application/services/shopify/shopify-fulfillment.service';
 import ShopifyOrderSyncService from '../../../../core/application/services/shopify/shopify-order-sync.service';
 import ShopifyStore from '../../../../infrastructure/database/mongoose/models/marketplaces/shopify/shopify-store.model';
+import { SyncLog } from '../../../../infrastructure/database/mongoose/models/marketplaces/sync-log.model';
 import { ValidationError, NotFoundError, AuthenticationError, AppError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import { sendSuccess, sendCreated } from '../../../../shared/utils/responseHelper';
@@ -94,7 +95,7 @@ export class ShopifyController {
       });
 
       // Redirect to frontend success page
-      const redirectUrl = `${process.env.FRONTEND_URL}/seller/integrations/shopify/setup?status=success&store=${store.shopDomain}`;
+      const redirectUrl = `${process.env.FRONTEND_URL}/seller/integrations/shopify/setup?status=success&store=${store.shopDomain}&storeId=${store._id}&step=3`;
       res.redirect(redirectUrl);
     } catch (error) {
       logger.error('Shopify OAuth callback failed', { error });
@@ -163,6 +164,19 @@ export class ShopifyController {
         throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
       }
 
+      // Fetch recent sync logs
+      const logs = await SyncLog.find({ storeId: id })
+        .sort({ createdAt: -1 })
+        .limit(10);
+
+      // Refresh stats if needed
+      const stats = store.stats || {
+        ordersSynced: 0,
+        syncSuccessRate: 100,
+        lastSyncDuration: 0,
+        lastSyncAt: undefined
+      };
+
       sendSuccess(res, {
         store: {
           id: store._id,
@@ -178,9 +192,52 @@ export class ShopifyController {
           installedAt: store.installedAt,
           syncConfig: store.syncConfig,
           webhooks: store.webhooks,
-          stats: store.stats,
+          storeUrl: `https://${store.shopDomain}`,
+          stats: {
+            ...stats,
+            lastSyncAt: logs[0]?.startedAt || store.stats?.lastSyncAt
+          },
         },
+        recentLogs: logs
       }, 'Store details retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /integrations/shopify/stores/:id/sync/logs
+   *
+   * Get paginated sync logs
+   */
+  static async getSyncLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      const store = await ShopifyStore.findOne({ _id: id, companyId });
+      if (!store) {
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+      }
+
+      const logs = await SyncLog.find({ storeId: id })
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit);
+
+      const total = await SyncLog.countDocuments({ storeId: id });
+
+      sendSuccess(res, {
+        logs,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }, 'Sync logs retrieved');
     } catch (error) {
       next(error);
     }
@@ -222,6 +279,51 @@ export class ShopifyController {
       next(error);
     }
   }
+
+  /**
+   * PATCH /integrations/shopify/stores/:id/settings
+   *
+   * Update store settings
+   */
+  static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const companyId = req.user?.companyId;
+      const { settings } = req.body;
+
+      if (!companyId) {
+        throw new AuthenticationError('Company ID not found', ErrorCode.AUTH_REQUIRED);
+      }
+
+      // Verify ownership
+      const store = await ShopifyStore.findOne({ _id: id, companyId }) as any;
+
+      if (!store) {
+        throw new NotFoundError('Shopify store', ErrorCode.RES_INTEGRATION_NOT_FOUND);
+      }
+
+      // Update settings
+      if (settings) {
+        store.settings = {
+          ...store.settings,
+          ...settings,
+        };
+      }
+
+      await store.save();
+
+      logger.info('Store settings updated', {
+        storeId: id,
+        companyId,
+        userId: req.user?._id,
+      });
+
+      sendSuccess(res, { store }, 'Settings updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
 
   /**
    * POST /integrations/shopify/stores/:id/test

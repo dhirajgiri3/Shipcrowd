@@ -126,8 +126,8 @@ export * from './marketplaces/flipkart/flipkart-product-mapping.model';
 // Marketplaces - Shopify
 export { default as ShopifyStore } from './marketplaces/shopify/shopify-store.model';
 export * from './marketplaces/shopify/shopify-store.model';
-export { default as ShopifySyncLog } from './marketplaces/shopify/shopify-sync-log.model';
-export * from './marketplaces/shopify/shopify-sync-log.model';
+export { SyncLog } from './marketplaces/sync-log.model';
+export * from './marketplaces/sync-log.model';
 export { default as ShopifyProductMapping } from './marketplaces/shopify/shopify-product-mapping.model';
 export * from './marketplaces/shopify/shopify-product-mapping.model';
 

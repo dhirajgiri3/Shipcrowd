@@ -40,6 +40,7 @@ export interface EcommerceIntegration {
 
     // Connection details
     status: IntegrationStatus;
+    isActive?: boolean;
     connectedAt: string;
     lastSyncAt?: string;
     expiresAt?: string;
@@ -180,6 +181,11 @@ export interface IntegrationStats {
     totalSyncs: number;
     successfulSyncs: number;
     failedSyncs: number;
+
+    // Shopify-specific stats
+    totalOrdersSynced?: number;
+    syncSuccessRate?: number;
+    lastSyncAt?: string;
 }
 
 // ==================== Sync Types ====================
@@ -196,16 +202,16 @@ export interface SyncLog {
 
     startedAt: string;
     completedAt?: string;
-    duration?: number; // milliseconds
+    durationMs?: number; // milliseconds
 
-    stats: {
-        ordersProcessed: number;
-        ordersCreated: number;
-        ordersUpdated: number;
-        ordersFailed: number;
+    ordersProcessed: number;
+    ordersSuccess?: number;
+    ordersFailed?: number;
+
+    details?: {
+        message?: string;
+        errors?: any[];
     };
-
-    errors: SyncError[];
 }
 
 export interface SyncError {
@@ -278,6 +284,8 @@ export interface TestConnectionResponse {
 
 export interface TriggerSyncPayload {
     integrationId: string;
+    syncType?: string;
+    sinceDate?: string;
     syncHistorical?: boolean;
     historicalDays?: number;
 }

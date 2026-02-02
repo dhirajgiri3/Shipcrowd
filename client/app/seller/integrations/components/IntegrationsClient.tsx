@@ -56,7 +56,7 @@ export function IntegrationsClient() {
     const { data, isLoading, error, refetch } = useIntegrationHealth();
 
     // Flatten connected stores from response
-    const connectedStores = data ? [
+    const connectedStores = data?.platforms ? [
         ...(data.platforms.shopify?.stores || []),
         ...(data.platforms.woocommerce?.stores || []),
         ...(data.platforms.amazon?.stores || []),

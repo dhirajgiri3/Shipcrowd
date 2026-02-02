@@ -1,5 +1,5 @@
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
-import { ShopifySyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { SyncLog } from '../../../../infrastructure/database/mongoose/models';
 import { Order } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
@@ -112,12 +112,12 @@ export class ShopifyOrderSyncService {
       }
 
       // Create sync log
-      const [syncLog] = await ShopifySyncLog.create([{
+      const [syncLog] = await SyncLog.create([{
         storeId,
         companyId: store.companyId,
-        syncType: 'ORDER',
-        syncTrigger: sinceDate ? 'SCHEDULED' : 'MANUAL',
-        startTime: new Date(),
+        integrationType: 'SHOPIFY',
+        triggerType: sinceDate ? 'SCHEDULED' : 'MANUAL',
+        startedAt: new Date(),
       }], { session });
 
       logger.info('Starting order sync', {
@@ -184,11 +184,16 @@ export class ShopifyOrderSyncService {
       }
 
       // Complete sync log
-      await syncLog.completeSyncWithErrors({
-        itemsSynced: result.itemsSynced,
-        itemsFailed: result.itemsFailed,
-        syncErrors: result.syncErrors,
-      });
+      syncLog.status = result.itemsFailed > 0 ? 'PARTIAL_SUCCESS' : 'SUCCESS';
+      syncLog.completedAt = new Date();
+      syncLog.durationMs = syncLog.completedAt.getTime() - syncLog.startedAt.getTime();
+      syncLog.ordersProcessed = result.itemsProcessed;
+      syncLog.ordersSuccess = result.itemsSynced;
+      syncLog.ordersFailed = result.itemsFailed;
+      syncLog.details = {
+        errors: result.syncErrors
+      };
+      await syncLog.save({ session });
 
       // Update store sync status
       await store.updateSyncStatus('order', 'IDLE');

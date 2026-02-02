@@ -54,6 +54,26 @@ export interface IShopifyStore extends Document {
     webhooksEnabled: boolean;
   };
 
+  // User-facing settings (frontend compatibility)
+  settings?: {
+    syncFrequency: string;
+    autoFulfill: boolean;
+    autoTrackingUpdate: boolean;
+    syncHistoricalOrders: boolean;
+    historicalOrderDays?: number;
+    orderFilters: {
+      minOrderValue?: number;
+      maxOrderValue?: number;
+      statusFilters?: string[];
+      excludeStatuses?: string[];
+    };
+    notifications: {
+      syncErrors: boolean;
+      connectionIssues: boolean;
+      lowInventory: boolean;
+    };
+  };
+
   // Webhook tracking
   webhooks: Array<{
     topic: string;
@@ -71,6 +91,7 @@ export interface IShopifyStore extends Document {
     lastOrderSyncAt?: Date;
     lastInventorySyncAt?: Date;
     lastWebhookAt?: Date;
+    lastSyncAt?: Date;
   };
 
   // Timestamps
@@ -207,6 +228,31 @@ const ShopifyStoreSchema = new Schema<IShopifyStore>(
       lastOrderSyncAt: { type: Date },
       lastInventorySyncAt: { type: Date },
       lastWebhookAt: { type: Date },
+      lastSyncAt: { type: Date },
+    },
+
+    // User-facing settings (frontend compatibility)
+    settings: {
+      syncFrequency: {
+        type: String,
+        enum: ['REALTIME', 'EVERY_5_MIN', 'EVERY_15_MIN', 'EVERY_30_MIN', 'HOURLY', 'MANUAL'],
+        default: 'EVERY_15_MIN',
+      },
+      autoFulfill: { type: Boolean, default: true },
+      autoTrackingUpdate: { type: Boolean, default: true },
+      syncHistoricalOrders: { type: Boolean, default: false },
+      historicalOrderDays: { type: Number, default: 30 },
+      orderFilters: {
+        minOrderValue: { type: Number },
+        maxOrderValue: { type: Number },
+        statusFilters: [{ type: String }],
+        excludeStatuses: [{ type: String }],
+      },
+      notifications: {
+        syncErrors: { type: Boolean, default: true },
+        connectionIssues: { type: Boolean, default: true },
+        lowInventory: { type: Boolean, default: false },
+      },
     },
   },
   {

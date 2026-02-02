@@ -40,7 +40,7 @@ export const useIntegrations = (
     return useQuery<EcommerceIntegration[]>({
         queryKey: queryKeys.ecommerce.integrationsList(filters),
         queryFn: async () => {
-            const response = await apiClient.get('/integrations', { params: filters });
+            const response = await apiClient.get('/integrations/shopify/stores', { params: filters });
             return response.data.data;
         },
         ...CACHE_TIMES.SHORT,
@@ -59,7 +59,7 @@ export const useIntegration = (
     return useQuery<EcommerceIntegration>({
         queryKey: queryKeys.ecommerce.integration(integrationId),
         queryFn: async () => {
-            const response = await apiClient.get(`/integrations/${integrationId}`);
+            const response = await apiClient.get(`/integrations/shopify/stores/${integrationId}`);
             return response.data.data;
         },
         enabled: !!integrationId,
@@ -79,7 +79,7 @@ export const useSyncLogs = (
     return useQuery<SyncLog[]>({
         queryKey: queryKeys.ecommerce.syncLogs(integrationId),
         queryFn: async () => {
-            const response = await apiClient.get(`/integrations/${integrationId}/sync-logs`);
+            const response = await apiClient.get(`/integrations/shopify/stores/${integrationId}/sync/logs`);
             return response.data.data;
         },
         enabled: !!integrationId,
@@ -120,7 +120,7 @@ export const useUpdateIntegration = (options?: UseMutationOptions<EcommerceInteg
 
     return useMutation<EcommerceIntegration, ApiError, UpdateIntegrationPayload>({
         mutationFn: async ({ integrationId, ...payload }) => {
-            const response = await apiClient.put(`/integrations/${integrationId}`, payload);
+            const response = await apiClient.patch(`/integrations/shopify/stores/${integrationId}/settings`, payload);
             return response.data.data;
         },
         onSuccess: (data) => {
@@ -142,7 +142,7 @@ export const useDeleteIntegration = () => {
 
     return useMutation<void, Error, string>({
         mutationFn: async (integrationId) => {
-            await apiClient.delete(`/integrations/${integrationId}`);
+            await apiClient.delete(`/integrations/shopify/stores/${integrationId}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.ecommerce.integrations() });
@@ -182,7 +182,7 @@ export const useTriggerSync = () => {
 
     return useMutation<SyncLog, Error, TriggerSyncPayload>({
         mutationFn: async (payload) => {
-            const response = await apiClient.post(`/integrations/${payload.integrationId}/sync`, payload);
+            const response = await apiClient.post(`/integrations/shopify/stores/${payload.integrationId}/sync/orders`, payload);
             return response.data.data;
         },
         onSuccess: (_, { integrationId }) => {
