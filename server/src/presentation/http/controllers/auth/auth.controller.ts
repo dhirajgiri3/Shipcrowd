@@ -27,12 +27,15 @@ import MFAService from '../../../../core/application/services/auth/mfa.service';
 // ============================================================================
 
 // Helper function to get cookie options for auth tokens
+// ✅ CRITICAL FIX: Never set domain for localhost - it breaks cookie persistence
+// Browsers handle localhost specially; explicit domain prevents cookie setting/sending
 const getAuthCookieOptions = (maxAge: number) => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: (process.env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
   path: '/',
-  domain: process.env.NODE_ENV === 'development' ? 'localhost' : undefined,
+  // ✅ Domain must be undefined for localhost (browser auto-handles it)
+  // Only set domain in production if needed for subdomain sharing
   maxAge,
 });
 

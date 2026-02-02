@@ -75,7 +75,7 @@ const navSections: NavSection[] = [
         title: 'Financial',
         defaultOpen: false,
         items: [
-            { label: 'Wallet & Billing', href: '/seller/financials', icon: Wallet },
+            { label: 'Wallet & Billing', href: '/seller/wallet', icon: Wallet },
             { label: 'COD Remittance', href: '/seller/cod', icon: Banknote },
         ],
     },

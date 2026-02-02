@@ -10,7 +10,7 @@ import WooCommerceStore from '../../mongoose/models/marketplaces/woocommerce/woo
 import AmazonStore from '../../mongoose/models/marketplaces/amazon/amazon-store.model';
 import FlipkartStore from '../../mongoose/models/marketplaces/flipkart/flipkart-store.model';
 
-import ShopifySyncLog from '../../mongoose/models/marketplaces/shopify/shopify-sync-log.model';
+import { SyncLog } from '../../mongoose/models';
 import WooCommerceSyncLog from '../../mongoose/models/marketplaces/woocommerce/woocommerce-sync-log.model';
 import AmazonSyncLog from '../../mongoose/models/marketplaces/amazon/amazon-sync-log.model';
 import FlipkartSyncLog from '../../mongoose/models/marketplaces/flipkart/flipkart-sync-log.model';
@@ -19,15 +19,7 @@ import { logger, createTimer } from '../utils/logger.utils';
 import { selectRandom, selectWeightedFromObject, randomInt } from '../utils/random.utils';
 import { subMinutes } from '../utils/date.utils';
 
-const SYNC_STATUS_WEIGHTS = {
-    'success': 0.70,
-    'partial': 0.15,
-    'failed': 0.10,
-    'syncing': 0.05
-};
-
-const SYNC_TYPES = ['order', 'inventory', 'product'];
-
+// Helper function to generate data (was private method in class)
 function generateSyncLogData(store: any, type: string) {
     const isShopify = type === 'Shopify';
 
@@ -46,17 +38,13 @@ function generateSyncLogData(store: any, type: string) {
     };
 
     // Select Status
-    const statusKey = selectWeightedFromObject(statuses); // Always picking uppercase key first
-    // Map status to correct casing
-    // Shopify: UPPERCASE ('COMPLETED')
-    // Others: UPPERCASE ('COMPLETED') - Checked schemas, they ALL use UPPERCASE for status: 'IN_PROGRESS', 'COMPLETED', etc.
-    // Wait, let me double check schemas. 
-    // WooCommerce: enum: ['IN_PROGRESS', 'COMPLETED', 'FAILED', 'PARTIAL'] (UPPERCASE)
-    // Amazon: enum: ['IN_PROGRESS', 'COMPLETED', 'FAILED', 'PARTIAL'] (UPPERCASE)
-    // Flipkart: enum: ['IN_PROGRESS', 'COMPLETED', 'FAILED', 'PARTIAL'] (UPPERCASE)
-    // Shopify: enum: ['IN_PROGRESS', 'COMPLETED', 'PARTIAL', 'FAILED'] (UPPERCASE)
-    // So STATUS is consistently UPPERCASE. Good.
-    const status = statusKey;
+    const statusKey = selectWeightedFromObject(statuses);
+
+    let status: string = statusKey;
+    if (isShopify) {
+        if (statusKey === 'COMPLETED') status = 'SUCCESS';
+        if (statusKey === 'PARTIAL') status = 'PARTIAL_SUCCESS';
+    }
 
     const syncType = selectRandom(syncTypes);
     const syncTrigger = selectRandom(syncTriggers);
@@ -70,7 +58,7 @@ function generateSyncLogData(store: any, type: string) {
     let itemsSynced = itemsProcessed;
     let itemsFailed = 0;
 
-    if (status === 'PARTIAL') {
+    if (status === 'PARTIAL' || status === 'PARTIAL_SUCCESS') {
         itemsFailed = randomInt(1, 5);
         itemsSynced = itemsProcessed - itemsFailed;
     } else if (status === 'FAILED') {
@@ -80,25 +68,14 @@ function generateSyncLogData(store: any, type: string) {
 
     const log: any = {
         storeId: store._id,
-        // companyId is ONLY in Shopify schema! Others use storeId reference which has company.
-        // Wait, let's check schemas again.
-        // Shopify: companyId, storeId.
-        // WooCommerce: storeId (no companyId explicit).
-        // Amazon: storeId (no companyId).
-        // Flipkart: storeId (no companyId).
-        // So I should only include companyId if Shopify.
-
         syncType: syncType,
         status: status,
         startTime: startTime,
-        endTime: endTime,
         duration: duration,
         itemsProcessed: itemsProcessed,
         itemsSynced: itemsSynced,
         itemsFailed: itemsFailed,
         itemsSkipped: 0,
-        // apiCallsUsed Only in Shopify? Not in others.
-        // Others have syncErrors array of strings. Shopify has array of objects.
         metadata: {},
         createdAt: startTime,
         updatedAt: endTime
@@ -106,19 +83,23 @@ function generateSyncLogData(store: any, type: string) {
 
     if (isShopify) {
         log.companyId = store.companyId;
-        log.syncTrigger = syncTrigger;
-        log.apiCallsUsed = randomInt(5, 50);
+        log.integrationType = 'SHOPIFY';
+        log.triggerType = syncTrigger;
+        log.startedAt = startTime;
+        log.completedAt = endTime;
+        log.durationMs = duration;
 
-        // Shopify Sync Errors (Array of Objects)
-        if (status !== 'COMPLETED') {
-            log.syncErrors = [{
-                itemId: `ITEM-${randomInt(1000, 9999)}`,
-                error: 'Validation failed',
-                timestamp: endTime
-            }];
+        if (status !== 'SUCCESS') {
+            log.details = {
+                errors: [{
+                    itemId: `ITEM-${randomInt(1000, 9999)}`,
+                    error: 'Validation failed',
+                    timestamp: endTime
+                }]
+            };
         }
     } else {
-        // Others Sync Errors (Array of Strings)
+        log.endTime = endTime;
         if (status !== 'COMPLETED') {
             log.syncErrors = [`Validation failed for item ${randomInt(1000, 9999)}`];
         }
@@ -138,7 +119,7 @@ export async function seedMarketplaceSyncLogs(): Promise<void> {
         const flipkartStores = await FlipkartStore.find().lean();
 
         const allStores = [
-            { type: 'Shopify', stores: shopifyStores, model: ShopifySyncLog },
+            { type: 'Shopify', stores: shopifyStores, model: SyncLog },
             { type: 'WooCommerce', stores: wooCommerceStores, model: WooCommerceSyncLog },
             { type: 'Amazon', stores: amazonStores, model: AmazonSyncLog },
             { type: 'Flipkart', stores: flipkartStores, model: FlipkartSyncLog }

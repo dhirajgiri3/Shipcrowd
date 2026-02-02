@@ -6,12 +6,8 @@ import crypto from 'crypto';
 // Models
 import { ShopifyStore } from '../../../src/infrastructure/database/mongoose/models';
 import { ShopifyProductMapping } from '../../../src/infrastructure/database/mongoose/models';
-import { ShopifySyncLog } from '../../../src/infrastructure/database/mongoose/models';
+import { SyncLog } from '../../../src/infrastructure/database/mongoose/models';
 import { Order } from '../../../src/infrastructure/database/mongoose/models';
-
-// Services
-import { ShopifyOrderSyncService } from '../../../src/core/application/services/shopify/shopify-order-sync.service';
-import { ShopifyWebhookService } from '../../../src/core/application/services/shopify/shopify-webhook.service';
 
 // Mock ShopifyClient - but preserve static methods
 import ShopifyClient from '../../../src/infrastructure/external/ecommerce/shopify/shopify.client';
@@ -33,9 +29,9 @@ jest.mock('../../../src/infrastructure/external/ecommerce/shopify/shopify.client
 // Mock QueueManager to avoid Redis dependency
 jest.mock('../../../src/infrastructure/utilities/queue-manager', () => ({
     default: {
-        initialize: jest.fn().mockResolvedValue(undefined),
-        shutdown: jest.fn().mockResolvedValue(undefined),
-        addJob: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+        initialize: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        shutdown: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        addJob: jest.fn<() => Promise<{ id: string }>>().mockResolvedValue({ id: 'mock-job-id' }),
     },
 }));
 
@@ -86,7 +82,7 @@ describe('Shopify Advanced Integration Flow', () => {
             delete: jest.fn(),
             graphql: jest.fn(),
             paginate: jest.fn(),
-            testConnection: jest.fn().mockResolvedValue(true),
+            testConnection: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
             getShopInfo: jest.fn(),
         };
 
@@ -104,7 +100,7 @@ describe('Shopify Advanced Integration Flow', () => {
         // Clear collections between tests
         await Order.deleteMany({});
         await ShopifyProductMapping.deleteMany({});
-        await ShopifySyncLog.deleteMany({});
+        await SyncLog.deleteMany({});
         jest.clearAllMocks();
     });
 
@@ -229,7 +225,7 @@ describe('Shopify Advanced Integration Flow', () => {
             // Mock store's decryptAccessToken method
             const store = await ShopifyStore.findById(storeId);
             if (store) {
-                store.decryptAccessToken = jest.fn().mockReturnValue('decrypted_token');
+                store.decryptAccessToken = jest.fn().mockReturnValue('decrypted_token') as unknown as () => string;
                 await store.save();
             }
 

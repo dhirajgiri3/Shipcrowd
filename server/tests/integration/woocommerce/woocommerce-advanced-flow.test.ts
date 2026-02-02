@@ -9,10 +9,6 @@ import { WooCommerceProductMapping } from '../../../src/infrastructure/database/
 import { WooCommerceSyncLog } from '../../../src/infrastructure/database/mongoose/models';
 import { Order } from '../../../src/infrastructure/database/mongoose/models';
 
-// Services
-import WooCommerceOrderSyncService from '../../../src/core/application/services/woocommerce/woocommerce-order-sync.service';
-import WooCommerceWebhookService from '../../../src/core/application/services/woocommerce/woocommerce-webhook.service';
-
 // Mock WooCommerceClient
 import WooCommerceClient from '../../../src/infrastructure/external/ecommerce/woocommerce/woocommerce.client';
 jest.mock('../../../src/infrastructure/external/ecommerce/woocommerce/woocommerce.client');
@@ -20,9 +16,9 @@ jest.mock('../../../src/infrastructure/external/ecommerce/woocommerce/woocommerc
 // Mock QueueManager to avoid Redis dependency
 jest.mock('../../../src/infrastructure/utilities/queue-manager', () => ({
     default: {
-        initialize: jest.fn().mockResolvedValue(undefined),
-        shutdown: jest.fn().mockResolvedValue(undefined),
-        addJob: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+        initialize: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        shutdown: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        addJob: jest.fn<() => Promise<{ id: string }>>().mockResolvedValue({ id: 'mock-job-id' }),
     },
 }));
 
@@ -75,7 +71,7 @@ describe('WooCommerce Advanced Integration Flow', () => {
             delete: jest.fn(),
             paginate: jest.fn(),
             batch: jest.fn(),
-            testConnection: jest.fn().mockResolvedValue(true),
+            testConnection: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
             getStoreInfo: jest.fn(),
         };
 

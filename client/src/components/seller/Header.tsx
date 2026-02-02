@@ -35,7 +35,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
             'tracking': 'Track & Trace',
             'ndr': 'NDR Management',
             'rates': 'Rate Calculator',
-            'financials': 'Wallet & Billing',
+            'wallet': 'Wallet & Billing',
             'integrations': 'Integrations',
             'settings': 'Settings',
             'support': 'Help & Support'
@@ -124,7 +124,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                     {/* Wallet */}
                     <Tooltip content="Manage Wallet" side="bottom">
                         <button
-                            onClick={() => window.location.href = '/seller/financials'}
+                            onClick={() => window.location.href = '/seller/wallet'}
                             className={cn(
                                 "h-9 px-3 rounded-lg flex items-center gap-2 transition-colors duration-150",
                                 "bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)]",

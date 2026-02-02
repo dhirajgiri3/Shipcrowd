@@ -1,30 +1,23 @@
 /**
- * Wallet Dashboard Page
+ * Wallet & Financials Dashboard
  * 
- * Main wallet page displaying:
- * - Current balance with Add/Withdraw modals
- * - Recent transactions
- * - Wallet statistics
+ * Comprehensive financial management page displaying:
+ * - Wallet balance with hero display
+ * - Spending insights and analytics
+ * - Transaction history
+ * - Quick recharge functionality
  * 
  * Route: /seller/wallet
  */
 
 import { WalletPageClient } from './components/WalletPageClient';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Wallet & Financials | Shipcrowd',
+    description: 'Manage your wallet balance, view transactions, and track spending insights',
+};
 
 export default function WalletPage() {
-    return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-            {/* Page Header */}
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    Wallet
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                    Manage your wallet balance and view transaction history
-                </p>
-            </div>
-
-            <WalletPageClient />
-        </div>
-    );
+    return <WalletPageClient />;
 }

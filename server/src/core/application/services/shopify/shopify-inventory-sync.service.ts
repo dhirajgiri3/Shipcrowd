@@ -17,7 +17,7 @@
 import { number } from 'zod';
 import { ShopifyStore } from '../../../../infrastructure/database/mongoose/models';
 import { ShopifyProductMapping as ProductMapping } from '../../../../infrastructure/database/mongoose/models';
-import { ShopifySyncLog } from '../../../../infrastructure/database/mongoose/models';
+import { SyncLog } from '../../../../infrastructure/database/mongoose/models';
 import ShopifyClient from '../../../../infrastructure/external/ecommerce/shopify/shopify.client';
 import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
@@ -142,12 +142,14 @@ export class ShopifyInventorySyncService {
     }
 
     // Create sync log
-    const syncLog = await ShopifySyncLog.create({
+    // Create sync log
+    const syncLog = await SyncLog.create({
       storeId,
       companyId: store.companyId,
+      integrationType: 'SHOPIFY',
       syncType: 'INVENTORY',
-      syncTrigger: 'MANUAL',
-      startTime: new Date(),
+      triggerType: 'MANUAL',
+      startedAt: new Date(),
     });
 
     logger.info('Starting batch inventory sync', {

@@ -31,6 +31,7 @@ import {
     Calendar
 } from 'lucide-react';
 import { format, isThisWeek, isToday } from 'date-fns';
+import { Skeleton } from '@/src/components/ui/data/Skeleton';
 
 export interface Transaction {
     id: string;
@@ -49,6 +50,7 @@ export interface Transaction {
 
 interface TransactionListProps {
     transactions: Transaction[];
+    isLoading?: boolean;
     className?: string;
 }
 
@@ -72,7 +74,7 @@ const CATEGORY_LABELS = {
     payout: 'Payout',
 };
 
-export function TransactionList({ transactions, className = '' }: TransactionListProps) {
+export function TransactionList({ transactions, isLoading = false, className = '' }: TransactionListProps) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [isExporting, setIsExporting] = useState(false);
 
@@ -132,6 +134,44 @@ export function TransactionList({ transactions, className = '' }: TransactionLis
         setTimeout(() => setIsExporting(false), 1000);
     };
 
+    if (isLoading) {
+        return (
+            <div className={`space-y-4 ${className}`}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                            <Skeleton className="h-3 w-12 mb-2" />
+                            <Skeleton className="h-6 w-24" />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="space-y-2">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                            <Skeleton className="h-10 w-10 rounded-xl" />
+                            <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-48" />
+                                <Skeleton className="h-3 w-24" />
+                            </div>
+                            <div className="space-y-2 flex flex-col items-end">
+                                <Skeleton className="h-5 w-24" />
+                                <Skeleton className="h-3 w-32" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Header with Filters */}
@@ -153,8 +193,8 @@ export function TransactionList({ transactions, className = '' }: TransactionLis
                                 key={f}
                                 onClick={() => setFilter(f)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === f
-                                        ? 'bg-[var(--primary-blue)] text-white shadow-md'
-                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                    ? 'bg-[var(--primary-blue)] text-white shadow-md'
+                                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                     }`}
                             >
                                 {f === 'all' && 'All'}
@@ -244,8 +284,8 @@ export function TransactionList({ transactions, className = '' }: TransactionLis
                                 >
                                     {/* Icon */}
                                     <div className={`p-3 rounded-xl ${isCredit
-                                            ? 'bg-[var(--success-bg)] text-[var(--success)]'
-                                            : 'bg-[var(--error-bg)] text-[var(--error)]'
+                                        ? 'bg-[var(--success-bg)] text-[var(--success)]'
+                                        : 'bg-[var(--error-bg)] text-[var(--error)]'
                                         }`}>
                                         <Icon className="w-5 h-5" />
                                     </div>

@@ -20,8 +20,7 @@
 import {
     ShopifyStore,
     WooCommerceStore,
-    ShopifySyncLog,
-    WooCommerceSyncLog,
+    SyncLog,
 } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -156,32 +155,35 @@ export class IntegrationHealthService {
                     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
                     const [errors24h, errors7d, recentLogs] = await Promise.all([
-                        ShopifySyncLog.countDocuments({
+                        SyncLog.countDocuments({
                             storeId: store._id,
-                            status: 'ERROR',
-                            startTime: { $gte: oneDayAgo },
+                            integrationType: 'SHOPIFY',
+                            status: 'FAILED',
+                            startedAt: { $gte: oneDayAgo },
                         }),
-                        ShopifySyncLog.countDocuments({
+                        SyncLog.countDocuments({
                             storeId: store._id,
-                            status: 'ERROR',
-                            startTime: { $gte: sevenDaysAgo },
+                            integrationType: 'SHOPIFY',
+                            status: 'FAILED',
+                            startedAt: { $gte: sevenDaysAgo },
                         }),
-                        ShopifySyncLog.find({
+                        SyncLog.find({
                             storeId: store._id,
-                            startTime: { $gte: sevenDaysAgo },
+                            integrationType: 'SHOPIFY',
+                            startedAt: { $gte: sevenDaysAgo },
                         })
-                            .sort({ startTime: -1 })
+                            .sort({ startedAt: -1 })
                             .limit(100)
                             .lean(),
                     ]);
 
                     // Calculate success rate
                     const totalSyncs = recentLogs.length;
-                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'COMPLETED').length;
+                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
                     const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
 
                     // Get last successful sync
-                    const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
+                    const lastSync = recentLogs.find((log: any) => log.status === 'SUCCESS');
 
                     return {
                         storeId: store._id.toString(),
@@ -190,7 +192,7 @@ export class IntegrationHealthService {
                         platform: 'shopify',
                         isActive: store.isActive,
                         isPaused: store.isPaused || false,
-                        lastSyncAt: lastSync?.endTime,
+                        lastSyncAt: lastSync?.completedAt,
                         syncStatus: store.syncConfig?.order?.status || 'UNKNOWN',
                         errorCount24h: errors24h,
                         errorCount7d: errors7d,
@@ -245,30 +247,33 @@ export class IntegrationHealthService {
                     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
                     const [errors24h, errors7d, recentLogs] = await Promise.all([
-                        WooCommerceSyncLog.countDocuments({
+                        SyncLog.countDocuments({
                             storeId: store._id,
-                            status: 'ERROR',
-                            startTime: { $gte: oneDayAgo },
+                            integrationType: 'WOOCOMMERCE',
+                            status: 'FAILED',
+                            startedAt: { $gte: oneDayAgo },
                         }),
-                        WooCommerceSyncLog.countDocuments({
+                        SyncLog.countDocuments({
                             storeId: store._id,
-                            status: 'ERROR',
-                            startTime: { $gte: sevenDaysAgo },
+                            integrationType: 'WOOCOMMERCE',
+                            status: 'FAILED',
+                            startedAt: { $gte: sevenDaysAgo },
                         }),
-                        WooCommerceSyncLog.find({
+                        SyncLog.find({
                             storeId: store._id,
-                            startTime: { $gte: sevenDaysAgo },
+                            integrationType: 'WOOCOMMERCE',
+                            startedAt: { $gte: sevenDaysAgo },
                         })
-                            .sort({ startTime: -1 })
+                            .sort({ startedAt: -1 })
                             .limit(100)
                             .lean(),
                     ]);
 
                     const totalSyncs = recentLogs.length;
-                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'COMPLETED').length;
+                    const successfulSyncs = recentLogs.filter((log: any) => log.status === 'SUCCESS').length;
                     const syncSuccessRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
 
-                    const lastSync = recentLogs.find((log: any) => log.status === 'COMPLETED');
+                    const lastSync = recentLogs.find((log: any) => log.status === 'SUCCESS');
 
                     return {
                         storeId: store._id.toString(),
@@ -277,7 +282,7 @@ export class IntegrationHealthService {
                         platform: 'woocommerce',
                         isActive: store.isActive,
                         isPaused: store.isPaused || false,
-                        lastSyncAt: lastSync?.endTime,
+                        lastSyncAt: lastSync?.completedAt,
                         syncStatus: store.syncConfig?.order?.status || 'UNKNOWN',
                         errorCount24h: errors24h,
                         errorCount7d: errors7d,

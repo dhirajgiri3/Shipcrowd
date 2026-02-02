@@ -184,16 +184,8 @@ export class ShopifyOrderSyncService {
       }
 
       // Complete sync log
-      syncLog.status = result.itemsFailed > 0 ? 'PARTIAL_SUCCESS' : 'SUCCESS';
-      syncLog.completedAt = new Date();
-      syncLog.durationMs = syncLog.completedAt.getTime() - syncLog.startedAt.getTime();
-      syncLog.ordersProcessed = result.itemsProcessed;
-      syncLog.ordersSuccess = result.itemsSynced;
-      syncLog.ordersFailed = result.itemsFailed;
-      syncLog.details = {
-        errors: result.syncErrors
-      };
-      await syncLog.save({ session });
+      await syncLog.completeSyncWithErrors(result);
+
 
       // Update store sync status
       await store.updateSyncStatus('order', 'IDLE');
