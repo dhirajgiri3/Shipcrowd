@@ -53,9 +53,10 @@ export default class CODRemittanceService {
             .lean();
 
         if (!eligibleShipments || eligibleShipments.length === 0) {
-            throw new ValidationError(
+            throw new AppError(
                 'No eligible shipments found for remittance',
-                ErrorCode.RES_REMITTANCE_NOT_FOUND
+                ErrorCode.RES_REMITTANCE_NOT_FOUND,
+                404
             );
         }
 

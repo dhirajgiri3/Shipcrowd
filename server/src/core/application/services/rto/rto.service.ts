@@ -57,6 +57,11 @@ export default class RTOService {
     private static readonly RTO_RATE_LIMIT = 10; // Max RTOs per minute per company
     private static readonly RTO_RATE_WINDOW_SECONDS = 60; // 1 minute
 
+    // Benchmarks & Defaults
+    private static readonly INDUSTRY_RTO_AVG = 10.5; // Benchmark for Indian e-commerce COD (Industry Standard)
+    private static readonly DEFAULT_RTO_CHARGE = 50; // Fallback flat rate if calculation fails
+    private static readonly FALLBACK_AVG_RTO_CHARGE = 80; // Used for estimates if no history exists
+
     /**
      * Check rate limit for RTO triggers
      * Issue #A: Uses Redis for distributed rate limiting with in-memory fallback
@@ -503,7 +508,7 @@ export default class RTOService {
                 logger.warn('Shipment not found for charge calculation, using flat rate', {
                     shipmentId: shipment._id
                 });
-                return Number(process.env.RTO_FLAT_CHARGE) || 50;
+                return Number(process.env.RTO_FLAT_CHARGE) || this.DEFAULT_RTO_CHARGE;
             }
 
             // Prepare input for rate calculation
@@ -536,7 +541,7 @@ export default class RTOService {
             });
 
             // Fallback to flat rate
-            return Number(process.env.RTO_FLAT_CHARGE) || 50;
+            return Number(process.env.RTO_FLAT_CHARGE) || this.DEFAULT_RTO_CHARGE;
         }
     }
 
@@ -1144,8 +1149,30 @@ export default class RTOService {
         const currentRate = currentShipments > 0 ? (currentRTOs / currentShipments) * 100 : 0;
         const previousRate = previousShipments > 0 ? (previousRTOs / previousShipments) * 100 : 0;
         const change = previousRate > 0 ? currentRate - previousRate : 0;
-        const industryAverage = 10.5; // Benchmark for Indian e-commerce COD
-        const avgRTOCharge = 80; // Average RTO charge in INR
+        const industryAverage = this.INDUSTRY_RTO_AVG;
+
+        // ✅ DYNAMIC: Calculate actual average RTO charge from recent history (last 30 days)
+        // If not enough data, fall back to configured average
+        const [avgChargeResult] = await RTOEvent.aggregate([
+            {
+                $match: {
+                    company: new mongoose.Types.ObjectId(companyId),
+                    rtoCharges: { $gt: 0 },
+                    createdAt: { $gte: previousMonthStart } // Look at last ~2 months for better sample
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgCharge: { $avg: '$rtoCharges' }
+                }
+            }
+        ]);
+
+        const avgRTOCharge = avgChargeResult?.avgCharge
+            ? Math.round(avgChargeResult.avgCharge)
+            : this.FALLBACK_AVG_RTO_CHARGE;
+
         const estimatedLoss = currentRTOs * avgRTOCharge;
 
         // 6-month trend using proper model

@@ -74,7 +74,8 @@ export const requireAccess = (options: AccessOptions) => {
             }
 
             // 4. KYC Check (Explicit or via Tier)
-            if (options.kyc || options.tier === AccessTier.PRODUCTION) {
+            const isDev = process.env.NODE_ENV === 'development';
+            if (!isDev && options.kyc !== false && (options.kyc || options.tier === AccessTier.PRODUCTION)) {
                 // Check if user has completed KYC in general
                 if (!user.kycStatus?.isComplete && user.kycStatus?.state !== KYCState.VERIFIED) {
                     res.status(403).json({

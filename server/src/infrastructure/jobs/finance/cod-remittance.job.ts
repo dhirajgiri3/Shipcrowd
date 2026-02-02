@@ -112,7 +112,7 @@ export class CODRemittanceJob {
                         company._id.toString(),
                         'scheduled',
                         new Date(),
-                        'system'
+                        undefined
                     );
                     created++;
                 } else {

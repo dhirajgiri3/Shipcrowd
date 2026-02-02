@@ -23,7 +23,7 @@ describe('ShopifyOAuthService', () => {
     process.env.SHOPIFY_API_KEY = 'test_api_key';
     process.env.SHOPIFY_API_SECRET = 'test_api_secret';
     process.env.SHOPIFY_WEBHOOK_SECRET = 'test_webhook_secret';
-    process.env.APP_URL = 'https://test.Shipcrowd.com';
+    process.env.BACKEND_URL = 'https://test.Shipcrowd.com';
   });
 
   afterEach(() => {

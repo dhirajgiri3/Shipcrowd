@@ -17,7 +17,7 @@ router.get(
   authenticate,
   requireAccess({
     tier: AccessTier.PRODUCTION,
-    kyc: true,
+    kyc: false,
     teamRoles: ['owner', 'admin']
   }),
   ShopifyController.install

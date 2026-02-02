@@ -7899,9 +7899,9 @@ export default class ShopifyOAuthService {
 
   private async registerWebhooks(shop: string, accessToken: string): Promise<void> {
     const webhooks = [
-      { topic: 'orders/create', address: `${process.env.APP_URL}/webhooks/shopify/orders/create` },
-      { topic: 'orders/updated', address: `${process.env.APP_URL}/webhooks/shopify/orders/updated` },
-      { topic: 'products/update', address: `${process.env.APP_URL}/webhooks/shopify/products/update` }
+      { topic: 'orders/create', address: `${process.env.BACKEND_URL}/webhooks/shopify/orders/create` },
+      { topic: 'orders/updated', address: `${process.env.BACKEND_URL}/webhooks/shopify/orders/updated` },
+      { topic: 'products/update', address: `${process.env.BACKEND_URL}/webhooks/shopify/products/update` }
     ];
 
     for (const webhook of webhooks) {
@@ -8124,7 +8124,7 @@ Create shopify.integration.test.ts with end-to-end scenario: OAuth connection â†
 
 **Morning (3hrs): Task 5.1-5.3 - Documentation**
 
-Create `/docs/guides/shopify-integration-setup.md` with step-by-step setup: create Shopify app in Partner Dashboard, configure OAuth redirect URL, add API scopes (read_orders, write_inventory, read_products), install app on store, store access token securely. Document environment variables (SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_APP_URL). Create `/docs/api/shopify-endpoints.md` documenting: POST /integrations/shopify/connect (initiate OAuth), GET /integrations/shopify/callback (OAuth callback), POST /integrations/shopify/sync-orders (manual sync). Create `/docs/guides/shopify-webhook-config.md` with webhook registration process and troubleshooting common webhook issues.
+Create `/docs/guides/shopify-integration-setup.md` with step-by-step setup: create Shopify app in Partner Dashboard, configure OAuth redirect URL, add API scopes (read_orders, write_inventory, read_products), install app on store, store access token securely. Document environment variables (SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_BACKEND_URL). Create `/docs/api/shopify-endpoints.md` documenting: POST /integrations/shopify/connect (initiate OAuth), GET /integrations/shopify/callback (OAuth callback), POST /integrations/shopify/sync-orders (manual sync). Create `/docs/guides/shopify-webhook-config.md` with webhook registration process and troubleshooting common webhook issues.
 
 **Afternoon (2hrs): Task 5.4-5.5 - Context Packages**
 

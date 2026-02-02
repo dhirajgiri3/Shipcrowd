@@ -85,14 +85,7 @@ export class ShopifyController {
       }
 
       // Handle callback and install store
-      const store = await ShopifyOAuthService.handleCallback({
-        shop: shop as string,
-        code: code as string,
-        hmac: hmac as string,
-        state: state as string,
-        timestamp: timestamp as string,
-        companyId: '', // Will be extracted from state
-      });
+      const store = await ShopifyOAuthService.handleCallback(req.query);
 
       logger.info('Shopify OAuth completed', {
         storeId: store._id,
@@ -101,14 +94,14 @@ export class ShopifyController {
       });
 
       // Redirect to frontend success page
-      const redirectUrl = `${process.env.FRONTEND_URL}/settings/integrations/shopify?status=success&store=${store.shopDomain}`;
+      const redirectUrl = `${process.env.FRONTEND_URL}/seller/integrations/shopify/setup?status=success&store=${store.shopDomain}`;
       res.redirect(redirectUrl);
     } catch (error) {
       logger.error('Shopify OAuth callback failed', { error });
 
       // Redirect to frontend error page
       const errorMessage = error instanceof AppError ? error.message : 'Installation failed';
-      const redirectUrl = `${process.env.FRONTEND_URL}/settings/integrations/shopify?status=error&message=${encodeURIComponent(errorMessage)}`;
+      const redirectUrl = `${process.env.FRONTEND_URL}/seller/integrations/shopify/setup?status=error&message=${encodeURIComponent(errorMessage)}`;
       res.redirect(redirectUrl);
     }
   }

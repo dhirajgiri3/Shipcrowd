@@ -96,7 +96,7 @@ export class ShopifyOAuthService {
 
     const apiKey = process.env.SHOPIFY_API_KEY;
     const scopes = this.REQUIRED_SCOPES.join(',');
-    const redirect = redirectUri || `${process.env.APP_URL}/api/v1/integrations/shopify/callback`;
+    const redirect = redirectUri || `${process.env.BACKEND_URL}/api/v1/integrations/shopify/callback`;
 
     // Generate state for CSRF protection
     const state = this.generateState(companyId);
@@ -178,6 +178,14 @@ export class ShopifyOAuthService {
       .update(message, 'utf8')
       .digest('hex');
 
+    // DEBUG: Log HMAC comparison
+    console.log('HMAC Verification Debug:', {
+      incomingHmac: hmac,
+      calculatedHash: hash,
+      messageString: message,
+      paramsKeys: Object.keys(params).sort()
+    });
+
     // Constant-time comparison
     try {
       return crypto.timingSafeEqual(
@@ -196,12 +204,12 @@ export class ShopifyOAuthService {
    * @param params - Callback parameters
    * @returns ShopifyStore document
    */
-  static async handleCallback(params: CallbackParams) {
-    const { shop, code, hmac, state, timestamp } = params;
+  static async handleCallback(query: Record<string, any>) {
+    const { shop, code, hmac, state, timestamp } = query;
 
     // Validate HMAC
-    const queryParams = { shop, code, state, timestamp };
-    if (!this.verifyHmac(queryParams, hmac)) {
+    // PASS THE FULL QUERY OBJECT to ensure all params (like host) are included
+    if (!this.verifyHmac(query, hmac)) {
       logger.error('HMAC verification failed', { shop });
       throw new AppError('Invalid HMAC signature', 'INVALID_HMAC', 403);
     }
@@ -351,7 +359,7 @@ export class ShopifyOAuthService {
       accessToken: store.decryptAccessToken(),
     });
 
-    const webhookBaseUrl = `${process.env.APP_URL}/api/v1/webhooks/shopify`;
+    const webhookBaseUrl = `${process.env.BACKEND_URL}/api/v1/webhooks/shopify`;
     const registeredWebhooks: any[] = [];
 
     for (const topic of this.WEBHOOK_TOPICS) {

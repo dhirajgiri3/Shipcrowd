@@ -50,7 +50,7 @@ describe('Shopify Integration - Complete Flow', () => {
     process.env.SHOPIFY_API_KEY = 'test_api_key';
     process.env.SHOPIFY_API_SECRET = 'test_api_secret';
     process.env.SHOPIFY_WEBHOOK_SECRET = 'test_webhook_secret';
-    process.env.APP_URL = 'https://test.Shipcrowd.com';
+    process.env.BACKEND_URL = 'https://test.Shipcrowd.com';
     process.env.FRONTEND_URL = 'https://app.test.Shipcrowd.com';
     process.env.ENCRYPTION_KEY = '0'.repeat(64); // 32 bytes hex
   });

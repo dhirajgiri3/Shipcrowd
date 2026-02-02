@@ -516,7 +516,7 @@ export class ShopifyOAuthService {
    */
   private async registerWebhooks(shop: string, accessToken: string, storeId: string): Promise<void> {
     const shopDomain = this.normalizeShopDomain(shop);
-    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
+    const baseUrl = process.env.BACKEND_URL || 'https://api.Shipcrowd.com';
 
     const webhooks = [
       {
@@ -987,7 +987,7 @@ export class WooCommerceService {
    */
   async registerWebhooks(store: IWooCommerceStore): Promise<void> {
     const apiClient = this.createApiClient(store);
-    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
+    const baseUrl = process.env.BACKEND_URL || 'https://api.Shipcrowd.com';
 
     const webhooks = [
       {
@@ -1515,7 +1515,7 @@ export class FlipkartOAuthService {
    */
   async registerWebhooks(store: IFlipkartStore): Promise<void> {
     const apiClient = await this.createApiClient(store);
-    const baseUrl = process.env.APP_URL || 'https://api.Shipcrowd.com';
+    const baseUrl = process.env.BACKEND_URL || 'https://api.Shipcrowd.com';
     const webhookSecret = crypto.randomBytes(32).toString('hex');
 
     const webhookTopics = [
@@ -2433,7 +2433,7 @@ FLIPKART_API_BASE_URL=https://api.flipkart.net/sellers
 ENCRYPTION_KEY=your_64_char_hex_encryption_key
 
 # App URL
-APP_URL=https://api.Shipcrowd.com
+BACKEND_URL=https://api.Shipcrowd.com
 ```
 
 ---

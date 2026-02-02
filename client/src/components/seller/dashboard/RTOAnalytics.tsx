@@ -58,7 +58,7 @@ const RTOAnalytics = memo(function RTOAnalytics({
         );
     }
 
-    if (error || !rtoData) {
+    if (error || !rtoData || !rtoData.summary) {
         return (
             <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] p-6">
                 <div className="flex flex-col items-center justify-center py-12 text-center">

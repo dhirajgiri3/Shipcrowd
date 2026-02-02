@@ -760,14 +760,14 @@ export const getWalletStats = async (
 
         // Check cache
         const cacheKey = `analytics:wallet:${auth.companyId}:${startDate || 'all'}:${endDate || 'all'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Wallet stats (cached)');
             return;
         }
 
         const stats = await RevenueAnalyticsService.getWalletStats(auth.companyId!, dateRange);
-        cacheService.set(cacheKey, stats, 300);
+        await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Wallet stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching wallet stats:', error);
@@ -793,14 +793,14 @@ export const getCustomerStats = async (
 
         // Check cache
         const cacheKey = `analytics:customer:${auth.companyId}:${startDate || 'all'}:${endDate || 'all'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Customer stats (cached)');
             return;
         }
 
         const stats = await CustomerAnalyticsService.getCustomerStats(auth.companyId!, dateRange);
-        cacheService.set(cacheKey, stats, 300);
+        await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Customer stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching customer stats:', error);
@@ -827,14 +827,14 @@ export const getTopCustomers = async (
 
         // Check cache
         const cacheKey = `analytics:topcustomers:${auth.companyId}:${limit}:${startDate || 'all'}:${endDate || 'all'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Top customers (cached)');
             return;
         }
 
         const customers = await CustomerAnalyticsService.getTopCustomers(auth.companyId!, dateRange, limit);
-        cacheService.set(cacheKey, customers, 300);
+        await cacheService.set(cacheKey, customers, 300);
         sendSuccess(res, customers, 'Top customers retrieved successfully');
     } catch (error) {
         logger.error('Error fetching top customers:', error);
@@ -858,14 +858,14 @@ export const getInventoryStats = async (
 
         // Check cache
         const cacheKey = `analytics:inventory:${auth.companyId}:${warehouseId || 'all'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Inventory stats (cached)');
             return;
         }
 
         const stats = await InventoryAnalyticsService.getStockLevels(auth.companyId!, warehouseId);
-        cacheService.set(cacheKey, stats, 300);
+        await cacheService.set(cacheKey, stats, 300);
         sendSuccess(res, stats, 'Inventory stats retrieved successfully');
     } catch (error) {
         logger.error('Error fetching inventory stats:', error);
@@ -892,14 +892,14 @@ export const getTopProducts = async (
 
         // Check cache
         const cacheKey = `analytics:topproducts:${auth.companyId}:${limit}:${startDate || 'all'}:${endDate || 'all'}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Top products (cached)');
             return;
         }
 
         const products = await OrderAnalyticsService.getTopProducts(auth.companyId!, dateRange, limit);
-        cacheService.set(cacheKey, products, 300);
+        await cacheService.set(cacheKey, products, 300);
         sendSuccess(res, products, 'Top products retrieved successfully');
     } catch (error) {
         logger.error('Error fetching top products:', error);
@@ -1180,7 +1180,7 @@ export const getRTOAnalytics = async (
 
         // Cache key
         const cacheKey = `analytics:rto:${auth.companyId}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'RTO analytics retrieved from cache');
             return;
@@ -1189,7 +1189,7 @@ export const getRTOAnalytics = async (
         const analytics = await RTOService.getRTOAnalytics(auth.companyId!);
 
         // Cache for 5 minutes
-        cacheService.set(cacheKey, analytics, 300);
+        await cacheService.set(cacheKey, analytics, 300);
 
         sendSuccess(res, analytics, 'RTO analytics retrieved successfully');
     } catch (error) {
@@ -1213,7 +1213,7 @@ export const getProfitabilityAnalytics = async (
 
         // Cache key
         const cacheKey = `analytics:profitability:${auth.companyId}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Profitability analytics retrieved from cache');
             return;
@@ -1222,7 +1222,7 @@ export const getProfitabilityAnalytics = async (
         const analytics = await RevenueAnalyticsService.getProfitabilityAnalytics(auth.companyId!);
 
         // Cache for 5 minutes
-        cacheService.set(cacheKey, analytics, 300);
+        await cacheService.set(cacheKey, analytics, 300);
 
         sendSuccess(res, analytics, 'Profitability analytics retrieved successfully');
     } catch (error) {
@@ -1269,7 +1269,7 @@ export const getGeographicInsights = async (
 
         // Cache key
         const cacheKey = `analytics:geography:${auth.companyId}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             sendSuccess(res, cached, 'Geographic insights retrieved from cache');
             return;
@@ -1278,7 +1278,7 @@ export const getGeographicInsights = async (
         const analytics = await GeographicAnalyticsService.getGeographicInsights(auth.companyId!);
 
         // Cache for 5 minutes
-        cacheService.set(cacheKey, analytics, 300);
+        await cacheService.set(cacheKey, analytics, 300);
 
         sendSuccess(res, analytics, 'Geographic insights retrieved successfully');
     } catch (error) {

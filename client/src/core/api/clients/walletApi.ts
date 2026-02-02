@@ -28,7 +28,12 @@ export class WalletApiService {
    */
   async getTransactions(filters?: TransactionFilters): Promise<WalletTransactionResponse> {
     const response = await apiClient.get('/finance/wallet/transactions', { params: filters });
-    return response.data.data;
+    // Transform backend "data" array to "transactions" key to match interface
+    return {
+      transactions: response.data.data,
+      // @ts-ignore - pagination exists in API response but not typed in axios response wrapper yet
+      pagination: response.data.pagination
+    };
   }
 
   /**

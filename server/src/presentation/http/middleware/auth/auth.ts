@@ -31,6 +31,11 @@ export const authenticate = async (
       }
     }
 
+    // Allow token from query param (for install links/magic links)
+    if (!token && req.query.token) {
+      token = req.query.token as string;
+    }
+
     if (!token) {
       res.status(401).json({ message: 'Authentication required' });
       return;

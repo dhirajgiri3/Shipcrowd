@@ -1096,7 +1096,7 @@ private async sendLowBalanceAlert(wallet: IWallet): Promise<void> {
     data: {
       availableBalance: wallet.availableBalance,
       threshold: wallet.lowBalanceThreshold,
-      rechargeUrl: `${process.env.APP_URL}/wallet/recharge`
+      rechargeUrl: `${process.env.BACKEND_URL}/wallet/recharge`
     }
   });
 

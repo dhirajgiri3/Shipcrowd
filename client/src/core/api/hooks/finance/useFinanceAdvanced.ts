@@ -20,16 +20,26 @@ export interface AvailableBalance {
 
 export interface CashFlowData {
     date: string;
-    inflow: number;
-    outflow: number;
-    net: number;
+    inflows: number;
+    outflows: number;
+    netChange: number;
+    projectedBalance: number;
 }
 
 export interface CashFlowForecast {
     forecast: CashFlowData[];
-    trend: 'improving' | 'declining' | 'stable';
-    projectedBalance30Days: number;
-    projectedBalance60Days: number;
+    summary: {
+        currentBalance: number;
+        projectedBalance7Days: number;
+        totalInflows: number;
+        totalOutflows: number;
+        lowBalanceWarning: boolean;
+        warningDate: string | null;
+    };
+    averages: {
+        dailyInflow: number;
+        dailyOutflow: number;
+    };
 }
 
 export interface SpendingInsight {
@@ -111,26 +121,27 @@ export const transformCashFlowToComponent = (data: CashFlowForecast, currentBala
     // Current running balance
     let runningBalance = currentBalance;
 
-    const forecast = data.forecast.map(d => {
-        // Update running balance
-        runningBalance += d.net;
+    const forecast = data.forecast?.map(d => {
+        // Update running balance (using backend provided netChange)
+        const change = d.netChange ?? 0;
+        runningBalance += change;
 
         return {
             date: d.date,
-            inflows: d.inflow > 0 ? [{
+            inflows: (d.inflows ?? 0) > 0 ? [{
                 type: 'other' as const,
-                amount: d.inflow,
+                amount: d.inflows,
                 source: 'Aggregated Inflow'
             }] : [],
-            outflows: d.outflow > 0 ? [{
+            outflows: (d.outflows ?? 0) > 0 ? [{
                 type: 'other' as const,
-                amount: d.outflow,
+                amount: d.outflows,
                 estimated: true
             }] : [],
-            netChange: d.net,
+            netChange: change,
             endingBalance: runningBalance
         };
-    });
+    }) || [];
 
     // Generate basic alerts based on forecast
     const alerts: Array<{
@@ -149,10 +160,13 @@ export const transformCashFlowToComponent = (data: CashFlowForecast, currentBala
         }
     });
 
+    // Use summary data from backend if available, otherwise default
+    const projectedBalance = data.summary?.projectedBalance7Days ?? runningBalance;
+
     return {
         currentBalance,
         forecast,
-        projectedBalance: data.projectedBalance30Days, // Using 30-day projection as main metric
+        projectedBalance: projectedBalance,
         alerts
     };
 };

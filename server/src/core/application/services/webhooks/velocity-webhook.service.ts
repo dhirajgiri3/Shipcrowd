@@ -14,7 +14,6 @@
  * See SERVICE_TEMPLATE.md for documentation standards.
  */
 
-import mongoose from 'mongoose';
 import logger from '../../../../shared/logger/winston.logger';
 import { Shipment, RTOEvent } from '../../../../infrastructure/database/mongoose/models';
 import { IRTOEvent } from '../../../../infrastructure/database/mongoose/models/logistics/shipping/exceptions/rto-event.model';
@@ -42,7 +41,6 @@ export class VelocityWebhookService implements WebhookEventHandler {
 
       try {
         // Try Redis first (if available), fall back to in-memory Set if needed
-        // Note: Dynamic import to avoid circular dependency issues during initialization
         const { CacheService } = await import('@/infrastructure/utilities/cache.service.js');
         const alreadyProcessed = await CacheService.get(cacheKey);
 
@@ -137,12 +135,10 @@ export class VelocityWebhookService implements WebhookEventHandler {
         throw new Error(updateResult.error || 'Failed to update shipment status');
       }
 
-      // If status updated, we might need to handle specific logic if it wasn't handled in ShipmentService
+      // If status updated, we might need to handle specific logic if it wasn't handled in Shipment Service
       // Note: ShipmentService handles delivered, ndr, order sync, and outbound webhooks.
-      // We don't need to duplicate that logic here.
 
       // Reload shipment to get latest state for logging/response
-      // (Optional, or just use what we have. ShipmentService returns updated shipment)
       const updatedShipment = updateResult.shipment;
 
       // Update local reference for subsequent logic (like auto-sync) if needed

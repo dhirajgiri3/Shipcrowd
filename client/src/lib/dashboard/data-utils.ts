@@ -245,7 +245,11 @@ export function useDataWithFallback<T>(
 /**
  * Format currency for Indian Rupees
  */
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number | null | undefined): string {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+        return '₹0';
+    }
+
     if (amount >= 10000000) {
         return `₹${(amount / 10000000).toFixed(2)}Cr`;
     }

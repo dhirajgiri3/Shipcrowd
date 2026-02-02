@@ -548,6 +548,27 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     const now = Date.now();
     const sessionExpiresAt = updatedSession.expiresAt.getTime();
     const remainingTimeMs = sessionExpiresAt - now;
+
+    // ✅ FIX: Validate session hasn't expired
+    // If remainingTimeMs is negative or very small, cookies would expire immediately
+    if (remainingTimeMs <= 0) {
+      logger.warn(`Session expired for user ${typedUser._id}. ExpiresAt: ${updatedSession.expiresAt}, Now: ${new Date()}`);
+      throw new AuthenticationError(
+        'Your session has expired. Please log in again to access your account.',
+        ErrorCode.AUTH_TOKEN_EXPIRED
+      );
+    }
+
+    // ✅ FIX: Reject sessions with less than 1 minute remaining
+    // This prevents setting cookies with very short maxAge that expire almost immediately
+    if (remainingTimeMs < 60 * 1000) {
+      logger.warn(`Session about to expire for user ${typedUser._id}. Remaining: ${remainingTimeMs}ms`);
+      throw new AuthenticationError(
+        'Your session is about to expire. Please log in again.',
+        ErrorCode.AUTH_TOKEN_EXPIRED
+      );
+    }
+
     const remainingTimeDays = Math.ceil(remainingTimeMs / (24 * 60 * 60 * 1000));
 
     // Generate new refresh token with remaining time (maintains remember me setting)
@@ -565,6 +586,10 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     updatedSession.lastRotatedAt = new Date();
     updatedSession.lastActive = new Date();
     await updatedSession.save();
+
+    // ✅ DEBUG: Log cookie details for troubleshooting
+    logger.debug(`Setting refresh cookie: maxAge=${remainingTimeMs}ms (${remainingTimeDays}d) for user ${typedUser._id}`);
+    logger.debug(`Setting access cookie: maxAge=${15 * 60 * 1000}ms (15min) for user ${typedUser._id}`);
 
     res.cookie(refreshCookieName, newRefreshToken, getAuthCookieOptions(remainingTimeMs));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));

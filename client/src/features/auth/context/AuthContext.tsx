@@ -167,11 +167,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // - Token was revoked or blacklisted
         console.error('[Auth] Refresh failed - session expired', err);
 
-        // Clear user state and stop refresh loop
+        // Clear user state
         setUser(null);
+
+        // Stop refresh loop
         if (refreshIntervalRef.current) {
           clearInterval(refreshIntervalRef.current);
           refreshIntervalRef.current = null;
+        }
+
+        // ✅ FIX: Redirect to login with session expired message
+        // This prevents the blank screen issue
+        if (typeof window !== 'undefined') {
+          // Clear any client-side auth state
+          resetAuthState();
+
+          // Redirect to login page
+          window.location.href = '/login?session_expired=true';
         }
       }
     };

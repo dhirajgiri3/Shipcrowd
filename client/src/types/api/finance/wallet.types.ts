@@ -13,6 +13,8 @@ export interface WalletBalance {
     balance: number;
     currency?: string;
     lastUpdated?: Date;
+    lowBalanceThreshold?: number;
+    isLowBalance?: boolean;
 }
 
 // ==================== Wallet Transaction ====================
