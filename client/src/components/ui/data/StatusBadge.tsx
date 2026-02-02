@@ -45,6 +45,9 @@ export type DisputeStatusValue = keyof typeof STATUS_CONFIGS.dispute;
 export type RemittanceStatusValue = keyof typeof STATUS_CONFIGS.remittance;
 export type PayoutStatusValue = keyof typeof STATUS_CONFIGS.payout;
 export type WebhookStatusValue = keyof typeof STATUS_CONFIGS.webhook;
+export type CompanyStatusValue = keyof typeof STATUS_CONFIGS.company;
+export type CouponStatusValue = keyof typeof STATUS_CONFIGS.coupon;
+export type CourierStatusValue = keyof typeof STATUS_CONFIGS.courier;
 
 export type StatusValue =
   | ReturnStatusValue
@@ -54,6 +57,9 @@ export type StatusValue =
   | RemittanceStatusValue
   | PayoutStatusValue
   | WebhookStatusValue
+  | CompanyStatusValue
+  | CouponStatusValue
+  | CourierStatusValue
   | string;
 
 export interface StatusBadgeProps {

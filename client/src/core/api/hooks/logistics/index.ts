@@ -1,5 +1,5 @@
 // Logistics & Delivery Hooks
-export * from './useCouriers';
+export * from '../admin/couriers/useCouriers';
 export * from './useZones';
 export * from './useWarehouses';
 export * from './useAddress';

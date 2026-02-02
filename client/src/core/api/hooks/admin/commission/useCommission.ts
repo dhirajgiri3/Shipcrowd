@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../http';
-import { queryKeys, FilterParams } from '../../config/query-keys';
-import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { apiClient, ApiError } from '@/src/core/api/http';
+import { queryKeys, FilterParams } from '@/src/core/api/config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '@/src/core/api/config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 
 // NOTE: Backend uses response helpers like sendSuccess/sendPaginated:
@@ -398,4 +399,97 @@ export function useBulkRejectTransactions(
         retry: RETRY_CONFIG.DEFAULT,
         ...options,
     });
+}
+
+// ===================== Page Controller =====================
+
+export function useCommissionPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('pending');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+
+    const queryFilters = {
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        // Add search logic if backend supports it based on searchQuery, e.g. search: searchQuery
+    };
+
+    const { data, isLoading, isError, error } = useCommissionTransactions(queryFilters);
+    const { mutate: bulkApprove, isPending: isApproving } = useBulkApproveTransactions();
+    const { mutate: bulkReject, isPending: isRejecting } = useBulkRejectTransactions();
+
+    const transactions = data?.data || [];
+    const allIds = transactions.map(t => t._id);
+    const areAllSelected = transactions.length > 0 && selectedIds.size === transactions.length;
+
+    const toggleSelectAll = () => {
+        if (areAllSelected) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(allIds));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBulkApprove = () => {
+        if (selectedIds.size === 0) return;
+        if (confirm(`Approve ${selectedIds.size} transactions?`)) {
+            bulkApprove({ transactionIds: Array.from(selectedIds) }, {
+                onSuccess: () => setSelectedIds(new Set())
+            });
+        }
+    };
+
+    const handleBulkReject = () => {
+        if (selectedIds.size === 0) return;
+        bulkReject({ transactionIds: Array.from(selectedIds), reason: rejectionReason }, {
+            onSuccess: () => {
+                setSelectedIds(new Set());
+                setIsRejectDialogOpen(false);
+                setRejectionReason('');
+            }
+        });
+    };
+
+    return {
+        // State
+        searchQuery,
+        setSearchQuery,
+        statusFilter,
+        setStatusFilter,
+        selectedIds,
+        setSelectedIds,
+        isRejectDialogOpen,
+        setIsRejectDialogOpen,
+        rejectionReason,
+        setRejectionReason,
+
+        // Data
+        transactions,
+        isLoading,
+        isError,
+        error,
+
+        // Computed
+        areAllSelected,
+        isApproving,
+        isRejecting,
+
+        // Actions
+        toggleSelectAll,
+        toggleSelect,
+        handleBulkApprove,
+        handleBulkReject,
+
+    };
 }

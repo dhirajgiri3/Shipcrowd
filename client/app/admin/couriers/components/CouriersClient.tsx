@@ -1,10 +1,11 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useState } from 'react';
+
 import { Card, CardContent } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { StatusBadge } from '@/src/components/ui/data/StatusBadge';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import {
     Truck,
@@ -13,17 +14,27 @@ import {
     AlertCircle,
     CheckCircle,
 } from 'lucide-react';
-import { useCarriers } from '@/src/core/api/hooks/logistics/useCarriers';
+import { useCouriersPage } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import { Loader } from '@/src/components/ui/feedback/Loader';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
 import { cn } from '@/src/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export function CouriersClient() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
     const { addToast } = useToast();
+    const router = useRouter();
 
-    // Integration: Fetch real carriers
-    const { data: carriers = [], isLoading, isError, error, refetch } = useCarriers();
+    const {
+        searchQuery,
+        setSearchQuery,
+        selectedStatus,
+        setSelectedStatus,
+        filteredCouriers,
+        isLoading,
+        isError,
+        error,
+        refetch
+    } = useCouriersPage();
 
     // Handle error
     if (isError) {
@@ -32,25 +43,24 @@ export function CouriersClient() {
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
 
         return (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-                <AlertCircle className="h-10 w-10 text-[var(--error)] mb-2" />
-                <h3 className="text-lg font-medium text-[var(--text-primary)]">Failed to load carriers</h3>
-                <p className="text-[var(--text-secondary)] mb-4">{errorMessage}</p>
-                <Button onClick={() => refetch()} variant="outline">Retry</Button>
+            <div className="flex flex-col items-center justify-center h-96 text-center">
+                <EmptyState
+                    icon={<AlertCircle className="w-12 h-12" />}
+                    title="Failed to load carriers"
+                    description={errorMessage}
+                    action={{
+                        label: 'Retry connection',
+                        onClick: () => refetch(),
+                        variant: 'outline'
+                    }}
+                />
             </div>
         );
     }
 
     if (isLoading) {
-        return <Loader centered size="lg" message="Loading carriers..." />;
+        return <Loader message="Loading carriers..." />;
     }
-
-    const filteredCouriers = carriers.filter(carrier => {
-        const matchesSearch = carrier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            carrier.code.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = selectedStatus === 'all' || carrier.status === selectedStatus;
-        return matchesSearch && matchesStatus;
-    });
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -77,8 +87,8 @@ export function CouriersClient() {
             {/* Filters */}
             <Card>
                 <CardContent className="p-4">
-                    <div className="flex flex-col lg:flex-row gap-4">
-                        <div className="flex-1">
+                    <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+                        <div className="flex-1 w-full lg:w-auto">
                             <Input
                                 placeholder="Search couriers..."
                                 value={searchQuery}
@@ -92,7 +102,7 @@ export function CouriersClient() {
                                     key={status}
                                     onClick={() => setSelectedStatus(status)}
                                     className={cn(
-                                        "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
+                                        "px-4 py-2 text-sm font-medium rounded-md transition-all capitalize",
                                         selectedStatus === status
                                             ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
                                             : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
@@ -107,74 +117,83 @@ export function CouriersClient() {
             </Card>
 
             {/* Couriers Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredCouriers.map((courier) => (
-                    <Card
-                        key={courier.id}
-                        className="hover:shadow-lg transition-all group cursor-pointer"
-                        onClick={() => addToast(`Viewing ${courier.name} details...`, 'info')}
-                    >
-                        <CardContent className="p-5">
-                            <div className="space-y-4">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center font-bold text-[var(--text-secondary)]">
-                                            {/* Logo placeholder or image logic if available */}
-                                            {courier.name.slice(0, 2).toUpperCase()}
+            {filteredCouriers.length === 0 ? (
+                <EmptyState
+                    icon={<Truck className="w-12 h-12" />}
+                    title="No couriers found"
+                    description="Try adjusting your search criteria"
+                />
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredCouriers.map((courier) => (
+                        <Card
+                            key={courier.id}
+                            className="hover:shadow-lg transition-all group cursor-pointer border-[var(--border-subtle)] hover:border-[var(--primary-blue-soft)]"
+                            onClick={() => router.push(`/admin/couriers/${courier.id}`)}
+                        >
+                            <CardContent className="p-5">
+                                <div className="space-y-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-12 w-12 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center font-bold text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                                                {/* Logo placeholder or image logic if available */}
+                                                {courier.logo ? (
+                                                    <img src={courier.logo} alt={courier.name} className="h-8 w-8 object-contain" />
+                                                ) : (
+                                                    courier.name.slice(0, 2).toUpperCase()
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary-blue)] transition-colors">{courier.name}</h3>
+                                                <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">{courier.code}</p>
+                                            </div>
+                                        </div>
+                                        <StatusBadge
+                                            domain="courier"
+                                            status={courier.status}
+                                            size="sm"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                        <div className="bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-subtle)]">
+                                            <p className="text-xs text-[var(--text-muted)] mb-1 uppercase font-semibold">Services</p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {courier.services.map((s, idx) => (
+                                                    <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0.5 h-auto font-normal bg-[var(--bg-primary)]">{s}</Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-subtle)]">
+                                            <p className="text-xs text-[var(--text-muted)] mb-1 uppercase font-semibold">Features</p>
+                                            <div className="flex flex-col gap-1.5 text-xs mt-1">
+                                                <span className={cn("flex items-center gap-1.5", courier.codEnabled ? "text-[var(--success)]" : "text-[var(--text-muted)]")}>
+                                                    <div className={cn("h-1.5 w-1.5 rounded-full", courier.codEnabled ? "bg-[var(--success)]" : "bg-[var(--text-muted)]")} />
+                                                    COD
+                                                </span>
+                                                <span className={cn("flex items-center gap-1.5", courier.trackingEnabled ? "text-[var(--info)]" : "text-[var(--text-muted)]")}>
+                                                    <div className={cn("h-1.5 w-1.5 rounded-full", courier.trackingEnabled ? "bg-[var(--info)]" : "bg-[var(--text-muted)]")} />
+                                                    Tracking
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-[var(--border-subtle)] grid grid-cols-2 gap-4 text-xs">
+                                        <div>
+                                            <p className="text-[var(--text-muted)] mb-0.5">Max Weight</p>
+                                            <p className="font-medium text-[var(--text-primary)]">{courier.weightLimit || '-'} kg</p>
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-[var(--text-primary)]">{courier.name}</h3>
-                                            <p className="text-xs text-[var(--text-secondary)] capitalize">{courier.code}</p>
-                                        </div>
-                                    </div>
-                                    <Badge variant={courier.status === 'active' ? 'success' : 'neutral'}>
-                                        {courier.status}
-                                    </Badge>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div className="bg-[var(--bg-secondary)] p-3 rounded-lg">
-                                        <p className="text-xs text-[var(--text-muted)] mb-1">Services</p>
-                                        <div className="flex flex-wrap gap-1">
-                                            {courier.services.map((s, idx) => (
-                                                <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0">{s}</Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="bg-[var(--bg-secondary)] p-3 rounded-lg">
-                                        <p className="text-xs text-[var(--text-muted)] mb-1">Features</p>
-                                        <div className="flex flex-col gap-1 text-xs">
-                                            {courier.codEnabled && <span className="flex items-center gap-1 text-[var(--success)]"><CheckCircle className="h-3 w-3" /> COD</span>}
-                                            {courier.trackingEnabled && <span className="flex items-center gap-1 text-[var(--info)]"><CheckCircle className="h-3 w-3" /> Tracking</span>}
+                                            <p className="text-[var(--text-muted)] mb-0.5">COD Limit</p>
+                                            <p className="font-medium text-[var(--text-primary)]">₹{courier.codLimit ? courier.codLimit.toLocaleString() : '-'}</p>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="pt-3 border-t border-[var(--border-subtle)] grid grid-cols-2 gap-4 text-xs">
-                                    <div>
-                                        <p className="text-[var(--text-muted)]">Max Weight</p>
-                                        <p className="font-medium text-[var(--text-primary)]">{courier.weightLimit || '-'} kg</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[var(--text-muted)]">COD Limit</p>
-                                        <p className="font-medium text-[var(--text-primary)]">₹{courier.codLimit ? courier.codLimit.toLocaleString() : '-'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Empty State */}
-            {filteredCouriers.length === 0 && (
-                <Card>
-                    <CardContent className="py-12 text-center">
-                        <Truck className="h-12 w-12 mx-auto mb-4 text-[var(--text-muted)]" />
-                        <h3 className="text-lg font-medium text-[var(--text-primary)]">No couriers found</h3>
-                        <p className="mt-1 text-[var(--text-secondary)]">Try adjusting your search criteria</p>
-                    </CardContent>
-                </Card>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
             )}
         </div>
     );

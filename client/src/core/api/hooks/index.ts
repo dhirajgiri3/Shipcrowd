@@ -44,7 +44,8 @@ export * from './analytics';
 export * from './seller';
 
 // Commission Management
-export * from './commission';
+// Commission Management (Moved to Admin)
+// export * from './commission';
 
 // Admin Operations
 export * from './admin';

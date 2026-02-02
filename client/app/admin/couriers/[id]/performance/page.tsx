@@ -11,7 +11,9 @@ import {
     CardTitle,
 } from '@/src/components/ui/core/Card';
 import { Badge } from '@/src/components/ui/core/Badge';
-import { useCourier, useCourierPerformance } from '@/src/core/api/hooks/logistics/useCouriers';
+import { Loader } from '@/src/components/ui/feedback/Loader';
+import { EmptyState } from '@/src/components/ui/feedback/EmptyState';
+import { useCourier, useCourierPerformance } from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import type { PerformanceFilters } from '@/src/types/api/logistics';
 import {
     ChevronLeft,
@@ -22,6 +24,7 @@ import {
     DollarSign,
     Award,
     MapPin,
+    BarChart2,
 } from 'lucide-react';
 
 export default function CourierPerformancePage({ params }: { params: { id: string } }) {
@@ -39,15 +42,11 @@ export default function CourierPerformancePage({ params }: { params: { id: strin
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <p className="text-muted-foreground">Loading performance data...</p>
-            </div>
-        );
+        return <Loader variant="spinner" size="lg" message="Loading performance analytics..." centered />;
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -132,7 +131,7 @@ export default function CourierPerformancePage({ params }: { params: { id: strin
                 </CardContent>
             </Card>
 
-            {performance && (
+            {performance ? (
                 <>
                     {/* Key Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -213,7 +212,7 @@ export default function CourierPerformancePage({ params }: { params: { id: strin
                                             className="h-full bg-primary"
                                             style={{
                                                 width: `${((performance.totalCouriers - performance.ranking + 1) /
-                                                        performance.totalCouriers) *
+                                                    performance.totalCouriers) *
                                                     100
                                                     }%`,
                                             }}
@@ -335,10 +334,10 @@ export default function CourierPerformancePage({ params }: { params: { id: strin
                                                         <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
                                                             <div
                                                                 className={`h-full ${zone.successRate >= 90
-                                                                        ? 'bg-green-500'
-                                                                        : zone.successRate >= 75
-                                                                            ? 'bg-yellow-500'
-                                                                            : 'bg-red-500'
+                                                                    ? 'bg-green-500'
+                                                                    : zone.successRate >= 75
+                                                                        ? 'bg-yellow-500'
+                                                                        : 'bg-red-500'
                                                                     }`}
                                                                 style={{
                                                                     width: `${zone.successRate}%`,
@@ -361,16 +360,12 @@ export default function CourierPerformancePage({ params }: { params: { id: strin
                         </CardContent>
                     </Card>
                 </>
-            )}
-
-            {!performance && !isLoading && (
-                <Card>
-                    <CardContent className="py-12 text-center">
-                        <p className="text-muted-foreground">
-                            No performance data available for the selected period
-                        </p>
-                    </CardContent>
-                </Card>
+            ) : (
+                <EmptyState
+                    icon={<BarChart2 className="w-12 h-12" />}
+                    title="No performance data found"
+                    description="No performance data available for the selected period"
+                />
             )}
         </div>
     );

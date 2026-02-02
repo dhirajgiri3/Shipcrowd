@@ -1,56 +1,46 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
+import { DataTable } from '@/src/components/ui/data/DataTable';
 import {
     Receipt,
     Search,
     Download,
-    Filter,
     IndianRupee,
     Users,
-    TrendingUp,
+    Clock,
     AlertCircle,
     CheckCircle,
-    Clock,
     XCircle,
     Plus,
     X,
-    Calendar,
-    Loader2
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
-import { useToast } from '@/src/components/ui/feedback/Toast';
-import { useAdminBillingOverview, useAdminTransactions } from '@/src/core/api/hooks/admin/useAdminBilling';
-import { useDebouncedValue } from '@/src/hooks/data';
+import { useBillingPage } from '@/src/core/api/hooks/admin/billing/useBilling';
 import type { BillingTransaction } from '@/src/core/api/clients/billingApi';
 
-
-
-
 export function BillingClient() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const debouncedSearch = useDebouncedValue(searchQuery, 500);
-    const [selectedStatus, setSelectedStatus] = useState<'all' | 'success' | 'pending' | 'failed'>('all');
-    const [activeTab, setActiveTab] = useState<'recharges' | 'manual'>('recharges');
-    const [showAddManual, setShowAddManual] = useState(false);
-    const { addToast } = useToast();
-
-    // API Hooks
-    const { data: overviewStats } = useAdminBillingOverview();
-
-    // Transactions Query
-    const { data: transactionsData, isLoading } = useAdminTransactions({
-        search: debouncedSearch,
-        status: selectedStatus === 'all' ? undefined : selectedStatus,
-        type: activeTab === 'manual' ? 'adjustment' : 'recharge', // Basic mapping, adjust as needed
-    });
-
-    const transactions = transactionsData?.transactions || [];
+    const {
+        searchQuery,
+        selectedStatus,
+        activeTab,
+        showAddManual,
+        setShowAddManual,
+        manualForm,
+        setManualForm,
+        overviewStats,
+        transactions,
+        isLoading,
+        handleSearchChange,
+        handleStatusChange,
+        handleTabChange,
+        submitManualEntry,
+        addToast
+    } = useBillingPage();
 
     // Helper for badges
     const getStatusBadge = (status: string) => {
@@ -66,6 +56,78 @@ export function BillingClient() {
         }
     };
 
+    // Columns Configuration
+    const columns = [
+        {
+            accessorKey: 'companyName',
+            header: 'Seller',
+            cell: (row: BillingTransaction) => (
+                <div>
+                    <p className="font-medium text-[var(--text-primary)]">{row.companyName}</p>
+                    {activeTab === 'recharges' && (
+                        <p className="text-xs text-[var(--text-muted)]">Start: {formatCurrency(row.balanceBefore)}</p>
+                    )}
+                </div>
+            )
+        },
+        {
+            accessorKey: 'amount',
+            header: 'Amount',
+            cell: (row: BillingTransaction) => (
+                <p className={cn(
+                    "font-semibold",
+                    row.type === 'credit' ? "text-[var(--success)]" : "text-[var(--text-primary)]"
+                )}>
+                    {row.type === 'credit' ? '+' : '-'}{formatCurrency(row.amount)}
+                </p>
+            )
+        },
+        {
+            accessorKey: 'type',
+            header: 'Type',
+            cell: (row: BillingTransaction) => (
+                activeTab === 'manual' ? (
+                    <Badge variant={row.type === 'credit' ? 'success' : 'warning'}>
+                        {row.type === 'credit' ? 'Credit' : 'Debit'}
+                    </Badge>
+                ) : (
+                    <p className="text-sm text-[var(--text-primary)] capitalize">{row.category.replace('_', ' ')}</p>
+                )
+            )
+        },
+        activeTab === 'recharges' ? {
+            accessorKey: 'referenceId',
+            header: 'Reference',
+            cell: (row: BillingTransaction) => (
+                <code className="text-xs font-mono bg-[var(--bg-secondary)] px-1 py-0.5 rounded">{row.referenceId || '-'}</code>
+            )
+        } : {
+            accessorKey: 'description',
+            header: 'Description',
+            cell: (row: BillingTransaction) => (
+                <p className="text-sm text-gray-600 max-w-xs truncate">{row.description}</p>
+            )
+        },
+        {
+            accessorKey: 'createdAt',
+            header: 'Date',
+            cell: (row: BillingTransaction) => (
+                <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <Clock className="h-3.5 w-3.5" />
+                    {new Date(row.createdAt).toLocaleDateString()}
+                </div>
+            )
+        },
+    ];
+
+    // Status Column only for recharges
+    if (activeTab === 'recharges') {
+        columns.push({
+            accessorKey: 'status',
+            header: 'Status',
+            cell: (row: BillingTransaction) => getStatusBadge(row.status)
+        });
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -113,7 +175,7 @@ export function BillingClient() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Pending Recharges</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Pending</p>
                                 <p className="text-2xl font-bold text-[var(--warning)]">
                                     {formatCurrency(overviewStats?.pendingRecharges || 0)}
                                 </p>
@@ -128,7 +190,7 @@ export function BillingClient() {
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-[var(--text-secondary)]">Failed Transactions</p>
+                                <p className="text-sm text-[var(--text-secondary)]">Failed</p>
                                 <p className="text-2xl font-bold text-[var(--error)]">
                                     {overviewStats?.failedTransactions || 0}
                                 </p>
@@ -172,7 +234,11 @@ export function BillingClient() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Seller *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
+                                <select
+                                    className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                    value={manualForm.sellerId}
+                                    onChange={(e) => setManualForm({ ...manualForm, sellerId: e.target.value })}
+                                >
                                     <option value="">Select Seller</option>
                                     <option value="slr-123">Fashion Hub India (SLR-123)</option>
                                     <option value="slr-456">ElectroMart (SLR-456)</option>
@@ -181,26 +247,36 @@ export function BillingClient() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Type *</label>
-                                <select className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300">
+                                <select
+                                    className="flex h-10 w-full rounded-lg border border-gray-200 bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-gray-300"
+                                    value={manualForm.type}
+                                    onChange={(e) => setManualForm({ ...manualForm, type: e.target.value })}
+                                >
                                     <option value="credit">Credit (Add Money)</option>
                                     <option value="debit">Debit (Deduct Money)</option>
                                 </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Amount (₹) *</label>
-                                <Input type="number" placeholder="Enter amount" />
+                                <Input
+                                    type="number"
+                                    placeholder="Enter amount"
+                                    value={manualForm.amount}
+                                    onChange={(e) => setManualForm({ ...manualForm, amount: e.target.value })}
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Reason *</label>
-                            <Input placeholder="e.g., Compensation for delayed COD remittance" />
+                            <Input
+                                placeholder="e.g., Compensation for delayed COD remittance"
+                                value={manualForm.reason}
+                                onChange={(e) => setManualForm({ ...manualForm, reason: e.target.value })}
+                            />
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                             <Button variant="outline" onClick={() => setShowAddManual(false)}>Cancel</Button>
-                            <Button onClick={() => {
-                                addToast('Manual entry added successfully!', 'success');
-                                setShowAddManual(false);
-                            }}>
+                            <Button onClick={submitManualEntry}>
                                 Submit Entry
                             </Button>
                         </div>
@@ -210,189 +286,62 @@ export function BillingClient() {
 
             {/* Tabs */}
             <div className="flex items-center gap-2 border-b pb-4 border-[var(--border-subtle)]">
-                <button
-                    onClick={() => setActiveTab('recharges')}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium rounded-lg transition-all",
-                        activeTab === 'recharges'
-                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
-                            : "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                    )}
-                >
-                    Seller Recharges
-                </button>
-                <button
-                    onClick={() => setActiveTab('manual')}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium rounded-lg transition-all",
-                        activeTab === 'manual'
-                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
-                            : "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                    )}
-                >
-                    Manual Entries
-                </button>
+                {(['recharges', 'manual'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => handleTabChange(tab)}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-lg transition-all capitalize",
+                            activeTab === tab
+                                ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                                : "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                        )}
+                    >
+                        {tab === 'recharges' ? 'Seller Recharges' : 'Manual Entries'}
+                    </button>
+                ))}
             </div>
 
-            {/* Recharges Tab */}
-            {activeTab === 'recharges' && (
-                <>
-                    {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-1">
-                            <Input
-                                placeholder="Search by seller name or transaction ID..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                icon={<Search className="h-4 w-4" />}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            {(['all', 'success', 'pending', 'failed'] as const).map((status) => (
-                                <button
-                                    key={status}
-                                    onClick={() => setSelectedStatus(status)}
-                                    className={cn(
-                                        "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
-                                        selectedStatus === status
-                                            ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
-                                            : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-                                    )}
-                                >
-                                    {status}
-                                </button>
-                            ))}
-                        </div>
+            {/* Content Area */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="flex-1">
+                    <Input
+                        placeholder="Search by seller name or transaction ID..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        icon={<Search className="h-4 w-4" />}
+                    />
+                </div>
+                {activeTab === 'recharges' && (
+                    <div className="flex gap-2">
+                        {(['all', 'success', 'pending', 'failed'] as const).map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => handleStatusChange(status)}
+                                className={cn(
+                                    "px-4 py-2 text-sm font-medium rounded-full transition-all capitalize",
+                                    selectedStatus === status
+                                        ? "bg-[var(--primary-blue)] text-[var(--text-inverse)]"
+                                        : "bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                                )}
+                            >
+                                {status}
+                            </button>
+                        ))}
                     </div>
+                )}
+            </div>
 
-                    {/* Recharges Table */}
-                    <Card>
-                        <CardContent className="p-0">
-                            {isLoading ? (
-                                <div className="flex items-center justify-center p-12">
-                                    <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
-                                            <tr>
-                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
-                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
-                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Type</th>
-                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Reference</th>
-                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                                                <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {transactions.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={6} className="p-8 text-center text-[var(--text-muted)]">
-                                                        No transactions found
-                                                    </td>
-                                                </tr>
-                                            ) : transactions.map((tx) => (
-                                                <tr key={tx._id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                    <td className="p-4">
-                                                        <p className="font-medium text-[var(--text-primary)]">{tx.companyName}</p>
-                                                        <p className="text-xs text-[var(--text-muted)]">Start: {formatCurrency(tx.balanceBefore)}</p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <p className={cn("font-semibold", tx.type === 'credit' ? "text-[var(--success)]" : "text-[var(--text-primary)]")}>
-                                                            {tx.type === 'credit' ? '+' : '-'}{formatCurrency(tx.amount)}
-                                                        </p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <p className="text-sm text-[var(--text-primary)] capitalize">{tx.category.replace('_', ' ')}</p>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <code className="text-xs font-mono bg-[var(--bg-secondary)] px-1 py-0.5 rounded">{tx.referenceId || '-'}</code>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                                                            <Calendar className="h-3.5 w-3.5" />
-                                                            {new Date(tx.createdAt).toLocaleDateString()}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        {getStatusBadge(tx.status)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </>
-            )}
-
-            {/* Manual Entries Tab */}
-            {activeTab === 'manual' && (
-                <Card>
-                    <CardContent className="p-0">
-                        {isLoading ? (
-                            <div className="flex items-center justify-center p-12">
-                                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-blue)]" />
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-[var(--bg-secondary)] border-b border-gray-100">
-                                        <tr>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">ID</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Seller</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Type</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Amount</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Description</th>
-                                            <th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {transactions.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={6} className="p-8 text-center text-[var(--text-muted)]">
-                                                    No manual entries found
-                                                </td>
-                                            </tr>
-                                        ) : transactions.map((entry) => (
-                                            <tr key={entry._id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                <td className="p-4">
-                                                    <code className="text-xs font-mono">{entry._id.substring(0, 8)}...</code>
-                                                </td>
-                                                <td className="p-4">
-                                                    <p className="font-medium text-[var(--text-primary)]">{entry.companyName}</p>
-                                                </td>
-                                                <td className="p-4">
-                                                    <Badge variant={entry.type === 'credit' ? 'success' : 'warning'}>
-                                                        {entry.type === 'credit' ? 'Credit' : 'Debit'}
-                                                    </Badge>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className={cn(
-                                                        "font-semibold",
-                                                        entry.type === 'credit' ? "text-[var(--success)]" : "text-[var(--error)]"
-                                                    )}>
-                                                        {entry.type === 'credit' ? '+' : '-'}{formatCurrency(entry.amount)}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4">
-                                                    <p className="text-sm text-gray-600 max-w-xs truncate">{entry.description}</p>
-                                                </td>
-                                                <td className="p-4">
-                                                    <p className="text-sm text-gray-600">{new Date(entry.createdAt).toLocaleDateString()}</p>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
+            <Card>
+                <CardContent className="p-0">
+                    <DataTable
+                        columns={columns}
+                        data={transactions}
+                        isLoading={isLoading}
+                        searchKey="companyName" // Optional, since we have api search
+                    />
+                </CardContent>
+            </Card>
         </div>
     );
 }

@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { companyApi, Company, CreateCompanyData } from '../../clients/companyApi';
+import { companyApi, Company, CompanyListResponse } from '../../clients/companyApi';
 import { queryKeys } from '../../config/query-keys';
 import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
@@ -24,22 +24,11 @@ export interface AdminSellerListParams {
  * Get all companies/sellers (Admin only)
  */
 export const useAdminSellers = (params?: AdminSellerListParams) => {
-    return useQuery<{ companies: Company[]; total: number; pages: number }, ApiError>({
+    return useQuery<CompanyListResponse, ApiError>({
         queryKey: queryKeys.admin.sellers.list(params),
         queryFn: async () => await companyApi.getAllCompanies(params),
         ...CACHE_TIMES.MEDIUM,
         retry: RETRY_CONFIG.DEFAULT,
-    });
-};
-
-/**
- * Get company stats (Admin only)
- */
-export const useAdminCompanyStats = () => {
-    return useQuery({
-        queryKey: queryKeys.settings.companies(),
-        queryFn: async () => await companyApi.getCompanyStats(),
-        ...CACHE_TIMES.LONG,
     });
 };
 

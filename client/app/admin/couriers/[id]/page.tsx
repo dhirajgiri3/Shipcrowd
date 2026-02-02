@@ -19,7 +19,7 @@ import {
     useUpdateCourier,
     useToggleCourierStatus,
     useTestCourierIntegration,
-} from '@/src/core/api/hooks/logistics/useCouriers';
+} from '@/src/core/api/hooks/admin/couriers/useCouriers';
 import type { UpdateCourierRequest } from '@/src/types/api/logistics';
 import {
     ChevronLeft,
@@ -34,7 +34,7 @@ import {
     TestTube,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Loader } from '@/src/components/ui';
+import { Loader, StatusBadge } from '@/src/components/ui';
 
 export default function CourierDetailPage({ params }: { params: { id: string } }) {
     const router = useRouter();
@@ -127,7 +127,7 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -141,9 +141,10 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
                     <div>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             {courier.name}
-                            <Badge variant={courier.isActive ? 'success' : 'outline'}>
-                                {courier.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
+                            <StatusBadge
+                                domain="courier"
+                                status={courier.isActive ? 'active' : 'inactive'}
+                            />
                             {getIntegrationStatusBadge(courier.integrationStatus)}
                         </h1>
                         <p className="text-muted-foreground mt-1">
@@ -360,13 +361,10 @@ export default function CourierDetailPage({ params }: { params: { id: string } }
                                         >
                                             <div className="flex items-center justify-between">
                                                 <h4 className="font-medium">{service.name}</h4>
-                                                <Badge
-                                                    variant={
-                                                        service.isActive ? 'success' : 'outline'
-                                                    }
-                                                >
-                                                    {service.isActive ? 'Active' : 'Inactive'}
-                                                </Badge>
+                                                <StatusBadge
+                                                    domain="courier"
+                                                    status={service.isActive ? 'active' : 'inactive'}
+                                                />
                                             </div>
                                             <p className="text-sm text-muted-foreground">
                                                 Code: <span className="font-mono">{service.code}</span>

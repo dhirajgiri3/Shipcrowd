@@ -58,6 +58,18 @@ export interface CreateCompanyData {
     billingInfo?: CompanyBillingInfo;
 }
 
+export interface CompanyPagination {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+}
+
+export interface CompanyListResponse {
+    companies: Company[];
+    pagination: CompanyPagination;
+}
+
 /**
  * Company API Service
  * Handles all company-related API endpoints
@@ -87,7 +99,7 @@ class CompanyApiService {
         kycStatus?: string;
         sortBy?: string;
         sortOrder?: 'asc' | 'desc';
-    }) {
+    }): Promise<CompanyListResponse> {
         const response = await apiClient.get('/companies', { params });
         return response.data;
     }

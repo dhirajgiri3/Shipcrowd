@@ -453,6 +453,13 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
     const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
 
+    // ✅ CRITICAL FIX: Explicitly clear legacy cookies with 'localhost' domain
+    // This prevents conflicts where browsers allow duplicate cookies (one with domain, one without)
+    if (process.env.NODE_ENV === 'development') {
+      res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
+      res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
+    }
+
     res.cookie(refreshCookieName, refreshToken, getAuthCookieOptions(cookieMaxAge));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
@@ -594,6 +601,12 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     logger.debug(`Setting refresh cookie: maxAge=${remainingTimeMs}ms (${remainingTimeDays}d) for user ${typedUser._id}`);
     logger.debug(`Setting access cookie: maxAge=${15 * 60 * 1000}ms (15min) for user ${typedUser._id}`);
 
+    // ✅ CRITICAL FIX: Explicitly clear legacy cookies with 'localhost' domain
+    if (process.env.NODE_ENV === 'development') {
+      res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
+      res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
+    }
+
     res.cookie(refreshCookieName, newRefreshToken, getAuthCookieOptions(remainingTimeMs));
     res.cookie(accessCookieName, accessToken, getAuthCookieOptions(15 * 60 * 1000));
 
@@ -626,6 +639,23 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     });
   } catch (error) {
     logger.error('Token refresh error:', error);
+
+    // ✅ SELF-HEAL: Clear cookies on error to prevent infinite restart loops
+    // If the browser holds bad/stale cookies, this forces a clean slate
+    const refreshCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_REFRESH_TOKEN : AUTH_COOKIES.REFRESH_TOKEN;
+    const accessCookieName = process.env.NODE_ENV === 'production' ? AUTH_COOKIES.SECURE_ACCESS_TOKEN : AUTH_COOKIES.ACCESS_TOKEN;
+
+    // Clear with default options (HostOnly)
+    const cookieOptions = getAuthCookieOptions(0);
+    res.clearCookie(refreshCookieName, cookieOptions);
+    res.clearCookie(accessCookieName, cookieOptions);
+
+    // Clear legacy cookies with domain
+    if (process.env.NODE_ENV === 'development') {
+      res.clearCookie(refreshCookieName, { path: '/', domain: 'localhost' });
+      res.clearCookie(accessCookieName, { path: '/', domain: 'localhost' });
+    }
+
     next(error); // Let Express error handler deal with it
   }
 };
@@ -777,6 +807,13 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
     // Clear both tokens with proper options
     res.clearCookie(refreshCookieName, cookieOptions);
     res.clearCookie(accessCookieName, cookieOptions);
+
+    // ✅ CRITICAL FIX: Also clear legacy cookies with 'localhost' domain
+    if (process.env.NODE_ENV === 'development') {
+      res.clearCookie(refreshCookieName, { ...cookieOptions, domain: 'localhost' });
+      res.clearCookie(accessCookieName, { ...cookieOptions, domain: 'localhost' });
+    }
+
     res.clearCookie('refreshToken', cookieOptions); // Clear regular cookie for backwards compatibility
     res.clearCookie('accessToken', cookieOptions);
 

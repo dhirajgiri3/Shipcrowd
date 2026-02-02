@@ -352,6 +352,82 @@ export const COMMON_STATUS_CONFIG = {
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════
+// COMPANY STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const COMPANY_STATUS_CONFIG: Record<string, StatusConfig> = {
+  pending_verification: {
+    label: 'Pending Verification',
+    color: 'warning',
+    description: 'Company pending verification'
+  },
+  kyc_submitted: {
+    label: 'KYC Submitted',
+    color: 'info',
+    description: 'KYC documents submitted'
+  },
+  approved: {
+    label: 'Approved',
+    color: 'success',
+    description: 'Company approved'
+  },
+  suspended: {
+    label: 'Suspended',
+    color: 'error',
+    description: 'Company suspended'
+  },
+  rejected: {
+    label: 'Rejected',
+    color: 'error',
+    description: 'Company rejected'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COUPON STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const COUPON_STATUS_CONFIG: Record<string, StatusConfig> = {
+  active: {
+    label: 'Active',
+    color: 'success',
+    description: 'Coupon is active'
+  },
+  inactive: {
+    label: 'Inactive',
+    color: 'neutral',
+    description: 'Coupon is inactive'
+  },
+  expired: {
+    label: 'Expired',
+    color: 'error',
+    description: 'Coupon has expired'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COURIER STATUS CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const COURIER_STATUS_CONFIG: Record<string, StatusConfig> = {
+  active: {
+    label: 'Active',
+    color: 'success',
+    description: 'Courier service is active'
+  },
+  inactive: {
+    label: 'Inactive',
+    color: 'neutral',
+    description: 'Courier service is inactive'
+  },
+  maintenance: {
+    label: 'Maintenance',
+    color: 'warning',
+    description: 'Courier under maintenance'
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -362,13 +438,16 @@ type StatusConfigMap =
   | typeof DISPUTE_STATUS_CONFIG
   | typeof REMITTANCE_STATUS_CONFIG
   | typeof PAYOUT_STATUS_CONFIG
-  | typeof WEBHOOK_STATUS_CONFIG;
+  | typeof WEBHOOK_STATUS_CONFIG
+  | typeof COMPANY_STATUS_CONFIG
+  | typeof COUPON_STATUS_CONFIG
+  | typeof COURIER_STATUS_CONFIG;
 
 /**
  * Get status configuration for a specific domain and status
  */
 export function getStatusConfig(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook',
+  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier',
   status: string
 ): StatusConfig | undefined {
   const configs: Record<string, StatusConfigMap> = {
@@ -379,6 +458,9 @@ export function getStatusConfig(
     remittance: REMITTANCE_STATUS_CONFIG,
     payout: PAYOUT_STATUS_CONFIG,
     webhook: WEBHOOK_STATUS_CONFIG,
+    company: COMPANY_STATUS_CONFIG,
+    coupon: COUPON_STATUS_CONFIG,
+    courier: COURIER_STATUS_CONFIG,
   };
 
   const config = configs[domain];
@@ -389,7 +471,7 @@ export function getStatusConfig(
  * Get CSS color class for a status
  */
 export function getStatusColorClass(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook',
+  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier',
   status: string
 ): string {
   const config = getStatusConfig(domain, status);
@@ -400,7 +482,7 @@ export function getStatusColorClass(
  * Get status label for a status
  */
 export function getStatusLabel(
-  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook',
+  domain: 'return' | 'ndr' | 'manifest' | 'dispute' | 'remittance' | 'payout' | 'webhook' | 'company' | 'coupon' | 'courier',
   status: string
 ): string {
   const config = getStatusConfig(domain, status);
@@ -419,4 +501,7 @@ export const STATUS_CONFIGS = {
   remittance: REMITTANCE_STATUS_CONFIG,
   payout: PAYOUT_STATUS_CONFIG,
   webhook: WEBHOOK_STATUS_CONFIG,
+  company: COMPANY_STATUS_CONFIG,
+  coupon: COUPON_STATUS_CONFIG,
+  courier: COURIER_STATUS_CONFIG,
 } as const;

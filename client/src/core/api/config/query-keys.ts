@@ -417,6 +417,12 @@ export const queryKeys = {
       overview: () => ['admin', 'financials', 'overview'],
       transactions: (filters?: FilterParams) => ['admin', 'financials', 'transactions', filters],
     },
+    // Admin Companies
+    companies: {
+      all: () => ['admin', 'companies'],
+      list: (filters?: FilterParams) => ['admin', 'companies', 'list', filters],
+      stats: () => ['admin', 'companies', 'stats'],
+    },
   },
 
   // ========================================================================

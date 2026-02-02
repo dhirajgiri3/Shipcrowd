@@ -1,11 +1,12 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/core/Card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/core/Card';
 import { Select } from '@/src/components/ui/form/Select';
 import { Button } from '@/src/components/ui/core/Button';
 import { ChartCard } from '@/src/components/admin/ChartCard';
+import { DataTable } from '@/src/components/ui/data/DataTable';
+import { useAnalyticsPage } from '@/src/core/api/hooks/admin/analytics/useAnalytics';
 import {
     LazyAreaChart as AreaChart,
     LazyArea as Area,
@@ -22,51 +23,61 @@ import {
     LazyCell as Cell
 } from '@/src/components/features/charts/LazyCharts';
 import { Download, Loader2 } from 'lucide-react';
-import { useDeliveryPerformance, useZoneDistribution } from '@/src/core/api/hooks/admin/useAdminAnalytics';
 
 const COLORS = ['var(--primary-blue)', '#4338CA', 'var(--success)', 'var(--warning)', 'var(--error)'];
 
 export function AnalyticsClient() {
-    const [dateRange, setDateRange] = useState('7d');
+    const {
+        dateRange,
+        handleDateRangeChange,
+        deliveryPerformanceData,
+        zoneDistribution,
+        isLoadingDelivery,
+        isLoadingZones
+    } = useAnalyticsPage();
 
-    // Calculate date range
-    const { startDate, endDate } = useMemo(() => {
-        const end = new Date();
-        const start = new Date();
-
-        switch (dateRange) {
-            case '7d':
-                start.setDate(start.getDate() - 7);
-                break;
-            case '30d':
-                start.setDate(start.getDate() - 30);
-                break;
-            case 'month':
-                start.setDate(1);
-                break;
+    const columns = [
+        {
+            header: "Date",
+            accessorKey: "date",
+        },
+        {
+            header: "Total Orders",
+            accessorKey: "total",
+            cell: (row: any) => row.delivered + row.ndr + row.rto
+        },
+        {
+            header: "Delivered",
+            accessorKey: "delivered",
+            cell: (row: any) => <span className="text-[var(--success)] font-medium">{row.delivered}</span>
+        },
+        {
+            header: "RTO %",
+            accessorKey: "rto",
+            cell: (row: any) => {
+                const total = row.delivered + row.ndr + row.rto;
+                const percentage = total > 0 ? ((row.rto / total) * 100).toFixed(1) : "0.0";
+                return <span className="text-[var(--error)] font-medium">{percentage}%</span>;
+            }
+        },
+        {
+            header: "Avg. TAT",
+            accessorKey: "tat",
+            cell: (row: any) => <span className="text-[var(--text-muted)]">{row.tat || "N/A"}</span>
         }
-
-        return {
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0]
-        };
-    }, [dateRange]);
-
-    // API Hooks
-    const { data: deliveryData, isLoading: isLoadingDelivery } = useDeliveryPerformance({ startDate, endDate });
-    const { data: zoneData, isLoading: isLoadingZones } = useZoneDistribution();
-
-    const deliveryPerformanceData = deliveryData?.data || [];
-    const zoneDistribution = zoneData?.data || [];
+    ];
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-[var(--text-primary)]">Analytics & Reports</h2>
+                <div>
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">Analytics & Reports</h2>
+                    <p className="text-[var(--text-secondary)]">Overview of platform performance metrics.</p>
+                </div>
                 <div className="flex items-center gap-2">
                     <Select
                         value={dateRange}
-                        onChange={(e) => setDateRange(e.target.value)}
+                        onChange={(e) => handleDateRangeChange(e.target.value)}
                         options={[
                             { label: 'Last 7 Days', value: '7d' },
                             { label: 'Last 30 Days', value: '30d' },
@@ -156,36 +167,19 @@ export function AnalyticsClient() {
                 </ChartCard>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <Card className="col-span-3">
+            <div className="grid gap-6">
+                <Card>
                     <CardHeader>
                         <CardTitle>Detailed Report Table</CardTitle>
+                        <CardDescription>Comprehensive breakdown of delivery metrics over time.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
-                                    <tr>
-                                        <th className="px-6 py-3 font-medium">Date</th>
-                                        <th className="px-6 py-3 font-medium">Total Orders</th>
-                                        <th className="px-6 py-3 font-medium">Delivered</th>
-                                        <th className="px-6 py-3 font-medium">RTO %</th>
-                                        <th className="px-6 py-3 font-medium">Avg. TAT</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--border-subtle)]">
-                                    {deliveryPerformanceData.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]">
-                                            <td className="px-6 py-4 font-medium">{row.date}</td>
-                                            <td className="px-6 py-4">{row.delivered + row.ndr + row.rto}</td>
-                                            <td className="px-6 py-4 text-[var(--success)] font-medium">{row.delivered}</td>
-                                            <td className="px-6 py-4 text-[var(--error)] font-medium">{((row.rto / (row.delivered + row.ndr + row.rto)) * 100).toFixed(1)}%</td>
-                                            <td className="px-6 py-4 text-[var(--text-muted)]">2.4 days</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DataTable
+                            columns={columns}
+                            data={deliveryPerformanceData}
+                            isLoading={isLoadingDelivery}
+                            searchKey="date"
+                        />
                     </CardContent>
                 </Card>
             </div>

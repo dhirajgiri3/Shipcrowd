@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../http';
-import { queryKeys } from '../../config/query-keys';
-import { CACHE_TIMES, RETRY_CONFIG } from '../../config/cache.config';
+import { apiClient, ApiError } from '@/src/core/api/http';
+import { queryKeys } from '@/src/core/api/config/query-keys';
+import { CACHE_TIMES, RETRY_CONFIG } from '@/src/core/api/config/cache.config';
+import { showSuccessToast, handleApiError } from '@/src/lib/error';
 import type {
     Courier,
     CourierPerformance,
@@ -10,21 +12,47 @@ import type {
     CourierDetailResponse,
     CourierPerformanceResponse,
 } from '@/src/types/api/logistics';
-import { showSuccessToast, handleApiError } from '@/src/lib/error';
+
+// ==================== Types ====================
+
+// Legacy type for the List View (from useCarriers)
+// This matches the currently working /admin/carriers endpoint
+export interface CourierListItem {
+    id: string;
+    name: string;
+    code: string;
+    logo: string;
+    status: 'active' | 'inactive';
+    services: string[];
+    zones: string[];
+    apiIntegrated: boolean;
+    pickupEnabled: boolean;
+    codEnabled: boolean;
+    trackingEnabled: boolean;
+    codLimit: number;
+    weightLimit: number;
+    totalShipments?: number;
+    avgDeliveryTime?: string;
+    successRate?: number;
+}
+
+interface CouriersListResponse {
+    success: boolean;
+    data: CourierListItem[];
+}
 
 // ==================== QUERIES ====================
 
 /**
- * Fetch all couriers
+ * Fetch all couriers (List View)
+ * Uses the /admin/carriers endpoint which matches CourierListItem shape
  */
-export const useCouriers = (options?: UseQueryOptions<Courier[], ApiError>) => {
-    return useQuery<Courier[], ApiError>({
-        queryKey: queryKeys.couriers.all(),
+export const useCouriers = (options?: UseQueryOptions<CourierListItem[], ApiError>) => {
+    return useQuery<CourierListItem[], ApiError>({
+        queryKey: ['carriers'], // Keeping legacy key for list to match previous behavior
         queryFn: async () => {
-            const response = await apiClient.get<CourierDetailResponse>('/admin/couriers');
-            // Assuming response.data.data is an array of couriers
-            // If the endpoint is paginated, we might need to adjust this
-            return response.data.data as unknown as Courier[];
+            const { data } = await apiClient.get<CouriersListResponse>('/admin/carriers');
+            return data.data;
         },
         ...CACHE_TIMES.LONG,
         retry: RETRY_CONFIG.DEFAULT,
@@ -32,9 +60,9 @@ export const useCouriers = (options?: UseQueryOptions<Courier[], ApiError>) => {
     });
 };
 
-
 /**
- * Fetch single courier by ID
+ * Fetch single courier by ID (Detail View)
+ * Uses /admin/couriers/:id endpoint which likely uses the new Courier shape
  */
 export const useCourier = (id: string | undefined, options?: UseQueryOptions<Courier, ApiError>) => {
     return useQuery<Courier, ApiError>({
@@ -89,8 +117,11 @@ export const useUpdateCourier = (options?: UseMutationOptions<Courier, ApiError,
             return response.data.data;
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.couriers.all() });
+            // Invalidate detail query
             queryClient.invalidateQueries({ queryKey: queryKeys.couriers.detail(variables.id) });
+            // Should potentially invalidate list too, but shapes differ. 
+            // If list depends on updated data, we might need to invalidate 'carriers' key too.
+            queryClient.invalidateQueries({ queryKey: ['carriers'] });
             showSuccessToast('Courier updated successfully');
         },
         onError: (error) => handleApiError(error),
@@ -113,8 +144,8 @@ export const useToggleCourierStatus = (options?: UseMutationOptions<Courier, Api
             return response.data.data;
         },
         onSuccess: (data, id) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.couriers.all() });
             queryClient.invalidateQueries({ queryKey: queryKeys.couriers.detail(id) });
+            queryClient.invalidateQueries({ queryKey: ['carriers'] });
             showSuccessToast(`Courier ${data.isActive ? 'activated' : 'deactivated'} successfully`);
         },
         onError: (error) => handleApiError(error),
@@ -144,3 +175,37 @@ export const useTestCourierIntegration = (options?: UseMutationOptions<{ success
         ...options,
     });
 };
+
+// ===================== Page Controller =====================
+
+export function useCouriersPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
+
+    const { data: carriers = [], isLoading, isError, error, refetch } = useCouriers();
+
+    const filteredCouriers = carriers.filter(carrier => {
+        const matchesSearch = carrier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            carrier.code.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = selectedStatus === 'all' || carrier.status === selectedStatus;
+        return matchesSearch && matchesStatus;
+    });
+
+    return {
+        // State
+        searchQuery,
+        setSearchQuery,
+        selectedStatus,
+        setSelectedStatus,
+
+        // Data
+        carriers,
+        filteredCouriers,
+        isLoading,
+        isError,
+        error,
+
+        // Actions
+        refetch
+    };
+}

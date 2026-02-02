@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import {
     CheckCircle2,
@@ -22,12 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src
 import { Button } from '@/src/components/ui/core/Button';
 import { Input } from '@/src/components/ui/core/Input';
 import { Badge } from '@/src/components/ui/core/Badge';
-import {
-    useCommissionTransactions,
-    useBulkApproveTransactions,
-    useBulkRejectTransactions,
-    CommissionTransaction
-} from '@/src/core/api/hooks/commission/useCommission';
+import { useCommissionPage } from '@/src/core/api/hooks/admin/commission/useCommission';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -43,61 +38,33 @@ import { Label } from '@/src/components/ui/core/Label';
 
 export function CommissionListClient() {
     const router = useRouter();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('pending');
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-    const [rejectionReason, setRejectionReason] = useState('');
 
-    const { data, isLoading, isError, error } = useCommissionTransactions({
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        // Add search logic if supported by backend API
-    });
+    const {
+        searchQuery,
+        setSearchQuery,
+        statusFilter,
+        setStatusFilter,
+        selectedIds,
+        setSelectedIds,
+        isRejectDialogOpen,
+        setIsRejectDialogOpen,
+        rejectionReason,
+        setRejectionReason,
 
-    const { mutate: bulkApprove, isPending: isApproving } = useBulkApproveTransactions();
-    const { mutate: bulkReject, isPending: isRejecting } = useBulkRejectTransactions();
+        transactions,
+        isLoading,
+        isError,
+        error,
 
-    const transactions = data?.data || [];
-    const allIds = transactions.map(t => t._id);
-    const areAllSelected = transactions.length > 0 && selectedIds.size === transactions.length;
+        areAllSelected,
+        isApproving,
+        isRejecting,
 
-    const toggleSelectAll = () => {
-        if (areAllSelected) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(allIds));
-        }
-    };
-
-    const toggleSelect = (id: string) => {
-        const newSelected = new Set(selectedIds);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
-        } else {
-            newSelected.add(id);
-        }
-        setSelectedIds(newSelected);
-    };
-
-    const handleBulkApprove = () => {
-        if (selectedIds.size === 0) return;
-        if (confirm(`Approve ${selectedIds.size} transactions?`)) {
-            bulkApprove({ transactionIds: Array.from(selectedIds) }, {
-                onSuccess: () => setSelectedIds(new Set())
-            });
-        }
-    };
-
-    const handleBulkReject = () => {
-        if (selectedIds.size === 0) return;
-        bulkReject({ transactionIds: Array.from(selectedIds), reason: rejectionReason }, {
-            onSuccess: () => {
-                setSelectedIds(new Set());
-                setIsRejectDialogOpen(false);
-                setRejectionReason('');
-            }
-        });
-    };
+        toggleSelectAll,
+        toggleSelect,
+        handleBulkApprove,
+        handleBulkReject
+    } = useCommissionPage();
 
     const getStatusColor = (status: string) => {
         switch (status) {
