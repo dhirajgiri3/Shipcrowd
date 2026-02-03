@@ -44,33 +44,33 @@ const itemVariants = {
 
 const roleColors = {
     super_admin: {
-        bg: 'bg-purple-50 dark:bg-purple-950/30',
-        text: 'text-purple-700 dark:text-purple-400',
-        border: 'border-purple-200 dark:border-purple-800',
+        bg: 'bg-[var(--primary-blue-soft)]',
+        text: 'text-[var(--primary-blue)]',
+        border: 'border-[var(--border-default)]',
         icon: ShieldAlert
     },
     admin: {
-        bg: 'bg-blue-50 dark:bg-blue-950/30',
-        text: 'text-blue-700 dark:text-blue-400',
-        border: 'border-blue-200 dark:border-blue-800',
+        bg: 'bg-[var(--info-bg)]',
+        text: 'text-[var(--info)]',
+        border: 'border-[var(--info-border)]',
         icon: Shield
     },
     seller: {
-        bg: 'bg-green-50 dark:bg-green-950/30',
-        text: 'text-green-700 dark:text-green-400',
-        border: 'border-green-200 dark:border-green-800',
+        bg: 'bg-[var(--success-bg)]',
+        text: 'text-[var(--success)]',
+        border: 'border-[var(--success-border)]',
         icon: Building2
     },
     staff: {
-        bg: 'bg-gray-50 dark:bg-gray-950/30',
-        text: 'text-gray-700 dark:text-gray-400',
-        border: 'border-gray-200 dark:border-gray-800',
+        bg: 'bg-[var(--bg-tertiary)]',
+        text: 'text-[var(--text-secondary)]',
+        border: 'border-[var(--border-default)]',
         icon: User
     },
     user: { // Generic V5 User (Pre-assignment)
-        bg: 'bg-slate-50 dark:bg-slate-950/30',
-        text: 'text-slate-700 dark:text-slate-400',
-        border: 'border-slate-200 dark:border-slate-800',
+        bg: 'bg-[var(--bg-tertiary)]',
+        text: 'text-[var(--text-secondary)]',
+        border: 'border-[var(--border-default)]',
         icon: User
     }
 };
@@ -101,7 +101,8 @@ export function UserManagementClient() {
             setSelectedUser(null);
         } catch (error: any) {
             addToast(error.response?.data?.message || 'Failed to promote user', 'error');
-        }};
+        }
+    };
 
     const handleDemote = async (userId: string, reason?: string) => {
         try {
@@ -355,10 +356,10 @@ export function UserManagementClient() {
 
 function StatsCard({ title, value, icon: Icon, accentColor, trend, trendUp }: any) {
     const colorStyles = {
-        purple: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-        blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-        green: "bg-green-500/10 text-green-600 dark:text-green-400",
-        orange: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+        purple: "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]",
+        blue: "bg-[var(--info-bg)] text-[var(--info)]",
+        green: "bg-[var(--success-bg)] text-[var(--success)]",
+        orange: "bg-[var(--warning-bg)] text-[var(--warning)]",
         default: "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
     };
 
@@ -373,7 +374,7 @@ function StatsCard({ title, value, icon: Icon, accentColor, trend, trendUp }: an
                 {trend && (
                     <span className={cn(
                         "text-xs font-medium px-1.5 py-0.5 rounded",
-                        trendUp ? "text-green-600 bg-green-50 dark:bg-green-900/20" : "text-red-600 bg-red-50 dark:bg-red-900/20"
+                        trendUp ? "text-[var(--success)] bg-[var(--success-bg)]" : "text-[var(--error)] bg-[var(--error-bg)]"
                     )}>
                         {trend}
                     </span>
@@ -418,7 +419,7 @@ function UserRow({ user, onPromote, onDemote, onImpersonate }: any) {
                     <span className="capitalize">{user.role.replace('_', ' ')}</span>
                 </div>
                 {user.isDualRole && (
-                    <span className="ml-2 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">
+                    <span className="ml-2 text-[10px] bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] px-1.5 py-0.5 rounded border border-[var(--primary-blue-light)]">
                         DUAL
                     </span>
                 )}
@@ -441,7 +442,7 @@ function UserRow({ user, onPromote, onDemote, onImpersonate }: any) {
                 {!isSuperAdmin && (
                     <button
                         onClick={onImpersonate}
-                        className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue)]/5 rounded-lg transition-colors tooltip tooltip-left"
+                        className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--primary-blue)] hover:bg-[var(--primary-blue-soft)] rounded-lg transition-colors tooltip tooltip-left"
                         title="Login as User">
                         <LogIn className="w-4 h-4" />
                     </button>
@@ -449,7 +450,7 @@ function UserRow({ user, onPromote, onDemote, onImpersonate }: any) {
                 {user.canPromote && (
                     <button
                         onClick={onPromote}
-                        className="p-1.5 text-[var(--text-secondary)] hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors tooltip tooltip-left"
+                        className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--success)] hover:bg-[var(--success-bg)] rounded-lg transition-colors tooltip tooltip-left"
                         title="Promote to Admin">
                         <UserCheck className="w-4 h-4" />
                     </button>
@@ -457,7 +458,7 @@ function UserRow({ user, onPromote, onDemote, onImpersonate }: any) {
                 {user.canDemote && (
                     <button
                         onClick={onDemote}
-                        className="p-1.5 text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors tooltip tooltip-left"
+                        className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--error)] hover:bg-[var(--error-bg)] rounded-lg transition-colors tooltip tooltip-left"
                         title="Demote to Seller">
                         <UserX className="w-4 h-4" />
                     </button>

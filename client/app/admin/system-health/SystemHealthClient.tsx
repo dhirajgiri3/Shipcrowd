@@ -41,11 +41,11 @@ export function SystemHealthClient() {
     const getStatusIcon = (status: 'healthy' | 'degraded' | 'unhealthy') => {
         switch (status) {
             case 'healthy':
-                return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+                return <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />;
             case 'degraded':
-                return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+                return <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />;
             case 'unhealthy':
-                return <AlertCircle className="h-5 w-5 text-red-500" />;
+                return <AlertCircle className="h-5 w-5 text-[var(--error)]" />;
         }
     };
 
@@ -102,7 +102,7 @@ export function SystemHealthClient() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Database Status */}
                         <div className="flex items-start gap-4 p-4 border rounded-lg">
-                            <Database className="h-8 w-8 text-blue-500 mt-1" />
+                            <Database className="h-8 w-8 text-[var(--info)] mt-1" />
                             <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-semibold">Database</h3>
@@ -131,7 +131,7 @@ export function SystemHealthClient() {
 
                         {/* API Performance */}
                         <div className="flex items-start gap-4 p-4 border rounded-lg">
-                            <Zap className="h-8 w-8 text-yellow-500 mt-1" />
+                            <Zap className="h-8 w-8 text-[var(--warning)] mt-1" />
                             <div className="flex-1">
                                 <h3 className="font-semibold mb-2">API Performance</h3>
                                 {apiMetrics && (
@@ -146,7 +146,7 @@ export function SystemHealthClient() {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Error Rate:</span>
-                                            <span className={`font-medium ${apiMetrics.errorRate > 0.05 ? 'text-red-500' : 'text-green-500'}`}>
+                                            <span className={`font-medium ${apiMetrics.errorRate > 0.05 ? 'text-[var(--error)]' : 'text-[var(--success)]'}`}>
                                                 {(apiMetrics.errorRate * 100).toFixed(2)}%
                                             </span>
                                         </div>
@@ -161,26 +161,26 @@ export function SystemHealthClient() {
 
                         {/* External Services */}
                         <div className="flex items-start gap-4 p-4 border rounded-lg">
-                            <Globe className="h-8 w-8 text-purple-500 mt-1" />
+                            <Globe className="h-8 w-8 text-[var(--primary-blue)] mt-1" />
                             <div className="flex-1">
                                 <h3 className="font-semibold mb-2">External Services</h3>
                                 {servicesHealth && (
                                     <div className="space-y-2">
                                         <div className="grid grid-cols-3 gap-2 text-xs">
                                             <div className="text-center">
-                                                <div className="text-2xl font-bold text-green-500">
+                                                <div className="text-2xl font-bold text-[var(--success)]">
                                                     {servicesHealth.summary.healthy}
                                                 </div>
                                                 <div className="text-muted-foreground">Healthy</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className="text-2xl font-bold text-yellow-500">
+                                                <div className="text-2xl font-bold text-[var(--warning)]">
                                                     {servicesHealth.summary.degraded}
                                                 </div>
                                                 <div className="text-muted-foreground">Degraded</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className="text-2xl font-bold text-red-500">
+                                                <div className="text-2xl font-bold text-[var(--error)]">
                                                     {servicesHealth.summary.unhealthy}
                                                 </div>
                                                 <div className="text-muted-foreground">Unhealthy</div>
@@ -211,7 +211,7 @@ export function SystemHealthClient() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <MemoryStick className="h-4 w-4 text-blue-500" />
+                                            <MemoryStick className="h-4 w-4 text-[var(--info)]" />
                                             <span className="font-medium">Memory Usage</span>
                                         </div>
                                         <span className="text-sm text-muted-foreground">
@@ -223,10 +223,10 @@ export function SystemHealthClient() {
                                         className="h-3"
                                         indicatorClassName={
                                             systemMetrics.memory.usagePercent > 90
-                                                ? 'bg-red-500'
+                                                ? 'bg-[var(--error)]'
                                                 : systemMetrics.memory.usagePercent > 70
-                                                    ? 'bg-yellow-500'
-                                                    : 'bg-green-500'
+                                                    ? 'bg-[var(--warning)]'
+                                                    : 'bg-[var(--success)]'
                                         }
                                     />
                                     <p className="text-xs text-muted-foreground">
@@ -238,7 +238,7 @@ export function SystemHealthClient() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <Cpu className="h-4 w-4 text-purple-500" />
+                                            <Cpu className="h-4 w-4 text-[var(--primary-blue)]" />
                                             <span className="font-medium">CPU Usage</span>
                                         </div>
                                         <span className="text-sm text-muted-foreground">
@@ -250,10 +250,10 @@ export function SystemHealthClient() {
                                         className="h-3"
                                         indicatorClassName={
                                             systemMetrics.cpu.usagePercent > 90
-                                                ? 'bg-red-500'
+                                                ? 'bg-[var(--error)]'
                                                 : systemMetrics.cpu.usagePercent > 70
-                                                    ? 'bg-yellow-500'
-                                                    : 'bg-green-500'
+                                                    ? 'bg-[var(--warning)]'
+                                                    : 'bg-[var(--success)]'
                                         }
                                     />
                                     <p className="text-xs text-muted-foreground">
@@ -264,7 +264,7 @@ export function SystemHealthClient() {
                                 {/* Uptime */}
                                 <div className="flex items-center justify-between pt-4 border-t">
                                     <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-green-500" />
+                                        <Clock className="h-4 w-4 text-[var(--success)]" />
                                         <span className="font-medium">System Uptime</span>
                                     </div>
                                     <span className="text-sm font-medium">
@@ -275,7 +275,7 @@ export function SystemHealthClient() {
                                 {/* Process Uptime */}
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                                        <TrendingUp className="h-4 w-4 text-[var(--info)]" />
                                         <span className="font-medium">Process Uptime</span>
                                     </div>
                                     <span className="text-sm font-medium">
@@ -317,7 +317,7 @@ export function SystemHealthClient() {
                                                 <p className="text-sm font-medium">{service.responseTime}ms</p>
                                             )}
                                             {service.error && (
-                                                <p className="text-xs text-red-500">{service.error}</p>
+                                                <p className="text-xs text-[var(--error)]">{service.error}</p>
                                             )}
                                         </div>
                                     </div>

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../../../http';
+import { apiClient, ApiError } from '../../../http';
 import {
     SalesRep,
     SalesRepListResponse,
@@ -8,7 +8,7 @@ import {
     UpdateSalesRepPayload,
     SalesRepPerformance
 } from '@/src/types/domain/sales-rep';
-import { queryKeys } from '../../../../config/query-keys';
+import { queryKeys } from '../../../config/query-keys';
 import { showSuccessToast } from '@/src/lib/error';
 
 // Helper to build query keys if not already in global config
@@ -71,7 +71,7 @@ export function useSalesRepCreate(
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
             showSuccessToast('Sales representative added successfully');
-            options?.onSuccess?.(data, variables, context);
+            (options?.onSuccess as any)?.(data, variables, context);
         },
         ...options,
     });
@@ -92,7 +92,7 @@ export function useSalesRepUpdate(
             queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
             queryClient.invalidateQueries({ queryKey: salesKeys.detail(id) });
             // Don't show generic toast here, customizable in component
-            options?.onSuccess?.(data, variables, context);
+            (options?.onSuccess as any)?.(data, variables, context);
         },
         ...options,
     });

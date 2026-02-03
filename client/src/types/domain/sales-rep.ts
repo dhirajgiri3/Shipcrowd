@@ -31,11 +31,8 @@ export interface CreateSalesRepPayload {
     territory: string;
     reportingTo?: string;
     bankDetails: BankDetails;
-    // Additional fields needed for UI but maybe not in core schema? 
-    // Checking controller: createSalesRepSchema includes these.
-    monthlyTarget?: number; // Optional in schema? Controller schema doesn't seem to have target in createSchema, but UI needs it. 
-    // Wait, let's stick STRICTLY to controller schema I saw:
-    // name, email, phone, territory, reportingTo, bankDetails, userId.
+    monthlyTarget?: number;
+    commissionRate?: number;
 }
 
 export interface UpdateSalesRepPayload {
