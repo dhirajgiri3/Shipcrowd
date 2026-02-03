@@ -20,7 +20,7 @@ export function WeightDisputesClient() {
             {/* Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 {/* Total Disputes */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
                     {metricsLoading ? (
                         <div className="animate-pulse">
                             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
@@ -29,17 +29,17 @@ export function WeightDisputesClient() {
                     ) : (
                         <>
                             <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)]">
                                     Total Disputes
                                 </h3>
-                                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                             </div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                            <p className="text-2xl font-bold text-[var(--text-primary)]">
                                 {metrics?.total || 0}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
                                 {metrics?.autoResolved || 0} auto-resolved
                             </p>
                         </>
@@ -47,7 +47,7 @@ export function WeightDisputesClient() {
                 </div>
 
                 {/* Pending Disputes */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
                     {metricsLoading ? (
                         <div className="animate-pulse">
                             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
@@ -56,17 +56,17 @@ export function WeightDisputesClient() {
                     ) : (
                         <>
                             <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)]">
                                     Pending
                                 </h3>
-                                <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-[var(--warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                            <p className="text-2xl font-bold text-[var(--warning)]">
                                 {metrics?.pending || 0}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
                                 Awaiting your response
                             </p>
                         </>
@@ -74,7 +74,7 @@ export function WeightDisputesClient() {
                 </div>
 
                 {/* Under Review */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="bg-[var(--bg-primary)] rounded-lg shadow p-6 border border-[var(--border-default)]">
                     {metricsLoading ? (
                         <div className="animate-pulse">
                             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
@@ -83,17 +83,17 @@ export function WeightDisputesClient() {
                     ) : (
                         <>
                             <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                <h3 className="text-sm font-medium text-[var(--text-secondary)]">
                                     Under Review
                                 </h3>
-                                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-[var(--primary-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
-                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            <p className="text-2xl font-bold text-[var(--primary-blue)]">
                                 {metrics?.underReview || 0}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
                                 Evidence submitted
                             </p>
                         </>
@@ -101,7 +101,7 @@ export function WeightDisputesClient() {
                 </div>
 
                 {/* Financial Impact */}
-                <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow p-6 text-white">
+                <div className="bg-gradient-to-br from-[var(--error)] to-[var(--error-hover)] rounded-lg shadow p-6 text-white">
                     {metricsLoading ? (
                         <div className="animate-pulse">
                             <div className="h-4 bg-red-500/30 rounded w-24 mb-2"></div>

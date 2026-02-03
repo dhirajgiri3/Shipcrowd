@@ -121,7 +121,7 @@ export function B2bRatesClient() {
                                         "flex-1 p-4 rounded-xl border-2 transition-all",
                                         shipmentType === 'single'
                                             ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]/5"
-                                            : "border-gray-200 hover:border-gray-300"
+                                            : "border-[var(--border-default)] hover:border-[var(--border-hover)]"
                                     )}
                                 >
                                     <Package className={cn(
@@ -137,7 +137,7 @@ export function B2bRatesClient() {
                                         "flex-1 p-4 rounded-xl border-2 transition-all",
                                         shipmentType === 'bulk'
                                             ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]/5"
-                                            : "border-gray-200 hover:border-gray-300"
+                                            : "border-[var(--border-default)] hover:border-[var(--border-hover)]"
                                     )}
                                 >
                                     <Box className={cn(
@@ -287,7 +287,7 @@ export function B2bRatesClient() {
                             </div>
 
                             {shipmentType === 'bulk' && (
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+                                <div className="bg-[var(--warning-bg)] border border-[var(--warning-border)] rounded-lg p-3 text-sm">
                                     <p className="font-medium text-[var(--warning)]">Bulk Discount Applied</p>
                                     <p className="text-[var(--warning)] text-xs mt-1">10% off on 10+ units if applicable</p>
                                 </div>
@@ -323,7 +323,7 @@ export function B2bRatesClient() {
                                             "p-4 rounded-xl border transition-all",
                                             rate.recommended
                                                 ? "border-[var(--success)] bg-[var(--success-bg)]/50"
-                                                : "border-gray-200 hover:border-gray-300"
+                                                : "border-[var(--border-default)] hover:border-[var(--border-hover)]"
                                         )}
                                     >
                                         {rate.recommended && (

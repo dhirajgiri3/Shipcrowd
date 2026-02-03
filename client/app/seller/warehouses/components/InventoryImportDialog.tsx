@@ -156,9 +156,8 @@ export function InventoryImportDialog({ warehouseId, isOpen, onClose }: Inventor
                         </div>
                     )}
 
-                    {/* Error Message */}
                     {error && (
-                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start gap-2">
+                        <div className="bg-[var(--warning-bg)] text-[var(--warning)] p-3 rounded-lg text-sm flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                             <p>{error.message || "Failed to import inventory. Please try again."}</p>
                         </div>

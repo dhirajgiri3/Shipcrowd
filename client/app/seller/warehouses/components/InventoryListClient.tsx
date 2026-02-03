@@ -89,10 +89,10 @@ export function InventoryListClient({ warehouseId }: InventoryListClientProps) {
                     <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-blue)]" />
                 </div>
             ) : isError ? (
-                <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-red-50 rounded-xl">
-                    <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-                    <h3 className="text-lg font-semibold text-red-900">Failed to load inventory</h3>
-                    <p className="text-red-600 mt-2">{error?.message || "Something went wrong"}</p>
+                <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-[var(--error-bg)] rounded-xl">
+                    <AlertCircle className="h-12 w-12 text-[var(--error)] mb-4" />
+                    <h3 className="text-lg font-semibold text-[var(--error)]">Failed to load inventory</h3>
+                    <p className="text-[var(--text-muted)] mt-2">{error?.message || "Something went wrong"}</p>
                 </div>
             ) : !data?.data || data.data.length === 0 ? (
                 <Card className="border-dashed border-2">
