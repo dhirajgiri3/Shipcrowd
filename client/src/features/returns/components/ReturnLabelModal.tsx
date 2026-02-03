@@ -119,21 +119,21 @@ export function ReturnLabelModal({ isOpen, onClose, returnRequest }: ReturnLabel
                 />
 
                 {/* Modal */}
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                <div className="relative bg-[var(--bg-elevated)] rounded-lg shadow-xl max-w-lg w-full p-6 border border-[var(--border-default)]">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                            <h2 className="text-xl font-semibold text-[var(--text-primary)]">
                                 Generate Return Label
                             </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            <p className="text-sm text-[var(--text-secondary)] mt-1">
                                 Return ID: {returnRequest.returnId}
                             </p>
                         </div>
                         <button
                             onClick={onClose}
                             disabled={generateLabel.isPending}
-                            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 disabled:opacity-50"
+                            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:opacity-50"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -142,11 +142,11 @@ export function ReturnLabelModal({ isOpen, onClose, returnRequest }: ReturnLabel
                     </div>
 
                     {/* Customer Info */}
-                    <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    <div className="mb-6 p-4 bg-[var(--bg-secondary)] rounded-lg">
+                        <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">
                             Customer Details
                         </h3>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="text-sm text-[var(--text-secondary)] space-y-1">
                             <p>{returnRequest.customerName || 'Customer'}</p>
                             <p className="text-xs">{returnRequest.customerPhone || 'Phone on file'}</p>
                         </div>
@@ -166,11 +166,11 @@ export function ReturnLabelModal({ isOpen, onClose, returnRequest }: ReturnLabel
                                         onClick={() => setCarrier(option.value)}
                                         disabled={generateLabel.isPending}
                                         className={`px-4 py-3 text-left rounded-lg border-2 transition-all ${carrier === option.value
-                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                                            ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]'
+                                            : 'border-[var(--border-default)] hover:border-[var(--border-hover)]'
                                             } disabled:opacity-50`}
                                     >
-                                        <span className="font-medium text-gray-900 dark:text-white">
+                                        <span className="font-medium text-[var(--text-primary)]">
                                             {option.label}
                                         </span>
                                     </button>
@@ -258,14 +258,14 @@ export function ReturnLabelModal({ isOpen, onClose, returnRequest }: ReturnLabel
                         <button
                             onClick={onClose}
                             disabled={generateLabel.isPending}
-                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                            className="flex-1 px-4 py-2 border border-[var(--border-default)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-secondary)] disabled:opacity-50 transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleGenerate}
                             disabled={generateLabel.isPending}
-                            className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                         >
                             {generateLabel.isPending ? (
                                 <>

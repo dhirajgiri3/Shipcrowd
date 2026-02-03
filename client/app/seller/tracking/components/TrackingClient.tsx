@@ -108,8 +108,8 @@ export function TrackingClient() {
 
             {/* Error State */}
             {isError && (
-                <div className="p-8 rounded-[var(--radius-3xl)] bg-red-50 border border-red-200 text-center text-red-700">
-                    <AlertCircle className="w-10 h-10 mx-auto mb-2 text-red-500" />
+                <div className="p-8 rounded-[var(--radius-3xl)] bg-[var(--error-bg)] border border-[var(--error-bg)] text-center text-[var(--error)]">
+                    <AlertCircle className="w-10 h-10 mx-auto mb-2 text-[var(--error)]" />
                     <h3 className="text-lg font-bold">Tracking Failed</h3>
                     <p className="mt-1">{(error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message || 'Could not fetch tracking information. Please check the AWB number.'}</p>
                 </div>
@@ -162,9 +162,9 @@ export function TrackingClient() {
                                             <div className={cn(
                                                 "relative z-10 flex-shrink-0 w-6 h-6 rounded-full border-[3px] transition-all duration-300 mt-1",
                                                 event.current
-                                                    ? "bg-[var(--primary-blue)] border-blue-100 dark:border-blue-900 shadow-[0_0_0_4px_var(--primary-blue-soft)] scale-110"
+                                                    ? "bg-[var(--primary-blue)] border-[var(--primary-blue-light)] shadow-[0_0_0_4px_var(--primary-blue-soft)] scale-110"
                                                     : event.completed
-                                                        ? "bg-[var(--success)] border-green-100 dark:border-green-900"
+                                                        ? "bg-[var(--success)] border-[var(--success-bg)]"
                                                         : "bg-[var(--bg-tertiary)] border-[var(--border-subtle)]"
                                             )} />
 

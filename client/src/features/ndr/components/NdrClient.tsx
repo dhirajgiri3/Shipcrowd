@@ -82,13 +82,14 @@ export function NDRClient() {
 
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
-            open: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400',
-            in_progress: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400',
-            customer_action: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400',
-            reattempt_scheduled: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400',
-            resolved: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400',
-            escalated: 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400',
-            converted_to_rto: 'bg-gray-100 text-gray-700 dark:bg-gray-950/30 dark:text-gray-400'
+            open: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]',
+            in_progress: 'bg-[var(--warning-bg)] text-[var(--warning)]',
+            customer_action: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400', // Keep until variable exists
+            reattempt_scheduled: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]',
+            resolved: 'bg-[var(--success-bg)] text-[var(--success)]',
+            escalated: 'bg-[var(--error-bg)] text-[var(--error)]',
+            converted_to_rto: 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]',
+            rto: 'bg-[var(--error-bg)] text-[var(--error)]'
         };
         return colors[status] || colors.open;
     };
@@ -155,8 +156,8 @@ export function NDRClient() {
                         <Card className="border-[var(--border-default)]">
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950/30 flex items-center justify-center">
-                                        <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                    <div className="w-12 h-12 rounded-xl bg-[var(--primary-blue-soft)] flex items-center justify-center">
+                                        <AlertCircle className="w-6 h-6 text-[var(--primary-blue)]" />
                                     </div>
                                     <TrendingUp className="w-5 h-5 text-[var(--text-tertiary)]" />
                                 </div>
@@ -174,8 +175,8 @@ export function NDRClient() {
                         <Card className="border-[var(--border-default)]">
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-yellow-100 dark:bg-yellow-950/30 flex items-center justify-center">
-                                        <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                                    <div className="w-12 h-12 rounded-xl bg-[var(--warning-bg)] flex items-center justify-center">
+                                        <Clock className="w-6 h-6 text-[var(--warning)]" />
                                     </div>
                                 </div>
                                 <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">In Progress</p>
@@ -192,12 +193,12 @@ export function NDRClient() {
                         <Card className="border-[var(--border-default)]">
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950/30 flex items-center justify-center">
-                                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                                    <div className="w-12 h-12 rounded-xl bg-[var(--error-bg)] flex items-center justify-center">
+                                        <AlertTriangle className="w-6 h-6 text-[var(--error)]" />
                                     </div>
                                 </div>
                                 <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">SLA Breach</p>
-                                <p className="text-3xl font-bold text-red-600 dark:text-red-400">{metrics?.slaBreach || 0}</p>
+                                <p className="text-3xl font-bold text-[var(--error)]">{metrics?.slaBreach || 0}</p>
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -210,12 +211,12 @@ export function NDRClient() {
                         <Card className="border-[var(--border-default)]">
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-950/30 flex items-center justify-center">
-                                        <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                                    <div className="w-12 h-12 rounded-xl bg-[var(--success-bg)] flex items-center justify-center">
+                                        <CheckCircle2 className="w-6 h-6 text-[var(--success)]" />
                                     </div>
                                 </div>
                                 <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">Resolution Rate</p>
-                                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                <p className="text-3xl font-bold text-[var(--success)]">
                                     {((metrics?.resolutionRate || 0) * 100).toFixed(0)}%
                                 </p>
                             </CardContent>
@@ -356,21 +357,21 @@ export function NDRClient() {
                                                                 const message = `Hi ${ndrCase.customerName}, we are trying to deliver your package (AWB: ${typeof ndrCase.shipmentId === 'string' ? ndrCase.shipmentId : ndrCase.shipmentId?.trackingNumber}). Please tell us when you are available.`;
                                                                 window.open(`https://wa.me/${ndrCase.customerPhone}?text=${encodeURIComponent(message)}`, '_blank');
                                                             }}
-                                                            className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                                                            className="text-xs px-2 py-1 bg-[var(--success-bg)] text-[var(--success)] rounded hover:opacity-80"
                                                         >
                                                             WhatsApp
                                                         </button>
                                                         <button
                                                             onClick={() => handleReattempt(ndrCase._id)}
                                                             disabled={isActionPending}
-                                                            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50"
+                                                            className="text-xs px-2 py-1 bg-[var(--primary-blue-soft)] text-[var(--primary-blue)] rounded hover:opacity-80 disabled:opacity-50"
                                                         >
                                                             Reattempt
                                                         </button>
                                                         <button
                                                             onClick={() => handleRTO(ndrCase._id)}
                                                             disabled={isActionPending}
-                                                            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50"
+                                                            className="text-xs px-2 py-1 bg-[var(--error-bg)] text-[var(--error)] rounded hover:opacity-80 disabled:opacity-50"
                                                         >
                                                             RTO
                                                         </button>

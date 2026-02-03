@@ -55,10 +55,10 @@ export function NDRAnalytics() {
         return (
             <div className="space-y-6">
                 {[...Array(3)].map((_, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div key={i} className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
                         <div className="animate-pulse space-y-4">
-                            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div className="h-6 bg-[var(--bg-secondary)] rounded w-1/4"></div>
+                            <div className="h-64 bg-[var(--bg-secondary)] rounded"></div>
                         </div>
                     </div>
                 ))}
@@ -84,8 +84,8 @@ export function NDRAnalytics() {
                             key={range.value}
                             onClick={() => setTimeRange(range.value)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${timeRange === range.value
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                ? 'bg-[var(--primary-blue)] text-white'
+                                : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                 }`}
                         >
                             {range.label}
@@ -96,27 +96,27 @@ export function NDRAnalytics() {
 
             {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Cases</p>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                    <p className="text-sm text-[var(--text-secondary)]">Total Cases</p>
+                    <p className="text-3xl font-bold text-[var(--text-primary)] mt-2">
                         {analytics.stats.totalCases}
                     </p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Resolution Rate</p>
-                    <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
+                <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                    <p className="text-sm text-[var(--text-secondary)]">Resolution Rate</p>
+                    <p className="text-3xl font-bold text-[var(--success)] mt-2">
                         {(analytics.stats.resolutionRate * 100).toFixed(1)}%
                     </p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Avg Resolution Time</p>
-                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+                <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                    <p className="text-sm text-[var(--text-secondary)]">Avg Resolution Time</p>
+                    <p className="text-3xl font-bold text-[var(--primary-blue)] mt-2">
                         {analytics.stats.averageResolutionTime.toFixed(1)}h
                     </p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">RTO Conversion</p>
-                    <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">
+                <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                    <p className="text-sm text-[var(--text-secondary)]">RTO Conversion</p>
+                    <p className="text-3xl font-bold text-[var(--error)] mt-2">
                         {(analytics.stats.rtoConversionRate * 100).toFixed(1)}%
                     </p>
                 </div>
@@ -124,8 +124,8 @@ export function NDRAnalytics() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Reason Breakdown */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
                         Failure Reasons
                     </h3>
                     <ResponsiveContainer width="100%" height={300}>
@@ -152,8 +152,8 @@ export function NDRAnalytics() {
                 </div>
 
                 {/* Action Effectiveness */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
                         Action Effectiveness
                     </h3>
                     <ResponsiveContainer width="100%" height={300}>
@@ -180,8 +180,8 @@ export function NDRAnalytics() {
             </div>
 
             {/* Communication Stats */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+            <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
                     Communication Performance
                 </h3>
                 <div className="grid grid-cols-4 gap-6">
@@ -285,17 +285,17 @@ export function NDRAnalytics() {
             </div>
 
             {/* Trends */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+            <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-6">
                     NDR Trends
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={analytics.trends}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="date" stroke="#9CA3AF" />
-                        <YAxis stroke="#9CA3AF" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                        <XAxis dataKey="date" stroke="var(--text-secondary)" />
+                        <YAxis stroke="var(--text-secondary)" />
                         <Tooltip
-                            contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                            contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '8px', color: 'var(--text-primary)' }}
                         />
                         <Legend />
                         <Line type="monotone" dataKey="created" stroke="#3B82F6" name="Created" strokeWidth={2} />

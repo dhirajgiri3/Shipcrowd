@@ -23,18 +23,18 @@ import { showSuccessToast } from '@/src/lib/error';
 import { handleApiError } from '@/src/lib/error';
 
 const STATUS_COLORS = {
-    requested: 'bg-yellow-100 text-yellow-700',
-    approved: 'bg-blue-100 text-blue-700',
-    rejected: 'bg-red-100 text-red-700',
-    pickup_scheduled: 'bg-indigo-100 text-indigo-700',
-    in_transit: 'bg-purple-100 text-purple-700',
-    received: 'bg-cyan-100 text-cyan-700',
-    qc_pending: 'bg-orange-100 text-orange-700',
-    qc_passed: 'bg-green-100 text-green-700',
-    qc_failed: 'bg-red-100 text-red-700',
-    refund_initiated: 'bg-teal-100 text-teal-700',
-    refund_completed: 'bg-green-100 text-green-700',
-    closed: 'bg-gray-100 text-gray-700',
+    requested: 'bg-[var(--warning-bg)] text-[var(--warning)]',
+    approved: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]',
+    rejected: 'bg-[var(--error-bg)] text-[var(--error)]',
+    pickup_scheduled: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]',
+    in_transit: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
+    received: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]',
+    qc_pending: 'bg-[var(--warning-bg)] text-[var(--warning)]',
+    qc_passed: 'bg-[var(--success-bg)] text-[var(--success)]',
+    qc_failed: 'bg-[var(--error-bg)] text-[var(--error)]',
+    refund_initiated: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400',
+    refund_completed: 'bg-[var(--success-bg)] text-[var(--success)]',
+    closed: 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]',
 };
 
 export default function ReturnDetailPage() {
@@ -128,7 +128,7 @@ export default function ReturnDetailPage() {
     const canRefund = returnReq.status === 'qc_passed' && !returnReq.refundDetails?.completedAt;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="min-h-screen bg-[var(--bg-secondary)] p-6">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -138,9 +138,10 @@ export default function ReturnDetailPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
+
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{returnReq.returnId}</h1>
-                            <p className="text-gray-600 dark:text-gray-400 mt-1">
+                            <h1 className="text-3xl font-bold text-[var(--text-primary)]">{returnReq.returnId}</h1>
+                            <p className="text-[var(--text-secondary)] mt-1">
                                 Order: {order?.orderNumber || 'N/A'}
                             </p>
                         </div>
@@ -154,8 +155,8 @@ export default function ReturnDetailPage() {
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Return Information */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Return Information</h2>
+                        <div className="bg-[var(--bg-elevated)] rounded-lg shadow p-6 border border-[var(--border-default)]">
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Return Information</h2>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Customer</p>
@@ -173,8 +174,8 @@ export default function ReturnDetailPage() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Estimated Refund</p>
-                                    <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
+                                    <p className="text-sm text-[var(--text-secondary)]">Estimated Refund</p>
+                                    <p className="text-sm font-semibold text-[var(--success)] mt-1">
                                         {formatCurrency(returnReq.estimatedRefund)}
                                     </p>
                                 </div>
@@ -264,7 +265,7 @@ export default function ReturnDetailPage() {
                                             <button
                                                 onClick={() => setShowRejectModal(true)}
                                                 disabled={approveReturn.isPending}
-                                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                                                className="px-4 py-2 bg-[var(--error)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                                             >
                                                 Reject Return
                                             </button>
@@ -282,7 +283,7 @@ export default function ReturnDetailPage() {
                                         <button
                                             onClick={() => setShowRefundModal(true)}
                                             disabled={processRefund.isPending}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                                            className="px-4 py-2 bg-[var(--success)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                                         >
                                             Process Refund
                                         </button>
@@ -312,7 +313,7 @@ export default function ReturnDetailPage() {
                             <div className="space-y-4">
                                 {returnReq.timeline.map((event, idx) => (
                                     <div key={idx} className="flex gap-3">
-                                        <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary-600"></div>
+                                        <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-[var(--primary-blue)]"></div>
                                         <div className="flex-1">
                                             <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
                                                 {event.status.replace(/_/g, ' ')}
@@ -364,26 +365,30 @@ export default function ReturnDetailPage() {
             />
 
             {/* Refund Modal */}
-            {returnReq?.qualityCheck && (
-                <RefundModal
-                    isOpen={showRefundModal}
-                    onClose={() => setShowRefundModal(false)}
-                    onConfirm={handleProcessRefund}
-                    amount={returnReq.qualityCheck.refundAmount}
-                    refundMethod={refundMethod}
-                    onMethodChange={setRefundMethod}
-                    isLoading={processRefund.isPending}
-                />
-            )}
+            {
+                returnReq?.qualityCheck && (
+                    <RefundModal
+                        isOpen={showRefundModal}
+                        onClose={() => setShowRefundModal(false)}
+                        onConfirm={handleProcessRefund}
+                        amount={returnReq.qualityCheck.refundAmount}
+                        refundMethod={refundMethod}
+                        onMethodChange={setRefundMethod}
+                        isLoading={processRefund.isPending}
+                    />
+                )
+            }
 
             {/* Return Label Modal */}
-            {returnReq && (
-                <ReturnLabelModal
-                    isOpen={showLabelModal}
-                    onClose={() => setShowLabelModal(false)}
-                    returnRequest={returnReq}
-                />
-            )}
-        </div>
+            {
+                returnReq && (
+                    <ReturnLabelModal
+                        isOpen={showLabelModal}
+                        onClose={() => setShowLabelModal(false)}
+                        returnRequest={returnReq}
+                    />
+                )
+            }
+        </div >
     );
 }

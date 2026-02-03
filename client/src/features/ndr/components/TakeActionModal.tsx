@@ -33,43 +33,43 @@ const ACTION_CONFIG: Record<NDRAction, {
     reattempt_delivery: {
         label: 'Reattempt Delivery',
         icon: '🔄',
-        color: 'bg-blue-600',
+        color: 'bg-[var(--primary-blue)]',
         description: 'Schedule another delivery attempt at the same address',
     },
     address_correction: {
         label: 'Correct Address',
         icon: '📍',
-        color: 'bg-purple-600',
+        color: 'bg-purple-600', // Pending variable
         description: 'Update delivery address with customer-provided correction',
     },
     reschedule_delivery: {
         label: 'Reschedule Delivery',
         icon: '📅',
-        color: 'bg-indigo-600',
+        color: 'bg-indigo-600', // Pending variable
         description: 'Set a new delivery date as per customer request',
     },
     cancel_order: {
         label: 'Cancel Order',
         icon: '❌',
-        color: 'bg-red-600',
+        color: 'bg-[var(--error)]',
         description: 'Cancel the order at customer request',
     },
     convert_prepaid: {
         label: 'Convert to Prepaid',
         icon: '💳',
-        color: 'bg-green-600',
+        color: 'bg-[var(--success)]',
         description: 'Convert COD order to prepaid with customer payment',
     },
     contact_customer: {
         label: 'Contact Customer',
         icon: '📞',
-        color: 'bg-yellow-600',
+        color: 'bg-[var(--warning)]',
         description: 'Send manual communication to customer',
     },
     return_to_origin: {
         label: 'Return to Origin',
         icon: '↩️',
-        color: 'bg-orange-600',
+        color: 'bg-[var(--warning)]',
         description: 'Initiate RTO process for this shipment',
     },
 };
@@ -129,16 +129,16 @@ export function TakeActionModal({ caseId, isOpen, onClose, defaultAction }: Take
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-[var(--bg-elevated)] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="p-6 border-b border-[var(--border-default)]">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h2 className="text-2xl font-bold text-[var(--text-primary)]">
                             Take Action on NDR
                         </h2>
                         <button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -150,8 +150,8 @@ export function TakeActionModal({ caseId, isOpen, onClose, defaultAction }: Take
                 <form onSubmit={handleSubmit}>
                     {/* Action Selection */}
                     {!defaultAction && (
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        <div className="p-6 border-b border-[var(--border-default)]">
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">
                                 Select Action
                             </label>
                             <div className="grid grid-cols-2 gap-3">
@@ -161,17 +161,17 @@ export function TakeActionModal({ caseId, isOpen, onClose, defaultAction }: Take
                                         type="button"
                                         onClick={() => setSelectedAction(action as NDRAction)}
                                         className={`p-4 rounded-lg border-2 text-left transition-all ${selectedAction === action
-                                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                            ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]'
+                                            : 'border-[var(--border-default)] hover:border-[var(--border-hover)]'
                                             }`}
                                     >
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-2xl">{config.icon}</span>
-                                            <span className="font-medium text-gray-900 dark:text-white">
+                                            <span className="font-medium text-[var(--text-primary)]">
                                                 {config.label}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                        <p className="text-xs text-[var(--text-secondary)]">
                                             {config.description}
                                         </p>
                                     </button>
@@ -324,8 +324,8 @@ export function TakeActionModal({ caseId, isOpen, onClose, defaultAction }: Take
                                                 type="button"
                                                 onClick={() => setChannel(ch)}
                                                 className={`px-4 py-3 rounded-lg border-2 capitalize font-medium ${channel === ch
-                                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                                                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
+                                                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
+                                                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
                                                     }`}
                                             >
                                                 {ch === 'whatsapp' && '💬'} {ch === 'sms' && '📱'} {ch === 'email' && '📧'} {ch}
@@ -352,18 +352,18 @@ export function TakeActionModal({ caseId, isOpen, onClose, defaultAction }: Take
                     )}
 
                     {/* Footer */}
-                    <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+                    <div className="p-6 border-t border-[var(--border-default)] flex items-center justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                            className="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded-lg"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={!selectedAction || takeAction.isPending}
-                            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-6 py-2 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {takeAction.isPending ? (
                                 <>

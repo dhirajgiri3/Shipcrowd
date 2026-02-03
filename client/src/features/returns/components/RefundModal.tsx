@@ -33,7 +33,7 @@ const REFUND_METHODS = [
             </svg>
         ),
         badge: 'Fastest',
-        badgeColor: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+        badgeColor: 'bg-[var(--success-bg)] text-[var(--success)]',
     },
     {
         value: 'original_payment' as const,
@@ -45,7 +45,7 @@ const REFUND_METHODS = [
             </svg>
         ),
         badge: '3-5 days',
-        badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+        badgeColor: 'bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]',
     },
     {
         value: 'bank_transfer' as const,
@@ -57,7 +57,7 @@ const REFUND_METHODS = [
             </svg>
         ),
         badge: '5-7 days',
-        badgeColor: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+        badgeColor: 'bg-[var(--warning-bg)] text-[var(--warning)]',
     },
 ];
 
@@ -90,20 +90,20 @@ export function RefundModal({
                 />
 
                 {/* Modal */}
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                <div className="relative bg-[var(--bg-elevated)] rounded-lg shadow-xl max-w-lg w-full p-6 border border-[var(--border-default)]">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-                                <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-10 h-10 rounded-full bg-[var(--warning-bg)] flex items-center justify-center">
+                                <svg className="w-6 h-6 text-[var(--warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                             <div>
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                <h2 className="text-xl font-semibold text-[var(--text-primary)]">
                                     Process Refund
                                 </h2>
-                                <p className="text-2xl font-bold text-primary-600 dark:text-primary-400 mt-1">
+                                <p className="text-2xl font-bold text-[var(--primary-blue)] mt-1">
                                     {formatCurrency(amount)}
                                 </p>
                             </div>
@@ -111,7 +111,7 @@ export function RefundModal({
                         <button
                             onClick={onClose}
                             disabled={isLoading}
-                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+                            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:opacity-50"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -132,31 +132,31 @@ export function RefundModal({
                                     onClick={() => onMethodChange(method.value)}
                                     disabled={isLoading}
                                     className={`w-full text-left p-4 rounded-lg border-2 transition-all ${refundMethod === method.value
-                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                                        ? 'border-[var(--primary-blue)] bg-[var(--primary-blue-soft)]'
+                                        : 'border-[var(--border-default)] hover:border-[var(--border-hover)]'
                                         } disabled:opacity-50`}
                                 >
                                     <div className="flex items-start gap-3">
-                                        <div className={`mt-0.5 ${refundMethod === method.value ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`}>
+                                        <div className={`mt-0.5 ${refundMethod === method.value ? 'text-[var(--primary-blue)]' : 'text-[var(--text-tertiary)]'}`}>
                                             {method.icon}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-medium text-gray-900 dark:text-white">
+                                                <span className="font-medium text-[var(--text-primary)]">
                                                     {method.label}
                                                 </span>
                                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${method.badgeColor}`}>
                                                     {method.badge}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            <p className="text-sm text-[var(--text-secondary)]">
                                                 {method.description}
                                             </p>
                                         </div>
                                         <div>
                                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${refundMethod === method.value
-                                                    ? 'border-primary-500 bg-primary-500'
-                                                    : 'border-gray-300 dark:border-gray-600'
+                                                ? 'border-[var(--primary-blue)] bg-[var(--primary-blue)]'
+                                                : 'border-[var(--border-default)]'
                                                 }`}>
                                                 {refundMethod === method.value && (
                                                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -172,12 +172,12 @@ export function RefundModal({
                     </div>
 
                     {/* Info */}
-                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="mb-6 p-4 bg-[var(--primary-blue-soft)] border border-[var(--primary-blue-light)] rounded-lg">
                         <div className="flex gap-3">
-                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-[var(--primary-blue)] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <div className="text-sm text-[var(--primary-blue-deep)]">
                                 <p className="font-medium mb-1">Important</p>
                                 <p>This action cannot be undone. The refund will be processed immediately after confirmation.</p>
                             </div>
@@ -196,7 +196,7 @@ export function RefundModal({
                         <button
                             onClick={onConfirm}
                             disabled={isLoading}
-                            className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2 bg-[var(--warning)] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>

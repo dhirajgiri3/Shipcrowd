@@ -27,10 +27,10 @@ interface QCModalProps {
 }
 
 const CONDITION_OPTIONS = [
-    { value: 'new', label: 'New', color: 'bg-green-600' },
-    { value: 'used', label: 'Used', color: 'bg-blue-600' },
-    { value: 'damaged', label: 'Damaged', color: 'bg-orange-600' },
-    { value: 'defective', label: 'Defective', color: 'bg-red-600' },
+  { value: 'new', label: 'New', color: 'bg-[var(--success)]' },
+  { value: 'used', label: 'Used', color: 'bg-[var(--primary-blue)]' },
+  { value: 'damaged', label: 'Damaged', color: 'bg-[var(--warning)]' },
+  { value: 'defective', label: 'Defective', color: 'bg-[var(--error)]' },
 ];
 
 export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalProps) {
@@ -169,16 +169,16 @@ export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-[var(--bg-elevated)] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[var(--border-default)]">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-b border-[var(--border-default)]">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]">
               Quality Check
             </h2>
             <button
               onClick={modal.close}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
             >
               <svg
                 className="w-6 h-6"
@@ -209,204 +209,204 @@ export function QualityCheckModal({ returnId, items, isOpen, onClose }: QCModalP
             )}
 
             {/* Items Inspection */}
-                        {qcItems.map((item, index) => (
-                            <div key={item.productId} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="font-medium text-gray-900 dark:text-white">{item.productName}</h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Product ID: {item.productId}</p>
-                                    </div>
-                                    <label className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={item.passed}
-                                            onChange={(e) => updateItem(index, { passed: e.target.checked })}
-                                            className="rounded border-gray-300"
-                                        />
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">QC Pass</span>
-                                    </label>
-                                </div>
+            {qcItems.map((item, index) => (
+              <div key={item.productId} className="border border-[var(--border-default)] rounded-lg p-4">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-medium text-[var(--text-primary)]">{item.productName}</h3>
+                    <p className="text-sm text-[var(--text-secondary)]">Product ID: {item.productId}</p>
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={item.passed}
+                      onChange={(e) => updateItem(index, { passed: e.target.checked })}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">QC Pass</span>
+                  </label>
+                </div>
 
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    {/* Quantity */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Expected Quantity
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={item.expectedQuantity}
-                                            readOnly
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Received Quantity
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={item.receivedQuantity}
-                                            onChange={(e) => updateItem(index, { receivedQuantity: parseInt(e.target.value) || 0 })}
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                                            min={0}
-                                            max={item.expectedQuantity}
-                                        />
-                                    </div>
-                                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Quantity */}
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Expected Quantity
+                    </label>
+                    <input
+                      type="number"
+                      value={item.expectedQuantity}
+                      readOnly
+                      className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Received Quantity
+                    </label>
+                    <input
+                      type="number"
+                      value={item.receivedQuantity}
+                      onChange={(e) => updateItem(index, { receivedQuantity: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg bg-[var(--bg-primary)] text-[var(--text-primary)]"
+                      min={0}
+                      max={item.expectedQuantity}
+                    />
+                  </div>
+                </div>
 
-                                {/* Condition */}
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Condition
-                                    </label>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {CONDITION_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.value}
-                                                type="button"
-                                                onClick={() => updateItem(index, { condition: opt.value as any })}
-                                                className={`px-3 py-2 rounded-lg text-white text-sm font-medium ${item.condition === opt.value ? opt.color : 'bg-gray-300 dark:bg-gray-600'
-                                                    }`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                {/* Condition */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Condition
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CONDITION_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => updateItem(index, { condition: opt.value as any })}
+                        className={`px-3 py-2 rounded-lg text-white text-sm font-medium ${item.condition === opt.value ? opt.color : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
+                          }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                                {/* Notes */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Inspection Notes
-                                    </label>
-                                    <textarea
-                                        value={item.notes}
-                                        onChange={(e) => updateItem(index, { notes: e.target.value })}
-                                        rows={2}
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none"
-                                        placeholder="Add any observations or issues found..."
-                                    />
-                                </div>
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Inspection Notes
+                  </label>
+                  <textarea
+                    value={item.notes}
+                    onChange={(e) => updateItem(index, { notes: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none"
+                    placeholder="Add any observations or issues found..."
+                  />
+                </div>
 
-                                {/* QC Images */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        QC Photos (Optional, max 5)
-                                    </label>
-                                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-primary-500 transition-colors">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
-                                            onChange={(e) => handleImageSelect(item.productId, e.target.files)}
-                                            className="hidden"
-                                            id={`qc-image-${item.productId}`}
-                                            disabled={modal.isSubmitting || performQC.isPending}
-                                        />
-                                        <label htmlFor={`qc-image-${item.productId}`} className="cursor-pointer block text-center">
-                                            <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                Click to upload condition photos
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                PNG, JPG up to 10MB each
-                                            </p>
-                                        </label>
-                                    </div>
+                {/* QC Images */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                    QC Photos (Optional, max 5)
+                  </label>
+                  <div className="border-2 border-dashed border-[var(--border-default)] rounded-lg p-4 hover:border-[var(--primary-blue)] transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleImageSelect(item.productId, e.target.files)}
+                      className="hidden"
+                      id={`qc-image-${item.productId}`}
+                      disabled={modal.isSubmitting || performQC.isPending}
+                    />
+                    <label htmlFor={`qc-image-${item.productId}`} className="cursor-pointer block text-center">
+                      <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Click to upload condition photos
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG, JPG up to 10MB each
+                      </p>
+                    </label>
+                  </div>
 
-                                    {/* Image Previews */}
-                                    {itemImages[item.productId]?.length > 0 && (
-                                        <div className="mt-3 grid grid-cols-5 gap-2">
-                                            {itemImages[item.productId].map((file, imgIdx) => (
-                                                <div key={imgIdx} className="relative group">
-                                                    <img
-                                                        src={URL.createObjectURL(file)}
-                                                        alt={`QC ${imgIdx + 1}`}
-                                                        className="w-full h-20 object-cover rounded-lg border border-gray-200"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeImage(item.productId, imgIdx)}
-                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        disabled={modal.isSubmitting || performQC.isPending}
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                    <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-xs p-1 rounded truncate">
-                                                        {file.name}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Overall Assessment */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Overall Assessment</h3>
-
-                            <div className="mb-4">
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={restockable}
-                                        onChange={(e) => setRestockable(e.target.checked)}
-                                        className="rounded border-gray-300"
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Items can be restocked for resale
-                                    </span>
-                                </label>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Overall Notes
-                                </label>
-                                <textarea
-                                    value={overallNotes}
-                                    onChange={(e) => setOverallNotes(e.target.value)}
-                                    rows={4}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none"
-                                    placeholder="Add general notes about the return inspection..."
-                                    required
-                                />
-                            </div>
+                  {/* Image Previews */}
+                  {itemImages[item.productId]?.length > 0 && (
+                    <div className="mt-3 grid grid-cols-5 gap-2">
+                      {itemImages[item.productId].map((file, imgIdx) => (
+                        <div key={imgIdx} className="relative group">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`QC ${imgIdx + 1}`}
+                            className="w-full h-20 object-cover rounded-lg border border-[var(--border-default)]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(item.productId, imgIdx)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={modal.isSubmitting || performQC.isPending}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-xs p-1 rounded truncate">
+                            {file.name}
+                          </div>
                         </div>
+                      ))}
                     </div>
+                  )}
+                </div>
+              </div>
+            ))}
 
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={modal.close}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            disabled={modal.isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={performQC.isPending || modal.isSubmitting}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {modal.isSubmitting || performQC.isPending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                {modal.isSubmitting ? 'Uploading Images...' : 'Processing...'}
-              </>
-            ) : (
-              'Complete QC'
-            )}
-          </button>
-        </div>
+            {/* Overall Assessment */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Overall Assessment</h3>
+
+              <div className="mb-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={restockable}
+                    onChange={(e) => setRestockable(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Items can be restocked for resale
+                  </span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Overall Notes
+                </label>
+                <textarea
+                  value={overallNotes}
+                  onChange={(e) => setOverallNotes(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg resize-none bg-[var(--bg-primary)] text-[var(--text-primary)]"
+                  placeholder="Add general notes about the return inspection..."
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 border-t border-[var(--border-default)] flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={modal.close}
+              className="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded-lg"
+              disabled={modal.isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={performQC.isPending || modal.isSubmitting}
+              className="px-6 py-2 bg-[var(--primary-blue)] text-white rounded-lg hover:bg-[var(--primary-blue-deep)] disabled:opacity-50 flex items-center gap-2"
+            >
+              {modal.isSubmitting || performQC.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  {modal.isSubmitting ? 'Uploading Images...' : 'Processing...'}
+                </>
+              ) : (
+                'Complete QC'
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

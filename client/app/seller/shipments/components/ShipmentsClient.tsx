@@ -99,8 +99,8 @@ export function ShipmentsClient() {
             case 'amber': return "bg-[var(--warning-bg)] text-[var(--warning)]";
             case 'emerald': return "bg-[var(--success-bg)] text-[var(--success)]";
             case 'rose': return "bg-[var(--error-bg)] text-[var(--error)]";
-            case 'violet': return "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"; // Fallback as violet var might not exist
-            case 'orange': return "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400";
+            case 'violet': return "bg-[var(--primary-blue-soft)] text-[var(--primary-blue)]"; // Mapped to primary blue for consistency
+            case 'orange': return "bg-[var(--warning-bg)] text-[var(--warning)]"; // Mapped to warning for consistency
             default: return "bg-[var(--bg-secondary)] text-[var(--text-muted)]";
         }
     };
@@ -240,7 +240,7 @@ export function ShipmentsClient() {
                             Shipments
                         </motion.h1>
                         {isUsingMockData && (
-                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <span className="px-2 py-1 text-xs font-semibold rounded-lg bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning)]/20">
                                 ⚠️ Mock Data
                             </span>
                         )}
