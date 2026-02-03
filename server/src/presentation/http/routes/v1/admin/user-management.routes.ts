@@ -8,7 +8,7 @@
 import { Router } from 'express';
 import userManagementController from '../../../controllers/admin/user-management.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { requireAccess } from '../../../middleware/auth/access.middleware';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 import { asyncHandler } from '../../../../../shared/helpers/controller.helpers';
 
 const router = Router();

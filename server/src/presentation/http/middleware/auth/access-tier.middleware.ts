@@ -26,7 +26,7 @@ export const determineUserTier = (user: any): AccessTier => {
 
     // Production check: KYC Verified
     // WARNING: This is a global check. Company-specific KYC is validated in requireAccess()
-    if (user.kycStatus?.isComplete || (user.kycStatus?.state === KYCState.VERIFIED) || (user.kycStatus?.status === 'verified')) {
+    if (user.kycStatus?.isComplete || user.kycStatus?.state === KYCState.VERIFIED) {
         return AccessTier.PRODUCTION;
     }
 

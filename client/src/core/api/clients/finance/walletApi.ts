@@ -12,6 +12,23 @@ import {
   RechargeWalletPayload
 } from '@/src/types/api/finance';
 
+export interface AutoRechargeSettings {
+  enabled: boolean;
+  threshold: number;
+  amount: number;
+  paymentMethodId?: string;
+  dailyLimit: number;
+  monthlyLimit: number;
+  lastAttempt?: string;
+  lastSuccess?: string;
+  lastFailure?: {
+    timestamp: string;
+    reason: string;
+    retryCount: number;
+    nextRetryAt: string;
+  };
+}
+
 export class WalletApiService {
   /**
    * Get wallet balance
@@ -96,6 +113,24 @@ export class WalletApiService {
    */
   async updateLowBalanceThreshold(threshold: number): Promise<{ success: boolean }> {
     const response = await apiClient.put('/finance/wallet/threshold', { threshold });
+    return response.data.data;
+  }
+
+  /**
+   * Get auto-recharge settings
+   * GET /api/v1/finance/wallet/auto-recharge/settings
+   */
+  async getAutoRechargeSettings(): Promise<AutoRechargeSettings> {
+    const response = await apiClient.get('/finance/wallet/auto-recharge/settings');
+    return response.data.data;
+  }
+
+  /**
+   * Update auto-recharge settings
+   * PUT /api/v1/finance/wallet/auto-recharge/settings
+   */
+  async updateAutoRechargeSettings(settings: Partial<AutoRechargeSettings>): Promise<AutoRechargeSettings> {
+    const response = await apiClient.put('/finance/wallet/auto-recharge/settings', settings);
     return response.data.data;
   }
 

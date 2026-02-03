@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import FlipkartProductMappingController from '../../../controllers/integrations/flipkart-product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 /**
  * Flipkart Product Mapping Routes
@@ -11,15 +11,15 @@ import { authorize } from '../../../middleware/auth/auth';
  * Base path: /api/v1/integrations/flipkart
  */
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 /**
  * Auto-mapping route
  */
 router.post(
-  '/stores/:id/mappings/auto',
+  '/auto',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.autoMapProducts
 );
 
@@ -27,16 +27,16 @@ router.post(
  * CSV import/export routes
  */
 router.post(
-  '/stores/:id/mappings/import',
+  '/import',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.importCSV
 );
 
 router.get(
-  '/stores/:id/mappings/export',
+  '/export',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.exportCSV
 );
 
@@ -44,8 +44,9 @@ router.get(
  * Statistics route
  */
 router.get(
-  '/stores/:id/mappings/stats',
+  '/stats',
   authenticate,
+  requireAccess({ kyc: true }),
   FlipkartProductMappingController.getStats
 );
 
@@ -53,15 +54,15 @@ router.get(
  * List and create mappings
  */
 router.get(
-  '/stores/:id/mappings',
+  '/',
   authenticate,
   FlipkartProductMappingController.listMappings
 );
 
 router.post(
-  '/stores/:id/mappings',
+  '/',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.createMapping
 );
 
@@ -69,23 +70,23 @@ router.post(
  * Individual mapping operations
  */
 router.delete(
-  '/mappings/:id',
+  '/:id',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.deleteMapping
 );
 
 router.post(
-  '/mappings/:id/toggle',
+  '/:id/toggle',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.toggleStatus
 );
 
 router.post(
-  '/mappings/:id/sync',
+  '/:id/sync',
   authenticate,
-  authorize(['ADMIN', 'COMPANY_OWNER', 'WAREHOUSE_MANAGER']),
+  requireAccess({ roles: ['admin'], teamRoles: ['owner', 'warehouse_manager'], kyc: true }),
   FlipkartProductMappingController.syncInventory
 );
 

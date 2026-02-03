@@ -147,10 +147,8 @@ NotificationTemplateSchema.index({ company: 1, isActive: 1 });
 // Search by name
 NotificationTemplateSchema.index({ name: 'text' });
 
-// Create and export the model
-const NotificationTemplate = mongoose.model<INotificationTemplate>(
-  'NotificationTemplate',
-  NotificationTemplateSchema
-);
+// Create and export the model (prevent overwrite in dev mode)
+const NotificationTemplate = mongoose.models.NotificationTemplate ||
+  mongoose.model<INotificationTemplate>('NotificationTemplate', NotificationTemplateSchema);
 
 export default NotificationTemplate;

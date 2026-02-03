@@ -1,5 +1,5 @@
 import auditLog, { auditLogMiddleware, auditLogPlugin, createAuditLog } from './system/audit-log.middleware';
-import auth, { authenticate, authorize, checkCompany, loginRateLimiter, csrfProtection } from './auth/auth';
+import auth, { authenticate, checkCompany, loginRateLimiter, csrfProtection } from './auth/auth';
 import permissions, { checkPermission, getUserPermissions } from './auth/permissions';
 import { requireCompany } from './auth/company';
 import { checkKYC } from './auth/kyc';
@@ -14,7 +14,6 @@ export {
   createAuditLog,
   auth,
   authenticate,
-  authorize,
   checkCompany,
   /**
    * @deprecated Use guardChecks helper instead. Will be removed in v2.0.
@@ -33,5 +32,4 @@ export {
   requireAccess,
   requireCompleteCompany
 };
-
 

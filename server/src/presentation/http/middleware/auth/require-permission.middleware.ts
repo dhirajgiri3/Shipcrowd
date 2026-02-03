@@ -2,10 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../../../shared/errors/app.error';
 import { AuditLog } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import Redis from 'ioredis';
 import { PermissionService } from '../../../../core/application/services/auth/permission.service';
-
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 interface RequirePermissionOptions {
     /**
@@ -45,23 +42,14 @@ export const requirePermission = (
                 req.query.companyId
             ) as string | undefined;
 
-            const cacheKey = PermissionService.getCacheKey(req.user._id, companyId);
-
             let permissions: string[];
 
             // Skip cache for sensitive operations (billing, refunds)
             if (options.skipCache) {
                 permissions = await PermissionService.resolve(req.user._id, companyId);
             } else {
-                // Try cache first
-                const cached = await redis.get(cacheKey);
-                if (cached) {
-                    permissions = JSON.parse(cached);
-                } else {
-                    // Cache miss - resolve and cache
-                    permissions = await PermissionService.resolve(req.user._id, companyId);
-                    await redis.setex(cacheKey, 300, JSON.stringify(permissions)); // 5 min TTL
-                }
+                // PermissionService handles caching + invalidation
+                permissions = await PermissionService.resolve(req.user._id, companyId);
             }
 
             // Check permission

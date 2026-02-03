@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { NotificationService } from '../../../../core/application/services/crm/communication/notification.service';
 import notificationService, { NotificationType } from '../../../../core/application/services/communication/notification.service';
 import emailService from '../../../../core/application/services/communication/email.service';
 import smsService from '../../../../core/application/services/communication/sms.service';
@@ -40,6 +41,23 @@ const sendShipmentStatusSchema = z.object({
   productName: z.string().optional(),
   courierName: z.string().optional(),
 });
+
+// In-app notification schemas
+const getNotificationsSchema = z.object({
+  page: z.coerce.number().min(1).optional(),
+  limit: z.coerce.number().min(1).max(100).optional(),
+  read: z.coerce.boolean().optional(),
+  type: z.enum(['order', 'shipment', 'payment', 'system', 'alert']).optional(),
+});
+
+const markAsReadSchema = z.object({
+  id: z.string(),
+});
+
+const getAuthUserId = (req: Request): string | undefined => {
+  const user = (req as any).user;
+  return user?._id || user?.userId;
+};
 
 export const sendEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -159,10 +177,86 @@ export const sendShipmentStatus = async (req: Request, res: Response, next: Next
   }
 };
 
+// ============================================================================
+// IN-APP NOTIFICATION CONTROLLERS
+// ============================================================================
+
+const notifService = new NotificationService();
+
+export const getNotifications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      throw new ValidationError('User not authenticated');
+    }
+
+    const validation = getNotificationsSchema.safeParse(req.query);
+    if (!validation.success) {
+      throw new ValidationError('Validation failed', validation.error.errors);
+    }
+
+    const result = await notifService.getUserNotifications(userId, validation.data);
+    sendSuccess(res, result, 'Notifications retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAsRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      throw new ValidationError('User not authenticated');
+    }
+
+    const validation = markAsReadSchema.safeParse({ id: req.params.id });
+    if (!validation.success) {
+      throw new ValidationError('Validation failed', validation.error.errors);
+    }
+
+    await notifService.markNotificationAsRead(validation.data.id, userId);
+    sendSuccess(res, { success: true }, 'Notification marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAllAsRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      throw new ValidationError('User not authenticated');
+    }
+
+    await notifService.markAllNotificationsAsRead(userId);
+    sendSuccess(res, { success: true }, 'All notifications marked as read');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUnreadCount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      throw new ValidationError('User not authenticated');
+    }
+
+    const count = await notifService.getUnreadCount(userId);
+    sendSuccess(res, { count }, 'Unread count retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   sendEmail,
   sendSMS,
   sendVerificationCode,
   verifyPhoneNumber,
   sendShipmentStatus,
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
+  getUnreadCount,
 };

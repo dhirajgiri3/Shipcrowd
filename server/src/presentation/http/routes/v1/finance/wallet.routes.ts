@@ -38,6 +38,10 @@ router.get('/trends', walletController.getWalletTrends);
 // Update low balance threshold
 router.put('/threshold', walletController.updateLowBalanceThreshold);
 
+// Auto-recharge settings
+router.get('/auto-recharge/settings', walletController.getAutoRechargeSettings);
+router.put('/auto-recharge/settings', walletController.updateAutoRechargeSettings);
+
 // Refund transaction (admin action)
 router.post(
     '/refund/:transactionId',

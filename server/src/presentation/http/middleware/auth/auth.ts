@@ -4,6 +4,7 @@ import { verifyAccessToken } from '../../../../shared/helpers/jwt';
 import { getAccessTokenFromRequest } from '../../../../shared/helpers/auth-cookies';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import Company from '../../../../infrastructure/database/mongoose/models/organization/core/company.model';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 import logger from '../../../../shared/logger/winston.logger';
 
@@ -30,8 +31,8 @@ export const authenticate = async (
       return;
     }
 
-    // Verify token (skip blacklist check - access tokens are not blacklisted during rotation)
-    const payload = await verifyAccessToken(token, false);
+    // Verify token (enforce blacklist for immediate logout/revocation)
+    const payload = await verifyAccessToken(token, true);
 
     // Fetch full user data from database for access tier checks
     const dbUser = await User.findById(payload.userId)
@@ -155,61 +156,6 @@ export const authenticate = async (
 };
 
 /**
- * Middleware to check if user has required role
- * ✅ FEATURE 25: Logs authorization failures for security monitoring
- */
-export const authorize = (roles: string | string[]): ((req: Request, res: Response, next: NextFunction) => Promise<void>) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = req.user;
-    if (!user) {
-      res.status(401).json({ message: 'Authentication required' });
-      return;
-    }
-
-    const allowedRoles = Array.isArray(roles) ? roles : [roles];
-
-    if (!allowedRoles.includes(user.role)) {
-      // ✅ FEATURE 25: Log authorization failures
-      try {
-        const { createAuditLog } = await import('../system/audit-log.middleware.js');
-        await createAuditLog(
-          user._id,
-          user.companyId,
-          'security',
-          'security',
-          undefined,
-          {
-            resource: req.path,
-            method: req.method,
-            requiredRoles: allowedRoles,
-            userRole: user.role,
-            reason: 'insufficient_role',
-          },
-          req
-        );
-      } catch (logError) {
-        logger.error('Failed to log authorization failure:', logError);
-      }
-
-      logger.warn('Authorization failed: Insufficient permissions', {
-        userId: user._id,
-        userRole: user.role,
-        requiredRoles: allowedRoles,
-        resource: req.path,
-        method: req.method,
-        ip: req.ip,
-      });
-
-      res.status(403).json({ message: 'Insufficient permissions' });
-      return;
-    }
-
-    next();
-  };
-};
-
-
-/**
  * Middleware to check if user belongs to the specified company
  */
 export const checkCompany = async (
@@ -224,7 +170,7 @@ export const checkCompany = async (
   }
 
   // Admin can access any company
-  if (user.role === 'admin') {
+  if (isPlatformAdmin(user)) {
     next();
     return;
   }
@@ -328,7 +274,6 @@ export const csrfProtection = (
 
 export default {
   authenticate,
-  authorize,
   checkCompany,
   loginRateLimiter,
   csrfProtection,

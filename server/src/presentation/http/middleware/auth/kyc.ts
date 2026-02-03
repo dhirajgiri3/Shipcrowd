@@ -4,6 +4,7 @@ import { createAuditLog } from '../system/audit-log.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuthenticationError, NotFoundError, AuthorizationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 /**
  * Middleware to check if user has completed KYC verification
@@ -14,7 +15,7 @@ import { ErrorCode } from '../../../../shared/errors/errorCodes';
  * - Viewers (teamRole === 'viewer') - read-only access
  * 
  * @example
- * router.post('/orders', authenticate, authorize(['seller']), checkKYC, orderController.create);
+ * router.post('/orders', authenticate, requireAccess({ roles: ['seller'], kyc: true }), orderController.create);
  */
 export const checkKYC = async (
     req: Request,
@@ -30,7 +31,7 @@ export const checkKYC = async (
         }
 
         // ✅ Platform admin exempt from KYC
-        if (authUser.role === 'admin') {
+        if (isPlatformAdmin(authUser)) {
             next();
             return;
         }
@@ -83,8 +84,8 @@ export const checkKYC = async (
         // ✅ FEATURE 14: Cross-Company KYC Bypass Prevention
         // Verify that the user's KYC belongs to their current company
         if (user.companyId) {
-            const { KYC } = await import('../../../../infrastructure/database/mongoose/models/index.js');
-            const { KYCState } = await import('../../../../core/domain/types/kyc-state.js');
+            const { KYC } = await import('../../../../infrastructure/database/mongoose/models');
+            const { KYCState } = await import('../../../../core/domain/types/kyc-state');
 
             // Stricter check: Must find a verified KYC for THIS specific company
             const kycRecord = await KYC.findOne({

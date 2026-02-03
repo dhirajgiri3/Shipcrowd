@@ -20,19 +20,27 @@ import {
     WalletHero,
     SpendingInsights,
     QuickAddMoney,
-    TransactionList
+    SpendingInsights,
+    QuickAddMoney,
+    TransactionList,
+    AutoRechargeSettings
 } from '@/src/components/seller/wallet';
 import type { PaymentMethod } from '@/src/components/seller/wallet';
 import { useToast } from '@/src/components/ui/feedback/Toast';
 import { useWalletBalance, useWalletTransactions, useRechargeWallet } from '@/src/core/api/hooks/finance/useWallet';
+import { useAutoRechargeSettings, useUpdateAutoRecharge } from '@/src/core/api/hooks/finance/useAutoRecharge';
 
 export function WalletPageClient() {
     const [isAddMoneyOpen, setIsAddMoneyOpen] = useState(false);
+    const [isAutoRechargeOpen, setIsAutoRechargeOpen] = useState(false);
     const { addToast } = useToast();
 
     const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance();
     const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
+    const { data: transactionsData, isLoading: transactionsLoading } = useWalletTransactions({ limit: 20 });
+    const { data: autoRechargeSettings, isLoading: settingsLoading } = useAutoRechargeSettings();
     const rechargeWallet = useRechargeWallet();
+    const updateAutoRecharge = useUpdateAutoRecharge();
 
     const handleRechargeSubmit = async (amount: number, _method: PaymentMethod) => {
         try {
@@ -43,6 +51,22 @@ export function WalletPageClient() {
         } catch (error) {
             console.error('Recharge failed:', error);
             addToast('Failed to process recharge. Please try again.', 'error');
+        }
+    };
+
+    const handleSaveAutoRecharge = async (settings: any) => {
+        try {
+            await updateAutoRecharge.mutateAsync(settings);
+            setIsAutoRechargeOpen(false);
+            addToast(
+                settings.enabled
+                    ? 'Auto-recharge enabled successfully'
+                    : 'Auto-recharge settings updated',
+                'success'
+            );
+        } catch (error: any) {
+            console.error('Auto-recharge update failed:', error);
+            addToast(error.message || 'Failed to save settings', 'error');
         }
     };
 
@@ -107,6 +131,8 @@ export function WalletPageClient() {
                         lowBalanceThreshold={10000}
                         averageWeeklySpend={8450}
                         onAddMoney={() => setIsAddMoneyOpen(true)}
+                        onEnableAutoRecharge={() => setIsAutoRechargeOpen(true)}
+                        isAutoRechargeEnabled={autoRechargeSettings?.enabled}
                     />
                 </motion.div>
 
@@ -186,6 +212,15 @@ export function WalletPageClient() {
                 isOpen={isAddMoneyOpen}
                 onClose={() => setIsAddMoneyOpen(false)}
                 onSubmit={handleRechargeSubmit}
+            />
+
+            {/* Auto-Recharge Settings Modal */}
+            <AutoRechargeSettings
+                isOpen={isAutoRechargeOpen}
+                onClose={() => setIsAutoRechargeOpen(false)}
+                onSave={handleSaveAutoRecharge}
+                currentSettings={autoRechargeSettings}
+                isLoading={updateAutoRecharge.isPending}
             />
         </div>
     );

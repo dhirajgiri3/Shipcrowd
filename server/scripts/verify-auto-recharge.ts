@@ -8,6 +8,7 @@ import WalletTransaction from '../src/infrastructure/database/mongoose/models/fi
 import redisLockService from '../src/core/application/services/infra/redis-lock.service';
 import razorpayPaymentService from '../src/core/application/services/payment/razorpay-payment.service';
 import { AutoRechargeMetricsService } from '../src/core/application/services/metrics/auto-recharge-metrics.service';
+import WalletService from '../src/core/application/services/wallet/wallet.service';
 
 // Get metrics singleton instance
 const autoRechargeMetrics = AutoRechargeMetricsService.getInstance();
@@ -297,7 +298,7 @@ async function verifyAutoRecharge() {
             // Should fail with error
             const success = updated?.wallet.balance === 100 &&
                 log?.status === 'failed' &&
-                log?.failureReason?.includes('Daily limit exceeded');
+                (log?.failureReason?.includes('Daily limit exceeded') ?? false);
 
             await Company.deleteOne({ _id: company._id });
             await AutoRechargeLog.deleteMany({ companyId: company._id });
@@ -669,6 +670,83 @@ async function verifyAutoRecharge() {
             await WalletTransaction.deleteMany({ company: company._id });
 
             return success;
+        });
+
+        // =================================================================
+        // TEST 16: Settings API Logic - Validation & Update
+        // =================================================================
+        await runTest('Test 16: Settings API Logic - Validation & Update', async () => {
+            const company = await Company.create({
+                name: `TestCorp_Settings_${Date.now()}`,
+                isActive: true,
+                billingInfo: { pan: 'ABCDE1234F' },
+                wallet: {
+                    balance: 100,
+                    currency: 'INR',
+                    autoRecharge: { enabled: false }
+                }
+            });
+
+            let passed = true;
+
+            // Sub-test 1: Valid Update
+            try {
+                await WalletService.updateAutoRechargeSettings(company._id.toString(), {
+                    enabled: true,
+                    threshold: 1000,
+                    amount: 5000,
+                    paymentMethodId: 'pay_method_new',
+                    dailyLimit: 20000,
+                    monthlyLimit: 100000
+                });
+
+                const updated = await WalletService.getAutoRechargeSettings(company._id.toString());
+                if (updated.enabled !== true || updated.threshold !== 1000 || updated.amount !== 5000) {
+                    throw new Error('Valid update failed verification');
+                }
+            } catch (e: any) {
+                console.error('Sub-test 1 Failed:', e.message);
+                passed = false;
+            }
+
+            // Sub-test 2: Invalid Threshold (>= Amount)
+            try {
+                await WalletService.updateAutoRechargeSettings(company._id.toString(), {
+                    enabled: true,
+                    threshold: 5000,
+                    amount: 5000 // Invalid: threshold must be < amount
+                });
+                passed = false; // Should have thrown
+                console.error('Sub-test 2 Failed: Did not throw on invalid threshold');
+            } catch (e: any) {
+                if (!e.message.includes('Threshold must be less than recharge amount')) {
+                    console.error('Sub-test 2 Failed: Wrong error message:', e.message);
+                    passed = false;
+                }
+            }
+
+            // Sub-test 3: Invalid Min Amount
+            try {
+                await WalletService.updateAutoRechargeSettings(company._id.toString(), {
+                    enabled: true,
+                    threshold: 50,
+                    amount: 90 // Invalid: min amount 100
+                });
+                passed = false; // Should have thrown
+                console.error('Sub-test 3 Failed: Did not throw on min amount');
+            } catch (e: any) {
+                if (!e.message.includes('Amount must be between')) {
+                    if (!e.message.includes('Validation')) {
+                        console.error('Sub-test 3 Failed: Wrong error message:', e.message);
+                        passed = false;
+                    }
+                }
+            }
+
+            await Company.deleteOne({ _id: company._id });
+            await AutoRechargeLog.deleteMany({ companyId: company._id });
+
+            return passed;
         });
 
         // =================================================================

@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Search, Menu } from 'lucide-react';
 import { ProfileDropdown } from '@/src/components/shared/ProfileDropdown';
 import { ThemeToggle } from '@/src/components/shared/ThemeToggle';
 import { NotificationCenter } from '@/src/components/shared/NotificationCenter';
 import { cn } from '@/src/lib/utils';
-import { useAuth } from '@/src/features/auth';
+import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 
 export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const pathname = usePathname();
-    const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
+    const { handleLogout } = useLogoutRedirect();
     const [searchFocused, setSearchFocused] = useState(false);
     const [searchValue, setSearchValue] = useState('');
 
@@ -42,8 +42,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     };
 
     const handleSignOut = async () => {
-        await logout();
-        router.push('/login');
+        await handleLogout();
     };
 
     useEffect(() => {
@@ -122,4 +121,3 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         </>
     );
 }
-

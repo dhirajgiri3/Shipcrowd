@@ -12,13 +12,13 @@ import logger from '../../../../shared/logger/winston.logger';
  * Handles product mapping management between Flipkart and Shipcrowd.
  *
  * Endpoints:
- * - POST /stores/:id/mappings/auto - Auto-map products by SKU
- * - GET /stores/:id/mappings - List mappings
- * - POST /stores/:id/mappings - Create manual mapping
+ * - POST /stores/:storeId/mappings/auto - Auto-map products by SKU
+ * - GET /stores/:storeId/mappings - List mappings
+ * - POST /stores/:storeId/mappings - Create manual mapping
  * - DELETE /mappings/:id - Delete mapping
- * - POST /stores/:id/mappings/import - Import from CSV
- * - GET /stores/:id/mappings/export - Export to CSV
- * - GET /stores/:id/mappings/stats - Get statistics
+ * - POST /stores/:storeId/mappings/import - Import from CSV
+ * - GET /stores/:storeId/mappings/export - Export to CSV
+ * - GET /stores/:storeId/mappings/stats - Get statistics
  * - POST /mappings/:id/toggle - Toggle active status
  * - POST /mappings/:id/sync - Sync single product inventory
  */
@@ -26,17 +26,17 @@ import logger from '../../../../shared/logger/winston.logger';
 export class FlipkartProductMappingController {
 
   /**
-   * POST /integrations/flipkart/stores/:id/mappings/auto
+   * POST /integrations/flipkart/stores/:storeId/mappings/auto
    *
    * Auto-map products by exact SKU match
    */
   static async autoMapProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id: storeId } = req.params;
+      const storeId = req.params.storeId ?? req.params.id;
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -62,17 +62,17 @@ export class FlipkartProductMappingController {
   }
 
   /**
-   * GET /integrations/flipkart/stores/:id/mappings
+   * GET /integrations/flipkart/stores/:storeId/mappings
    *
    * List product mappings with pagination and filters
    */
   static async listMappings(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id: storeId } = req.params;
+      const storeId = req.params.storeId ?? req.params.id;
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -105,17 +105,17 @@ export class FlipkartProductMappingController {
   }
 
   /**
-   * POST /integrations/flipkart/stores/:id/mappings
+   * POST /integrations/flipkart/stores/:storeId/mappings
    *
    * Create manual product mapping
    */
   static async createMapping(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id: storeId } = req.params;
+      const storeId = req.params.storeId ?? req.params.id;
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -151,7 +151,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership via FlipkartProductMapping
-      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model').default;
+      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model').default;
       const mapping = await FlipkartProductMapping.findById(mappingId);
 
       if (!mapping) {
@@ -177,17 +177,17 @@ export class FlipkartProductMappingController {
   }
 
   /**
-   * POST /integrations/flipkart/stores/:id/mappings/import
+   * POST /integrations/flipkart/stores/:storeId/mappings/import
    *
    * Import mappings from CSV file
    */
   static async importCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id: storeId } = req.params;
+      const storeId = req.params.storeId ?? req.params.id;
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -220,17 +220,17 @@ export class FlipkartProductMappingController {
   }
 
   /**
-   * GET /integrations/flipkart/stores/:id/mappings/export
+   * GET /integrations/flipkart/stores/:storeId/mappings/export
    *
    * Export mappings to CSV
    */
   static async exportCSV(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id: storeId } = req.params;
+      const storeId = req.params.storeId ?? req.params.id;
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -254,17 +254,17 @@ export class FlipkartProductMappingController {
   }
 
   /**
-   * GET /integrations/flipkart/stores/:id/mappings/stats
+   * GET /integrations/flipkart/stores/:storeId/mappings/stats
    *
    * Get mapping statistics
    */
   static async getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id: storeId } = req.params;
+      const storeId = req.params.storeId ?? req.params.id;
       const companyId = req.user?.companyId;
 
       // Verify store ownership
-      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/flipkart-store.model').default;
+      const FlipkartStore = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-store.model').default;
       const store = await FlipkartStore.findOne({ _id: storeId, companyId });
 
       if (!store) {
@@ -291,7 +291,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model').default;
+      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model').default;
       const mapping = await FlipkartProductMapping.findById(mappingId);
 
       if (!mapping) {
@@ -328,7 +328,7 @@ export class FlipkartProductMappingController {
       const companyId = req.user?.companyId;
 
       // Verify ownership
-      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/flipkart-product-mapping.model').default;
+      const FlipkartProductMapping = require('../../../../infrastructure/database/mongoose/models/marketplaces/flipkart/flipkart-product-mapping.model').default;
       const mapping = await FlipkartProductMapping.findById(mappingId);
 
       if (!mapping) {

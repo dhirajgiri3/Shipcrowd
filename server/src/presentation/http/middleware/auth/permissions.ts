@@ -2,6 +2,49 @@ import { Request, Response, NextFunction } from 'express';
 import { TeamPermission } from '../../../../infrastructure/database/mongoose/models';
 import { User } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { PermissionService } from '../../../../core/application/services/auth/permission.service';
+
+type PermissionMap = Record<string, Record<string, boolean>>;
+
+const addPermission = (permissions: PermissionMap, module: string, action: string) => {
+  if (!permissions[module]) {
+    permissions[module] = {};
+  }
+  permissions[module][action] = true;
+};
+
+const buildPermissionMap = (permissionList: string[]): PermissionMap => {
+  const permissions: PermissionMap = {};
+
+  for (const perm of permissionList) {
+    if (perm === '*') {
+      addPermission(permissions, '*', '*');
+      continue;
+    }
+
+    const hasColon = perm.includes(':');
+    const hasDot = perm.includes('.');
+    const separator = hasColon ? ':' : hasDot ? '.' : null;
+    if (!separator) {
+      continue;
+    }
+
+    const [module, action] = perm.split(separator);
+    if (!module || !action) continue;
+    addPermission(permissions, module, action);
+  }
+
+  return permissions;
+};
+
+const mergePermissionMaps = (base: PermissionMap, overrides: PermissionMap): PermissionMap => {
+  const merged: PermissionMap = { ...base };
+  Object.keys(overrides).forEach((moduleKey) => {
+    merged[moduleKey] = { ...(merged[moduleKey] || {}), ...overrides[moduleKey] };
+  });
+  return merged;
+};
 
 /**
  * Check if the user has the required permission
@@ -18,7 +61,7 @@ export const checkPermission = (module: string, action: string) => {
       }
 
       // Admin users have all permissions
-      if (authUser.role === 'admin') {
+      if (isPlatformAdmin(authUser)) {
         next();
         return;
       }
@@ -36,16 +79,9 @@ export const checkPermission = (module: string, action: string) => {
         return;
       }
 
-      // Company owners, admins, and managers have elevated permissions
-      if (user.teamRole === 'owner' || user.teamRole === 'admin' || user.teamRole === 'manager') {
-        // For critical operations, ensure proper role hierarchy
-        if ((module === 'team' && (action === 'remove' || action === 'manage_roles' || action === 'manage_permissions')) &&
-          user.teamRole !== 'owner' && user.teamRole !== 'admin') {
-          // Only owners and admins can manage roles and remove team members
-          res.status(403).json({ message: 'This action requires owner or admin privileges' });
-          return;
-        }
-
+      // RBAC V5 permissions (Role + Membership)
+      const permissionList = await PermissionService.resolve(String(user._id), user.companyId?.toString());
+      if (permissionList.includes(`${module}:${action}`) || permissionList.includes(`${module}.${action}`) || permissionList.includes('*')) {
         next();
         return;
       }
@@ -54,6 +90,20 @@ export const checkPermission = (module: string, action: string) => {
       const permission = await TeamPermission.findOne({ userId: user._id });
 
       if (!permission) {
+        // Company owners, admins, and managers have elevated permissions
+        if (user.teamRole === 'owner' || user.teamRole === 'admin' || user.teamRole === 'manager') {
+          // For critical operations, ensure proper role hierarchy
+          if ((module === 'team' && (action === 'remove' || action === 'manage_roles' || action === 'manage_permissions')) &&
+            user.teamRole !== 'owner' && user.teamRole !== 'admin') {
+            // Only owners and admins can manage roles and remove team members
+            res.status(403).json({ message: 'This action requires owner or admin privileges' });
+            return;
+          }
+
+          next();
+          return;
+        }
+
         // If no specific permissions are set, deny access
         res.status(403).json({ message: 'Insufficient permissions' });
         return;
@@ -87,10 +137,11 @@ export const getUserPermissions = async (userId: string): Promise<any> => {
     }
 
     // Admin users have all permissions
-    if (user.role === 'admin') {
+    if (isPlatformAdmin(user)) {
       return {
         isAdmin: true,
         isManager: false,
+        permissionList: ['*'],
         permissions: {
           orders: { view: true, create: true, update: true, delete: true },
           products: { view: true, create: true, update: true, delete: true },
@@ -103,139 +154,20 @@ export const getUserPermissions = async (userId: string): Promise<any> => {
       };
     }
 
-    // Role-based permissions
-    if (user.teamRole) {
-      const isOwner = user.teamRole === 'owner';
-      const isAdmin = user.teamRole === 'admin';
-      const isManager = user.teamRole === 'manager';
+    const permissionList = await PermissionService.resolve(userId, user.companyId?.toString());
+    const permissionMap = buildPermissionMap(permissionList);
 
-      // Base permissions for all roles
-      const basePermissions = {
-        orders: { view: true, create: false, update: false, delete: false },
-        products: { view: true, create: false, update: false, delete: false },
-        warehouses: { view: true, create: false, update: false, delete: false },
-        customers: { view: true, create: false, update: false, delete: false },
-        team: { view: true, invite: false, update: false, remove: false, manage_roles: false, manage_permissions: false },
-        reports: { view: true, export: false },
-        settings: { view: false, update: false },
-      };
-
-      // Owner permissions (full access)
-      if (isOwner) {
-        return {
-          isAdmin: false,
-          isOwner: true,
-          isManager: false,
-          permissions: {
-            orders: { view: true, create: true, update: true, delete: true },
-            products: { view: true, create: true, update: true, delete: true },
-            warehouses: { view: true, create: true, update: true, delete: true },
-            customers: { view: true, create: true, update: true, delete: true },
-            team: { view: true, invite: true, update: true, remove: true, manage_roles: true, manage_permissions: true },
-            reports: { view: true, export: true },
-            settings: { view: true, update: true },
-          },
-        };
-      }
-
-      // Admin permissions (almost full access)
-      if (isAdmin) {
-        return {
-          isAdmin: false,
-          isOwner: false,
-          isManager: false,
-          isCompanyAdmin: true,
-          permissions: {
-            orders: { view: true, create: true, update: true, delete: true },
-            products: { view: true, create: true, update: true, delete: true },
-            warehouses: { view: true, create: true, update: true, delete: true },
-            customers: { view: true, create: true, update: true, delete: true },
-            team: { view: true, invite: true, update: true, remove: true, manage_roles: true, manage_permissions: true },
-            reports: { view: true, export: true },
-            settings: { view: true, update: true },
-          },
-        };
-      }
-
-      // Manager permissions
-      if (isManager) {
-        return {
-          isAdmin: false,
-          isOwner: false,
-          isManager: true,
-          permissions: {
-            orders: { view: true, create: true, update: true, delete: true },
-            products: { view: true, create: true, update: true, delete: true },
-            warehouses: { view: true, create: true, update: true, delete: true },
-            customers: { view: true, create: true, update: true, delete: true },
-            team: { view: true, invite: true, update: true, remove: false, manage_roles: false, manage_permissions: false },
-            reports: { view: true, export: true },
-            settings: { view: true, update: true },
-          },
-        };
-      }
-
-      // Member permissions (standard team member)
-      if (user.teamRole === 'member') {
-        return {
-          isAdmin: false,
-          isOwner: false,
-          isManager: false,
-          permissions: {
-            orders: { view: true, create: true, update: true, delete: false },
-            products: { view: true, create: true, update: true, delete: false },
-            warehouses: { view: true, create: false, update: false, delete: false },
-            customers: { view: true, create: true, update: true, delete: false },
-            team: { view: true, invite: false, update: false, remove: false, manage_roles: false, manage_permissions: false },
-            reports: { view: true, export: false },
-            settings: { view: false, update: false },
-          },
-        };
-      }
-
-      // Viewer permissions (read-only)
-      if (user.teamRole === 'viewer') {
-        return {
-          isAdmin: false,
-          isOwner: false,
-          isManager: false,
-          permissions: {
-            orders: { view: true, create: false, update: false, delete: false },
-            products: { view: true, create: false, update: false, delete: false },
-            warehouses: { view: true, create: false, update: false, delete: false },
-            customers: { view: true, create: false, update: false, delete: false },
-            team: { view: true, invite: false, update: false, remove: false, manage_roles: false, manage_permissions: false },
-            reports: { view: true, export: false },
-            settings: { view: false, update: false },
-          },
-        };
-      }
-    }
-
-    // For staff members, get specific permissions
-    const permission = await TeamPermission.findOne({ userId });
-
-    if (!permission) {
-      // Default permissions for staff members
-      return {
-        isAdmin: false,
-        isManager: false,
-        permissions: {
-          orders: { view: true, create: false, update: false, delete: false },
-          products: { view: true, create: false, update: false, delete: false },
-          warehouses: { view: true, create: false, update: false, delete: false },
-          customers: { view: true, create: false, update: false, delete: false },
-          team: { view: false, invite: false, update: false, remove: false },
-          reports: { view: true, export: false },
-          settings: { view: false, update: false },
-        },
-      };
-    }
+    const permissionOverride = await TeamPermission.findOne({ userId });
+    const permissions = permissionOverride?.permissions
+      ? mergePermissionMaps(permissionMap, permissionOverride.permissions as PermissionMap)
+      : permissionMap;
 
     return {
       isAdmin: false,
-      isManager: false,
-      permissions: permission.permissions,
+      isOwner: user.teamRole === 'owner',
+      isManager: user.teamRole === 'manager',
+      permissionList,
+      permissions,
     };
   } catch (error) {
     logger.error('Error getting user permissions:', error);

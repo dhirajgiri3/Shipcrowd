@@ -45,4 +45,36 @@ router.post('/sms', notificationController.sendSMS);
  */
 router.post('/shipment-status', notificationController.sendShipmentStatus);
 
+// ============================================================================
+// IN-APP NOTIFICATION ROUTES
+// ============================================================================
+
+/**
+ * @route GET /api/v1/notifications
+ * @desc Get user notifications
+ * @access Private
+ */
+router.get('/', notificationController.getNotifications);
+
+/**
+ * @route POST /api/v1/notifications/:id/read
+ * @desc Mark notification as read
+ * @access Private
+ */
+router.post('/:id/read', notificationController.markAsRead);
+
+/**
+ * @route POST /api/v1/notifications/mark-all-read
+ * @desc Mark all notifications as read
+ * @access Private
+ */
+router.post('/mark-all-read', notificationController.markAllAsRead);
+
+/**
+ * @route GET /api/v1/notifications/unread-count
+ * @desc Get unread notification count
+ * @access Private
+ */
+router.get('/unread-count', notificationController.getUnreadCount);
+
 export default router;

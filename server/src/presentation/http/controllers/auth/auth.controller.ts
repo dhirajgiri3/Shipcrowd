@@ -814,7 +814,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
           if (decoded && decoded.jti && decoded.exp) {
             const timeUntilExpiry = decoded.exp - Math.floor(Date.now() / 1000);
             if (timeUntilExpiry > 0) {
-              const { blacklistToken } = await import('../../../../shared/helpers/jwt.js');
+          const { blacklistToken } = await import('../../../../shared/helpers/jwt');
               await blacklistToken(decoded.jti, timeUntilExpiry);
             }
           }
@@ -1828,13 +1828,27 @@ export const getCSRFToken = async (
 
     if (accessToken) {
       try {
-        const { verifyAccessToken } = await import('../../../../shared/helpers/jwt.js');
+        const { verifyAccessToken } = await import('../../../../shared/helpers/jwt');
         const payload = await verifyAccessToken(accessToken, false);
         sessionId = payload.userId;
         logger.debug('CSRF token: Using authenticated user ID', { sessionId });
       } catch (tokenError) {
         // Token is invalid/expired - fall back to anonymous session
         logger.debug('CSRF token: Access token invalid, using anonymous session');
+      }
+    }
+
+    // ✅ Fallback: If access token is missing/expired but refresh token exists, use it to bind CSRF
+    if (!sessionId) {
+      const refreshToken = getRefreshTokenFromRequest(req);
+      if (refreshToken) {
+        try {
+          const refreshPayload = await verifyRefreshToken(refreshToken, false);
+          sessionId = refreshPayload.userId;
+          logger.debug('CSRF token: Using refresh token user ID', { sessionId });
+        } catch (refreshError) {
+          logger.debug('CSRF token: Refresh token invalid, using anonymous session');
+        }
       }
     }
 

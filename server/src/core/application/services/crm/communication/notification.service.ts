@@ -3,6 +3,7 @@ import NotificationTemplate, {
   NotificationTrigger,
   INotificationTemplate,
 } from '@/infrastructure/database/mongoose/models/crm/communication/notification-template.model';
+import Notification, { INotification } from '@/infrastructure/database/mongoose/models/crm/communication/notification.model';
 import { AppError, NotFoundError, ValidationError } from '@/shared/errors';
 import logger from '@/shared/logger/winston.logger';
 import mongoose from 'mongoose';
@@ -94,7 +95,7 @@ export class NotificationService {
       query.company = null;
     }
 
-    return NotificationTemplate.find(query).sort({ createdAt: -1 }).lean();
+    return NotificationTemplate.find(query).sort({ createdAt: -1 });
   }
 
   /**
@@ -118,7 +119,7 @@ export class NotificationService {
       query.company = null;
     }
 
-    return NotificationTemplate.find(query).sort({ trigger: 1, createdAt: -1 }).lean();
+    return NotificationTemplate.find(query).sort({ trigger: 1, createdAt: -1 });
   }
 
   /**
@@ -245,8 +246,7 @@ export class NotificationService {
     const templates = await NotificationTemplate.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+      .limit(limit);
 
     return {
       templates,
@@ -399,5 +399,104 @@ export class NotificationService {
         messageId: '',
       };
     }
+  }
+
+  // ============================================================================
+  // IN-APP NOTIFICATION METHODS
+  // ============================================================================
+
+  /**
+   * Get user notifications with pagination
+   */
+  async getUserNotifications(
+    userId: string,
+    filters: {
+      page?: number;
+      limit?: number;
+      read?: boolean;
+      type?: string;
+    } = {}
+  ): Promise<{
+    notifications: INotification[];
+    total: number;
+    page: number;
+    limit: number;
+    unreadCount: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+
+    const query: any = {
+      recipientId: new mongoose.Types.ObjectId(userId),
+    };
+
+    if (filters.read !== undefined) {
+      query.read = filters.read;
+    }
+
+    if (filters.type) {
+      query.type = filters.type;
+    }
+
+    const [notifications, total, unreadCount] = await Promise.all([
+      Notification.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Notification.countDocuments(query),
+      Notification.countDocuments({
+        recipientId: new mongoose.Types.ObjectId(userId),
+        read: false,
+      }),
+    ]);
+
+    return {
+      notifications,
+      total,
+      page,
+      limit,
+      unreadCount,
+    };
+  }
+
+  /**
+   * Mark a single notification as read
+   */
+  async markNotificationAsRead(notificationId: string, userId: string): Promise<void> {
+    const result = await Notification.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(notificationId),
+        recipientId: new mongoose.Types.ObjectId(userId),
+      },
+      { read: true },
+      { new: true }
+    );
+
+    if (!result) {
+      throw new NotFoundError('Notification not found or access denied');
+    }
+  }
+
+  /**
+   * Mark all notifications as read for a user
+   */
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await Notification.updateMany(
+      {
+        recipientId: new mongoose.Types.ObjectId(userId),
+        read: false,
+      },
+      { read: true }
+    );
+  }
+
+  /**
+   * Get unread notification count for a user
+   */
+  async getUnreadCount(userId: string): Promise<number> {
+    return Notification.countDocuments({
+      recipientId: new mongoose.Types.ObjectId(userId),
+      read: false,
+    });
   }
 }

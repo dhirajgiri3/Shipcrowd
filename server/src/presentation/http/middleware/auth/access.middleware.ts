@@ -3,6 +3,8 @@ import { AppError } from '../../../../shared/errors/app.error';
 import logger from '../../../../shared/logger/winston.logger';
 import { AuditLog, User, TeamPermission } from '../../../../infrastructure/database/mongoose/models';
 import { PermissionService } from '../../../../core/application/services/auth/permission.service';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
+import { KYCState } from '../../../../core/domain/types/kyc-state';
 
 /**
  * Unified Access Control Options
@@ -61,7 +63,7 @@ export const requireAccess = (options: AccessOptions = {}) => {
 
             // 1. Check Platform Role
             if (options.roles && options.roles.length > 0) {
-                if (!options.roles.includes(user.role as any)) {
+                if (!options.roles.includes(user.role as any) && !isPlatformAdmin(user)) {
                     // Allow if admin override? No, strict role check
                     logAccessDenial(req, user, 'insufficient_role', { required: options.roles });
                     throw new AppError('Insufficient platform role', 'FORBIDDEN', 403);
@@ -71,7 +73,7 @@ export const requireAccess = (options: AccessOptions = {}) => {
             // 2. Check Team Role
             if (options.teamRoles && options.teamRoles.length > 0) {
                 // Super admins and admins can bypass team role checks
-                const isAdminRole = user.role === 'super_admin' || user.role === 'admin';
+                const isAdminRole = isPlatformAdmin(user);
                 if (!isAdminRole) {
                     if (!user.teamRole || !options.teamRoles.includes(user.teamRole as any)) {
                         logAccessDenial(req, user, 'insufficient_team_role', { required: options.teamRoles });
@@ -81,7 +83,7 @@ export const requireAccess = (options: AccessOptions = {}) => {
             }
 
             // 3. Check Company Match (Isolation)
-            const isAdminRole = user.role === 'super_admin' || user.role === 'admin';
+            const isAdminRole = isPlatformAdmin(user);
             if (options.requireCompanyMatch && !isAdminRole) {
                 const resourceCompanyId = req.params.companyId || req.body.companyId || req.query.companyId;
 
@@ -96,21 +98,21 @@ export const requireAccess = (options: AccessOptions = {}) => {
             }
 
             // 4. Check KYC
-            const isAdminRoleForKYC = user.role === 'super_admin' || user.role === 'admin';
+            const isAdminRoleForKYC = isPlatformAdmin(user);
             if (options.requireKYC && !isAdminRoleForKYC) {
                 // Check user flag first
-                if (!user.kycStatus?.isComplete) {
+                if (!user.kycStatus?.isComplete && user.kycStatus?.state !== KYCState.VERIFIED) {
                     logAccessDenial(req, user, 'kyc_required');
                     throw new AppError('KYC verification required', 'KYC_REQUIRED', 403);
                 }
 
                 // Strict check: Ensure KYC exists for THIS company (Prevent Bypass)
                 if (user.companyId) {
-                    const { KYC } = await import('../../../../infrastructure/database/mongoose/models/index.js');
+                    const { KYC } = await import('../../../../infrastructure/database/mongoose/models');
                     const kycRecord = await KYC.exists({
                         userId: user._id,
                         companyId: user.companyId,
-                        status: 'verified'
+                        state: KYCState.VERIFIED
                     });
 
                     if (!kycRecord) {
@@ -121,7 +123,7 @@ export const requireAccess = (options: AccessOptions = {}) => {
             }
 
             // 5. Check Access Tier
-            const isAdminRoleForTier = user.role === 'super_admin' || user.role === 'admin';
+            const isAdminRoleForTier = isPlatformAdmin(user);
             if (options.tier && !isAdminRoleForTier) {
                 const tiers = ['explorer', 'sandbox', 'production'];
                 const userTierIndex = tiers.indexOf(user.accessTier || 'explorer');
@@ -152,7 +154,7 @@ export const requireAccess = (options: AccessOptions = {}) => {
                 const { module, action } = options.permission;
 
                 // Super admins, admins and Owners usually have full access
-                const hasFullAccess = user.role === 'super_admin' || user.role === 'admin' || user.teamRole === 'owner' || user.teamRole === 'admin';
+                const hasFullAccess = isPlatformAdmin(user) || user.teamRole === 'owner' || user.teamRole === 'admin';
 
                 if (!hasFullAccess) {
                     // Managers handling

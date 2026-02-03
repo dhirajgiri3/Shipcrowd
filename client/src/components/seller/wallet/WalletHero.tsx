@@ -38,6 +38,7 @@ interface WalletHeroProps {
   averageWeeklySpend?: number;
   onAddMoney?: () => void;
   onEnableAutoRecharge?: () => void;
+  isAutoRechargeEnabled?: boolean;
   className?: string;
 }
 
@@ -55,6 +56,7 @@ export function WalletHero({
   averageWeeklySpend = 3500,
   onAddMoney,
   onEnableAutoRecharge,
+  isAutoRechargeEnabled = false,
   className
 }: WalletHeroProps) {
   const [showAutoRecharge, setShowAutoRecharge] = useState(false);
@@ -200,8 +202,8 @@ export function WalletHero({
               <span>Add Money</span>
             </motion.button>
 
-            {/* Secondary: Auto-recharge */}
-            {!showAutoRecharge && (
+            {/* Secondary: Auto-recharge - Only show if NOT enabled */}
+            {!isAutoRechargeEnabled && !showAutoRecharge && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -209,6 +211,19 @@ export function WalletHero({
                 className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-medium text-sm transition-all border border-white/20"
               >
                 <Zap className="w-5 h-5" />
+              </motion.button>
+            )}
+
+            {/* Enabled Indicator - Updates Settings */}
+            {isAutoRechargeEnabled && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onEnableAutoRecharge} // Re-opens settings
+                className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 backdrop-blur-sm text-green-100 font-medium text-sm transition-all border border-green-500/30"
+              >
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span>Auto On</span>
               </motion.button>
             )}
           </div>

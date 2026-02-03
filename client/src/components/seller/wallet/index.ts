@@ -10,6 +10,7 @@ export { WalletHero } from './WalletHero';
 export { SpendingInsights, DEFAULT_SPEND_CATEGORIES } from './SpendingInsights';
 export { QuickAddMoney } from './QuickAddMoney';
 export { TransactionList } from './TransactionList';
+export { AutoRechargeSettings } from './AutoRechargeSettings';
 
 // Types
 export type { SpendCategory } from './SpendingInsights';

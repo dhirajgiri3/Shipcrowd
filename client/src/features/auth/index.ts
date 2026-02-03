@@ -9,10 +9,10 @@ export { AuthProvider } from './context/AuthContext';
 
 // Hooks
 export { useAuth } from './hooks/useAuth';
+export { useLogoutRedirect } from './hooks/useLogoutRedirect';
 
 // Components
 export { AuthGuard } from './components/AuthGuard';
 
 // Types (from centralized types)
 export type { AuthContextType, User, LoginRequest, RegisterRequest } from '@/src/types/auth';
-

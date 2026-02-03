@@ -212,6 +212,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  isLoggingOut: boolean;
   error: NormalizedError | null;
 
   // Auth Actions

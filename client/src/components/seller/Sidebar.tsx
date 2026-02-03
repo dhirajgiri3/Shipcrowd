@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
@@ -27,7 +27,7 @@ import {
     MapPin
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { useAuth } from '@/src/features/auth';
+import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 import { useSellerActions } from '@/src/core/api/hooks/seller/useSellerActions';
 import { Badge } from '@/src/components/ui/core/Badge';
 
@@ -95,8 +95,8 @@ export const Sidebar = React.memo(SidebarComponent);
 
 function SidebarComponent() {
     const pathname = usePathname();
-    const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
+    const { handleLogout } = useLogoutRedirect();
     const { data: actions } = useSellerActions();
 
     // Load expanded state from localStorage
@@ -132,8 +132,7 @@ function SidebarComponent() {
         : 'SL';
 
     const handleSignOut = async () => {
-        await logout();
-        router.push('/login');
+        await handleLogout();
     };
 
     const toggleSection = (sectionId: string) => {

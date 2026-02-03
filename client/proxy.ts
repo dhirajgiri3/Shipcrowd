@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
 
 
     // No tokens = redirect to login
-    if (!accessToken && !refreshToken) {
+    if (!hasToken) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('redirect', pathname);
 

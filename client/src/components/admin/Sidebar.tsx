@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
     Package,
@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/core/Button';
-import { useAuth } from '@/src/features/auth';
+import { useAuth, useLogoutRedirect } from '@/src/features/auth';
 
 const navItems = [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -58,8 +58,8 @@ export const Sidebar = React.memo(SidebarComponent);
 
 function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
     const pathname = usePathname();
-    const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
+    const { handleLogout } = useLogoutRedirect();
 
     // Get user initials for avatar
     const userInitials = user?.name
@@ -67,8 +67,7 @@ function SidebarComponent({ isOpen, onClose }: { isOpen?: boolean; onClose?: () 
         : 'AD';
 
     const handleSignOut = async () => {
-        await logout();
-        router.push('/login');
+        await handleLogout();
     };
 
     // Filter items based on user role

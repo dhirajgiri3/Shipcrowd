@@ -12,6 +12,7 @@ import {
     updateWalletThresholdSchema,
     refundTransactionSchema
 } from '../../../../shared/validation/schemas/financial.schemas';
+import { z } from 'zod';
 
 /**
  * Get wallet balance
@@ -363,6 +364,72 @@ export const getCashFlowForecast = async (
     }
 };
 
+/**
+ * Update auto-recharge settings
+ * PUT /api/v1/finance/wallet/auto-recharge/settings
+ */
+export const updateAutoRechargeSettings = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+
+        // Zod validation
+        const schema = z.object({
+            enabled: z.boolean(),
+            threshold: z.number().min(100).max(100000).optional(),
+            amount: z.number().min(100).max(1000000).optional(),
+            paymentMethodId: z.string().optional(),
+            dailyLimit: z.number().min(100).optional(),
+            monthlyLimit: z.number().min(100).optional(),
+        });
+
+        const validation = schema.safeParse(req.body);
+
+        if (!validation.success) {
+            const details = validation.error.errors.map((err) => ({
+                field: err.path.join('.'),
+                message: err.message,
+            }));
+            throw new ValidationError('Validation failed', details);
+        }
+
+        const result = await WalletService.updateAutoRechargeSettings(
+            auth.companyId,
+            validation.data
+        );
+
+        sendSuccess(
+            res,
+            result.settings,
+            'Auto-recharge settings updated successfully'
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get auto-recharge settings
+ * GET /api/v1/finance/wallet/auto-recharge/settings
+ */
+export const getAutoRechargeSettings = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const auth = guardChecks(req);
+        const settings = await WalletService.getAutoRechargeSettings(auth.companyId);
+
+        sendSuccess(res, settings, 'Auto-recharge settings retrieved');
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getBalance,
     getTransactionHistory,
@@ -374,4 +441,6 @@ export default {
     updateLowBalanceThreshold,
     getAvailableBalance, // Phase 2: Dashboard Optimization
     getCashFlowForecast, // Phase 3: Cash Flow Forecast
+    updateAutoRechargeSettings,
+    getAutoRechargeSettings,
 };

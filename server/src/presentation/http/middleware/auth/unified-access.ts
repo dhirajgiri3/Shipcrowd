@@ -4,6 +4,7 @@ import { AccessTier } from '../../../../core/domain/types/access-tier';
 import { determineUserTier } from './access-tier.middleware';
 import logger from '../../../../shared/logger/winston.logger';
 import { KYCState } from '../../../../core/domain/types/kyc-state';
+import { isPlatformAdmin } from '../../../../shared/utils/role-helpers';
 
 type UserRole = 'super_admin' | 'admin' | 'seller' | 'staff';
 type TeamRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer' | 'warehouse_manager' | 'inventory_manager' | 'picker' | 'packer';
@@ -41,7 +42,7 @@ export const requireAccess = (options: AccessOptions) => {
             }
 
             // 2. Platform Role Check
-            if (options.roles && !options.roles.includes(user.role)) {
+            if (options.roles && !options.roles.includes(user.role) && !isPlatformAdmin(user)) {
                 res.status(403).json({
                     success: false,
                     code: 'INSUFFICIENT_ROLE',
@@ -77,7 +78,11 @@ export const requireAccess = (options: AccessOptions) => {
             const isDev = process.env.NODE_ENV === 'development';
             if (!isDev && options.kyc !== false && (options.kyc || options.tier === AccessTier.PRODUCTION)) {
                 // Check if user has completed KYC in general
-                if (!user.kycStatus?.isComplete && user.kycStatus?.state !== KYCState.VERIFIED) {
+                if (
+                    !isPlatformAdmin(user) &&
+                    !user.kycStatus?.isComplete &&
+                    user.kycStatus?.state !== KYCState.VERIFIED
+                ) {
                     res.status(403).json({
                         success: false,
                         code: 'KYC_REQUIRED',
@@ -94,7 +99,7 @@ export const requireAccess = (options: AccessOptions) => {
                         state: KYCState.VERIFIED
                     }).select('_id');
 
-                    if (!kycRecord && user.role !== 'admin') {
+                    if (!kycRecord && !isPlatformAdmin(user)) {
                         res.status(403).json({
                             success: false,
                             code: 'KYC_REQUIRED_FOR_COMPANY',
@@ -106,7 +111,7 @@ export const requireAccess = (options: AccessOptions) => {
             }
 
             // 5. Team Role Check
-            if (options.teamRoles && user.role !== 'admin' && !options.teamRoles.includes(user.teamRole)) {
+            if (options.teamRoles && !isPlatformAdmin(user) && !options.teamRoles.includes(user.teamRole)) {
                 res.status(403).json({
                     success: false,
                     code: 'INSUFFICIENT_TEAM_ROLE',
@@ -120,7 +125,7 @@ export const requireAccess = (options: AccessOptions) => {
                 const resourceCompanyId = req.params.companyId || req.body.companyId || req.query.companyId;
 
                 if (resourceCompanyId && user.companyId?.toString() !== resourceCompanyId.toString()) {
-                    if (user.role !== 'admin') {
+                    if (!isPlatformAdmin(user)) {
                         logger.warn(`User ${user._id} attempted data access mismatch: UserCompany ${user.companyId} vs Target ${resourceCompanyId}`);
                         res.status(403).json({
                             success: false,

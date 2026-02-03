@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import type { User, AuthContextType, RegisterRequest, LoginRequest, NormalizedError } from '@/src/types/auth';
 import { authApi, companyApi } from '@/src/core/api';
 import { sessionApi } from '@/src/core/api/clients/auth/sessionApi';
 import type { Session } from '@/src/core/api/clients/auth/sessionApi';
 import { clearCSRFToken, prefetchCSRFToken, resetAuthState, isRefreshBlocked, normalizeError } from '@/src/core/api/http';
+import { shouldSkipAuthInit } from '@/src/config/routes';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
+import { Loader } from '@/src/components/ui/feedback/Loader';
 
 /**
  * Auth Context
@@ -29,9 +32,11 @@ interface AuthProviderProps {
  * - Clean error handling
  */
 export function AuthProvider({ children }: AuthProviderProps) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [error, setError] = useState<NormalizedError | null>(null);
 
   // Refs for cleanup and preventing race conditions
@@ -41,60 +46,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ✅ Activity and Refresh Timing Refs
   const lastActivityRef = useRef(Date.now());
   const lastRefreshRef = useRef(Date.now());
-
-  // ✅ Activity Listener setup
-  useEffect(() => {
-    const handleActivity = () => {
-      // Throttle: Only update if significant time passed (e.g. 1 sec) or just raw is fine for Date.now()
-      lastActivityRef.current = Date.now();
-    };
-
-    // Listen for user activity
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-    window.addEventListener('scroll', handleActivity);
-
-    // ✅ Cross-Tab Synchronization
-    const authChannel = new BroadcastChannel('auth_channel');
-
-    authChannel.onmessage = async (event) => {
-      if (event.data.type === 'LOGOUT') {
-        // Received LOGOUT from another tab
-        // Only act if currently logged in to avoid loops
-        if (user) {
-          // ✅ Fix #8: Reset circuit breaker on cross-tab logout
-          clearCSRFToken();
-          resetAuthState();
-          if (refreshIntervalRef.current) {
-            clearInterval(refreshIntervalRef.current);
-            refreshIntervalRef.current = null;
-          }
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] Synced logout from another tab');
-          }
-          setUser(null);
-        }
-      } else if (event.data.type === 'LOGIN') {
-        // Received LOGIN from another tab
-        // Silently ignore - cookies are not shared across tabs in browsers
-        // Each tab maintains its own auth state
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Auth] Login event received from another tab (ignored - cookies not shared)');
-        }
-      }
-    };
-
-    return () => {
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
-      authChannel.close();
-    };
-  }, [user]);
 
   /**
    * Setup token refresh timer
@@ -203,6 +154,73 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
+   * Sync session state from cookies (used for cross-tab login events)
+   * Keeps client in sync with server-set HttpOnly cookies
+   */
+  const syncSessionFromCookies = useCallback(async () => {
+    try {
+      const userData = await authApi.getMe();
+      setUser(userData);
+      setupTokenRefresh();
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Auth] Failed to sync session from cookies:', err);
+      }
+    }
+  }, [setupTokenRefresh]);
+
+  // ✅ Activity Listener setup
+  useEffect(() => {
+    const handleActivity = () => {
+      // Throttle: Only update if significant time passed (e.g. 1 sec) or just raw is fine for Date.now()
+      lastActivityRef.current = Date.now();
+    };
+
+    // Listen for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    // ✅ Cross-Tab Synchronization
+    const authChannel = new BroadcastChannel('auth_channel');
+
+    authChannel.onmessage = async (event) => {
+      if (event.data.type === 'LOGOUT') {
+        // Received LOGOUT from another tab
+        // Only act if currently logged in to avoid loops
+        if (user) {
+          // ✅ Fix #8: Reset circuit breaker on cross-tab logout
+          clearCSRFToken();
+          resetAuthState();
+          if (refreshIntervalRef.current) {
+            clearInterval(refreshIntervalRef.current);
+            refreshIntervalRef.current = null;
+          }
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] Synced logout from another tab');
+          }
+          setUser(null);
+        }
+      } else if (event.data.type === 'LOGIN') {
+        // Received LOGIN from another tab
+        // Cookies are shared across tabs, so sync state
+        await syncSessionFromCookies();
+      }
+    };
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      authChannel.close();
+    };
+  }, [user, syncSessionFromCookies]);
+
+  /**
    * Initialize authentication on mount
    * Checks for existing session via /auth/me
    */
@@ -212,6 +230,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeRef.current = true;
 
     try {
+      // ✅ Skip auth init on public/guest-only routes to avoid unnecessary refresh attempts
+      if (shouldSkipAuthInit(pathname)) {
+        setIsInitialized(true);
+        return;
+      }
       // ✅ Pre-fetch CSRF token in background to ensure readiness for mutations
       prefetchCSRFToken().catch((err) => {
         if (process.env.NODE_ENV === 'development') {
@@ -219,7 +242,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       });
 
-      const userData = await authApi.getMe(true);
+      // ✅ Allow refresh on init if access token is expired but refresh token is valid
+      const userData = await authApi.getMe();
       setUser(userData);
       // ✅ Start auto-refresh timer for existing sessions
       setupTokenRefresh();
@@ -231,7 +255,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsInitialized(true);
     }
-  }, [setupTokenRefresh]);
+  }, [pathname, setupTokenRefresh]);
 
   /**
    * Refresh user data from server
@@ -243,14 +267,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
       const userData = await authApi.getMe();
       setUser(userData);
+      // ✅ Ensure token refresh timer is running (OAuth/magic-link flows use refreshUser)
+      setupTokenRefresh();
     } catch (err) {
       const normalizedErr = normalizeError(err as any);
       setError(normalizedErr);
       setUser(null);
+      // Stop refresh loop if session is invalid
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setupTokenRefresh]);
 
   /**
    * Register new user
@@ -272,7 +303,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(false);
       }
     },
-    []
+    [setupTokenRefresh]
   );
 
   /**
@@ -330,38 +361,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Caller is responsible for redirecting to login page
    */
   const logout = useCallback(async () => {
+    setIsLoggingOut(true);
     // ✅ Clear CSRF token BEFORE logout request to get fresh token
     clearCSRFToken();
 
-    // Stop token refresh immediately
-    if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
-    }
-
-    // Call logout endpoint (may fail with CSRF error, that's OK)
     try {
+      // Call logout endpoint (may fail - keep session intact if it does)
       await authApi.logout();
+
+      // Stop token refresh immediately (only after successful logout)
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+
+      // Clear user state
+      setUser(null);
+
+      // ✅ Reset auth state (clears cookies, circuit breaker)
+      resetAuthState();
+
+      // ✅ Broadcast LOGOUT event to other tabs
+      try {
+        const authChannel = new BroadcastChannel('auth_channel');
+        authChannel.postMessage({ type: 'LOGOUT' });
+        authChannel.close();
+      } catch {
+        // BroadcastChannel may not be available
+      }
     } catch (logoutError) {
-      // Server logout failed, but we still clear local state
       if (process.env.NODE_ENV === 'development') {
         console.warn('[Auth] Server logout failed:', logoutError);
       }
-    }
-
-    // Clear user state
-    setUser(null);
-
-    // ✅ Reset auth state (clears cookies, circuit breaker)
-    resetAuthState();
-
-    // ✅ Broadcast LOGOUT event to other tabs
-    try {
-      const authChannel = new BroadcastChannel('auth_channel');
-      authChannel.postMessage({ type: 'LOGOUT' });
-      authChannel.close();
-    } catch {
-      // BroadcastChannel may not be available
+      throw logoutError;
+    } finally {
+      setIsLoggingOut(false);
     }
   }, []);
 
@@ -381,6 +415,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Fetch authoritative user data from backend (includes all V5 fields)
           const userData = await authApi.getMe();
           setUser(userData);
+          // ✅ Start refresh timer after auto-login (email verify flow)
+          setupTokenRefresh();
 
           // Broadcast login to other tabs via BroadcastChannel
           const authChannel = new BroadcastChannel('auth_channel');
@@ -669,6 +705,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!user,
     isLoading,
     isInitialized,
+    isLoggingOut,
     error,
     register,
     login,
@@ -690,8 +727,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Password strength check: Use authApi.checkPasswordStrength() directly
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[110] bg-black/30 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex items-center gap-3 rounded-2xl bg-[var(--bg-primary)]/95 border border-[var(--border-subtle)] px-5 py-3 shadow-lg">
+            <Loader variant="spinner" size="sm" />
+            <span className="text-sm font-medium text-[var(--text-primary)]">Signing out...</span>
+          </div>
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export default AuthProvider;
-

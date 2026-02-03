@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import AmazonProductMappingController from '../../../controllers/integrations/amazon-product-mapping.controller';
 import { authenticate } from '../../../middleware/auth/auth';
-import { authorize } from '../../../middleware/auth/auth';
+import { requireAccess } from '../../../middleware/auth/unified-access';
 
 /**
  * Amazon Product Mapping Routes
@@ -21,7 +21,7 @@ const router = Router({ mergeParams: true }); // Enable access to :storeId from 
 router.post(
     '/auto-map',
     authenticate,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonProductMappingController.autoMap
 );
 
@@ -36,7 +36,7 @@ router.get(
 router.post(
     '/',
     authenticate,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonProductMappingController.createMapping
 );
 
@@ -44,7 +44,7 @@ router.post(
 router.delete(
     '/:id',
     authenticate,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonProductMappingController.deleteMapping
 );
 
@@ -56,7 +56,7 @@ router.delete(
 router.post(
     '/import',
     authenticate,
-    authorize(['ADMIN', 'COMPANY_OWNER']),
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonProductMappingController.importCSV
 );
 
@@ -64,6 +64,7 @@ router.post(
 router.get(
     '/export',
     authenticate,
+    requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonProductMappingController.exportCSV
 );
 
@@ -75,6 +76,7 @@ router.get(
 router.get(
     '/stats',
     authenticate,
+    requireAccess({ kyc: true }),
     AmazonProductMappingController.getStats
 );
 

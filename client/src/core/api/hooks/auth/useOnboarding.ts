@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { companyApi, CreateCompanyData, authApi } from '@/src/core/api';
+import { companyApi, CreateCompanyData } from '@/src/core/api';
 import { handleApiError, showSuccessToast } from '@/src/lib/error';
 import { isValidGSTIN, isValidPAN, isValidPincode } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -43,7 +43,7 @@ const INITIAL_DATA: OnboardingFormData = {
 
 export function useOnboarding() {
     const router = useRouter();
-    const { user, isLoading: authLoading, isAuthenticated, refreshUser } = useAuth();
+    const { user, isLoading: authLoading, isAuthenticated, refreshUser, logout } = useAuth();
 
     const [step, setStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
@@ -274,8 +274,8 @@ export function useOnboarding() {
     const handleLogout = async () => {
         try {
             await saveDraft();
-            await authApi.logout();
-            router.push('/login');
+            await logout();
+            router.replace('/login');
         } catch (err) {
             console.error('Logout error:', err);
             toast.error('Logout failed');

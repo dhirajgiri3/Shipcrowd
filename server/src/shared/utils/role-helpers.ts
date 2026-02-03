@@ -24,7 +24,7 @@ const TEAM_ROLE_HIERARCHY: Record<string, number> = {
  * Platform admins have access to all companies and admin features
  */
 export const isPlatformAdmin = (user: IUser | { role?: string }): boolean => {
-    return user.role === 'admin';
+    return user.role === 'admin' || user.role === 'super_admin';
 };
 
 /**

@@ -47,9 +47,9 @@ export function AuthGuard({
     if (!isAuthenticated) {
       // If redirecting to login, append current path so user can be redirected back
       if (redirectTo === '/login' && pathname && pathname !== '/') {
-        router.push(`${redirectTo}?redirect=${encodeURIComponent(pathname)}`);
+        router.replace(`${redirectTo}?redirect=${encodeURIComponent(pathname)}`);
       } else {
-        router.push(redirectTo);
+        router.replace(redirectTo);
       }
       return;
     }
@@ -71,7 +71,7 @@ export function AuthGuard({
         // Sellers can't access admin routes, but admins/super_admins CAN access seller routes
         const destination = (user.role === 'admin' || isSuperAdmin) ? '/admin' : '/seller';
         if (pathname !== destination) {
-          router.push(destination);
+          router.replace(destination);
         }
         return;
       }

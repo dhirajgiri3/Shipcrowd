@@ -22,7 +22,6 @@ const router = Router();
 router.post(
     '/connect',
     authenticate,
-    authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.connect
 );
@@ -49,7 +48,6 @@ router.get(
 router.delete(
     '/stores/:id',
     authenticate,
-    authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.disconnectStore
 );
@@ -65,7 +63,6 @@ router.post(
 router.post(
     '/stores/:id/pause',
     authenticate,
-    authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.pauseSync
 );
@@ -73,7 +70,6 @@ router.post(
 // Resume sync
 router.post(
     '/stores/:id/resume',
-    authenticate,
     authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.resumeSync
@@ -83,7 +79,6 @@ router.post(
 router.post(
     '/stores/:id/sync-orders',
     authenticate,
-    authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.syncOrders
 );
@@ -91,7 +86,6 @@ router.post(
 // Refresh credentials
 router.post(
     '/stores/:id/refresh',
-    authenticate,
     authenticate,
     requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
     AmazonController.refreshCredentials

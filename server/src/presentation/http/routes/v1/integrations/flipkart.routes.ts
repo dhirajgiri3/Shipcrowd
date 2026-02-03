@@ -21,7 +21,6 @@ const router = Router();
 router.post(
   '/connect',
   authenticate,
-  authenticate,
   requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.connect
 );
@@ -48,7 +47,6 @@ router.get(
 router.delete(
   '/stores/:id',
   authenticate,
-  authenticate,
   requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.disconnectStore
 );
@@ -64,7 +62,6 @@ router.post(
 router.post(
   '/stores/:id/pause',
   authenticate,
-  authenticate,
   requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.pauseSync
 );
@@ -72,7 +69,6 @@ router.post(
 // Resume sync
 router.post(
   '/stores/:id/resume',
-  authenticate,
   authenticate,
   requireAccess({ roles: ['admin'], teamRoles: ['owner'], kyc: true }),
   FlipkartController.resumeSync

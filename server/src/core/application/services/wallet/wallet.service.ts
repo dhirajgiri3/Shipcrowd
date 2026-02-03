@@ -102,7 +102,7 @@ import {
     TransactionReason,
 } from '../../../../infrastructure/database/mongoose/models';
 import logger from '../../../../shared/logger/winston.logger';
-import { AppError, NotFoundError, ConflictError, ExternalServiceError } from '../../../../shared/errors/app.error';
+import { AppError, NotFoundError, ConflictError, ExternalServiceError, ValidationError } from '../../../../shared/errors/app.error';
 import { ErrorCode } from '../../../../shared/errors/errorCodes';
 import redisLockService from '../infra/redis-lock.service';
 import razorpayPaymentService from '../payment/razorpay-payment.service';
@@ -697,6 +697,172 @@ export default class WalletService {
             logger.error('Failed to acquire lock for auto-recharge', { companyId, error: lockError.message });
             return { success: false, error: 'Failed to acquire lock' };
         }
+    }
+
+    /**
+     * Update auto-recharge settings for a company
+     * Includes comprehensive validation for threshold, amount, and payment method
+     */
+    static async updateAutoRechargeSettings(
+        companyId: string,
+        settings: {
+            enabled: boolean;
+            threshold?: number;
+            amount?: number;
+            paymentMethodId?: string;
+            dailyLimit?: number;
+            monthlyLimit?: number;
+        }
+    ): Promise<{
+        success: boolean;
+        settings: any;
+    }> {
+        // 1. VALIDATION RULES
+
+        // Rule 1: Payment method required when enabling
+        if (settings.enabled && !settings.paymentMethodId) {
+            // Check if existing loaded company has payment method? 
+            // Better to enforce passing it or checking DB. 
+            // For simplicity and safety, we check if one is provided OR already exists.
+            // But the UI usually sends the curent selected one.
+            // Let's first fetch the company to see current state if not provided
+            const company = await Company.findById(companyId).select('wallet.autoRecharge');
+            if (!company) throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
+
+            const hasExistingPaymentMethod = !!company.wallet?.autoRecharge?.paymentMethodId;
+
+            if (!settings.paymentMethodId && !hasExistingPaymentMethod) {
+                throw new ValidationError(
+                    'Payment method is required to enable auto-recharge. Please add a payment method first.',
+                    { code: ErrorCode.VAL_INVALID_INPUT }
+                );
+            }
+        }
+
+        // Rule 2: Threshold validation
+        if (settings.threshold !== undefined) {
+            if (settings.threshold < 100) {
+                throw new ValidationError('Threshold must be at least ₹100');
+            }
+            if (settings.threshold > 100000) {
+                throw new ValidationError('Threshold cannot exceed ₹1,00,000');
+            }
+        }
+
+        // Rule 3: Amount validation
+        if (settings.amount !== undefined) {
+            if (settings.amount < 100) {
+                throw new ValidationError('Recharge amount must be at least ₹100');
+            }
+            if (settings.amount > 1000000) {
+                throw new ValidationError('Recharge amount cannot exceed ₹10,00,000');
+            }
+        }
+
+        // Rule 4: Logical validation (threshold must be < amount)
+        // Need to fetch current values if only one is updated
+        const company = await Company.findById(companyId).select('wallet.autoRecharge');
+        if (!company) throw new NotFoundError('Company', ErrorCode.RES_COMPANY_NOT_FOUND);
+
+        const currentSettings = company.wallet?.autoRecharge || { threshold: 1000, amount: 5000 };
+
+        const finalThreshold = settings.threshold !== undefined ? settings.threshold : currentSettings.threshold;
+        const finalAmount = settings.amount !== undefined ? settings.amount : currentSettings.amount;
+
+        if (finalThreshold >= finalAmount) {
+            throw new ValidationError(
+                `Recharge threshold (₹${finalThreshold}) must be less than recharge amount (₹${finalAmount})`
+            );
+        }
+
+        // Rule 5: Daily limit validation
+        if (settings.dailyLimit !== undefined) {
+            if (settings.dailyLimit < finalAmount) {
+                throw new ValidationError(
+                    `Daily limit (₹${settings.dailyLimit}) must be at least equal to recharge amount (₹${finalAmount})`
+                );
+            }
+        }
+
+        // 2. VERIFY PAYMENT METHOD EXISTS (if provided)
+        if (settings.paymentMethodId) {
+            if (settings.paymentMethodId.trim() === '') {
+                throw new ValidationError('Invalid payment method ID');
+            }
+            // Optional: Add external verification with Razorpay here
+        }
+
+        // 3. UPDATE DATABASE
+        const updateData: any = {
+            'wallet.autoRecharge.enabled': settings.enabled,
+        };
+
+        if (settings.threshold !== undefined) {
+            updateData['wallet.autoRecharge.threshold'] = settings.threshold;
+        }
+        if (settings.amount !== undefined) {
+            updateData['wallet.autoRecharge.amount'] = settings.amount;
+        }
+        if (settings.paymentMethodId !== undefined) {
+            updateData['wallet.autoRecharge.paymentMethodId'] = settings.paymentMethodId;
+        }
+        if (settings.dailyLimit !== undefined) {
+            updateData['wallet.autoRecharge.dailyLimit'] = settings.dailyLimit;
+        }
+        if (settings.monthlyLimit !== undefined) {
+            updateData['wallet.autoRecharge.monthlyLimit'] = settings.monthlyLimit;
+        }
+
+        // Reset failure tracker when re-enabling
+        if (settings.enabled) {
+            updateData['wallet.autoRecharge.lastFailure'] = undefined;
+        }
+
+        const updatedCompany = await Company.findByIdAndUpdate(
+            companyId,
+            { $set: updateData },
+            { new: true }
+        );
+
+        if (!updatedCompany) {
+            throw new NotFoundError('Company not found');
+        }
+
+        // 4. AUDIT LOG
+        logger.info('Auto-recharge settings updated', {
+            companyId,
+            enabled: settings.enabled,
+            threshold: settings.threshold,
+            amount: settings.amount,
+        });
+
+        // 5. RETURN UPDATED SETTINGS
+        return {
+            success: true,
+            settings: updatedCompany.wallet?.autoRecharge || null,
+        };
+    }
+
+    /**
+     * Get auto-recharge settings for a company
+     */
+    static async getAutoRechargeSettings(companyId: string): Promise<any> {
+        const company = await Company.findById(companyId)
+            .select('wallet.autoRecharge')
+            .lean();
+
+        if (!company) {
+            throw new NotFoundError('Company not found');
+        }
+
+        return company.wallet?.autoRecharge || {
+            enabled: false,
+            threshold: 1000,
+            amount: 5000,
+            paymentMethodId: null,
+            dailyLimit: 100000,
+            monthlyLimit: 500000,
+        };
     }
 
     /**
