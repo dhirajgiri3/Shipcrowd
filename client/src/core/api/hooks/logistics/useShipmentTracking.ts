@@ -201,26 +201,27 @@ export function useShipmentTracking() {
 
                 if (upperNumber === 'ROCKET') {
                     mockShipment = {
+                        awb: 'SPACE-X-042',
                         trackingNumber: 'SPACE-X-042',
                         carrier: 'Interstellar Logistics',
+                        courier: 'Interstellar Logistics',
                         serviceType: 'Orbital Express',
                         currentStatus: 'IN_TRANSIT',
+                        status: 'IN_TRANSIT',
                         estimatedDelivery: new Date().toISOString(),
                         createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-                        recipient: { name: 'Astronaut', city: 'Low Earth Orbit', state: 'Space' }, // Added name to match type
-                        // origin: 'Cape Canaveral', // These fields might not be in NormalizedTrackingData? checking types...
-                        // destination: 'ISS',
-                        // awb: 'SPACE-X-042',
-                        // status: 'IN_TRANSIT',
-                        // courier: 'Interstellar Logistics',
-                        // history: [], 
-                        // Normalized Tracking Data schema usually has explicit fields.
-                        // I will trust the mock helper above for standard structure, and add custom fields if I checked the type definition.
-                        // For SAFETY, I'll stick to the structure in getMockShipmentByKeyword's other entries which match NormalizedTrackingData
+                        origin: 'Cape Canaveral',
+                        destination: 'ISS',
+                        recipient: { name: 'Astronaut', city: 'Low Earth Orbit', state: 'Space' },
                         timeline: [
-                            { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true } as any,
-                            { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!' } as any,
-                            { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.' } as any,
+                            { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true },
+                            { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!', completed: true, current: false },
+                            { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.', completed: true, current: false },
+                        ],
+                        history: [
+                            { status: 'IN_TRANSIT', timestamp: new Date(Date.now() - 3600000).toISOString(), location: '400 km above Earth', description: '🚀 Approaching ISS!', completed: true, current: true },
+                            { status: 'PICKED_UP', timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), location: 'Launch Complex 39A', description: '🔥 Liftoff confirmed!', completed: true, current: false },
+                            { status: 'ORDER_CREATED', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), location: 'Cape Canaveral', description: '⚡ Countdown initiated.', completed: true, current: false },
                         ],
                     };
                 }

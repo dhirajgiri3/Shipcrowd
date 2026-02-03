@@ -528,3 +528,153 @@ P.S. — **Backend alignment & “everything must already exist” checklist (ve
     * Accessibility and performance smoke checks passed.
 
 **Bottom line:** every piece of code you add must be traceable to an existing backend contract, use existing shared types/hooks/utilities, follow the established API client and UI component patterns, and be fully covered by contract and UI tests. If anything in the backend is ambiguous or missing, open a single backend ticket and reference it in the PR rather than making front-end assumptions.
+
+🏠 Dashboard
+/seller (Main Dashboard)
+📊 Analytics
+/seller/analytics
+/seller/analytics/comparison
+/seller/analytics/cost (Note: conflicting costs directory also exists)
+/seller/analytics/costs
+/seller/analytics/courier-comparison
+/seller/analytics/reports
+/seller/analytics/sla
+📦 Orders & Manifests
+/seller/orders
+/seller/orders/bulk
+/seller/orders/create
+/seller/manifests
+/seller/manifests/create
+/seller/manifests/[id]
+/seller/label
+🚚 Shipments & Tracking
+/seller/shipments
+/seller/tracking
+/seller/ndr
+/seller/ndr/analytics
+/seller/ndr/[id]
+/seller/returns
+/seller/returns/[id]
+💰 Finance (COD & Wallet)
+/seller/cod
+/seller/cod/settings
+/seller/cod/remittance
+/seller/cod/remittance/[id]
+/seller/wallet
+/seller/wallet/recharge
+/seller/bank-accounts
+🏭 Inventory & Rates
+/seller/warehouses
+/seller/warehouses/add
+/seller/warehouses/[warehouseId]/inventory
+/seller/rates
+/seller/rates/b2b
+/seller/weight
+/seller/disputes/weight
+/seller/disputes/weight/[id]
+🔌 Integrations
+/seller/integrations
+/seller/integrations/amazon/setup
+/seller/integrations/flipkart/setup
+/seller/integrations/woocommerce/setup
+/seller/integrations/shopify/setup
+/seller/integrations/shopify/[storeId]
+/seller/integrations/shopify/[storeId]/sync
+/seller/integrations/shopify/[storeId]/settings
+⚙️ Settings
+/seller/settings
+/seller/settings/account
+/seller/settings/profile
+/seller/settings/email
+/seller/settings/security
+/seller/settings/privacy
+/seller/settings/team
+/seller/settings/couriers
+/seller/settings/pickup-addresses
+/seller/settings/webhooks
+/seller/settings/audit-logs
+🛠️ Tools & Communication
+/seller/tools/pincode-checker
+/seller/tools/bulk-address-validation
+/seller/communication/rules
+/seller/communication/templates
+🛡️ Other
+/seller/kyc
+/seller/support
+/seller/security/fraud
+
+I have refactored all the other pages. Just sellers pages and subpages as mentioned below are yet to be refactored. We will refactor all of these pages in this session. 
+
+🏠 Dashboard
+/seller (Main Dashboard)
+📊 Analytics
+/seller/analytics
+/seller/analytics/comparison
+/seller/analytics/cost (Note: conflicting costs directory also exists)
+/seller/analytics/costs
+/seller/analytics/courier-comparison
+/seller/analytics/reports
+/seller/analytics/sla
+📦 Orders & Manifests
+/seller/orders
+/seller/orders/bulk
+/seller/orders/create
+/seller/manifests
+/seller/manifests/create
+/seller/manifests/[id]
+/seller/label
+🚚 Shipments & Tracking
+/seller/shipments
+/seller/tracking
+/seller/ndr
+/seller/ndr/analytics
+/seller/ndr/[id]
+/seller/returns
+/seller/returns/[id]
+💰 Finance (COD & Wallet)
+/seller/cod
+/seller/cod/settings
+/seller/cod/remittance
+/seller/cod/remittance/[id]
+/seller/wallet
+/seller/wallet/recharge
+/seller/bank-accounts
+🏭 Inventory & Rates
+/seller/warehouses
+/seller/warehouses/add
+/seller/warehouses/[warehouseId]/inventory
+/seller/rates
+/seller/rates/b2b
+/seller/weight
+/seller/disputes/weight
+/seller/disputes/weight/[id]
+🔌 Integrations
+/seller/integrations
+/seller/integrations/amazon/setup
+/seller/integrations/flipkart/setup
+/seller/integrations/woocommerce/setup
+/seller/integrations/shopify/setup
+/seller/integrations/shopify/[storeId]
+/seller/integrations/shopify/[storeId]/sync
+/seller/integrations/shopify/[storeId]/settings
+⚙️ Settings
+/seller/settings
+/seller/settings/account
+/seller/settings/profile
+/seller/settings/email
+/seller/settings/security
+/seller/settings/privacy
+/seller/settings/team
+/seller/settings/couriers
+/seller/settings/pickup-addresses
+/seller/settings/webhooks
+/seller/settings/audit-logs
+🛠️ Tools & Communication
+/seller/tools/pincode-checker
+/seller/tools/bulk-address-validation
+/seller/communication/rules
+/seller/communication/templates
+🛡️ Other
+/seller/kyc
+/seller/support
+/seller/security/fraud

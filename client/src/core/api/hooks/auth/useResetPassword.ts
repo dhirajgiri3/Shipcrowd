@@ -15,7 +15,7 @@ export function useResetPassword() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const { resetPassword } = useAuth();
+    const { resetPasswordConfirm } = useAuth();
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -33,7 +33,7 @@ export function useResetPassword() {
         setIsLoading(true);
 
         try {
-            await resetPassword(token, password);
+            await resetPasswordConfirm(token, password);
             showSuccessToast('Password reset successfully');
             router.push('/login');
         } catch (error: any) {

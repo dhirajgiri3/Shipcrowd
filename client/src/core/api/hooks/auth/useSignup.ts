@@ -35,12 +35,12 @@ export function useSignup() {
 
         try {
             // 1. Register the user
-            await register(name, email, password);
+            await register({ name, email, password });
 
             // 2. Accept terms
             try {
-                await consentApi.acceptTerms('tos_v1', 'web_signup');
-                await consentApi.acceptPrivacyPolicy('pp_v1', 'web_signup');
+                await consentApi.acceptConsent('terms', '1.0');
+                await consentApi.acceptConsent('privacy', '1.0');
             } catch (consentError) {
                 console.error('Failed to record consent:', consentError);
                 // Continue anyway as registration succeeded
